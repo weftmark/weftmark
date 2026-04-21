@@ -1,0 +1,199 @@
+# ============================================================
+# Weaving Site — .gitignore
+# Markdown files (requirements, memories, docs) are intentionally
+# tracked in this repo. Do not add *.md to this file.
+# ============================================================
+
+
+# ------------------------------------------------------------
+# Environment & Secrets
+# ------------------------------------------------------------
+.env
+.env.local
+.env.*.local
+# .env.example is intentionally tracked
+
+
+# ------------------------------------------------------------
+# Python / FastAPI Backend
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+wheels/
+*.whl
+MANIFEST
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.coveragerc
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyright/
+
+# Linting
+.ruff_cache/
+
+# Alembic — generated migration versions are tracked, not this
+# (leave alembic.ini and versions/ tracked)
+
+# PyWeaving cache
+*.pyweaving_cache
+
+
+# ------------------------------------------------------------
+# Node / React / Vite Frontend
+# ------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+frontend/coverage/
+
+# Storybook
+storybook-static/
+
+
+# ------------------------------------------------------------
+# Docker
+# ------------------------------------------------------------
+# Local override compose files are not tracked
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Docker build context artifacts
+*.tar
+
+
+# ------------------------------------------------------------
+# Database
+# ------------------------------------------------------------
+# Local PostgreSQL data volume (if mounted locally)
+.postgres-data/
+postgres-data/
+
+# SQLite (used in local testing only)
+*.db
+*.sqlite
+*.sqlite3
+
+
+# ------------------------------------------------------------
+# Redis
+# ------------------------------------------------------------
+dump.rdb
+.redis-data/
+redis-data/
+
+
+# ------------------------------------------------------------
+# Uploaded Files & Media (user-generated content)
+# ------------------------------------------------------------
+# These live in object storage in production; local dev copies
+uploads/
+media/
+.uploads/
+
+# Rendered design images (generated on demand, not stored in repo)
+rendered/
+
+
+# ------------------------------------------------------------
+# Logs
+# ------------------------------------------------------------
+*.log
+logs/
+*.log.*
+celery*.log
+
+
+# ------------------------------------------------------------
+# OS & Editor
+# ------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+
+# VS Code — workspace settings are personal preference
+.vscode/
+!.vscode/extensions.json
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+
+
+# ------------------------------------------------------------
+# Authentik (local dev)
+# ------------------------------------------------------------
+authentik-data/
+authentik-media/
+authentik-certs/
+
+
+# ------------------------------------------------------------
+# Celery
+# ------------------------------------------------------------
+celerybeat-schedule
+celerybeat.pid
+
+
+# ------------------------------------------------------------
+# Misc
+# ------------------------------------------------------------
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# PDF exports (generated on demand)
+*.generated.pdf
