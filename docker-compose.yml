@@ -1,0 +1,150 @@
+services:
+
+  # ----------------------------------------------------------
+  # Frontend — React application served via nginx
+  # ----------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Backend — FastAPI application
+  # ----------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Worker — Celery background task processor
+  # Handles: WIF rendering, PDF export, report generation
+  # ----------------------------------------------------------
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A app.worker worker --loglevel=info
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Database — PostgreSQL
+  # Hosts both the application database and the Authentik database
+  # ----------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Redis — Broker for Celery and application caching
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Authentik Server — OIDC identity provider
+  # UI available at http://localhost:9000
+  # ----------------------------------------------------------
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2024.12.1
+    command: server
+    env_file:
+      - .env
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: db
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: ${AUTHENTIK_POSTGRESQL__USER}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRESQL__PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - authentik_media:/media
+      - authentik_certs:/certs
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Authentik Worker — Background task processor for Authentik
+  # ----------------------------------------------------------
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2024.12.1
+    command: worker
+    env_file:
+      - .env
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: db
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: ${AUTHENTIK_POSTGRESQL__USER}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRESQL__PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - authentik_media:/media
+      - authentik_certs:/certs
+    restart: unless-stopped
+
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:
+  authentik_media:
+  authentik_certs:
