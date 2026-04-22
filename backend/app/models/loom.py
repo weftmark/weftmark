@@ -32,6 +32,9 @@ class Loom(Base, TimestampMixin, SoftDeleteMixin):
     purchase_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     vendor: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # Profile photo (single, replaced on upload)
+    photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # Supported activity types
     supports_lift_tracking: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     supports_treadle_tracking: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -71,3 +74,45 @@ class LoomVersion(Base, TimestampMixin):
     warp_waste_unit: Mapped[str] = mapped_column(String(5), default="cm", nullable=False)
 
     loom: Mapped["Loom"] = relationship("Loom", back_populates="versions")
+    photos: Mapped[list["LoomVersionPhoto"]] = relationship(
+        "LoomVersionPhoto", back_populates="version",
+        order_by="LoomVersionPhoto.display_order",
+        cascade="all, delete-orphan",
+    )
+    receipts: Mapped[list["LoomVersionReceipt"]] = relationship(
+        "LoomVersionReceipt", back_populates="version",
+        order_by="LoomVersionReceipt.created_at",
+        cascade="all, delete-orphan",
+    )
+
+
+class LoomVersionPhoto(Base, TimestampMixin):
+    __tablename__ = "loom_version_photos"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    loom_version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("loom_versions.id"), nullable=False, index=True
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    path: Mapped[str] = mapped_column(String(500), nullable=False)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    version: Mapped["LoomVersion"] = relationship("LoomVersion", back_populates="photos")
+
+
+class LoomVersionReceipt(Base, TimestampMixin):
+    __tablename__ = "loom_version_receipts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    loom_version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("loom_versions.id"), nullable=False, index=True
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    path: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    version: Mapped["LoomVersion"] = relationship("LoomVersion", back_populates="receipts")

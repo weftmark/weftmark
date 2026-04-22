@@ -8,6 +8,20 @@ export const LOOM_TYPE_LABELS: Record<LoomType, string> = {
   other: "Other",
 };
 
+export interface LoomVersionPhoto {
+  id: string;
+  filename: string;
+  display_order: number;
+  created_at: string;
+}
+
+export interface LoomVersionReceipt {
+  id: string;
+  filename: string;
+  description: string | null;
+  created_at: string;
+}
+
 export interface LoomVersion {
   id: string;
   version_number: number;
@@ -20,6 +34,8 @@ export interface LoomVersion {
   weaving_width_unit: string;
   warp_waste_allowance: string | null;
   warp_waste_unit: string;
+  photos: LoomVersionPhoto[];
+  receipts: LoomVersionReceipt[];
   created_at: string;
 }
 
@@ -32,6 +48,7 @@ export interface Loom {
   supports_lift_tracking: boolean;
   supports_treadle_tracking: boolean;
   notes: string | null;
+  has_photo: boolean;
   current_version: LoomVersion | null;
   created_at: string;
 }
@@ -134,4 +151,78 @@ export function addLoomVersion(id: string, payload: AddVersionPayload): Promise<
 
 export function deleteLoom(id: string): Promise<void> {
   return req(`/api/looms/${id}`, { method: "DELETE" });
+}
+
+export function loomPhotoUrl(id: string): string {
+  return `/api/looms/${id}/photo`;
+}
+
+export async function uploadLoomPhoto(id: string, file: File): Promise<void> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`/api/looms/${id}/photo`, {
+    method: "PUT",
+    credentials: "include",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Upload failed" }));
+    throw new Error(err.detail ?? "Upload failed");
+  }
+}
+
+export async function deleteLoomPhoto(id: string): Promise<void> {
+  await req(`/api/looms/${id}/photo`, { method: "DELETE" });
+}
+
+export function versionPhotoUrl(loomId: string, versionId: string, photoId: string): string {
+  return `/api/looms/${loomId}/versions/${versionId}/photos/${photoId}`;
+}
+
+export async function uploadVersionPhoto(loomId: string, versionId: string, file: File): Promise<LoomVersionPhoto> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`/api/looms/${loomId}/versions/${versionId}/photos`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Upload failed" }));
+    throw new Error(err.detail ?? "Upload failed");
+  }
+  return res.json();
+}
+
+export async function deleteVersionPhoto(loomId: string, versionId: string, photoId: string): Promise<void> {
+  await req(`/api/looms/${loomId}/versions/${versionId}/photos/${photoId}`, { method: "DELETE" });
+}
+
+export function versionReceiptUrl(loomId: string, versionId: string, receiptId: string): string {
+  return `/api/looms/${loomId}/versions/${versionId}/receipts/${receiptId}`;
+}
+
+export async function uploadVersionReceipt(
+  loomId: string,
+  versionId: string,
+  file: File,
+  description?: string,
+): Promise<LoomVersionReceipt> {
+  const form = new FormData();
+  form.append("file", file);
+  if (description) form.append("description", description);
+  const res = await fetch(`/api/looms/${loomId}/versions/${versionId}/receipts`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Upload failed" }));
+    throw new Error(err.detail ?? "Upload failed");
+  }
+  return res.json();
+}
+
+export async function deleteVersionReceipt(loomId: string, versionId: string, receiptId: string): Promise<void> {
+  await req(`/api/looms/${loomId}/versions/${versionId}/receipts/${receiptId}`, { method: "DELETE" });
 }

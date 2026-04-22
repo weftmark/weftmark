@@ -15,6 +15,10 @@ def _upload_root() -> Path:
     return Path(settings.upload_dir)
 
 
+# ---------------------------------------------------------------------------
+# Projects
+# ---------------------------------------------------------------------------
+
 def project_dir(project_id: uuid.UUID) -> Path:
     p = _upload_root() / "projects" / str(project_id)
     p.mkdir(parents=True, exist_ok=True)
@@ -22,14 +26,12 @@ def project_dir(project_id: uuid.UUID) -> Path:
 
 
 def save_wif(project_id: uuid.UUID, filename: str, data: bytes) -> str:
-    """Save raw WIF bytes. Returns the relative storage path."""
     dest = project_dir(project_id) / "original.wif"
     dest.write_bytes(data)
     return str(dest.relative_to(_upload_root()))
 
 
 def save_preview(project_id: uuid.UUID, data: bytes) -> str:
-    """Save rendered preview PNG. Returns the relative storage path."""
     dest = project_dir(project_id) / "preview.png"
     dest.write_bytes(data)
     return str(dest.relative_to(_upload_root()))
@@ -47,3 +49,84 @@ def preview_exists(preview_path: str | None) -> bool:
     if not preview_path:
         return False
     return (_upload_root() / preview_path).exists()
+
+
+# ---------------------------------------------------------------------------
+# Looms — profile photo
+# ---------------------------------------------------------------------------
+
+def loom_dir(loom_id: uuid.UUID) -> Path:
+    p = _upload_root() / "looms" / str(loom_id)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def save_loom_photo(loom_id: uuid.UUID, ext: str, data: bytes) -> str:
+    """Save or replace the loom profile photo. Returns relative storage path."""
+    dest = loom_dir(loom_id) / f"profile{ext}"
+    dest.write_bytes(data)
+    return str(dest.relative_to(_upload_root()))
+
+
+def delete_loom_photo(photo_path: str) -> None:
+    full = _upload_root() / photo_path
+    if full.exists():
+        full.unlink()
+
+
+# ---------------------------------------------------------------------------
+# Loom version photos
+# ---------------------------------------------------------------------------
+
+def version_photo_dir(loom_id: uuid.UUID, version_id: uuid.UUID) -> Path:
+    p = loom_dir(loom_id) / "versions" / str(version_id) / "photos"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def save_version_photo(loom_id: uuid.UUID, version_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
+    dest = version_photo_dir(loom_id, version_id) / f"{photo_id}{ext}"
+    dest.write_bytes(data)
+    return str(dest.relative_to(_upload_root()))
+
+
+def delete_version_photo(path: str) -> None:
+    full = _upload_root() / path
+    if full.exists():
+        full.unlink()
+
+
+# ---------------------------------------------------------------------------
+# Loom version receipts
+# ---------------------------------------------------------------------------
+
+def version_receipt_dir(loom_id: uuid.UUID, version_id: uuid.UUID) -> Path:
+    p = loom_dir(loom_id) / "versions" / str(version_id) / "receipts"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def save_version_receipt(loom_id: uuid.UUID, version_id: uuid.UUID, receipt_id: uuid.UUID, ext: str, data: bytes) -> str:
+    dest = version_receipt_dir(loom_id, version_id) / f"{receipt_id}{ext}"
+    dest.write_bytes(data)
+    return str(dest.relative_to(_upload_root()))
+
+
+def delete_version_receipt(path: str) -> None:
+    full = _upload_root() / path
+    if full.exists():
+        full.unlink()
+
+
+# ---------------------------------------------------------------------------
+# Generic read
+# ---------------------------------------------------------------------------
+
+def read_file(path: str) -> bytes:
+    return (_upload_root() / path).read_bytes()
+
+
+def file_exists(path: str | None) -> bool:
+    if not path:
+        return False
+    return (_upload_root() / path).exists()
