@@ -2,6 +2,9 @@ services:
 
   # ----------------------------------------------------------
   # Frontend — React application served via nginx
+  # Entry point for all user traffic. Proxies /api/, /auth/,
+  # and /health to the backend over the public network.
+  # Exposed: yes (port 3000 — user access)
   # ----------------------------------------------------------
   frontend:
     build:
@@ -9,19 +12,26 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:80"
+    networks:
+      - public
     depends_on:
       - backend
     restart: unless-stopped
 
   # ----------------------------------------------------------
   # Backend — FastAPI application
+  # Reachable only through the nginx proxy; not exposed to host.
+  # Connected to both networks so nginx can reach it (public)
+  # and it can reach db/redis (internal).
+  # Exposed: no
   # ----------------------------------------------------------
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    networks:
+      - public
+      - internal
     env_file:
       - .env
     depends_on:
@@ -36,12 +46,16 @@ services:
   # ----------------------------------------------------------
   # Worker — Celery background task processor
   # Handles: WIF rendering, PDF export, report generation
+  # No inbound connections needed; internal network only.
+  # Exposed: no
   # ----------------------------------------------------------
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.worker worker --loglevel=info
+    networks:
+      - internal
     env_file:
       - .env
     depends_on:
@@ -55,10 +69,14 @@ services:
 
   # ----------------------------------------------------------
   # Database — PostgreSQL
-  # Hosts both the application database and the Authentik database
+  # Hosts both the application database and the Authentik database.
+  # Never exposed to host or public network.
+  # Exposed: no
   # ----------------------------------------------------------
   db:
     image: postgres:16-alpine
+    networks:
+      - internal
     env_file:
       - .env
     environment:
@@ -77,9 +95,13 @@ services:
 
   # ----------------------------------------------------------
   # Redis — Broker for Celery and application caching
+  # Never exposed to host or public network.
+  # Exposed: no
   # ----------------------------------------------------------
   redis:
     image: redis:7-alpine
+    networks:
+      - internal
     volumes:
       - redis_data:/data
     healthcheck:
@@ -91,11 +113,18 @@ services:
 
   # ----------------------------------------------------------
   # Authentik Server — OIDC identity provider
-  # UI available at http://localhost:9000
+  # Browser must reach it directly for the OIDC authorization
+  # redirect, so it is port-bound on the host.
+  # Connected to both networks: public (port binding) and
+  # internal (db/redis access).
+  # Exposed: yes (port 9000 — OIDC flow, admin UI)
   # ----------------------------------------------------------
   authentik-server:
     image: ghcr.io/goauthentik/server:2024.12.1
     command: server
+    networks:
+      - public
+      - internal
     env_file:
       - .env
     environment:
@@ -119,10 +148,14 @@ services:
 
   # ----------------------------------------------------------
   # Authentik Worker — Background task processor for Authentik
+  # Internal only; no inbound connections needed.
+  # Exposed: no
   # ----------------------------------------------------------
   authentik-worker:
     image: ghcr.io/goauthentik/server:2024.12.1
     command: worker
+    networks:
+      - internal
     env_file:
       - .env
     environment:
@@ -140,6 +173,13 @@ services:
       - authentik_media:/media
       - authentik_certs:/certs
     restart: unless-stopped
+
+
+networks:
+  public:
+    driver: bridge
+  internal:
+    driver: bridge
 
 
 volumes:

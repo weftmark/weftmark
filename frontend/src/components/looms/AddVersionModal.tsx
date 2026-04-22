@@ -1,18 +1,24 @@
 import { useState } from "react";
-import { addLoomVersion, type AddVersionPayload } from "@/api/looms";
+import { addLoomVersion, type AddVersionPayload, type LoomType } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 
 interface Props {
   loomId: string;
+  loomType: LoomType;
   onSuccess: () => void;
   onClose: () => void;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export function AddVersionModal({ loomId, onSuccess, onClose }: Props) {
-  const [numShafts, setNumShafts] = useState(4);
-  const [numTreadles, setNumTreadles] = useState(4);
+function showsShafts(t: LoomType) { return t === "floor_loom" || t === "table_loom" || t === "other"; }
+function showsTreadles(t: LoomType) { return t === "floor_loom" || t === "other"; }
+function showsHeddles(t: LoomType) { return t === "rigid_heddle" || t === "other"; }
+
+export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props) {
+  const [numShafts, setNumShafts] = useState("4");
+  const [numTreadles, setNumTreadles] = useState("4");
+  const [numHeddles, setNumHeddles] = useState("");
   const [weavingWidth, setWeavingWidth] = useState("");
   const [weavingWidthUnit, setWeavingWidthUnit] = useState("cm");
   const [warpWaste, setWarpWaste] = useState("");
@@ -30,8 +36,9 @@ export function AddVersionModal({ loomId, onSuccess, onClose }: Props) {
       const payload: AddVersionPayload = {
         effective_date: effectiveDate,
         description: description || undefined,
-        num_shafts: numShafts,
-        num_treadles: numTreadles,
+        num_shafts: showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
+        num_treadles: showsTreadles(loomType) && numTreadles !== "" ? parseInt(numTreadles, 10) : undefined,
+        num_heddles: showsHeddles(loomType) && numHeddles ? parseInt(numHeddles, 10) : undefined,
         weaving_width: weavingWidth ? parseFloat(weavingWidth) : undefined,
         weaving_width_unit: weavingWidthUnit,
         warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
@@ -73,77 +80,97 @@ export function AddVersionModal({ loomId, onSuccess, onClose }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Shafts</label>
-              <input
-                type="number"
-                min={1}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                value={numShafts}
-                onChange={(e) => setNumShafts(parseInt(e.target.value, 10))}
-                required
-              />
+          {(showsShafts(loomType) || showsTreadles(loomType) || showsHeddles(loomType)) && (
+            <div className="grid grid-cols-2 gap-3">
+              {showsShafts(loomType) && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Shafts</label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={numShafts}
+                    onChange={(e) => setNumShafts(e.target.value)}
+                    required={loomType !== "other"}
+                  />
+                </div>
+              )}
+              {showsTreadles(loomType) && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Treadles</label>
+                  <input
+                    type="number"
+                    min={0}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={numTreadles}
+                    onChange={(e) => setNumTreadles(e.target.value)}
+                    required={loomType !== "other"}
+                  />
+                </div>
+              )}
+              {showsHeddles(loomType) && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Heddles (optional)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={numHeddles}
+                    onChange={(e) => setNumHeddles(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Treadles</label>
-              <input
-                type="number"
-                min={0}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                value={numTreadles}
-                onChange={(e) => setNumTreadles(parseInt(e.target.value, 10))}
-                required
-              />
-            </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Weaving width (optional)</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={weavingWidth}
-                  onChange={(e) => setWeavingWidth(e.target.value)}
-                  placeholder="60"
-                />
-                <select
-                  className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={weavingWidthUnit}
-                  onChange={(e) => setWeavingWidthUnit(e.target.value)}
-                >
-                  <option value="cm">cm</option>
-                  <option value="in">in</option>
-                </select>
+          {loomType !== "inkle" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Weaving width (optional)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={weavingWidth}
+                    onChange={(e) => setWeavingWidth(e.target.value)}
+                    placeholder="60"
+                  />
+                  <select
+                    className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={weavingWidthUnit}
+                    onChange={(e) => setWeavingWidthUnit(e.target.value)}
+                  >
+                    <option value="cm">cm</option>
+                    <option value="in">in</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Warp waste (optional)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={warpWaste}
+                    onChange={(e) => setWarpWaste(e.target.value)}
+                    placeholder="30"
+                  />
+                  <select
+                    className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={warpWasteUnit}
+                    onChange={(e) => setWarpWasteUnit(e.target.value)}
+                  >
+                    <option value="cm">cm</option>
+                    <option value="in">in</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Warp waste (optional)</label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min={0}
-                  step="0.1"
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={warpWaste}
-                  onChange={(e) => setWarpWaste(e.target.value)}
-                  placeholder="30"
-                />
-                <select
-                  className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={warpWasteUnit}
-                  onChange={(e) => setWarpWasteUnit(e.target.value)}
-                >
-                  <option value="cm">cm</option>
-                  <option value="in">in</option>
-                </select>
-              </div>
-            </div>
-          </div>
+          )}
 
           {error && (
             <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>

@@ -33,6 +33,8 @@ A multi-user, invite-only web platform for managing weaving projects. Users can 
 - OIDC-based authentication (any OIDC-compliant provider supported via configuration)
 - Reference implementation: **Authentik** (self-hosted)
 - Invite-only registration — users cannot self-register
+- Session stored as a signed JWT in an httpOnly cookie; signed with `APP_SECRET_KEY`
+- Bootstrap rule: the first user to authenticate becomes admin with no invite required
 
 ### Frontend
 
@@ -59,20 +61,44 @@ A multi-user, invite-only web platform for managing weaving projects. Users can 
 | Broker / cache | Redis |
 | Rendering | PyWeaving |
 
-### Docker Compose Services
+---
 
-- `frontend` — React app served via nginx
-- `backend` — FastAPI application
-- `worker` — Celery worker for background jobs (rendering, PDF export)
-- `db` — PostgreSQL
-- `redis` — Redis
-- `authentik` — OIDC provider
+## API Security
+
+- All `/api/*` endpoints require authentication via `Depends(get_current_user)`
+- Authentication is enforced by validating the signed session JWT from the httpOnly cookie
+- Admin-only endpoints additionally use `Depends(require_admin)`
+- Unauthenticated endpoints: `/health`, `/auth/login`, `/auth/callback`, `/auth/logout`
+- Swagger UI (`/api/docs`) is only available when `DEBUG=true`; disabled in production
 
 ---
 
-## API
+## Docker Compose Services and Network Isolation
 
-The frontend communicates with the backend exclusively via REST API. No server-rendered pages.
+Two networks are defined to limit the blast radius of any compromised service:
+
+| Network | Purpose |
+| --- | --- |
+| `public` | Services that nginx or the browser must reach |
+| `internal` | Data tier — db, redis, and service-to-service traffic only |
+
+### Service exposure
+
+| Service | Exposed to host | Networks | Notes |
+| --- | --- | --- | --- |
+| `frontend` (nginx) | **Yes** — port 3000 | public | Single user entry point; proxies `/api/`, `/auth/`, `/health` to backend |
+| `authentik-server` | **Yes** — port 9000 | public + internal | Browser redirects directly to it for OIDC authorization; admin UI |
+| `backend` | **No** | public + internal | Reached only through nginx; on internal to access db and redis |
+| `worker` | No | internal | Background jobs only; no inbound connections needed |
+| `db` | No | internal | Never reachable from host or public network |
+| `redis` | No | internal | Never reachable from host or public network |
+| `authentik-worker` | No | internal | Background jobs for Authentik only |
+
+### Rationale
+
+- `db` and `redis` are on `internal` only — a compromise of the frontend or nginx container cannot directly reach the data tier
+- `backend` is not port-bound to the host — all traffic must pass through nginx, which enforces routing rules
+- `authentik-server` must be host-exposed because the browser is redirected to it directly during the OIDC authorization flow; this cannot be proxied through nginx without breaking the OIDC redirect URI
 
 ---
 
@@ -88,10 +114,33 @@ Portrait orientation is preferred for the activity (loom-side) interface.
 
 ---
 
-## Theme
+## Theme and Localization
 
 - Light mode is the default
 - Users can switch to dark mode via a preference setting
+- Users can configure their preferred measurement system: `metric`, `imperial`, or `both`
+- Measurement values are stored with their unit on each record (mixed units are supported per field)
+- All calculations normalize to a common unit internally and convert to the user's display preference for presentation
+
+---
+
+## Equipment (Loom) Model
+
+### Loom types
+
+| Type | Shafts | Treadles | Heddles | Notes |
+| --- | --- | --- | --- | --- |
+| `floor_loom` | required | required (≥0) | — | Treadle count 0 valid for dobby/computer-controlled |
+| `table_loom` | required | — | — | Uses levers; treadle count not applicable |
+| `rigid_heddle` | — | — | optional | Primary spec is weaving width and heddle count |
+| `inkle` | — | — | — | No shaft/treadle/heddle spec |
+| `other` | optional | optional | optional | Catch-all for non-standard equipment |
+
+### Loom versioning
+
+- Loom specifications are tracked as an append-only version history (`LoomVersion`)
+- Each version captures a dated spec snapshot: shafts, treadles, heddles, weaving width, warp waste allowance
+- Activities reference a specific loom version, so historical accuracy is preserved after equipment upgrades
 
 ---
 
@@ -106,3 +155,4 @@ Portrait orientation is preferred for the activity (loom-side) interface.
 
 - Transactional email (invite links) is delivered via **SMTP2Go**
 - SMTP credentials are configured via environment variables
+- Invite links are single-use, time-limited (administrator-configurable expiry), and sent to the invitee's email address

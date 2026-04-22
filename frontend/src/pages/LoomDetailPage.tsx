@@ -202,6 +202,7 @@ export function LoomDetailPage() {
       {showAddVersion && (
         <AddVersionModal
           loomId={loom.id}
+          loomType={loom.loom_type}
           onSuccess={handleVersionAdded}
           onClose={() => setShowAddVersion(false)}
         />
