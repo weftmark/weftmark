@@ -150,6 +150,7 @@ This file tracks the build status of every feature area. Update it after each te
 
 | Capability | Notes |
 | --- | --- |
+| Third-party API access (API keys) | Personal named keys — `ws_<hex>` format, scoped, hashed, revocable; Bearer token on all `/api/*` routes. Full spec in phase2.md. |
 | Offline session caching | Cache current activity for use without internet; sync on reconnect |
 | Append-only event log for activity steps | Foundation for offline sync and audit history |
 | S3 / object storage backend | `STORAGE_BACKEND` setting already planned in config |
