@@ -5,15 +5,18 @@ import {
   getLoom, deleteLoom, uploadLoomPhoto, deleteLoomPhoto, loomPhotoUrl,
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
   uploadVersionReceipt, deleteVersionReceipt, versionReceiptUrl,
-  type LoomDetail, type LoomVersion, type LoomVersionPhoto, type LoomVersionReceipt,
+  addAccessory, deleteAccessory,
+  type LoomDetail, type LoomVersion, type LoomVersionPhoto,
+  type LoomVersionReceipt, type LoomVersionAccessory,
   LOOM_TYPE_LABELS,
 } from "@/api/looms";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
+import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
 import { Button } from "@/components/ui/button";
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Profile photo
 // ---------------------------------------------------------------------------
 
 function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
@@ -61,13 +64,7 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
         </div>
       )}
       <div className="flex flex-col gap-2">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          className="hidden"
-          onChange={handleUpload}
-        />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleUpload} />
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
           {uploading ? "Uploading…" : loom.has_photo ? "Replace photo" : "Upload photo"}
         </Button>
@@ -82,15 +79,11 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
   );
 }
 
-function VersionPhotos({
-  loom,
-  version,
-  onChanged,
-}: {
-  loom: LoomDetail;
-  version: LoomVersion;
-  onChanged: () => void;
-}) {
+// ---------------------------------------------------------------------------
+// Version photos
+// ---------------------------------------------------------------------------
+
+function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,12 +105,7 @@ function VersionPhotos({
   };
 
   const handleDelete = async (photo: LoomVersionPhoto) => {
-    try {
-      await deleteVersionPhoto(loom.id, version.id, photo.id);
-      onChanged();
-    } catch {
-      // silently ignore
-    }
+    try { await deleteVersionPhoto(loom.id, version.id, photo.id); onChanged(); } catch { /* ignore */ }
   };
 
   return (
@@ -126,35 +114,20 @@ function VersionPhotos({
       <div className="flex flex-wrap gap-2">
         {version.photos.map((p) => (
           <div key={p.id} className="relative group">
-            <img
-              src={versionPhotoUrl(loom.id, version.id, p.id)}
-              alt={p.filename}
-              className="h-20 w-20 rounded object-cover border"
-            />
+            <img src={versionPhotoUrl(loom.id, version.id, p.id)} alt={p.filename} className="h-20 w-20 rounded object-cover border" />
             <button
               onClick={() => handleDelete(p)}
               className="absolute -top-1 -right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs"
-              title="Remove"
-            >
-              ×
-            </button>
+            >×</button>
           </div>
         ))}
         <div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
-            onChange={handleUpload}
-          />
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleUpload} />
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
             className="h-20 w-20 rounded border border-dashed flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors"
-          >
-            {uploading ? "…" : "+ Add"}
-          </button>
+          >{uploading ? "…" : "+ Add"}</button>
         </div>
       </div>
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
@@ -162,15 +135,11 @@ function VersionPhotos({
   );
 }
 
-function VersionReceipts({
-  loom,
-  version,
-  onChanged,
-}: {
-  loom: LoomDetail;
-  version: LoomVersion;
-  onChanged: () => void;
-}) {
+// ---------------------------------------------------------------------------
+// Version receipts
+// ---------------------------------------------------------------------------
+
+function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -194,12 +163,7 @@ function VersionReceipts({
   };
 
   const handleDelete = async (receipt: LoomVersionReceipt) => {
-    try {
-      await deleteVersionReceipt(loom.id, version.id, receipt.id);
-      onChanged();
-    } catch {
-      // silently ignore
-    }
+    try { await deleteVersionReceipt(loom.id, version.id, receipt.id); onChanged(); } catch { /* ignore */ }
   };
 
   return (
@@ -213,16 +177,9 @@ function VersionReceipts({
                 href={versionReceiptUrl(loom.id, version.id, r.id)}
                 target="_blank"
                 rel="noreferrer"
-                className="underline underline-offset-2 hover:text-foreground text-muted-foreground truncate max-w-xs"
-              >
-                {r.description || r.filename}
-              </a>
-              <button
-                onClick={() => handleDelete(r)}
-                className="ml-auto shrink-0 text-xs text-destructive hover:underline"
-              >
-                Remove
-              </button>
+                className="underline underline-offset-2 text-muted-foreground hover:text-foreground truncate max-w-xs"
+              >{r.description || r.filename}</a>
+              <button onClick={() => handleDelete(r)} className="ml-auto shrink-0 text-xs text-destructive hover:underline">Remove</button>
             </li>
           ))}
         </ul>
@@ -234,13 +191,7 @@ function VersionReceipts({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Label (optional)"
         />
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,application/pdf"
-          className="hidden"
-          onChange={handleUpload}
-        />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleUpload} />
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
           {uploading ? "Uploading…" : "Upload"}
         </Button>
@@ -250,18 +201,81 @@ function VersionReceipts({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Accessories
+// ---------------------------------------------------------------------------
+
+function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+  const [input, setInput] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = input.trim();
+    if (!name) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await addAccessory(loom.id, version.id, name);
+      setInput("");
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (acc: LoomVersionAccessory) => {
+    try { await deleteAccessory(loom.id, version.id, acc.id); onChanged(); } catch { /* ignore */ }
+  };
+
+  return (
+    <div>
+      <p className="text-sm font-medium mb-2">Accessories</p>
+      {version.accessories.length > 0 && (
+        <ul className="mb-3 space-y-1">
+          {version.accessories.map((acc) => (
+            <li key={acc.id} className="flex items-center gap-2 text-sm">
+              <span className="flex-1">{acc.name}</span>
+              <button onClick={() => handleDelete(acc)} className="shrink-0 text-xs text-destructive hover:underline">Remove</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={handleAdd} className="flex gap-2">
+        <input
+          className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="e.g. Second warp beam"
+          disabled={saving}
+        />
+        <Button size="sm" variant="outline" type="submit" disabled={saving || !input.trim()}>
+          Add
+        </Button>
+      </form>
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Version card
+// ---------------------------------------------------------------------------
+
 function VersionCard({
-  loom,
-  version,
-  isCurrent,
-  onChanged,
+  loom, version, isCurrent, onChanged, onClone,
 }: {
   loom: LoomDetail;
   version: LoomVersion;
   isCurrent: boolean;
   onChanged: () => void;
+  onClone: (v: LoomVersion) => void;
 }) {
   const [open, setOpen] = useState(isCurrent);
+  const displayName = version.name || `v${version.version_number}`;
 
   return (
     <div className={`rounded-lg border ${isCurrent ? "border-ring" : ""}`}>
@@ -271,40 +285,41 @@ function VersionCard({
         onClick={() => setOpen((o) => !o)}
       >
         <span className="text-sm font-medium">
-          v{version.version_number}
-          {isCurrent && (
-            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">current</span>
+          {version.name ? (
+            <>{version.name} <span className="font-normal text-muted-foreground">v{version.version_number}</span></>
+          ) : (
+            <>v{version.version_number}</>
           )}
-          {version.description && (
-            <span className="ml-2 text-xs text-muted-foreground font-normal">{version.description}</span>
-          )}
+          {isCurrent && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">current</span>}
+          {version.description && <span className="ml-2 text-xs text-muted-foreground font-normal">{version.description}</span>}
         </span>
         <span className="text-xs text-muted-foreground">{version.effective_date} {open ? "▲" : "▼"}</span>
       </button>
 
       {open && (
-        <div className="border-t px-4 py-4 space-y-4">
+        <div className="border-t px-4 py-4 space-y-5">
           {/* Spec */}
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-            {version.num_shafts != null && (
-              <><dt className="text-muted-foreground">Shafts</dt><dd>{version.num_shafts}</dd></>
-            )}
-            {version.num_treadles != null && (
-              <><dt className="text-muted-foreground">Treadles</dt><dd>{version.num_treadles}</dd></>
-            )}
-            {version.num_heddles != null && (
-              <><dt className="text-muted-foreground">Heddles</dt><dd>{version.num_heddles}</dd></>
-            )}
-            {version.weaving_width && (
-              <><dt className="text-muted-foreground">Weaving width</dt><dd>{version.weaving_width} {version.weaving_width_unit}</dd></>
-            )}
-            {version.warp_waste_allowance && (
-              <><dt className="text-muted-foreground">Warp waste</dt><dd>{version.warp_waste_allowance} {version.warp_waste_unit}</dd></>
-            )}
+            {version.num_shafts != null && (<><dt className="text-muted-foreground">Shafts</dt><dd>{version.num_shafts}</dd></>)}
+            {version.num_treadles != null && (<><dt className="text-muted-foreground">Treadles</dt><dd>{version.num_treadles}</dd></>)}
+            {version.num_heddles != null && (<><dt className="text-muted-foreground">Heddles</dt><dd>{version.num_heddles}</dd></>)}
+            {version.weaving_width && (<><dt className="text-muted-foreground">Weaving width</dt><dd>{version.weaving_width} {version.weaving_width_unit}</dd></>)}
+            {version.warp_waste_allowance && (<><dt className="text-muted-foreground">Warp waste</dt><dd>{version.warp_waste_allowance} {version.warp_waste_unit}</dd></>)}
           </dl>
 
+          <VersionAccessories loom={loom} version={version} onChanged={onChanged} />
           <VersionPhotos loom={loom} version={version} onChanged={onChanged} />
           <VersionReceipts loom={loom} version={version} onChanged={onChanged} />
+
+          {/* Clone */}
+          <div className="border-t pt-3">
+            <Button size="sm" variant="outline" onClick={() => onClone(version)}>
+              Clone this configuration
+            </Button>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Creates a new configuration pre-filled with {displayName}'s spec and accessories.
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -321,6 +336,7 @@ export function LoomDetailPage() {
   const queryClient = useQueryClient();
   const [showAddVersion, setShowAddVersion] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [cloneSource, setCloneSource] = useState<LoomVersion | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -335,11 +351,8 @@ export function LoomDetailPage() {
     queryClient.invalidateQueries({ queryKey: ["looms"] });
   };
 
-  const handleVersionAdded = () => {
-    setShowAddVersion(false);
-    invalidate();
-  };
-
+  const handleVersionAdded = () => { setShowAddVersion(false); invalidate(); };
+  const handleCloned = () => { setCloneSource(null); invalidate(); };
   const handleEditSaved = (updated: LoomDetail) => {
     queryClient.setQueryData(["loom", id], updated);
     queryClient.invalidateQueries({ queryKey: ["looms"] });
@@ -359,21 +372,8 @@ export function LoomDetailPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground text-sm">Loading…</p>
-      </div>
-    );
-  }
-
-  if (error || !loom) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-destructive text-sm">Loom not found.</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground text-sm">Loading…</p></div>;
+  if (error || !loom) return <div className="flex min-h-screen items-center justify-center"><p className="text-destructive text-sm">Loom not found.</p></div>;
 
   const sortedVersions = [...loom.versions].sort((a, b) => b.version_number - a.version_number);
   const currentVersionId = loom.current_version?.id;
@@ -382,21 +382,13 @@ export function LoomDetailPage() {
     <div className="flex min-h-screen flex-col">
       <header className="border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/looms" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Equipment
-          </Link>
-          <span className="font-semibold">
-            {loom.manufacturer} {loom.model_name}
-          </span>
+          <Link to="/looms" className="text-sm text-muted-foreground hover:text-foreground">← Equipment</Link>
+          <span className="font-semibold">{loom.manufacturer} {loom.model_name}</span>
           <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>
-            Edit
-          </Button>
-          <Button size="sm" onClick={() => setShowAddVersion(true)}>
-            Add version
-          </Button>
+          <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>
+          <Button size="sm" onClick={() => setShowAddVersion(true)}>Add version</Button>
         </div>
       </header>
 
@@ -405,39 +397,23 @@ export function LoomDetailPage() {
         <section className="space-y-4">
           <ProfilePhoto loom={loom} onChanged={invalidate} />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
-            {loom.serial_number && (
-              <><dt className="text-muted-foreground">Serial number</dt><dd className="col-span-1 sm:col-span-2">{loom.serial_number}</dd></>
-            )}
-            {loom.purchase_date && (
-              <><dt className="text-muted-foreground">Purchased</dt><dd className="col-span-1 sm:col-span-2">{loom.purchase_date}</dd></>
-            )}
-            {loom.purchase_price && (
-              <><dt className="text-muted-foreground">Purchase price</dt><dd className="col-span-1 sm:col-span-2">{loom.purchase_price}</dd></>
-            )}
-            {loom.vendor && (
-              <><dt className="text-muted-foreground">Purchased from</dt><dd className="col-span-1 sm:col-span-2">{loom.vendor}</dd></>
-            )}
+            {loom.serial_number && (<><dt className="text-muted-foreground">Serial number</dt><dd className="col-span-1 sm:col-span-2">{loom.serial_number}</dd></>)}
+            {loom.purchase_date && (<><dt className="text-muted-foreground">Purchased</dt><dd className="col-span-1 sm:col-span-2">{loom.purchase_date}</dd></>)}
+            {loom.purchase_price && (<><dt className="text-muted-foreground">Purchase price</dt><dd className="col-span-1 sm:col-span-2">{loom.purchase_price}</dd></>)}
+            {loom.vendor && (<><dt className="text-muted-foreground">Purchased from</dt><dd className="col-span-1 sm:col-span-2">{loom.vendor}</dd></>)}
           </dl>
           {(loom.supports_lift_tracking || loom.supports_treadle_tracking) && (
             <div className="flex gap-2">
-              {loom.supports_lift_tracking && (
-                <span className="rounded bg-muted px-2 py-0.5 text-xs">lift tracking</span>
-              )}
-              {loom.supports_treadle_tracking && (
-                <span className="rounded bg-muted px-2 py-0.5 text-xs">treadle tracking</span>
-              )}
+              {loom.supports_lift_tracking && <span className="rounded bg-muted px-2 py-0.5 text-xs">lift tracking</span>}
+              {loom.supports_treadle_tracking && <span className="rounded bg-muted px-2 py-0.5 text-xs">treadle tracking</span>}
             </div>
           )}
-          {loom.notes && (
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>
-          )}
+          {loom.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>}
         </section>
 
         {/* Configuration history */}
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Configuration history
-          </h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Configuration history</h2>
           <div className="space-y-3">
             {sortedVersions.map((v) => (
               <VersionCard
@@ -446,6 +422,7 @@ export function LoomDetailPage() {
                 version={v}
                 isCurrent={v.id === currentVersionId}
                 onChanged={invalidate}
+                onClone={setCloneSource}
               />
             ))}
           </div>
@@ -454,21 +431,12 @@ export function LoomDetailPage() {
         {/* Delete */}
         <section className="border-t pt-6">
           {!confirmDelete ? (
-            <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>
-              Delete loom
-            </Button>
+            <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>Delete loom</Button>
           ) : (
             <div className="flex items-center gap-3">
               <p className="text-sm text-destructive">Delete this loom? This cannot be undone.</p>
-              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
+              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
+              <Button size="sm" onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                 {deleting ? "Deleting…" : "Confirm delete"}
               </Button>
             </div>
@@ -477,19 +445,13 @@ export function LoomDetailPage() {
       </main>
 
       {showAddVersion && (
-        <AddVersionModal
-          loomId={loom.id}
-          loomType={loom.loom_type}
-          onSuccess={handleVersionAdded}
-          onClose={() => setShowAddVersion(false)}
-        />
+        <AddVersionModal loomId={loom.id} loomType={loom.loom_type} onSuccess={handleVersionAdded} onClose={() => setShowAddVersion(false)} />
       )}
       {showEdit && (
-        <EditLoomModal
-          loom={loom}
-          onSuccess={handleEditSaved}
-          onClose={() => setShowEdit(false)}
-        />
+        <EditLoomModal loom={loom} onSuccess={handleEditSaved} onClose={() => setShowEdit(false)} />
+      )}
+      {cloneSource && (
+        <CloneVersionModal loomId={loom.id} source={cloneSource} onSuccess={handleCloned} onClose={() => setCloneSource(null)} />
       )}
     </div>
   );

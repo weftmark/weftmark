@@ -22,9 +22,16 @@ export interface LoomVersionReceipt {
   created_at: string;
 }
 
+export interface LoomVersionAccessory {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface LoomVersion {
   id: string;
   version_number: number;
+  name: string | null;
   effective_date: string;
   description: string | null;
   num_shafts: number | null;
@@ -36,6 +43,7 @@ export interface LoomVersion {
   warp_waste_unit: string;
   photos: LoomVersionPhoto[];
   receipts: LoomVersionReceipt[];
+  accessories: LoomVersionAccessory[];
   created_at: string;
 }
 
@@ -96,6 +104,7 @@ export interface UpdateLoomPayload {
 }
 
 export interface AddVersionPayload {
+  name?: string;
   effective_date: string;
   description?: string;
   num_shafts?: number;
@@ -105,6 +114,18 @@ export interface AddVersionPayload {
   weaving_width_unit: string;
   warp_waste_allowance?: number;
   warp_waste_unit: string;
+}
+
+export interface UpdateVersionPayload {
+  name?: string;
+  description?: string;
+}
+
+export interface CloneVersionPayload {
+  name?: string;
+  effective_date: string;
+  description?: string;
+  include_accessories?: boolean;
 }
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
@@ -225,4 +246,32 @@ export async function uploadVersionReceipt(
 
 export async function deleteVersionReceipt(loomId: string, versionId: string, receiptId: string): Promise<void> {
   await req(`/api/looms/${loomId}/versions/${versionId}/receipts/${receiptId}`, { method: "DELETE" });
+}
+
+export function updateVersion(loomId: string, versionId: string, payload: UpdateVersionPayload): Promise<LoomVersion> {
+  return req(`/api/looms/${loomId}/versions/${versionId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function cloneVersion(loomId: string, versionId: string, payload: CloneVersionPayload): Promise<LoomVersion> {
+  return req(`/api/looms/${loomId}/versions/${versionId}/clone`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function addAccessory(loomId: string, versionId: string, name: string): Promise<LoomVersionAccessory> {
+  return req(`/api/looms/${loomId}/versions/${versionId}/accessories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function deleteAccessory(loomId: string, versionId: string, accessoryId: string): Promise<void> {
+  return req(`/api/looms/${loomId}/versions/${versionId}/accessories/${accessoryId}`, { method: "DELETE" });
 }

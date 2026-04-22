@@ -16,6 +16,7 @@ function showsTreadles(t: LoomType) { return t === "floor_loom" || t === "other"
 function showsHeddles(t: LoomType) { return t === "rigid_heddle" || t === "other"; }
 
 export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props) {
+  const [versionName, setVersionName] = useState("");
   const [numShafts, setNumShafts] = useState("4");
   const [numTreadles, setNumTreadles] = useState("4");
   const [numHeddles, setNumHeddles] = useState("");
@@ -34,6 +35,7 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
     setLoading(true);
     try {
       const payload: AddVersionPayload = {
+        name: versionName || undefined,
         effective_date: effectiveDate,
         description: description || undefined,
         num_shafts: showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
@@ -59,6 +61,16 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
         <h2 className="mb-4 text-lg font-semibold">Add configuration version</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium">Configuration name (optional)</label>
+            <input
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              value={versionName}
+              onChange={(e) => setVersionName(e.target.value)}
+              placeholder="e.g. With second warp beam"
+            />
+          </div>
+
           <div>
             <label className="mb-1 block text-sm font-medium">Effective date</label>
             <input

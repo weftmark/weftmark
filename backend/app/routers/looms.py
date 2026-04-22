@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
-from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt, LOOM_TYPES
+from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt, LoomVersionAccessory, LOOM_TYPES
 from app.models.user import User
 from app.services import storage
 
@@ -47,9 +47,18 @@ class LoomVersionReceiptSchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class LoomVersionAccessorySchema(BaseModel):
+    id: uuid.UUID
+    name: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class LoomVersionSchema(BaseModel):
     id: uuid.UUID
     version_number: int
+    name: str | None
     effective_date: date
     description: str | None
     num_shafts: int | None
@@ -61,6 +70,7 @@ class LoomVersionSchema(BaseModel):
     warp_waste_unit: str
     photos: list[LoomVersionPhotoSchema]
     receipts: list[LoomVersionReceiptSchema]
+    accessories: list[LoomVersionAccessorySchema]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -177,6 +187,7 @@ class UpdateLoomRequest(BaseModel):
 
 
 class AddVersionRequest(BaseModel):
+    name: str | None = None
     effective_date: date
     description: str | None = None
     num_shafts: int | None = None
@@ -186,6 +197,22 @@ class AddVersionRequest(BaseModel):
     weaving_width_unit: str = "cm"
     warp_waste_allowance: Decimal | None = None
     warp_waste_unit: str = "cm"
+
+
+class UpdateVersionRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+class CloneVersionRequest(BaseModel):
+    name: str | None = None
+    effective_date: date
+    description: str | None = None
+    include_accessories: bool = True
+
+
+class AddAccessoryRequest(BaseModel):
+    name: str
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +226,7 @@ async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession) -> L
         .options(
             selectinload(Loom.versions).selectinload(LoomVersion.photos),
             selectinload(Loom.versions).selectinload(LoomVersion.receipts),
+            selectinload(Loom.versions).selectinload(LoomVersion.accessories),
         )
     )
     if loom is None:
@@ -289,6 +317,7 @@ async def list_looms(
         .options(
             selectinload(Loom.versions).selectinload(LoomVersion.photos),
             selectinload(Loom.versions).selectinload(LoomVersion.receipts),
+            selectinload(Loom.versions).selectinload(LoomVersion.accessories),
         )
         .order_by(Loom.created_at.desc())
     )
@@ -397,6 +426,7 @@ async def add_version(
     version = LoomVersion(
         loom_id=loom.id,
         version_number=next_number,
+        name=body.name,
         effective_date=body.effective_date,
         description=body.description,
         num_shafts=body.num_shafts,
@@ -409,7 +439,7 @@ async def add_version(
     )
     db.add(version)
     await db.commit()
-    await db.refresh(version, ["photos", "receipts"])
+    await db.refresh(version, ["photos", "receipts", "accessories"])
     return LoomVersionSchema.model_validate(version)
 
 
@@ -552,4 +582,103 @@ async def delete_version_receipt(
         raise HTTPException(status_code=404, detail="Receipt not found")
     storage.delete_version_receipt(receipt.path)
     await db.delete(receipt)
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Version patch (name / description editable in place)
+# ---------------------------------------------------------------------------
+
+@router.patch("/{loom_id}/versions/{version_id}", response_model=LoomVersionSchema)
+async def update_version(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    body: UpdateVersionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LoomVersionSchema:
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    for field, value in body.model_dump(exclude_none=True).items():
+        setattr(version, field, value)
+    await db.commit()
+    await db.refresh(version, ["photos", "receipts", "accessories"])
+    return LoomVersionSchema.model_validate(version)
+
+
+# ---------------------------------------------------------------------------
+# Version clone
+# ---------------------------------------------------------------------------
+
+@router.post("/{loom_id}/versions/{version_id}/clone", response_model=LoomVersionSchema, status_code=201)
+async def clone_version(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    body: CloneVersionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LoomVersionSchema:
+    loom, source = await _get_owned_version(loom_id, version_id, current_user, db)
+    next_number = max((v.version_number for v in loom.versions), default=0) + 1
+    new_version = LoomVersion(
+        loom_id=loom_id,
+        version_number=next_number,
+        name=body.name,
+        effective_date=body.effective_date,
+        description=body.description,
+        num_shafts=source.num_shafts,
+        num_treadles=source.num_treadles,
+        num_heddles=source.num_heddles,
+        weaving_width=source.weaving_width,
+        weaving_width_unit=source.weaving_width_unit,
+        warp_waste_allowance=source.warp_waste_allowance,
+        warp_waste_unit=source.warp_waste_unit,
+    )
+    db.add(new_version)
+    await db.flush()
+
+    if body.include_accessories:
+        for acc in source.accessories:
+            db.add(LoomVersionAccessory(
+                loom_version_id=new_version.id,
+                name=acc.name,
+            ))
+
+    await db.commit()
+    await db.refresh(new_version, ["photos", "receipts", "accessories"])
+    return LoomVersionSchema.model_validate(new_version)
+
+
+# ---------------------------------------------------------------------------
+# Accessories
+# ---------------------------------------------------------------------------
+
+@router.post("/{loom_id}/versions/{version_id}/accessories", response_model=LoomVersionAccessorySchema, status_code=201)
+async def add_accessory(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    body: AddAccessoryRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LoomVersionAccessorySchema:
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    acc = LoomVersionAccessory(loom_version_id=version_id, name=body.name.strip())
+    db.add(acc)
+    await db.commit()
+    await db.refresh(acc)
+    return LoomVersionAccessorySchema.model_validate(acc)
+
+
+@router.delete("/{loom_id}/versions/{version_id}/accessories/{accessory_id}", status_code=204)
+async def delete_accessory(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    accessory_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    acc = next((a for a in version.accessories if a.id == accessory_id), None)
+    if acc is None:
+        raise HTTPException(status_code=404, detail="Accessory not found")
+    await db.delete(acc)
     await db.commit()
