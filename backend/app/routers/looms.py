@@ -1,26 +1,51 @@
+import mimetypes
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
-from app.models.loom import Loom, LoomVersion, LOOM_TYPES
+from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt, LOOM_TYPES
 from app.models.user import User
+from app.services import storage
 
 router = APIRouter(prefix="/api/looms", tags=["looms"])
 
 LoomType = Literal["floor_loom", "table_loom", "rigid_heddle", "inkle", "other"]
 
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+
 
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
+class LoomVersionPhotoSchema(BaseModel):
+    id: uuid.UUID
+    filename: str
+    display_order: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class LoomVersionReceiptSchema(BaseModel):
+    id: uuid.UUID
+    filename: str
+    description: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
 
 class LoomVersionSchema(BaseModel):
     id: uuid.UUID
@@ -34,6 +59,8 @@ class LoomVersionSchema(BaseModel):
     weaving_width_unit: str
     warp_waste_allowance: Decimal | None
     warp_waste_unit: str
+    photos: list[LoomVersionPhotoSchema]
+    receipts: list[LoomVersionReceiptSchema]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -48,17 +75,69 @@ class LoomSummary(BaseModel):
     supports_lift_tracking: bool
     supports_treadle_tracking: bool
     notes: str | None
+    has_photo: bool
     current_version: LoomVersionSchema | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
+    @classmethod
+    def from_loom(cls, loom: Loom) -> "LoomSummary":
+        data = {
+            "id": loom.id,
+            "loom_type": loom.loom_type,
+            "manufacturer": loom.manufacturer,
+            "model_name": loom.model_name,
+            "serial_number": loom.serial_number,
+            "supports_lift_tracking": loom.supports_lift_tracking,
+            "supports_treadle_tracking": loom.supports_treadle_tracking,
+            "notes": loom.notes,
+            "has_photo": loom.photo_path is not None,
+            "current_version": loom.current_version,
+            "created_at": loom.created_at,
+        }
+        return cls.model_validate(data)
 
-class LoomDetail(LoomSummary):
+
+class LoomDetail(BaseModel):
+    id: uuid.UUID
+    loom_type: str
+    manufacturer: str
+    model_name: str
+    serial_number: str | None
     purchase_date: date | None
     purchase_price: Decimal | None
     vendor: str | None
+    supports_lift_tracking: bool
+    supports_treadle_tracking: bool
+    notes: str | None
+    has_photo: bool
+    current_version: LoomVersionSchema | None
     versions: list[LoomVersionSchema]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_loom(cls, loom: Loom) -> "LoomDetail":
+        data = {
+            "id": loom.id,
+            "loom_type": loom.loom_type,
+            "manufacturer": loom.manufacturer,
+            "model_name": loom.model_name,
+            "serial_number": loom.serial_number,
+            "purchase_date": loom.purchase_date,
+            "purchase_price": loom.purchase_price,
+            "vendor": loom.vendor,
+            "supports_lift_tracking": loom.supports_lift_tracking,
+            "supports_treadle_tracking": loom.supports_treadle_tracking,
+            "notes": loom.notes,
+            "has_photo": loom.photo_path is not None,
+            "current_version": loom.current_version,
+            "versions": loom.versions,
+            "created_at": loom.created_at,
+        }
+        return cls.model_validate(data)
 
 
 class CreateLoomRequest(BaseModel):
@@ -117,15 +196,44 @@ async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession) -> L
     loom = await db.scalar(
         select(Loom)
         .where(Loom.id == loom_id, Loom.owner_id == user.id, Loom.deleted_at.is_(None))
-        .options(selectinload(Loom.versions))
+        .options(
+            selectinload(Loom.versions).selectinload(LoomVersion.photos),
+            selectinload(Loom.versions).selectinload(LoomVersion.receipts),
+        )
     )
     if loom is None:
         raise HTTPException(status_code=404, detail="Loom not found")
     return loom
 
 
+async def _get_owned_version(
+    loom_id: uuid.UUID, version_id: uuid.UUID, user: User, db: AsyncSession
+) -> tuple[Loom, LoomVersion]:
+    loom = await _get_owned_loom(loom_id, user, db)
+    version = next((v for v in loom.versions if v.id == version_id), None)
+    if version is None:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return loom, version
+
+
+def _validate_image(file: UploadFile) -> None:
+    ct = file.content_type or ""
+    if ct not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unsupported image type: {ct}. Use JPEG, PNG, WebP, or GIF.")
+
+
+def _validate_receipt(file: UploadFile) -> None:
+    ct = file.content_type or ""
+    if ct not in ALLOWED_RECEIPT_TYPES:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ct}. Use JPEG, PNG, WebP, or PDF.")
+
+
+def _ext(content_type: str) -> str:
+    return mimetypes.guess_extension(content_type) or ""
+
+
 # ---------------------------------------------------------------------------
-# Routes
+# Loom CRUD
 # ---------------------------------------------------------------------------
 
 @router.post("", response_model=LoomDetail, status_code=201)
@@ -167,7 +275,7 @@ async def create_loom(
     await db.commit()
 
     loom = await _get_owned_loom(loom.id, current_user, db)
-    return LoomDetail.model_validate(loom)
+    return LoomDetail.from_loom(loom)
 
 
 @router.get("", response_model=list[LoomSummary])
@@ -178,10 +286,13 @@ async def list_looms(
     result = await db.scalars(
         select(Loom)
         .where(Loom.owner_id == current_user.id, Loom.deleted_at.is_(None))
-        .options(selectinload(Loom.versions))
+        .options(
+            selectinload(Loom.versions).selectinload(LoomVersion.photos),
+            selectinload(Loom.versions).selectinload(LoomVersion.receipts),
+        )
         .order_by(Loom.created_at.desc())
     )
-    return [LoomSummary.model_validate(l) for l in result.all()]
+    return [LoomSummary.from_loom(l) for l in result.all()]
 
 
 @router.get("/{loom_id}", response_model=LoomDetail)
@@ -191,7 +302,7 @@ async def get_loom(
     db: AsyncSession = Depends(get_db),
 ) -> LoomDetail:
     loom = await _get_owned_loom(loom_id, current_user, db)
-    return LoomDetail.model_validate(loom)
+    return LoomDetail.from_loom(loom)
 
 
 @router.patch("/{loom_id}", response_model=LoomDetail)
@@ -206,8 +317,73 @@ async def update_loom(
         setattr(loom, field, value)
     await db.commit()
     loom = await _get_owned_loom(loom_id, current_user, db)
-    return LoomDetail.model_validate(loom)
+    return LoomDetail.from_loom(loom)
 
+
+@router.delete("/{loom_id}", status_code=204)
+async def delete_loom(
+    loom_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    loom.soft_delete()
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Loom profile photo
+# ---------------------------------------------------------------------------
+
+@router.put("/{loom_id}/photo", status_code=204)
+async def upload_loom_photo(
+    loom_id: uuid.UUID,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    _validate_image(file)
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 20 MB)")
+    if loom.photo_path:
+        storage.delete_loom_photo(loom.photo_path)
+    ext = _ext(file.content_type or "")
+    loom.photo_path = storage.save_loom_photo(loom_id, ext, data)
+    await db.commit()
+
+
+@router.delete("/{loom_id}/photo", status_code=204)
+async def delete_loom_photo(
+    loom_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    if loom.photo_path:
+        storage.delete_loom_photo(loom.photo_path)
+        loom.photo_path = None
+        await db.commit()
+
+
+@router.get("/{loom_id}/photo")
+async def get_loom_photo(
+    loom_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    if not loom.photo_path or not storage.file_exists(loom.photo_path):
+        raise HTTPException(status_code=404, detail="No photo")
+    data = storage.read_file(loom.photo_path)
+    ct = mimetypes.guess_type(loom.photo_path)[0] or "application/octet-stream"
+    return Response(content=data, media_type=ct)
+
+
+# ---------------------------------------------------------------------------
+# Loom versions
+# ---------------------------------------------------------------------------
 
 @router.post("/{loom_id}/versions", response_model=LoomVersionSchema, status_code=201)
 async def add_version(
@@ -233,16 +409,147 @@ async def add_version(
     )
     db.add(version)
     await db.commit()
-    await db.refresh(version)
+    await db.refresh(version, ["photos", "receipts"])
     return LoomVersionSchema.model_validate(version)
 
 
-@router.delete("/{loom_id}", status_code=204)
-async def delete_loom(
+# ---------------------------------------------------------------------------
+# Version photos
+# ---------------------------------------------------------------------------
+
+@router.post("/{loom_id}/versions/{version_id}/photos", response_model=LoomVersionPhotoSchema, status_code=201)
+async def upload_version_photo(
     loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LoomVersionPhotoSchema:
+    _validate_image(file)
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 20 MB)")
+    photo_id = uuid.uuid4()
+    ext = _ext(file.content_type or "")
+    path = storage.save_version_photo(loom_id, version_id, photo_id, ext, data)
+    display_order = max((p.display_order for p in version.photos), default=-1) + 1
+    photo = LoomVersionPhoto(
+        id=photo_id,
+        loom_version_id=version_id,
+        filename=file.filename or f"{photo_id}{ext}",
+        path=path,
+        display_order=display_order,
+    )
+    db.add(photo)
+    await db.commit()
+    await db.refresh(photo)
+    return LoomVersionPhotoSchema.model_validate(photo)
+
+
+@router.get("/{loom_id}/versions/{version_id}/photos/{photo_id}")
+async def get_version_photo(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    photo_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    photo = next((p for p in version.photos if p.id == photo_id), None)
+    if photo is None or not storage.file_exists(photo.path):
+        raise HTTPException(status_code=404, detail="Photo not found")
+    data = storage.read_file(photo.path)
+    ct = mimetypes.guess_type(photo.path)[0] or "application/octet-stream"
+    return Response(content=data, media_type=ct)
+
+
+@router.delete("/{loom_id}/versions/{version_id}/photos/{photo_id}", status_code=204)
+async def delete_version_photo(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    photo_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    loom = await _get_owned_loom(loom_id, current_user, db)
-    loom.soft_delete()
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    photo = next((p for p in version.photos if p.id == photo_id), None)
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    storage.delete_version_photo(photo.path)
+    await db.delete(photo)
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Version receipts
+# ---------------------------------------------------------------------------
+
+@router.post("/{loom_id}/versions/{version_id}/receipts", response_model=LoomVersionReceiptSchema, status_code=201)
+async def upload_version_receipt(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    file: UploadFile = File(...),
+    description: str | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LoomVersionReceiptSchema:
+    _validate_receipt(file)
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 20 MB)")
+    receipt_id = uuid.uuid4()
+    ext = _ext(file.content_type or "")
+    path = storage.save_version_receipt(loom_id, version_id, receipt_id, ext, data)
+    receipt = LoomVersionReceipt(
+        id=receipt_id,
+        loom_version_id=version_id,
+        filename=file.filename or f"{receipt_id}{ext}",
+        path=path,
+        description=description,
+    )
+    db.add(receipt)
+    await db.commit()
+    await db.refresh(receipt)
+    return LoomVersionReceiptSchema.model_validate(receipt)
+
+
+@router.get("/{loom_id}/versions/{version_id}/receipts/{receipt_id}")
+async def get_version_receipt(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    receipt_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    receipt = next((r for r in version.receipts if r.id == receipt_id), None)
+    if receipt is None or not storage.file_exists(receipt.path):
+        raise HTTPException(status_code=404, detail="Receipt not found")
+    data = storage.read_file(receipt.path)
+    ct = mimetypes.guess_type(receipt.path)[0] or "application/octet-stream"
+    # PDFs open inline in browser; images too
+    disposition = "inline" if ct in ("application/pdf", *ALLOWED_IMAGE_TYPES) else "attachment"
+    return Response(
+        content=data,
+        media_type=ct,
+        headers={"Content-Disposition": f'{disposition}; filename="{receipt.filename}"'},
+    )
+
+
+@router.delete("/{loom_id}/versions/{version_id}/receipts/{receipt_id}", status_code=204)
+async def delete_version_receipt(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    receipt_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    receipt = next((r for r in version.receipts if r.id == receipt_id), None)
+    if receipt is None:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+    storage.delete_version_receipt(receipt.path)
+    await db.delete(receipt)
     await db.commit()
