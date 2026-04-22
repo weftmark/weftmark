@@ -61,6 +61,7 @@ class LoomVersion(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("looms.id"), nullable=False, index=True
     )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     effective_date: Mapped[date] = mapped_column(Date, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -82,6 +83,11 @@ class LoomVersion(Base, TimestampMixin):
     receipts: Mapped[list["LoomVersionReceipt"]] = relationship(
         "LoomVersionReceipt", back_populates="version",
         order_by="LoomVersionReceipt.created_at",
+        cascade="all, delete-orphan",
+    )
+    accessories: Mapped[list["LoomVersionAccessory"]] = relationship(
+        "LoomVersionAccessory", back_populates="version",
+        order_by="LoomVersionAccessory.created_at",
         cascade="all, delete-orphan",
     )
 
@@ -116,3 +122,17 @@ class LoomVersionReceipt(Base, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     version: Mapped["LoomVersion"] = relationship("LoomVersion", back_populates="receipts")
+
+
+class LoomVersionAccessory(Base, TimestampMixin):
+    __tablename__ = "loom_version_accessories"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    loom_version_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("loom_versions.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+
+    version: Mapped["LoomVersion"] = relationship("LoomVersion", back_populates="accessories")
