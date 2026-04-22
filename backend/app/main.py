@@ -1,0 +1,39 @@
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import get_settings
+from app.routers import auth, health, projects, looms
+from app.routers.auth import load_oidc_metadata
+
+settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    await load_oidc_metadata()
+    yield
+
+
+app = FastAPI(
+    title="Weaving Site API",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url="/api/docs" if settings.debug else None,
+    redoc_url=None,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins.split(","),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health.router)
+app.include_router(auth.router)
+app.include_router(projects.router)
+app.include_router(looms.router)

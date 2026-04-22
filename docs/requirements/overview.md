@@ -37,7 +37,7 @@ A multi-user, invite-only web platform for managing weaving projects. Users can 
 ### Frontend
 
 | Component | Choice |
-|---|---|
+| --- | --- |
 | Framework | React 18+ |
 | Build tool | Vite |
 | Language | TypeScript |
@@ -49,7 +49,7 @@ A multi-user, invite-only web platform for managing weaving projects. Users can 
 ### Backend
 
 | Component | Choice |
-|---|---|
+| --- | --- |
 | Framework | FastAPI |
 | Language | Python |
 | ORM | SQLAlchemy |
@@ -79,8 +79,30 @@ The frontend communicates with the backend exclusively via REST API. No server-r
 ## Responsive Design
 
 The platform must function well across:
+
 - Desktop / laptop
 - Tablet (primary loom-side device)
 - Mobile phone
 
 Portrait orientation is preferred for the activity (loom-side) interface.
+
+---
+
+## Theme
+
+- Light mode is the default
+- Users can switch to dark mode via a preference setting
+
+---
+
+## Data Lifecycle
+
+- Looms, projects, and activities use **soft delete** — records are archived, not permanently destroyed
+- Soft-deleted looms retain their full versioned state history and remain accessible from any activity that references them
+
+---
+
+## Email
+
+- Transactional email (invite links) is delivered via **SMTP2Go**
+- SMTP credentials are configured via environment variables
