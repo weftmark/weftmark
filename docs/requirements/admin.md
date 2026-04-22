@@ -8,10 +8,20 @@ Administrators manage platform access, monitor health, and maintain records of W
 
 ## User Management
 
-- **Invite management** — create, send, and revoke user invitations
+- **Invite management** — create, send, and revoke user invitations via email
 - **User list** — view all registered users and their account status
 - **User detail** — view a user's profile, activity count, and account metadata
 - **Account suspension** — ability to disable a user account
+
+### Invite Flow
+
+1. Admin enters the invitee's email address and sets a link expiry duration (configurable per invite)
+2. Platform sends a one-time signup link to the invitee via **SMTP2Go**
+3. The invitee clicks the link, completes OIDC-based registration, and is granted access
+4. Once used or expired, the link cannot be reused
+5. Admins can revoke a pending invite before it is accepted
+
+Email delivery is handled via SMTP2Go. SMTP credentials are configured via environment variables.
 
 ---
 

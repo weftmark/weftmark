@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose exec backend python -c ' *)",
+      "Bash(docker compose *)",
+      "Bash(docker cp *)"
+    ]
+  }
+}

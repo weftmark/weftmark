@@ -30,7 +30,7 @@ Used with floor looms where treadle pedals raise or lower groups of shafts (e.g.
 When creating an activity, the user provides:
 
 | Input | Notes |
-|---|---|
+| --- | --- |
 | Activity name | User-defined label |
 | WIF project | The design to weave |
 | Activity type | Lift-tracking or treadle-tracking (filtered by WIF availability and loom capability) |
@@ -53,9 +53,10 @@ One step = one pick = one pass of the shuttle through the shed.
 ### Navigation
 
 The user advances or reverses steps via:
+
 - On-screen buttons (large tap targets for loom-side use)
-- Keyboard shortcuts
-- Bluetooth pedal with keyboard emulation
+- Keyboard shortcuts (Phase 1)
+- Bluetooth pedal with keyboard emulation (works automatically via keyboard events — no special Bluetooth handling required)
 
 ### Correction Events
 
@@ -95,7 +96,7 @@ The activity screen is optimized for use at the loom:
 ## Metrics (Displayed During Weaving)
 
 | Metric | Description |
-|---|---|
+| --- | --- |
 | Current step | Pick number and total picks |
 | Percentage complete | Based on working position |
 | Cumulative session time | Total time in this activity across all sessions |
@@ -106,7 +107,13 @@ The activity screen is optimized for use at the loom:
 
 ## Weaving Sessions
 
-Each time a user opens and engages with an active activity, a **weaving session** is recorded. Sessions track:
+Sessions are **auto-detected** — no explicit start/stop action is required from the user.
+
+- Opening an activity starts a session automatically
+- Closing the activity or remaining idle past a configurable threshold ends the session
+- The idle timeout threshold is **user-configurable** per their preferences
+
+Each session records:
 
 - Start and end timestamps
 - Picks worked during the session
