@@ -21,8 +21,8 @@ app = FastAPI(
     title="Weaving Site API",
     version="0.1.0",
     lifespan=lifespan,
-    docs_url="/api/docs" if settings.debug else None,
-    redoc_url=None,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
 )
 
 app.add_middleware(
