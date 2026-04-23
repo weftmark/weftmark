@@ -14,14 +14,13 @@ const today = () => new Date().toISOString().slice(0, 10);
 function showsShafts(t: LoomType) { return t === "floor_loom" || t === "table_loom" || t === "other"; }
 function showsTreadles(t: LoomType) { return t === "floor_loom" || t === "other"; }
 function showsHeddles(t: LoomType) { return t === "rigid_heddle" || t === "other"; }
+function showsWarpWaste(t: LoomType) { return t !== "inkle"; }
 
 export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props) {
   const [versionName, setVersionName] = useState("");
   const [numShafts, setNumShafts] = useState("4");
   const [numTreadles, setNumTreadles] = useState("4");
   const [numHeddles, setNumHeddles] = useState("");
-  const [weavingWidth, setWeavingWidth] = useState("");
-  const [weavingWidthUnit, setWeavingWidthUnit] = useState("cm");
   const [warpWaste, setWarpWaste] = useState("");
   const [warpWasteUnit, setWarpWasteUnit] = useState("cm");
   const [effectiveDate, setEffectiveDate] = useState(today());
@@ -41,10 +40,9 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
         num_shafts: showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
         num_treadles: showsTreadles(loomType) && numTreadles !== "" ? parseInt(numTreadles, 10) : undefined,
         num_heddles: showsHeddles(loomType) && numHeddles ? parseInt(numHeddles, 10) : undefined,
-        weaving_width: weavingWidth ? parseFloat(weavingWidth) : undefined,
-        weaving_width_unit: weavingWidthUnit,
-        warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
+        warp_waste_allowance: showsWarpWaste(loomType) && warpWaste ? parseFloat(warpWaste) : undefined,
         warp_waste_unit: warpWasteUnit,
+        weaving_width_unit: "cm",
       };
       await addLoomVersion(loomId, payload);
       onSuccess();
@@ -57,7 +55,7 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg">
+      <div className="w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg">
         <h2 className="mb-4 text-lg font-semibold">Add configuration version</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,7 +91,7 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
           </div>
 
           {(showsShafts(loomType) || showsTreadles(loomType) || showsHeddles(loomType)) && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {showsShafts(loomType) && (
                 <div>
                   <label className="mb-1 block text-sm font-medium">Shafts</label>
@@ -135,51 +133,27 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
             </div>
           )}
 
-          {loomType !== "inkle" && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Weaving width (optional)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={weavingWidth}
-                    onChange={(e) => setWeavingWidth(e.target.value)}
-                    placeholder="60"
-                  />
-                  <select
-                    className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={weavingWidthUnit}
-                    onChange={(e) => setWeavingWidthUnit(e.target.value)}
-                  >
-                    <option value="cm">cm</option>
-                    <option value="in">in</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Warp waste (optional)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={warpWaste}
-                    onChange={(e) => setWarpWaste(e.target.value)}
-                    placeholder="30"
-                  />
-                  <select
-                    className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={warpWasteUnit}
-                    onChange={(e) => setWarpWasteUnit(e.target.value)}
-                  >
-                    <option value="cm">cm</option>
-                    <option value="in">in</option>
-                  </select>
-                </div>
+          {showsWarpWaste(loomType) && (
+            <div>
+              <label className="mb-1 block text-sm font-medium">Warp waste (optional)</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={warpWaste}
+                  onChange={(e) => setWarpWaste(e.target.value)}
+                  placeholder="30"
+                />
+                <select
+                  className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={warpWasteUnit}
+                  onChange={(e) => setWarpWasteUnit(e.target.value)}
+                >
+                  <option value="cm">cm</option>
+                  <option value="in">in</option>
+                </select>
               </div>
             </div>
           )}
