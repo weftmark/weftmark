@@ -119,6 +119,28 @@ def delete_version_receipt(path: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Yarn — profile photo
+# ---------------------------------------------------------------------------
+
+def yarn_dir(yarn_id: uuid.UUID) -> Path:
+    p = _upload_root() / "yarn" / str(yarn_id)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def save_yarn_photo(yarn_id: uuid.UUID, ext: str, data: bytes) -> str:
+    dest = yarn_dir(yarn_id) / f"profile{ext}"
+    dest.write_bytes(data)
+    return str(dest.relative_to(_upload_root()))
+
+
+def delete_yarn_photo(photo_path: str) -> None:
+    full = _upload_root() / photo_path
+    if full.exists():
+        full.unlink()
+
+
+# ---------------------------------------------------------------------------
 # Generic read
 # ---------------------------------------------------------------------------
 

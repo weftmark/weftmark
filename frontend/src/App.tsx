@@ -8,6 +8,8 @@ import { ProjectsPage } from "@/pages/ProjectsPage";
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
 import { LoomsPage } from "@/pages/LoomsPage";
 import { LoomDetailPage } from "@/pages/LoomDetailPage";
+import { YarnPage } from "@/pages/YarnPage";
+import { YarnDetailPage } from "@/pages/YarnDetailPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +62,22 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <LoomDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/yarn"
+              element={
+                <ProtectedRoute>
+                  <YarnPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/yarn/:id"
+              element={
+                <ProtectedRoute>
+                  <YarnDetailPage />
                 </ProtectedRoute>
               }
             />
