@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProject, deleteProject, previewUrl } from "@/api/projects";
+import { getProject, deleteProject, generateLiftplan, previewUrl } from "@/api/projects";
 import { Button } from "@/components/ui/button";
 
 export function ProjectDetailPage() {
@@ -21,6 +21,14 @@ export function ProjectDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       navigate("/projects", { replace: true });
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: () => generateLiftplan(id!),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["project", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 
@@ -99,7 +107,6 @@ export function ProjectDetailPage() {
                   ["Threading diagram", project.has_threading],
                   ["Tie-up grid", project.has_tieup],
                   ["Treadle-tracking", project.has_treadling],
-                  ["Lift-tracking", project.has_liftplan],
                   ["Color palette", project.has_color_palette],
                 ] as [string, boolean][]
               ).map(([label, available]) => (
@@ -110,7 +117,43 @@ export function ProjectDetailPage() {
                   </dd>
                 </>
               ))}
+              <dt className="text-muted-foreground">Lift-tracking</dt>
+              <dd>
+                {project.has_liftplan ? (
+                  <span className="text-foreground">
+                    ✓ Available
+                    {project.liftplan_generated && (
+                      <span className="ml-1.5 text-xs text-muted-foreground">(algorithmically generated)</span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">✗ Not in file</span>
+                )}
+              </dd>
             </dl>
+
+            {!project.has_liftplan && project.has_treadling && project.has_tieup && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm dark:border-amber-800 dark:bg-amber-950">
+                <p className="font-medium text-amber-900 dark:text-amber-100">Lift plan not in file</p>
+                <p className="mt-0.5 text-amber-800 dark:text-amber-200 text-xs">
+                  This WIF has treadling and tie-up data. A lift plan can be computed algorithmically and added to the project.
+                </p>
+                {generateMutation.isError && (
+                  <p className="mt-1 text-xs text-destructive">
+                    {generateMutation.error instanceof Error ? generateMutation.error.message : "Generation failed"}
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={() => generateMutation.mutate()}
+                  disabled={generateMutation.isPending}
+                >
+                  {generateMutation.isPending ? "Generating…" : "Generate lift plan"}
+                </Button>
+              </div>
+            )}
 
             <div className="pt-4 flex gap-2">
               {!confirmDelete ? (

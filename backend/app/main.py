@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import auth, health, projects, looms, yarn
+from app.routers import auth, health, projects, looms, yarn, activities
 from app.routers.auth import load_oidc_metadata
 
 settings = get_settings()
@@ -38,3 +38,4 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(looms.router)
 app.include_router(yarn.router)
+app.include_router(activities.router)

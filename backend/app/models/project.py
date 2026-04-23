@@ -35,6 +35,7 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     has_treadling: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     has_liftplan: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     has_color_palette: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    liftplan_generated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Lint results (arrays of message strings)
     lint_warnings: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
