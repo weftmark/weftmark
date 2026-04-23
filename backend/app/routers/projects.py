@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.deps import get_current_user, get_db
 from app.models.project import Project
 from app.models.user import User
-from app.services import rendering, storage, wif_linter
+from app.services import rendering, storage, wif_linter, wif_parser
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 settings = get_settings()
@@ -35,6 +35,7 @@ class ProjectSummary(BaseModel):
     has_tieup: bool
     has_treadling: bool
     has_liftplan: bool
+    liftplan_generated: bool
     has_color_palette: bool
     lint_warnings: list[str]
     lint_errors: list[str]
@@ -182,6 +183,40 @@ async def delete_project(
     project = await _get_owned_project(project_id, current_user, db)
     project.soft_delete()
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Generate lift plan
+# ---------------------------------------------------------------------------
+
+@router.post("/{project_id}/generate-liftplan", response_model=ProjectDetail)
+async def generate_liftplan(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    project = await _get_owned_project(project_id, current_user, db)
+
+    if not project.has_treadling:
+        raise HTTPException(status_code=400, detail="WIF file has no [TREADLING] section — cannot compute lift plan")
+    if not project.has_tieup:
+        raise HTTPException(status_code=400, detail="WIF file has no [TIEUP] section — cannot compute lift plan")
+
+    wif_bytes = storage.read_file(project.wif_path)
+    try:
+        updated_bytes = wif_parser.compute_liftplan(wif_bytes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    project.wif_path = storage.save_wif(project.id, project.wif_filename, updated_bytes)
+    project.has_liftplan = True
+    project.liftplan_generated = True
+
+    await db.commit()
+    await db.refresh(project)
+    data = {c.key: getattr(project, c.key) for c in project.__table__.columns}
+    data["has_preview"] = storage.preview_exists(project.preview_path)
+    return ProjectDetail(**data)
 
 
 # ---------------------------------------------------------------------------
