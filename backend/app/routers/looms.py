@@ -22,7 +22,8 @@ LoomType = Literal["floor_loom", "table_loom", "rigid_heddle", "inkle", "other"]
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
-MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+MAX_FILE_SIZE = 5 * 1024 * 1024   # 5 MB
+MAX_VERSION_PHOTOS = 5
 
 
 # ---------------------------------------------------------------------------
@@ -375,7 +376,7 @@ async def upload_loom_photo(
     loom = await _get_owned_loom(loom_id, current_user, db)
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 20 MB)")
+        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
     if loom.photo_path:
         storage.delete_loom_photo(loom.photo_path)
     ext = _ext(file.content_type or "")
@@ -457,9 +458,11 @@ async def upload_version_photo(
 ) -> LoomVersionPhotoSchema:
     _validate_image(file)
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    if len(version.photos) >= MAX_VERSION_PHOTOS:
+        raise HTTPException(status_code=400, detail=f"Maximum {MAX_VERSION_PHOTOS} photos per configuration")
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 20 MB)")
+        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
     photo_id = uuid.uuid4()
     ext = _ext(file.content_type or "")
     path = storage.save_version_photo(loom_id, version_id, photo_id, ext, data)

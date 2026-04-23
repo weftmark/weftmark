@@ -5,7 +5,7 @@ import {
   getLoom, deleteLoom, uploadLoomPhoto, deleteLoomPhoto, loomPhotoUrl,
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
   uploadVersionReceipt, deleteVersionReceipt, versionReceiptUrl,
-  addAccessory, deleteAccessory,
+  addAccessory, deleteAccessory, updateVersion,
   type LoomDetail, type LoomVersion, type LoomVersionPhoto,
   type LoomVersionReceipt, type LoomVersionAccessory,
   LOOM_TYPE_LABELS,
@@ -14,6 +14,42 @@ import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
 import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
 import { Button } from "@/components/ui/button";
+import { resizeImageToFile, formatBytes } from "@/lib/image-utils";
+
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — must match backend MAX_FILE_SIZE
+const MAX_VERSION_PHOTOS = 5;            // must match backend MAX_VERSION_PHOTOS
+
+// ---------------------------------------------------------------------------
+// Reusable inline confirm
+// ---------------------------------------------------------------------------
+
+function ConfirmInline({
+  label,
+  onConfirm,
+  onCancel,
+}: {
+  label: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <span className="flex items-center gap-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <button
+        onClick={onConfirm}
+        className="text-destructive hover:underline text-xs font-medium"
+      >
+        Confirm
+      </button>
+      <button
+        onClick={onCancel}
+        className="text-muted-foreground hover:underline text-xs"
+      >
+        Cancel
+      </button>
+    </span>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Profile photo
@@ -22,11 +58,13 @@ import { Button } from "@/components/ui/button";
 function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const clearInput = () => { if (fileRef.current) fileRef.current.value = ""; };
+
+  const doUpload = async (file: File) => {
     setError(null);
     setUploading(true);
     try {
@@ -36,7 +74,32 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
+      setPendingFile(null);
+      clearInput();
+    }
+  };
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > PHOTO_MAX_BYTES) {
+      setPendingFile(file);
+    } else {
+      doUpload(file);
+    }
+  };
+
+  const handleResize = async () => {
+    if (!pendingFile) return;
+    setUploading(true);
+    try {
+      const resized = await resizeImageToFile(pendingFile, PHOTO_MAX_BYTES);
+      await doUpload(resized);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Resize failed");
+      setPendingFile(null);
+      clearInput();
+      setUploading(false);
     }
   };
 
@@ -47,6 +110,7 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
       onChanged();
     } finally {
       setUploading(false);
+      setConfirmRemove(false);
     }
   };
 
@@ -64,14 +128,37 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
         </div>
       )}
       <div className="flex flex-col gap-2">
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleUpload} />
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
+        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !!pendingFile}>
           {uploading ? "Uploading…" : loom.has_photo ? "Replace photo" : "Upload photo"}
         </Button>
-        {loom.has_photo && (
-          <Button size="sm" variant="outline" onClick={handleDelete} disabled={uploading}>
+        {loom.has_photo && !confirmRemove && (
+          <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={uploading || !!pendingFile}>
             Remove photo
           </Button>
+        )}
+        {loom.has_photo && confirmRemove && (
+          <ConfirmInline
+            label="Remove this photo?"
+            onConfirm={handleDelete}
+            onCancel={() => setConfirmRemove(false)}
+          />
+        )}
+        {pendingFile && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs dark:border-amber-800 dark:bg-amber-950">
+            <p className="font-medium text-amber-900 dark:text-amber-100">
+              Photo is {formatBytes(pendingFile.size)} — over the 5 MB limit
+            </p>
+            <div className="mt-1.5 flex gap-2">
+              <button onClick={handleResize} className="font-medium text-amber-800 hover:underline dark:text-amber-200">
+                Resize &amp; upload
+              </button>
+              <span className="text-amber-400">·</span>
+              <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-amber-700 hover:underline dark:text-amber-300">
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
         {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
@@ -86,11 +173,14 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
 function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const atLimit = version.photos.length >= MAX_VERSION_PHOTOS;
+  const clearInput = () => { if (fileRef.current) fileRef.current.value = ""; };
+
+  const doUpload = async (file: File) => {
     setError(null);
     setUploading(true);
     try {
@@ -100,36 +190,101 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
+      setPendingFile(null);
+      clearInput();
+    }
+  };
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > PHOTO_MAX_BYTES) {
+      setPendingFile(file);
+    } else {
+      doUpload(file);
+    }
+  };
+
+  const handleResize = async () => {
+    if (!pendingFile) return;
+    setUploading(true);
+    try {
+      const resized = await resizeImageToFile(pendingFile, PHOTO_MAX_BYTES);
+      await doUpload(resized);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Resize failed");
+      setPendingFile(null);
+      clearInput();
+      setUploading(false);
     }
   };
 
   const handleDelete = async (photo: LoomVersionPhoto) => {
-    try { await deleteVersionPhoto(loom.id, version.id, photo.id); onChanged(); } catch { /* ignore */ }
+    try {
+      await deleteVersionPhoto(loom.id, version.id, photo.id);
+      onChanged();
+    } catch {
+      /* ignore */
+    } finally {
+      setConfirmId(null);
+    }
   };
 
   return (
     <div>
-      <p className="text-sm font-medium mb-2">Photos</p>
-      <div className="flex flex-wrap gap-2">
+      <p className="text-sm font-medium mb-2">
+        Photos
+        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+          {version.photos.length}/{MAX_VERSION_PHOTOS}
+        </span>
+      </p>
+      <div className="flex flex-wrap gap-2 items-start">
         {version.photos.map((p) => (
-          <div key={p.id} className="relative group">
+          <div key={p.id} className="flex flex-col items-center gap-1">
             <img src={versionPhotoUrl(loom.id, version.id, p.id)} alt={p.filename} className="h-20 w-20 rounded object-cover border" />
-            <button
-              onClick={() => handleDelete(p)}
-              className="absolute -top-1 -right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs"
-            >×</button>
+            {confirmId !== p.id ? (
+              <button
+                onClick={() => setConfirmId(p.id)}
+                className="text-xs text-destructive hover:underline"
+              >
+                Remove
+              </button>
+            ) : (
+              <span className="flex gap-1 text-xs">
+                <button onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">Confirm</button>
+                <span className="text-muted-foreground">·</span>
+                <button onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">Cancel</button>
+              </span>
+            )}
           </div>
         ))}
-        <div>
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleUpload} />
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="h-20 w-20 rounded border border-dashed flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors"
-          >{uploading ? "…" : "+ Add"}</button>
-        </div>
+        {!atLimit && (
+          <div>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading || !!pendingFile}
+              className="h-20 w-20 rounded border border-dashed flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors disabled:opacity-50"
+            >{uploading ? "…" : "+ Add"}</button>
+          </div>
+        )}
       </div>
+      {pendingFile && (
+        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs dark:border-amber-800 dark:bg-amber-950">
+          <p className="font-medium text-amber-900 dark:text-amber-100">
+            Photo is {formatBytes(pendingFile.size)} — over the 5 MB limit
+          </p>
+          <div className="mt-1.5 flex gap-2">
+            <button onClick={handleResize} className="font-medium text-amber-800 hover:underline dark:text-amber-200">
+              Resize &amp; upload
+            </button>
+            <span className="text-amber-400">·</span>
+            <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-amber-700 hover:underline dark:text-amber-300">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
@@ -143,6 +298,7 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
   const fileRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,14 +319,21 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
   };
 
   const handleDelete = async (receipt: LoomVersionReceipt) => {
-    try { await deleteVersionReceipt(loom.id, version.id, receipt.id); onChanged(); } catch { /* ignore */ }
+    try {
+      await deleteVersionReceipt(loom.id, version.id, receipt.id);
+      onChanged();
+    } catch {
+      /* ignore */
+    } finally {
+      setConfirmId(null);
+    }
   };
 
   return (
     <div>
       <p className="text-sm font-medium mb-2">Receipts &amp; documents</p>
       {version.receipts.length > 0 && (
-        <ul className="mb-3 space-y-1">
+        <ul className="mb-3 space-y-2">
           {version.receipts.map((r) => (
             <li key={r.id} className="flex items-center gap-2 text-sm">
               <a
@@ -179,7 +342,19 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
                 rel="noreferrer"
                 className="underline underline-offset-2 text-muted-foreground hover:text-foreground truncate max-w-xs"
               >{r.description || r.filename}</a>
-              <button onClick={() => handleDelete(r)} className="ml-auto shrink-0 text-xs text-destructive hover:underline">Remove</button>
+              <span className="ml-auto shrink-0">
+                {confirmId !== r.id ? (
+                  <button onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">
+                    Remove
+                  </button>
+                ) : (
+                  <ConfirmInline
+                    label={`Remove "${r.description || r.filename}"?`}
+                    onConfirm={() => handleDelete(r)}
+                    onCancel={() => setConfirmId(null)}
+                  />
+                )}
+              </span>
             </li>
           ))}
         </ul>
@@ -208,6 +383,7 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
 function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -228,18 +404,37 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
   };
 
   const handleDelete = async (acc: LoomVersionAccessory) => {
-    try { await deleteAccessory(loom.id, version.id, acc.id); onChanged(); } catch { /* ignore */ }
+    try {
+      await deleteAccessory(loom.id, version.id, acc.id);
+      onChanged();
+    } catch {
+      /* ignore */
+    } finally {
+      setConfirmId(null);
+    }
   };
 
   return (
     <div>
       <p className="text-sm font-medium mb-2">Accessories</p>
       {version.accessories.length > 0 && (
-        <ul className="mb-3 space-y-1">
+        <ul className="mb-3 space-y-2">
           {version.accessories.map((acc) => (
             <li key={acc.id} className="flex items-center gap-2 text-sm">
               <span className="flex-1">{acc.name}</span>
-              <button onClick={() => handleDelete(acc)} className="shrink-0 text-xs text-destructive hover:underline">Remove</button>
+              <span className="shrink-0">
+                {confirmId !== acc.id ? (
+                  <button onClick={() => setConfirmId(acc.id)} className="text-xs text-destructive hover:underline">
+                    Remove
+                  </button>
+                ) : (
+                  <ConfirmInline
+                    label={`Remove "${acc.name}"?`}
+                    onConfirm={() => handleDelete(acc)}
+                    onCancel={() => setConfirmId(null)}
+                  />
+                )}
+              </span>
             </li>
           ))}
         </ul>
@@ -275,7 +470,37 @@ function VersionCard({
   onClone: (v: LoomVersion) => void;
 }) {
   const [open, setOpen] = useState(isCurrent);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(version.name ?? "");
+  const [editDesc, setEditDesc] = useState(version.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const displayName = version.name || `v${version.version_number}`;
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setEditError(null);
+    try {
+      await updateVersion(loom.id, version.id, {
+        name: editName.trim() || undefined,
+        description: editDesc.trim() || undefined,
+      });
+      onChanged();
+      setEditing(false);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditName(version.name ?? "");
+    setEditDesc(version.description ?? "");
+    setEditError(null);
+    setEditing(false);
+  };
 
   return (
     <div className={`rounded-lg border ${isCurrent ? "border-ring" : ""}`}>
@@ -298,20 +523,56 @@ function VersionCard({
 
       {open && (
         <div className="border-t px-4 py-4 space-y-5">
-          {/* Spec */}
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-            {version.num_shafts != null && (<><dt className="text-muted-foreground">Shafts</dt><dd>{version.num_shafts}</dd></>)}
-            {version.num_treadles != null && (<><dt className="text-muted-foreground">Treadles</dt><dd>{version.num_treadles}</dd></>)}
-            {version.num_heddles != null && (<><dt className="text-muted-foreground">Heddles</dt><dd>{version.num_heddles}</dd></>)}
-            {version.weaving_width && (<><dt className="text-muted-foreground">Weaving width</dt><dd>{version.weaving_width} {version.weaving_width_unit}</dd></>)}
-            {version.warp_waste_allowance && (<><dt className="text-muted-foreground">Warp waste</dt><dd>{version.warp_waste_allowance} {version.warp_waste_unit}</dd></>)}
-          </dl>
+          {editing ? (
+            <form onSubmit={handleEditSave} className="space-y-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Configuration name</label>
+                <input
+                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder={`v${version.version_number}`}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
+                <input
+                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  placeholder="Optional description"
+                />
+              </div>
+              {editError && <p className="text-xs text-destructive">{editError}</p>}
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+                <Button type="button" size="sm" variant="outline" onClick={handleEditCancel} disabled={saving}>Cancel</Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex items-center justify-between">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+                {version.num_shafts != null && (<><dt className="text-muted-foreground">Shafts</dt><dd>{version.num_shafts}</dd></>)}
+                {version.num_treadles != null && (<><dt className="text-muted-foreground">Treadles</dt><dd>{version.num_treadles}</dd></>)}
+                {version.num_heddles != null && (<><dt className="text-muted-foreground">Heddles</dt><dd>{version.num_heddles}</dd></>)}
+                {version.weaving_width && (<><dt className="text-muted-foreground">Weaving width</dt><dd>{version.weaving_width} {version.weaving_width_unit}</dd></>)}
+                {version.warp_waste_allowance && (<><dt className="text-muted-foreground">Warp waste</dt><dd>{version.warp_waste_allowance} {version.warp_waste_unit}</dd></>)}
+              </dl>
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline"
+              >
+                Edit name
+              </button>
+            </div>
+          )}
 
           <VersionAccessories loom={loom} version={version} onChanged={onChanged} />
           <VersionPhotos loom={loom} version={version} onChanged={onChanged} />
           <VersionReceipts loom={loom} version={version} onChanged={onChanged} />
 
-          {/* Clone */}
           <div className="border-t pt-3">
             <Button size="sm" variant="outline" onClick={() => onClone(version)}>
               Clone this configuration
@@ -393,7 +654,6 @@ export function LoomDetailPage() {
       </header>
 
       <main className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-8">
-        {/* Profile photo + identity */}
         <section className="space-y-4">
           <ProfilePhoto loom={loom} onChanged={invalidate} />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
@@ -411,7 +671,6 @@ export function LoomDetailPage() {
           {loom.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>}
         </section>
 
-        {/* Configuration history */}
         <section>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Configuration history</h2>
           <div className="space-y-3">
@@ -428,7 +687,6 @@ export function LoomDetailPage() {
           </div>
         </section>
 
-        {/* Delete */}
         <section className="border-t pt-6">
           {!confirmDelete ? (
             <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>Delete loom</Button>
