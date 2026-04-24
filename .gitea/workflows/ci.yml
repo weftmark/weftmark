@@ -1,9 +1,9 @@
 name: CI
 
-# Three jobs: backend-tests, frontend-typecheck, bump-version.
+# Four jobs: backend-tests, frontend-typecheck, docker-build, bump-version.
 #
-# backend-tests and frontend-typecheck run in parallel on every push and PR.
-# bump-version runs only after both test jobs pass, only on push to dev/main,
+# backend-tests, frontend-typecheck, and docker-build run in parallel on every push and PR.
+# bump-version runs only after all three jobs pass, only on push to dev/main,
 # and only when the commit message does not contain [skip ci].
 #
 # Add [skip ci] to any commit message to skip CI entirely (e.g. docs-only changes).
@@ -84,12 +84,31 @@ jobs:
         run: cd frontend && npx tsc -b --noEmit
 
   # ------------------------------------------------------------
-  # Version bump — runs only after both test jobs pass
+  # Docker — verify both images build cleanly
+  # ------------------------------------------------------------
+  docker-build:
+    name: Docker build check
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'pull_request' ||
+      !contains(github.event.head_commit.message, '[skip ci]')
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile -t weaving-backend-check .
+
+      - name: Build frontend image
+        run: docker build -f frontend/Dockerfile -t weaving-frontend-check ./frontend
+
+  # ------------------------------------------------------------
+  # Version bump — runs only after all three jobs pass
   # ------------------------------------------------------------
   bump-version:
     name: Bump version
     runs-on: ubuntu-latest
-    needs: [backend-tests, frontend-typecheck]
+    needs: [backend-tests, frontend-typecheck, docker-build]
     if: >-
       github.event_name == 'push' &&
       (github.ref_name == 'dev' || github.ref_name == 'main')
