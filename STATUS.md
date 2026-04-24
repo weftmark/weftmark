@@ -2,7 +2,7 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-25 (v0.2.10)
+**Last updated:** 2026-04-25 (v0.3.3)
 
 **Test coverage: ~68%** (195 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
 
@@ -18,8 +18,8 @@ This file tracks the build status of every feature area. Update it after each te
 6. Activity progress view — current pick, completion %, weft remaining estimate
 7. User settings UI — theme toggle, measurement system preference
 8. Add broken import smoke test to CI
-9. Add API integration test suite hitting real FastAPI endpoints with test database
-10. Yarn inventory — yarn / colorway record
+9. Yarn inventory — yarn / colorway record
+10. Measurement system display conversion (store with unit; display in user's preferred unit)
 
 ---
 
