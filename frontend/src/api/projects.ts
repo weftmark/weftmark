@@ -11,6 +11,7 @@ export interface Project {
   has_tieup: boolean;
   has_treadling: boolean;
   has_liftplan: boolean;
+  liftplan_generated: boolean;
   has_color_palette: boolean;
   lint_warnings: string[];
   lint_errors: string[];
@@ -69,4 +70,16 @@ export async function deleteProject(id: string): Promise<void> {
 
 export function previewUrl(id: string): string {
   return `/api/projects/${id}/preview`;
+}
+
+export async function generateLiftplan(id: string): Promise<ProjectDetail> {
+  const res = await fetch(`/api/projects/${id}/generate-liftplan`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to generate lift plan" }));
+    throw new Error(err.detail ?? "Failed to generate lift plan");
+  }
+  return res.json();
 }

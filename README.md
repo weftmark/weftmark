@@ -109,6 +109,7 @@ npm run dev
 
 ## Documentation
 
+- **Project Status:** [`STATUS.md`](STATUS.md) — what's built, what's in progress, what's next
 - **Requirements:** [`docs/requirements/`](docs/requirements/README.md)
 - **WIF Standard:** [`docs/standard/standard-wif1-1.txt`](docs/standard/standard-wif1-1.txt)
 - **Project Memory:** [`.claude/memory/`](.claude/memory/MEMORY.md)
