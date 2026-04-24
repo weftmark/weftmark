@@ -21,10 +21,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
+import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from jose import JWTError, jwt
+from jwt.exceptions import PyJWTError as JWTError
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
