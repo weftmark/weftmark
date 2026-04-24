@@ -178,7 +178,7 @@ jobs:
       - name: Run migrations (upgrade head)
         run: cd backend && alembic upgrade head
         env:
-          POSTGRES_HOST: localhost
+          POSTGRES_HOST: postgres
           POSTGRES_PORT: 5432
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
@@ -187,7 +187,7 @@ jobs:
       - name: Verify no pending migrations (alembic check)
         run: cd backend && alembic check
         env:
-          POSTGRES_HOST: localhost
+          POSTGRES_HOST: postgres
           POSTGRES_PORT: 5432
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
