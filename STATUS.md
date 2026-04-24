@@ -8,7 +8,7 @@ This file tracks the build status of every feature area. Update it after each te
 
 ## Next 10 Planned Tasks
 
-1. Add pytest coverage gate to CI (fail below threshold)
+1. Add Alembic migration smoke test to CI against real Postgres container
 2. Add Alembic migration smoke test to CI against real Postgres container
 3. Add broken import smoke test to CI
 4. Add API integration test suite hitting real FastAPI endpoints with test database
@@ -32,6 +32,7 @@ This file tracks the build status of every feature area. Update it after each te
 | Backend lint (Ruff) | ✅ | Lint + format check; line length 120; alembic excluded |
 | Frontend lint (ESLint) | ✅ | TypeScript + react-hooks rules |
 | Backend unit tests (pytest) | ✅ | 160 tests; cross-platform font patch via conftest.py |
+| Coverage gate (pytest-cov) | ✅ | Fails CI if coverage drops below 19%; configured in pytest.ini |
 | Frontend type check (tsc) | ✅ | |
 | Dependency vulnerability scan | ✅ | pip-audit (any CVE) + npm audit (high+) |
 | Docker build verification | ✅ | Both frontend and backend Dockerfiles validated |
