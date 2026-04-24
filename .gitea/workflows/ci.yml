@@ -115,8 +115,6 @@ jobs:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -191,8 +189,6 @@ jobs:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
-        ports:
-          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
