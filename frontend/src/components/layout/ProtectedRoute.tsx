@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { VersionBadge } from "@/components/layout/VersionFooter";
 import type { ReactNode } from "react";
 
 interface Props {
@@ -26,5 +27,10 @@ export function ProtectedRoute({ children, requireAdmin = false }: Props) {
     return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <VersionBadge />
+    </>
+  );
 }

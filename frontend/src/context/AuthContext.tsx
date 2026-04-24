@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    fetchUser();
+    fetchUser(); // eslint-disable-line react-hooks/set-state-in-effect
   }, []);
 
   // Apply theme class to document root

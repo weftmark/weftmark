@@ -49,6 +49,24 @@ export function DashboardPage() {
               Manage your looms and configuration history.
             </p>
           </Link>
+          <Link
+            to="/yarn"
+            className="rounded-lg border p-5 hover:border-ring transition-colors"
+          >
+            <h3 className="font-medium">Yarn</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Track your stash — yarn products and individual skeins.
+            </p>
+          </Link>
+          <Link
+            to="/activities"
+            className="rounded-lg border p-5 hover:border-ring transition-colors"
+          >
+            <h3 className="font-medium">Activities</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Track weaving sessions — step through picks on your loom.
+            </p>
+          </Link>
         </div>
       </main>
     </div>

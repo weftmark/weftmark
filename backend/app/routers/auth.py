@@ -21,16 +21,17 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, status
+import jwt
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from jose import JWTError, jwt
+from jwt.exceptions import PyJWTError as JWTError
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.deps import get_db, get_current_user, require_admin
+from app.deps import get_current_user, get_db, require_admin
 from app.models.invite import Invite
 from app.models.user import User
 from app.services.email import send_invite_email
@@ -53,6 +54,7 @@ _oidc_metadata: dict[str, Any] = {}
 async def load_oidc_metadata() -> None:
     if not settings.oidc_discovery_url:
         import logging
+
         logging.getLogger(__name__).warning("OIDC_DISCOVERY_URL not set — auth disabled")
         return
     discovery_url = settings.oidc_discovery_url.rstrip("/") + "/.well-known/openid-configuration"
@@ -63,6 +65,7 @@ async def load_oidc_metadata() -> None:
             _oidc_metadata.update(resp.json())
     except Exception as exc:
         import logging
+
         logging.getLogger(__name__).warning(
             "Could not load OIDC metadata from %s: %s — auth routes will return 503 until resolved",
             discovery_url,
@@ -73,6 +76,7 @@ async def load_oidc_metadata() -> None:
 # ---------------------------------------------------------------------------
 # JWT helpers
 # ---------------------------------------------------------------------------
+
 
 def create_session_token(user_id: uuid.UUID, email: str, is_admin: bool) -> str:
     payload = {
@@ -96,6 +100,7 @@ def decode_session_token(token: str) -> dict[str, Any] | None:
 # OIDC login initiation
 # ---------------------------------------------------------------------------
 
+
 @router.get("/login")
 async def login(invite_token: str | None = Query(default=None)) -> RedirectResponse:
     if not _oidc_metadata:
@@ -108,6 +113,7 @@ async def login(invite_token: str | None = Query(default=None)) -> RedirectRespo
     authorization_endpoint = _oidc_metadata["authorization_endpoint"]
     if settings.oidc_public_base_url:
         from urllib.parse import urlparse, urlunparse
+
         parsed = urlparse(authorization_endpoint)
         public = urlparse(settings.oidc_public_base_url)
         authorization_endpoint = urlunparse(parsed._replace(scheme=public.scheme, netloc=public.netloc))
@@ -123,20 +129,17 @@ async def login(invite_token: str | None = Query(default=None)) -> RedirectRespo
     url = authorization_endpoint + "?" + "&".join(f"{k}={v}" for k, v in params.items())
 
     response = RedirectResponse(url=url, status_code=302)
-    response.set_cookie(
-        _STATE_COOKIE, signed_state, max_age=_STATE_MAX_AGE, httponly=True, samesite="lax"
-    )
+    response.set_cookie(_STATE_COOKIE, signed_state, max_age=_STATE_MAX_AGE, httponly=True, samesite="lax")
     if invite_token:
         signed_invite = _signer.dumps(invite_token)
-        response.set_cookie(
-            _INVITE_COOKIE, signed_invite, max_age=_STATE_MAX_AGE, httponly=True, samesite="lax"
-        )
+        response.set_cookie(_INVITE_COOKIE, signed_invite, max_age=_STATE_MAX_AGE, httponly=True, samesite="lax")
     return response
 
 
 # ---------------------------------------------------------------------------
 # OIDC callback
 # ---------------------------------------------------------------------------
+
 
 @router.get("/callback")
 async def callback(
@@ -250,14 +253,10 @@ async def callback(
     return response
 
 
-async def _consume_invite(
-    db: AsyncSession, email: str, token: str | None
-) -> Invite | None:
+async def _consume_invite(db: AsyncSession, email: str, token: str | None) -> Invite | None:
     if not token:
         return None
-    invite = await db.scalar(
-        select(Invite).where(Invite.token == token, Invite.email == email)
-    )
+    invite = await db.scalar(select(Invite).where(Invite.token == token, Invite.email == email))
     if invite is None or not invite.is_valid:
         return None
     invite.accepted_at = datetime.now(timezone.utc)
@@ -274,6 +273,7 @@ def _clear_oidc_cookies(response: RedirectResponse) -> None:
 # Logout
 # ---------------------------------------------------------------------------
 
+
 @router.post("/logout")
 async def logout() -> JSONResponse:
     response = JSONResponse({"status": "logged_out"})
@@ -284,6 +284,7 @@ async def logout() -> JSONResponse:
 # ---------------------------------------------------------------------------
 # Current user
 # ---------------------------------------------------------------------------
+
 
 class UserResponse(BaseModel):
     id: uuid.UUID
@@ -304,6 +305,7 @@ async def me(current_user: User = Depends(get_current_user)) -> User:
 # ---------------------------------------------------------------------------
 # Invite management (admin only)
 # ---------------------------------------------------------------------------
+
 
 class InviteRequest(BaseModel):
     email: EmailStr
@@ -348,9 +350,7 @@ async def list_invites(
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[Invite]:
-    result = await db.scalars(
-        select(Invite).order_by(Invite.created_at.desc())
-    )
+    result = await db.scalars(select(Invite).order_by(Invite.created_at.desc()))
     return list(result.all())
 
 

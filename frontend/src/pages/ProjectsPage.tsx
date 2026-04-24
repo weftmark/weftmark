@@ -5,7 +5,7 @@ import { ProjectCard } from "@/components/projects/ProjectCard";
 import { UploadWifModal } from "@/components/projects/UploadWifModal";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export function ProjectsPage() {
   const { user, refetch: refetchAuth } = useAuth();
@@ -32,7 +32,10 @@ export function ProjectsPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b px-6 py-4 flex items-center justify-between">
-        <span className="font-semibold">Weaving Site</span>
+        <div className="flex items-center gap-4">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
+          <span className="font-semibold">Projects</span>
+        </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">{user?.email}</span>
           <Button variant="outline" size="sm" onClick={handleLogout}>

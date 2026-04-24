@@ -1,0 +1,11 @@
+exclude = ["alembic/"]
+line-length = 120
+
+[lint]
+select = ["E", "F", "I", "UP"]
+
+[lint.per-file-ignores]
+# SQLAlchemy models use string forward references that Ruff can't resolve
+"app/models/*.py" = ["F821"]
+# Tests use fixtures and helpers that appear undefined to static analysis
+"tests/**/*.py" = ["F811"]
