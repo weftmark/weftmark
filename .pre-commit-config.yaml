@@ -22,3 +22,10 @@ repos:
           - "@typescript-eslint/parser@^8.59.0"
           - "@typescript-eslint/eslint-plugin@^8.59.0"
           - eslint-plugin-react-hooks@^7.1.1
+
+      - id: tsc
+        name: TypeScript type check
+        language: system
+        entry: bash -c 'cd frontend && npx tsc -b --noEmit'
+        pass_filenames: false
+        files: ^frontend/src/.*\.(ts|tsx)$
