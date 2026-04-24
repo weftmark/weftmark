@@ -2,22 +2,22 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-04-25
 
 ---
 
 ## Next 10 Planned Tasks
 
 1. Add Alembic migration smoke test to CI against real Postgres container
-2. Add Alembic migration smoke test to CI against real Postgres container
-3. Add broken import smoke test to CI
-4. Add API integration test suite hitting real FastAPI endpoints with test database
-5. Activity creation — link project + loom version; enforce one active activity per loom
-6. Pick counter — manual increment / decrement of current pick
-7. Treadle tracking mode — treadle sequence recording for floor loom workflow
-8. Lift tracking mode — per-shaft state for lever loom workflow
-9. Session start / pause / resume
-10. Activity progress view — current pick, completion %, weft remaining estimate
+2. Add broken import smoke test to CI
+3. Add API integration test suite hitting real FastAPI endpoints with test database
+4. Activity creation — link project + loom version; enforce one active activity per loom
+5. Pick counter — manual increment / decrement of current pick
+6. Treadle tracking mode — treadle sequence recording for floor loom workflow
+7. Lift tracking mode — per-shaft state for lever loom workflow
+8. Session start / pause / resume
+9. Activity progress view — current pick, completion %, weft remaining estimate
+10. User settings UI — theme toggle, measurement system preference
 
 ---
 
@@ -40,6 +40,7 @@ This file tracks the build status of every feature area. Update it after each te
 | Pre-commit hooks | ✅ | Ruff lint, Ruff format, ESLint, tsc — all run on commit |
 | [skip ci] support | ✅ | Docs-only commits skip pipeline |
 | UI + API version display | ✅ | Version badge in authenticated UI; /health returns API version |
+| Environment lock files | ✅ | environment.yml, requirements-lock.txt, .nvmrc committed and kept in sync |
 
 ---
 
