@@ -198,6 +198,7 @@ This file tracks the build status of every feature area. Update it after each te
 | AI training disclosure + opt-out | Per-user consent flag; admin/worker accounts excluded from training data regardless |
 | Project tagging | User-defined tags (twill, houndstooth, floats, etc.); global tag table; filter by tag |
 | Automatic tag suggestion (ML) | Train on opted-in tagged WIF corpus; propose tags at upload; user accepts/rejects |
+| AI design generation | User describes design in natural language → generated WIF + preview; platform owns generated files |
 
 ---
 
