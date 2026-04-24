@@ -1,5 +1,18 @@
 name: CI
 
+# Tests run on every push and PR.
+# Version bump runs only on push to dev/main, only after tests pass,
+# and only when the commit is not already a version bump [skip ci].
+#
+# Required secret: CI_TOKEN
+#   A Gitea personal access token with repository: Read & Write permission.
+#   Set it at: Repository → Settings → Secrets → Actions.
+#
+# Version strategy:
+#   push to dev  → PATCH bump  (0.1.0 → 0.1.1), tag v0.1.1-dev
+#   push to main → MINOR bump  (0.1.1 → 0.2.0), tag v0.2.0
+#   BREAKING CHANGE: or feat!: anywhere → MAJOR bump regardless of branch
+
 on:
   push:
     branches: [main, dev, "feature/**"]
@@ -14,6 +27,9 @@ jobs:
   backend-tests:
     name: Backend tests (pytest)
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'pull_request' ||
+      !contains(github.event.head_commit.message, '[skip ci]')
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -46,6 +62,9 @@ jobs:
   frontend-typecheck:
     name: Frontend type check (tsc)
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'pull_request' ||
+      !contains(github.event.head_commit.message, '[skip ci]')
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -62,3 +81,119 @@ jobs:
 
       - name: Type check
         run: cd frontend && npx tsc -b --noEmit
+
+  # ------------------------------------------------------------
+  # Version bump — runs only after both test jobs pass
+  # ------------------------------------------------------------
+  bump-version:
+    name: Bump version
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-typecheck]
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref_name == 'dev' || github.ref_name == 'main')
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.CI_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "ci-bot"
+          git config user.email "ci@weaving-site"
+
+      - name: Determine and apply version bump
+        id: version
+        run: |
+          python3 - << 'PYEOF'
+          import subprocess, re, os
+
+          branch = os.environ.get("GITHUB_REF_NAME", "dev")
+
+          # ── Read current version ──────────────────────────────────────────
+          with open("VERSION") as f:
+              current = f.read().strip()
+          major, minor, patch = map(int, current.split("."))
+
+          # ── Collect commits since last tag ────────────────────────────────
+          result = subprocess.run(
+              ["git", "describe", "--tags", "--abbrev=0"],
+              capture_output=True, text=True
+          )
+          last_tag = result.stdout.strip() if result.returncode == 0 else None
+
+          if last_tag:
+              log = subprocess.run(
+                  ["git", "log", f"{last_tag}..HEAD", "--pretty=format:%s%n%b"],
+                  capture_output=True, text=True
+              ).stdout
+          else:
+              log = subprocess.run(
+                  ["git", "log", "--pretty=format:%s%n%b"],
+                  capture_output=True, text=True
+              ).stdout
+
+          # ── Determine bump level ──────────────────────────────────────────
+          breaking = bool(
+              re.search(r"BREAKING CHANGE:", log) or
+              re.search(r"^[a-z]+!:", log, re.MULTILINE)
+          )
+          has_feat = bool(re.search(r"^feat(\(.*?\))?:", log, re.MULTILINE))
+
+          if breaking:
+              bump = "major"
+          elif branch == "main":
+              bump = "minor"
+          elif has_feat:
+              bump = "minor"
+          else:
+              bump = "patch"
+
+          # ── Compute new version ───────────────────────────────────────────
+          if bump == "major":
+              new_ver = f"{major + 1}.0.0"
+          elif bump == "minor":
+              new_ver = f"{major}.{minor + 1}.0"
+          else:
+              new_ver = f"{major}.{minor}.{patch + 1}"
+
+          tag = f"v{new_ver}-dev" if branch == "dev" else f"v{new_ver}"
+
+          print(f"Branch:  {branch}")
+          print(f"Bump:    {bump}  ({current} → {new_ver})")
+          print(f"Tag:     {tag}")
+
+          # ── Update VERSION ────────────────────────────────────────────────
+          with open("VERSION", "w") as f:
+              f.write(new_ver + "\n")
+
+          # ── Update frontend/package.json ──────────────────────────────────
+          pkg = open("frontend/package.json").read()
+          pkg = re.sub(
+              r'("version"\s*:\s*")[^"]+(")',
+              rf'\g<1>{new_ver}\2',
+              pkg
+          )
+          open("frontend/package.json", "w").write(pkg)
+
+          # ── Write outputs for subsequent steps ────────────────────────────
+          with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
+              gh_out.write(f"new_version={new_ver}\n")
+              gh_out.write(f"tag={tag}\n")
+
+          PYEOF
+
+      - name: Commit version files
+        run: |
+          git add VERSION frontend/package.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
+
+      - name: Push version commit
+        run: git push origin ${{ github.ref_name }}
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
