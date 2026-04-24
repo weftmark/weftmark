@@ -123,12 +123,6 @@ jobs:
       - name: Install fonts (required by PyWeaving renderer)
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
 
-      - name: Patch PyWeaving font path
-        run: |
-          PYWEAVING_DATA=$(python -c "import pyweaving.render as r, os; print(os.path.join(os.path.dirname(r.__file__), 'data'))")
-          mkdir -p "$PYWEAVING_DATA"
-          cp /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf "$PYWEAVING_DATA/Arial.ttf"
-
       - name: Run pytest
         run: cd backend && python -m pytest tests/ -v
 

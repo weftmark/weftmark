@@ -10,6 +10,8 @@ A full PyWeaving-compatible WIF requires: [WIF] with Date, [CONTENTS],
 [COLOR TABLE], [THREADING], [TIEUP], [TREADLING].
 """
 
+import sys
+
 import pytest
 
 from app.services.rendering import load_draft, render_full_draft, render_full_draft_liftplan
@@ -193,6 +195,9 @@ class TestLoadDraft:
         with pytest.raises(Exception):
             load_draft(b"this is not a wif file at all")
 
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="configparser uses cp1252 on Windows, which reads Latin-1 without error"
+    )
     def test_latin1_encoded_wif_raises(self):
         """load_draft uses configparser which opens files as UTF-8; Latin-1
         bytes raise UnicodeDecodeError.  Callers must normalise encoding first
