@@ -4,16 +4,16 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.deps import get_current_user, get_db
-from app.models.yarn import Yarn, Skein, SKEIN_STATUSES
 from app.models.user import User
+from app.models.yarn import Skein, Yarn
 from app.services import storage
 
 router = APIRouter(prefix="/api/yarn", tags=["yarn"])
@@ -27,6 +27,7 @@ SkeinStatus = Literal["available", "in_use", "consumed"]
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
 
 class SkeinSchema(BaseModel):
     id: uuid.UUID
@@ -59,21 +60,23 @@ class YarnSummary(BaseModel):
 
     @classmethod
     def from_yarn(cls, yarn: Yarn) -> "YarnSummary":
-        return cls.model_validate({
-            "id": yarn.id,
-            "brand": yarn.brand,
-            "name": yarn.name,
-            "weight_notation": yarn.weight_notation,
-            "weight_category": yarn.weight_category,
-            "fiber_content": yarn.fiber_content,
-            "color_name": yarn.color_name,
-            "color_hex": yarn.color_hex,
-            "unit_yardage": yarn.unit_yardage,
-            "has_photo": yarn.photo_path is not None,
-            "skein_count": len(yarn.skeins),
-            "available_count": sum(1 for s in yarn.skeins if s.status == "available"),
-            "created_at": yarn.created_at,
-        })
+        return cls.model_validate(
+            {
+                "id": yarn.id,
+                "brand": yarn.brand,
+                "name": yarn.name,
+                "weight_notation": yarn.weight_notation,
+                "weight_category": yarn.weight_category,
+                "fiber_content": yarn.fiber_content,
+                "color_name": yarn.color_name,
+                "color_hex": yarn.color_hex,
+                "unit_yardage": yarn.unit_yardage,
+                "has_photo": yarn.photo_path is not None,
+                "skein_count": len(yarn.skeins),
+                "available_count": sum(1 for s in yarn.skeins if s.status == "available"),
+                "created_at": yarn.created_at,
+            }
+        )
 
 
 class YarnDetail(YarnSummary):
@@ -90,31 +93,33 @@ class YarnDetail(YarnSummary):
 
     @classmethod
     def from_yarn(cls, yarn: Yarn) -> "YarnDetail":  # type: ignore[override]
-        return cls.model_validate({
-            "id": yarn.id,
-            "brand": yarn.brand,
-            "name": yarn.name,
-            "weight_notation": yarn.weight_notation,
-            "weight_category": yarn.weight_category,
-            "fiber_content": yarn.fiber_content,
-            "color_name": yarn.color_name,
-            "color_hex": yarn.color_hex,
-            "unit_yardage": yarn.unit_yardage,
-            "unit_weight_oz": yarn.unit_weight_oz,
-            "unit_weight_g": yarn.unit_weight_g,
-            "yards_per_pound": yarn.yards_per_pound,
-            "sett_min": yarn.sett_min,
-            "sett_max": yarn.sett_max,
-            "purchase_source": yarn.purchase_source,
-            "purchase_price": yarn.purchase_price,
-            "purchase_date": yarn.purchase_date,
-            "notes": yarn.notes,
-            "has_photo": yarn.photo_path is not None,
-            "skein_count": len(yarn.skeins),
-            "available_count": sum(1 for s in yarn.skeins if s.status == "available"),
-            "skeins": yarn.skeins,
-            "created_at": yarn.created_at,
-        })
+        return cls.model_validate(
+            {
+                "id": yarn.id,
+                "brand": yarn.brand,
+                "name": yarn.name,
+                "weight_notation": yarn.weight_notation,
+                "weight_category": yarn.weight_category,
+                "fiber_content": yarn.fiber_content,
+                "color_name": yarn.color_name,
+                "color_hex": yarn.color_hex,
+                "unit_yardage": yarn.unit_yardage,
+                "unit_weight_oz": yarn.unit_weight_oz,
+                "unit_weight_g": yarn.unit_weight_g,
+                "yards_per_pound": yarn.yards_per_pound,
+                "sett_min": yarn.sett_min,
+                "sett_max": yarn.sett_max,
+                "purchase_source": yarn.purchase_source,
+                "purchase_price": yarn.purchase_price,
+                "purchase_date": yarn.purchase_date,
+                "notes": yarn.notes,
+                "has_photo": yarn.photo_path is not None,
+                "skein_count": len(yarn.skeins),
+                "available_count": sum(1 for s in yarn.skeins if s.status == "available"),
+                "skeins": yarn.skeins,
+                "created_at": yarn.created_at,
+            }
+        )
 
 
 class CreateYarnRequest(BaseModel):
@@ -183,6 +188,7 @@ class UpdateSkeinRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 async def _get_owned_yarn(yarn_id: uuid.UUID, user: User, db: AsyncSession) -> Yarn:
     yarn = await db.scalar(
         select(Yarn)
@@ -194,9 +200,7 @@ async def _get_owned_yarn(yarn_id: uuid.UUID, user: User, db: AsyncSession) -> Y
     return yarn
 
 
-async def _get_owned_skein(
-    yarn_id: uuid.UUID, skein_id: uuid.UUID, user: User, db: AsyncSession
-) -> tuple[Yarn, Skein]:
+async def _get_owned_skein(yarn_id: uuid.UUID, skein_id: uuid.UUID, user: User, db: AsyncSession) -> tuple[Yarn, Skein]:
     yarn = await _get_owned_yarn(yarn_id, user, db)
     skein = next((s for s in yarn.skeins if s.id == skein_id), None)
     if skein is None:
@@ -217,6 +221,7 @@ def _ext(content_type: str) -> str:
 # ---------------------------------------------------------------------------
 # Yarn CRUD
 # ---------------------------------------------------------------------------
+
 
 @router.post("", response_model=YarnDetail, status_code=201)
 async def create_yarn(
@@ -285,6 +290,7 @@ async def delete_yarn(
 # Yarn photo
 # ---------------------------------------------------------------------------
 
+
 @router.put("/{yarn_id}/photo", status_code=204)
 async def upload_yarn_photo(
     yarn_id: uuid.UUID,
@@ -334,6 +340,7 @@ async def delete_yarn_photo(
 # ---------------------------------------------------------------------------
 # Skeins
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{yarn_id}/skeins", response_model=list[SkeinSchema], status_code=201)
 async def add_skeins(
@@ -395,6 +402,7 @@ async def delete_skein(
 # ---------------------------------------------------------------------------
 # Clone yarn definition
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{yarn_id}/clone", response_model=YarnDetail, status_code=201)
 async def clone_yarn(

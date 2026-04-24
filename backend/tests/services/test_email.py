@@ -6,10 +6,11 @@ Settings are patched per-test via monkeypatch to keep tests independent of
 the local .env file.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, call
-from app.services.email import send_invite_email
+from unittest.mock import AsyncMock, patch
 
+import pytest
+
+from app.services.email import send_invite_email
 
 # ---------------------------------------------------------------------------
 # Fixture: deterministic settings
@@ -30,6 +31,7 @@ SETTINGS_OVERRIDES = {
 def _patch_settings(monkeypatch):
     """Override all settings consumed by send_invite_email."""
     from app.config import get_settings
+
     settings = get_settings()
     for attr, value in SETTINGS_OVERRIDES.items():
         monkeypatch.setattr(settings, attr, value)
@@ -38,6 +40,7 @@ def _patch_settings(monkeypatch):
 # ---------------------------------------------------------------------------
 # Helper: run send_invite_email with a mock SMTP sender
 # ---------------------------------------------------------------------------
+
 
 async def _send(to="user@test.com", token="tok123", days=7):
     mock_send = AsyncMock()
@@ -49,6 +52,7 @@ async def _send(to="user@test.com", token="tok123", days=7):
 # ---------------------------------------------------------------------------
 # SMTP transport — what aiosmtplib.send receives
 # ---------------------------------------------------------------------------
+
 
 class TestSmtpTransport:
     async def test_send_called_once(self):
@@ -84,6 +88,7 @@ class TestSmtpTransport:
 # ---------------------------------------------------------------------------
 # Message headers
 # ---------------------------------------------------------------------------
+
 
 class TestMessageHeaders:
     async def _message(self, **kwargs):
@@ -123,6 +128,7 @@ class TestMessageHeaders:
 # ---------------------------------------------------------------------------
 # Message body content
 # ---------------------------------------------------------------------------
+
 
 class TestPlainTextBody:
     async def _plain(self, token="abc", days=7, to="u@t.com"):
@@ -182,10 +188,12 @@ class TestHtmlBody:
 # Invite URL construction
 # ---------------------------------------------------------------------------
 
+
 class TestInviteUrl:
     async def _url_in_plain(self, token, frontend_url="http://example.com"):
         mock_send = AsyncMock()
         from app.config import get_settings
+
         get_settings().frontend_url = frontend_url
         with patch("app.services.email.aiosmtplib.send", mock_send):
             await send_invite_email("u@t.com", token, 7)

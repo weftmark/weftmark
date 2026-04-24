@@ -11,8 +11,8 @@ A full PyWeaving-compatible WIF requires: [WIF] with Date, [CONTENTS],
 """
 
 import pytest
-from app.services.rendering import load_draft, render_full_draft, render_full_draft_liftplan
 
+from app.services.rendering import load_draft, render_full_draft, render_full_draft_liftplan
 
 # ---------------------------------------------------------------------------
 # Minimal valid WIF fixture
@@ -143,16 +143,17 @@ Form=Decimal
 # Pillow compatibility patch
 # ---------------------------------------------------------------------------
 
+
 class TestPillowPatch:
     def test_textsize_attribute_exists(self):
         """The Pillow >=10 compat patch must have added textsize back."""
         from PIL.ImageDraw import ImageDraw
-        assert hasattr(ImageDraw, "textsize"), (
-            "Pillow compat patch missing — PyWeaving will fail to render"
-        )
+
+        assert hasattr(ImageDraw, "textsize"), "Pillow compat patch missing — PyWeaving will fail to render"
 
     def test_textsize_callable(self):
         from PIL.ImageDraw import ImageDraw
+
         assert callable(getattr(ImageDraw, "textsize"))
 
 
@@ -160,9 +161,11 @@ class TestPillowPatch:
 # load_draft
 # ---------------------------------------------------------------------------
 
+
 class TestLoadDraft:
     def test_returns_draft_object(self):
         from pyweaving import Draft
+
         draft = load_draft(MINIMAL_WIF)
         assert isinstance(draft, Draft)
 
@@ -194,9 +197,7 @@ class TestLoadDraft:
         """load_draft uses configparser which opens files as UTF-8; Latin-1
         bytes raise UnicodeDecodeError.  Callers must normalise encoding first
         (wif_parser handles this; rendering does not)."""
-        latin1_wif = MINIMAL_WIF.decode().replace(
-            "TestSuite", "Caf\xe9Loom"
-        ).encode("latin-1")
+        latin1_wif = MINIMAL_WIF.decode().replace("TestSuite", "Caf\xe9Loom").encode("latin-1")
         with pytest.raises(Exception):
             load_draft(latin1_wif)
 
@@ -204,6 +205,7 @@ class TestLoadDraft:
 # ---------------------------------------------------------------------------
 # render_full_draft
 # ---------------------------------------------------------------------------
+
 
 class TestRenderFullDraft:
     def test_returns_bytes(self):
@@ -242,6 +244,7 @@ class TestRenderFullDraft:
 # ---------------------------------------------------------------------------
 # render_full_draft_liftplan
 # ---------------------------------------------------------------------------
+
 
 class TestRenderFullDraftLiftplan:
     def test_returns_bytes(self):

@@ -60,7 +60,8 @@ function YarnPhoto({ yarn, onChanged }: { yarn: YarnDetail; onChanged: () => voi
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    file.size > PHOTO_MAX_BYTES ? setPendingFile(file) : doUpload(file);
+    if (file.size > PHOTO_MAX_BYTES) setPendingFile(file);
+    else doUpload(file);
   };
 
   const handleResize = async () => {

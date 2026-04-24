@@ -5,12 +5,11 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
 from app.models.activity import Activity, ActivityStep
-from app.models.loom import Loom, LoomVersion
+from app.models.loom import Loom
 from app.models.project import Project
 from app.models.user import User
 from app.services import storage, wif_parser
@@ -21,6 +20,7 @@ router = APIRouter(prefix="/api/activities", tags=["activities"])
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
 
 class ActivitySummary(BaseModel):
     id: uuid.UUID
@@ -54,7 +54,7 @@ class ActivityDetail(ActivitySummary):
 class CreateActivityRequest(BaseModel):
     name: str
     project_id: uuid.UUID
-    activity_type: str          # "treadle" | "lift"
+    activity_type: str  # "treadle" | "lift"
     loom_id: uuid.UUID | None = None
     loom_version_id: uuid.UUID | None = None
     finished_length_per_item: Decimal | None = None
@@ -69,13 +69,13 @@ class RenameActivityRequest(BaseModel):
 
 
 class StepRequest(BaseModel):
-    direction: str              # "advance" | "reverse"
+    direction: str  # "advance" | "reverse"
 
 
 class PickRow(BaseModel):
     pick: int
     active: list[int]
-    color: str | None = None    # hex weft color e.g. "#ff0000", None if not defined
+    color: str | None = None  # hex weft color e.g. "#ff0000", None if not defined
 
 
 class PicksResponse(BaseModel):
@@ -89,12 +89,10 @@ class PicksResponse(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _get_owned_activity(
-    activity_id: uuid.UUID, user: User, db: AsyncSession
-) -> Activity:
+
+async def _get_owned_activity(activity_id: uuid.UUID, user: User, db: AsyncSession) -> Activity:
     activity = await db.scalar(
-        select(Activity)
-        .where(
+        select(Activity).where(
             Activity.id == activity_id,
             Activity.owner_id == user.id,
             Activity.deleted_at.is_(None),
@@ -134,6 +132,7 @@ def _to_detail(activity: Activity, project: Project, loom: Loom | None) -> Activ
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post("", response_model=ActivityDetail, status_code=201)
 async def create_activity(
@@ -349,8 +348,7 @@ async def get_picks(
         raise HTTPException(status_code=400, detail=str(exc))
 
     pick_rows = [
-        PickRow(pick=i + 1, active=row, color=pick_data.weft_colors[i])
-        for i, row in enumerate(pick_data.picks)
+        PickRow(pick=i + 1, active=row, color=pick_data.weft_colors[i]) for i, row in enumerate(pick_data.picks)
     ]
     return PicksResponse(
         activity_type=pick_data.activity_type,

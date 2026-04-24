@@ -1,7 +1,8 @@
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+
 from fastapi import Cookie, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import AsyncSessionLocal
 from app.models.user import User

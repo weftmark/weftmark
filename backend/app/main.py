@@ -1,11 +1,11 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import auth, health, projects, looms, yarn, activities
+from app.routers import activities, auth, health, looms, projects, yarn
 from app.routers.auth import load_oidc_metadata
 from app.version import VERSION
 

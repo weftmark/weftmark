@@ -6,12 +6,13 @@ color scale normalisation, liftplan computation, encoding fallback.
 """
 
 import pytest
-from app.services.wif_parser import parse_picks, compute_liftplan, PickData
 
+from app.services.wif_parser import PickData, compute_liftplan, parse_picks
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def wif(extra: str = "", *, encoding: str = "utf-8") -> bytes:
     """Minimal valid WIF with a 4-shaft / 4-treadle structure."""
@@ -44,6 +45,7 @@ Treadles=4
 # ---------------------------------------------------------------------------
 # parse_picks — treadle mode
 # ---------------------------------------------------------------------------
+
 
 class TestParsePicksTreadle:
     def test_returns_pick_data(self):
@@ -82,7 +84,7 @@ class TestParsePicksTreadle:
         data = parse_picks(content, "treadle")
         assert data.total_picks == 3
         assert data.picks[0] == [1]
-        assert data.picks[1] == []   # pick 2 absent → empty
+        assert data.picks[1] == []  # pick 2 absent → empty
         assert data.picks[2] == [3]
 
     def test_missing_section_raises(self):
@@ -91,14 +93,14 @@ class TestParsePicksTreadle:
             parse_picks(content, "lift")
 
     def test_wrong_section_type_raises_for_treadle(self):
-        liftplan_only = """
+        liftplan_only = b"""
 [WIF]
 Version=1.1
 
 [LIFTPLAN]
 1=1,2
 2=3,4
-""".encode()
+"""
         with pytest.raises(ValueError, match="TREADLING"):
             parse_picks(liftplan_only, "treadle")
 
@@ -111,6 +113,7 @@ Version=1.1
 # ---------------------------------------------------------------------------
 # parse_picks — lift mode
 # ---------------------------------------------------------------------------
+
 
 class TestParsePicksLift:
     def _liftplan_wif(self, extra: str = "") -> bytes:
@@ -190,7 +193,7 @@ class TestWeftColors:
 
     def test_missing_weft_color_entry_is_none(self):
         """Picks without a WEFT COLORS entry stay None."""
-        content = f"""
+        content = """
 [WIF]
 Version=1.1
 
@@ -218,9 +221,10 @@ Range=0,255
 # Color scale normalisation
 # ---------------------------------------------------------------------------
 
+
 class TestColorScale:
     def test_65535_scale_normalized_to_255(self):
-        content = f"""
+        content = """
 [WIF]
 Version=1.1
 
@@ -241,7 +245,7 @@ Range=0,65535
 
     def test_100_scale_normalized(self):
         """Scale=100 → values out of 100, should map to 0-255."""
-        content = f"""
+        content = """
 [WIF]
 Version=1.1
 
@@ -262,7 +266,7 @@ Range=0,100
 
     def test_color_clamped_to_255(self):
         """Values beyond scale maximum are clamped, not rejected."""
-        content = f"""
+        content = """
 [WIF]
 Version=1.1
 
@@ -282,7 +286,7 @@ Range=0,255
         assert data.weft_colors[0] == "#ff0000"
 
     def test_color_clamped_below_zero(self):
-        content = f"""
+        content = """
 [WIF]
 Version=1.1
 
@@ -305,6 +309,7 @@ Range=0,255
 # ---------------------------------------------------------------------------
 # Encoding fallback
 # ---------------------------------------------------------------------------
+
 
 class TestEncoding:
     def test_utf8_decoded(self):
@@ -428,8 +433,8 @@ Version=1.1
         assert sorted(data.picks[2]) == [1, 2, 3, 4]
 
     def test_latin1_input_produces_utf8_output(self):
-        latin1_content = TREADLING_AND_TIEUP.decode().replace(
-            "Version=1.1", "Version=1.1\nSource Program=Caf\xe9"
-        ).encode("latin-1")
+        latin1_content = (
+            TREADLING_AND_TIEUP.decode().replace("Version=1.1", "Version=1.1\nSource Program=Caf\xe9").encode("latin-1")
+        )
         result = compute_liftplan(latin1_content)
         assert b"[LIFTPLAN]" in result

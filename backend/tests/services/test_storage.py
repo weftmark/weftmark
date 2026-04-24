@@ -7,13 +7,15 @@ before each test via a session-scoped monkeypatch on the upload_dir attribute.
 """
 
 import uuid
-import pytest
-import app.services.storage as storage
 
+import pytest
+
+import app.services.storage as storage
 
 # ---------------------------------------------------------------------------
 # Fixture: redirect every storage call to tmp_path
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True)
 def _use_tmp_upload_dir(tmp_path, monkeypatch):
@@ -25,6 +27,7 @@ def _use_tmp_upload_dir(tmp_path, monkeypatch):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _pid() -> uuid.UUID:
     return uuid.uuid4()
 
@@ -32,6 +35,7 @@ def _pid() -> uuid.UUID:
 # ---------------------------------------------------------------------------
 # project_dir
 # ---------------------------------------------------------------------------
+
 
 class TestProjectDir:
     def test_returns_path(self, tmp_path):
@@ -53,6 +57,7 @@ class TestProjectDir:
 # ---------------------------------------------------------------------------
 # save_wif / read_wif
 # ---------------------------------------------------------------------------
+
 
 class TestSaveReadWif:
     def test_save_returns_relative_path(self):
@@ -81,6 +86,7 @@ class TestSaveReadWif:
 # ---------------------------------------------------------------------------
 # save_preview / read_preview / preview_exists
 # ---------------------------------------------------------------------------
+
 
 class TestPreview:
     def test_save_returns_relative_path(self):
@@ -112,6 +118,7 @@ class TestPreview:
 # Loom profile photo
 # ---------------------------------------------------------------------------
 
+
 class TestLoomPhoto:
     def test_save_returns_relative_path(self):
         rel = storage.save_loom_photo(_pid(), ".jpg", b"JPEG")
@@ -140,6 +147,7 @@ class TestLoomPhoto:
 # ---------------------------------------------------------------------------
 # Loom version photos
 # ---------------------------------------------------------------------------
+
 
 class TestVersionPhoto:
     def test_save_returns_relative_path(self):
@@ -175,6 +183,7 @@ class TestVersionPhoto:
 # Loom version receipts
 # ---------------------------------------------------------------------------
 
+
 class TestVersionReceipt:
     def test_save_returns_relative_path(self):
         rel = storage.save_version_receipt(_pid(), _pid(), _pid(), ".pdf", b"PDF")
@@ -199,6 +208,7 @@ class TestVersionReceipt:
 # ---------------------------------------------------------------------------
 # Yarn photo
 # ---------------------------------------------------------------------------
+
 
 class TestYarnPhoto:
     def test_save_returns_relative_path(self):
@@ -228,6 +238,7 @@ class TestYarnPhoto:
 # ---------------------------------------------------------------------------
 # Generic read_file / file_exists
 # ---------------------------------------------------------------------------
+
 
 class TestGenericReadExists:
     def test_file_exists_true_after_save(self):
