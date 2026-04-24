@@ -6,8 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # PyWeaving expects Arial.ttf in its data directory; substitute DejaVu Sans
 RUN PYWEAVING_DATA=$(python -c "import pyweaving.render as r, os; print(os.path.join(os.path.dirname(r.__file__), 'data'))") && \
