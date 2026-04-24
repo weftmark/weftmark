@@ -2,7 +2,22 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-22
+**Last updated:** 2026-04-23
+
+---
+
+## Next 10 Planned Tasks
+
+1. Add Ruff (Python) and ESLint (TypeScript) linting to CI
+2. Add pre-commit hooks for Ruff and ESLint
+3. Add pytest coverage gate to CI (fail below threshold)
+4. Add Alembic migration smoke test to CI against real Postgres container
+5. Add API integration test suite hitting real FastAPI endpoints with test database
+6. Activity creation — link project + loom version; enforce one active activity per loom
+7. Pick counter — manual increment / decrement of current pick
+8. Treadle tracking mode — treadle sequence recording for floor loom workflow
+9. Lift tracking mode — per-shaft state for lever loom workflow
+10. Session start / pause / resume
 
 ---
 
