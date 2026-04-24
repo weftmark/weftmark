@@ -4,6 +4,10 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // npm sets npm_package_version from package.json at build time
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? "0.0.0"),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

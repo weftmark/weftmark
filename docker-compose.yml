@@ -27,8 +27,8 @@ services:
   # ----------------------------------------------------------
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     networks:
       - public
       - internal
@@ -51,8 +51,8 @@ services:
   # ----------------------------------------------------------
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     command: celery -A app.worker worker --loglevel=info
     networks:
       - internal
