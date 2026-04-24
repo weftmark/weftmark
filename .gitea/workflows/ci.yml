@@ -300,7 +300,9 @@ jobs:
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
 
       - name: Push version commit
-        run: git push origin ${{ github.ref_name }}
+        run: |
+          git pull --rebase origin ${{ github.ref_name }}
+          git push origin ${{ github.ref_name }}
 
       - name: Create and push tag
         run: |
