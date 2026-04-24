@@ -21,6 +21,27 @@ This file tracks the build status of every feature area. Update it after each te
 
 ---
 
+## CI / Dev Process
+
+| Capability | Status | Notes |
+| --- | --- | --- |
+| Git workflow (main/dev/feature/*) | ✅ | main protected; PRs required from dev |
+| Gitea Actions runner | ✅ | Self-hosted ubuntu-latest runner |
+| Sequential pipeline (7 stages) | ✅ | smoke → lint → tests → audit → docker → version bump |
+| Runner smoke test | ✅ | Sanity check gates all subsequent stages |
+| Backend lint (Ruff) | ✅ | Lint + format check; line length 120; alembic excluded |
+| Frontend lint (ESLint) | ✅ | TypeScript + react-hooks rules |
+| Backend unit tests (pytest) | ✅ | 160 tests; cross-platform font patch via conftest.py |
+| Frontend type check (tsc) | ✅ | |
+| Dependency vulnerability scan | ✅ | pip-audit (any CVE) + npm audit (high+) |
+| Docker build verification | ✅ | Both frontend and backend Dockerfiles validated |
+| Semantic version bump | ✅ | PATCH on dev, MINOR on main, MAJOR on breaking change |
+| Pre-commit hooks | ✅ | Ruff lint, Ruff format, ESLint, tsc — all run on commit |
+| [skip ci] support | ✅ | Docs-only commits skip pipeline |
+| UI + API version display | ✅ | Version badge in authenticated UI; /health returns API version |
+
+---
+
 ## Legend
 
 | Symbol | Meaning |
