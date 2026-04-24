@@ -96,7 +96,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: cd frontend && npm install
+        run: cd frontend && npm ci
 
       - name: ESLint
         run: cd frontend && npm run lint
@@ -140,7 +140,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: cd frontend && npm install
+        run: cd frontend && npm ci
 
       - name: Type check
         run: cd frontend && npx tsc -b --noEmit
@@ -236,7 +236,7 @@ jobs:
           node-version: "20"
 
       - name: npm audit (high+ only)
-        run: cd frontend && npm install && npm audit --audit-level=high
+        run: cd frontend && npm ci && npm audit --audit-level=high
 
   # ------------------------------------------------------------
   # Stage 5 — Docker build check
