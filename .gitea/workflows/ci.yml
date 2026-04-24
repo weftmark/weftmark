@@ -9,33 +9,6 @@ on:
 jobs:
 
   # ------------------------------------------------------------
-  # Disabled — kept for reference to verify runner connectivity.
-  # Re-enable by removing the `if: false` line.
-  # ------------------------------------------------------------
-  smoke-test:
-    name: Runner smoke test
-    runs-on: ubuntu-latest
-    if: false
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Print environment info
-        run: |
-          echo "Runner: $(uname -a)"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Python: $(python3 --version)"
-          echo "Docker: $(docker --version 2>/dev/null || echo 'not available')"
-
-      - name: Confirm repo structure
-        run: |
-          echo "=== Backend ==="
-          ls backend/
-          echo "=== Tests ==="
-          ls backend/tests/services/
-
-  # ------------------------------------------------------------
   # Backend — unit tests
   # ------------------------------------------------------------
   backend-tests:
