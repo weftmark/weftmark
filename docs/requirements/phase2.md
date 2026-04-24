@@ -81,3 +81,91 @@ If a public third-party app ecosystem develops (someone else building a commerci
 **Description:** Optional integration with an external Spoolman instance, allowing users who already run Spoolman to import their yarn inventory rather than re-entering it.
 
 **Note:** The built-in yarn inventory (Phase 1) should use a data model compatible with Spoolman's structure to make this integration feasible.
+
+---
+
+## End User License Agreement (EULA)
+
+**Description:** Generate and display a platform EULA that users must accept before using the platform. The EULA should cover:
+
+- Ownership of uploaded content (user retains ownership of their WIF files and project data)
+- Platform's permitted uses of user data
+- Data retention and deletion policy
+- Limitation of liability
+- AI/ML data use disclosure (see below)
+
+**Implementation notes:**
+
+- Store EULA version and user acceptance timestamp on the `User` record
+- On login, if the current EULA version is newer than the user's accepted version, redirect to an acceptance screen before proceeding
+- Admin users should be able to update the EULA text and bump the version without a code deploy (stored in the database, not hardcoded)
+
+---
+
+## AI Training Data Disclosure and Opt-Out
+
+**Description:** Disclose to users that uploaded files (WIF files, project data, activity data) may be used for AI/ML training and development purposes. Provide a meaningful opt-out that is enforced at the data pipeline level.
+
+**User-facing requirements:**
+
+- Disclosure shown during registration and in account settings
+- Per-user opt-out toggle: "Do not use my projects or activities for AI/ML training"
+- Opt-out is retroactive — previously uploaded data is excluded if the user later opts out
+- Opted-out users receive a confirmation and can opt back in at any time
+
+**Data access controls:**
+
+- Admin, worker, and internal service accounts are excluded from contributing to training datasets regardless of their opt-in status — only end-user data from opted-in accounts may be used
+- The training data export pipeline must filter by: `User.ai_training_consent = True AND User.is_admin = False AND User.is_system = False`
+- Data used for training must be anonymised or pseudonymised before leaving the platform database
+
+**Architectural note for Phase 1:** Add `ai_training_consent: bool = False` to the `User` model now, defaulting to opt-out. This costs nothing and avoids a migration later. The actual data pipeline is Phase 2.
+
+---
+
+## Project Tagging
+
+**Description:** Allow users to tag projects with descriptive labels such as "houndstooth", "twill", "plain weave", "floats", "overshot", etc. Tags help with search, filtering, and feed into the automatic tag suggestion system (see below).
+
+**Data model:**
+
+- `Tag` table: `id`, `name` (unique, normalised lowercase), `created_at`
+- `ProjectTag` join table: `project_id`, `tag_id`, `created_by` (user or system), `confidence` (null for manual, 0–1 float for AI-suggested)
+- Tags are global across all users (one canonical "twill" tag, not per-user)
+
+**UI:**
+
+- Tag input on the project detail page — typeahead from existing tags, free-entry to create new ones
+- Tags displayed as chips/badges on project list and detail views
+- Filter projects by tag in the project list
+
+**Moderation:** Admins can merge, rename, or delete tags. Deleted tags are removed from all projects.
+
+---
+
+## Automatic Tag Suggestion (ML)
+
+**Description:** Use the corpus of manually tagged projects and their WIF files to train a model that proposes tags for newly uploaded designs. Proposed tags are shown to the user for acceptance or rejection before being applied.
+
+**Inputs to the model:**
+
+- WIF structural data: shaft count, treadle count, threading sequence, tieup matrix, treadling sequence
+- Derived features: drawdown bitmap, float lengths, repeat period, symmetry metrics
+
+**Training data pipeline:**
+
+- Only includes projects from users who have opted in to AI training (see AI Training Data Disclosure above)
+- Tagged by the owning user or confirmed by an admin
+- Minimum confidence threshold before a tag is shown as a suggestion (e.g. 0.7)
+
+**User experience:**
+
+- After upload, if the model has sufficient confidence, show suggested tags with a "Accept / Reject" UI
+- User-rejected suggestions are fed back as negative training examples
+- Accepted suggestions are stored with `confidence` set to the model score and `created_by = system`
+
+**Architectural notes:**
+
+- Model training runs offline (not on the application server); a versioned model artifact is deployed separately
+- Inference can run synchronously at upload time (WIF parsing is already synchronous) or as a Celery task if latency becomes a concern
+- The Celery worker infrastructure from Phase 1 is the natural home for inference tasks
