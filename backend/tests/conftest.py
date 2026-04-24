@@ -60,10 +60,25 @@ from app.models.user import User  # noqa: E402
 # Defaults work with the docker-compose db exposed at localhost:5433.
 # CI sets POSTGRES_HOST=postgres POSTGRES_PORT=5432 POSTGRES_PASSWORD=ci_test_password.
 
+
+def _read_pg_password_from_env_file() -> str:
+    """Read POSTGRES_PASSWORD from the repo .env file for local dev runs."""
+    env_path = Path(__file__).parent.parent.parent / ".env"
+    if not env_path.exists():
+        return ""
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("POSTGRES_PASSWORD="):
+            return line.split("=", 1)[1].strip()
+    return ""
+
+
+# CI sets all four vars explicitly. For local dev, host/port default to the
+# docker-compose exposed port; password is read from the repo .env file.
 _PG_HOST = os.getenv("POSTGRES_HOST", "localhost")
 _PG_PORT = int(os.getenv("POSTGRES_PORT", "5433"))
 _PG_USER = os.getenv("POSTGRES_USER", "weaving_user")
-_PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
+_PG_PASSWORD = os.getenv("POSTGRES_PASSWORD") or _read_pg_password_from_env_file()
 _PG_TEST_DB = "test_weaving_site"
 
 _TEST_DB_URL = f"postgresql+asyncpg://{_PG_USER}:{_PG_PASSWORD}@{_PG_HOST}:{_PG_PORT}/{_PG_TEST_DB}"
@@ -113,6 +128,7 @@ def setup_database():
 
         async def _create():
             async with local_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
                 await conn.run_sync(Base.metadata.create_all)
 
         asyncio.run(_create())
@@ -145,10 +161,14 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
         yield session
     # Session is now closed. Use a fresh connection for truncation so any
     # dirty state or failed flush in the test session does not affect cleanup.
+    # Only truncate tables that actually exist (schema may lag model definitions).
     async with TestSessionLocal() as cleanup:
-        table_names = ", ".join(Base.metadata.tables.keys())
-        await cleanup.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
-        await cleanup.commit()
+        result = await cleanup.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
+        existing = {row[0] for row in result}
+        tables = [t for t in Base.metadata.tables.keys() if t in existing]
+        if tables:
+            await cleanup.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
+            await cleanup.commit()
 
 
 @pytest.fixture
@@ -160,8 +180,8 @@ async def test_user(db_session: AsyncSession) -> User:
         is_admin=False,
     )
     db_session.add(user)
+    await db_session.flush()
     await db_session.commit()
-    await db_session.refresh(user)
     return user
 
 
@@ -174,8 +194,8 @@ async def admin_user(db_session: AsyncSession) -> User:
         is_admin=True,
     )
     db_session.add(user)
+    await db_session.flush()
     await db_session.commit()
-    await db_session.refresh(user)
     return user
 
 
@@ -215,6 +235,23 @@ async def admin_client(db_session: AsyncSession, admin_user: User) -> AsyncGener
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _override_get_current_user
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def raw_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """get_db overridden with test session; get_current_user NOT overridden.
+
+    Use this to test the real authentication dependency paths (valid/invalid
+    session cookies, inactive users, etc.) while still hitting the test DB.
+    """
+
+    async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
