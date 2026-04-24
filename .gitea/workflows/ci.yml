@@ -1,8 +1,12 @@
 name: CI
 
-# Tests run on every push and PR.
-# Version bump runs only on push to dev/main, only after tests pass,
-# and only when the commit is not already a version bump [skip ci].
+# Three jobs: backend-tests, frontend-typecheck, bump-version.
+#
+# backend-tests and frontend-typecheck run in parallel on every push and PR.
+# bump-version runs only after both test jobs pass, only on push to dev/main,
+# and only when the commit message does not contain [skip ci].
+#
+# Add [skip ci] to any commit message to skip CI entirely (e.g. docs-only changes).
 #
 # Required secret: CI_TOKEN
 #   A Gitea personal access token with repository: Read & Write permission.
@@ -11,7 +15,8 @@ name: CI
 # Version strategy:
 #   push to dev  → PATCH bump  (0.1.0 → 0.1.1), tag v0.1.1-dev
 #   push to main → MINOR bump  (0.1.1 → 0.2.0), tag v0.2.0
-#   BREAKING CHANGE: or feat!: anywhere → MAJOR bump regardless of branch
+#   feat: anywhere on dev      → MINOR bump instead of PATCH
+#   BREAKING CHANGE: or feat!: → MAJOR bump regardless of branch
 
 on:
   push:
