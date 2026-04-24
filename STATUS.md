@@ -8,16 +8,16 @@ This file tracks the build status of every feature area. Update it after each te
 
 ## Next 10 Planned Tasks
 
-1. Add Ruff and ESLint linting jobs to CI
-2. Add dependency vulnerability scan to CI (pip audit + npm audit)
-3. Add pytest coverage gate to CI (fail below threshold)
-4. Add Alembic migration smoke test to CI against real Postgres container
-5. Add broken import smoke test to CI
-6. Add API integration test suite hitting real FastAPI endpoints with test database
-7. Activity creation — link project + loom version; enforce one active activity per loom
-8. Pick counter — manual increment / decrement of current pick
-9. Treadle tracking mode — treadle sequence recording for floor loom workflow
-10. Lift tracking mode — per-shaft state for lever loom workflow
+1. Add dependency vulnerability scan to CI (pip audit + npm audit)
+2. Add pytest coverage gate to CI (fail below threshold)
+3. Add Alembic migration smoke test to CI against real Postgres container
+4. Add broken import smoke test to CI
+5. Add API integration test suite hitting real FastAPI endpoints with test database
+6. Activity creation — link project + loom version; enforce one active activity per loom
+7. Pick counter — manual increment / decrement of current pick
+8. Treadle tracking mode — treadle sequence recording for floor loom workflow
+9. Lift tracking mode — per-shaft state for lever loom workflow
+10. Session start / pause / resume
 
 ---
 
