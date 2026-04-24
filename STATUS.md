@@ -194,6 +194,10 @@ This file tracks the build status of every feature area. Update it after each te
 | Offline session caching | Cache current activity for use without internet; sync on reconnect |
 | Append-only event log for activity steps | Foundation for offline sync and audit history |
 | S3 / object storage backend | `STORAGE_BACKEND` setting already planned in config |
+| End user license agreement (EULA) | Versioned; users must re-accept on update; stored in DB not code |
+| AI training disclosure + opt-out | Per-user consent flag; admin/worker accounts excluded from training data regardless |
+| Project tagging | User-defined tags (twill, houndstooth, floats, etc.); global tag table; filter by tag |
+| Automatic tag suggestion (ML) | Train on opted-in tagged WIF corpus; propose tags at upload; user accepts/rejects |
 
 ---
 

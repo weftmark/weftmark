@@ -19,3 +19,4 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     theme: Mapped[str] = mapped_column(String(20), default="light", nullable=False)
     idle_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     measurement_system: Mapped[str] = mapped_column(String(10), default="metric", nullable=False)
+    ai_training_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
