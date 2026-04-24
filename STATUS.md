@@ -8,16 +8,16 @@ This file tracks the build status of every feature area. Update it after each te
 
 ## Next 10 Planned Tasks
 
-1. Add Alembic migration smoke test to CI against real Postgres container
-2. Add broken import smoke test to CI
-3. Add API integration test suite hitting real FastAPI endpoints with test database
-4. Activity creation — link project + loom version; enforce one active activity per loom
-5. Pick counter — manual increment / decrement of current pick
-6. Treadle tracking mode — treadle sequence recording for floor loom workflow
-7. Lift tracking mode — per-shaft state for lever loom workflow
-8. Session start / pause / resume
-9. Activity progress view — current pick, completion %, weft remaining estimate
-10. User settings UI — theme toggle, measurement system preference
+1. Add broken import smoke test to CI
+2. Add API integration test suite hitting real FastAPI endpoints with test database
+3. Activity creation — link project + loom version; enforce one active activity per loom
+4. Pick counter — manual increment / decrement of current pick
+5. Treadle tracking mode — treadle sequence recording for floor loom workflow
+6. Lift tracking mode — per-shaft state for lever loom workflow
+7. Session start / pause / resume
+8. Activity progress view — current pick, completion %, weft remaining estimate
+9. User settings UI — theme toggle, measurement system preference
+10. Add API integration test suite hitting real FastAPI endpoints with test database
 
 ---
 
@@ -33,6 +33,7 @@ This file tracks the build status of every feature area. Update it after each te
 | Frontend lint (ESLint) | ✅ | TypeScript + react-hooks rules |
 | Backend unit tests (pytest) | ✅ | 160 tests; cross-platform font patch via conftest.py |
 | Coverage gate (pytest-cov) | ✅ | Fails CI if coverage drops below 19%; configured in pytest.ini |
+| Alembic migration smoke test | ✅ | Runs all 9 migrations against real Postgres 16 container; alembic check verifies no pending |
 | Frontend type check (tsc) | ✅ | |
 | Dependency vulnerability scan | ✅ | pip-audit (any CVE) + npm audit (high+) |
 | Docker build verification | ✅ | Both frontend and backend Dockerfiles validated |
