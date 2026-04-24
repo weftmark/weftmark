@@ -4,6 +4,8 @@ This file tracks the build status of every feature area. Update it after each te
 
 **Last updated:** 2026-04-25 (v0.2.10)
 
+**Test coverage: ~68%** (195 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
+
 ---
 
 ## Next 10 Planned Tasks
@@ -31,9 +33,10 @@ This file tracks the build status of every feature area. Update it after each te
 | Runner smoke test | ✅ | Sanity check gates all subsequent stages |
 | Backend lint (Ruff) | ✅ | Lint + format check; line length 120; alembic excluded |
 | Frontend lint (ESLint) | ✅ | TypeScript + react-hooks rules |
-| Backend unit tests (pytest) | ✅ | 160 tests; cross-platform font patch via conftest.py |
-| Coverage gate (pytest-cov) | ✅ | Fails CI if coverage drops below 19%; configured in pytest.ini |
-| Alembic migration smoke test | ✅ | Runs all 9 migrations against real Postgres 16 container; alembic check verifies no pending |
+| Backend unit tests (pytest) | ✅ | 195 tests (68% coverage); router + model integration tests against real Postgres |
+| Coverage gate (pytest-cov) | ✅ | Fails CI if coverage drops below 20%; configured in pytest.ini |
+| Alembic migration smoke test | ✅ | Runs all 11 migrations against real Postgres 16 container; alembic check verifies no pending |
+| API integration test infrastructure | ✅ | Postgres service in backend-tests CI job; conftest.py fixtures for db_session, client, auth_client, admin_client |
 | Frontend type check (tsc) | ✅ | |
 | Dependency vulnerability scan | ✅ | pip-audit (any CVE) + npm audit (high+) |
 | Docker build verification | ✅ | Both frontend and backend Dockerfiles validated |

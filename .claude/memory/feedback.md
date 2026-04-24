@@ -95,6 +95,20 @@ Files to regenerate:
 
 **How to apply:** After any `pip install`, `npm install`, or `conda install`, run the three export commands and stage the updated files alongside the dependency change before committing.
 
+## Test-first development process
+
+**Rule:** Before implementing any new feature, scope and write tests first. Run them to confirm they fail, then implement the feature until tests pass. Commit feature + tests together.
+
+**Why:** User explicitly requested test-first development as a process requirement.
+
+**How to apply:**
+
+- Write tests in `tests/routers/` or `tests/models/` before writing the feature code
+- After each feature, update `docs/testing.md` (coverage %, gap table, history row) and the coverage line near the top of `STATUS.md`
+- Review existing tests for correctness and applicability after each change — remove stale tests
+- Suggest coverage reassessment at natural breakpoints: after a router reaches ≥80%, before Phase 2, after a major refactor
+- Coverage tracking file is `docs/testing.md`
+
 ## All memories live in the repo
 
 **Rule:** All project memories must be saved in `.claude/memory/` inside the repo (`d:/repos/weaving_site/.claude/memory/`), not in `~/.claude/projects/`.
