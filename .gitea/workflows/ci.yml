@@ -24,8 +24,6 @@ name: CI
 on:
   push:
     branches: [main, dev, "feature/**"]
-  pull_request:
-    branches: [main, dev]
 
 jobs:
 
@@ -35,9 +33,7 @@ jobs:
   runner-check:
     name: Runner smoke test
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'pull_request' ||
-      !contains(github.event.head_commit.message, '[skip ci]')
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     steps:
       - name: Check out code
         uses: actions/checkout@v6
