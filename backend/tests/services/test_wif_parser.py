@@ -109,6 +109,60 @@ Version=1.1
         assert all(c is None for c in data.weft_colors)
         assert len(data.weft_colors) == data.total_picks
 
+    def test_malformed_weft_color_entry_skipped(self):
+        """Non-numeric WEFT COLORS value must be silently skipped."""
+        content = wif(
+            "[COLOR PALETTE]\nRange=0,255\nForm=Decimal\n\n"
+            "[COLOR TABLE]\n1=200,50,50\n\n"
+            "[WEFT COLORS]\n1=not_a_number\n"
+        )
+        data = parse_picks(content, "treadle")
+        assert isinstance(data, PickData)
+
+    def test_weft_color_entry_with_valid_palette_idx(self):
+        """Comma-prefixed WEFT COLORS values should parse the first integer."""
+        content = wif(
+            "[COLOR PALETTE]\nRange=0,255\nForm=Decimal\n\n"
+            "[COLOR TABLE]\n1=200,50,50\n\n"
+            "[WEFT COLORS]\n1=1\n2=1\n3=1\n4=1\n"
+        )
+        data = parse_picks(content, "treadle")
+        assert data.weft_colors[0] == "#c83232"
+
+
+# ---------------------------------------------------------------------------
+# Color table edge cases (_color_table internals via parse_picks)
+# ---------------------------------------------------------------------------
+
+
+class TestColorTableEdgeCases:
+    def _wif_with_color_table(self, table_body: str) -> bytes:
+        return wif(f"[COLOR PALETTE]\nRange=0,255\nForm=Decimal\n\n[COLOR TABLE]\n{table_body}\n")
+
+    def test_short_rgb_entry_skipped(self):
+        """Entry with fewer than 3 components must not raise."""
+        content = self._wif_with_color_table("1=100,50\n2=200,100,50\n")
+        data = parse_picks(content, "treadle")
+        assert isinstance(data, PickData)
+
+    def test_non_numeric_rgb_entry_skipped(self):
+        """Entry with non-numeric RGB values must not raise."""
+        content = self._wif_with_color_table("1=abc,def,ghi\n2=200,100,50\n")
+        data = parse_picks(content, "treadle")
+        assert isinstance(data, PickData)
+
+    def test_valid_entry_after_bad_entry_is_parsed(self):
+        """Good entries following a bad entry should still be included."""
+        content = self._wif_with_color_table("1=bad\n2=200,100,50\n")
+        data = parse_picks(content, "treadle")
+        assert isinstance(data, PickData)
+
+    def test_zero_division_scale_entry_skipped(self):
+        """Scale of 0 on a non-255 palette causes ZeroDivisionError — must not raise."""
+        content = wif("[COLOR PALETTE]\nRange=0,0\nForm=Decimal\n\n[COLOR TABLE]\n1=100,50,25\n")
+        data = parse_picks(content, "treadle")
+        assert isinstance(data, PickData)
+
 
 # ---------------------------------------------------------------------------
 # parse_picks — lift mode

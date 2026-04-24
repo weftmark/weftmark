@@ -323,3 +323,58 @@ class TestMalformedInput:
     def test_is_parseable_true_with_other_errors(self):
         result = LintResult(errors=["Missing [WIF] section"])
         assert result.is_parseable is True
+
+
+# ---------------------------------------------------------------------------
+# Malformed numeric field handling (exception paths in lint())
+# ---------------------------------------------------------------------------
+
+
+def _wif_with_weaving(shafts: str = "8", treadles: str = "10") -> bytes:
+    return (
+        f"[WIF]\nVersion=1.1\n"
+        f"[WEAVING]\nShafts={shafts}\nTreadles={treadles}\n"
+        f"[WARP]\nThreads=120\n"
+        f"[WEFT]\nThreads=200\n"
+        f"[THREADING]\n1=1\n[TIEUP]\n1=1\n[TREADLING]\n1=1\n"
+    ).encode()
+
+
+class TestMalformedNumericFields:
+    def test_non_numeric_shafts_produces_warning(self):
+        result = lint(_wif_with_weaving(shafts="not_a_number"))
+        assert any("shaft" in w.lower() for w in result.warnings)
+
+    def test_non_numeric_shafts_num_shafts_is_none(self):
+        result = lint(_wif_with_weaving(shafts="not_a_number"))
+        assert result.num_shafts is None
+
+    def test_non_numeric_treadles_produces_warning(self):
+        result = lint(_wif_with_weaving(treadles="not_a_number"))
+        assert any("treadle" in w.lower() for w in result.warnings)
+
+    def test_non_numeric_treadles_num_treadles_is_none(self):
+        result = lint(_wif_with_weaving(treadles="not_a_number"))
+        assert result.num_treadles is None
+
+    def test_non_numeric_warp_threads_does_not_raise(self):
+        content = (
+            b"[WIF]\nVersion=1.1\n"
+            b"[WEAVING]\nShafts=8\nTreadles=10\n"
+            b"[WARP]\nThreads=not_a_number\n"
+            b"[THREADING]\n1=1\n[TIEUP]\n1=1\n[TREADLING]\n1=1\n"
+        )
+        result = lint(content)
+        assert isinstance(result, LintResult)
+        assert result.warp_threads is None
+
+    def test_non_numeric_weft_threads_does_not_raise(self):
+        content = (
+            b"[WIF]\nVersion=1.1\n"
+            b"[WEAVING]\nShafts=8\nTreadles=10\n"
+            b"[WEFT]\nThreads=not_a_number\n"
+            b"[THREADING]\n1=1\n[TIEUP]\n1=1\n[TREADLING]\n1=1\n"
+        )
+        result = lint(content)
+        assert isinstance(result, LintResult)
+        assert result.weft_threads is None
