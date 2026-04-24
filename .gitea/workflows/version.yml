@@ -3,9 +3,10 @@ name: Version Bump
 # Triggers on every push to dev or main.
 # Skips commits that already contain [skip ci] to avoid infinite loops.
 #
-# Required secret: GITEA_TOKEN
-#   A Gitea personal access token with Contents: Read & Write permission.
+# Required secret: CI_TOKEN
+#   A Gitea personal access token with repository: Read & Write permission.
 #   Set it at: Repository → Settings → Secrets → Actions.
+#   (Gitea forbids secrets named GITEA_* or GITHUB_*.)
 #
 # Version strategy:
 #   push to dev  → PATCH bump  (0.1.0 → 0.1.1), tag v0.1.1-dev
@@ -26,7 +27,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITEA_TOKEN }}
+          token: ${{ secrets.CI_TOKEN }}
           fetch-depth: 0        # full history needed to read commits since last tag
 
       - name: Configure git identity
