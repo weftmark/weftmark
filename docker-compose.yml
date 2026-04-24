@@ -77,6 +77,8 @@ services:
     image: postgres:16-alpine
     networks:
       - internal
+    ports:
+      - "127.0.0.1:5433:5432"
     env_file:
       - .env
     environment:
