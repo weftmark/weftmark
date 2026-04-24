@@ -1,12 +1,14 @@
 name: CI
 
-# Seven jobs: runner-check, then backend-tests, backend-lint, frontend-typecheck, frontend-lint,
-# docker-build in parallel, then bump-version.
+# Eight jobs: runner-check, then backend-tests, backend-lint, frontend-typecheck, frontend-lint,
+# docker-build, dependency-audit in parallel, then bump-version.
 #
 # runner-check is a sanity test that verifies the runner environment before anything else.
-# All five check jobs depend on runner-check and run in parallel after it passes.
-# bump-version runs only after all five pass, only on push to dev/main,
+# All six check jobs depend on runner-check and run in parallel after it passes.
+# bump-version runs only after all six pass, only on push to dev/main,
 # and only when the commit message does not contain [skip ci].
+#
+# dependency-audit: pip-audit fails on any CVE; npm audit fails on high+ severity.
 #
 # Add [skip ci] to any commit message to skip CI entirely (e.g. docs-only changes).
 #
@@ -55,6 +57,35 @@ jobs:
           ls backend/
           echo "=== Tests ==="
           ls backend/tests/services/
+
+  # ------------------------------------------------------------
+  # Dependency vulnerability scan
+  # ------------------------------------------------------------
+  dependency-audit:
+    name: Dependency audit (pip-audit + npm audit)
+    runs-on: ubuntu-latest
+    needs: [runner-check]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: pip-audit (production deps)
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/requirements.txt
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: npm audit (high+ only)
+        run: cd frontend && npm install && npm audit --audit-level=high
 
   # ------------------------------------------------------------
   # Backend — unit tests
@@ -179,7 +210,7 @@ jobs:
   bump-version:
     name: Bump version
     runs-on: ubuntu-latest
-    needs: [backend-tests, backend-lint, frontend-typecheck, frontend-lint, docker-build]
+    needs: [backend-tests, backend-lint, frontend-typecheck, frontend-lint, docker-build, dependency-audit]
     if: >-
       github.event_name == 'push' &&
       (github.ref_name == 'dev' || github.ref_name == 'main')
