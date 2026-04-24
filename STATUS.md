@@ -2,22 +2,22 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-25
+**Last updated:** 2026-04-25 (v0.2.10)
 
 ---
 
 ## Next 10 Planned Tasks
 
-1. Add broken import smoke test to CI
-2. Add API integration test suite hitting real FastAPI endpoints with test database
-3. Activity creation — link project + loom version; enforce one active activity per loom
-4. Pick counter — manual increment / decrement of current pick
-5. Treadle tracking mode — treadle sequence recording for floor loom workflow
-6. Lift tracking mode — per-shaft state for lever loom workflow
-7. Session start / pause / resume
-8. Activity progress view — current pick, completion %, weft remaining estimate
-9. User settings UI — theme toggle, measurement system preference
-10. Add API integration test suite hitting real FastAPI endpoints with test database
+1. Activity creation — link project + loom version; enforce one active activity per loom
+2. Pick counter — manual increment / decrement of current pick
+3. Treadle tracking mode — treadle sequence recording for floor loom workflow
+4. Lift tracking mode — per-shaft state for lever loom workflow
+5. Session start / pause / resume
+6. Activity progress view — current pick, completion %, weft remaining estimate
+7. User settings UI — theme toggle, measurement system preference
+8. Add broken import smoke test to CI
+9. Add API integration test suite hitting real FastAPI endpoints with test database
+10. Yarn inventory — yarn / colorway record
 
 ---
 
@@ -42,6 +42,7 @@ This file tracks the build status of every feature area. Update it after each te
 | [skip ci] support | ✅ | Docs-only commits skip pipeline |
 | UI + API version display | ✅ | Version badge in authenticated UI; /health returns API version |
 | Environment lock files | ✅ | environment.yml, requirements-lock.txt, .nvmrc committed and kept in sync |
+| package-lock.json tracked + npm ci | ✅ | Removed from .gitignore; Docker and CI use npm ci (~10s vs 8+ min) |
 
 ---
 
