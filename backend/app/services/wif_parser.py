@@ -8,15 +8,15 @@ plus optional per-pick weft color derived from [COLOR TABLE] and [WEFT COLORS].
 from __future__ import annotations
 
 from configparser import RawConfigParser
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
 class PickData:
-    activity_type: str              # "treadle" | "lift"
+    activity_type: str  # "treadle" | "lift"
     total_picks: int
-    picks: list[list[int]]          # index 0 = pick 1; each inner list = active treadles/shafts
-    weft_colors: list[str | None]   # hex color per pick (e.g. "#ff0000"), None if undefined
+    picks: list[list[int]]  # index 0 = pick 1; each inner list = active treadles/shafts
+    weft_colors: list[str | None]  # hex color per pick (e.g. "#ff0000"), None if undefined
 
 
 def _color_scale(config: RawConfigParser) -> int:
@@ -90,8 +90,7 @@ def parse_picks(wif_bytes: bytes, activity_type: str) -> PickData:
                 continue
 
     weft_colors: list[str | None] = [
-        colors.get(weft_color_map[i]) if i in weft_color_map else None
-        for i in range(1, max_pick + 1)
+        colors.get(weft_color_map[i]) if i in weft_color_map else None for i in range(1, max_pick + 1)
     ]
 
     return PickData(activity_type=activity_type, total_picks=max_pick, picks=picks, weft_colors=weft_colors)

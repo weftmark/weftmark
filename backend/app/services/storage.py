@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 from pathlib import Path
 
@@ -18,6 +17,7 @@ def _upload_root() -> Path:
 # ---------------------------------------------------------------------------
 # Projects
 # ---------------------------------------------------------------------------
+
 
 def project_dir(project_id: uuid.UUID) -> Path:
     p = _upload_root() / "projects" / str(project_id)
@@ -55,6 +55,7 @@ def preview_exists(preview_path: str | None) -> bool:
 # Looms — profile photo
 # ---------------------------------------------------------------------------
 
+
 def loom_dir(loom_id: uuid.UUID) -> Path:
     p = _upload_root() / "looms" / str(loom_id)
     p.mkdir(parents=True, exist_ok=True)
@@ -78,6 +79,7 @@ def delete_loom_photo(photo_path: str) -> None:
 # Loom version photos
 # ---------------------------------------------------------------------------
 
+
 def version_photo_dir(loom_id: uuid.UUID, version_id: uuid.UUID) -> Path:
     p = loom_dir(loom_id) / "versions" / str(version_id) / "photos"
     p.mkdir(parents=True, exist_ok=True)
@@ -100,13 +102,16 @@ def delete_version_photo(path: str) -> None:
 # Loom version receipts
 # ---------------------------------------------------------------------------
 
+
 def version_receipt_dir(loom_id: uuid.UUID, version_id: uuid.UUID) -> Path:
     p = loom_dir(loom_id) / "versions" / str(version_id) / "receipts"
     p.mkdir(parents=True, exist_ok=True)
     return p
 
 
-def save_version_receipt(loom_id: uuid.UUID, version_id: uuid.UUID, receipt_id: uuid.UUID, ext: str, data: bytes) -> str:
+def save_version_receipt(
+    loom_id: uuid.UUID, version_id: uuid.UUID, receipt_id: uuid.UUID, ext: str, data: bytes
+) -> str:
     dest = version_receipt_dir(loom_id, version_id) / f"{receipt_id}{ext}"
     dest.write_bytes(data)
     return str(dest.relative_to(_upload_root()))
@@ -121,6 +126,7 @@ def delete_version_receipt(path: str) -> None:
 # ---------------------------------------------------------------------------
 # Yarn — profile photo
 # ---------------------------------------------------------------------------
+
 
 def yarn_dir(yarn_id: uuid.UUID) -> Path:
     p = _upload_root() / "yarn" / str(yarn_id)
@@ -143,6 +149,7 @@ def delete_yarn_photo(photo_path: str) -> None:
 # ---------------------------------------------------------------------------
 # Generic read
 # ---------------------------------------------------------------------------
+
 
 def read_file(path: str) -> bytes:
     return (_upload_root() / path).read_bytes()

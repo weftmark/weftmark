@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -21,6 +21,7 @@ settings = get_settings()
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
 
 class ProjectSummary(BaseModel):
     id: uuid.UUID
@@ -61,6 +62,7 @@ class ProjectDetail(ProjectSummary):
 # ---------------------------------------------------------------------------
 # Upload
 # ---------------------------------------------------------------------------
+
 
 @router.post("", response_model=ProjectSummary, status_code=201)
 async def create_project(
@@ -111,9 +113,7 @@ async def create_project(
             png = rendering.render_full_draft(draft)
             project.preview_path = storage.save_preview(project.id, png)
         except Exception as exc:
-            project.lint_warnings = list(project.lint_warnings) + [
-                f"Preview rendering failed: {exc}"
-            ]
+            project.lint_warnings = list(project.lint_warnings) + [f"Preview rendering failed: {exc}"]
 
     await db.commit()
     await db.refresh(project)
@@ -123,6 +123,7 @@ async def create_project(
 # ---------------------------------------------------------------------------
 # List
 # ---------------------------------------------------------------------------
+
 
 @router.get("", response_model=list[ProjectSummary])
 async def list_projects(
@@ -141,6 +142,7 @@ async def list_projects(
 # Detail
 # ---------------------------------------------------------------------------
 
+
 @router.get("/{project_id}", response_model=ProjectDetail)
 async def get_project(
     project_id: uuid.UUID,
@@ -156,6 +158,7 @@ async def get_project(
 # ---------------------------------------------------------------------------
 # Preview image
 # ---------------------------------------------------------------------------
+
 
 @router.get("/{project_id}/preview")
 async def get_preview(
@@ -174,6 +177,7 @@ async def get_preview(
 # Delete (soft)
 # ---------------------------------------------------------------------------
 
+
 @router.delete("/{project_id}", status_code=204)
 async def delete_project(
     project_id: uuid.UUID,
@@ -188,6 +192,7 @@ async def delete_project(
 # ---------------------------------------------------------------------------
 # Generate lift plan
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{project_id}/generate-liftplan", response_model=ProjectDetail)
 async def generate_liftplan(
@@ -223,9 +228,8 @@ async def generate_liftplan(
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _get_owned_project(
-    project_id: uuid.UUID, user: User, db: AsyncSession
-) -> Project:
+
+async def _get_owned_project(project_id: uuid.UUID, user: User, db: AsyncSession) -> Project:
     project = await db.scalar(
         select(Project).where(
             Project.id == project_id,

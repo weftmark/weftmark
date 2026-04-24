@@ -5,13 +5,12 @@ Covers: feature detection, error/warning generation, metadata extraction,
 encoding fallback, and malformed input handling.
 """
 
-import pytest
-from app.services.wif_linter import lint, LintResult
-
+from app.services.wif_linter import LintResult, lint
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_wif(
     *,
@@ -73,6 +72,7 @@ FULL_WIF = make_wif()
 # Return type
 # ---------------------------------------------------------------------------
 
+
 def test_returns_lint_result():
     assert isinstance(lint(FULL_WIF), LintResult)
 
@@ -80,6 +80,7 @@ def test_returns_lint_result():
 # ---------------------------------------------------------------------------
 # Error-free path
 # ---------------------------------------------------------------------------
+
 
 class TestFullyFormedWIF:
     def setup_method(self):
@@ -121,6 +122,7 @@ class TestFullyFormedWIF:
 # Required section errors
 # ---------------------------------------------------------------------------
 
+
 class TestMissingRequiredSections:
     def test_missing_wif_section_is_error(self):
         result = lint(make_wif(wif_section=False))
@@ -139,6 +141,7 @@ class TestMissingRequiredSections:
 # ---------------------------------------------------------------------------
 # Feature flag detection
 # ---------------------------------------------------------------------------
+
 
 class TestFeatureDetection:
     def test_no_threading(self):
@@ -193,6 +196,7 @@ Treadles=4
 # Warnings
 # ---------------------------------------------------------------------------
 
+
 class TestWarnings:
     def test_no_threading_warns(self):
         result = lint(make_wif(threading=False))
@@ -233,6 +237,7 @@ class TestWarnings:
 # Source software
 # ---------------------------------------------------------------------------
 
+
 class TestSourceSoftware:
     def test_source_program_extracted(self):
         result = lint(make_wif(source_program="WeavePoint"))
@@ -254,6 +259,7 @@ class TestSourceSoftware:
 # ---------------------------------------------------------------------------
 # Thread counts
 # ---------------------------------------------------------------------------
+
 
 class TestThreadCounts:
     def test_warp_threads(self):
@@ -277,6 +283,7 @@ class TestThreadCounts:
 # Encoding
 # ---------------------------------------------------------------------------
 
+
 class TestEncoding:
     def test_utf8(self):
         result = lint(FULL_WIF)
@@ -297,6 +304,7 @@ class TestEncoding:
 # ---------------------------------------------------------------------------
 # Malformed input
 # ---------------------------------------------------------------------------
+
 
 class TestMalformedInput:
     def test_empty_bytes(self):

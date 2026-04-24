@@ -4,15 +4,21 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.deps import get_current_user, get_db
-from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt, LoomVersionAccessory, LOOM_TYPES
+from app.models.loom import (
+    Loom,
+    LoomVersion,
+    LoomVersionAccessory,
+    LoomVersionPhoto,
+    LoomVersionReceipt,
+)
 from app.models.user import User
 from app.services import storage
 
@@ -22,13 +28,14 @@ LoomType = Literal["floor_loom", "table_loom", "rigid_heddle", "inkle", "other"]
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
-MAX_FILE_SIZE = 5 * 1024 * 1024   # 5 MB
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 MAX_VERSION_PHOTOS = 5
 
 
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
 
 class LoomVersionPhotoSchema(BaseModel):
     id: uuid.UUID
@@ -220,6 +227,7 @@ class AddAccessoryRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession) -> Loom:
     loom = await db.scalar(
         select(Loom)
@@ -264,6 +272,7 @@ def _ext(content_type: str) -> str:
 # ---------------------------------------------------------------------------
 # Loom CRUD
 # ---------------------------------------------------------------------------
+
 
 @router.post("", response_model=LoomDetail, status_code=201)
 async def create_loom(
@@ -322,7 +331,7 @@ async def list_looms(
         )
         .order_by(Loom.created_at.desc())
     )
-    return [LoomSummary.from_loom(l) for l in result.all()]
+    return [LoomSummary.from_loom(loom) for loom in result.all()]
 
 
 @router.get("/{loom_id}", response_model=LoomDetail)
@@ -364,6 +373,7 @@ async def delete_loom(
 # ---------------------------------------------------------------------------
 # Loom profile photo
 # ---------------------------------------------------------------------------
+
 
 @router.put("/{loom_id}/photo", status_code=204)
 async def upload_loom_photo(
@@ -415,6 +425,7 @@ async def get_loom_photo(
 # Loom versions
 # ---------------------------------------------------------------------------
 
+
 @router.post("/{loom_id}/versions", response_model=LoomVersionSchema, status_code=201)
 async def add_version(
     loom_id: uuid.UUID,
@@ -447,6 +458,7 @@ async def add_version(
 # ---------------------------------------------------------------------------
 # Version photos
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{loom_id}/versions/{version_id}/photos", response_model=LoomVersionPhotoSchema, status_code=201)
 async def upload_version_photo(
@@ -517,6 +529,7 @@ async def delete_version_photo(
 # ---------------------------------------------------------------------------
 # Version receipts
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{loom_id}/versions/{version_id}/receipts", response_model=LoomVersionReceiptSchema, status_code=201)
 async def upload_version_receipt(
@@ -592,6 +605,7 @@ async def delete_version_receipt(
 # Version patch (name / description editable in place)
 # ---------------------------------------------------------------------------
 
+
 @router.patch("/{loom_id}/versions/{version_id}", response_model=LoomVersionSchema)
 async def update_version(
     loom_id: uuid.UUID,
@@ -611,6 +625,7 @@ async def update_version(
 # ---------------------------------------------------------------------------
 # Version clone
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{loom_id}/versions/{version_id}/clone", response_model=LoomVersionSchema, status_code=201)
 async def clone_version(
@@ -641,10 +656,12 @@ async def clone_version(
 
     if body.include_accessories:
         for acc in source.accessories:
-            db.add(LoomVersionAccessory(
-                loom_version_id=new_version.id,
-                name=acc.name,
-            ))
+            db.add(
+                LoomVersionAccessory(
+                    loom_version_id=new_version.id,
+                    name=acc.name,
+                )
+            )
 
     await db.commit()
     await db.refresh(new_version, ["photos", "receipts", "accessories"])
@@ -654,6 +671,7 @@ async def clone_version(
 # ---------------------------------------------------------------------------
 # Accessories
 # ---------------------------------------------------------------------------
+
 
 @router.post("/{loom_id}/versions/{version_id}/accessories", response_model=LoomVersionAccessorySchema, status_code=201)
 async def add_accessory(

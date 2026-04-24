@@ -1,11 +1,12 @@
 import uuid
 from datetime import date
 from decimal import Decimal
-from sqlalchemy import Date, Integer, Numeric, String, Text, ForeignKey
+
+from sqlalchemy import Date, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin, SoftDeleteMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 SKEIN_STATUSES = ("available", "in_use", "consumed")
 
@@ -25,22 +26,18 @@ WEIGHT_CATEGORIES = (
 class Yarn(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "yarns"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    owner_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
 
     brand: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    weight_notation: Mapped[str | None] = mapped_column(String(20), nullable=True)   # e.g. "8/2"
+    weight_notation: Mapped[str | None] = mapped_column(String(20), nullable=True)  # e.g. "8/2"
     weight_category: Mapped[str | None] = mapped_column(String(30), nullable=True)
     fiber_content: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     color_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    color_hex: Mapped[str | None] = mapped_column(String(7), nullable=True)          # "#rrggbb"
+    color_hex: Mapped[str | None] = mapped_column(String(7), nullable=True)  # "#rrggbb"
 
     unit_weight_oz: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
     unit_weight_g: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
@@ -57,21 +54,15 @@ class Yarn(Base, TimestampMixin, SoftDeleteMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    skeins: Mapped[list["Skein"]] = relationship(
-        "Skein", back_populates="yarn", order_by="Skein.created_at"
-    )
+    skeins: Mapped[list["Skein"]] = relationship("Skein", back_populates="yarn", order_by="Skein.created_at")
     owner: Mapped["User"] = relationship("User", foreign_keys=[owner_id])  # type: ignore[name-defined]
 
 
 class Skein(Base, TimestampMixin):
     __tablename__ = "skeins"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    yarn_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("yarns.id"), nullable=False, index=True
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    yarn_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("yarns.id"), nullable=False, index=True)
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="available")
 
