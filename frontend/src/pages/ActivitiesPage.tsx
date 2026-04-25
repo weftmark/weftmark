@@ -45,14 +45,17 @@ export function ActivitiesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [showAbandoned, setShowAbandoned] = useState(false);
 
   const { data: activities = [], isLoading, error } = useQuery({
     queryKey: ["activities"],
     queryFn: listActivities,
   });
 
-  const active = activities.filter((a) => a.status === "active");
-  const finished = activities.filter((a) => a.status !== "active");
+  const planning = activities.filter((a) => a.status === "active" && !a.loom_id);
+  const active = activities.filter((a) => a.status === "active" && !!a.loom_id);
+  const completed = activities.filter((a) => a.status === "completed");
+  const abandoned = activities.filter((a) => a.status === "abandoned");
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -84,12 +87,39 @@ export function ActivitiesPage() {
           </section>
         )}
 
-        {finished.length > 0 && (
+        {planning.length > 0 && (
           <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Completed &amp; abandoned</h2>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Planning</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              {finished.map((a) => <ActivityCard key={a.id} activity={a} />)}
+              {planning.map((a) => <ActivityCard key={a.id} activity={a} />)}
             </div>
+          </section>
+        )}
+
+        {completed.length > 0 && (
+          <section>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Completed</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {completed.map((a) => <ActivityCard key={a.id} activity={a} />)}
+            </div>
+          </section>
+        )}
+
+        {abandoned.length > 0 && (
+          <section>
+            <button
+              type="button"
+              className="flex items-center gap-2 mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground"
+              onClick={() => setShowAbandoned((v) => !v)}
+            >
+              <span>Abandoned ({abandoned.length})</span>
+              <span className="text-xs">{showAbandoned ? "▲" : "▼"}</span>
+            </button>
+            {showAbandoned && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {abandoned.map((a) => <ActivityCard key={a.id} activity={a} />)}
+              </div>
+            )}
           </section>
         )}
       </main>
