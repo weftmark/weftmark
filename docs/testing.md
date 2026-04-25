@@ -1,6 +1,6 @@
 # Test Coverage and Gaps
 
-**Current overall coverage: 68%** (195 tests, last measured 2026-04-25 v0.2.x)
+**Current overall coverage: 67%** (266 tests, last measured 2026-04-25 v0.5.0)
 
 ---
 
@@ -10,24 +10,24 @@
 | --- | --- | --- |
 | `app/config.py` | 98% | One branch in `database_url` construction |
 | `app/database.py` | 100% | |
-| `app/deps.py` | 38% | `get_db`, `get_current_user`, `require_admin` — need router-level tests |
+| `app/deps.py` | 79% | `get_db`, `get_current_user`, `require_admin` covered; soft-deleted user path missing |
 | `app/main.py` | 90% | Lifespan OIDC call mocked |
-| `app/models/activity.py` | 100% | Model definition only |
+| `app/models/activity.py` | 100% | Includes `ActivityPhoto` model |
 | `app/models/base.py` | 87% | `soft_delete()` line covered; `is_deleted` property line 23 |
 | `app/models/invite.py` | 95% | |
 | `app/models/loom.py` | 99% | |
 | `app/models/project.py` | 100% | |
 | `app/models/user.py` | 100% | Defaults, soft delete, all fields covered |
 | `app/models/yarn.py` | 100% | |
-| `app/routers/activities.py` | 46% | No tests yet — pending Activity feature build |
-| `app/routers/auth.py` | 34% | OIDC flow, JWT helpers, invite endpoints — significant gap |
+| `app/routers/activities.py` | 41% | Create, restart, clone covered; detail, update, pick step, photos endpoints not tested |
+| `app/routers/auth.py` | 40% | `/me`, logout, token validation covered; OIDC callback, invite flow not tested |
 | `app/routers/health.py` | 90% | `/health` covered; error branch (DB down) not tested |
-| `app/routers/looms.py` | 54% | CRUD endpoints partially covered via router tests |
+| `app/routers/looms.py` | 58% | Create, list, get covered; versions, photos, documents not tested |
 | `app/routers/projects.py` | 48% | WIF upload, list, detail — gap |
 | `app/routers/yarn.py` | 64% | |
 | `app/services/email.py` | 100% | |
 | `app/services/rendering.py` | 100% | |
-| `app/services/storage.py` | 100% | |
+| `app/services/storage.py` | 90% | Activity photo helpers (`save_activity_photo`, `delete_activity_photo`) not tested |
 | `app/services/wif_linter.py` | 100% | |
 | `app/services/wif_parser.py` | 100% | |
 | `app/version.py` | 86% | `__main__` block not tested |
@@ -71,7 +71,8 @@
 
 | Gap | Module | Tests needed |
 | --- | --- | --- |
-| Activity CRUD | `routers/activities.py` | Not yet built — write tests before implementing |
+| Activity detail, update, pick step | `routers/activities.py` | Create/restart/clone covered; remaining endpoints need tests |
+| Activity photo endpoints | `routers/activities.py` | Upload, list, delete photos — no tests yet |
 | Yarn CRUD | `routers/yarn.py` | Basic CRUD coverage |
 | Health endpoint — DB error | `routers/health.py` | Simulate DB unavailable → 500 |
 | `deps.py` full coverage | `deps.py` | Invalid JWT, user not found, soft-deleted user |
@@ -101,6 +102,7 @@ Before implementing any new feature:
 ## Coverage Reassessment Triggers
 
 Reassess coverage completeness when:
+
 - Overall coverage drops below the CI gate (currently 20%)
 - A new feature area is added (Activities, Yarn, Reports, Sharing, etc.)
 - A router reaches ≥80% coverage (evaluate if remaining gaps matter)
@@ -115,3 +117,4 @@ Reassess coverage completeness when:
 | --- | --- | --- | --- |
 | 2026-04-25 | v0.2.x | 55% | Model imports provide baseline via `app.main` import in conftest |
 | 2026-04-25 | v0.2.x | 68% | Added router tests (health) + model tests (User); DB integration test infrastructure in place |
+| 2026-04-25 | v0.5.0 | 67% | 266 tests; activity creation, restart, clone covered; auth `/me` + token validation added; loom CRUD partially covered |
