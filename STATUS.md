@@ -2,15 +2,15 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-25 (v0.4.0)
+**Last updated:** 2026-04-25 (v0.5.0)
 
-**Test coverage: ~68%** (195 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
+**Test coverage: ~67%** (266 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
 
 ---
 
 ## Next 10 Planned Tasks
 
-1. Completed activity summary — project info, loom info, captured metrics; up to 20 photos; links to project, loom, and sibling activities on the same project
+1. New user onboarding flow — guided wizard: add a loom → upload a WIF project → create first activity; shown automatically when user has no looms or projects; skippable
 2. Active/planning activity step view — render current pick in focus, previous N picks below in full color, next N picks above in lower contrast; N adapts to available screen height; gives weaver a visual of where they are in the design
 3. User settings UI — theme toggle, measurement system preference
 4. Session start / pause / resume — auto-detect open/close; idle timeout
@@ -34,9 +34,9 @@ This file tracks the build status of every feature area. Update it after each te
 | Runner smoke test | ✅ | Sanity check gates all subsequent stages |
 | Backend lint (Ruff) | ✅ | Lint + format check; line length 120; alembic excluded |
 | Frontend lint (ESLint) | ✅ | TypeScript + react-hooks rules |
-| Backend unit tests (pytest) | ✅ | 195 tests (68% coverage); router + model integration tests against real Postgres |
+| Backend unit tests (pytest) | ✅ | 266 tests (67% coverage); router + model integration tests against real Postgres |
 | Coverage gate (pytest-cov) | ✅ | Fails CI if coverage drops below 20%; configured in pytest.ini |
-| Alembic migration smoke test | ✅ | Runs all 12 migrations against real Postgres 16 container; alembic check verifies no pending |
+| Alembic migration smoke test | ✅ | Runs all 13 migrations against real Postgres 16 container; alembic check verifies no pending |
 | API integration test infrastructure | ✅ | Postgres service in backend-tests CI job; conftest.py fixtures for db_session, client, auth_client, admin_client |
 | Frontend type check (tsc) | ✅ | |
 | Dependency vulnerability scan | ✅ | pip-audit (any CVE) + npm audit (high+) |
@@ -150,7 +150,7 @@ This file tracks the build status of every feature area. Update it after each te
 | Rename activity | ✅ | Inline edit on detail page header |
 | Weft colour display | ✅ | Per-pick colour swatch; toggle + colour mode selector |
 | Prev / next pick hint | ✅ | Shows adjacent pick shaft/treadle numbers |
-| Completed activity summary | ⏳ | Project info, loom info, metrics; up to 20 photos; links to project, loom, sibling activities |
+| Completed activity summary | ✅ | Project info, loom info, metrics; up to 20 photos (lightbox + delete); links to project, loom, sibling activities |
 | Bluetooth pedal input | ⏳ | Keyboard emulator; maps pedal presses to UI actions |
 | Step correction / undo | ⏳ | |
 | Session start / pause / resume | ⏳ | |

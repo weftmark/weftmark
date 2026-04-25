@@ -123,6 +123,49 @@ Files to regenerate:
 - Gitea API base is `http://10.10.10.90:3000`
 - When the user shows a failure traceback, use the same API to identify which job/step failed and pull context
 
+## Creating a PR via the Gitea API
+
+**Rule:** Always use this exact pattern. Do not deviate — previous variations caused silent failures or connection errors.
+
+**Why:** `--data-raw` produces empty responses; port 3001 is refused; packages like `jq` or `gh` are not guaranteed to be in PATH on Windows.
+
+**How to apply — exact working command:**
+
+```bash
+GITEA_TOKEN=$(grep GITEA_TOKEN_RW .env.local | cut -d= -f2 | tr -d '[:space:]')
+curl -s -X POST "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/pulls" \
+  -H "Authorization: token $GITEA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"<title>\",\"head\":\"dev\",\"base\":\"main\",\"body\":\"<body with \\n for newlines>\"}" \
+  | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('html_url') or json.dumps(d,indent=2))"
+```
+
+**Critical rules:**
+- Use `-d` not `--data-raw` — `--data-raw` causes empty body and no response
+- Port is **3000**, not 3001
+- Escape newlines as `\\n` inside the `-d` JSON string (single-quoted heredocs don't work reliably on Windows bash)
+- Parse response with inline `python -c` — Python via conda is always available; `jq` and `gh` are not
+- Token extraction: `grep GITEA_TOKEN_RW .env.local | cut -d= -f2 | tr -d '[:space:]'`
+- For CI status checks use `GITEA_TOKEN_RO` (read-only is sufficient)
+
+## Rebuilding the frontend
+
+**Rule:** The running `frontend-1` container is nginx-only — it has no `node`, `npm`, or build tools. Never run `docker compose exec frontend npm ...`.
+
+**Why:** The frontend uses a multi-stage Dockerfile: Node builds in stage 1, the output is copied into an nginx image for stage 2. The running container is stage 2 only.
+
+**How to apply — exact workflow:**
+
+```bash
+# Build new image (runs tsc + vite build inside Docker)
+docker compose build frontend
+
+# Restart container with new image
+docker compose up -d frontend
+```
+
+If the build fails, the full error is in the `docker compose build` output — read it before retrying. Common causes: TypeScript errors, unused variables (TS6133), missing imports.
+
 ## All memories live in the repo
 
 **Rule:** All project memories must be saved in `.claude/memory/` inside the repo (`d:/repos/weaving_site/.claude/memory/`), not in `~/.claude/projects/`.

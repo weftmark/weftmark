@@ -3,7 +3,21 @@
     "allow": [
       "Bash(docker compose exec backend python -c ' *)",
       "Bash(docker compose *)",
-      "Bash(docker cp *)"
+      "Bash(docker cp *)",
+      "Bash(conda run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3000/health)",
+      "Bash(curl -s http://10.10.10.90:3000/api/*)"
+    ],
+    "additionalDirectories": [
+      "d:\\repos\\weaving_site",
+      "d:\\repos\\weaving_site\\backend"
     ]
   }
 }
