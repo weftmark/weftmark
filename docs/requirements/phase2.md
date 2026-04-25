@@ -4,6 +4,27 @@ Features deferred from the initial build. Noted here to ensure architectural dec
 
 ---
 
+## New User Onboarding Flow
+
+**Deferred:** 2026-04-25. Deferred because the core audience (the initial user) already knows the app structure. Worth building once external users are onboarded.
+
+**Description:** A guided multi-step wizard shown automatically on first login when the user has no looms and no projects. Steps in order:
+
+1. **Add a loom** — loom type selector + name; minimal required fields only
+2. **Upload a WIF project** — file picker; shows lint summary and preview after upload
+3. **Create first activity** — links the project and loom just created; sets a name; lands on the activity detail page ready to weave
+
+The wizard is skippable at any step. A "skip setup" link is visible throughout. After skipping or completing, a flag is set on the user record so the wizard never re-appears (`onboarding_complete: bool`, default `false`).
+
+**Architectural notes:**
+
+- Add `onboarding_complete` boolean to the `User` model (nullable, defaults to `false`); flip to `true` on wizard completion or explicit skip
+- The wizard is purely frontend state — no new backend routes needed beyond what already exists (loom create, WIF upload, activity create)
+- Wizard state lives in a React context or a small Zustand slice; each step calls the existing API endpoints
+- The check (`user.onboarding_complete == false && looms.length == 0 && projects.length == 0`) can be done client-side after initial data load on the Dashboard
+
+---
+
 ## Third-Party API Access (API Keys)
 
 **Description:** Allow authenticated access to the backend API from third-party applications — Android companion apps, Home Assistant integrations, scripts, and other tooling — without requiring the OIDC browser flow.
