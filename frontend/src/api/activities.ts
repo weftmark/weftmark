@@ -29,6 +29,13 @@ export interface ActivitySummary {
   created_at: string;
 }
 
+export interface ActivityPhoto {
+  id: string;
+  filename: string;
+  display_order: number;
+  created_at: string;
+}
+
 export interface ActivityDetail extends ActivitySummary {
   finished_length_per_item: string | null;
   waste_between_items: string | null;
@@ -39,6 +46,7 @@ export interface ActivityDetail extends ActivitySummary {
   project_num_shafts: number | null;
   project_num_treadles: number | null;
   loom_name: string | null;
+  photos: ActivityPhoto[];
 }
 
 export interface CreateActivityPayload {
@@ -86,8 +94,12 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function listActivities(): Promise<ActivitySummary[]> {
-  return req("/api/activities");
+export function listActivities(params?: { projectId?: string; loomId?: string }): Promise<ActivitySummary[]> {
+  const qs = new URLSearchParams();
+  if (params?.projectId) qs.set("project_id", params.projectId);
+  if (params?.loomId) qs.set("loom_id", params.loomId);
+  const query = qs.size ? `?${qs}` : "";
+  return req(`/api/activities${query}`);
 }
 
 export function getActivity(id: string): Promise<ActivityDetail> {
@@ -156,4 +168,18 @@ export function deleteActivity(id: string): Promise<void> {
 
 export function getActivityPicks(id: string): Promise<PicksResponse> {
   return req(`/api/activities/${id}/picks`);
+}
+
+export function activityPhotoUrl(activityId: string, photoId: string): string {
+  return `/api/activities/${activityId}/photos/${photoId}`;
+}
+
+export function uploadActivityPhoto(activityId: string, file: File): Promise<ActivityPhoto> {
+  const body = new FormData();
+  body.append("file", file);
+  return req(`/api/activities/${activityId}/photos`, { method: "POST", body });
+}
+
+export function deleteActivityPhoto(activityId: string, photoId: string): Promise<void> {
+  return req(`/api/activities/${activityId}/photos/${photoId}`, { method: "DELETE" });
 }

@@ -147,6 +147,29 @@ def delete_yarn_photo(photo_path: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Activity photos
+# ---------------------------------------------------------------------------
+
+
+def activity_photo_dir(activity_id: uuid.UUID) -> Path:
+    p = _upload_root() / "activities" / str(activity_id) / "photos"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def save_activity_photo(activity_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
+    dest = activity_photo_dir(activity_id) / f"{photo_id}{ext}"
+    dest.write_bytes(data)
+    return str(dest.relative_to(_upload_root()))
+
+
+def delete_activity_photo(path: str) -> None:
+    full = _upload_root() / path
+    if full.exists():
+        full.unlink()
+
+
+# ---------------------------------------------------------------------------
 # Generic read
 # ---------------------------------------------------------------------------
 

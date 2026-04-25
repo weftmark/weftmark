@@ -1,11 +1,19 @@
 import { useNavigate } from "react-router-dom";
 import type { Project } from "@/api/projects";
 
-interface Props {
-  project: Project;
+interface ActivityCounts {
+  active: number;
+  planning: number;
+  completed: number;
+  abandoned: number;
 }
 
-export function ProjectCard({ project }: Props) {
+interface Props {
+  project: Project;
+  activityCounts?: ActivityCounts;
+}
+
+export function ProjectCard({ project, activityCounts }: Props) {
   const navigate = useNavigate();
 
   const featureBadges = [
@@ -56,6 +64,31 @@ export function ProjectCard({ project }: Props) {
         <p className="mt-2 text-xs text-muted-foreground">
           {project.lint_warnings.length} warning{project.lint_warnings.length > 1 ? "s" : ""}
         </p>
+      )}
+
+      {activityCounts && (activityCounts.active + activityCounts.planning + activityCounts.completed + activityCounts.abandoned) > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-2.5">
+          {activityCounts.active > 0 && (
+            <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+              {activityCounts.active} active
+            </span>
+          )}
+          {activityCounts.planning > 0 && (
+            <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+              {activityCounts.planning} plan
+            </span>
+          )}
+          {activityCounts.completed > 0 && (
+            <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
+              {activityCounts.completed} completed
+            </span>
+          )}
+          {activityCounts.abandoned > 0 && (
+            <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
+              {activityCounts.abandoned} abandoned
+            </span>
+          )}
+        </div>
       )}
     </button>
   );
