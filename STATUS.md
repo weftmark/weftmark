@@ -21,6 +21,7 @@ This file tracks the build status of every feature area. Update it after each te
 9. Measurement system display conversion — store with unit; display in user's preferred unit
 10. Warping plan report — from WIF threading data
 11. Project sharing via slug URL
+12. User feedback button — header modal for bug reports, feature requests, and general feedback; optional Git platform integration via `FEEDBACK_GIT_URL` + `FEEDBACK_GIT_TOKEN` env vars to auto-create issues (Gitea, GitLab, or GitHub)
 
 ---
 
