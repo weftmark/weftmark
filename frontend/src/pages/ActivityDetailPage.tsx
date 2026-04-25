@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getActivity, getActivityPicks, stepActivity, completeActivity, abandonActivity, deleteActivity,
-  renameActivity, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS,
-  type ActivityDetail, type PickRow,
+  getActivity, getActivityPicks, stepActivity, completeActivity, abandonActivity,
+  restartActivity, cloneActivity, listActivities, deleteActivity,
+  renameActivity, ApiError, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS,
+  type ActivityDetail, type ActivitySummary, type PickRow,
 } from "@/api/activities";
 import { Button } from "@/components/ui/button";
 
@@ -242,8 +243,12 @@ export function ActivityDetailPage() {
   const [nameInput, setNameInput] = useState("");
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
+  const [confirmRestart, setConfirmRestart] = useState(false);
+  const [confirmClone, setConfirmClone] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [cloneConflict, setCloneConflict] = useState<ActivitySummary | null>(null);
+  const [restartConflict, setRestartConflict] = useState<ActivitySummary | null>(null);
 
   const { data: activity, isLoading, error } = useQuery({
     queryKey: ["activity", id],
@@ -293,6 +298,65 @@ export function ActivityDetailPage() {
     setActionLoading(true);
     try { await abandonActivity(id); invalidate(); setConfirmAbandon(false); }
     finally { setActionLoading(false); }
+  };
+
+  const handleRestart = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      await restartActivity(id);
+      invalidate();
+      setConfirmRestart(false);
+      setRestartConflict(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && activity?.loom_id) {
+        const activities = await listActivities().catch(() => []);
+        setRestartConflict(activities.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
+        setConfirmRestart(false);
+      }
+    } finally { setActionLoading(false); }
+  };
+
+  const handleResolveAndRestart = async (resolve: "complete" | "abandon") => {
+    if (!restartConflict || !id) return;
+    setActionLoading(true);
+    try {
+      if (resolve === "complete") await completeActivity(restartConflict.id);
+      else await abandonActivity(restartConflict.id);
+      await restartActivity(id);
+      invalidate();
+      setRestartConflict(null);
+    } finally { setActionLoading(false); }
+  };
+
+  const handleClone = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      const cloned = await cloneActivity(id);
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
+      setConfirmClone(false);
+      navigate(`/activities/${cloned.id}`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && activity?.loom_id) {
+        const activities = await listActivities().catch(() => []);
+        setCloneConflict(activities.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
+        setConfirmClone(false);
+      }
+    } finally { setActionLoading(false); }
+  };
+
+  const handleResolveAndClone = async (resolve: "complete" | "abandon") => {
+    if (!cloneConflict || !id) return;
+    setActionLoading(true);
+    try {
+      if (resolve === "complete") await completeActivity(cloneConflict.id);
+      else await abandonActivity(cloneConflict.id);
+      const cloned = await cloneActivity(id);
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
+      setCloneConflict(null);
+      navigate(`/activities/${cloned.id}`);
+    } finally { setActionLoading(false); }
   };
 
   const handleDelete = async () => {
@@ -560,6 +624,81 @@ export function ActivityDetailPage() {
               </div>
             </CollapsibleSection>
           )}
+
+          {activity.status === "abandoned" && (
+            <CollapsibleSection title="Actions">
+              <div className="space-y-3">
+                {!confirmRestart && !restartConflict && (
+                  <Button variant="outline" size="sm" onClick={() => setConfirmRestart(true)}>
+                    Restart activity
+                  </Button>
+                )}
+                {confirmRestart && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Resume from pick {activity.current_pick}?</span>
+                    <Button size="sm" onClick={handleRestart} disabled={actionLoading}>Confirm</Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>Cancel</Button>
+                  </div>
+                )}
+                {restartConflict && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
+                    <p className="font-medium text-amber-900 dark:text-amber-200">
+                      This loom has an active activity: <span className="font-semibold">{restartConflict.name}</span>
+                    </p>
+                    <p className="text-amber-800 dark:text-amber-300 text-xs">Resolve it to restart this one.</p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button type="button" size="sm" onClick={() => handleResolveAndRestart("complete")} disabled={actionLoading}>
+                        {actionLoading ? "Working…" : "Mark completed & restart"}
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndRestart("abandon")} disabled={actionLoading}>
+                        {actionLoading ? "Working…" : "Abandon & restart"}
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setRestartConflict(null)} disabled={actionLoading}>
+                        Dismiss
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          <CollapsibleSection title="Clone activity">
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Create a new activity with the same configuration, starting at pick 1.</p>
+              {!confirmClone && !cloneConflict && (
+                <Button variant="outline" size="sm" onClick={() => setConfirmClone(true)}>
+                  Clone activity
+                </Button>
+              )}
+              {confirmClone && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">Start a new activity with the same settings?</span>
+                  <Button size="sm" onClick={handleClone} disabled={actionLoading}>{actionLoading ? "Cloning…" : "Confirm"}</Button>
+                  <Button size="sm" variant="outline" onClick={() => setConfirmClone(false)} disabled={actionLoading}>Cancel</Button>
+                </div>
+              )}
+              {cloneConflict && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
+                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                    This loom has an active activity: <span className="font-semibold">{cloneConflict.name}</span>
+                  </p>
+                  <p className="text-amber-800 dark:text-amber-300 text-xs">Resolve it to start the clone.</p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button type="button" size="sm" onClick={() => handleResolveAndClone("complete")} disabled={actionLoading}>
+                      {actionLoading ? "Working…" : "Mark completed & clone"}
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndClone("abandon")} disabled={actionLoading}>
+                      {actionLoading ? "Working…" : "Abandon & clone"}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setCloneConflict(null)} disabled={actionLoading}>
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
 
           <CollapsibleSection title="Danger zone">
             {!confirmDelete ? (
