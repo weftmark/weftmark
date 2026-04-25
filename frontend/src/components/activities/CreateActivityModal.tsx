@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 interface Props {
   onSuccess: (id: string) => void;
   onClose: () => void;
+  defaultProjectId?: string;
 }
 
 const CM_PER_IN = 2.54;
@@ -21,9 +22,9 @@ function convertLen(value: string, toUnit: "cm" | "in"): string {
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-export function CreateActivityModal({ onSuccess, onClose }: Props) {
+export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Props) {
   const [name, setName] = useState("");
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState(defaultProjectId ?? "");
   const [activityType, setActivityType] = useState<ActivityType | "">("");
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
@@ -164,12 +165,16 @@ export function CreateActivityModal({ onSuccess, onClose }: Props) {
 
           <div>
             <label className="mb-1 block text-sm font-medium">WIF project <span className="text-destructive">*</span></label>
-            <select className={f} value={projectId} onChange={(e) => { setProjectId(e.target.value); setActivityType(""); }} required>
-              <option value="">Select a project…</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            {defaultProjectId ? (
+              <p className="py-2 text-sm">{selectedProject?.name ?? "—"}</p>
+            ) : (
+              <select className={f} value={projectId} onChange={(e) => { setProjectId(e.target.value); setActivityType(""); }} required>
+                <option value="">Select a project…</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

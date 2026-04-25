@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -245,14 +245,17 @@ async def create_activity(
 
 @router.get("", response_model=list[ActivitySummary])
 async def list_activities(
+    project_id: uuid.UUID | None = Query(None),
+    loom_id: uuid.UUID | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ActivitySummary]:
-    result = await db.scalars(
-        select(Activity)
-        .where(Activity.owner_id == current_user.id, Activity.deleted_at.is_(None))
-        .order_by(Activity.created_at.desc())
-    )
+    q = select(Activity).where(Activity.owner_id == current_user.id, Activity.deleted_at.is_(None))
+    if project_id is not None:
+        q = q.where(Activity.project_id == project_id)
+    if loom_id is not None:
+        q = q.where(Activity.loom_id == loom_id)
+    result = await db.scalars(q.order_by(Activity.created_at.desc()))
     return [ActivitySummary.model_validate(a) for a in result.all()]
 
 

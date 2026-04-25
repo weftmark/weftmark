@@ -370,7 +370,7 @@ export function ActivityDetailPage() {
 
   const { data: allActivities = [] } = useQuery({
     queryKey: ["activities"],
-    queryFn: listActivities,
+    queryFn: () => listActivities(),
     enabled: isPlanning || showAssignLoom,
   });
 
