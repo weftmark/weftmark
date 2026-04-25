@@ -123,6 +123,49 @@ Files to regenerate:
 - Gitea API base is `http://10.10.10.90:3000`
 - When the user shows a failure traceback, use the same API to identify which job/step failed and pull context
 
+## Creating a PR via the Gitea API
+
+**Rule:** Always use this exact pattern. Do not deviate — previous variations caused silent failures or connection errors.
+
+**Why:** `--data-raw` produces empty responses; port 3001 is refused; packages like `jq` or `gh` are not guaranteed to be in PATH on Windows.
+
+**How to apply — exact working command:**
+
+```bash
+GITEA_TOKEN=$(grep GITEA_TOKEN_RW .env.local | cut -d= -f2 | tr -d '[:space:]')
+curl -s -X POST "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/pulls" \
+  -H "Authorization: token $GITEA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"title\":\"<title>\",\"head\":\"dev\",\"base\":\"main\",\"body\":\"<body with \\n for newlines>\"}" \
+  | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('html_url') or json.dumps(d,indent=2))"
+```
+
+**Critical rules:**
+- Use `-d` not `--data-raw` — `--data-raw` causes empty body and no response
+- Port is **3000**, not 3001
+- Escape newlines as `\\n` inside the `-d` JSON string (single-quoted heredocs don't work reliably on Windows bash)
+- Parse response with inline `python -c` — Python via conda is always available; `jq` and `gh` are not
+- Token extraction: `grep GITEA_TOKEN_RW .env.local | cut -d= -f2 | tr -d '[:space:]'`
+- For CI status checks use `GITEA_TOKEN_RO` (read-only is sufficient)
+
+## Rebuilding the frontend
+
+**Rule:** The running `frontend-1` container is nginx-only — it has no `node`, `npm`, or build tools. Never run `docker compose exec frontend npm ...`.
+
+**Why:** The frontend uses a multi-stage Dockerfile: Node builds in stage 1, the output is copied into an nginx image for stage 2. The running container is stage 2 only.
+
+**How to apply — exact workflow:**
+
+```bash
+# Build new image (runs tsc + vite build inside Docker)
+docker compose build frontend
+
+# Restart container with new image
+docker compose up -d frontend
+```
+
+If the build fails, the full error is in the `docker compose build` output — read it before retrying. Common causes: TypeScript errors, unused variables (TS6133), missing imports.
+
 ## All memories live in the repo
 
 **Rule:** All project memories must be saved in `.claude/memory/` inside the repo (`d:/repos/weaving_site/.claude/memory/`), not in `~/.claude/projects/`.
@@ -130,3 +173,48 @@ Files to regenerate:
 **Why:** The user wants memories version-controlled with the project so they travel with the repo and are visible in git history.
 
 **How to apply:** Write memory files to `d:/repos/weaving_site/.claude/memory/` and update `MEMORY.md` there. Never write project memories to the home-dir path.
+
+## Gitea issues as the communication channel
+
+**Rule:** When working on a task, post substantive comments on the active Gitea issue — not just summaries. Include the original user prompt that triggered the work, in-process reasoning, alternatives considered, and decisions made.
+
+**Why:** Issues serve as a permanent audit trail visible to the developer. The chat window is ephemeral; the issue thread persists across sessions and is reviewable without Claude.
+
+**How to apply:**
+
+- When creating an issue, include the original user message verbatim in the body or first comment as "User prompt:" block
+- When posting progress comments, explain WHY a decision was made, not just WHAT was done
+- Note alternatives that were rejected and the reason
+- End each comment with "Next:" describing the immediate next step
+
+## Periodically check for process-label issues
+
+**Rule:** At session start the hook automatically loads open `process`-label issues. Read and apply any new instructions found there before beginning work.
+
+**Why:** The developer (gx1400) may leave workflow instructions or corrections as Gitea issues between sessions. This is the async communication channel when the VS Code chat is not active.
+
+**How to apply:** The session_start.py hook fetches these automatically. If a process issue contains instructions that contradict current behaviour, the issue takes precedence. Close the process issue and update memory once the instruction is incorporated.
+
+## Pin/unpin in-progress issues
+
+**Rule:** The currently active issue must be pinned in Gitea. Unpin it when closing or switching tasks, and pin the new active issue.
+
+**Why:** Pinned issues are visible at the top of the issues list — a quick indicator of what is actively being worked on.
+
+**How to apply:**
+
+```bash
+GITEA_TOKEN=$(grep GITEA_TOKEN_ISSUES .env.local | cut -d= -f2 | tr -d '[:space:]')
+# Pin
+curl -s -X POST "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/issues/<number>/pin" -H "Authorization: token $GITEA_TOKEN"
+# Unpin
+curl -s -X DELETE "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/issues/<number>/pin" -H "Authorization: token $GITEA_TOKEN"
+```
+
+## Assign claude_vscode to issues Claude creates or owns
+
+**Rule:** When creating any issue (feature, bug, process, documentation), set `claude_vscode` as the assignee.
+
+**Why:** Makes it clear which issues are Claude's responsibility vs the developer's.
+
+**How to apply:** Include `"assignees": ["claude_vscode"]` in the issue creation payload.
