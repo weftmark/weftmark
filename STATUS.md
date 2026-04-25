@@ -10,18 +10,17 @@ This file tracks the build status of every feature area. Update it after each te
 
 ## Next 10 Planned Tasks
 
-1. New user onboarding flow — guided wizard: add a loom → upload a WIF project → create first activity; shown automatically when user has no looms or projects; skippable
-2. Active/planning activity step view — render current pick in focus, previous N picks below in full color, next N picks above in lower contrast; N adapts to available screen height; gives weaver a visual of where they are in the design
-3. User settings UI — theme toggle, measurement system preference
-4. Session start / pause / resume — auto-detect open/close; idle timeout
-5. Step correction / undo — reverse last pick without going back through the flow
-6. Bluetooth pedal input — keyboard emulator; map pedal to advance pick
-7. Tablet / mobile optimised UI — portrait-first layout for loom-side use
-8. Yarn inventory — yarn / colorway record
-9. Measurement system display conversion — store with unit; display in user's preferred unit
-10. Warping plan report — from WIF threading data
-11. Project sharing via slug URL
-12. User feedback button — header modal for bug reports, feature requests, and general feedback; optional Git platform integration via `FEEDBACK_GIT_URL` + `FEEDBACK_GIT_TOKEN` env vars to auto-create issues (Gitea, GitLab, or GitHub)
+1. Active/planning activity step view — render current pick in focus, previous N picks below in full color, next N picks above in lower contrast; N adapts to available screen height; gives weaver a visual of where they are in the design
+2. User settings UI — theme toggle, measurement system preference
+3. Session start / pause / resume — auto-detect open/close; idle timeout
+4. Step correction / undo — reverse last pick without going back through the flow
+5. Bluetooth pedal input — keyboard emulator; map pedal to advance pick
+6. Tablet / mobile optimised UI — portrait-first layout for loom-side use
+7. Yarn inventory — yarn / colorway record
+8. Measurement system display conversion — store with unit; display in user's preferred unit
+9. Warping plan report — from WIF threading data
+10. Project sharing via slug URL
+11. User feedback button — header modal for bug reports, feature requests, and general feedback; optional Git platform integration via `FEEDBACK_GIT_URL` + `FEEDBACK_GIT_TOKEN` env vars to auto-create issues (Gitea, GitLab, or GitHub)
 
 ---
 
@@ -208,6 +207,7 @@ This file tracks the build status of every feature area. Update it after each te
 
 | Capability | Notes |
 | --- | --- |
+| New user onboarding flow | Guided wizard: add a loom → upload a WIF project → create first activity; auto-shown when user has no looms or projects; skippable. Full spec in phase2.md. |
 | Third-party API access (API keys) | Personal named keys — `ws_<hex>` format, scoped, hashed, revocable; Bearer token on all `/api/*` routes. Full spec in phase2.md. |
 | Offline session caching | Cache current activity for use without internet; sync on reconnect |
 | Append-only event log for activity steps | Foundation for offline sync and audit history |
