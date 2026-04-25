@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
 from app.models.activity import Activity, ActivityStep
-from app.models.loom import Loom
+from app.models.loom import Loom, LoomVersion
 from app.models.project import Project
 from app.models.user import User
 from app.services import storage, wif_parser
@@ -166,6 +166,9 @@ async def create_activity(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    if body.loom_version_id and not body.loom_id:
+        raise HTTPException(status_code=400, detail="loom_version_id requires loom_id")
+
     loom: Loom | None = None
     if body.loom_id:
         loom = await db.scalar(
@@ -177,6 +180,27 @@ async def create_activity(
         )
         if loom is None:
             raise HTTPException(status_code=404, detail="Loom not found")
+
+        if body.loom_version_id:
+            version_ok = await db.scalar(
+                select(LoomVersion).where(
+                    LoomVersion.id == body.loom_version_id,
+                    LoomVersion.loom_id == body.loom_id,
+                )
+            )
+            if version_ok is None:
+                raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
+
+        existing_active = await db.scalar(
+            select(Activity).where(
+                Activity.loom_id == body.loom_id,
+                Activity.owner_id == current_user.id,
+                Activity.status == "active",
+                Activity.deleted_at.is_(None),
+            )
+        )
+        if existing_active is not None:
+            raise HTTPException(status_code=409, detail="This loom already has an active activity")
 
     activity = Activity(
         owner_id=current_user.id,
