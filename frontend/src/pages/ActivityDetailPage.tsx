@@ -167,15 +167,21 @@ function PickDisplay({
 // ---------------------------------------------------------------------------
 
 const PATTERN_CONTAINER_H = 240;
+const STEP_PANEL_W = 128;
+const BLEED = 12;
 
 function WeavingPatternView({
   projectId,
   currentPickIndex,
   totalPicks,
+  picks,
+  maxActive,
 }: {
   projectId: string;
   currentPickIndex: number;
   totalPicks: number;
+  picks: PickRow[];
+  maxActive: number;
 }) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
@@ -208,27 +214,41 @@ function WeavingPatternView({
 
   if (!imgSrc) return null;
 
-  // Image is flipped: last pick is at y=0 (top), pick 1 is at y=imageHeight (bottom).
-  // Keep current pick centred at all times — no clamping; container background fills
-  // the blank space at the start and end of the activity.
+  // Image is flipped: last pick at y=0 (top), pick 1 at bottom.
   const flippedIndex = totalPicks - 1 - currentPickIndex;
   const translateY = PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2 - flippedIndex * pixelsPerRow;
-
-  // Future (not yet woven) picks are above the highlight bar.
   const futureRegionH = Math.max(0, PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2);
-
-  // How far the highlight bars bleed beyond the image container on each side.
-  const BLEED = 12;
   const highlightTop = PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2 - 1;
   const highlightH = pixelsPerRow + 2;
+  const boxH = Math.max(4, pixelsPerRow - 6);
+
+  // Picks reversed so the last pick renders first (topmost) — matches drawdown orientation.
+  const reversedPicks = [...picks].reverse();
+
+  const washoutOverlay = (
+    <>
+      <div
+        className="absolute left-0 right-0 pointer-events-none"
+        style={{
+          top: 0,
+          height: futureRegionH,
+          backdropFilter: "saturate(0) brightness(1.6)",
+          WebkitBackdropFilter: "saturate(0) brightness(1.6)",
+        }}
+      />
+      <div
+        className="absolute left-0 right-0 pointer-events-none bg-white/50 dark:bg-zinc-900/55"
+        style={{ top: 0, height: futureRegionH }}
+      />
+    </>
+  );
 
   return (
-    // Outer wrapper: no overflow-hidden so highlight bars can bleed left/right.
-    <div className="relative" style={{ height: PATTERN_CONTAINER_H }}>
-      {/* Image container — clipped so the image doesn't overflow vertically */}
-      <div
-        className="rounded-lg border overflow-hidden absolute inset-0 bg-white dark:bg-zinc-900"
-      >
+    // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
+    <div className="relative flex gap-2" style={{ height: PATTERN_CONTAINER_H }}>
+
+      {/* Drawdown image */}
+      <div className="flex-1 rounded-lg border overflow-hidden relative bg-white dark:bg-zinc-900">
         <img
           src={imgSrc}
           alt="Woven pattern"
@@ -240,23 +260,39 @@ function WeavingPatternView({
             maxWidth: "none",
           }}
         />
-        {/* Immediate uniform washout for future (not yet woven) picks */}
-        <div
-          className="absolute left-0 right-0 pointer-events-none"
-          style={{
-            top: 0,
-            height: futureRegionH,
-            backdropFilter: "saturate(0) brightness(1.6)",
-            WebkitBackdropFilter: "saturate(0) brightness(1.6)",
-          }}
-        />
-        <div
-          className="absolute left-0 right-0 pointer-events-none bg-white/50 dark:bg-zinc-900/55"
-          style={{ top: 0, height: futureRegionH }}
-        />
+        {washoutOverlay}
       </div>
 
-      {/* Current pick highlight — bleeds BLEED px beyond the image on each side */}
+      {/* Lift/treadle step panel */}
+      <div
+        className="rounded-lg border overflow-hidden relative bg-background shrink-0"
+        style={{ width: STEP_PANEL_W }}
+      >
+        <div
+          style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}
+        >
+          {reversedPicks.map((pick) => (
+            <div
+              key={pick.pick}
+              className="flex items-center px-1 gap-[2px]"
+              style={{ height: pixelsPerRow }}
+            >
+              {Array.from({ length: maxActive }, (_, j) => j + 1).map((n) => (
+                <div
+                  key={n}
+                  className={`rounded-[2px] flex-1 min-w-0 ${
+                    pick.active.includes(n) ? "bg-primary" : "bg-muted/40"
+                  }`}
+                  style={{ height: boxH }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+        {washoutOverlay}
+      </div>
+
+      {/* Highlight bars — span both panels + bleed on each side */}
       <div
         className="absolute pointer-events-none bg-primary/20"
         style={{ left: -BLEED, right: -BLEED, top: highlightTop, height: highlightH }}
@@ -1075,6 +1111,8 @@ export function ActivityDetailPage() {
                 projectId={activity.project_id}
                 currentPickIndex={currentPickIndex}
                 totalPicks={activity.total_picks}
+                picks={picksData.picks}
+                maxActive={maxActive}
               />
             </>
           ) : (
