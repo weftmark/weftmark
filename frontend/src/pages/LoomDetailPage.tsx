@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { listActivities } from "@/api/activities";
 import {
   getLoom, deleteLoom, uploadLoomPhoto, deleteLoomPhoto, loomPhotoUrl,
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
@@ -607,6 +608,12 @@ export function LoomDetailPage() {
     enabled: !!id,
   });
 
+  const { data: activities = [] } = useQuery({
+    queryKey: ["activities"],
+    queryFn: listActivities,
+  });
+  const activeActivity = activities.find((a) => a.loom_id === id && a.status === "active");
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["loom", id] });
     queryClient.invalidateQueries({ queryKey: ["looms"] });
@@ -669,6 +676,20 @@ export function LoomDetailPage() {
             </div>
           )}
           {loom.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>}
+          {activeActivity && (
+            <div className="rounded-md border border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-700 px-3 py-2.5 text-sm flex items-center justify-between gap-4">
+              <div>
+                <span className="font-medium text-green-900 dark:text-green-200">Active project: </span>
+                <span className="text-green-800 dark:text-green-300">{activeActivity.name}</span>
+              </div>
+              <Link
+                to={`/activities/${activeActivity.id}`}
+                className="shrink-0 text-xs text-green-700 dark:text-green-400 hover:underline"
+              >
+                View →
+              </Link>
+            </div>
+          )}
         </section>
 
         <section>
