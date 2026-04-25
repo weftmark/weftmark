@@ -11,6 +11,7 @@ import io
 import os
 import tempfile
 
+from PIL import Image as PILImage
 from PIL import ImageDraw as _ImageDraw
 
 # Pillow ≥10 removed ImageDraw.textsize — patch it back for PyWeaving compatibility
@@ -25,6 +26,8 @@ if not hasattr(_ImageDraw.ImageDraw, "textsize"):
 from pyweaving import Draft  # noqa: E402
 from pyweaving.render import ImageRenderer  # noqa: E402
 from pyweaving.wif import WIFReader  # noqa: E402
+
+DRAWDOWN_SCALE = 20
 
 
 def load_draft(wif_bytes: bytes) -> Draft:
@@ -55,3 +58,35 @@ def render_full_draft_liftplan(draft: Draft, scale: int = 10) -> bytes:
     out = io.BytesIO()
     im.save(out, format="PNG")
     return out.getvalue()
+
+
+def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[bytes, int]:
+    """Render just the drawdown strip, cropped from the full draft image.
+
+    Returns (png_bytes, total_rows). Pick 1 is at the top of the image (y=0),
+    last pick is at the bottom. Each row is ``scale`` pixels tall.
+    """
+    margin = 20
+    warp_count = len(draft.warp)
+    weft_count = len(draft.weft)
+    drawdown_w = warp_count * scale
+    drawdown_h = weft_count * scale
+
+    if drawdown_w <= 0 or drawdown_h <= 0:
+        raise ValueError("Draft has no drawdown data to render")
+
+    renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
+    full_im = renderer.make_pil_image()
+
+    # The drawdown occupies the left portion of the image starting at x=0
+    # (warp threads 0..N-1 at x = thread_idx * scale).
+    # The treadle/shaft column is to the right at x = (1 + warp_count) * scale.
+    offsetx = margin
+    offsety = margin + (6 + len(draft.shafts)) * scale
+
+    cropped = full_im.crop((offsetx, offsety, offsetx + drawdown_w, offsety + drawdown_h))
+    # Flip vertically: pick 1 at bottom, last pick at top — completed picks accumulate below.
+    cropped = cropped.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
+    out = io.BytesIO()
+    cropped.save(out, format="PNG")
+    return out.getvalue(), weft_count

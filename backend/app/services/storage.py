@@ -51,6 +51,19 @@ def preview_exists(preview_path: str | None) -> bool:
     return (_upload_root() / preview_path).exists()
 
 
+def save_drawdown(project_id: uuid.UUID, data: bytes) -> None:
+    dest = project_dir(project_id) / "drawdown.png"
+    dest.write_bytes(data)
+
+
+def read_drawdown(project_id: uuid.UUID) -> bytes:
+    return (project_dir(project_id) / "drawdown.png").read_bytes()
+
+
+def drawdown_exists(project_id: uuid.UUID) -> bool:
+    return (project_dir(project_id) / "drawdown.png").exists()
+
+
 # ---------------------------------------------------------------------------
 # Looms — profile photo
 # ---------------------------------------------------------------------------
