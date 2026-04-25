@@ -12,6 +12,20 @@ ACTIVITY_TYPES = ("treadle", "lift")
 ACTIVITY_STATUSES = ("active", "completed", "abandoned")
 
 
+class ActivityPhoto(Base, TimestampMixin):
+    __tablename__ = "activity_photos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    activity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("activities.id"), nullable=False, index=True
+    )
+    file_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    activity: Mapped["Activity"] = relationship("Activity", back_populates="photos")
+
+
 class Activity(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "activities"
 
@@ -46,6 +60,9 @@ class Activity(Base, TimestampMixin, SoftDeleteMixin):
 
     steps: Mapped[list["ActivityStep"]] = relationship(
         "ActivityStep", back_populates="activity", order_by="ActivityStep.created_at"
+    )
+    photos: Mapped[list["ActivityPhoto"]] = relationship(
+        "ActivityPhoto", back_populates="activity", order_by="ActivityPhoto.display_order"
     )
 
 

@@ -1,18 +1,25 @@
+import mimetypes
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.deps import get_current_user, get_db
-from app.models.activity import Activity, ActivityStep
+from app.models.activity import Activity, ActivityPhoto, ActivityStep
 from app.models.loom import Loom, LoomVersion
 from app.models.project import Project
 from app.models.user import User
 from app.services import storage, wif_parser
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+MAX_ACTIVITY_PHOTOS = 20
+MAX_PHOTO_SIZE = 10 * 1024 * 1024  # 10 MB
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
 
@@ -20,6 +27,15 @@ router = APIRouter(prefix="/api/activities", tags=["activities"])
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
+
+class ActivityPhotoSchema(BaseModel):
+    id: uuid.UUID
+    filename: str
+    display_order: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class ActivitySummary(BaseModel):
@@ -51,6 +67,7 @@ class ActivityDetail(ActivitySummary):
     project_num_shafts: int | None
     project_num_treadles: int | None
     loom_name: str | None
+    photos: list[ActivityPhotoSchema] = []
 
 
 class CreateActivityRequest(BaseModel):
@@ -130,7 +147,9 @@ async def _get_owned_activity(activity_id: uuid.UUID, user: User, db: AsyncSessi
     return activity
 
 
-def _to_detail(activity: Activity, project: Project, loom: Loom | None) -> ActivityDetail:
+def _to_detail(
+    activity: Activity, project: Project, loom: Loom | None, photos: list[ActivityPhoto] | None = None
+) -> ActivityDetail:
     return ActivityDetail(
         id=activity.id,
         project_id=activity.project_id,
@@ -154,6 +173,7 @@ def _to_detail(activity: Activity, project: Project, loom: Loom | None) -> Activ
         project_num_shafts=project.num_shafts,
         project_num_treadles=project.num_treadles,
         loom_name=f"{loom.manufacturer} {loom.model_name}" if loom else None,
+        photos=[ActivityPhotoSchema.model_validate(p) for p in (photos or [])],
     )
 
 
@@ -265,10 +285,17 @@ async def get_activity(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ActivityDetail:
-    activity = await _get_owned_activity(activity_id, current_user, db)
+    result = await db.scalars(
+        select(Activity)
+        .where(Activity.id == activity_id, Activity.owner_id == current_user.id, Activity.deleted_at.is_(None))
+        .options(selectinload(Activity.photos))
+    )
+    activity = result.first()
+    if activity is None:
+        raise HTTPException(status_code=404, detail="Activity not found")
     project = await db.get(Project, activity.project_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
-    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+    return _to_detail(activity, project, loom, photos=list(activity.photos))  # type: ignore[arg-type]
 
 
 @router.patch("/{activity_id}", response_model=ActivityDetail)
@@ -487,6 +514,87 @@ async def delete_activity(
 ) -> None:
     activity = await _get_owned_activity(activity_id, current_user, db)
     activity.soft_delete()
+    await db.commit()
+
+
+@router.post("/{activity_id}/photos", response_model=ActivityPhotoSchema, status_code=201)
+async def upload_activity_photo(
+    activity_id: uuid.UUID,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityPhotoSchema:
+    activity = await _get_owned_activity(activity_id, current_user, db)
+
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, WebP, and HEIC images are allowed")
+
+    data = await file.read()
+    if len(data) > MAX_PHOTO_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 10 MB)")
+
+    existing = await db.scalars(select(ActivityPhoto).where(ActivityPhoto.activity_id == activity.id))
+    if len(existing.all()) >= MAX_ACTIVITY_PHOTOS:
+        raise HTTPException(status_code=400, detail=f"Maximum {MAX_ACTIVITY_PHOTOS} photos per activity")
+
+    ext = "." + (file.filename or "photo.jpg").rsplit(".", 1)[-1].lower()
+    photo_id = uuid.uuid4()
+    file_path = storage.save_activity_photo(activity.id, photo_id, ext, data)
+
+    max_order_result = await db.scalars(
+        select(ActivityPhoto.display_order)
+        .where(ActivityPhoto.activity_id == activity.id)
+        .order_by(ActivityPhoto.display_order.desc())
+        .limit(1)
+    )
+    max_order: int = max_order_result.first() or 0
+
+    photo = ActivityPhoto(
+        id=photo_id,
+        activity_id=activity.id,
+        file_path=file_path,
+        filename=file.filename or f"photo{ext}",
+        display_order=max_order + 1,
+    )
+    db.add(photo)
+    await db.commit()
+    await db.refresh(photo)
+    return ActivityPhotoSchema.model_validate(photo)
+
+
+@router.get("/{activity_id}/photos/{photo_id}")
+async def get_activity_photo(
+    activity_id: uuid.UUID,
+    photo_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    await _get_owned_activity(activity_id, current_user, db)
+    photo = await db.scalar(
+        select(ActivityPhoto).where(ActivityPhoto.id == photo_id, ActivityPhoto.activity_id == activity_id)
+    )
+    if photo is None or not storage.file_exists(photo.file_path):
+        raise HTTPException(status_code=404, detail="Photo not found")
+    data = storage.read_file(photo.file_path)
+    ct = mimetypes.guess_type(photo.file_path)[0] or "application/octet-stream"
+    return Response(content=data, media_type=ct)
+
+
+@router.delete("/{activity_id}/photos/{photo_id}", status_code=204)
+async def delete_activity_photo(
+    activity_id: uuid.UUID,
+    photo_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await _get_owned_activity(activity_id, current_user, db)
+    photo = await db.scalar(
+        select(ActivityPhoto).where(ActivityPhoto.id == photo_id, ActivityPhoto.activity_id == activity_id)
+    )
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    storage.delete_activity_photo(photo.file_path)
+    await db.delete(photo)
     await db.commit()
 
 
