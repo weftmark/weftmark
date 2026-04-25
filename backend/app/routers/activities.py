@@ -34,6 +34,8 @@ class ActivitySummary(BaseModel):
     total_picks: int
     num_items: int
     length_unit: str
+    completed_at: datetime | None
+    abandoned_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -66,6 +68,15 @@ class CreateActivityRequest(BaseModel):
 
 class RenameActivityRequest(BaseModel):
     name: str
+
+
+class AssignLoomRequest(BaseModel):
+    loom_id: uuid.UUID
+    loom_version_id: uuid.UUID | None = None
+
+
+class JumpRequest(BaseModel):
+    pick: int
 
 
 class StepRequest(BaseModel):
@@ -136,6 +147,7 @@ def _to_detail(activity: Activity, project: Project, loom: Loom | None) -> Activ
         warp_waste_allowance=activity.warp_waste_allowance,
         length_unit=activity.length_unit,
         completed_at=activity.completed_at,
+        abandoned_at=activity.abandoned_at,
         notes=activity.notes,
         created_at=activity.created_at,
         project_name=project.name,
@@ -275,6 +287,49 @@ async def rename_activity(
     return _to_detail(activity, project, loom)  # type: ignore[arg-type]
 
 
+@router.post("/{activity_id}/assign-loom", response_model=ActivityDetail)
+async def assign_loom(
+    activity_id: uuid.UUID,
+    body: AssignLoomRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityDetail:
+    activity = await _get_owned_activity(activity_id, current_user, db)
+    if activity.status != "active":
+        raise HTTPException(status_code=400, detail="Activity is not active")
+    if activity.loom_id is not None:
+        raise HTTPException(status_code=400, detail="Activity already has a loom assigned")
+
+    loom = await db.scalar(
+        select(Loom).where(
+            Loom.id == body.loom_id,
+            Loom.owner_id == current_user.id,
+            Loom.deleted_at.is_(None),
+        )
+    )
+    if loom is None:
+        raise HTTPException(status_code=404, detail="Loom not found")
+
+    if body.loom_version_id:
+        version_ok = await db.scalar(
+            select(LoomVersion).where(
+                LoomVersion.id == body.loom_version_id,
+                LoomVersion.loom_id == body.loom_id,
+            )
+        )
+        if version_ok is None:
+            raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
+
+    await _check_loom_conflict(body.loom_id, None, current_user.id, db)
+
+    activity.loom_id = body.loom_id
+    activity.loom_version_id = body.loom_version_id
+    await db.commit()
+    await db.refresh(activity)
+    project = await db.get(Project, activity.project_id)
+    return _to_detail(activity, project, loom)
+
+
 @router.post("/{activity_id}/step", response_model=ActivityDetail)
 async def step_activity(
     activity_id: uuid.UUID,
@@ -315,6 +370,24 @@ async def step_activity(
     return _to_detail(activity, project, loom)  # type: ignore[arg-type]
 
 
+@router.post("/{activity_id}/jump", response_model=ActivityDetail)
+async def jump_activity(
+    activity_id: uuid.UUID,
+    body: JumpRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityDetail:
+    activity = await _get_owned_activity(activity_id, current_user, db)
+    if activity.status != "active":
+        raise HTTPException(status_code=400, detail="Activity is not active")
+    activity.current_pick = max(1, min(body.pick, activity.total_picks + 1))
+    await db.commit()
+    await db.refresh(activity)
+    project = await db.get(Project, activity.project_id)
+    loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
+    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+
+
 @router.post("/{activity_id}/complete", response_model=ActivityDetail)
 async def complete_activity(
     activity_id: uuid.UUID,
@@ -343,6 +416,7 @@ async def abandon_activity(
     if activity.status != "active":
         raise HTTPException(status_code=400, detail="Activity is not active")
     activity.status = "abandoned"
+    activity.abandoned_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(activity)
     project = await db.get(Project, activity.project_id)

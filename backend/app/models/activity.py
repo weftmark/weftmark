@@ -41,6 +41,7 @@ class Activity(Base, TimestampMixin, SoftDeleteMixin):
     length_unit: Mapped[str] = mapped_column(String(5), nullable=False, default="cm")
 
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    abandoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     steps: Mapped[list["ActivityStep"]] = relationship(
