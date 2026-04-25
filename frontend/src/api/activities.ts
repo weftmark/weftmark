@@ -24,6 +24,8 @@ export interface ActivitySummary {
   total_picks: number;
   num_items: number;
   length_unit: string;
+  completed_at: string | null;
+  abandoned_at: string | null;
   created_at: string;
 }
 
@@ -65,11 +67,20 @@ export interface PicksResponse {
   has_weft_colors: boolean;
 }
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, { credentials: "include", ...init });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(err.detail ?? "Request failed");
+    throw new ApiError(err.detail ?? "Request failed", res.status);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -112,6 +123,30 @@ export function renameActivity(id: string, name: string): Promise<ActivityDetail
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
+  });
+}
+
+export function restartActivity(id: string): Promise<ActivityDetail> {
+  return req(`/api/activities/${id}/restart`, { method: "POST" });
+}
+
+export function cloneActivity(id: string): Promise<ActivityDetail> {
+  return req(`/api/activities/${id}/clone`, { method: "POST" });
+}
+
+export function jumpActivity(id: string, pick: number): Promise<ActivityDetail> {
+  return req(`/api/activities/${id}/jump`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pick }),
+  });
+}
+
+export function assignLoom(id: string, loomId: string, loomVersionId?: string): Promise<ActivityDetail> {
+  return req(`/api/activities/${id}/assign-loom`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ loom_id: loomId, loom_version_id: loomVersionId ?? null }),
   });
 }
 
