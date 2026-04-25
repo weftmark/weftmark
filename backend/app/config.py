@@ -1,6 +1,9 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_SECRET = "change-me-in-production"
 
 
 class Settings(BaseSettings):
@@ -71,6 +74,15 @@ class Settings(BaseSettings):
     render_max_width: int = 4000
     render_max_height: int = 4000
     render_default_zoom: int = 10
+
+    @model_validator(mode="after")
+    def _require_secret_key_in_production(self) -> "Settings":
+        if not self.debug and self.app_secret_key == _DEFAULT_SECRET:
+            raise ValueError(
+                "APP_SECRET_KEY is still the insecure default. "
+                'Generate a secure value: python -c "import secrets; print(secrets.token_hex(32))"'
+            )
+        return self
 
 
 @lru_cache

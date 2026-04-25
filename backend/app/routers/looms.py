@@ -1,4 +1,5 @@
 import mimetypes
+import urllib.parse
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
@@ -23,6 +24,14 @@ from app.models.user import User
 from app.services import storage
 
 router = APIRouter(prefix="/api/looms", tags=["looms"])
+
+
+def _content_disposition(disposition: str, filename: str) -> str:
+    """Build a Content-Disposition header with RFC 5987 encoded filename."""
+    ascii_fallback = "".join(c if c.isascii() and c not in '"\\\r\n' else "_" for c in filename)
+    encoded = urllib.parse.quote(filename, safe="")
+    return f"{disposition}; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"
+
 
 LoomType = Literal["floor_loom", "table_loom", "rigid_heddle", "inkle", "other"]
 
@@ -580,7 +589,7 @@ async def get_version_receipt(
     return Response(
         content=data,
         media_type=ct,
-        headers={"Content-Disposition": f'{disposition}; filename="{receipt.filename}"'},
+        headers={"Content-Disposition": _content_disposition(disposition, receipt.filename)},
     )
 
 

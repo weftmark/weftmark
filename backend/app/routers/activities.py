@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
 from app.models.activity import Activity, ActivityStep
-from app.models.loom import Loom
+from app.models.loom import Loom, LoomVersion
 from app.models.project import Project
 from app.models.user import User
 from app.services import storage, wif_parser
@@ -34,6 +34,8 @@ class ActivitySummary(BaseModel):
     total_picks: int
     num_items: int
     length_unit: str
+    completed_at: datetime | None
+    abandoned_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -68,6 +70,15 @@ class RenameActivityRequest(BaseModel):
     name: str
 
 
+class AssignLoomRequest(BaseModel):
+    loom_id: uuid.UUID
+    loom_version_id: uuid.UUID | None = None
+
+
+class JumpRequest(BaseModel):
+    pick: int
+
+
 class StepRequest(BaseModel):
     direction: str  # "advance" | "reverse"
 
@@ -88,6 +99,22 @@ class PicksResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+async def _check_loom_conflict(
+    loom_id: uuid.UUID, exclude_id: uuid.UUID | None, owner_id: uuid.UUID, db: AsyncSession
+) -> None:
+    """Raise 409 if the loom already has an active activity (other than exclude_id)."""
+    q = select(Activity).where(
+        Activity.loom_id == loom_id,
+        Activity.owner_id == owner_id,
+        Activity.status == "active",
+        Activity.deleted_at.is_(None),
+    )
+    if exclude_id is not None:
+        q = q.where(Activity.id != exclude_id)
+    if await db.scalar(q) is not None:
+        raise HTTPException(status_code=409, detail="This loom already has an active activity")
 
 
 async def _get_owned_activity(activity_id: uuid.UUID, user: User, db: AsyncSession) -> Activity:
@@ -120,6 +147,7 @@ def _to_detail(activity: Activity, project: Project, loom: Loom | None) -> Activ
         warp_waste_allowance=activity.warp_waste_allowance,
         length_unit=activity.length_unit,
         completed_at=activity.completed_at,
+        abandoned_at=activity.abandoned_at,
         notes=activity.notes,
         created_at=activity.created_at,
         project_name=project.name,
@@ -166,6 +194,9 @@ async def create_activity(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    if body.loom_version_id and not body.loom_id:
+        raise HTTPException(status_code=400, detail="loom_version_id requires loom_id")
+
     loom: Loom | None = None
     if body.loom_id:
         loom = await db.scalar(
@@ -177,6 +208,18 @@ async def create_activity(
         )
         if loom is None:
             raise HTTPException(status_code=404, detail="Loom not found")
+
+        if body.loom_version_id:
+            version_ok = await db.scalar(
+                select(LoomVersion).where(
+                    LoomVersion.id == body.loom_version_id,
+                    LoomVersion.loom_id == body.loom_id,
+                )
+            )
+            if version_ok is None:
+                raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
+
+        await _check_loom_conflict(body.loom_id, None, current_user.id, db)
 
     activity = Activity(
         owner_id=current_user.id,
@@ -244,6 +287,49 @@ async def rename_activity(
     return _to_detail(activity, project, loom)  # type: ignore[arg-type]
 
 
+@router.post("/{activity_id}/assign-loom", response_model=ActivityDetail)
+async def assign_loom(
+    activity_id: uuid.UUID,
+    body: AssignLoomRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityDetail:
+    activity = await _get_owned_activity(activity_id, current_user, db)
+    if activity.status != "active":
+        raise HTTPException(status_code=400, detail="Activity is not active")
+    if activity.loom_id is not None:
+        raise HTTPException(status_code=400, detail="Activity already has a loom assigned")
+
+    loom = await db.scalar(
+        select(Loom).where(
+            Loom.id == body.loom_id,
+            Loom.owner_id == current_user.id,
+            Loom.deleted_at.is_(None),
+        )
+    )
+    if loom is None:
+        raise HTTPException(status_code=404, detail="Loom not found")
+
+    if body.loom_version_id:
+        version_ok = await db.scalar(
+            select(LoomVersion).where(
+                LoomVersion.id == body.loom_version_id,
+                LoomVersion.loom_id == body.loom_id,
+            )
+        )
+        if version_ok is None:
+            raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
+
+    await _check_loom_conflict(body.loom_id, None, current_user.id, db)
+
+    activity.loom_id = body.loom_id
+    activity.loom_version_id = body.loom_version_id
+    await db.commit()
+    await db.refresh(activity)
+    project = await db.get(Project, activity.project_id)
+    return _to_detail(activity, project, loom)
+
+
 @router.post("/{activity_id}/step", response_model=ActivityDetail)
 async def step_activity(
     activity_id: uuid.UUID,
@@ -284,6 +370,24 @@ async def step_activity(
     return _to_detail(activity, project, loom)  # type: ignore[arg-type]
 
 
+@router.post("/{activity_id}/jump", response_model=ActivityDetail)
+async def jump_activity(
+    activity_id: uuid.UUID,
+    body: JumpRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityDetail:
+    activity = await _get_owned_activity(activity_id, current_user, db)
+    if activity.status != "active":
+        raise HTTPException(status_code=400, detail="Activity is not active")
+    activity.current_pick = max(1, min(body.pick, activity.total_picks + 1))
+    await db.commit()
+    await db.refresh(activity)
+    project = await db.get(Project, activity.project_id)
+    loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
+    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+
+
 @router.post("/{activity_id}/complete", response_model=ActivityDetail)
 async def complete_activity(
     activity_id: uuid.UUID,
@@ -312,11 +416,64 @@ async def abandon_activity(
     if activity.status != "active":
         raise HTTPException(status_code=400, detail="Activity is not active")
     activity.status = "abandoned"
+    activity.abandoned_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(activity)
     project = await db.get(Project, activity.project_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
     return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+
+
+@router.post("/{activity_id}/restart", response_model=ActivityDetail)
+async def restart_activity(
+    activity_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityDetail:
+    activity = await _get_owned_activity(activity_id, current_user, db)
+    if activity.status != "abandoned":
+        raise HTTPException(status_code=400, detail="Only abandoned activities can be restarted")
+    if activity.loom_id:
+        await _check_loom_conflict(activity.loom_id, activity.id, current_user.id, db)
+    activity.status = "active"
+    await db.commit()
+    await db.refresh(activity)
+    project = await db.get(Project, activity.project_id)
+    loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
+    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+
+
+@router.post("/{activity_id}/clone", response_model=ActivityDetail, status_code=201)
+async def clone_activity(
+    activity_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityDetail:
+    source = await _get_owned_activity(activity_id, current_user, db)
+    if source.loom_id:
+        await _check_loom_conflict(source.loom_id, None, current_user.id, db)
+    clone = Activity(
+        owner_id=current_user.id,
+        project_id=source.project_id,
+        loom_id=source.loom_id,
+        loom_version_id=source.loom_version_id,
+        name=source.name,
+        activity_type=source.activity_type,
+        status="active",
+        current_pick=1,
+        total_picks=source.total_picks,
+        finished_length_per_item=source.finished_length_per_item,
+        num_items=source.num_items,
+        waste_between_items=source.waste_between_items,
+        warp_waste_allowance=source.warp_waste_allowance,
+        length_unit=source.length_unit,
+    )
+    db.add(clone)
+    await db.commit()
+    await db.refresh(clone)
+    project = await db.get(Project, clone.project_id)
+    loom = await db.get(Loom, clone.loom_id) if clone.loom_id else None
+    return _to_detail(clone, project, loom)  # type: ignore[arg-type]
 
 
 @router.delete("/{activity_id}", status_code=204)

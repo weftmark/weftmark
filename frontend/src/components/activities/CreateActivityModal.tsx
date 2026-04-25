@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createActivity, ACTIVITY_TYPE_LABELS, type ActivityType } from "@/api/activities";
+import { createActivity, completeActivity, abandonActivity, listActivities, ApiError, ACTIVITY_TYPE_LABELS, type ActivityType, type ActivitySummary } from "@/api/activities";
 import { listProjects } from "@/api/projects";
 import { listLooms, getLoom } from "@/api/looms";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ export function CreateActivityModal({ onSuccess, onClose }: Props) {
   };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflictActivity, setConflictActivity] = useState<ActivitySummary | null>(null);
 
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: listProjects });
   const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: listLooms });
@@ -87,29 +88,60 @@ export function CreateActivityModal({ onSuccess, onClose }: Props) {
     setLoomVersionId("");
     setActivityType("");
     setWarpWaste("");
+    setConflictActivity(null);
+    setError(null);
   };
+
+  const _buildPayload = () => ({
+    name: name.trim(),
+    project_id: projectId,
+    activity_type: effectiveType as ActivityType,
+    loom_id: loomId || undefined,
+    loom_version_id: loomVersionId || undefined,
+    finished_length_per_item: finishedLength ? parseFloat(finishedLength) : undefined,
+    num_items: parseInt(numItems, 10) || 1,
+    waste_between_items: wasteBetween ? parseFloat(wasteBetween) : undefined,
+    warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
+    length_unit: lengthUnit,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!effectiveType) return;
     setError(null);
+    setConflictActivity(null);
     setLoading(true);
     try {
-      const created = await createActivity({
-        name: name.trim(),
-        project_id: projectId,
-        activity_type: effectiveType,
-        loom_id: loomId || undefined,
-        loom_version_id: loomVersionId || undefined,
-        finished_length_per_item: finishedLength ? parseFloat(finishedLength) : undefined,
-        num_items: parseInt(numItems, 10) || 1,
-        waste_between_items: wasteBetween ? parseFloat(wasteBetween) : undefined,
-        warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
-        length_unit: lengthUnit,
-      });
+      const created = await createActivity(_buildPayload());
+      onSuccess(created.id);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && loomId) {
+        const activities = await listActivities().catch(() => []);
+        const conflict = activities.find((a) => a.loom_id === loomId && a.status === "active") ?? null;
+        setConflictActivity(conflict);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to create activity");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResolveAndCreate = async (resolve: "complete" | "abandon") => {
+    if (!conflictActivity || !effectiveType) return;
+    setError(null);
+    setLoading(true);
+    try {
+      if (resolve === "complete") {
+        await completeActivity(conflictActivity.id);
+      } else {
+        await abandonActivity(conflictActivity.id);
+      }
+      const created = await createActivity(_buildPayload());
       onSuccess(created.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create activity");
+      setConflictActivity(null);
     } finally {
       setLoading(false);
     }
@@ -241,6 +273,27 @@ export function CreateActivityModal({ onSuccess, onClose }: Props) {
             </div>
           </div>
 
+          {conflictActivity && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
+              <p className="font-medium text-amber-900 dark:text-amber-200">
+                This loom has an active activity: <span className="font-semibold">{conflictActivity.name}</span>
+              </p>
+              <p className="text-amber-800 dark:text-amber-300 text-xs">
+                Mark it as completed or abandon it to start this new activity, or choose a different loom.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button type="button" size="sm" onClick={() => handleResolveAndCreate("complete")} disabled={loading}>
+                  {loading ? "Working…" : "Mark completed & continue"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndCreate("abandon")} disabled={loading}>
+                  {loading ? "Working…" : "Abandon & continue"}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => handleLoomChange("")} disabled={loading}>
+                  Clear loom
+                </Button>
+              </div>
+            </div>
+          )}
           {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         </form>
 
