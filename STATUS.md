@@ -2,7 +2,7 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-25 (v0.3.5)
+**Last updated:** 2026-04-25 (v0.4.0)
 
 **Test coverage: ~68%** (195 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
 
@@ -10,16 +10,16 @@ This file tracks the build status of every feature area. Update it after each te
 
 ## Next 10 Planned Tasks
 
-1. Activity creation — link project + loom version; enforce one active activity per loom
-2. Pick counter — manual increment / decrement of current pick
-3. Treadle tracking mode — treadle sequence recording for floor loom workflow
-4. Lift tracking mode — per-shaft state for lever loom workflow
-5. Session start / pause / resume
-6. Activity progress view — current pick, completion %, weft remaining estimate
-7. User settings UI — theme toggle, measurement system preference
-8. Add broken import smoke test to CI
-9. Yarn inventory — yarn / colorway record
-10. Measurement system display conversion (store with unit; display in user's preferred unit)
+1. User settings UI — theme toggle, measurement system preference
+2. Session start / pause / resume — auto-detect open/close; idle timeout
+3. Step correction / undo — reverse last pick without going back through the flow
+4. Bluetooth pedal input — keyboard emulator; map pedal to advance pick
+5. Tablet / mobile optimised UI — portrait-first layout for loom-side use
+6. Yarn inventory — yarn / colorway record
+7. Measurement system display conversion — store with unit; display in user's preferred unit
+8. Warping plan report — from WIF threading data
+9. Add broken import smoke test to CI
+10. Project sharing via slug URL
 
 ---
 
@@ -35,7 +35,7 @@ This file tracks the build status of every feature area. Update it after each te
 | Frontend lint (ESLint) | ✅ | TypeScript + react-hooks rules |
 | Backend unit tests (pytest) | ✅ | 195 tests (68% coverage); router + model integration tests against real Postgres |
 | Coverage gate (pytest-cov) | ✅ | Fails CI if coverage drops below 20%; configured in pytest.ini |
-| Alembic migration smoke test | ✅ | Runs all 11 migrations against real Postgres 16 container; alembic check verifies no pending |
+| Alembic migration smoke test | ✅ | Runs all 12 migrations against real Postgres 16 container; alembic check verifies no pending |
 | API integration test infrastructure | ✅ | Postgres service in backend-tests CI job; conftest.py fixtures for db_session, client, auth_client, admin_client |
 | Frontend type check (tsc) | ✅ | |
 | Dependency vulnerability scan | ✅ | pip-audit (any CVE) + npm audit (high+) |
@@ -72,7 +72,7 @@ This file tracks the build status of every feature area. Update it after each te
 | Session JWT cookie | ✅ | httpOnly, signed with APP_SECRET_KEY |
 | User preferences — theme | ✅ | Model field; UI toggle not yet built |
 | User preferences — measurement system | ✅ | Model field (metric/imperial/both); display logic not yet built |
-| Swagger UI (debug mode only) | ✅ | Available at /api/docs when DEBUG=true |
+| Swagger UI | ✅ | Available at /api/docs; openapi_url set to /api/openapi.json to work through nginx proxy |
 
 ---
 
@@ -129,17 +129,29 @@ This file tracks the build status of every feature area. Update it after each te
 
 | Capability | Status | Notes |
 | --- | --- | --- |
-| Activity creation | ✅ | Links project + loom version; one active activity per loom |
-| Pick counter (manual) | ⏳ | Increment / decrement current pick |
-| Lift tracking mode | ⏳ | Per-shaft state; lever loom workflow |
-| Treadle tracking mode | ⏳ | Treadle sequence recording; floor loom workflow |
+| Activity creation | ✅ | Links project + loom version; one active activity per loom enforced |
+| Planning mode | ✅ | Activities without a loom assigned show blue Plan badge; step through picks with local state only — position not persisted |
+| Assign loom to planning activity | ✅ | From list card and detail page banner; loom conflict detection |
+| Pick counter — step ±1 | ✅ | Advance / reverse buttons + keyboard arrows / spacebar |
+| Pick counter — step ±10 | ✅ | Shown on sm+ screens |
+| Jump to pick | ✅ | Number input on activity detail page |
+| Lift tracking mode | ✅ | Per-shaft state display; lever loom workflow |
+| Treadle tracking mode | ✅ | Treadle sequence display; floor loom workflow |
+| Activity list — categories | ✅ | Grouped by Active / Planning / Completed / Abandoned; year-collapsible |
+| Activity progress view | ✅ | Pick counter, progress bar, completion %, weft remaining |
+| Design preview in activity | ✅ | WIF preview modal from activity list cards and detail page |
+| Complete activity | ✅ | Mark complete action; inline button when all picks done |
+| Abandon activity | ✅ | With abandoned_at timestamp |
+| Restart abandoned activity | ✅ | Resumes from current pick; loom conflict detection |
+| Clone activity | ✅ | New activity from same config, starting at pick 1 |
+| Multiple activities per project | ✅ | Unlimited; old activities retained |
+| Activity soft delete | ✅ | Delete from danger zone on detail page |
+| Rename activity | ✅ | Inline edit on detail page header |
+| Weft colour display | ✅ | Per-pick colour swatch; toggle + colour mode selector |
+| Prev / next pick hint | ✅ | Shows adjacent pick shaft/treadle numbers |
 | Bluetooth pedal input | ⏳ | Keyboard emulator; maps pedal presses to UI actions |
 | Step correction / undo | ⏳ | |
 | Session start / pause / resume | ⏳ | |
-| Activity progress view | ⏳ | Current pick, completion %, weft remaining estimate |
-| Jump to pick (manual) | ⏳ | |
-| Multiple activities per project | ⏳ | Old activities retained when new WIF uploaded |
-| Activity soft delete | ⏳ | |
 | Tablet / mobile optimised UI | ⏳ | Portrait-first layout for loom-side use |
 
 ---
