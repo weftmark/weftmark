@@ -16,11 +16,26 @@
       "Bash(npm run *)",
       "Bash(curl -s http://localhost:3000/health)",
       "Bash(curl -s http://10.10.10.90:3000/api/*)",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(python .claude/hooks/session_start.py)"
     ],
     "additionalDirectories": [
       "d:\\repos\\weaving_site",
       "d:\\repos\\weaving_site\\backend"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/session_start.py 2>/dev/null || true",
+            "timeout": 10,
+            "statusMessage": "Loading active issue from Gitea..."
+          }
+        ]
+      }
     ]
   }
 }
