@@ -173,3 +173,48 @@ If the build fails, the full error is in the `docker compose build` output — r
 **Why:** The user wants memories version-controlled with the project so they travel with the repo and are visible in git history.
 
 **How to apply:** Write memory files to `d:/repos/weaving_site/.claude/memory/` and update `MEMORY.md` there. Never write project memories to the home-dir path.
+
+## Gitea issues as the communication channel
+
+**Rule:** When working on a task, post substantive comments on the active Gitea issue — not just summaries. Include the original user prompt that triggered the work, in-process reasoning, alternatives considered, and decisions made.
+
+**Why:** Issues serve as a permanent audit trail visible to the developer. The chat window is ephemeral; the issue thread persists across sessions and is reviewable without Claude.
+
+**How to apply:**
+
+- When creating an issue, include the original user message verbatim in the body or first comment as "User prompt:" block
+- When posting progress comments, explain WHY a decision was made, not just WHAT was done
+- Note alternatives that were rejected and the reason
+- End each comment with "Next:" describing the immediate next step
+
+## Periodically check for process-label issues
+
+**Rule:** At session start the hook automatically loads open `process`-label issues. Read and apply any new instructions found there before beginning work.
+
+**Why:** The developer (gx1400) may leave workflow instructions or corrections as Gitea issues between sessions. This is the async communication channel when the VS Code chat is not active.
+
+**How to apply:** The session_start.py hook fetches these automatically. If a process issue contains instructions that contradict current behaviour, the issue takes precedence. Close the process issue and update memory once the instruction is incorporated.
+
+## Pin/unpin in-progress issues
+
+**Rule:** The currently active issue must be pinned in Gitea. Unpin it when closing or switching tasks, and pin the new active issue.
+
+**Why:** Pinned issues are visible at the top of the issues list — a quick indicator of what is actively being worked on.
+
+**How to apply:**
+
+```bash
+GITEA_TOKEN=$(grep GITEA_TOKEN_ISSUES .env.local | cut -d= -f2 | tr -d '[:space:]')
+# Pin
+curl -s -X POST "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/issues/<number>/pin" -H "Authorization: token $GITEA_TOKEN"
+# Unpin
+curl -s -X DELETE "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/issues/<number>/pin" -H "Authorization: token $GITEA_TOKEN"
+```
+
+## Assign claude_vscode to issues Claude creates or owns
+
+**Rule:** When creating any issue (feature, bug, process, documentation), set `claude_vscode` as the assignee.
+
+**Why:** Makes it clear which issues are Claude's responsibility vs the developer's.
+
+**How to apply:** Include `"assignees": ["claude_vscode"]` in the issue creation payload.
