@@ -153,9 +153,11 @@ function PickDisplay({
         })}
       </div>
       {showWeftColor && weftHex && (
-        <div className="flex justify-center items-center gap-2">
-          <div className="h-5 w-5 rounded border border-border shrink-0" style={{ backgroundColor: weftHex }} />
-          <span className="text-xs text-muted-foreground font-mono">{weftHex}</span>
+        <div
+          className="h-7 w-full rounded-md flex items-center justify-center text-xs font-semibold uppercase tracking-wider"
+          style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
+        >
+          Weft Color
         </div>
       )}
     </div>
