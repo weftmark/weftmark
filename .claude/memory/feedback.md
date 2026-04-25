@@ -109,6 +109,20 @@ Files to regenerate:
 - Suggest coverage reassessment at natural breakpoints: after a router reaches ≥80%, before Phase 2, after a major refactor
 - Coverage tracking file is `docs/testing.md`
 
+## Proactively check CI status after pushes
+
+**Rule:** After every push to Gitea, query the Actions API to check whether the triggered run passed or failed. If it failed, pull the job-level details and surface the error without being asked.
+
+**Why:** User monitors CI manually and wants Claude to do that legwork — spotting failures and pulling failure details proactively rather than waiting to be asked.
+
+**How to apply:**
+
+- After pushing, poll `GET /api/v1/repos/gx1400/weaving_site/actions/runs?limit=3` until the new run appears as `completed`
+- If `conclusion == "failure"`, fetch job details: `GET /api/v1/repos/gx1400/weaving_site/actions/runs/{run_id}/jobs`
+- Read-only token is `GITEA_TOKEN_RO` in `.env.local`; read-write token is `GITEA_TOKEN_RW` — use RW for creating PRs and any write operations
+- Gitea API base is `http://10.10.10.90:3000`
+- When the user shows a failure traceback, use the same API to identify which job/step failed and pull context
+
 ## All memories live in the repo
 
 **Rule:** All project memories must be saved in `.claude/memory/` inside the repo (`d:/repos/weaving_site/.claude/memory/`), not in `~/.claude/projects/`.

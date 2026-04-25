@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getActivity, getActivityPicks, stepActivity, jumpActivity, completeActivity, abandonActivity,
   restartActivity, cloneActivity, listActivities, deleteActivity,
-  renameActivity, ApiError, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS,
-  type ActivitySummary, type PickRow,
+  renameActivity, uploadActivityPhoto, deleteActivityPhoto, activityPhotoUrl,
+  ApiError, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS,
+  type ActivitySummary, type ActivityPhoto, type PickRow,
 } from "@/api/activities";
 import { previewUrl } from "@/api/projects";
 import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
@@ -329,6 +330,278 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Completed summary
+// ---------------------------------------------------------------------------
+
+function PhotoGrid({
+  activityId,
+  photos,
+  onUploaded,
+  onDeleted,
+}: {
+  activityId: string;
+  photos: ActivityPhoto[];
+  onUploaded: (p: ActivityPhoto) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setError(null);
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        if (photos.length >= 20) { setError("Maximum 20 photos reached."); break; }
+        const photo = await uploadActivityPhoto(activityId, file);
+        onUploaded(photo);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (photoId: string) => {
+    await deleteActivityPhoto(activityId, photoId);
+    onDeleted(photoId);
+    setConfirmDeleteId(null);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-medium">Photos <span className="text-muted-foreground font-normal">({photos.length}/20)</span></p>
+        {photos.length < 20 && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            {uploading ? "Uploading…" : "+ Add photo"}
+          </button>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          multiple
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+      </div>
+      {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
+      {photos.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          Add photos to document your work
+        </button>
+      ) : (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+          {photos.map((p) => (
+            <div key={p.id} className="group relative aspect-square">
+              <img
+                src={activityPhotoUrl(activityId, p.id)}
+                alt={p.filename}
+                className="w-full h-full object-cover rounded-md border cursor-pointer"
+                onClick={() => setLightbox(p.id)}
+              />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }}
+                className="absolute top-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
+                aria-label="Delete photo"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {photos.length < 20 && (
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              className="aspect-square rounded-md border border-dashed flex items-center justify-center text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50 text-2xl"
+            >
+              +
+            </button>
+          )}
+        </div>
+      )}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <img
+            src={activityPhotoUrl(activityId, lightbox)}
+            alt=""
+            className="max-h-full max-w-full rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 text-white/70 hover:text-white text-sm"
+          >
+            Close ✕
+          </button>
+        </div>
+      )}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-background rounded-lg border p-6 max-w-sm w-full space-y-4">
+            <p className="text-sm">Delete this photo? This cannot be undone.</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="destructive" onClick={() => handleDelete(confirmDeleteId)}>Delete</Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompletedSummary({
+  activity,
+  siblings,
+  onPhotosChange,
+}: {
+  activity: import("@/api/activities").ActivityDetail;
+  siblings: ActivitySummary[];
+  onPhotosChange: (photos: ActivityPhoto[]) => void;
+}) {
+  const [photos, setPhotos] = useState<ActivityPhoto[]>(activity.photos);
+
+  const pct = activity.total_picks > 0
+    ? Math.round(((activity.current_pick - 1) / activity.total_picks) * 100)
+    : 100;
+  const completedDate = activity.completed_at
+    ? new Date(activity.completed_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+    : null;
+
+  const handleUploaded = (p: ActivityPhoto) => {
+    const next = [...photos, p];
+    setPhotos(next);
+    onPhotosChange(next);
+  };
+
+  const handleDeleted = (id: string) => {
+    const next = photos.filter((p) => p.id !== id);
+    setPhotos(next);
+    onPhotosChange(next);
+  };
+
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-6 space-y-6">
+      {/* Metrics */}
+      <div className="rounded-lg border p-5 space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Summary</h2>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+          {completedDate && (
+            <><dt className="text-muted-foreground">Completed</dt><dd>{completedDate}</dd></>
+          )}
+          <dt className="text-muted-foreground">Picks woven</dt>
+          <dd>{activity.total_picks} picks ({pct}%)</dd>
+          {activity.num_items > 1 && (
+            <><dt className="text-muted-foreground">Items</dt><dd>{activity.num_items}</dd></>
+          )}
+          {activity.finished_length_per_item && (
+            <><dt className="text-muted-foreground">Length / item</dt>
+            <dd>{activity.finished_length_per_item} {activity.length_unit}</dd></>
+          )}
+          {activity.warp_waste_allowance && (
+            <><dt className="text-muted-foreground">Warp waste</dt>
+            <dd>{activity.warp_waste_allowance} {activity.length_unit}</dd></>
+          )}
+          <dt className="text-muted-foreground">Type</dt>
+          <dd>{ACTIVITY_TYPE_LABELS[activity.activity_type]}</dd>
+        </dl>
+      </div>
+
+      {/* Design preview */}
+      <div>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
+        <div className="overflow-auto rounded-lg border bg-white p-2">
+          <img
+            src={previewUrl(activity.project_id)}
+            alt={`Design for ${activity.project_name}`}
+            className="max-w-full mx-auto block"
+            style={{ imageRendering: "pixelated" }}
+          />
+        </div>
+      </div>
+
+      {/* Links */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          to={`/projects/${activity.project_id}`}
+          className="rounded-lg border p-4 hover:border-ring transition-colors block"
+        >
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Project</p>
+          <p className="font-medium text-sm">{activity.project_name}</p>
+        </Link>
+        {activity.loom_id && activity.loom_name && (
+          <Link
+            to={`/looms/${activity.loom_id}`}
+            className="rounded-lg border p-4 hover:border-ring transition-colors block"
+          >
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Loom</p>
+            <p className="font-medium text-sm">{activity.loom_name}</p>
+          </Link>
+        )}
+      </div>
+
+      {/* Sibling activities */}
+      {siblings.length > 0 && (
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other activities on this project</h2>
+          <div className="space-y-1">
+            {siblings.map((s) => {
+              const isPlanning = s.status === "active" && !s.loom_id;
+              const label = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[s.status];
+              const badgeCls = isPlanning
+                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                : s.status === "active"
+                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                  : "bg-muted text-muted-foreground";
+              return (
+                <Link
+                  key={s.id}
+                  to={`/activities/${s.id}`}
+                  className="flex items-center justify-between rounded-md border px-3 py-2 text-sm hover:border-ring transition-colors"
+                >
+                  <span>{s.name}</span>
+                  <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${badgeCls}`}>{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Photos */}
+      <PhotoGrid
+        activityId={activity.id}
+        photos={photos}
+        onUploaded={handleUploaded}
+        onDeleted={handleDeleted}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -367,11 +640,18 @@ export function ActivityDetailPage() {
   });
 
   const isPlanning = activity?.status === "active" && !activity?.loom_id;
+  const isCompleted = activity?.status === "completed";
 
   const { data: allActivities = [] } = useQuery({
     queryKey: ["activities"],
-    queryFn: listActivities,
+    queryFn: () => listActivities(),
     enabled: isPlanning || showAssignLoom,
+  });
+
+  const { data: siblingActivities = [] } = useQuery({
+    queryKey: ["activities", { projectId: activity?.project_id }],
+    queryFn: () => listActivities({ projectId: activity!.project_id }),
+    enabled: isCompleted && !!activity?.project_id,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["activity", id] });
@@ -610,6 +890,17 @@ export function ActivityDetailPage() {
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
+        {/* Completed summary */}
+        {isCompleted && (
+          <CompletedSummary
+            activity={activity}
+            siblings={siblingActivities.filter((s) => s.id !== id)}
+            onPhotosChange={(photos) =>
+              queryClient.setQueryData(["activity", id], { ...activity, photos })
+            }
+          />
+        )}
+
         {/* Planning banner */}
         {isPlanning && (
           <div className="mx-auto max-w-2xl px-8 pt-6">

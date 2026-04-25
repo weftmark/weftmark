@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listActivities } from "@/api/activities";
+import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
 import {
   getLoom, deleteLoom, uploadLoomPhoto, deleteLoomPhoto, loomPhotoUrl,
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
@@ -608,11 +609,12 @@ export function LoomDetailPage() {
     enabled: !!id,
   });
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ["activities"],
-    queryFn: listActivities,
+  const { data: loomActivities = [] } = useQuery({
+    queryKey: ["activities", { loomId: id }],
+    queryFn: () => listActivities({ loomId: id! }),
+    enabled: !!id,
   });
-  const activeActivity = activities.find((a) => a.loom_id === id && a.status === "active");
+  const activeActivity = loomActivities.find((a) => a.status === "active");
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["loom", id] });
@@ -706,6 +708,16 @@ export function LoomDetailPage() {
               />
             ))}
           </div>
+        </section>
+
+        <section className="border-t pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold">Activities</h2>
+            <Link to="/activities" className="text-xs text-muted-foreground hover:text-foreground">
+              All activities →
+            </Link>
+          </div>
+          <ActivitySummaryList activities={loomActivities} />
         </section>
 
         <section className="border-t pt-6">
