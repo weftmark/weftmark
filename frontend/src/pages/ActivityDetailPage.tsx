@@ -250,8 +250,8 @@ function WeavingPatternView({
     // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
     <div className="relative flex gap-2" style={{ height: PATTERN_CONTAINER_H }}>
 
-      {/* Drawdown image */}
-      <div className="flex-1 rounded-lg border overflow-hidden relative bg-white dark:bg-zinc-900">
+      {/* Drawdown image — horizontally scrollable to view wide designs */}
+      <div className="flex-1 rounded-lg border overflow-x-auto overflow-y-hidden relative bg-white dark:bg-zinc-900">
         <img
           src={imgSrc}
           alt="Woven pattern"
