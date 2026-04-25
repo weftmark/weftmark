@@ -168,10 +168,24 @@ function PickDisplay({
 // Weaving pattern view — drawdown image windowed to current pick
 // ---------------------------------------------------------------------------
 
-const PATTERN_CONTAINER_H = 240;
+// Overhead accounts for: app header, activity header, progress bar,
+// controls bar, pick instruction card, step controls, and padding.
+const PATTERN_OVERHEAD_PX = 560;
+const PATTERN_MIN_H = 200;
 const STEP_PANEL_W = 128;
 const COLOR_COL_W = 24;
 const BLEED = 12;
+
+function useAdaptivePatternHeight(): number {
+  const compute = () => Math.max(PATTERN_MIN_H, window.innerHeight - PATTERN_OVERHEAD_PX);
+  const [height, setHeight] = useState(compute);
+  useEffect(() => {
+    const onResize = () => setHeight(compute());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return height;
+}
 
 function WeavingPatternView({
   projectId,
@@ -186,6 +200,7 @@ function WeavingPatternView({
   picks: PickRow[];
   maxActive: number;
 }) {
+  const containerH = useAdaptivePatternHeight();
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
   const objectUrlRef = useRef<string | null>(null);
@@ -219,9 +234,9 @@ function WeavingPatternView({
 
   // Image is flipped: last pick at y=0 (top), pick 1 at bottom.
   const flippedIndex = totalPicks - 1 - currentPickIndex;
-  const translateY = PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2 - flippedIndex * pixelsPerRow;
-  const futureRegionH = Math.max(0, PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2);
-  const highlightTop = PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2 - 1;
+  const translateY = containerH / 2 - pixelsPerRow / 2 - flippedIndex * pixelsPerRow;
+  const futureRegionH = Math.max(0, containerH / 2 - pixelsPerRow / 2);
+  const highlightTop = containerH / 2 - pixelsPerRow / 2 - 1;
   const highlightH = pixelsPerRow + 2;
   const boxH = Math.max(4, pixelsPerRow - 6);
 
@@ -248,10 +263,10 @@ function WeavingPatternView({
 
   return (
     // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
-    <div className="relative flex gap-2" style={{ height: PATTERN_CONTAINER_H }}>
+    <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown image */}
-      <div className="flex-1 rounded-lg border overflow-hidden relative bg-white dark:bg-zinc-900">
+      {/* Drawdown image — horizontally scrollable to view wide designs */}
+      <div className="flex-1 rounded-lg border overflow-x-auto overflow-y-hidden relative bg-white dark:bg-zinc-900">
         <img
           src={imgSrc}
           alt="Woven pattern"
