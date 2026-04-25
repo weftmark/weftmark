@@ -9,11 +9,14 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
       "Bash(git stash *)",
       "Bash(npx tsc *)",
       "Bash(npm run *)",
       "Bash(curl -s http://localhost:3000/health)",
-      "Bash(curl -s http://10.10.10.90:3000/api/*)"
+      "Bash(curl -s http://10.10.10.90:3000/api/*)",
+      "Bash(python -c ' *)"
     ],
     "additionalDirectories": [
       "d:\\repos\\weaving_site",

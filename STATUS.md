@@ -8,19 +8,11 @@ This file tracks the build status of every feature area. Update it after each te
 
 ---
 
-## Next 10 Planned Tasks
+## Planned Tasks
 
-1. Active/planning activity step view — render current pick in focus, previous N picks below in full color, next N picks above in lower contrast; N adapts to available screen height; gives weaver a visual of where they are in the design
-2. User settings UI — theme toggle, measurement system preference
-3. Session start / pause / resume — auto-detect open/close; idle timeout
-4. Step correction / undo — reverse last pick without going back through the flow
-5. Bluetooth pedal input — keyboard emulator; map pedal to advance pick
-6. Tablet / mobile optimised UI — portrait-first layout for loom-side use
-7. Yarn inventory — yarn / colorway record
-8. Measurement system display conversion — store with unit; display in user's preferred unit
-9. Warping plan report — from WIF threading data
-10. Project sharing via slug URL
-11. User feedback button — header modal for bug reports, feature requests, and general feedback; optional Git platform integration via `FEEDBACK_GIT_URL` + `FEEDBACK_GIT_TOKEN` env vars to auto-create issues (Gitea, GitLab, or GitHub)
+Tracked as [Gitea issues](http://10.10.10.90:3000/gx1400/weaving_site/issues).
+
+Filter by label to find priorities: `P1` (current session), `P2` (next up), `P3` (planned), `P4` (someday), `phase-2` (deferred).
 
 ---
 
