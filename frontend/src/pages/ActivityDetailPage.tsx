@@ -168,6 +168,7 @@ function PickDisplay({
 
 const PATTERN_CONTAINER_H = 240;
 const STEP_PANEL_W = 128;
+const COLOR_COL_W = 24;
 const BLEED = 12;
 
 function WeavingPatternView({
@@ -292,7 +293,28 @@ function WeavingPatternView({
         {washoutOverlay}
       </div>
 
-      {/* Highlight bars — span both panels + bleed on each side */}
+      {/* Weft color history column */}
+      <div
+        className="rounded-lg border overflow-hidden relative shrink-0"
+        style={{ width: COLOR_COL_W }}
+      >
+        <div
+          style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}
+        >
+          {reversedPicks.map((pick) => (
+            <div
+              key={pick.pick}
+              style={{
+                height: pixelsPerRow,
+                backgroundColor: pick.color ?? "hsl(var(--muted))",
+              }}
+            />
+          ))}
+        </div>
+        {washoutOverlay}
+      </div>
+
+      {/* Highlight bars — span all panels + bleed on each side */}
       <div
         className="absolute pointer-events-none bg-primary/20"
         style={{ left: -BLEED, right: -BLEED, top: highlightTop, height: highlightH }}
@@ -1076,8 +1098,8 @@ export function ActivityDetailPage() {
           )}
         </div>
 
-        {/* Pick display + pattern view */}
-        <div className="mx-auto max-w-2xl px-8 py-4 space-y-4">
+        {/* Pick instruction — stays compact */}
+        <div className="mx-auto max-w-2xl px-8 pt-4">
           {isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-lg font-medium">All {activity.total_picks} picks complete!</p>
@@ -1099,28 +1121,32 @@ export function ActivityDetailPage() {
               )}
             </div>
           ) : picksData ? (
-            <>
-              <PickDisplay
-                pick={picksData.picks[currentPickIndex]}
-                totalCount={maxActive}
-                activityType={activity.activity_type}
-                colorMode={colorMode}
-                showWeftColor={showWeftColor}
-              />
-              <WeavingPatternView
-                projectId={activity.project_id}
-                currentPickIndex={currentPickIndex}
-                totalPicks={activity.total_picks}
-                picks={picksData.picks}
-                maxActive={maxActive}
-              />
-            </>
+            <PickDisplay
+              pick={picksData.picks[currentPickIndex]}
+              totalCount={maxActive}
+              activityType={activity.activity_type}
+              colorMode={colorMode}
+              showWeftColor={showWeftColor}
+            />
           ) : (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-sm text-muted-foreground">Pick data loading…</p>
             </div>
           )}
         </div>
+
+        {/* Pattern view — wider on large screens to show more warp threads */}
+        {picksData && !isFinished && (
+          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+            <WeavingPatternView
+              projectId={activity.project_id}
+              currentPickIndex={currentPickIndex}
+              totalPicks={activity.total_picks}
+              picks={picksData.picks}
+              maxActive={maxActive}
+            />
+          </div>
+        )}
 
         {/* Step controls — active tracking and planning */}
         <div className="mx-auto max-w-lg px-8 pb-6 space-y-6">
