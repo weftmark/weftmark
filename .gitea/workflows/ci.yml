@@ -226,6 +226,7 @@ jobs:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
+          APP_SECRET_KEY: ci-alembic-key-not-for-production
 
       - name: Verify no pending migrations (alembic check)
         run: cd backend && alembic check
@@ -235,6 +236,7 @@ jobs:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
+          APP_SECRET_KEY: ci-alembic-key-not-for-production
 
   # ------------------------------------------------------------
   # Stage 4 — Dependency vulnerability audit
