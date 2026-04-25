@@ -83,108 +83,184 @@ function DesignPreviewModal({ projectId, onClose }: { projectId: string; onClose
   );
 }
 
+
 // ---------------------------------------------------------------------------
-// Pick display
+// Pick display — current pick instructions
 // ---------------------------------------------------------------------------
 
 function PickDisplay({
   pick,
+  totalCount,
   activityType,
-  totalShaftsOrTreadles,
   colorMode,
   showWeftColor,
 }: {
   pick: PickRow;
+  totalCount: number;
   activityType: string;
-  totalShaftsOrTreadles: number;
   colorMode: ColorMode;
   showWeftColor: boolean;
 }) {
-  const label = activityType === "lift" ? "Shaft" : "Treadle";
-  const count = Math.max(totalShaftsOrTreadles, Math.max(...pick.active, 0));
+  const label = activityType === "lift" ? "Raise shafts" : "Press treadles";
+  const count = Math.max(totalCount, pick.active.length > 0 ? Math.max(...pick.active) : 0, 1);
   const weftHex = pick.color ?? null;
-  const colorInBoxes = colorMode !== "theme";
-  const cols = count;
+
+  const boxCls =
+    count <= 4  ? "h-14 w-14 text-base"
+    : count <= 8  ? "h-10 w-10 text-sm"
+    : count <= 16 ? "h-8 w-8 text-xs"
+    : "h-6 w-6 text-xs";
 
   return (
-    <div className="space-y-4 w-full">
-      <p className="text-center text-sm text-muted-foreground">
-        {activityType === "lift" ? "Raise shafts" : "Press treadles"}
+    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-6 py-5 space-y-4">
+      <p className="text-center text-xs font-medium text-primary/80 uppercase tracking-wider">
+        {label} · pick {pick.pick}
       </p>
-
-      {showWeftColor && weftHex && (
-        <div
-          className="w-full rounded-lg h-12 flex items-center justify-center border border-border"
-          style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
-        >
-          <span className="text-xs font-semibold uppercase tracking-widest opacity-70">Weft Color</span>
-        </div>
-      )}
-
-      <div
-        className="grid w-full gap-2"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-      >
+      <div className="flex flex-wrap justify-center gap-2">
         {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
           const active = pick.active.includes(n);
-
-          if (colorMode === "strip" && colorInBoxes) {
-            return (
-              <div
-                key={n}
-                className={`relative aspect-square flex flex-col items-center justify-center rounded-lg border-2 font-bold overflow-hidden transition-colors ${
-                  active
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-muted bg-muted/30 text-muted-foreground"
-                }`}
-              >
-                <span className="text-[0.6em] font-normal opacity-60">{label[0]}</span>
-                <span className="text-[1em] leading-tight">{n}</span>
-                {active && weftHex && (
-                  <span
-                    className="absolute bottom-0 left-0 right-0 h-[14%]"
-                    style={{ backgroundColor: weftHex }}
-                  />
-                )}
-              </div>
-            );
+          if (colorMode !== "theme" && active && weftHex) {
+            if (colorMode === "filled") {
+              const fg = contrastColor(weftHex);
+              return (
+                <div key={n} style={{ backgroundColor: weftHex, borderColor: fg }}
+                  className={`${boxCls} rounded-md border-2 flex items-center justify-center font-bold`}>
+                  <span style={{ color: fg }}>{n}</span>
+                </div>
+              );
+            }
+            if (colorMode === "strip") {
+              return (
+                <div key={n}
+                  className={`${boxCls} rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center font-bold`}>
+                  <span className="absolute bottom-0 left-0 right-0 h-[20%]"
+                    style={{ backgroundColor: weftHex }} />
+                  <span className="relative text-primary-foreground">{n}</span>
+                </div>
+              );
+            }
           }
-
-          if (colorMode === "filled" && colorInBoxes && active && weftHex) {
-            const fg = contrastColor(weftHex);
-            return (
-              <div
-                key={n}
-                style={{ backgroundColor: weftHex, borderColor: fg, color: fg }}
-                className="aspect-square flex flex-col items-center justify-center rounded-lg border-4 font-bold"
-              >
-                <span className="text-[0.6em] font-normal opacity-70">{label[0]}</span>
-                <span className="text-[1em] leading-tight">{n}</span>
-              </div>
-            );
-          }
-
           return (
-            <div
-              key={n}
-              className={`aspect-square flex flex-col items-center justify-center rounded-lg border-2 font-bold transition-colors ${
+            <div key={n}
+              className={`${boxCls} rounded-md border-2 flex items-center justify-center font-bold ${
                 active
-                  ? "border-primary bg-primary text-primary-foreground"
+                  ? "bg-primary border-primary text-primary-foreground"
                   : "border-muted bg-muted/30 text-muted-foreground"
-              }`}
-            >
-              <span className="text-[0.6em] font-normal opacity-60">{label[0]}</span>
-              <span className="text-[1em] leading-tight">{n}</span>
+              }`}>
+              {n}
             </div>
           );
         })}
       </div>
-
-      {pick.active.length === 0 && (
-        <p className="text-center text-sm text-muted-foreground italic">
-          No active {label.toLowerCase()}s for this pick
-        </p>
+      {showWeftColor && weftHex && (
+        <div className="flex justify-center items-center gap-2">
+          <div className="h-5 w-5 rounded border border-border shrink-0" style={{ backgroundColor: weftHex }} />
+          <span className="text-xs text-muted-foreground font-mono">{weftHex}</span>
+        </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Weaving pattern view — drawdown image windowed to current pick
+// ---------------------------------------------------------------------------
+
+const PATTERN_CONTAINER_H = 240;
+
+function WeavingPatternView({
+  projectId,
+  currentPickIndex,
+  totalPicks,
+}: {
+  projectId: string;
+  currentPickIndex: number;
+  totalPicks: number;
+}) {
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [pixelsPerRow, setPixelsPerRow] = useState(20);
+  const objectUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/projects/${projectId}/drawdown`, { credentials: "include" })
+      .then((res) => {
+        const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
+        if (!cancelled) setPixelsPerRow(ppr);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+        const url = URL.createObjectURL(blob);
+        objectUrlRef.current = url;
+        setImgSrc(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, [projectId]);
+
+  if (!imgSrc) return null;
+
+  // Image is flipped: last pick is at y=0 (top), pick 1 is at y=imageHeight (bottom).
+  // Keep current pick centred at all times — no clamping; container background fills
+  // the blank space at the start and end of the activity.
+  const flippedIndex = totalPicks - 1 - currentPickIndex;
+  const translateY = PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2 - flippedIndex * pixelsPerRow;
+
+  // Future (not yet woven) picks are above the highlight bar.
+  const futureRegionH = Math.max(0, PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2);
+
+  return (
+    <div className="rounded-lg border overflow-hidden relative bg-white dark:bg-zinc-900"
+      style={{ height: PATTERN_CONTAINER_H }}>
+      <img
+        src={imgSrc}
+        alt="Woven pattern"
+        className="block"
+        style={{
+          transform: `translateY(${translateY}px)`,
+          imageRendering: "pixelated",
+          transition: "transform 0.15s ease",
+          maxWidth: "none",
+        }}
+      />
+      {/* Immediate uniform washout for future (not yet woven) picks — no gradient */}
+      <div
+        className="absolute left-0 right-0 pointer-events-none"
+        style={{
+          top: 0,
+          height: futureRegionH,
+          backdropFilter: "saturate(0) brightness(1.6)",
+          WebkitBackdropFilter: "saturate(0) brightness(1.6)",
+        }}
+      />
+      <div
+        className="absolute left-0 right-0 pointer-events-none bg-white/50 dark:bg-zinc-900/55"
+        style={{ top: 0, height: futureRegionH }}
+      />
+      {/* Current pick: tinted background + strong border lines */}
+      <div
+        className="absolute left-0 right-0 pointer-events-none bg-primary/25"
+        style={{
+          top: PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2,
+          height: pixelsPerRow,
+        }}
+      />
+      <div
+        className="absolute left-0 right-0 pointer-events-none h-[3px] bg-primary"
+        style={{ top: PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2 }}
+      />
+      <div
+        className="absolute left-0 right-0 pointer-events-none h-[3px] bg-primary"
+        style={{ top: PATTERN_CONTAINER_H / 2 + pixelsPerRow / 2 - 3 }}
+      />
     </div>
   );
 }
@@ -802,10 +878,6 @@ export function ActivityDetailPage() {
 
   const displayPick = isPlanning ? localPick : activity.current_pick;
   const currentPickIndex = displayPick - 1;
-  const currentPickData = picksData?.picks[currentPickIndex];
-  const prevPickData = currentPickIndex > 0 ? picksData?.picks[currentPickIndex - 1] : undefined;
-  const nextPickData = picksData?.picks[currentPickIndex + 1];
-
   const declaredCount = activity.activity_type === "lift"
     ? (activity.project_num_shafts ?? 0)
     : (activity.project_num_treadles ?? 0);
@@ -960,8 +1032,8 @@ export function ActivityDetailPage() {
           )}
         </div>
 
-        {/* Pick display */}
-        <div className="px-8 py-6">
+        {/* Pick display + pattern view */}
+        <div className="mx-auto max-w-2xl px-8 py-4 space-y-4">
           {isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-lg font-medium">All {activity.total_picks} picks complete!</p>
@@ -982,14 +1054,21 @@ export function ActivityDetailPage() {
                 </div>
               )}
             </div>
-          ) : currentPickData ? (
-            <PickDisplay
-              pick={currentPickData}
-              activityType={activity.activity_type}
-              totalShaftsOrTreadles={maxActive}
-              colorMode={colorMode}
-              showWeftColor={showWeftColor}
-            />
+          ) : picksData ? (
+            <>
+              <PickDisplay
+                pick={picksData.picks[currentPickIndex]}
+                totalCount={maxActive}
+                activityType={activity.activity_type}
+                colorMode={colorMode}
+                showWeftColor={showWeftColor}
+              />
+              <WeavingPatternView
+                projectId={activity.project_id}
+                currentPickIndex={currentPickIndex}
+                totalPicks={activity.total_picks}
+              />
+            </>
           ) : (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-sm text-muted-foreground">Pick data loading…</p>
@@ -1015,39 +1094,6 @@ export function ActivityDetailPage() {
               onJump={isPlanning ? handleLocalJump : handleJump}
               disabled={stepping}
             />
-          )}
-
-          {picksData && (isActiveTracking || isPlanning) && !isFinished && (
-            <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
-              {prevPickData && (
-                <div className="rounded-md border border-dashed p-3">
-                  <div className="mb-1 flex items-center gap-1.5 font-medium">
-                    {prevPickData.color && showWeftColor && (
-                      <span
-                        className="inline-block h-3.5 w-3.5 shrink-0 rounded-sm border border-border"
-                        style={{ backgroundColor: prevPickData.color }}
-                      />
-                    )}
-                    ← Pick {displayPick - 1}
-                  </div>
-                  <p>{prevPickData.active.length > 0 ? prevPickData.active.join(", ") : "—"}</p>
-                </div>
-              )}
-              {nextPickData && (
-                <div className={`rounded-md border border-dashed p-3 ${!prevPickData ? "col-start-2" : ""}`}>
-                  <div className="mb-1 flex items-center gap-1.5 font-medium">
-                    {nextPickData.color && showWeftColor && (
-                      <span
-                        className="inline-block h-3.5 w-3.5 shrink-0 rounded-sm border border-border"
-                        style={{ backgroundColor: nextPickData.color }}
-                      />
-                    )}
-                    Pick {displayPick + 1} →
-                  </div>
-                  <p>{nextPickData.active.length > 0 ? nextPickData.active.join(", ") : "—"}</p>
-                </div>
-              )}
-            </div>
           )}
 
           {(isActiveTracking || isPlanning) && (
