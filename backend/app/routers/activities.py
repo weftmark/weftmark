@@ -90,6 +90,22 @@ class PicksResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+async def _check_loom_conflict(
+    loom_id: uuid.UUID, exclude_id: uuid.UUID | None, owner_id: uuid.UUID, db: AsyncSession
+) -> None:
+    """Raise 409 if the loom already has an active activity (other than exclude_id)."""
+    q = select(Activity).where(
+        Activity.loom_id == loom_id,
+        Activity.owner_id == owner_id,
+        Activity.status == "active",
+        Activity.deleted_at.is_(None),
+    )
+    if exclude_id is not None:
+        q = q.where(Activity.id != exclude_id)
+    if await db.scalar(q) is not None:
+        raise HTTPException(status_code=409, detail="This loom already has an active activity")
+
+
 async def _get_owned_activity(activity_id: uuid.UUID, user: User, db: AsyncSession) -> Activity:
     activity = await db.scalar(
         select(Activity).where(
@@ -191,16 +207,7 @@ async def create_activity(
             if version_ok is None:
                 raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
 
-        existing_active = await db.scalar(
-            select(Activity).where(
-                Activity.loom_id == body.loom_id,
-                Activity.owner_id == current_user.id,
-                Activity.status == "active",
-                Activity.deleted_at.is_(None),
-            )
-        )
-        if existing_active is not None:
-            raise HTTPException(status_code=409, detail="This loom already has an active activity")
+        await _check_loom_conflict(body.loom_id, None, current_user.id, db)
 
     activity = Activity(
         owner_id=current_user.id,
@@ -341,6 +348,58 @@ async def abandon_activity(
     project = await db.get(Project, activity.project_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
     return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+
+
+@router.post("/{activity_id}/restart", response_model=ActivityDetail)
+async def restart_activity(
+    activity_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityDetail:
+    activity = await _get_owned_activity(activity_id, current_user, db)
+    if activity.status != "abandoned":
+        raise HTTPException(status_code=400, detail="Only abandoned activities can be restarted")
+    if activity.loom_id:
+        await _check_loom_conflict(activity.loom_id, activity.id, current_user.id, db)
+    activity.status = "active"
+    await db.commit()
+    await db.refresh(activity)
+    project = await db.get(Project, activity.project_id)
+    loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
+    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+
+
+@router.post("/{activity_id}/clone", response_model=ActivityDetail, status_code=201)
+async def clone_activity(
+    activity_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityDetail:
+    source = await _get_owned_activity(activity_id, current_user, db)
+    if source.loom_id:
+        await _check_loom_conflict(source.loom_id, None, current_user.id, db)
+    clone = Activity(
+        owner_id=current_user.id,
+        project_id=source.project_id,
+        loom_id=source.loom_id,
+        loom_version_id=source.loom_version_id,
+        name=source.name,
+        activity_type=source.activity_type,
+        status="active",
+        current_pick=1,
+        total_picks=source.total_picks,
+        finished_length_per_item=source.finished_length_per_item,
+        num_items=source.num_items,
+        waste_between_items=source.waste_between_items,
+        warp_waste_allowance=source.warp_waste_allowance,
+        length_unit=source.length_unit,
+    )
+    db.add(clone)
+    await db.commit()
+    await db.refresh(clone)
+    project = await db.get(Project, clone.project_id)
+    loom = await db.get(Loom, clone.loom_id) if clone.loom_id else None
+    return _to_detail(clone, project, loom)  # type: ignore[arg-type]
 
 
 @router.delete("/{activity_id}", status_code=204)

@@ -122,11 +122,13 @@ async def _insert_loom(db_session: AsyncSession, owner: User, **kwargs) -> tuple
     return loom, version
 
 
-async def _insert_active_activity(db_session: AsyncSession, owner: User, project: Project, loom: Loom) -> Activity:
+async def _insert_active_activity(
+    db_session: AsyncSession, owner: User, project: Project, loom: Loom | None
+) -> Activity:
     activity = Activity(
         owner_id=owner.id,
         project_id=project.id,
-        loom_id=loom.id,
+        loom_id=loom.id if loom else None,
         name="Existing activity",
         activity_type="treadle",
         status="active",
@@ -253,3 +255,148 @@ class TestCreateActivity:
         loom, _ = await _insert_loom(db_session, admin_user)
         resp = await auth_client.post("/api/activities", json=_base_payload(str(project.id), loom_id=str(loom.id)))
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestRestartActivity
+# ---------------------------------------------------------------------------
+
+
+class TestRestartActivity:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, loom)
+        activity.status = "abandoned"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
+        assert resp.status_code == 200
+
+    async def test_status_becomes_active(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, loom)
+        activity.status = "abandoned"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
+        assert resp.json()["status"] == "active"
+
+    async def test_preserves_current_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, loom)
+        activity.status = "abandoned"
+        activity.current_pick = 2
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
+        assert resp.json()["current_pick"] == 2
+
+    async def test_completed_activity_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        activity.status = "completed"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
+        assert resp.status_code == 400
+
+    async def test_active_activity_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
+        assert resp.status_code == 400
+
+    async def test_loom_conflict_returns_409(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user)
+        abandoned = await _insert_active_activity(db_session, test_user, project, loom)
+        abandoned.status = "abandoned"
+        await db_session.commit()
+        await _insert_active_activity(db_session, test_user, project, loom)
+        resp = await auth_client.post(f"/api/activities/{abandoned.id}/restart")
+        assert resp.status_code == 409
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.post(f"/api/activities/{activity.id}/restart")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestCloneActivity
+# ---------------------------------------------------------------------------
+
+
+async def _insert_activity_with_status(
+    db_session: AsyncSession, owner: User, project: "Project", loom: "Loom | None", status: str
+) -> Activity:
+    activity = Activity(
+        owner_id=owner.id,
+        project_id=project.id,
+        loom_id=loom.id if loom else None,
+        name="Original activity",
+        activity_type="treadle",
+        status=status,
+        current_pick=3,
+        total_picks=10,
+    )
+    db_session.add(activity)
+    await db_session.commit()
+    return activity
+
+
+class TestCloneActivity:
+    async def test_returns_201(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
+        resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
+        assert resp.status_code == 201
+
+    async def test_clone_starts_at_pick_1(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
+        resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
+        assert resp.json()["current_pick"] == 1
+
+    async def test_clone_is_active(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
+        resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
+        assert resp.json()["status"] == "active"
+
+    async def test_clone_copies_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, project, None, "abandoned")
+        resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
+        body = resp.json()
+        assert body["name"] == activity.name
+        assert body["activity_type"] == activity.activity_type
+        assert body["project_id"] == str(activity.project_id)
+
+    async def test_can_clone_active_activity(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, project, None, "active")
+        resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
+        assert resp.status_code == 201
+
+    async def test_loom_conflict_returns_409(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user)
+        completed = await _insert_activity_with_status(db_session, test_user, project, loom, "completed")
+        await _insert_active_activity(db_session, test_user, project, loom)
+        resp = await auth_client.post(f"/api/activities/{completed.id}/clone")
+        assert resp.status_code == 409
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/activities/{uuid.uuid4()}/clone")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
+        resp = await client.post(f"/api/activities/{activity.id}/clone")
+        assert resp.status_code == 401
