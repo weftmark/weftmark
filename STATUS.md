@@ -2,9 +2,9 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-25 (v0.5.0)
+**Last updated:** 2026-04-25 (v0.8.0)
 
-**Test coverage: ~67%** (266 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
+**Test coverage: ~67%** (283 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
 
 ---
 
@@ -26,7 +26,7 @@ Filter by label to find priorities: `P1` (current session), `P2` (next up), `P3`
 | Runner smoke test | ✅ | Sanity check gates all subsequent stages |
 | Backend lint (Ruff) | ✅ | Lint + format check; line length 120; alembic excluded |
 | Frontend lint (ESLint) | ✅ | TypeScript + react-hooks rules |
-| Backend unit tests (pytest) | ✅ | 266 tests (67% coverage); router + model integration tests against real Postgres |
+| Backend unit tests (pytest) | ✅ | 283 tests (67% coverage); router + model integration tests against real Postgres |
 | Coverage gate (pytest-cov) | ✅ | Fails CI if coverage drops below 20%; configured in pytest.ini |
 | Alembic migration smoke test | ✅ | Runs all 13 migrations against real Postgres 16 container; alembic check verifies no pending |
 | API integration test infrastructure | ✅ | Postgres service in backend-tests CI job; conftest.py fixtures for db_session, client, auth_client, admin_client |
@@ -89,6 +89,7 @@ Filter by label to find priorities: `P1` (current session), `P2` (next up), `P3`
 | Capability | Status | Notes |
 | --- | --- | --- |
 | Drawdown preview image | ✅ | Served from backend, displayed on project detail |
+| Drawdown strip endpoint | ✅ | GET /api/projects/{id}/drawdown — crops full render to drawdown only; disk-cached; X-Pixels-Per-Row + X-Total-Rows headers |
 | Liftplan alternative rendering | ⏳ | PyWeaving supports it; endpoint not wired up |
 | Zoom / pan in browser | ⏳ | |
 | Color simulation | ⏳ | |
@@ -142,6 +143,7 @@ Filter by label to find priorities: `P1` (current session), `P2` (next up), `P3`
 | Rename activity | ✅ | Inline edit on detail page header |
 | Weft colour display | ✅ | Per-pick colour swatch; toggle + colour mode selector |
 | Prev / next pick hint | ✅ | Shows adjacent pick shaft/treadle numbers |
+| Activity step view — WeavingPatternView | ✅ | Woven cloth pattern scrolls with picks; PyWeaving drawdown strip, CSS translateY centering, washout overlay, lift/treadle history panel, weft colour column; adaptive height from window.innerHeight |
 | Completed activity summary | ✅ | Project info, loom info, metrics; up to 20 photos (lightbox + delete); links to project, loom, sibling activities |
 | Bluetooth pedal input | ⏳ | Keyboard emulator; maps pedal presses to UI actions |
 | Step correction / undo | ⏳ | |
