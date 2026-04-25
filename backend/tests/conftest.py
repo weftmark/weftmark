@@ -40,6 +40,8 @@ def _patch_pyweaving_font() -> None:
 
 _patch_pyweaving_font()
 
+# Prevent the production secret-key guard from firing in tests.
+os.environ.setdefault("APP_SECRET_KEY", "test-only-insecure-key-not-for-production")
 
 # ---------------------------------------------------------------------------
 # Mock OIDC before app.main is imported — prevents network calls in lifespan
