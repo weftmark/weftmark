@@ -14,7 +14,13 @@ import sys
 
 import pytest
 
-from app.services.rendering import load_draft, render_full_draft, render_full_draft_liftplan
+from app.services.rendering import (
+    DRAWDOWN_SCALE,
+    load_draft,
+    render_drawdown_only,
+    render_full_draft,
+    render_full_draft_liftplan,
+)
 
 # ---------------------------------------------------------------------------
 # Minimal valid WIF fixture
@@ -285,3 +291,53 @@ class TestRenderFullDraftLiftplan:
         draft = load_draft(EIGHT_SHAFT_WIF)
         result = render_full_draft_liftplan(draft, scale=4)
         assert result[:4] == b"\x89PNG"
+
+
+# ---------------------------------------------------------------------------
+# render_drawdown_only
+# ---------------------------------------------------------------------------
+
+
+class TestRenderDrawdownOnly:
+    def test_returns_tuple(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_only(draft)
+        assert isinstance(result, tuple) and len(result) == 2
+
+    def test_first_element_is_png(self):
+        draft = load_draft(MINIMAL_WIF)
+        png, _ = render_drawdown_only(draft)
+        assert png[:4] == b"\x89PNG"
+
+    def test_second_element_is_weft_count(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, total_rows = render_drawdown_only(draft)
+        assert total_rows == len(draft.weft)
+
+    def test_drawdown_scale_constant_is_20(self):
+        assert DRAWDOWN_SCALE == 20
+
+    def test_dimensions_match_warp_weft(self):
+        import io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, total_rows = render_drawdown_only(draft, scale=scale)
+        img = Image.open(io.BytesIO(png))
+        assert img.width == len(draft.warp) * scale
+        assert img.height == len(draft.weft) * scale
+        assert total_rows == len(draft.weft)
+
+    def test_eight_shaft_renders(self):
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        png, total_rows = render_drawdown_only(draft, scale=4)
+        assert png[:4] == b"\x89PNG"
+        assert total_rows == len(draft.weft)
+
+    def test_empty_draft_raises_value_error(self):
+        draft = load_draft(MINIMAL_WIF)
+        draft.warp = []
+        with pytest.raises(ValueError, match="no drawdown data"):
+            render_drawdown_only(draft)
