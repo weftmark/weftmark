@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getActivity, getActivityPicks, stepActivity, completeActivity, abandonActivity,
+  getActivity, getActivityPicks, stepActivity, jumpActivity, completeActivity, abandonActivity,
   restartActivity, cloneActivity, listActivities, deleteActivity,
   renameActivity, ApiError, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS,
-  type ActivityDetail, type ActivitySummary, type PickRow,
+  type ActivitySummary, type PickRow,
 } from "@/api/activities";
+import { previewUrl } from "@/api/projects";
+import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
 import { Button } from "@/components/ui/button";
 
 // ---------------------------------------------------------------------------
@@ -53,6 +55,34 @@ function CollapsibleSection({
 }
 
 // ---------------------------------------------------------------------------
+// WIF design preview modal
+// ---------------------------------------------------------------------------
+
+function DesignPreviewModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"
+        >
+          Close ✕
+        </button>
+        <img
+          src={previewUrl(projectId)}
+          alt="WIF design preview"
+          className="w-full rounded-lg shadow-2xl"
+          style={{ imageRendering: "pixelated" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Pick display
 // ---------------------------------------------------------------------------
 
@@ -71,9 +101,8 @@ function PickDisplay({
 }) {
   const label = activityType === "lift" ? "Shaft" : "Treadle";
   const count = Math.max(totalShaftsOrTreadles, Math.max(...pick.active, 0));
-  const weftHex = pick.color ?? null; // always read weft color independent of mode
-  const colorInBoxes = colorMode !== "theme"; // strip/filled render color inside boxes
-  // One row always — boxes scale to fill width regardless of shaft/treadle count
+  const weftHex = pick.color ?? null;
+  const colorInBoxes = colorMode !== "theme";
   const cols = count;
 
   return (
@@ -82,7 +111,6 @@ function PickDisplay({
         {activityType === "lift" ? "Raise shafts" : "Press treadles"}
       </p>
 
-      {/* Weft color band — full width, all modes, glanceable at a distance */}
       {showWeftColor && weftHex && (
         <div
           className="w-full rounded-lg h-12 flex items-center justify-center border border-border"
@@ -99,7 +127,6 @@ function PickDisplay({
         {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
           const active = pick.active.includes(n);
 
-          // Strip mode: primary fill + weft color accent at bottom
           if (colorMode === "strip" && colorInBoxes) {
             return (
               <div
@@ -122,7 +149,6 @@ function PickDisplay({
             );
           }
 
-          // Filled mode: weft color background + thick contrast border
           if (colorMode === "filled" && colorInBoxes && active && weftHex) {
             const fg = contrastColor(weftHex);
             return (
@@ -137,7 +163,6 @@ function PickDisplay({
             );
           }
 
-          // Theme mode (also fallback for strip/filled when no weft color)
           return (
             <div
               key={n}
@@ -168,22 +193,38 @@ function PickDisplay({
 // ---------------------------------------------------------------------------
 
 function StepControls({
-  activity,
+  currentPick,
+  total,
   onStep,
+  onJump,
   stepping,
 }: {
-  activity: ActivityDetail;
+  currentPick: number;
+  total: number;
   onStep: (dir: "advance" | "reverse") => void;
+  onJump: (pick: number) => void;
   stepping: boolean;
 }) {
-  const atStart = activity.current_pick <= 1;
-  const pastEnd = activity.current_pick > activity.total_picks;
+  const atStart = currentPick <= 1;
+  const pastEnd = currentPick > total;
+  const disabled = stepping;
 
   return (
-    <div className="flex items-center justify-center gap-8">
+    <div className="flex items-center justify-center gap-2 sm:gap-3">
+      {/* ‹‹ back 10 — visible on sm+ */}
+      <button
+        onClick={() => onJump(Math.max(1, currentPick - 10))}
+        disabled={atStart || disabled}
+        className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-input text-lg font-medium transition-colors hover:border-ring hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+        aria-label="Back 10 picks"
+        title="Back 10"
+      >
+        ‹‹
+      </button>
+
       <button
         onClick={() => onStep("reverse")}
-        disabled={atStart || stepping || activity.status !== "active"}
+        disabled={atStart || disabled}
         className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-input text-3xl font-light transition-colors hover:border-ring hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Previous pick"
       >
@@ -192,20 +233,79 @@ function StepControls({
 
       <div className="text-center min-w-28">
         <p className="text-5xl font-bold tabular-nums">
-          {Math.min(activity.current_pick, activity.total_picks)}
+          {Math.min(currentPick, total)}
         </p>
-        <p className="text-sm text-muted-foreground">of {activity.total_picks}</p>
+        <p className="text-sm text-muted-foreground">of {total}</p>
       </div>
 
       <button
         onClick={() => onStep("advance")}
-        disabled={pastEnd || stepping || activity.status !== "active"}
+        disabled={pastEnd || disabled}
         className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-input text-3xl font-light transition-colors hover:border-ring hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Next pick"
       >
         ›
       </button>
+
+      {/* ›› forward 10 — visible on sm+ */}
+      <button
+        onClick={() => onJump(Math.min(total + 1, currentPick + 10))}
+        disabled={pastEnd || disabled}
+        className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-input text-lg font-medium transition-colors hover:border-ring hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+        aria-label="Forward 10 picks"
+        title="Forward 10"
+      >
+        ››
+      </button>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Jump-to-pick input
+// ---------------------------------------------------------------------------
+
+function JumpToPick({
+  total,
+  onJump,
+  disabled,
+}: {
+  total: number;
+  onJump: (pick: number) => void;
+  disabled: boolean;
+}) {
+  const [value, setValue] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = parseInt(value, 10);
+    if (!isNaN(n)) {
+      onJump(Math.max(1, Math.min(n, total + 1)));
+      setValue("");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-center justify-center gap-2">
+      <label className="text-xs text-muted-foreground">Go to pick</label>
+      <input
+        type="number"
+        min={1}
+        max={total}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={disabled}
+        className="w-20 rounded border border-input bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+        placeholder="—"
+      />
+      <button
+        type="submit"
+        disabled={disabled || !value}
+        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+      >
+        Go
+      </button>
+    </form>
   );
 }
 
@@ -239,8 +339,10 @@ export function ActivityDetailPage() {
   const [stepping, setStepping] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>("strip");
   const [showWeftColor, setShowWeftColor] = useState(true);
+  const [showDesignPreview, setShowDesignPreview] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [showAssignLoom, setShowAssignLoom] = useState(false);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
@@ -249,6 +351,7 @@ export function ActivityDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [cloneConflict, setCloneConflict] = useState<ActivitySummary | null>(null);
   const [restartConflict, setRestartConflict] = useState<ActivitySummary | null>(null);
+  const [localPick, setLocalPick] = useState(1);
 
   const { data: activity, isLoading, error } = useQuery({
     queryKey: ["activity", id],
@@ -263,7 +366,26 @@ export function ActivityDetailPage() {
     staleTime: Infinity,
   });
 
+  const isPlanning = activity?.status === "active" && !activity?.loom_id;
+
+  const { data: allActivities = [] } = useQuery({
+    queryKey: ["activities"],
+    queryFn: listActivities,
+    enabled: isPlanning || showAssignLoom,
+  });
+
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["activity", id] });
+
+  const handleJump = useCallback(async (pick: number) => {
+    if (!id || stepping) return;
+    setStepping(true);
+    try {
+      const updated = await jumpActivity(id, pick);
+      queryClient.setQueryData(["activity", id], updated);
+    } finally {
+      setStepping(false);
+    }
+  }, [id, stepping, queryClient]);
 
   const handleStep = useCallback(async (direction: "advance" | "reverse") => {
     if (!id || stepping) return;
@@ -276,15 +398,33 @@ export function ActivityDetailPage() {
     }
   }, [id, stepping, queryClient]);
 
+  const handleLocalStep = useCallback((direction: "advance" | "reverse") => {
+    setLocalPick((prev) => {
+      const total = activity?.total_picks ?? 1;
+      if (direction === "advance") return Math.min(prev + 1, total + 1);
+      return Math.max(1, prev - 1);
+    });
+  }, [activity?.total_picks]);
+
+  const handleLocalJump = useCallback((pick: number) => {
+    const total = activity?.total_picks ?? 1;
+    setLocalPick(Math.max(1, Math.min(pick, total + 1)));
+  }, [activity?.total_picks]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isPlanning) {
+        if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); handleLocalStep("advance"); }
+        if (e.key === "ArrowLeft") { e.preventDefault(); handleLocalStep("reverse"); }
+        return;
+      }
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); handleStep("advance"); }
       if (e.key === "ArrowLeft") { e.preventDefault(); handleStep("reverse"); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleStep]);
+  }, [handleStep, handleLocalStep, isPlanning]);
 
   const handleComplete = async () => {
     if (!id) return;
@@ -380,7 +520,8 @@ export function ActivityDetailPage() {
     </div>
   );
 
-  const currentPickIndex = activity.current_pick - 1;
+  const displayPick = isPlanning ? localPick : activity.current_pick;
+  const currentPickIndex = displayPick - 1;
   const currentPickData = picksData?.picks[currentPickIndex];
   const prevPickData = currentPickIndex > 0 ? picksData?.picks[currentPickIndex - 1] : undefined;
   const nextPickData = picksData?.picks[currentPickIndex + 1];
@@ -388,11 +529,19 @@ export function ActivityDetailPage() {
   const declaredCount = activity.activity_type === "lift"
     ? (activity.project_num_shafts ?? 0)
     : (activity.project_num_treadles ?? 0);
-  // Use declared count as the authoritative box count; fall back to pick data only when undeclared
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
   const maxActive = declaredCount > 0 ? declaredCount : maxFromPicks;
 
-  const isFinished = activity.current_pick > activity.total_picks;
+  const isFinished = displayPick > activity.total_picks;
+  const isActiveTracking = activity.status === "active" && !isPlanning;
+
+  // Badge for planning vs active
+  const badgeClasses = isPlanning
+    ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+    : activity.status === "active"
+      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+      : "bg-muted text-muted-foreground";
+  const badgeLabel = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[activity.status];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -445,23 +594,48 @@ export function ActivityDetailPage() {
             <span className="text-sm text-muted-foreground">{activity.project_name}</span>
           </div>
         </div>
-        <span className={`rounded px-2 py-0.5 text-xs font-medium ${
-          activity.status === "active"
-            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-            : "bg-muted text-muted-foreground"
-        }`}>
-          {ACTIVITY_STATUS_LABELS[activity.status]}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowDesignPreview(true)}
+            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            title="View WIF design preview"
+          >
+            View design
+          </button>
+          <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
+            {badgeLabel}
+          </span>
+        </div>
       </header>
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        {/* Progress + color mode — comfortable narrow band */}
+        {/* Planning banner */}
+        {isPlanning && (
+          <div className="mx-auto max-w-2xl px-8 pt-6">
+            <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 text-sm overflow-hidden">
+              <div className="px-4 py-3">
+                <p className="font-medium text-blue-900 dark:text-blue-200">Planning mode — design preview only</p>
+                <p className="mt-0.5 text-xs text-blue-800 dark:text-blue-300">Assign a loom to start tracking picks.</p>
+              </div>
+              <div className="border-t border-blue-200 dark:border-blue-800 px-3 pb-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignLoom(true)}
+                  className="w-full rounded-md border border-dashed border-blue-300 dark:border-blue-700 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-300 transition-colors hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:text-blue-900 dark:hover:text-blue-200"
+                >
+                  Assign to loom…
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Progress + color mode */}
         <div className="mx-auto max-w-2xl px-8 pt-6 space-y-3">
-          <ProgressBar current={activity.current_pick} total={activity.total_picks} />
+          {!isPlanning && <ProgressBar current={activity.current_pick} total={activity.total_picks} />}
           {picksData?.has_weft_colors && (
             <div className="flex items-center justify-end gap-4">
-              {/* Weft color toggle */}
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <span className="text-xs text-muted-foreground">Weft color</span>
                 <button
@@ -473,8 +647,6 @@ export function ActivityDetailPage() {
                   <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${showWeftColor ? "translate-x-4" : "translate-x-1"}`} />
                 </button>
               </label>
-
-              {/* Color mode segmented control */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">Color mode</span>
                 <div className="inline-flex rounded-md border border-input overflow-hidden text-xs">
@@ -497,7 +669,7 @@ export function ActivityDetailPage() {
           )}
         </div>
 
-        {/* Pick display — full viewport width, generous padding */}
+        {/* Pick display */}
         <div className="px-8 py-6">
           {isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
@@ -505,6 +677,19 @@ export function ActivityDetailPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Mark the activity as completed when you're done.
               </p>
+              {isActiveTracking && (
+                <div className="mt-6">
+                  {!confirmComplete ? (
+                    <Button onClick={() => setConfirmComplete(true)}>Mark complete</Button>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-sm">Mark this activity as completed?</span>
+                      <Button size="sm" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
+                      <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : currentPickData ? (
             <PickDisplay
@@ -521,13 +706,27 @@ export function ActivityDetailPage() {
           )}
         </div>
 
-        {/* Step controls + preview + hint — centered column */}
+        {/* Step controls — active tracking and planning */}
         <div className="mx-auto max-w-lg px-8 pb-6 space-y-6">
-          {activity.status === "active" && (
-            <StepControls activity={activity} onStep={handleStep} stepping={stepping} />
+          {(isActiveTracking || isPlanning) && (
+            <StepControls
+              currentPick={displayPick}
+              total={activity.total_picks}
+              onStep={isPlanning ? handleLocalStep : handleStep}
+              onJump={isPlanning ? handleLocalJump : handleJump}
+              stepping={stepping}
+            />
           )}
 
-          {picksData && activity.status === "active" && !isFinished && (
+          {(isActiveTracking || isPlanning) && !isFinished && (
+            <JumpToPick
+              total={activity.total_picks}
+              onJump={isPlanning ? handleLocalJump : handleJump}
+              disabled={stepping}
+            />
+          )}
+
+          {picksData && (isActiveTracking || isPlanning) && !isFinished && (
             <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
               {prevPickData && (
                 <div className="rounded-md border border-dashed p-3">
@@ -538,7 +737,7 @@ export function ActivityDetailPage() {
                         style={{ backgroundColor: prevPickData.color }}
                       />
                     )}
-                    ← Pick {activity.current_pick - 1}
+                    ← Pick {displayPick - 1}
                   </div>
                   <p>{prevPickData.active.length > 0 ? prevPickData.active.join(", ") : "—"}</p>
                 </div>
@@ -552,7 +751,7 @@ export function ActivityDetailPage() {
                         style={{ backgroundColor: nextPickData.color }}
                       />
                     )}
-                    Pick {activity.current_pick + 1} →
+                    Pick {displayPick + 1} →
                   </div>
                   <p>{nextPickData.active.length > 0 ? nextPickData.active.join(", ") : "—"}</p>
                 </div>
@@ -560,14 +759,14 @@ export function ActivityDetailPage() {
             </div>
           )}
 
-          {activity.status === "active" && (
+          {(isActiveTracking || isPlanning) && (
             <p className="text-center text-xs text-muted-foreground">
               ← → arrow keys or spacebar to navigate picks
             </p>
           )}
         </div>
 
-        {/* Collapsible sections — readable width */}
+        {/* Collapsible sections */}
         <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0 border-t">
           <CollapsibleSection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -594,7 +793,8 @@ export function ActivityDetailPage() {
             </dl>
           </CollapsibleSection>
 
-          {activity.status === "active" && (
+          {/* Active tracking: complete / abandon */}
+          {isActiveTracking && (
             <CollapsibleSection title="Actions">
               <div className="flex flex-wrap gap-2">
                 {!confirmComplete && !confirmAbandon && (
@@ -726,6 +926,26 @@ export function ActivityDetailPage() {
           </CollapsibleSection>
         </div>
       </main>
+
+      {showDesignPreview && (
+        <DesignPreviewModal
+          projectId={activity.project_id}
+          onClose={() => setShowDesignPreview(false)}
+        />
+      )}
+
+      {showAssignLoom && (
+        <AssignLoomModal
+          activityId={activity.id}
+          activeActivities={allActivities.filter((a) => a.status === "active")}
+          onSuccess={() => {
+            setShowAssignLoom(false);
+            invalidate();
+            queryClient.invalidateQueries({ queryKey: ["activities"] });
+          }}
+          onClose={() => setShowAssignLoom(false)}
+        />
+      )}
     </div>
   );
 }

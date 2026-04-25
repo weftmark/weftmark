@@ -24,6 +24,8 @@ export interface ActivitySummary {
   total_picks: number;
   num_items: number;
   length_unit: string;
+  completed_at: string | null;
+  abandoned_at: string | null;
   created_at: string;
 }
 
@@ -130,6 +132,22 @@ export function restartActivity(id: string): Promise<ActivityDetail> {
 
 export function cloneActivity(id: string): Promise<ActivityDetail> {
   return req(`/api/activities/${id}/clone`, { method: "POST" });
+}
+
+export function jumpActivity(id: string, pick: number): Promise<ActivityDetail> {
+  return req(`/api/activities/${id}/jump`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pick }),
+  });
+}
+
+export function assignLoom(id: string, loomId: string, loomVersionId?: string): Promise<ActivityDetail> {
+  return req(`/api/activities/${id}/assign-loom`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ loom_id: loomId, loom_version_id: loomVersionId ?? null }),
+  });
 }
 
 export function deleteActivity(id: string): Promise<void> {
