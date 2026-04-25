@@ -2,7 +2,7 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-25 (v0.3.3)
+**Last updated:** 2026-04-25 (v0.3.5)
 
 **Test coverage: ~68%** (195 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
 
@@ -129,7 +129,7 @@ This file tracks the build status of every feature area. Update it after each te
 
 | Capability | Status | Notes |
 | --- | --- | --- |
-| Activity creation | ⏳ | Links project + loom version; one active activity per loom |
+| Activity creation | ✅ | Links project + loom version; one active activity per loom |
 | Pick counter (manual) | ⏳ | Increment / decrement current pick |
 | Lift tracking mode | ⏳ | Per-shaft state; lever loom workflow |
 | Treadle tracking mode | ⏳ | Treadle sequence recording; floor loom workflow |

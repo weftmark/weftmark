@@ -9,7 +9,16 @@ name: CI
 #   5. docker-build                        — verifies both Dockerfiles build cleanly
 #   6. bump-version                        — PATCH/MINOR/MAJOR bump on dev/main only
 #
+# When each stage runs:
+#   Stages 1–2 (lint) + frontend-typecheck run on EVERY push (fast feedback on feature branches).
+#   Stages 3–5 (DB tests, audit, Docker) run only on pull_request or push to dev/main.
+#   Stage 6 (version bump) runs only on push to dev/main.
+#
+# This means a feature-branch push gets lint + typecheck in ~2 min.
+# The slow DB tests gate the PR merge, not every commit.
+#
 # Add [skip ci] to any commit message to skip CI entirely (e.g. docs-only changes).
+# [skip ci] is ignored on pull_request events — CI always runs on PRs.
 #
 # Required secret: CI_TOKEN
 #   A Gitea personal access token with repository: Read & Write permission.
@@ -23,7 +32,18 @@ name: CI
 
 on:
   push:
-    branches: [main, dev, "feature/**"]
+    branches: [main, dev, "feature/*"]
+  pull_request:
+    branches: [main, dev]
+
+# Shared condition fragments (repeated inline on each job):
+#
+#   FAST_CONDITION  — run on every event unless [skip ci] on a push
+#     github.event_name == 'pull_request' || !contains(github.event.head_commit.message || '', '[skip ci]')
+#
+#   SLOW_CONDITION  — only on PR or dev/main push, respects [skip ci]
+#     (github.event_name == 'pull_request' || github.ref_name == 'dev' || github.ref_name == 'main') &&
+#     !contains(github.event.head_commit.message || '', '[skip ci]')
 
 jobs:
 
@@ -33,7 +53,9 @@ jobs:
   runner-check:
     name: Runner smoke test
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    if: >-
+      github.event_name == 'pull_request' ||
+      !contains(github.event.head_commit.message || '', '[skip ci]')
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -41,6 +63,7 @@ jobs:
       - name: Print environment info
         run: |
           echo "Runner: $(uname -a)"
+          echo "Event:  ${{ github.event_name }}"
           echo "Branch: ${{ github.ref_name }}"
           echo "Commit: ${{ github.sha }}"
           echo "Python: $(python3 --version)"
@@ -54,7 +77,7 @@ jobs:
           ls backend/tests/services/
 
   # ------------------------------------------------------------
-  # Stage 2 — Linting (parallel)
+  # Stage 2 — Linting (parallel, runs on every push + PR)
   # ------------------------------------------------------------
   backend-lint:
     name: Backend lint (ruff)
@@ -98,12 +121,39 @@ jobs:
         run: cd frontend && npm run lint
 
   # ------------------------------------------------------------
-  # Stage 3 — Tests (parallel, requires full lint stage)
+  # Stage 3a — Frontend typecheck (runs on every push + PR)
+  # ------------------------------------------------------------
+  frontend-typecheck:
+    name: Frontend type check (tsc)
+    runs-on: ubuntu-latest
+    needs: [frontend-lint]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: Type check
+        run: cd frontend && npx tsc -b --noEmit
+
+  # ------------------------------------------------------------
+  # Stage 3b — DB-heavy tests (PR or dev/main only)
   # ------------------------------------------------------------
   backend-tests:
     name: Backend tests (pytest)
     runs-on: ubuntu-latest
     needs: [backend-lint]
+    if: >-
+      (github.event_name == 'pull_request' ||
+       github.ref_name == 'dev' ||
+       github.ref_name == 'main') &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
     services:
       postgres:
         image: postgres:16
@@ -155,29 +205,15 @@ jobs:
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
 
-  frontend-typecheck:
-    name: Frontend type check (tsc)
-    runs-on: ubuntu-latest
-    needs: [frontend-lint]
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v6
-
-      - name: Set up Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: "20"
-
-      - name: Install dependencies
-        run: cd frontend && npm ci
-
-      - name: Type check
-        run: cd frontend && npx tsc -b --noEmit
-
   migration-smoke-test:
     name: Alembic migration smoke test
     runs-on: ubuntu-latest
     needs: [backend-lint]
+    if: >-
+      (github.event_name == 'pull_request' ||
+       github.ref_name == 'dev' ||
+       github.ref_name == 'main') &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
     services:
       postgres:
         image: postgres:16
@@ -239,12 +275,17 @@ jobs:
           APP_SECRET_KEY: ci-alembic-key-not-for-production
 
   # ------------------------------------------------------------
-  # Stage 4 — Dependency vulnerability audit
+  # Stage 4 — Dependency vulnerability audit (PR or dev/main only)
   # ------------------------------------------------------------
   dependency-audit:
     name: Dependency audit (pip-audit + npm audit)
     runs-on: ubuntu-latest
     needs: [backend-tests, frontend-typecheck, migration-smoke-test]
+    if: >-
+      (github.event_name == 'pull_request' ||
+       github.ref_name == 'dev' ||
+       github.ref_name == 'main') &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -268,12 +309,17 @@ jobs:
         run: cd frontend && npm ci && npm audit --audit-level=high
 
   # ------------------------------------------------------------
-  # Stage 5 — Docker build check
+  # Stage 5 — Docker build check (PR or dev/main only)
   # ------------------------------------------------------------
   docker-build:
     name: Docker build check
     runs-on: ubuntu-latest
     needs: [dependency-audit]
+    if: >-
+      (github.event_name == 'pull_request' ||
+       github.ref_name == 'dev' ||
+       github.ref_name == 'main') &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -285,7 +331,7 @@ jobs:
         run: docker build -f frontend/Dockerfile -t weaving-frontend-check ./frontend
 
   # ------------------------------------------------------------
-  # Stage 6 — Version bump (dev/main only)
+  # Stage 6 — Version bump (dev/main push only)
   # ------------------------------------------------------------
   bump-version:
     name: Bump version
