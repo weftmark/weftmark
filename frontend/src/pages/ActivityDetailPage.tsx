@@ -217,49 +217,57 @@ function WeavingPatternView({
   // Future (not yet woven) picks are above the highlight bar.
   const futureRegionH = Math.max(0, PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2);
 
+  // How far the highlight bars bleed beyond the image container on each side.
+  const BLEED = 12;
+  const highlightTop = PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2 - 1;
+  const highlightH = pixelsPerRow + 2;
+
   return (
-    <div className="rounded-lg border overflow-hidden relative bg-white dark:bg-zinc-900"
-      style={{ height: PATTERN_CONTAINER_H }}>
-      <img
-        src={imgSrc}
-        alt="Woven pattern"
-        className="block"
-        style={{
-          transform: `translateY(${translateY}px)`,
-          imageRendering: "pixelated",
-          transition: "transform 0.15s ease",
-          maxWidth: "none",
-        }}
-      />
-      {/* Immediate uniform washout for future (not yet woven) picks — no gradient */}
+    // Outer wrapper: no overflow-hidden so highlight bars can bleed left/right.
+    <div className="relative" style={{ height: PATTERN_CONTAINER_H }}>
+      {/* Image container — clipped so the image doesn't overflow vertically */}
       <div
-        className="absolute left-0 right-0 pointer-events-none"
-        style={{
-          top: 0,
-          height: futureRegionH,
-          backdropFilter: "saturate(0) brightness(1.6)",
-          WebkitBackdropFilter: "saturate(0) brightness(1.6)",
-        }}
+        className="rounded-lg border overflow-hidden absolute inset-0 bg-white dark:bg-zinc-900"
+      >
+        <img
+          src={imgSrc}
+          alt="Woven pattern"
+          className="block"
+          style={{
+            transform: `translateY(${translateY}px)`,
+            imageRendering: "pixelated",
+            transition: "transform 0.15s ease",
+            maxWidth: "none",
+          }}
+        />
+        {/* Immediate uniform washout for future (not yet woven) picks */}
+        <div
+          className="absolute left-0 right-0 pointer-events-none"
+          style={{
+            top: 0,
+            height: futureRegionH,
+            backdropFilter: "saturate(0) brightness(1.6)",
+            WebkitBackdropFilter: "saturate(0) brightness(1.6)",
+          }}
+        />
+        <div
+          className="absolute left-0 right-0 pointer-events-none bg-white/50 dark:bg-zinc-900/55"
+          style={{ top: 0, height: futureRegionH }}
+        />
+      </div>
+
+      {/* Current pick highlight — bleeds BLEED px beyond the image on each side */}
+      <div
+        className="absolute pointer-events-none bg-primary/20"
+        style={{ left: -BLEED, right: -BLEED, top: highlightTop, height: highlightH }}
       />
       <div
-        className="absolute left-0 right-0 pointer-events-none bg-white/50 dark:bg-zinc-900/55"
-        style={{ top: 0, height: futureRegionH }}
-      />
-      {/* Current pick: tinted background + strong border lines */}
-      <div
-        className="absolute left-0 right-0 pointer-events-none bg-primary/25"
-        style={{
-          top: PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2,
-          height: pixelsPerRow,
-        }}
+        className="absolute pointer-events-none h-[3px] bg-primary"
+        style={{ left: -BLEED, right: -BLEED, top: highlightTop }}
       />
       <div
-        className="absolute left-0 right-0 pointer-events-none h-[3px] bg-primary"
-        style={{ top: PATTERN_CONTAINER_H / 2 - pixelsPerRow / 2 }}
-      />
-      <div
-        className="absolute left-0 right-0 pointer-events-none h-[3px] bg-primary"
-        style={{ top: PATTERN_CONTAINER_H / 2 + pixelsPerRow / 2 - 3 }}
+        className="absolute pointer-events-none h-[3px] bg-primary"
+        style={{ left: -BLEED, right: -BLEED, top: highlightTop + highlightH - 3 }}
       />
     </div>
   );
