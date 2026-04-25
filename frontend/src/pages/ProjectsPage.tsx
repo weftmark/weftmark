@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listProjects } from "@/api/projects";
+import { listActivities } from "@/api/activities";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { UploadWifModal } from "@/components/projects/UploadWifModal";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,24 @@ export function ProjectsPage() {
     queryKey: ["projects"],
     queryFn: listProjects,
   });
+
+  const { data: activities = [] } = useQuery({
+    queryKey: ["activities"],
+    queryFn: () => listActivities(),
+  });
+
+  const activityCountsByProject = activities.reduce<Record<string, { active: number; planning: number; completed: number; abandoned: number }>>(
+    (acc, a) => {
+      const pid = a.project_id;
+      if (!acc[pid]) acc[pid] = { active: 0, planning: 0, completed: 0, abandoned: 0 };
+      if (a.status === "active" && !!a.loom_id) acc[pid].active++;
+      else if (a.status === "active" && !a.loom_id) acc[pid].planning++;
+      else if (a.status === "completed") acc[pid].completed++;
+      else if (a.status === "abandoned") acc[pid].abandoned++;
+      return acc;
+    },
+    {},
+  );
 
   const handleUploadSuccess = () => {
     setShowUpload(false);
@@ -71,7 +90,7 @@ export function ProjectsPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           {projects.map((p) => (
-            <ProjectCard key={p.id} project={p} />
+            <ProjectCard key={p.id} project={p} activityCounts={activityCountsByProject[p.id]} />
           ))}
         </div>
       </main>

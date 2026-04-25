@@ -86,8 +86,12 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function listActivities(): Promise<ActivitySummary[]> {
-  return req("/api/activities");
+export function listActivities(params?: { projectId?: string; loomId?: string }): Promise<ActivitySummary[]> {
+  const qs = new URLSearchParams();
+  if (params?.projectId) qs.set("project_id", params.projectId);
+  if (params?.loomId) qs.set("loom_id", params.loomId);
+  const query = qs.size ? `?${qs}` : "";
+  return req(`/api/activities${query}`);
 }
 
 export function getActivity(id: string): Promise<ActivityDetail> {

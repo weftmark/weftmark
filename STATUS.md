@@ -11,15 +11,16 @@ This file tracks the build status of every feature area. Update it after each te
 ## Next 10 Planned Tasks
 
 1. Completed activity summary — project info, loom info, captured metrics; up to 20 photos; links to project, loom, and sibling activities on the same project
-2. User settings UI — theme toggle, measurement system preference
-3. Session start / pause / resume — auto-detect open/close; idle timeout
-4. Step correction / undo — reverse last pick without going back through the flow
-5. Bluetooth pedal input — keyboard emulator; map pedal to advance pick
-6. Tablet / mobile optimised UI — portrait-first layout for loom-side use
-7. Yarn inventory — yarn / colorway record
-8. Measurement system display conversion — store with unit; display in user's preferred unit
-9. Warping plan report — from WIF threading data
-10. Project sharing via slug URL
+2. Active/planning activity step view — render current pick in focus, previous N picks below in full color, next N picks above in lower contrast; N adapts to available screen height; gives weaver a visual of where they are in the design
+3. User settings UI — theme toggle, measurement system preference
+4. Session start / pause / resume — auto-detect open/close; idle timeout
+5. Step correction / undo — reverse last pick without going back through the flow
+6. Bluetooth pedal input — keyboard emulator; map pedal to advance pick
+7. Tablet / mobile optimised UI — portrait-first layout for loom-side use
+8. Yarn inventory — yarn / colorway record
+9. Measurement system display conversion — store with unit; display in user's preferred unit
+10. Warping plan report — from WIF threading data
+11. Project sharing via slug URL
 
 ---
 

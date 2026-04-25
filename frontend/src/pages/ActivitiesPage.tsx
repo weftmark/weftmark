@@ -170,7 +170,7 @@ export function ActivitiesPage() {
 
   const { data: activities = [], isLoading, error } = useQuery({
     queryKey: ["activities"],
-    queryFn: listActivities,
+    queryFn: () => listActivities(),
   });
 
   const currentYear = new Date().getFullYear();
