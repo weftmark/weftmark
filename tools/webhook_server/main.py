@@ -13,13 +13,17 @@ import uvicorn
 from fastapi import FastAPI, Header, HTTPException, Request
 
 from config import settings
-from handlers import issue_comment
+from handlers import issue_comment, issues, pull_request, push, workflow_run
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
 log = logging.getLogger(__name__)
 
 HANDLERS = {
     "issue_comment": issue_comment.handle,
+    "issues": issues.handle,
+    "pull_request": pull_request.handle,
+    "push": push.handle,
+    "workflow_run": workflow_run.handle,
 }
 
 
@@ -73,4 +77,9 @@ async def health():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=settings.port, reload=True)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=settings.port,
+        reload=True,
+    )
