@@ -2,7 +2,7 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-25 (v0.8.0)
+**Last updated:** 2026-04-25 (v0.9.0)
 
 **Test coverage: ~67%** (283 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
 
@@ -39,6 +39,7 @@ Filter by label to find priorities: `P1` (current session), `P2` (next up), `P3`
 | UI + API version display | ✅ | Version badge in authenticated UI; /health returns API version |
 | Environment lock files | ✅ | environment.yml, requirements-lock.txt, .nvmrc committed and kept in sync |
 | package-lock.json tracked + npm ci | ✅ | Removed from .gitignore; Docker and CI use npm ci (~10s vs 8+ min) |
+| Gitea webhook server (dev tool) | ✅ | `tools/webhook_server/` — FastAPI server receives Gitea events, invokes `claude -p`; handles issue_comment, issues, pull_request, push, workflow_run |
 
 ---
 
@@ -218,11 +219,13 @@ Filter by label to find priorities: `P1` (current session), `P2` (next up), `P3`
 
 The planned sequence for upcoming development:
 
-1. **Activities** — core pick-tracking feature; the primary reason the platform exists
-2. **User settings UI** — theme toggle, measurement system preference (model fields already exist)
-3. **Yarn inventory** — track materials consumed by activities
-4. **Reports** — warping plan and activity PDF export
-5. **Sharing** — project slug sharing
-6. **Admin tools** — WIF compatibility tracking, monitoring
-7. **Design preview enhancements** — zoom, liftplan, threading diagrams
-8. **Phase 2** — offline caching, event log, S3 storage
+1. **Photos during active activities** (#34) — upload photos mid-activity; carries over to completed activity record
+2. **Multi-iteration activity tracking** (#10) — track which iteration is active; reset pick count at iteration boundary
+3. **User settings UI** (#9) — theme toggle, measurement system preference (model fields already exist)
+4. **Storage limits** (#36) — per-activity, per-equipment, per-user upload quotas; required before further file-upload work
+5. **Yarn inventory** (#16) — track materials consumed by activities
+6. **Reports** (#18) — warping plan and activity PDF export
+7. **Sharing** (#19) — project slug sharing
+8. **Session tracking** (#13) — auto-detect open/close; idle timeout
+9. **Admin tools** (#35) — user list, storage metrics, system health
+10. **Phase 2** — offline caching, event log, S3 storage
