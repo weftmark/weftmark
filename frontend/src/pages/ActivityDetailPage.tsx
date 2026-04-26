@@ -1194,6 +1194,27 @@ export function ActivityDetailPage() {
 
         {/* Collapsible sections */}
         <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0 border-t">
+          {!isCompleted && (
+            <CollapsibleSection title={`Photos (${activity.photos.length}/20)`} defaultOpen={false}>
+              <PhotoGrid
+                activityId={activity.id}
+                photos={activity.photos}
+                onUploaded={(p) =>
+                  queryClient.setQueryData(["activity", id], {
+                    ...activity,
+                    photos: [...activity.photos, p],
+                  })
+                }
+                onDeleted={(photoId) =>
+                  queryClient.setQueryData(["activity", id], {
+                    ...activity,
+                    photos: activity.photos.filter((p) => p.id !== photoId),
+                  })
+                }
+              />
+            </CollapsibleSection>
+          )}
+
           <CollapsibleSection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <dt className="text-muted-foreground">Type</dt>
