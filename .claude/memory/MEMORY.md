@@ -8,6 +8,7 @@ Memory files for the Weaving Site project. These files capture decisions, contex
 
 - [project.md](project.md) — Platform vision, tech stack, key architectural decisions
 - [project_issue_workflow.md](project_issue_workflow.md) — Plan to migrate STATUS.md task list to Gitea issues; label taxonomy, API patterns, migration checklist (not yet executed — needs GITEA_TOKEN_ISSUES in .env.local)
+- [infrastructure.md](infrastructure.md) — Hosting preferences: Cloudflare for DNS/SSL/R2, DigitalOcean familiarity for VMs, managed Postgres TBD
 - [feedback.md](feedback.md) — How the user prefers to collaborate and work in this project:
   - Ask questions one at a time
   - Recommendations over options when asked

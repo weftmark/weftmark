@@ -221,3 +221,15 @@ curl -s -X DELETE "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/issu
 **Why:** Makes it clear which issues are Claude's responsibility vs the developer's.
 
 **How to apply:** Include `"assignees": ["claude_vscode"]` in the issue creation payload.
+
+## Include the original user prompt in every issue
+
+**Rule:** When creating a Gitea issue or documenting scope, include the original user prompt verbatim in the issue body.
+
+**Why:** Issues serve as a permanent record. The exact words used to request a feature are important context for implementation and review.
+
+**How to apply:** Add a "**User prompt:**" block at the top or bottom of every new issue body containing the user's message word-for-word. Example:
+
+```markdown
+> **User prompt:** create a github activity heatmap calendar like feature for users dashboards
+```
