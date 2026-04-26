@@ -1,3 +1,4 @@
+import io
 import mimetypes
 import uuid
 from datetime import datetime, timezone
@@ -5,6 +6,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
+from PIL import Image as PILImage
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +21,20 @@ from app.services import storage, wif_parser
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 MAX_ACTIVITY_PHOTOS = 20
-MAX_PHOTO_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_PHOTO_SIZE = 25 * 1024 * 1024  # 25 MB raw (resized output is much smaller)
+_RESIZE_MAX_PX = 2048
+_JPEG_QUALITY = 85
+
+
+def _resize_to_jpeg(data: bytes) -> bytes:
+    """Resize to at most _RESIZE_MAX_PX on the longest side and encode as JPEG."""
+    img = PILImage.open(io.BytesIO(data))
+    img = img.convert("RGB")
+    img.thumbnail((_RESIZE_MAX_PX, _RESIZE_MAX_PX), PILImage.Resampling.LANCZOS)
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=_JPEG_QUALITY, optimize=True)
+    return out.getvalue()
+
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
 
@@ -531,15 +546,19 @@ async def upload_activity_photo(
 
     data = await file.read()
     if len(data) > MAX_PHOTO_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 10 MB)")
+        raise HTTPException(status_code=400, detail=f"File too large (max {MAX_PHOTO_SIZE // (1024 * 1024)} MB)")
 
     existing = await db.scalars(select(ActivityPhoto).where(ActivityPhoto.activity_id == activity.id))
     if len(existing.all()) >= MAX_ACTIVITY_PHOTOS:
         raise HTTPException(status_code=400, detail=f"Maximum {MAX_ACTIVITY_PHOTOS} photos per activity")
 
-    ext = "." + (file.filename or "photo.jpg").rsplit(".", 1)[-1].lower()
+    try:
+        data = _resize_to_jpeg(data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not process image file")
+
     photo_id = uuid.uuid4()
-    file_path = storage.save_activity_photo(activity.id, photo_id, ext, data)
+    file_path = storage.save_activity_photo(activity.id, photo_id, ".jpg", data)
 
     max_order_result = await db.scalars(
         select(ActivityPhoto.display_order)
@@ -553,7 +572,7 @@ async def upload_activity_photo(
         id=photo_id,
         activity_id=activity.id,
         file_path=file_path,
-        filename=file.filename or f"photo{ext}",
+        filename=file.filename or "photo.jpg",
         display_order=max_order + 1,
     )
     db.add(photo)
