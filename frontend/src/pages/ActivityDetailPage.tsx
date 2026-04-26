@@ -1079,8 +1079,8 @@ export function ActivityDetailPage() {
 
         {/* Progress + color mode */}
         <div className="mx-auto max-w-2xl px-8 pt-6 space-y-3">
-          {!isPlanning && <ProgressBar current={activity.current_pick} total={activity.total_picks} />}
-          {picksData?.has_weft_colors && (
+          {!isPlanning && !isCompleted && <ProgressBar current={activity.current_pick} total={activity.total_picks} />}
+          {picksData?.has_weft_colors && !isFinished && !isCompleted && (
             <div className="flex items-center justify-end gap-4">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <span className="text-xs text-muted-foreground">Weft color</span>
@@ -1116,7 +1116,7 @@ export function ActivityDetailPage() {
         </div>
 
         {/* Pick instruction — stays compact */}
-        <div className="mx-auto max-w-2xl px-8 pt-4">
+        {!isCompleted && <div className="mx-auto max-w-2xl px-8 pt-4">
           {isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-lg font-medium">All {activity.total_picks} picks complete!</p>
@@ -1150,10 +1150,10 @@ export function ActivityDetailPage() {
               <p className="text-sm text-muted-foreground">Pick data loading…</p>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Pattern view — wider on large screens to show more warp threads */}
-        {picksData && !isFinished && (
+        {picksData && !isFinished && !isCompleted && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <WeavingPatternView
               projectId={activity.project_id}
@@ -1167,7 +1167,7 @@ export function ActivityDetailPage() {
 
         {/* Step controls — active tracking and planning */}
         <div className="mx-auto max-w-lg px-8 pb-6 space-y-6">
-          {(isActiveTracking || isPlanning) && (
+          {(isActiveTracking || isPlanning) && !isFinished && (
             <StepControls
               currentPick={displayPick}
               total={activity.total_picks}
