@@ -820,7 +820,9 @@ export function ActivityDetailPage() {
     setStepping(true);
     try {
       const updated = await jumpActivity(id, pick);
-      queryClient.setQueryData(["activity", id], updated);
+      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+        old ? { ...updated, photos: old.photos } : updated
+      );
     } finally {
       setStepping(false);
     }
@@ -831,7 +833,9 @@ export function ActivityDetailPage() {
     setStepping(true);
     try {
       const updated = await stepActivity(id, direction);
-      queryClient.setQueryData(["activity", id], updated);
+      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+        old ? { ...updated, photos: old.photos } : updated
+      );
     } finally {
       setStepping(false);
     }
@@ -994,7 +998,9 @@ export function ActivityDetailPage() {
                   const trimmed = nameInput.trim();
                   if (!trimmed) { setEditingName(false); return; }
                   const updated = await renameActivity(id!, trimmed);
-                  queryClient.setQueryData(["activity", id], updated);
+                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                    old ? { ...updated, photos: old.photos } : updated
+                  );
                   queryClient.invalidateQueries({ queryKey: ["activities"] });
                   setEditingName(false);
                 }}
@@ -1010,7 +1016,9 @@ export function ActivityDetailPage() {
                     const trimmed = nameInput.trim();
                     if (trimmed && trimmed !== activity.name) {
                       const updated = await renameActivity(id!, trimmed);
-                      queryClient.setQueryData(["activity", id], updated);
+                      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                        old ? { ...updated, photos: old.photos } : updated
+                      );
                       queryClient.invalidateQueries({ queryKey: ["activities"] });
                     }
                     setEditingName(false);
