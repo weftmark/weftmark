@@ -1,10 +1,14 @@
+import io
 import uuid
 from datetime import date
 
+import pytest
 from httpx import AsyncClient
+from PIL import Image as PILImage
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity
+from app.models.activity import ActivityPhoto as ActivityPhotoModel
 from app.models.loom import Loom, LoomVersion
 from app.models.project import Project
 from app.models.user import User
@@ -399,4 +403,247 @@ class TestCloneActivity:
         project = await _insert_project(db_session, test_user)
         activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
         resp = await client.post(f"/api/activities/{activity.id}/clone")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Photo helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_jpeg(width: int = 10, height: int = 10) -> bytes:
+    img = PILImage.new("RGB", (width, height), color=(100, 150, 200))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def _make_png(width: int = 10, height: int = 10) -> bytes:
+    img = PILImage.new("RGB", (width, height), color=(100, 150, 200))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# TestResizeToJpeg
+# ---------------------------------------------------------------------------
+
+
+class TestResizeToJpeg:
+    def test_returns_bytes(self):
+        from app.routers.activities import _resize_to_jpeg
+
+        assert isinstance(_resize_to_jpeg(_make_jpeg()), bytes)
+
+    def test_output_is_jpeg(self):
+        from app.routers.activities import _resize_to_jpeg
+
+        result = _resize_to_jpeg(_make_jpeg())
+        assert PILImage.open(io.BytesIO(result)).format == "JPEG"
+
+    def test_png_input_converted_to_jpeg(self):
+        from app.routers.activities import _resize_to_jpeg
+
+        result = _resize_to_jpeg(_make_png())
+        assert PILImage.open(io.BytesIO(result)).format == "JPEG"
+
+    def test_large_image_resized_to_2048(self):
+        from app.routers.activities import _resize_to_jpeg
+
+        result = _resize_to_jpeg(_make_jpeg(3000, 3000))
+        assert max(PILImage.open(io.BytesIO(result)).size) <= 2048
+
+    def test_small_image_not_upscaled(self):
+        from app.routers.activities import _resize_to_jpeg
+
+        result = _resize_to_jpeg(_make_jpeg(50, 50))
+        assert PILImage.open(io.BytesIO(result)).size == (50, 50)
+
+
+# ---------------------------------------------------------------------------
+# TestActivityPhotos
+# ---------------------------------------------------------------------------
+
+
+class TestActivityPhotos:
+    @pytest.fixture(autouse=True)
+    def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+
+    async def test_upload_returns_201(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 201
+
+    async def test_upload_returns_schema(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("shot.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        body = resp.json()
+        assert "id" in body
+        assert body["filename"] == "shot.jpg"
+        assert body["display_order"] == 1
+
+    async def test_second_upload_increments_display_order(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("a.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("b.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.json()["display_order"] == 2
+
+    async def test_png_stored_as_jpeg(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.png", _make_png(), "image/png")},
+        )
+        assert resp.status_code == 201
+        photo_id = resp.json()["id"]
+        get_resp = await auth_client.get(f"/api/activities/{activity.id}/photos/{photo_id}")
+        assert get_resp.status_code == 200
+        assert PILImage.open(io.BytesIO(get_resp.content)).format == "JPEG"
+
+    async def test_upload_too_large_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        big = b"X" * (26 * 1024 * 1024)
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", big, "image/jpeg")},
+        )
+        assert resp.status_code == 400
+
+    async def test_upload_wrong_type_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+        assert resp.status_code == 400
+
+    async def test_upload_cap_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        for i in range(20):
+            photo = ActivityPhotoModel(
+                activity_id=activity.id,
+                file_path=f"activities/{activity.id}/photos/photo{i}.jpg",
+                filename=f"photo{i}.jpg",
+                display_order=i + 1,
+            )
+            db_session.add(photo)
+        await db_session.commit()
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 400
+
+    async def test_get_photo_returns_image(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        upload = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        photo_id = upload.json()["id"]
+        resp = await auth_client.get(f"/api/activities/{activity.id}/photos/{photo_id}")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("image/")
+
+    async def test_get_photo_cross_activity_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        act1 = await _insert_active_activity(db_session, test_user, project, None)
+        act2 = await _insert_active_activity(db_session, test_user, project, None)
+        upload = await auth_client.post(
+            f"/api/activities/{act1.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        photo_id = upload.json()["id"]
+        resp = await auth_client.get(f"/api/activities/{act2.id}/photos/{photo_id}")
+        assert resp.status_code == 404
+
+    async def test_delete_photo_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        upload = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        photo_id = upload.json()["id"]
+        resp = await auth_client.delete(f"/api/activities/{activity.id}/photos/{photo_id}")
+        assert resp.status_code == 204
+
+    async def test_delete_nonexistent_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.delete(f"/api/activities/{activity.id}/photos/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_photos_appear_in_detail(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("snap.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        resp = await auth_client.get(f"/api/activities/{activity.id}")
+        assert resp.status_code == 200
+        photos = resp.json()["photos"]
+        assert len(photos) == 1
+        assert photos[0]["filename"] == "snap.jpg"
+
+    async def test_upload_unauthenticated_returns_401(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 401
+
+    async def test_get_unauthenticated_returns_401(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.get(f"/api/activities/{activity.id}/photos/{uuid.uuid4()}")
+        assert resp.status_code == 401
+
+    async def test_delete_unauthenticated_returns_401(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.delete(f"/api/activities/{activity.id}/photos/{uuid.uuid4()}")
         assert resp.status_code == 401
