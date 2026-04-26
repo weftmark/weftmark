@@ -10,6 +10,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: weaving_site_frontend:${APP_VERSION:-dev}
+    container_name: weaving_site_frontend
     ports:
       - "3000:80"
     networks:
@@ -29,6 +31,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    image: weaving_site_backend:${APP_VERSION:-dev}
+    container_name: weaving_site_backend
     networks:
       - public
       - internal
@@ -53,6 +57,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    image: weaving_site_backend:${APP_VERSION:-dev}
+    container_name: weaving_site_worker
     command: celery -A app.worker worker --loglevel=info
     networks:
       - internal
@@ -75,6 +81,7 @@ services:
   # ----------------------------------------------------------
   db:
     image: postgres:16-alpine
+    container_name: weaving_site_db
     networks:
       - internal
     ports:
@@ -102,6 +109,7 @@ services:
   # ----------------------------------------------------------
   redis:
     image: redis:7-alpine
+    container_name: weaving_site_redis
     networks:
       - internal
     volumes:
