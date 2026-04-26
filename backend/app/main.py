@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="Weaving Site API",
+    title="WeftMark API",
     version=VERSION,
     lifespan=lifespan,
     docs_url="/api/docs",
