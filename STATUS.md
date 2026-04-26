@@ -2,7 +2,7 @@
 
 This file tracks the build status of every feature area. Update it after each tested and committed milestone.
 
-**Last updated:** 2026-04-25 (v0.9.0)
+**Last updated:** 2026-04-25 (v0.9.1)
 
 **Test coverage: ~67%** (283 tests) — see [docs/testing.md](docs/testing.md) for gap analysis
 
@@ -146,6 +146,7 @@ Filter by label to find priorities: `P1` (current session), `P2` (next up), `P3`
 | Prev / next pick hint | ✅ | Shows adjacent pick shaft/treadle numbers |
 | Activity step view — WeavingPatternView | ✅ | Woven cloth pattern scrolls with picks; PyWeaving drawdown strip, CSS translateY centering, washout overlay, lift/treadle history panel, weft colour column; adaptive height from window.innerHeight |
 | Completed activity summary | ✅ | Project info, loom info, metrics; up to 20 photos (lightbox + delete); links to project, loom, sibling activities |
+| Completed activity — hide tracker controls | ✅ | WeavingPatternView, progress bar, weft colour toggle, colour mode, step controls all hidden once status=completed |
 | Bluetooth pedal input | ⏳ | Keyboard emulator; maps pedal presses to UI actions |
 | Step correction / undo | ⏳ | |
 | Session start / pause / resume | ⏳ | |
