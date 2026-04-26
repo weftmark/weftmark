@@ -222,6 +222,18 @@ curl -s -X DELETE "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/issu
 
 **How to apply:** Include `"assignees": ["claude_vscode"]` in the issue creation payload.
 
+## Keep issue #43 updated as milestone tasks execute
+
+**Rule:** After completing or making significant progress on any Milestone 1 issue, post a comment on issue #43 summarising what changed — which issue was closed, what was built, and the updated milestone status (N of 15 open).
+
+**Why:** Issue #43 is the milestone planning document and should serve as a living status tracker so the full milestone progress is visible in one place without having to read every individual issue thread.
+
+**How to apply:**
+
+- After merging a branch that closes a milestone issue, post a comment on #43 noting the issue number, what was shipped, and the new open count
+- If a milestone issue is rescoped, deferred, or replaced, update the table in #43's body
+- Keep the "Roadmap sequence" section accurate as items move from planned → in-progress → done
+
 ## Include the original user prompt in every issue
 
 **Rule:** When creating a Gitea issue or documenting scope, include the original user prompt verbatim in the issue body.
