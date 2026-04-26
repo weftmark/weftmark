@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from_email: str = ""
-    smtp_from_name: str = "Weaving Site"
+    smtp_from_name: str = "WeftMark"
 
     # Invites
     invite_expiry_days_default: int = 7

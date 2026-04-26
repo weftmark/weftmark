@@ -1,6 +1,6 @@
 # Requirements Documentation
 
-This directory contains the formal requirements for the Weaving Site platform.
+This directory contains the formal requirements for the WeftMark platform.
 
 ## Documents
 
