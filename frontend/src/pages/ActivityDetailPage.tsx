@@ -1200,16 +1200,14 @@ export function ActivityDetailPage() {
                 activityId={activity.id}
                 photos={activity.photos}
                 onUploaded={(p) =>
-                  queryClient.setQueryData(["activity", id], {
-                    ...activity,
-                    photos: [...activity.photos, p],
-                  })
+                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                    old ? { ...old, photos: [...old.photos, p] } : old
+                  )
                 }
                 onDeleted={(photoId) =>
-                  queryClient.setQueryData(["activity", id], {
-                    ...activity,
-                    photos: activity.photos.filter((p) => p.id !== photoId),
-                  })
+                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                    old ? { ...old, photos: old.photos.filter((ph) => ph.id !== photoId) } : old
+                  )
                 }
               />
             </CollapsibleSection>
