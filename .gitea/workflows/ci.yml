@@ -59,6 +59,32 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.CI_TOKEN }}
+
+      - name: Validate CI_TOKEN permissions
+        env:
+          CI_TOKEN: ${{ secrets.CI_TOKEN }}
+        run: |
+          if [ -z "$CI_TOKEN" ]; then
+            echo "❌ CI_TOKEN secret is not set — required for checkout and version bump push"
+            echo "   Create a PAT with repository read+write, then add it as CI_TOKEN in repo Settings → Actions → Secrets"
+            exit 1
+          fi
+          HTTP=$(curl -s -o /tmp/repo_check.json -w "%{http_code}" \
+            -H "Authorization: token $CI_TOKEN" \
+            "${{ github.server_url }}/api/v1/repos/${{ github.repository }}")
+          if [ "$HTTP" != "200" ]; then
+            echo "❌ CI_TOKEN cannot read repo (HTTP $HTTP) — token may be expired or deleted"
+            exit 1
+          fi
+          PUSH=$(python3 -c "import json; d=json.load(open('/tmp/repo_check.json')); print(str(d.get('permissions',{}).get('push',False)).lower())")
+          if [ "$PUSH" != "true" ]; then
+            echo "❌ CI_TOKEN lacks push permission — required for version bump commit in stage 6"
+            echo "   Recreate the PAT with repository: Read & Write scope"
+            exit 1
+          fi
+          echo "✅ CI_TOKEN valid — repo read + push confirmed"
 
       - name: Print environment info
         run: |
