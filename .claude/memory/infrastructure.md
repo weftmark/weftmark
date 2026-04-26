@@ -20,15 +20,24 @@ Use **Cloudflare Origin CA certificate** (free, generated in Cloudflare dashboar
 
 ## Object storage
 
-Leading candidate: **Cloudflare R2** (already in the same Cloudflare dashboard, no separate account needed).
-- No egress fees
-- S3-compatible API — works with planned `STORAGE_BACKEND=s3`
-- Custom domain for bucket via one-click DNS record (e.g. `assets.domain.com`)
+**Decided:** Backblaze B2 (not Cloudflare R2).
+- S3-compatible API — works with existing `STORAGE_BACKEND=s3` / boto3 code; only endpoint URL and credentials change in `.env`
+- B2 charges egress outside Cloudflare network — use Cloudflare CDN in front to keep most requests as cache hits and avoid egress costs
 
 ## Application hosting (VM)
 
-User is familiar with **DigitalOcean** Droplets. No decision made yet — see issue #50.
+**Decided:** Free hosting on an Ubuntu VM in a data center (not DigitalOcean).
+- All services run in Docker containers on one host: frontend, backend, postgres, postgres-backup, workers, redis
+- Same docker-compose structure as local dev, just deployed to the VM
 
 ## Postgres
 
-No decision made yet. Recommendation: use a managed Postgres service (not self-hosted) for automated backups and PITR. Options evaluated in issue #50: DigitalOcean Managed Postgres, Neon, Supabase.
+**Decided:** Self-hosted Postgres container on the VM (with a separate postgres-backup service container).
+
+## Platform name and domain
+
+**Decided:** WeftMark / weftmark.com (resolved issue #55)
+
+## Email addresses
+
+admin@weftmark.com and feedback@weftmark.com are set up and should be used in SMTP config and email service sender.
