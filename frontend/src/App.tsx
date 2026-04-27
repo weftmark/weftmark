@@ -13,6 +13,7 @@ import { YarnPage } from "@/pages/YarnPage";
 import { YarnDetailPage } from "@/pages/YarnDetailPage";
 import { ActivitiesPage } from "@/pages/ActivitiesPage";
 import { ActivityDetailPage } from "@/pages/ActivityDetailPage";
+import { AdminPage } from "@/pages/AdminPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,6 +99,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <ActivityDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminPage />
                 </ProtectedRoute>
               }
             />
