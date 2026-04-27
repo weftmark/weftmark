@@ -34,8 +34,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.deps import get_current_user, get_db, require_admin
 from app.models.invite import Invite
+from app.models.pending_signup import PendingSignup
 from app.models.user import User
-from app.services.email import send_invite_email
+from app.services.clerk import set_user_metadata
+from app.services.email import send_invite_email, send_pending_signup_notification, send_signup_received_email
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -106,6 +108,23 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
                 clerk_user_id,
                 email,
             )
+            existing = await db.scalar(select(PendingSignup).where(PendingSignup.clerk_user_id == clerk_user_id))
+            if existing is None:
+                db.add(PendingSignup(clerk_user_id=clerk_user_id, email=email, display_name=display_name))
+                await db.commit()
+                await set_user_metadata(clerk_user_id, {"status": "pending_signup", "is_admin": False})
+                admin_emails = list(
+                    await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None)))
+                )
+                try:
+                    await send_signup_received_email(email, display_name)
+                except Exception:
+                    log.exception("Failed to send signup received email to %s", email)
+                if admin_emails:
+                    try:
+                        await send_pending_signup_notification(admin_emails, display_name, email)
+                    except Exception:
+                        log.exception("Failed to send pending signup notification to admins")
             return
 
     user = User(
@@ -113,10 +132,14 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
         display_name=display_name,
         clerk_user_id=clerk_user_id,
         is_admin=is_first_user,
+        is_superuser=is_first_user,
         ai_training_consent=True,
     )
     db.add(user)
     await db.commit()
+    await set_user_metadata(
+        clerk_user_id, {"status": "active", "is_admin": is_first_user, "is_superuser": is_first_user}
+    )
     log.info("Created User record for Clerk user %s (%s)", clerk_user_id, email)
 
 
@@ -191,6 +214,7 @@ class UserResponse(BaseModel):
     email: str
     display_name: str
     is_admin: bool
+    is_superuser: bool
     theme: str
     activity_theme: str | None
     idle_timeout_minutes: int
@@ -211,6 +235,7 @@ async def me(current_user: User = Depends(get_current_user)) -> UserResponse:
         email=current_user.email,
         display_name=current_user.display_name,
         is_admin=current_user.is_admin,
+        is_superuser=current_user.is_superuser,
         theme=current_user.theme,
         activity_theme=current_user.activity_theme,
         idle_timeout_minutes=current_user.idle_timeout_minutes,
@@ -269,7 +294,7 @@ async def list_invites(
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[Invite]:
-    result = await db.scalars(select(Invite).order_by(Invite.created_at.desc()))
+    result = await db.scalars(select(Invite).order_by(Invite.created_at.desc()).limit(50))
     return list(result.all())
 
 

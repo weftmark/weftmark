@@ -1,0 +1,4 @@
+Hi {display_name},
+
+Your {app_name} account has been approved. You can sign in now:
+{login_url}

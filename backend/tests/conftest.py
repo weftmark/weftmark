@@ -257,3 +257,33 @@ async def raw_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, No
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def superuser_user(db_session: AsyncSession) -> User:
+    user = User(
+        email="superuser@example.com",
+        display_name="Super User",
+        oidc_sub="superuser-oidc-sub-001",
+        is_admin=True,
+        is_superuser=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.commit()
+    return user
+
+
+@pytest.fixture
+async def superuser_client(db_session: AsyncSession, superuser_user: User) -> AsyncGenerator[AsyncClient, None]:
+    async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    async def _override_get_current_user() -> User:
+        return superuser_user
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_current_user] = _override_get_current_user
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+    app.dependency_overrides.clear()

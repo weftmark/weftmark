@@ -1,0 +1,5 @@
+Hi {display_name},
+
+{app_name} is currently invite only and your sign-up request was not approved at this time.
+
+If you believe this is an error, please contact the administrator.
