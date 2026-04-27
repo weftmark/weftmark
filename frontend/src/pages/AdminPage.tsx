@@ -6,6 +6,7 @@ import {
   listAdminUsers,
   getAdminStats,
   getAdminHealth,
+  getAdminVersions,
   patchAdminUser,
   listInvites,
   createInvite,
@@ -105,7 +106,11 @@ function UsersTab() {
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{u.display_name}</p>
               <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-              <p className="text-xs text-muted-foreground">Last active: {formatLastActive(u.last_active_at)}</p>
+              <p className="text-xs text-muted-foreground">
+                Last active: {formatLastActive(u.last_active_at)}
+                {" · "}
+                {u.counts.projects}p · {u.counts.looms}l · {u.counts.activities_active} active / {u.counts.activities_completed} done
+              </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {u.is_admin && (
@@ -397,6 +402,44 @@ function HealthTab() {
         max={pingMax}
         color="rgb(245,158,11)"
       />
+
+      <VersionsTable />
+    </div>
+  );
+}
+
+function VersionsTable() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "versions"],
+    queryFn: getAdminVersions,
+    staleTime: Infinity,
+  });
+
+  if (isLoading || !data) return null;
+
+  const rows = [
+    { label: "App", value: data.app },
+    { label: "Python", value: data.python },
+    { label: "FastAPI", value: data.fastapi },
+    { label: "SQLAlchemy", value: data.sqlalchemy },
+    { label: "Alembic", value: data.alembic },
+    { label: "PyWeaving", value: data.pyweaving },
+    { label: "Pillow", value: data.pillow },
+    { label: "boto3", value: data.boto3 },
+    { label: "psutil", value: data.psutil },
+  ];
+
+  return (
+    <div>
+      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Versions</h2>
+      <div className="border rounded-lg divide-y overflow-hidden">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="flex items-center justify-between px-4 py-2 bg-background">
+            <span className="text-sm">{label}</span>
+            <span className="text-xs font-mono text-muted-foreground">{value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

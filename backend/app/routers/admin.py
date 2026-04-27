@@ -1,3 +1,5 @@
+import importlib.metadata
+import platform
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -15,6 +17,7 @@ from app.models.loom import Loom
 from app.models.project import Project
 from app.models.user import User
 from app.models.yarn import Yarn
+from app.version import VERSION
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -22,6 +25,13 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
+
+
+class AdminUserCounts(BaseModel):
+    projects: int
+    activities_active: int
+    activities_completed: int
+    looms: int
 
 
 class AdminUserResponse(BaseModel):
@@ -32,8 +42,9 @@ class AdminUserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     last_active_at: datetime | None
+    counts: AdminUserCounts
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": False}
 
 
 class AdminUserPatch(BaseModel):
@@ -63,6 +74,18 @@ class AdminHealthResponse(BaseModel):
     uptime_seconds: int
 
 
+class AdminVersionsResponse(BaseModel):
+    app: str
+    python: str
+    fastapi: str
+    sqlalchemy: str
+    alembic: str
+    pyweaving: str
+    pillow: str
+    boto3: str
+    psutil: str
+
+
 # ---------------------------------------------------------------------------
 # Users
 # ---------------------------------------------------------------------------
@@ -72,9 +95,69 @@ class AdminHealthResponse(BaseModel):
 async def list_users(
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-) -> list[User]:
-    result = await db.scalars(select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.asc()))
-    return list(result.all())
+) -> list[AdminUserResponse]:
+    users = list(
+        (await db.scalars(select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.asc()))).all()
+    )
+    if not users:
+        return []
+
+    user_ids = [u.id for u in users]
+
+    # Per-user project counts
+    project_rows = (
+        await db.execute(
+            select(Project.owner_id, func.count().label("cnt"))
+            .where(Project.owner_id.in_(user_ids), Project.deleted_at.is_(None))
+            .group_by(Project.owner_id)
+        )
+    ).all()
+    project_counts = {row.owner_id: row.cnt for row in project_rows}
+
+    # Per-user activity counts by status
+    activity_rows = (
+        await db.execute(
+            select(Activity.owner_id, Activity.status, func.count().label("cnt"))
+            .where(Activity.owner_id.in_(user_ids), Activity.deleted_at.is_(None))
+            .group_by(Activity.owner_id, Activity.status)
+        )
+    ).all()
+    activity_active: dict[uuid.UUID, int] = {}
+    activity_completed: dict[uuid.UUID, int] = {}
+    for row in activity_rows:
+        if row.status == "active":
+            activity_active[row.owner_id] = row.cnt
+        elif row.status == "completed":
+            activity_completed[row.owner_id] = row.cnt
+
+    # Per-user loom counts
+    loom_rows = (
+        await db.execute(
+            select(Loom.owner_id, func.count().label("cnt"))
+            .where(Loom.owner_id.in_(user_ids), Loom.deleted_at.is_(None))
+            .group_by(Loom.owner_id)
+        )
+    ).all()
+    loom_counts = {row.owner_id: row.cnt for row in loom_rows}
+
+    return [
+        AdminUserResponse(
+            id=u.id,
+            email=u.email,
+            display_name=u.display_name,
+            is_admin=u.is_admin,
+            is_active=u.is_active,
+            created_at=u.created_at,
+            last_active_at=u.last_active_at,
+            counts=AdminUserCounts(
+                projects=project_counts.get(u.id, 0),
+                activities_active=activity_active.get(u.id, 0),
+                activities_completed=activity_completed.get(u.id, 0),
+                looms=loom_counts.get(u.id, 0),
+            ),
+        )
+        for u in users
+    ]
 
 
 @router.patch("/users/{user_id}", response_model=AdminUserResponse)
@@ -83,7 +166,7 @@ async def patch_user(
     body: AdminUserPatch,
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
-) -> User:
+) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -97,7 +180,52 @@ async def patch_user(
 
     await db.commit()
     await db.refresh(user)
-    return user
+
+    # Re-fetch counts for the patched user
+    projects = (
+        await db.scalar(
+            select(func.count()).select_from(Project).where(Project.owner_id == user.id, Project.deleted_at.is_(None))
+        )
+        or 0
+    )
+    act_active = (
+        await db.scalar(
+            select(func.count())
+            .select_from(Activity)
+            .where(Activity.owner_id == user.id, Activity.status == "active", Activity.deleted_at.is_(None))
+        )
+        or 0
+    )
+    act_completed = (
+        await db.scalar(
+            select(func.count())
+            .select_from(Activity)
+            .where(Activity.owner_id == user.id, Activity.status == "completed", Activity.deleted_at.is_(None))
+        )
+        or 0
+    )
+    looms = (
+        await db.scalar(
+            select(func.count()).select_from(Loom).where(Loom.owner_id == user.id, Loom.deleted_at.is_(None))
+        )
+        or 0
+    )
+
+    return AdminUserResponse(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        is_admin=user.is_admin,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        last_active_at=user.last_active_at,
+        counts=AdminUserCounts(
+            projects=projects,
+            activities_active=act_active,
+            activities_completed=act_completed,
+            looms=looms,
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -186,4 +314,33 @@ async def get_health(
         memory_total_mb=mem.total // (1024 * 1024),
         db_ping_ms=db_ping_ms,
         uptime_seconds=uptime_seconds,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Versions
+# ---------------------------------------------------------------------------
+
+
+def _pkg(name: str) -> str:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
+
+
+@router.get("/versions", response_model=AdminVersionsResponse)
+async def get_versions(
+    _: User = Depends(require_admin),
+) -> AdminVersionsResponse:
+    return AdminVersionsResponse(
+        app=VERSION,
+        python=platform.python_version(),
+        fastapi=_pkg("fastapi"),
+        sqlalchemy=_pkg("sqlalchemy"),
+        alembic=_pkg("alembic"),
+        pyweaving=_pkg("pyweaving"),
+        pillow=_pkg("pillow"),
+        boto3=_pkg("boto3"),
+        psutil=_pkg("psutil"),
     )
