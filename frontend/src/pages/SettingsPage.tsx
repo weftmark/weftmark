@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { updateSettings, deleteAccount, getDataExport } from "@/api/users";
+import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
 import { listProjects } from "@/api/projects";
 import { Button } from "@/components/ui/button";
 import { EulaContent } from "@/components/EulaContent";
@@ -19,6 +19,12 @@ export function SettingsPage() {
     queryFn: listProjects,
   });
   const sharedProjectCount = projects.filter((p) => p.is_shared).length;
+
+  const { data: currentEula } = useQuery({
+    queryKey: ["eula", "current"],
+    queryFn: getCurrentEula,
+    staleTime: 5 * 60 * 1000,
+  });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -379,9 +385,9 @@ export function SettingsPage() {
                     </Button>
                   </div>
 
-                  {showEula && (
+                  {showEula && currentEula && (
                     <div className="rounded-lg border p-4 max-h-[50vh] overflow-y-auto">
-                      <EulaContent />
+                      <EulaContent bodyHtml={currentEula.body_html} />
                     </div>
                   )}
                 </div>

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_db, require_admin, require_superuser
 from app.models.activity import Activity
+from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom
 from app.models.pending_signup import PendingSignup
@@ -630,6 +631,75 @@ async def dismiss_pending_signup(
         await send_account_denied_email(email, display_name)
     except Exception:
         log.exception("Failed to send account denied email to %s", email)
+
+
+# ---------------------------------------------------------------------------
+# EULA management (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class EulaCreateRequest(BaseModel):
+    version: str
+    body_html: str
+    effective_date: datetime | None = None
+
+
+class EulaVersionResponse(BaseModel):
+    id: int
+    version: str
+    effective_date: datetime
+    created_at: datetime
+
+
+class EulaCurrentAdminResponse(BaseModel):
+    id: int
+    version: str
+    body_html: str
+    effective_date: datetime
+    created_at: datetime
+
+
+@router.get("/eula", response_model=EulaCurrentAdminResponse)
+async def get_eula_admin(
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> EulaCurrentAdminResponse:
+    row = await db.scalar(
+        select(EulaVersion).order_by(EulaVersion.effective_date.desc(), EulaVersion.id.desc()).limit(1)
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="No EULA version found")
+    return EulaCurrentAdminResponse(
+        id=row.id,
+        version=row.version,
+        body_html=row.body_html,
+        effective_date=row.effective_date,
+        created_at=row.created_at,
+    )
+
+
+@router.post("/eula", response_model=EulaVersionResponse, status_code=201)
+async def create_eula_version(
+    body: EulaCreateRequest,
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> EulaVersionResponse:
+    existing = await db.scalar(select(EulaVersion).where(EulaVersion.version == body.version))
+    if existing:
+        raise HTTPException(status_code=409, detail=f"EULA version '{body.version}' already exists")
+
+    effective = body.effective_date or datetime.now(timezone.utc)
+    row = EulaVersion(version=body.version, body_html=body.body_html, effective_date=effective)
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    log.info("New EULA version created: %s (effective %s)", row.version, row.effective_date)
+    return EulaVersionResponse(
+        id=row.id,
+        version=row.version,
+        effective_date=row.effective_date,
+        created_at=row.created_at,
+    )
 
 
 def _pkg(name: str) -> str:

@@ -132,6 +132,13 @@ def setup_database():
             async with local_engine.begin() as conn:
                 await conn.run_sync(Base.metadata.drop_all)
                 await conn.run_sync(Base.metadata.create_all)
+                # Seed reference data that tests rely on (not truncated per-test)
+                await conn.execute(
+                    text(
+                        "INSERT INTO eula_versions (version, body_html, effective_date) "
+                        "VALUES ('0.3', '<p>Test EULA v0.3</p>', '2026-04-01 00:00:00+00')"
+                    )
+                )
 
         asyncio.run(_create())
         db_ok = True
@@ -167,7 +174,9 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
     async with TestSessionLocal() as cleanup:
         result = await cleanup.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
         existing = {row[0] for row in result}
-        tables = [t for t in Base.metadata.tables.keys() if t in existing]
+        # eula_versions is reference data seeded once in setup_database — preserve it.
+        _NO_TRUNCATE = {"eula_versions"}
+        tables = [t for t in Base.metadata.tables.keys() if t in existing and t not in _NO_TRUNCATE]
         if tables:
             await cleanup.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
             await cleanup.commit()

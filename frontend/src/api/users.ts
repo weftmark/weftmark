@@ -1,6 +1,16 @@
 import { api } from "./client";
 import type { User } from "@/context/AuthContext";
 
+export interface EulaCurrent {
+  version: string;
+  body_html: string;
+  effective_date: string;
+}
+
+export async function getCurrentEula(): Promise<EulaCurrent> {
+  return api.get<EulaCurrent>("/api/eula/current");
+}
+
 export interface UserSettingsUpdate {
   display_name?: string;
   theme?: string;
