@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.routers import activities, admin, auth, health, looms, projects, users, yarn
-from app.routers.auth import load_oidc_metadata
 from app.version import VERSION
 
 settings = get_settings()
@@ -19,7 +18,6 @@ start_time: datetime = datetime.now(timezone.utc)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global start_time
     start_time = datetime.now(timezone.utc)
-    await load_oidc_metadata()
     yield
 
 
