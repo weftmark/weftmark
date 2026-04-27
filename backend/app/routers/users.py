@@ -149,6 +149,15 @@ async def update_settings(
 
     if body.ai_training_consent is not None:
         current_user.ai_training_consent = body.ai_training_consent
+        if not body.ai_training_consent:
+            shared = await db.scalars(
+                select(Project).where(
+                    Project.owner_id == current_user.id,
+                    Project.is_shared.is_(True),
+                )
+            )
+            for proj in shared.all():
+                proj.is_shared = False
 
     await db.commit()
     await db.refresh(current_user)

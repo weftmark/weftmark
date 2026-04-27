@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, getDataExport } from "@/api/users";
+import { listProjects } from "@/api/projects";
 import { Button } from "@/components/ui/button";
 import { EulaContent } from "@/components/EulaContent";
 
@@ -11,6 +13,12 @@ export function SettingsPage() {
   const { user, refetch } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<Section>("appearance");
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: listProjects,
+  });
+  const sharedProjectCount = projects.filter((p) => p.is_shared).length;
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -284,27 +292,56 @@ export function SettingsPage() {
                 </Field>
 
                 {showConsentWarning && (
-                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
-                    <p className="text-sm font-medium">Opt out of data use and disable sharing?</p>
-                    <p className="text-sm text-muted-foreground">
-                      This will stop future use of your data for AI/ML improvements and immediately
-                      disable any public sharing links you have enabled. Anyone with those links
-                      will no longer be able to view your work. Data already used in model training
-                      cannot be retroactively removed. You can opt back in at any time.
-                    </p>
-                    <div className="flex gap-2">
-                      <Button variant="destructive" size="sm" onClick={confirmConsentOptOut}>
-                        Opt out and disable sharing
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowConsentWarning(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="w-full max-w-md rounded-xl border bg-background shadow-xl space-y-4 p-6">
+                      <h2 className="text-base font-semibold">Opt out of data use?</h2>
+
+                      <p className="text-sm text-muted-foreground">
+                        Opting out stops future use of your data for AI/ML model training and
+                        feature improvements. Data already used in model training cannot be
+                        retroactively removed.
+                      </p>
+
+                      <div className="rounded-md bg-amber-500/10 border border-amber-500/30 px-4 py-3 space-y-1.5">
+                        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                          The following will be disabled immediately:
+                        </p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>
+                            Public sharing links for all your projects
+                            {sharedProjectCount > 0 && (
+                              <span className="font-medium text-foreground">
+                                {" "}({sharedProjectCount} currently active)
+                              </span>
+                            )}
+                          </li>
+                          <li>Any future sharing features tied to your account</li>
+                        </ul>
+                        {sharedProjectCount > 0 && (
+                          <p className="text-xs text-amber-700 dark:text-amber-400 pt-1">
+                            Anyone with your current sharing links will immediately lose access.
+                          </p>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        You can opt back in at any time from this page. Re-opting in restores
+                        sharing access but does not re-enable individual project links — you will
+                        need to re-share those manually.
+                      </p>
+
+                      <div className="flex gap-2 pt-1">
+                        <Button variant="destructive" size="sm" onClick={confirmConsentOptOut}>
+                          Opt out and disable sharing
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowConsentWarning(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
