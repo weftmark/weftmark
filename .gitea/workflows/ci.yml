@@ -26,10 +26,14 @@ name: CI
 #   Set it at: Repository → Settings → Secrets → Actions.
 #
 # Version strategy:
-#   push to dev  → PATCH bump  (0.1.0 → 0.1.1), tag v0.1.1-dev
-#   push to main → MINOR bump  (0.1.1 → 0.2.0), tag v0.2.0
-#   feat: anywhere on dev      → MINOR bump instead of PATCH
+#   push to dev  → PATCH bump  (0.1.0 → 0.1.1), commit VERSION, tag v0.1.1-dev
+#   push to main → NO bump; re-tag the current VERSION as v0.1.1 (strips -dev)
+#   feat: on dev               → MINOR bump instead of PATCH
 #   BREAKING CHANGE: or feat!: → MAJOR bump regardless of branch
+#
+# Rationale: dev is where versions are decided and tested. main just promotes
+# the already-tested version. Hotfixes to main should bump manually or via a
+# dedicated hotfix workflow.
 
 on:
   push:
@@ -541,7 +545,8 @@ jobs:
   # ============================================================
 
   # ------------------------------------------------------------
-  # Stage 6 — Version bump (dev/main push only)
+  # Stage 6a — Version bump (dev push only)
+  # Bumps VERSION, commits, and tags v{new}-dev.
   # ------------------------------------------------------------
   bump-version:
     name: Bump version
@@ -549,7 +554,8 @@ jobs:
     needs: [docker-build-backend, docker-build-frontend]
     if: >-
       github.event_name == 'push' &&
-      (github.ref_name == 'dev' || github.ref_name == 'main')
+      github.ref_name == 'dev' &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -567,8 +573,6 @@ jobs:
         run: |
           python3 - << 'PYEOF'
           import subprocess, re, os
-
-          branch = os.environ.get("GITHUB_REF_NAME", "dev")
 
           # ── Read current version ──────────────────────────────────────────
           with open("VERSION") as f:
@@ -602,8 +606,6 @@ jobs:
 
           if breaking:
               bump = "major"
-          elif branch == "main":
-              bump = "minor"
           elif has_feat:
               bump = "minor"
           else:
@@ -617,11 +619,10 @@ jobs:
           else:
               new_ver = f"{major}.{minor}.{patch + 1}"
 
-          tag = f"v{new_ver}-dev" if branch == "dev" else f"v{new_ver}"
+          tag = f"v{new_ver}-dev"
 
-          print(f"Branch:  {branch}")
-          print(f"Bump:    {bump}  ({current} → {new_ver})")
-          print(f"Tag:     {tag}")
+          print(f"Bump:  {bump}  ({current} → {new_ver})")
+          print(f"Tag:   {tag}")
 
           # ── Update VERSION ────────────────────────────────────────────────
           with open("VERSION", "w") as f:
@@ -650,10 +651,44 @@ jobs:
 
       - name: Push version commit
         run: |
-          git pull --rebase origin ${{ github.ref_name }}
-          git push origin ${{ github.ref_name }}
+          git pull --rebase origin dev
+          git push origin dev
 
       - name: Create and push tag
         run: |
           git tag ${{ steps.version.outputs.tag }}
           git push origin ${{ steps.version.outputs.tag }}
+
+  # ------------------------------------------------------------
+  # Stage 6b — Promote version tag (main push only)
+  # No version bump — re-tags the current VERSION as v{ver}
+  # (strips the -dev suffix set when the feature landed on dev).
+  # ------------------------------------------------------------
+  promote-version-tag:
+    name: Promote version tag
+    runs-on: ubuntu-latest
+    needs: [docker-build-backend, docker-build-frontend]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref_name == 'main' &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.CI_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "ci-bot"
+          git config user.email "ci@weaving-site"
+
+      - name: Read current version and create production tag
+        run: |
+          VERSION=$(cat VERSION)
+          TAG="v${VERSION}"
+          echo "Version: ${VERSION}"
+          echo "Tag:     ${TAG}"
+          git tag "${TAG}"
+          git push origin "${TAG}"
