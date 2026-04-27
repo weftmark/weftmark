@@ -1,0 +1,31 @@
+WeftMark — Third-Party Notices
+================================
+
+This project uses open source software. The majority of dependencies are
+licensed under permissive terms (MIT, BSD, Apache-2.0, ISC). The following
+packages are distributed under licenses that require specific notices.
+
+-------------------------------------------------------------------------------
+psycopg2-binary 2.9.10
+License: GNU Lesser General Public License v2 or later (LGPLv2+)
+Source:  https://github.com/psycopg/psycopg2
+
+psycopg2-binary is used as the PostgreSQL database adapter for the test suite.
+It is dynamically linked and used as a library without modification. Under the
+LGPL, dynamic linking of an unmodified library does not impose licensing
+obligations on the application using it. The LGPL source code is available at
+the URL above.
+
+-------------------------------------------------------------------------------
+certifi 2026.4.22
+License: Mozilla Public License 2.0 (MPL 2.0)
+Source:  https://github.com/certifi/python-certifi
+
+certifi provides Mozilla's CA certificate bundle. MPL 2.0 is a weak copyleft
+license that applies only to modifications of certifi itself. This project does
+not modify certifi. Source is available at the URL above.
+
+-------------------------------------------------------------------------------
+Full dependency manifests (backend and frontend) are generated as CI artifacts
+with each build. See the repository for the complete list of dependencies and
+their licenses.
