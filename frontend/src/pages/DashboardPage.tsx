@@ -1,6 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
-import { api } from "@/api/client";
-import { useNavigate, Link } from "react-router-dom";
+import { useClerk } from "@clerk/clerk-react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { listActivities, ACTIVITY_TYPE_LABELS } from "@/api/activities";
@@ -8,8 +8,8 @@ import { listProjects } from "@/api/projects";
 import { listLooms } from "@/api/looms";
 
 export function DashboardPage() {
-  const { user, refetch } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { signOut } = useClerk();
 
   const { data: activities = [] } = useQuery({
     queryKey: ["activities"],
@@ -26,11 +26,7 @@ export function DashboardPage() {
     queryFn: listLooms,
   });
 
-  const handleLogout = async () => {
-    await api.post("/auth/logout");
-    refetch();
-    navigate("/login", { replace: true });
-  };
+  const handleLogout = () => signOut({ redirectUrl: "/login" });
 
   const activeActivities = activities.filter((a) => a.status === "active" && !!a.loom_id);
   const planningActivities = activities.filter((a) => a.status === "active" && !a.loom_id);

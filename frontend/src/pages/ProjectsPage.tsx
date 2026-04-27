@@ -6,11 +6,12 @@ import { ProjectCard } from "@/components/projects/ProjectCard";
 import { UploadWifModal } from "@/components/projects/UploadWifModal";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate, Link } from "react-router-dom";
+import { useClerk } from "@clerk/clerk-react";
+import { Link } from "react-router-dom";
 
 export function ProjectsPage() {
-  const { user, refetch: refetchAuth } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { signOut } = useClerk();
   const queryClient = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
 
@@ -42,11 +43,7 @@ export function ProjectsPage() {
     queryClient.invalidateQueries({ queryKey: ["projects"] });
   };
 
-  const handleLogout = async () => {
-    await fetch("/auth/logout", { method: "POST", credentials: "include" });
-    refetchAuth();
-    navigate("/login", { replace: true });
-  };
+  const handleLogout = () => signOut({ redirectUrl: "/login" });
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -52,38 +52,10 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://redis:6379/1"
     celery_result_backend: str = "redis://redis:6379/2"
 
-    # OIDC — primary provider (Google or any single OIDC endpoint)
-    oidc_discovery_url: str = ""
-    oidc_client_id: str = ""
-    oidc_client_secret: str = ""
-    oidc_redirect_uri: str = "http://localhost:3000/auth/callback"
-
-    # Apple Sign In (optional second provider)
-    # client_secret must be a pre-generated ES256 JWT (valid up to 6 months).
-    # Generate with: https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens
-    oidc_apple_client_id: str = ""
-    oidc_apple_client_secret: str = ""
-    oidc_apple_redirect_uri: str = "http://localhost:3000/auth/callback"
-
-    @property
-    def active_providers(self) -> dict[str, dict[str, str]]:
-        """Returns configured OIDC providers keyed by provider name."""
-        providers: dict[str, dict[str, str]] = {}
-        if self.oidc_discovery_url and self.oidc_client_id:
-            providers["google"] = {
-                "discovery_url": self.oidc_discovery_url,
-                "client_id": self.oidc_client_id,
-                "client_secret": self.oidc_client_secret,
-                "redirect_uri": self.oidc_redirect_uri,
-            }
-        if self.oidc_apple_client_id:
-            providers["apple"] = {
-                "discovery_url": "https://appleid.apple.com",
-                "client_id": self.oidc_apple_client_id,
-                "client_secret": self.oidc_apple_client_secret,
-                "redirect_uri": self.oidc_apple_redirect_uri,
-            }
-        return providers
+    # Clerk authentication
+    clerk_publishable_key: str = ""
+    clerk_secret_key: str = ""
+    clerk_webhook_secret: str = ""
 
     # SMTP (SMTP2Go)
     smtp_host: str = "mail.smtp2go.com"
