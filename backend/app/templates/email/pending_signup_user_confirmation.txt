@@ -1,0 +1,5 @@
+Hi {display_name},
+
+Thanks for signing up for {app_name}.
+
+{app_name} is currently invite only. Your request has been received and the admins have been notified. You'll get an email when your account is approved.

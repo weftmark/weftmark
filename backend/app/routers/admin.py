@@ -1,4 +1,5 @@
 import importlib.metadata
+import logging
 import platform
 import time
 import uuid
@@ -10,15 +11,23 @@ from pydantic import BaseModel
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_db, require_admin
+from app.deps import get_db, require_admin, require_superuser
 from app.models.activity import Activity
 from app.models.invite import Invite
 from app.models.loom import Loom
+from app.models.pending_signup import PendingSignup
 from app.models.project import Project
 from app.models.user import User
 from app.models.yarn import Yarn
+from app.services.clerk import ban_clerk_user, set_user_metadata, unban_clerk_user
+from app.services.email import (
+    send_account_approved_email,
+    send_account_denied_email,
+    send_approval_confirmation_to_admins,
+)
 from app.version import VERSION
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
@@ -39,9 +48,13 @@ class AdminUserResponse(BaseModel):
     email: str
     display_name: str
     is_admin: bool
+    is_superuser: bool
     is_active: bool
+    clerk_banned: bool
     created_at: datetime
     last_active_at: datetime | None
+    approved_by_name: str | None
+    approved_by_email: str | None
     counts: AdminUserCounts
 
     model_config = {"from_attributes": False}
@@ -50,6 +63,7 @@ class AdminUserResponse(BaseModel):
 class AdminUserPatch(BaseModel):
     is_active: bool | None = None
     is_admin: bool | None = None
+    is_superuser: bool | None = None
 
 
 class AdminStatsResponse(BaseModel):
@@ -147,8 +161,12 @@ async def list_users(
             display_name=u.display_name,
             is_admin=u.is_admin,
             is_active=u.is_active,
+            clerk_banned=u.clerk_banned,
             created_at=u.created_at,
             last_active_at=u.last_active_at,
+            approved_by_name=u.approved_by_name,
+            approved_by_email=u.approved_by_email,
+            is_superuser=u.is_superuser,
             counts=AdminUserCounts(
                 projects=project_counts.get(u.id, 0),
                 activities_active=activity_active.get(u.id, 0),
@@ -173,13 +191,24 @@ async def patch_user(
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="Cannot modify your own account")
 
+    if body.is_admin is not None or body.is_superuser is not None:
+        if not admin.is_superuser:
+            raise HTTPException(status_code=403, detail="Superuser required to change admin or superuser roles")
+        if body.is_admin is False and user.is_superuser:
+            raise HTTPException(status_code=400, detail="Cannot remove admin from a superuser")
+
     if body.is_active is not None:
         user.is_active = body.is_active
     if body.is_admin is not None:
         user.is_admin = body.is_admin
+    if body.is_superuser is not None:
+        user.is_superuser = body.is_superuser
 
     await db.commit()
     await db.refresh(user)
+
+    if (body.is_admin is not None or body.is_superuser is not None) and user.clerk_user_id:
+        await set_user_metadata(user.clerk_user_id, {"is_admin": user.is_admin, "is_superuser": user.is_superuser})
 
     # Re-fetch counts for the patched user
     projects = (
@@ -217,14 +246,97 @@ async def patch_user(
         display_name=user.display_name,
         is_admin=user.is_admin,
         is_active=user.is_active,
+        clerk_banned=user.clerk_banned,
         created_at=user.created_at,
         last_active_at=user.last_active_at,
+        approved_by_name=user.approved_by_name,
+        approved_by_email=user.approved_by_email,
+        is_superuser=user.is_superuser,
         counts=AdminUserCounts(
             projects=projects,
             activities_active=act_active,
             activities_completed=act_completed,
             looms=looms,
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Ban / unban
+# ---------------------------------------------------------------------------
+
+
+@router.post("/users/{user_id}/ban", status_code=200)
+async def ban_user(
+    user_id: uuid.UUID,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> AdminUserResponse:
+    user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot ban your own account")
+    if not user.clerk_user_id:
+        raise HTTPException(status_code=400, detail="User has no Clerk account")
+    if user.is_admin:
+        raise HTTPException(status_code=400, detail="Remove admin role before banning")
+
+    await ban_clerk_user(user.clerk_user_id)
+    await set_user_metadata(user.clerk_user_id, {"status": "banned"})
+    user.clerk_banned = True
+    user.is_active = False
+    await db.commit()
+    await db.refresh(user)
+
+    return AdminUserResponse(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        is_admin=user.is_admin,
+        is_active=user.is_active,
+        clerk_banned=user.clerk_banned,
+        created_at=user.created_at,
+        last_active_at=user.last_active_at,
+        approved_by_name=user.approved_by_name,
+        approved_by_email=user.approved_by_email,
+        is_superuser=user.is_superuser,
+        counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0),
+    )
+
+
+@router.post("/users/{user_id}/unban", status_code=200)
+async def unban_user(
+    user_id: uuid.UUID,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> AdminUserResponse:
+    user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.clerk_user_id:
+        raise HTTPException(status_code=400, detail="User has no Clerk account")
+
+    await unban_clerk_user(user.clerk_user_id)
+    await set_user_metadata(user.clerk_user_id, {"status": "active"})
+    user.clerk_banned = False
+    user.is_active = True
+    await db.commit()
+    await db.refresh(user)
+
+    return AdminUserResponse(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        is_admin=user.is_admin,
+        is_active=user.is_active,
+        clerk_banned=user.clerk_banned,
+        created_at=user.created_at,
+        last_active_at=user.last_active_at,
+        approved_by_name=user.approved_by_name,
+        approved_by_email=user.approved_by_email,
+        is_superuser=user.is_superuser,
+        counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0),
     )
 
 
@@ -320,6 +432,204 @@ async def get_health(
 # ---------------------------------------------------------------------------
 # Versions
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Elevate admin to superuser
+# ---------------------------------------------------------------------------
+
+
+class ElevateContentSummary(BaseModel):
+    activities: int
+    looms: int
+    projects: int
+    yarn: int
+
+
+class ElevateRequest(BaseModel):
+    confirm_delete_content: bool = False
+
+
+@router.post("/users/{user_id}/elevate-to-superuser", status_code=200)
+async def elevate_to_superuser(
+    user_id: uuid.UUID,
+    body: ElevateRequest,
+    admin: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.is_admin:
+        raise HTTPException(status_code=400, detail="User must be an admin before being elevated to superuser")
+    if user.is_superuser:
+        raise HTTPException(status_code=400, detail="User is already a superuser")
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot elevate yourself")
+
+    activities = (
+        await db.scalar(
+            select(func.count())
+            .select_from(Activity)
+            .where(Activity.owner_id == user_id, Activity.deleted_at.is_(None))
+        )
+        or 0
+    )
+    looms = (
+        await db.scalar(
+            select(func.count()).select_from(Loom).where(Loom.owner_id == user_id, Loom.deleted_at.is_(None))
+        )
+        or 0
+    )
+    projects = (
+        await db.scalar(
+            select(func.count()).select_from(Project).where(Project.owner_id == user_id, Project.deleted_at.is_(None))
+        )
+        or 0
+    )
+    yarn = (
+        await db.scalar(
+            select(func.count()).select_from(Yarn).where(Yarn.owner_id == user_id, Yarn.deleted_at.is_(None))
+        )
+        or 0
+    )
+
+    has_content = any([activities, looms, projects, yarn])
+
+    if has_content and not body.confirm_delete_content:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "has_content",
+                "summary": {"activities": activities, "looms": looms, "projects": projects, "yarn": yarn},
+            },
+        )
+
+    if has_content:
+        await db.execute(Activity.__table__.delete().where(Activity.owner_id == user_id))
+        await db.execute(Loom.__table__.delete().where(Loom.owner_id == user_id))
+        await db.execute(Project.__table__.delete().where(Project.owner_id == user_id))
+        await db.execute(Yarn.__table__.delete().where(Yarn.owner_id == user_id))
+
+    user.is_superuser = True
+    await db.commit()
+    if user.clerk_user_id:
+        await set_user_metadata(user.clerk_user_id, {"is_superuser": True})
+
+    return {"status": "elevated"}
+
+
+# ---------------------------------------------------------------------------
+# Pending signups
+# ---------------------------------------------------------------------------
+
+
+class PendingSignupResponse(BaseModel):
+    id: uuid.UUID
+    clerk_user_id: str
+    email: str
+    display_name: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/pending-signups", response_model=list[PendingSignupResponse])
+async def list_pending_signups(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[PendingSignup]:
+    result = await db.scalars(select(PendingSignup).order_by(PendingSignup.created_at.desc()))
+    return list(result.all())
+
+
+@router.post("/pending-signups/{signup_id}/approve", response_model=None, status_code=201)
+async def approve_pending_signup(
+    signup_id: uuid.UUID,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
+    if signup is None:
+        raise HTTPException(status_code=404, detail="Pending signup not found")
+
+    existing = await db.scalar(
+        select(User).where(User.clerk_user_id == signup.clerk_user_id, User.deleted_at.is_(None))
+    )
+    if existing is not None:
+        await db.delete(signup)
+        await db.commit()
+        return {"status": "already_exists"}
+
+    user = User(
+        email=signup.email,
+        display_name=signup.display_name,
+        clerk_user_id=signup.clerk_user_id,
+        is_admin=False,
+        ai_training_consent=False,
+        approved_by_name=admin.display_name,
+        approved_by_email=admin.email,
+    )
+    db.add(user)
+    await db.delete(signup)
+    await db.commit()
+    await set_user_metadata(signup.clerk_user_id, {"status": "active", "is_admin": False, "is_superuser": False})
+
+    admin_emails = list(await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None))))
+
+    try:
+        await send_account_approved_email(signup.email, signup.display_name)
+    except Exception:
+        log.exception("Failed to send account approved email to %s", signup.email)
+
+    if admin_emails:
+        try:
+            await send_approval_confirmation_to_admins(
+                admin_emails, signup.display_name, signup.email, admin.display_name
+            )
+        except Exception:
+            log.exception("Failed to send approval confirmation to admins")
+
+    return {"status": "created"}
+
+
+@router.post("/pending-signups/{signup_id}/ban", status_code=204)
+async def ban_pending_signup(
+    signup_id: uuid.UUID,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
+    if signup is None:
+        raise HTTPException(status_code=404, detail="Pending signup not found")
+    email, display_name, clerk_user_id = signup.email, signup.display_name, signup.clerk_user_id
+    await db.delete(signup)
+    await db.commit()
+    await ban_clerk_user(clerk_user_id)
+    await set_user_metadata(clerk_user_id, {"status": "banned"})
+    try:
+        await send_account_denied_email(email, display_name)
+    except Exception:
+        log.exception("Failed to send account denied email to %s", email)
+
+
+@router.delete("/pending-signups/{signup_id}", status_code=204)
+async def dismiss_pending_signup(
+    signup_id: uuid.UUID,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
+    if signup is None:
+        raise HTTPException(status_code=404, detail="Pending signup not found")
+    email, display_name, clerk_user_id = signup.email, signup.display_name, signup.clerk_user_id
+    await db.delete(signup)
+    await db.commit()
+    await set_user_metadata(clerk_user_id, {"status": "denied"})
+    try:
+        await send_account_denied_email(email, display_name)
+    except Exception:
+        log.exception("Failed to send account denied email to %s", email)
 
 
 def _pkg(name: str) -> str:
