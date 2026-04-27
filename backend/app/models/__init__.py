@@ -1,5 +1,6 @@
 from app.models.activity import Activity, ActivityStep
 from app.models.base import Base
+from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import (
     Loom,
@@ -30,4 +31,5 @@ __all__ = [
     "Skein",
     "Activity",
     "ActivityStep",
+    "EulaVersion",
 ]

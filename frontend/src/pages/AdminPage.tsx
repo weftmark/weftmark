@@ -20,13 +20,16 @@ import {
   approvePendingSignup,
   dismissPendingSignup,
   banPendingSignup,
+  getAdminEula,
+  createEulaVersion,
   type AdminHealth,
   type ElevateContentSummary,
   type InviteRecord,
   type PendingSignup,
 } from "@/api/admin";
+import { EulaContent } from "@/components/EulaContent";
 
-type Tab = "users" | "invites" | "stats" | "health";
+type Tab = "users" | "invites" | "stats" | "health" | "eula";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -80,7 +83,7 @@ export function AdminPage() {
 
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
         <div className="flex gap-2 border-b pb-2">
-          {(["users", "invites", "stats", "health"] as Tab[]).map((t) => (
+          {(["users", "invites", "stats", "health", "eula"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -99,6 +102,7 @@ export function AdminPage() {
         {tab === "invites" && <InvitesTab />}
         {tab === "stats" && <StatsTab />}
         {tab === "health" && <HealthTab />}
+        {tab === "eula" && <EulaTab />}
       </main>
     </div>
   );
@@ -741,6 +745,129 @@ function HealthChart({
       <div className="overflow-hidden">
         <Sparkline values={values} max={max} color={color} />
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// EULA tab
+// ---------------------------------------------------------------------------
+
+function EulaTab() {
+  const qc = useQueryClient();
+  const { data: current, isLoading } = useQuery({
+    queryKey: ["admin", "eula"],
+    queryFn: getAdminEula,
+  });
+
+  const [version, setVersion] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
+  const [effectiveDate, setEffectiveDate] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState(false);
+
+  const { mutate: publish, isPending } = useMutation({
+    mutationFn: () => createEulaVersion(version.trim(), bodyHtml.trim(), effectiveDate || undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "eula"] });
+      qc.invalidateQueries({ queryKey: ["eula", "current"] });
+      setFormSuccess(true);
+      setVersion("");
+      setBodyHtml("");
+      setEffectiveDate("");
+      setFormError(null);
+      setTimeout(() => setFormSuccess(false), 3000);
+    },
+    onError: (e: unknown) => {
+      setFormError(e instanceof Error ? e.message : "Failed to publish EULA version");
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    setFormSuccess(false);
+    if (!version.trim()) { setFormError("Version is required"); return; }
+    if (!bodyHtml.trim()) { setFormError("Body HTML is required"); return; }
+    publish();
+  }
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  return (
+    <div className="space-y-6">
+      {/* Current version */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-medium">Current version: {current?.version}</h2>
+        <p className="text-xs text-muted-foreground">
+          Effective {current ? new Date(current.effective_date).toLocaleDateString() : "—"}
+          {" · "}Published {current ? new Date(current.created_at).toLocaleString() : "—"}
+        </p>
+        <button
+          className="text-xs text-muted-foreground underline"
+          onClick={() => setShowPreview(!showPreview)}
+          type="button"
+        >
+          {showPreview ? "Hide" : "Preview"} current HTML
+        </button>
+        {showPreview && current && (
+          <div className="rounded-lg border p-4 max-h-[40vh] overflow-y-auto">
+            <EulaContent bodyHtml={current.body_html} />
+          </div>
+        )}
+      </div>
+
+      <hr />
+
+      {/* Publish new version */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <h2 className="text-sm font-medium">Publish new version</h2>
+        <p className="text-xs text-muted-foreground">
+          Publishing a new version will require all users to re-accept on next login.
+        </p>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium">Version string</label>
+          <input
+            className="w-full rounded border bg-background px-3 py-1.5 text-sm"
+            placeholder="e.g. 0.4"
+            value={version}
+            onChange={(e) => setVersion(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium">Effective date (optional, defaults to now)</label>
+          <input
+            type="datetime-local"
+            className="w-full rounded border bg-background px-3 py-1.5 text-sm"
+            value={effectiveDate}
+            onChange={(e) => setEffectiveDate(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium">Body HTML</label>
+          <textarea
+            className="w-full rounded border bg-background px-3 py-1.5 text-sm font-mono min-h-[240px]"
+            placeholder="<p>Paste full EULA HTML here…</p>"
+            value={bodyHtml}
+            onChange={(e) => setBodyHtml(e.target.value)}
+          />
+        </div>
+
+        {formError && (
+          <p className="text-sm text-destructive">{formError}</p>
+        )}
+        {formSuccess && (
+          <p className="text-sm text-green-600">EULA version published.</p>
+        )}
+
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Publishing…" : "Publish new version"}
+        </Button>
+      </form>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 """User settings, EULA acceptance, and account management.
 
 Routes:
+  GET    /api/eula/current           — current EULA version + HTML body (public)
   GET    /api/users/me/settings      — current user settings (same as /auth/me but explicit)
   PATCH  /api/users/me               — update settings
   POST   /api/users/me/eula          — accept the current EULA version
@@ -19,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
 from app.models.activity import Activity, ActivityPhoto, ActivityStep
+from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionAccessory, LoomVersionPhoto, LoomVersionReceipt
 from app.models.project import Project
@@ -29,10 +31,7 @@ from app.services import storage
 
 log = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/users", tags=["users"])
-
-# Bump this string when the EULA text changes — all users will be prompted to re-accept.
-CURRENT_EULA_VERSION = "0.3"
+eula_router = APIRouter(prefix="/api/eula", tags=["users"])
 
 _VALID_THEMES = {"light", "dark"}
 _VALID_MEASUREMENT_SYSTEMS = {"metric", "imperial"}
@@ -80,7 +79,19 @@ class UserSettingsResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-def _to_response(user: User) -> UserSettingsResponse:
+# ---------------------------------------------------------------------------
+# EULA helpers
+# ---------------------------------------------------------------------------
+
+
+async def get_current_eula_version(db: AsyncSession) -> str:
+    row = await db.scalar(
+        select(EulaVersion).order_by(EulaVersion.effective_date.desc(), EulaVersion.id.desc()).limit(1)
+    )
+    return row.version if row else "0.3"
+
+
+def _to_response(user: User, current_eula_version: str) -> UserSettingsResponse:
     return UserSettingsResponse(
         id=user.id,
         email=user.email,
@@ -92,7 +103,7 @@ def _to_response(user: User) -> UserSettingsResponse:
         measurement_system=user.measurement_system,
         ai_training_consent=user.ai_training_consent,
         eula_accepted_version=user.eula_accepted_version,
-        current_eula_version=CURRENT_EULA_VERSION,
+        current_eula_version=current_eula_version,
     )
 
 
@@ -101,9 +112,32 @@ def _to_response(user: User) -> UserSettingsResponse:
 # ---------------------------------------------------------------------------
 
 
+class EulaCurrentResponse(BaseModel):
+    version: str
+    body_html: str
+    effective_date: datetime
+
+
+@eula_router.get("/current", response_model=EulaCurrentResponse)
+async def get_current_eula(db: AsyncSession = Depends(get_db)) -> EulaCurrentResponse:
+    row = await db.scalar(
+        select(EulaVersion).order_by(EulaVersion.effective_date.desc(), EulaVersion.id.desc()).limit(1)
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="No EULA version found")
+    return EulaCurrentResponse(version=row.version, body_html=row.body_html, effective_date=row.effective_date)
+
+
+router = APIRouter(prefix="/api/users", tags=["users"])
+
+
 @router.get("/me", response_model=UserSettingsResponse)
-async def get_settings(current_user: User = Depends(get_current_user)) -> UserSettingsResponse:
-    return _to_response(current_user)
+async def get_settings(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserSettingsResponse:
+    version = await get_current_eula_version(db)
+    return _to_response(current_user, version)
 
 
 @router.patch("/me", response_model=UserSettingsResponse)
@@ -161,7 +195,8 @@ async def update_settings(
 
     await db.commit()
     await db.refresh(current_user)
-    return _to_response(current_user)
+    version = await get_current_eula_version(db)
+    return _to_response(current_user, version)
 
 
 @router.post("/me/eula", response_model=UserSettingsResponse)
@@ -170,16 +205,17 @@ async def accept_eula(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> UserSettingsResponse:
-    if body.version != CURRENT_EULA_VERSION:
+    current_version = await get_current_eula_version(db)
+    if body.version != current_version:
         raise HTTPException(
             status_code=422,
-            detail=f"Version mismatch — current EULA is {CURRENT_EULA_VERSION}",
+            detail=f"Version mismatch — current EULA is {current_version}",
         )
-    current_user.eula_accepted_version = CURRENT_EULA_VERSION
+    current_user.eula_accepted_version = current_version
     current_user.eula_accepted_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(current_user)
-    return _to_response(current_user)
+    return _to_response(current_user, current_version)
 
 
 @router.delete("/me", status_code=204)

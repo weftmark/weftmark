@@ -765,3 +765,81 @@ class TestElevateToSuperuser:
             f"/api/admin/users/{target.id}/elevate-to-superuser", json={"confirm_delete_content": False}
         )
         assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/eula  (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class TestGetAdminEula:
+    async def test_returns_200(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/eula")
+        assert resp.status_code == 200
+
+    async def test_returns_current_version(self, superuser_client: AsyncClient):
+        data = (await superuser_client.get("/api/admin/eula")).json()
+        assert data["version"] == "0.3"
+
+    async def test_returns_body_html(self, superuser_client: AsyncClient):
+        data = (await superuser_client.get("/api/admin/eula")).json()
+        assert "body_html" in data
+        assert len(data["body_html"]) > 0
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/eula")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get("/api/admin/eula")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/eula  (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateEulaVersion:
+    async def test_returns_201(self, superuser_client: AsyncClient):
+        resp = await superuser_client.post(
+            "/api/admin/eula",
+            json={"version": "1.0", "body_html": "<p>New terms</p>"},
+        )
+        assert resp.status_code == 201
+
+    async def test_returns_version_fields(self, superuser_client: AsyncClient):
+        resp = await superuser_client.post(
+            "/api/admin/eula",
+            json={"version": "1.1", "body_html": "<p>v1.1</p>"},
+        )
+        data = resp.json()
+        assert data["version"] == "1.1"
+        assert "id" in data
+        assert "effective_date" in data
+        assert "created_at" in data
+
+    async def test_duplicate_version_returns_409(self, superuser_client: AsyncClient):
+        await superuser_client.post("/api/admin/eula", json={"version": "2.0", "body_html": "<p>v2</p>"})
+        resp = await superuser_client.post("/api/admin/eula", json={"version": "2.0", "body_html": "<p>dup</p>"})
+        assert resp.status_code == 409
+
+    async def test_new_version_becomes_current(self, superuser_client: AsyncClient, client: AsyncClient):
+        await superuser_client.post(
+            "/api/admin/eula",
+            json={
+                "version": "9.9",
+                "body_html": "<p>latest</p>",
+                "effective_date": "2099-01-01T00:00:00+00:00",
+            },
+        )
+        current = (await client.get("/api/eula/current")).json()
+        assert current["version"] == "9.9"
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/admin/eula", json={"version": "1.2", "body_html": "<p>x</p>"})
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post("/api/admin/eula", json={"version": "1.3", "body_html": "<p>x</p>"})
+        assert resp.status_code == 401
