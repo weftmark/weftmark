@@ -42,6 +42,11 @@ export function DashboardPage() {
         <span className="font-semibold">Weaving Tracker</span>
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">{user?.email}</span>
+          {user?.is_admin && (
+            <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground">
+              Admin
+            </Link>
+          )}
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Sign out
           </Button>
