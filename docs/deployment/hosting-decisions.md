@@ -26,12 +26,12 @@
 
 **Rationale:**
 
-- Runs the full docker-compose stack on a single host: frontend (nginx), backend (FastAPI), worker (Celery), Redis, Authentik
+- Runs the full docker-compose stack on a single host: frontend (nginx), backend (FastAPI), worker (Celery), Redis
 - Same docker-compose structure as local dev — no new tooling or deployment pipeline required
 - Free allocation eliminates VM cost
 - Komodo manages container lifecycle and pulls images from ghcr.io on deploy
 
-**Instance sizing:** Minimum 2 vCPU / 4 GB RAM (8 GB recommended) to accommodate Authentik's footprint alongside the application stack. See [Proxmox VM sizing note in infrastructure memory](../../.claude/memory/infrastructure.md).
+**Instance sizing:** Minimum 2 vCPU / 4 GB RAM once Authentik is removed (see §6 Clerk migration). Current dev stack with Authentik still present needs 8 GB. See [Proxmox VM sizing note in infrastructure memory](../../.claude/memory/infrastructure.md).
 
 **Estimated cost:** $0/mo.
 
@@ -107,7 +107,38 @@
 
 ---
 
-## 6. Email — SMTP2Go
+## 6. Authentication — Clerk
+
+**Decision:** Clerk hosted authentication (replacing Authentik)
+
+**Status:** Developer has a Clerk free-tier account. Implementation pending before public launch. **P1 — must ship before users are onboarded.**
+
+**Why Clerk over Authentik:**
+
+- Authentik requires self-hosting (~2 GB RAM overhead), manual invite provisioning, and ongoing security maintenance. Clerk is fully managed.
+- Clerk provides built-in social login (Google, Apple, email magic link), MFA, user management dashboard, and session handling out of the box.
+- Removes Authentik from the docker-compose stack, reducing the minimum VM RAM requirement from 8 GB to ~2 GB.
+- Free tier: unlimited MAU on development; 10,000 MAU on production (as of 2026).
+
+**Implementation checklist:**
+
+- [ ] Install `clerk-backend-sdk` (Python) and `@clerk/clerk-react` (frontend)
+- [ ] Add `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` to `.env` and deployment secrets
+- [ ] Create Clerk application; configure allowed origins and redirect URLs for `weftmark.com`
+- [ ] Swap `get_current_user` in `app/deps.py` to verify Clerk session tokens
+- [ ] Add webhook handler (`POST /auth/clerk/webhook`) to sync user creation/deletion to the local `users` table
+- [ ] Update `User` model: rename `oidc_sub` → `clerk_user_id`; add Alembic migration
+- [ ] Replace frontend auth: remove OIDC redirect hooks, add `<ClerkProvider>` to `App.tsx`, use Clerk's `<SignIn>` component
+- [ ] Update `docker-compose.yml`: remove Authentik service; remove Authentik env vars
+- [ ] Update VM sizing note — 4 GB RAM is now sufficient without Authentik
+
+**Architectural note:** The local `users` table remains the source of truth for app-level data (projects, activities, preferences). Clerk manages identity only; the webhook keeps the two in sync. The existing `Invite` model can be retired once Clerk's invitation emails are wired (Clerk supports restricting sign-ups to invited emails only).
+
+**Estimated cost:** $0/mo on free tier.
+
+---
+
+## 7. Email — SMTP2Go
 
 **Decision:** SMTP2Go for transactional email (invitations).
 
@@ -119,7 +150,7 @@
 
 ---
 
-## 7. Monthly Cost Summary
+## 8. Monthly Cost Summary
 
 | Service | Cost |
 | --- | --- |
@@ -127,6 +158,7 @@
 | Neon Postgres | $0 |
 | Cloudflare R2 | $0 (within free tier) |
 | Cloudflare DNS/CDN/TLS | $0 |
+| Clerk | $0 (within free tier) |
 | SMTP2Go | $0 (within free tier) |
 | weftmark.com domain | ~$1/mo ($11/yr) |
 | **Total** | **~$1/mo** |

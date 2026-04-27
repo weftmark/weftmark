@@ -424,14 +424,33 @@ class UserResponse(BaseModel):
     display_name: str
     is_admin: bool
     theme: str
+    activity_theme: str | None
     idle_timeout_minutes: int
+    measurement_system: str
+    ai_training_consent: bool
+    eula_accepted_version: str | None
+    current_eula_version: str
 
     model_config = {"from_attributes": True}
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(current_user: User = Depends(get_current_user)) -> User:
-    return current_user
+async def me(current_user: User = Depends(get_current_user)) -> UserResponse:
+    from app.routers.users import CURRENT_EULA_VERSION
+
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        display_name=current_user.display_name,
+        is_admin=current_user.is_admin,
+        theme=current_user.theme,
+        activity_theme=current_user.activity_theme,
+        idle_timeout_minutes=current_user.idle_timeout_minutes,
+        measurement_system=current_user.measurement_system,
+        ai_training_consent=current_user.ai_training_consent,
+        eula_accepted_version=current_user.eula_accepted_version,
+        current_eula_version=CURRENT_EULA_VERSION,
+    )
 
 
 # ---------------------------------------------------------------------------
