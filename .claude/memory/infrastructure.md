@@ -41,6 +41,15 @@ Use **Cloudflare Origin CA certificate** (free, generated in Cloudflare dashboar
 - Dev: leave `POSTGRES_DSN` blank, use the `db` service in docker-compose as before
 - Neon pauses after 5 min inactivity — fine for prod, not for dev
 
+## Container registry
+
+**Decided:** GitHub Container Registry (ghcr.io) under the `weftmark` GitHub org.
+
+- Org: <https://github.com/weftmark>
+- Images: `ghcr.io/weftmark/weaving_site_backend`, `ghcr.io/weftmark/weaving_site_frontend`
+- Code is NOT mirrored to GitHub — Gitea remains the source of truth; ghcr.io is registry only
+- CD pipeline (Gitea Actions → build → push to ghcr.io → Komodo pulls) is a pending milestone ticket
+
 ## Platform name and domain
 
 **Decided:** WeftMark / weftmark.com (resolved issue #55)

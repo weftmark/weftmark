@@ -69,7 +69,28 @@
 
 ---
 
-## 5. Email — SMTP2Go
+## 5. Container Registry — GitHub Container Registry (ghcr.io)
+
+**Decision:** `ghcr.io/weftmark` (GitHub org created 2026-04-26)
+
+**Rationale:**
+
+- Free for public images, generous storage on free org tier
+- Komodo pulls from ghcr.io on deploy — needs a registry reachable from the production VM; local Gitea at `10.10.10.90` is not reachable from the data centre
+- Keeps the `weftmark` namespace clean and separate from personal GitHub activity
+
+**Image names:**
+
+- `ghcr.io/weftmark/weaving_site_backend:<version>`
+- `ghcr.io/weftmark/weaving_site_frontend:<version>`
+
+**Note:** Code is NOT mirrored to GitHub — Gitea remains the source of truth. ghcr.io is used as the registry only. The CD pipeline (Gitea Actions → build → push → Komodo pull) is a pending milestone task.
+
+**Estimated cost:** $0/mo (public packages are free).
+
+---
+
+## 6. Email — SMTP2Go
 
 **Decision:** SMTP2Go for transactional email (invitations).
 
@@ -81,7 +102,7 @@
 
 ---
 
-## Monthly Cost Summary
+## 7. Monthly Cost Summary
 
 | Service | Cost |
 | --- | --- |
