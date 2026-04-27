@@ -43,7 +43,7 @@ export function LoginPage() {
         )}
 
         <Button className="w-full" onClick={handleLogin} disabled={isLoading}>
-          Sign in with Authentik
+          Sign in with Google
         </Button>
       </div>
     </div>

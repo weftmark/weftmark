@@ -25,6 +25,7 @@ import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from jwt import PyJWKSet
 from jwt.exceptions import PyJWTError as JWTError
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
@@ -111,13 +112,6 @@ async def login(invite_token: str | None = Query(default=None)) -> RedirectRespo
     signed_state = _signer.dumps({"state": state, "nonce": nonce})
 
     authorization_endpoint = _oidc_metadata["authorization_endpoint"]
-    if settings.oidc_public_base_url:
-        from urllib.parse import urlparse, urlunparse
-
-        parsed = urlparse(authorization_endpoint)
-        public = urlparse(settings.oidc_public_base_url)
-        authorization_endpoint = urlunparse(parsed._replace(scheme=public.scheme, netloc=public.netloc))
-
     params = {
         "response_type": "code",
         "client_id": settings.oidc_client_id,
@@ -185,15 +179,21 @@ async def callback(
 
     # Decode and verify ID token
     id_token = token_data["id_token"]
-    jwks_uri = _oidc_metadata["jwks_uri"]
     async with httpx.AsyncClient() as client:
-        jwks_resp = await client.get(jwks_uri)
-        jwks = jwks_resp.json()
+        jwks_resp = await client.get(_oidc_metadata["jwks_uri"])
+        jwks_resp.raise_for_status()
+        jwks_data = jwks_resp.json()
 
     try:
+        header = jwt.get_unverified_header(id_token)
+        jwk_set = PyJWKSet.from_dict(jwks_data)
+        kid = header.get("kid")
+        signing_key = next((k for k in jwk_set.keys if not kid or k.key_id == kid), None)
+        if signing_key is None:
+            raise HTTPException(status_code=400, detail="No matching JWKS key found")
         claims = jwt.decode(
             id_token,
-            jwks,
+            signing_key.key,
             algorithms=["RS256", "ES256"],
             audience=settings.oidc_client_id,
             options={"verify_at_hash": False},
