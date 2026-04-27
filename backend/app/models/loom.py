@@ -97,6 +97,7 @@ class LoomVersionPhoto(Base, TimestampMixin):
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     path: Mapped[str] = mapped_column(String(500), nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     version: Mapped["LoomVersion"] = relationship("LoomVersion", back_populates="photos")
