@@ -10,11 +10,13 @@ from app.models.loom import (
 )
 from app.models.project import Project
 from app.models.user import User
+from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
 
 __all__ = [
     "Base",
     "User",
+    "UserIdentity",
     "Invite",
     "Project",
     "Loom",

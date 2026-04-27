@@ -42,6 +42,11 @@ export function DashboardPage() {
         <span className="font-semibold">Weaving Tracker</span>
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">{user?.email}</span>
+          {user?.is_admin && (
+            <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground">
+              Admin
+            </Link>
+          )}
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Sign out
           </Button>
@@ -179,10 +184,7 @@ export function DashboardPage() {
               <p className="font-medium text-sm">Equipment</p>
               <p className="mt-0.5 text-xs text-muted-foreground">Manage your looms and configuration history.</p>
             </Link>
-            <Link to="/yarn" className="rounded-lg border p-4 hover:border-ring transition-colors">
-              <p className="font-medium text-sm">Yarn</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Track your stash — yarn products and individual skeins.</p>
-            </Link>
+
           </div>
         </section>
       </main>

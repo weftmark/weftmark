@@ -1,4 +1,4 @@
-# Weaving Site
+# WeftMark
 
 A multi-user web platform for managing weaving projects — from design upload and preview through loom-side step tracking, yarn inventory, and project reporting.
 

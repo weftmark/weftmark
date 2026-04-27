@@ -1,4 +1,4 @@
-# Contributing to Weaving Site
+# Contributing to WeftMark
 
 Thank you for your interest in contributing. This document covers how to get involved, what to expect, and how to keep the project consistent.
 

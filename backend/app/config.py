@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     api_url: str = "http://localhost:8000"
 
     # Database
+    # For local dev: set POSTGRES_* vars and leave POSTGRES_DSN blank.
+    # For managed Postgres (e.g. Neon): set POSTGRES_DSN to the full connection string;
+    # the individual POSTGRES_* vars are ignored.
+    postgres_dsn: str = ""
     postgres_host: str = "db"
     postgres_port: int = 5432
     postgres_db: str = "weaving_site"
@@ -25,6 +29,9 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.postgres_dsn:
+            url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -32,6 +39,9 @@ class Settings(BaseSettings):
 
     @property
     def database_url_sync(self) -> str:
+        if self.postgres_dsn:
+            url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
+            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -42,12 +52,38 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://redis:6379/1"
     celery_result_backend: str = "redis://redis:6379/2"
 
-    # OIDC
+    # OIDC — primary provider (Google or any single OIDC endpoint)
     oidc_discovery_url: str = ""
-    oidc_public_base_url: str = ""  # Public base URL of the OIDC provider (for browser redirects)
     oidc_client_id: str = ""
     oidc_client_secret: str = ""
     oidc_redirect_uri: str = "http://localhost:3000/auth/callback"
+
+    # Apple Sign In (optional second provider)
+    # client_secret must be a pre-generated ES256 JWT (valid up to 6 months).
+    # Generate with: https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens
+    oidc_apple_client_id: str = ""
+    oidc_apple_client_secret: str = ""
+    oidc_apple_redirect_uri: str = "http://localhost:3000/auth/callback"
+
+    @property
+    def active_providers(self) -> dict[str, dict[str, str]]:
+        """Returns configured OIDC providers keyed by provider name."""
+        providers: dict[str, dict[str, str]] = {}
+        if self.oidc_discovery_url and self.oidc_client_id:
+            providers["google"] = {
+                "discovery_url": self.oidc_discovery_url,
+                "client_id": self.oidc_client_id,
+                "client_secret": self.oidc_client_secret,
+                "redirect_uri": self.oidc_redirect_uri,
+            }
+        if self.oidc_apple_client_id:
+            providers["apple"] = {
+                "discovery_url": "https://appleid.apple.com",
+                "client_id": self.oidc_apple_client_id,
+                "client_secret": self.oidc_apple_client_secret,
+                "redirect_uri": self.oidc_apple_redirect_uri,
+            }
+        return providers
 
     # SMTP (SMTP2Go)
     smtp_host: str = "mail.smtp2go.com"
@@ -55,7 +91,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from_email: str = ""
-    smtp_from_name: str = "Weaving Site"
+    smtp_from_name: str = "WeftMark"
 
     # Invites
     invite_expiry_days_default: int = 7

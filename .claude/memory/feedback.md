@@ -119,7 +119,8 @@ Files to regenerate:
 
 - After pushing, poll `GET /api/v1/repos/gx1400/weaving_site/actions/runs?limit=3` until the new run appears as `completed`
 - If `conclusion == "failure"`, fetch job details: `GET /api/v1/repos/gx1400/weaving_site/actions/runs/{run_id}/jobs`
-- Read-only token is `GITEA_TOKEN_RO` in `.env.local`; read-write token is `GITEA_TOKEN_RW` — use RW for creating PRs and any write operations
+- Token is `GITEA_TOKEN` in `.env.local` — use for all CI status checks and issue/PR operations
+- Pin/unpin operations require `GITEA_PIN_TOKEN` (gx1400 owner account with `write:issue` scope)
 - Gitea API base is `http://10.10.10.90:3000`
 - When the user shows a failure traceback, use the same API to identify which job/step failed and pull context
 
@@ -132,7 +133,7 @@ Files to regenerate:
 **How to apply — exact working command:**
 
 ```bash
-GITEA_TOKEN=$(grep GITEA_TOKEN_RW .env.local | cut -d= -f2 | tr -d '[:space:]')
+GITEA_TOKEN=$(grep ^GITEA_TOKEN= .env.local | cut -d= -f2 | tr -d '[:space:]')
 curl -s -X POST "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/pulls" \
   -H "Authorization: token $GITEA_TOKEN" \
   -H "Content-Type: application/json" \
@@ -145,8 +146,8 @@ curl -s -X POST "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/pulls"
 - Port is **3000**, not 3001
 - Escape newlines as `\\n` inside the `-d` JSON string (single-quoted heredocs don't work reliably on Windows bash)
 - Parse response with inline `python -c` — Python via conda is always available; `jq` and `gh` are not
-- Token extraction: `grep GITEA_TOKEN_RW .env.local | cut -d= -f2 | tr -d '[:space:]'`
-- For CI status checks use `GITEA_TOKEN_RO` (read-only is sufficient)
+- Token extraction: `grep ^GITEA_TOKEN= .env.local | cut -d= -f2 | tr -d '[:space:]'` (use `^` anchor to avoid matching GITEA_PIN_TOKEN)
+- Use `GITEA_TOKEN` for all operations; use `GITEA_PIN_TOKEN` only for pin/unpin
 
 ## Rebuilding the frontend
 
@@ -203,8 +204,10 @@ If the build fails, the full error is in the `docker compose build` output — r
 
 **How to apply:**
 
+Pin/unpin requires `write:issue` scope from the `gx1400` owner account. Use `GITEA_PIN_TOKEN` (not `GITEA_TOKEN_ISSUES` — that token belongs to `claude_vscode` which lacks admin on the repo).
+
 ```bash
-GITEA_TOKEN=$(grep GITEA_TOKEN_ISSUES .env.local | cut -d= -f2 | tr -d '[:space:]')
+GITEA_TOKEN=$(grep GITEA_PIN_TOKEN .env.local | cut -d= -f2 | tr -d '[:space:]')
 # Pin
 curl -s -X POST "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/issues/<number>/pin" -H "Authorization: token $GITEA_TOKEN"
 # Unpin
@@ -218,3 +221,27 @@ curl -s -X DELETE "http://10.10.10.90:3000/api/v1/repos/gx1400/weaving_site/issu
 **Why:** Makes it clear which issues are Claude's responsibility vs the developer's.
 
 **How to apply:** Include `"assignees": ["claude_vscode"]` in the issue creation payload.
+
+## Keep issue #43 updated as milestone tasks execute
+
+**Rule:** After completing or making significant progress on any Milestone 1 issue, post a comment on issue #43 summarising what changed — which issue was closed, what was built, and the updated milestone status (N of 15 open).
+
+**Why:** Issue #43 is the milestone planning document and should serve as a living status tracker so the full milestone progress is visible in one place without having to read every individual issue thread.
+
+**How to apply:**
+
+- After merging a branch that closes a milestone issue, post a comment on #43 noting the issue number, what was shipped, and the new open count
+- If a milestone issue is rescoped, deferred, or replaced, update the table in #43's body
+- Keep the "Roadmap sequence" section accurate as items move from planned → in-progress → done
+
+## Include the original user prompt in every issue
+
+**Rule:** When creating a Gitea issue or documenting scope, include the original user prompt verbatim in the issue body.
+
+**Why:** Issues serve as a permanent record. The exact words used to request a feature are important context for implementation and review.
+
+**How to apply:** Add a "**User prompt:**" block at the top or bottom of every new issue body containing the user's message word-for-word. Example:
+
+```markdown
+> **User prompt:** create a github activity heatmap calendar like feature for users dashboards
+```

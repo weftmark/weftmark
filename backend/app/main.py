@@ -1,25 +1,30 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import activities, auth, health, looms, projects, yarn
+from app.routers import activities, admin, auth, health, looms, projects, yarn
 from app.routers.auth import load_oidc_metadata
 from app.version import VERSION
 
 settings = get_settings()
 
+start_time: datetime = datetime.now(timezone.utc)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    global start_time
+    start_time = datetime.now(timezone.utc)
     await load_oidc_metadata()
     yield
 
 
 app = FastAPI(
-    title="Weaving Site API",
+    title="WeftMark API",
     version=VERSION,
     lifespan=lifespan,
     docs_url="/api/docs",
@@ -41,3 +46,4 @@ app.include_router(projects.router)
 app.include_router(looms.router)
 app.include_router(yarn.router)
 app.include_router(activities.router)
+app.include_router(admin.router)

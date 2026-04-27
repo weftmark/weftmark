@@ -10,6 +10,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: weaving_site_frontend:${APP_VERSION:-dev}
+    container_name: weaving_site_frontend
     ports:
       - "3000:80"
     networks:
@@ -29,6 +31,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    image: weaving_site_backend:${APP_VERSION:-dev}
+    container_name: weaving_site_backend
     networks:
       - public
       - internal
@@ -53,6 +57,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    image: weaving_site_backend:${APP_VERSION:-dev}
+    container_name: weaving_site_worker
     command: celery -A app.worker worker --loglevel=info
     networks:
       - internal
@@ -69,12 +75,12 @@ services:
 
   # ----------------------------------------------------------
   # Database — PostgreSQL
-  # Hosts both the application database and the Authentik database.
   # Never exposed to host or public network.
   # Exposed: no
   # ----------------------------------------------------------
   db:
     image: postgres:16-alpine
+    container_name: weaving_site_db
     networks:
       - internal
     ports:
@@ -102,6 +108,7 @@ services:
   # ----------------------------------------------------------
   redis:
     image: redis:7-alpine
+    container_name: weaving_site_redis
     networks:
       - internal
     volumes:
@@ -111,69 +118,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
-
-  # ----------------------------------------------------------
-  # Authentik Server — OIDC identity provider
-  # Browser must reach it directly for the OIDC authorization
-  # redirect, so it is port-bound on the host.
-  # Connected to both networks: public (port binding) and
-  # internal (db/redis access).
-  # Exposed: yes (port 9000 — OIDC flow, admin UI)
-  # ----------------------------------------------------------
-  authentik-server:
-    image: ghcr.io/goauthentik/server:2024.12.1
-    command: server
-    networks:
-      - public
-      - internal
-    env_file:
-      - .env
-    environment:
-      AUTHENTIK_REDIS__HOST: redis
-      AUTHENTIK_POSTGRESQL__HOST: db
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-      AUTHENTIK_POSTGRESQL__USER: ${AUTHENTIK_POSTGRESQL__USER}
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRESQL__PASSWORD}
-    ports:
-      - "9000:9000"
-      - "9443:9443"
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - authentik_media:/media
-      - authentik_certs:/certs
-    restart: unless-stopped
-
-  # ----------------------------------------------------------
-  # Authentik Worker — Background task processor for Authentik
-  # Internal only; no inbound connections needed.
-  # Exposed: no
-  # ----------------------------------------------------------
-  authentik-worker:
-    image: ghcr.io/goauthentik/server:2024.12.1
-    command: worker
-    networks:
-      - internal
-    env_file:
-      - .env
-    environment:
-      AUTHENTIK_REDIS__HOST: redis
-      AUTHENTIK_POSTGRESQL__HOST: db
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-      AUTHENTIK_POSTGRESQL__USER: ${AUTHENTIK_POSTGRESQL__USER}
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRESQL__PASSWORD}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - authentik_media:/media
-      - authentik_certs:/certs
     restart: unless-stopped
 
 
@@ -188,5 +132,3 @@ volumes:
   postgres_data:
   redis_data:
   uploads:
-  authentik_media:
-  authentik_certs:
