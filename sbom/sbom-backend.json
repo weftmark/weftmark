@@ -2,7 +2,7 @@
   "components": [
     {
       "bom-ref": "requirements-L17",
-      "description": "requirements line 17: PyJWT==2.12.0",
+      "description": "requirements line 17: PyJWT[crypto]==2.12.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -11,6 +11,12 @@
         }
       ],
       "name": "PyJWT",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "crypto"
+        }
+      ],
       "purl": "pkg:pypi/pyjwt@2.12.0",
       "type": "library",
       "version": "2.12.0"
@@ -61,8 +67,8 @@
       "version": "0.30.0"
     },
     {
-      "bom-ref": "requirements-L19",
-      "description": "requirements line 19: boto3==1.38.0",
+      "bom-ref": "requirements-L20",
+      "description": "requirements line 20: boto3==1.38.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -95,6 +101,21 @@
       "purl": "pkg:pypi/celery@5.4.0",
       "type": "library",
       "version": "5.4.0"
+    },
+    {
+      "bom-ref": "requirements-L18",
+      "description": "requirements line 18: cryptography==46.0.7",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/cryptography/"
+        }
+      ],
+      "name": "cryptography",
+      "purl": "pkg:pypi/cryptography@46.0.7",
+      "type": "library",
+      "version": "46.0.7"
     },
     {
       "bom-ref": "requirements-L16",
@@ -142,8 +163,8 @@
       "version": "0.27.2"
     },
     {
-      "bom-ref": "requirements-L18",
-      "description": "requirements line 18: itsdangerous==2.2.0",
+      "bom-ref": "requirements-L19",
+      "description": "requirements line 19: itsdangerous==2.2.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -172,8 +193,8 @@
       "version": "12.2.0"
     },
     {
-      "bom-ref": "requirements-L20",
-      "description": "requirements line 20: psutil==6.1.1",
+      "bom-ref": "requirements-L21",
+      "description": "requirements line 21: psutil==6.1.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -360,6 +381,9 @@
       "ref": "requirements-L20"
     },
     {
+      "ref": "requirements-L21"
+    },
+    {
       "ref": "requirements-L3"
     },
     {
@@ -382,7 +406,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-04-27T05:20:18.453523+00:00",
+    "timestamp": "2026-04-27T13:23:19.899341+00:00",
     "tools": {
       "components": [
         {
@@ -486,7 +510,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:8861486c-0b4d-4068-ae98-23790f4ec416",
+  "serialNumber": "urn:uuid:11db8b53-a5bc-45ea-9d80-394424d7c5dd",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
