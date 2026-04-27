@@ -70,6 +70,8 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
 
     if event_type == "user.created":
         await _handle_user_created(db, data)
+    elif event_type == "user.updated":
+        await _handle_user_updated(db, data)
     elif event_type == "user.deleted":
         await _handle_user_deleted(db, data)
     else:
@@ -116,6 +118,31 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
     db.add(user)
     await db.commit()
     log.info("Created User record for Clerk user %s (%s)", clerk_user_id, email)
+
+
+async def _handle_user_updated(db: AsyncSession, data: dict) -> None:
+    clerk_user_id: str = data["id"]
+    user = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id, User.deleted_at.is_(None)))
+    if user is None:
+        return
+
+    email_addresses: list[dict] = data.get("email_addresses", [])
+    primary_id: str | None = data.get("primary_email_address_id")
+    primary = next(
+        (e for e in email_addresses if e["id"] == primary_id),
+        email_addresses[0] if email_addresses else None,
+    )
+    if primary:
+        user.email = primary["email_address"]
+
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    display_name = f"{first_name} {last_name}".strip()
+    if display_name:
+        user.display_name = display_name
+
+    await db.commit()
+    log.info("Updated User record for Clerk user %s", clerk_user_id)
 
 
 async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
