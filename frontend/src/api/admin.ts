@@ -1,5 +1,12 @@
 import { api } from "@/api/client";
 
+export interface AdminUserCounts {
+  projects: number;
+  activities_active: number;
+  activities_completed: number;
+  looms: number;
+}
+
 export interface AdminUser {
   id: string;
   email: string;
@@ -8,6 +15,7 @@ export interface AdminUser {
   is_active: boolean;
   created_at: string;
   last_active_at: string | null;
+  counts: AdminUserCounts;
 }
 
 export interface AdminStats {
@@ -32,6 +40,18 @@ export interface AdminHealth {
   uptime_seconds: number;
 }
 
+export interface AdminVersions {
+  app: string;
+  python: string;
+  fastapi: string;
+  sqlalchemy: string;
+  alembic: string;
+  pyweaving: string;
+  pillow: string;
+  boto3: string;
+  psutil: string;
+}
+
 export interface InviteRecord {
   id: string;
   email: string;
@@ -44,6 +64,7 @@ export interface InviteRecord {
 export const listAdminUsers = () => api.get<AdminUser[]>("/api/admin/users");
 export const getAdminStats = () => api.get<AdminStats>("/api/admin/stats");
 export const getAdminHealth = () => api.get<AdminHealth>("/api/admin/health");
+export const getAdminVersions = () => api.get<AdminVersions>("/api/admin/versions");
 export const patchAdminUser = (userId: string, body: { is_active?: boolean; is_admin?: boolean }) =>
   api.patch<AdminUser>(`/api/admin/users/${userId}`, body);
 
