@@ -9,8 +9,9 @@
 Before you read the full terms, here is the short version:
 
 - WeftMark is a personal hobby project built by a weaver for weavers. It is not a commercial product.
-- You keep ownership of everything you upload — your WIF files, photos, and activity data are yours.
-- We store your data to run the service and for nothing else unless you explicitly opt in.
+- By uploading content you grant WeftMark a permanent, irrevocable license to that content for platform and development purposes, including AI/ML improvements.
+- Your uploaded content, settings, and tags may be used for AI model training and feature development unless you opt out.
+- Data use is **on by default**. You can opt out at any time from your settings page.
 - We do not sell your data. Ever.
 - You can delete your account and all your data at any time from your settings page.
 - This is a hobby platform. We cannot promise 100% uptime or that it will run forever.
@@ -47,13 +48,15 @@ You are responsible for maintaining the security of your account. If you believe
 
 WeftMark is currently invite-only. You must be invited by an existing user or the platform administrator to register.
 
-## 5. Your content
+## 5. Content license
 
-You retain full ownership of everything you upload to WeftMark, including WIF files, photos, activity records, and any other data.
+You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and activity records.
 
-By uploading content, you grant us a limited license to store, process, and display that content solely for the purpose of providing the service to you. We do not claim any rights over your content beyond what is necessary to run the platform.
+By uploading content to WeftMark, you grant WeftMark a **worldwide, royalty-free, perpetual, irrevocable, non-exclusive license** to store, process, display, reproduce, and use that content for any purpose related to operating, improving, or developing the platform, including but not limited to AI and machine learning model training, feature development, and quality assurance.
 
-We will not share your content with third parties without your permission, except as required by law.
+This license survives account deletion. If you delete your account, WeftMark will remove your content from active storage, but the license to content that has already been used for model training or other development purposes continues.
+
+We will not sell your raw content to third parties.
 
 ## 6. What data we collect
 
@@ -61,9 +64,8 @@ When you use WeftMark, we collect:
 
 - Your email address and display name (from your identity provider at sign-in)
 - The content you create and upload: WIF files, loom records, activity data, photos, yarn records
+- Settings, tags, labels, and metadata you assign to your content
 - Basic usage information: when you last used the platform, which features you use
-
-We collect only what we need to run the service.
 
 ## 7. How we use your data
 
@@ -72,19 +74,26 @@ We use your data to:
 - Provide the WeftMark service to you
 - Keep your account secure
 - Diagnose technical problems
+- Improve platform features and user experience
+- Train and improve AI and machine learning models (see section 8)
 
 We do **not**:
 
-- Sell your data to anyone
+- Sell your data or raw content to third parties
 - Share your data with advertisers
 - Use your data for advertising targeting
-- Share your data with third parties except as required by law
 
-## 8. AI and machine learning
+## 8. AI and machine learning — opt-out
 
-We will **never** use your WIF files, photos, or personal activity data to train AI or machine learning models without your explicit opt-in consent.
+By default, your content, settings, and metadata (including WIF files, photos, activity data, loom configurations, tags, and any other data you create on the platform) **may be used for AI and machine learning model training and feature improvements**.
 
-Your settings page contains a data use consent toggle. It is off by default. Turning it on allows us to use anonymized data (not personally identifiable content) for platform improvements. You can revoke this consent at any time. Revoking consent also disables any public sharing links associated with your account.
+You can opt out of this use at any time from your **Settings → Privacy & data** page. Opting out:
+
+- Stops future use of your data for AI/ML training from the date of opt-out
+- Disables all public sharing links associated with your account
+- Does not retroactively remove data that has already been used in model training
+
+You can opt back in at any time. Re-opting in restores public sharing access.
 
 ## 9. Public sharing
 
@@ -96,15 +105,14 @@ If you have opted out of data use (see section 8), public sharing links will not
 
 We retain your data for as long as your account is active. If your account has been inactive for more than two years, we may contact you before deleting it.
 
-You can permanently delete your account and all associated data at any time from your settings page. Deletion is immediate and irreversible. It removes:
+You can permanently delete your account and all associated data at any time from your settings page. Deletion removes your content from active storage and is irreversible. It removes:
 
 - Your account record
 - All WIF files and previews you uploaded
 - All activity records and photos
 - All loom, yarn, and project records
-- All photos stored on our servers
 
-Some data may remain in database backups for up to 30 days following deletion. This data is not accessible and is not used for any purpose.
+Some data may remain in database backups for up to 30 days following deletion. As noted in section 5, the content license granted prior to deletion survives for content already incorporated into model training or development artifacts.
 
 ## 11. Data security
 
