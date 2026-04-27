@@ -11,7 +11,7 @@ interface Props {
 export function ProtectedRoute({ children, requireAdmin = false }: Props) {
   const { user, isLoading, isAuthenticated } = useAuth();
 
-  if (isLoading) {
+  if (isLoading && !user) {
     return (
       <div className="flex h-screen items-center justify-center">
         <span className="text-muted-foreground text-sm">Loading…</span>
