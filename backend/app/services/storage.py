@@ -1,4 +1,12 @@
-"""Local file storage service. S3 support can be added later via STORAGE_BACKEND."""
+"""Storage service — local filesystem or S3-compatible (Cloudflare R2, AWS S3, etc.).
+
+Backend is selected by STORAGE_BACKEND env var:
+  local  — files written to UPLOAD_DIR on disk (default, dev)
+  s3     — files written to S3_BUCKET_NAME via S3-compatible API (production)
+
+The public API is identical for both backends. Keys/paths stored in the
+database are backend-agnostic relative strings (e.g. "projects/{id}/preview.png").
+"""
 
 from __future__ import annotations
 
@@ -9,9 +17,66 @@ from app.config import get_settings
 
 settings = get_settings()
 
+# ---------------------------------------------------------------------------
+# Backend primitives
+# ---------------------------------------------------------------------------
 
-def _upload_root() -> Path:
-    return Path(settings.upload_dir)
+_s3_client = None
+
+
+def _s3():
+    global _s3_client
+    if _s3_client is None:
+        import boto3
+
+        _s3_client = boto3.client(
+            "s3",
+            endpoint_url=settings.s3_endpoint_url,
+            aws_access_key_id=settings.s3_access_key_id,
+            aws_secret_access_key=settings.s3_secret_access_key,
+            region_name=settings.s3_region or "auto",
+        )
+    return _s3_client
+
+
+def _put(key: str, data: bytes) -> str:
+    if settings.storage_backend == "s3":
+        _s3().put_object(Bucket=settings.s3_bucket_name, Key=key, Body=data)
+    else:
+        path = Path(settings.upload_dir) / key
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    return key
+
+
+def _get(key: str) -> bytes:
+    if settings.storage_backend == "s3":
+        return _s3().get_object(Bucket=settings.s3_bucket_name, Key=key)["Body"].read()
+    return (Path(settings.upload_dir) / key).read_bytes()
+
+
+def _delete(key: str) -> None:
+    if settings.storage_backend == "s3":
+        # delete_object is idempotent — no error if key does not exist
+        _s3().delete_object(Bucket=settings.s3_bucket_name, Key=key)
+    else:
+        full = Path(settings.upload_dir) / key
+        if full.exists():
+            full.unlink()
+
+
+def _exists(key: str | None) -> bool:
+    if not key:
+        return False
+    if settings.storage_backend == "s3":
+        from botocore.exceptions import ClientError
+
+        try:
+            _s3().head_object(Bucket=settings.s3_bucket_name, Key=key)
+            return True
+        except ClientError:
+            return False
+    return (Path(settings.upload_dir) / key).exists()
 
 
 # ---------------------------------------------------------------------------
@@ -19,49 +84,24 @@ def _upload_root() -> Path:
 # ---------------------------------------------------------------------------
 
 
-def project_dir(project_id: uuid.UUID) -> Path:
-    p = _upload_root() / "projects" / str(project_id)
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
 def save_wif(project_id: uuid.UUID, filename: str, data: bytes) -> str:
-    dest = project_dir(project_id) / "original.wif"
-    dest.write_bytes(data)
-    return str(dest.relative_to(_upload_root()))
+    return _put(f"projects/{project_id}/original.wif", data)
 
 
 def save_preview(project_id: uuid.UUID, data: bytes) -> str:
-    dest = project_dir(project_id) / "preview.png"
-    dest.write_bytes(data)
-    return str(dest.relative_to(_upload_root()))
+    return _put(f"projects/{project_id}/preview.png", data)
 
 
 def read_wif(wif_path: str) -> bytes:
-    return (_upload_root() / wif_path).read_bytes()
+    return _get(wif_path)
 
 
 def read_preview(preview_path: str) -> bytes:
-    return (_upload_root() / preview_path).read_bytes()
+    return _get(preview_path)
 
 
 def preview_exists(preview_path: str | None) -> bool:
-    if not preview_path:
-        return False
-    return (_upload_root() / preview_path).exists()
-
-
-def save_drawdown(project_id: uuid.UUID, data: bytes) -> None:
-    dest = project_dir(project_id) / "drawdown.png"
-    dest.write_bytes(data)
-
-
-def read_drawdown(project_id: uuid.UUID) -> bytes:
-    return (project_dir(project_id) / "drawdown.png").read_bytes()
-
-
-def drawdown_exists(project_id: uuid.UUID) -> bool:
-    return (project_dir(project_id) / "drawdown.png").exists()
+    return _exists(preview_path)
 
 
 # ---------------------------------------------------------------------------
@@ -69,23 +109,12 @@ def drawdown_exists(project_id: uuid.UUID) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def loom_dir(loom_id: uuid.UUID) -> Path:
-    p = _upload_root() / "looms" / str(loom_id)
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
 def save_loom_photo(loom_id: uuid.UUID, ext: str, data: bytes) -> str:
-    """Save or replace the loom profile photo. Returns relative storage path."""
-    dest = loom_dir(loom_id) / f"profile{ext}"
-    dest.write_bytes(data)
-    return str(dest.relative_to(_upload_root()))
+    return _put(f"looms/{loom_id}/profile{ext}", data)
 
 
 def delete_loom_photo(photo_path: str) -> None:
-    full = _upload_root() / photo_path
-    if full.exists():
-        full.unlink()
+    _delete(photo_path)
 
 
 # ---------------------------------------------------------------------------
@@ -93,22 +122,12 @@ def delete_loom_photo(photo_path: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def version_photo_dir(loom_id: uuid.UUID, version_id: uuid.UUID) -> Path:
-    p = loom_dir(loom_id) / "versions" / str(version_id) / "photos"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
 def save_version_photo(loom_id: uuid.UUID, version_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
-    dest = version_photo_dir(loom_id, version_id) / f"{photo_id}{ext}"
-    dest.write_bytes(data)
-    return str(dest.relative_to(_upload_root()))
+    return _put(f"looms/{loom_id}/versions/{version_id}/photos/{photo_id}{ext}", data)
 
 
 def delete_version_photo(path: str) -> None:
-    full = _upload_root() / path
-    if full.exists():
-        full.unlink()
+    _delete(path)
 
 
 # ---------------------------------------------------------------------------
@@ -116,24 +135,14 @@ def delete_version_photo(path: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def version_receipt_dir(loom_id: uuid.UUID, version_id: uuid.UUID) -> Path:
-    p = loom_dir(loom_id) / "versions" / str(version_id) / "receipts"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
 def save_version_receipt(
     loom_id: uuid.UUID, version_id: uuid.UUID, receipt_id: uuid.UUID, ext: str, data: bytes
 ) -> str:
-    dest = version_receipt_dir(loom_id, version_id) / f"{receipt_id}{ext}"
-    dest.write_bytes(data)
-    return str(dest.relative_to(_upload_root()))
+    return _put(f"looms/{loom_id}/versions/{version_id}/receipts/{receipt_id}{ext}", data)
 
 
 def delete_version_receipt(path: str) -> None:
-    full = _upload_root() / path
-    if full.exists():
-        full.unlink()
+    _delete(path)
 
 
 # ---------------------------------------------------------------------------
@@ -141,22 +150,12 @@ def delete_version_receipt(path: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def yarn_dir(yarn_id: uuid.UUID) -> Path:
-    p = _upload_root() / "yarn" / str(yarn_id)
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
 def save_yarn_photo(yarn_id: uuid.UUID, ext: str, data: bytes) -> str:
-    dest = yarn_dir(yarn_id) / f"profile{ext}"
-    dest.write_bytes(data)
-    return str(dest.relative_to(_upload_root()))
+    return _put(f"yarn/{yarn_id}/profile{ext}", data)
 
 
 def delete_yarn_photo(photo_path: str) -> None:
-    full = _upload_root() / photo_path
-    if full.exists():
-        full.unlink()
+    _delete(photo_path)
 
 
 # ---------------------------------------------------------------------------
@@ -164,34 +163,22 @@ def delete_yarn_photo(photo_path: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def activity_photo_dir(activity_id: uuid.UUID) -> Path:
-    p = _upload_root() / "activities" / str(activity_id) / "photos"
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
 def save_activity_photo(activity_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
-    dest = activity_photo_dir(activity_id) / f"{photo_id}{ext}"
-    dest.write_bytes(data)
-    return str(dest.relative_to(_upload_root()))
+    return _put(f"activities/{activity_id}/photos/{photo_id}{ext}", data)
 
 
 def delete_activity_photo(path: str) -> None:
-    full = _upload_root() / path
-    if full.exists():
-        full.unlink()
+    _delete(path)
 
 
 # ---------------------------------------------------------------------------
-# Generic read
+# Generic read / exists
 # ---------------------------------------------------------------------------
 
 
 def read_file(path: str) -> bytes:
-    return (_upload_root() / path).read_bytes()
+    return _get(path)
 
 
 def file_exists(path: str | None) -> bool:
-    if not path:
-        return False
-    return (_upload_root() / path).exists()
+    return _exists(path)
