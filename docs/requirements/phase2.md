@@ -4,6 +4,39 @@ Features deferred from the initial build. Noted here to ensure architectural dec
 
 ---
 
+## [P1 · HIGH] Migrate Authentication to Clerk
+
+**Status:** Ready to implement. Developer has a Clerk free-tier account.
+
+**Why Clerk:** The current Authentik-based OIDC setup requires self-hosting and manual user management (invite tokens, manual provisioning). Clerk provides hosted authentication with built-in social login (Google, Apple, email magic link), user management UI, session handling, MFA, and a generous free tier. It eliminates the Authentik infrastructure dependency and reduces auth surface area that needs security maintenance.
+
+**What changes:**
+
+- **Backend:** Replace the custom JWT session token + `get_current_user` dependency with Clerk's backend SDK. The `oidc_sub` claim on `User` maps to Clerk's `user_id`. The invite/registration flow is replaced by Clerk's user creation webhooks.
+- **Frontend:** Replace the manual OIDC redirect flow with Clerk's `<ClerkProvider>`, `useUser()`, and pre-built `<SignIn>` / `<SignUp>` components. Session cookie management is handled by Clerk.
+- **Database:** The `User.oidc_sub` column becomes `User.clerk_user_id`. The `Invite` model and invite flow can be retired if Clerk's invitation emails replace them; or kept for allowlist control (Clerk supports restricting sign-ups to invited emails only via the dashboard).
+- **Admin user management:** Clerk dashboard replaces the in-app `/api/admin/users` PATCH flow for activating/deactivating accounts. The existing admin API can remain as a read endpoint.
+
+**Migration path:**
+
+1. Install `clerk-backend-sdk` (Python) and `@clerk/clerk-react` (frontend)
+2. Add `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` to `.env` / deployment secrets
+3. Create a Clerk application, configure allowed origins and redirect URLs
+4. Swap `get_current_user` in `app/deps.py` to verify Clerk session tokens
+5. Add a Clerk webhook handler (`POST /auth/clerk/webhook`) to sync user creation/deletion to the local `users` table
+6. Update `User` model: rename `oidc_sub` → `clerk_user_id`, drop `is_active` toggle if using Clerk's ban feature instead
+7. Replace frontend auth flow: remove `useAuth` OIDC hooks, add `<ClerkProvider>` to `App.tsx`
+8. Run migration to backfill or reset `clerk_user_id` for any existing test/dev users
+9. Remove Authentik from `docker-compose.yml` once migration is verified
+
+**Architectural note:** Keep the existing `User` table as the source of truth for app-level data (projects, activities, preferences). Clerk manages identity; the local `users` table stores app state. The webhook keeps them in sync.
+
+**Free tier limits:** Clerk free tier supports unlimited MAU on development, and up to 10,000 MAU on production (as of 2026). Sufficient for launch.
+
+**Prerequisite for:** #52 (GitHub public repo), #54 (disclosure page), public launch
+
+---
+
 ## Social Login — Google and Apple OIDC
 
 **Deferred:** 2026-04-26. Deferred because the platform currently uses a self-hosted Authentik instance as the sole OIDC provider, which is sufficient for single-user / small-team use. Social login becomes worth adding when onboarding external users.
