@@ -6,7 +6,7 @@ name: CI
 #   2. backend-lint + frontend-lint        — parallel, both must pass before tests run
 #   3. backend-tests + frontend-typecheck + migration-smoke-test  — parallel, all must pass before audit
 #   4. dependency-audit                    — pip-audit (any CVE) + npm audit (high+)
-#   5. docker-build                        — verifies both Dockerfiles build cleanly
+#   5. sbom-generate + docker-build        — parallel; CycloneDX SBOMs (artifact) + Docker build check
 #   6. bump-version                        — PATCH/MINOR/MAJOR bump on dev/main only
 #
 # When each stage runs:
@@ -335,7 +335,56 @@ jobs:
         run: cd frontend && npm ci && npm audit --audit-level=high
 
   # ------------------------------------------------------------
-  # Stage 5 — Docker build check (PR or dev/main only)
+  # Stage 5a — CycloneDX SBOM generation (PR or dev/main only)
+  # ------------------------------------------------------------
+  sbom-generate:
+    name: SBOM generate (CycloneDX)
+    runs-on: ubuntu-latest
+    needs: [dependency-audit]
+    if: >-
+      (github.event_name == 'pull_request' ||
+       github.ref_name == 'dev' ||
+       github.ref_name == 'main') &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Generate backend SBOM
+        run: |
+          pip install cyclonedx-bom
+          cyclonedx-py requirements backend/requirements.txt \
+            --output-format JSON \
+            --outfile sbom-backend.json
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Generate frontend SBOM
+        run: |
+          cd frontend && npm ci
+          npx @cyclonedx/cyclonedx-npm \
+            --output-format JSON \
+            --output-file ../sbom-frontend.json
+
+      - name: Upload SBOMs as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: |
+            sbom-backend.json
+            sbom-frontend.json
+          retention-days: 90
+
+  # ------------------------------------------------------------
+  # Stage 5b — Docker build check (PR or dev/main only)
   # ------------------------------------------------------------
   docker-build:
     name: Docker build check
@@ -362,7 +411,7 @@ jobs:
   bump-version:
     name: Bump version
     runs-on: ubuntu-latest
-    needs: [docker-build]
+    needs: [docker-build, sbom-generate]
     if: >-
       github.event_name == 'push' &&
       (github.ref_name == 'dev' || github.ref_name == 'main')
