@@ -227,9 +227,13 @@ class UserResponse(BaseModel):
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(current_user: User = Depends(get_current_user)) -> UserResponse:
-    from app.routers.users import CURRENT_EULA_VERSION
+async def me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    from app.routers.users import get_current_eula_version
 
+    current_eula_version = await get_current_eula_version(db)
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
@@ -242,7 +246,7 @@ async def me(current_user: User = Depends(get_current_user)) -> UserResponse:
         measurement_system=current_user.measurement_system,
         ai_training_consent=current_user.ai_training_consent,
         eula_accepted_version=current_user.eula_accepted_version,
-        current_eula_version=CURRENT_EULA_VERSION,
+        current_eula_version=current_eula_version,
     )
 
 
