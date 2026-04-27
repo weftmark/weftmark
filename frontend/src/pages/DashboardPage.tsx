@@ -184,10 +184,7 @@ export function DashboardPage() {
               <p className="font-medium text-sm">Equipment</p>
               <p className="mt-0.5 text-xs text-muted-foreground">Manage your looms and configuration history.</p>
             </Link>
-            <Link to="/yarn" className="rounded-lg border p-4 hover:border-ring transition-colors">
-              <p className="font-medium text-sm">Yarn</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Track your stash — yarn products and individual skeins.</p>
-            </Link>
+
           </div>
         </section>
       </main>
