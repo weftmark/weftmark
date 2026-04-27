@@ -567,7 +567,6 @@ async def approve_pending_signup(
         display_name=signup.display_name,
         clerk_user_id=signup.clerk_user_id,
         is_admin=False,
-        ai_training_consent=False,
         approved_by_name=admin.display_name,
         approved_by_email=admin.email,
     )
