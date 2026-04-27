@@ -1,6 +1,6 @@
 # WeftMark Terms of Service
 
-**Version 1.1 — effective [DATE TO BE FILLED IN BEFORE LAUNCH]**
+**Version 0.2 — effective [DATE TO BE FILLED IN BEFORE LAUNCH]**
 
 ---
 

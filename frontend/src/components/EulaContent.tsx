@@ -1,7 +1,7 @@
 export function EulaContent() {
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none space-y-4 text-sm leading-relaxed">
-      <p className="text-muted-foreground italic">Version 1.1</p>
+      <p className="text-muted-foreground italic">Version 0.2</p>
 
       <div className="rounded-md bg-muted px-4 py-3 text-sm">
         <p className="font-medium mb-1">Plain-language summary</p>
