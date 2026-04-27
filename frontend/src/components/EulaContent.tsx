@@ -1,12 +1,12 @@
 export function EulaContent() {
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none space-y-4 text-sm leading-relaxed">
-      <p className="text-muted-foreground italic">Version 0.2</p>
+      <p className="text-muted-foreground italic">Version 0.3</p>
 
       <div className="rounded-md bg-muted px-4 py-3 text-sm">
         <p className="font-medium mb-1">Plain-language summary</p>
         <ul className="space-y-1 list-disc list-inside text-muted-foreground">
-          <li>WeftMark is a personal hobby project built for weavers by a developer whose wife is a weaver. It is not a commercial product.</li>
+          <li>WeftMark is a hobby project built by a tech enthusiast for the fiber arts community — not a commercial product.</li>
           <li>By uploading content you grant WeftMark a permanent, irrevocable license to that content for platform and development purposes, including AI/ML improvements.</li>
           <li>Your content, settings, and tags may be used for AI model training and feature development unless you opt out.</li>
           <li>Data use is <strong>on by default</strong>. You can opt out at any time from Settings → Privacy &amp; data.</li>
@@ -18,7 +18,7 @@ export function EulaContent() {
 
       <section>
         <h3 className="font-semibold">1. Who runs WeftMark</h3>
-        <p>WeftMark is operated by Derek Rowland as a personal hobby project built for his wife and her weaving community. It is not a registered company or commercial service. Contact: <a href="mailto:gx1400@gmail.com" className="underline">gx1400@gmail.com</a></p>
+        <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:gx1400@gmail.com" className="underline">gx1400@gmail.com</a></p>
       </section>
 
       <section>
