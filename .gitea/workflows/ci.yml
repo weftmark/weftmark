@@ -6,7 +6,7 @@ name: CI
 #   2. backend-lint + frontend-lint        — parallel, both must pass before tests run
 #   3. backend-tests + frontend-typecheck + migration-smoke-test  — parallel, all must pass before audit
 #   4. dependency-audit                    — pip-audit (any CVE) + npm audit (high+)
-#   5. sbom-generate + docker-build        — parallel; CycloneDX SBOMs (artifact) + Docker build check
+#   5. sbom-generate + docker-build        — parallel; CycloneDX SBOMs + license manifests (artifact) + Docker build check
 #   6. bump-version                        — PATCH/MINOR/MAJOR bump on dev/main only
 #
 # When each stage runs:
@@ -355,32 +355,37 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Generate backend SBOM
+      - name: Generate backend SBOM and license manifest
         run: |
-          pip install cyclonedx-bom
+          pip install cyclonedx-bom pip-licenses
+          pip install -r backend/requirements.txt
           cyclonedx-py requirements backend/requirements.txt \
             --output-format JSON \
             --outfile sbom-backend.json
+          pip-licenses --format=json --output-file licenses-backend.json
 
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
           node-version: "20"
 
-      - name: Generate frontend SBOM
+      - name: Generate frontend SBOM and license manifest
         run: |
           cd frontend && npm ci
           npx @cyclonedx/cyclonedx-npm \
             --output-format JSON \
             --output-file ../sbom-frontend.json
+          npx license-checker --json --out ../licenses-frontend.json
 
-      - name: Upload SBOMs as artifacts
+      - name: Upload dependency manifests
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-${{ github.sha }}
+          name: dependency-manifests-${{ github.sha }}
           path: |
             sbom-backend.json
             sbom-frontend.json
+            licenses-backend.json
+            licenses-frontend.json
           retention-days: 90
 
   # ------------------------------------------------------------
