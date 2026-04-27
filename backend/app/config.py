@@ -54,7 +54,6 @@ class Settings(BaseSettings):
 
     # OIDC
     oidc_discovery_url: str = ""
-    oidc_public_base_url: str = ""  # Public base URL of the OIDC provider (for browser redirects)
     oidc_client_id: str = ""
     oidc_client_secret: str = ""
     oidc_redirect_uri: str = "http://localhost:3000/auth/callback"
