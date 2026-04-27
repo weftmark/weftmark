@@ -1,0 +1,4 @@
+{display_name} ({email}) signed up but has no invite.
+
+Review and approve at: {admin_url}
+Admin → Invites → Waiting to join

@@ -1,18 +1,29 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useClerk } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import {
   listAdminUsers,
   getAdminStats,
   getAdminHealth,
   getAdminVersions,
   patchAdminUser,
+  banUser,
+  unbanUser,
+  elevateToSuperuser,
   listInvites,
   createInvite,
   revokeInvite,
+  listPendingSignups,
+  approvePendingSignup,
+  dismissPendingSignup,
+  banPendingSignup,
   type AdminHealth,
+  type ElevateContentSummary,
   type InviteRecord,
+  type PendingSignup,
 } from "@/api/admin";
 
 type Tab = "users" | "invites" | "stats" | "health";
@@ -40,16 +51,31 @@ function formatUptime(seconds: number): string {
 
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>("users");
+  const { user: currentUser } = useAuth();
+  const { signOut } = useClerk();
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Dashboard
-          </Link>
+          {!currentUser?.is_superuser && (
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+              ← Dashboard
+            </Link>
+          )}
           <span className="font-semibold">Admin</span>
+          {currentUser?.is_superuser && (
+            <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
+          )}
         </div>
+        {currentUser?.is_superuser && (
+          <button
+            onClick={() => signOut()}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Sign out
+          </button>
+        )}
       </header>
 
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
@@ -84,15 +110,51 @@ export function AdminPage() {
 
 function UsersTab() {
   const qc = useQueryClient();
+  const { user: currentUser } = useAuth();
+  const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
+  const [elevateId, setElevateId] = useState<string | null>(null);
+  const [elevateContent, setElevateContent] = useState<ElevateContentSummary | null>(null);
+
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: listAdminUsers,
   });
 
   const patch = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { is_active?: boolean; is_admin?: boolean } }) =>
+    mutationFn: ({ id, body }: { id: string; body: { is_active?: boolean; is_admin?: boolean; is_superuser?: boolean } }) =>
       patchAdminUser(id, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+
+  const ban = useMutation({
+    mutationFn: (id: string) => banUser(id),
+    onSuccess: () => { setConfirmBanId(null); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
+    onError: () => setConfirmBanId(null),
+  });
+
+  const unban = useMutation({
+    mutationFn: (id: string) => unbanUser(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+
+  const elevate = useMutation({
+    mutationFn: ({ id, force }: { id: string; force: boolean }) => elevateToSuperuser(id, force),
+    onSuccess: () => {
+      setElevateId(null);
+      setElevateContent(null);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (err: Error) => {
+      try {
+        const body = JSON.parse(err.message);
+        if (body?.detail?.code === "has_content") {
+          setElevateContent(body.detail.summary);
+          return;
+        }
+      } catch {}
+      setElevateId(null);
+      setElevateContent(null);
+    },
   });
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -111,32 +173,114 @@ function UsersTab() {
                 {" · "}
                 {u.counts.projects}p · {u.counts.looms}l · {u.counts.activities_active} active / {u.counts.activities_completed} done
               </p>
+              {u.approved_by_name && (
+                <p className="text-xs text-muted-foreground">
+                  Approved by {u.approved_by_name}{u.approved_by_email ? ` (${u.approved_by_email})` : ""}
+                </p>
+              )}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {u.is_admin && (
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              {u.is_superuser && (
+                <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
+              )}
+              {u.is_admin && !u.is_superuser && (
                 <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">admin</span>
               )}
-              {!u.is_active && (
-                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">
-                  deactivated
-                </span>
+              {u.clerk_banned ? (
+                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">banned</span>
+              ) : !u.is_active ? (
+                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">deactivated</span>
+              ) : null}
+
+              {confirmBanId === u.id ? (
+                <>
+                  <span className="text-xs text-destructive font-medium">Ban {u.display_name}?</span>
+                  <Button size="sm" variant="destructive" disabled={ban.isPending} onClick={() => ban.mutate(u.id)}>
+                    Confirm
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setConfirmBanId(null)}>Cancel</Button>
+                </>
+              ) : elevateId === u.id ? (
+                <>
+                  {elevateContent ? (
+                    <span className="text-xs text-destructive font-medium">
+                      Has {[
+                        elevateContent.activities && `${elevateContent.activities} activities`,
+                        elevateContent.looms && `${elevateContent.looms} looms`,
+                        elevateContent.projects && `${elevateContent.projects} projects`,
+                        elevateContent.yarn && `${elevateContent.yarn} yarn`,
+                      ].filter(Boolean).join(", ")} — all will be deleted.
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground font-medium">Make {u.display_name} a superuser?</span>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={elevate.isPending}
+                    onClick={() => elevate.mutate({ id: u.id, force: !!elevateContent })}
+                  >
+                    Confirm
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setElevateId(null); setElevateContent(null); }}>
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {currentUser?.is_superuser && (
+                    <>
+                      {!u.is_superuser && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={patch.isPending || u.clerk_banned}
+                          onClick={() => patch.mutate({ id: u.id, body: { is_admin: !u.is_admin } })}
+                        >
+                          {u.is_admin ? "Remove admin" : "Make admin"}
+                        </Button>
+                      )}
+                      {!u.is_superuser && u.is_admin && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={elevate.isPending || u.clerk_banned}
+                          onClick={() => { setElevateId(u.id); elevate.mutate({ id: u.id, force: false }); }}
+                        >
+                          Make superuser
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {!u.is_superuser && (
+                    u.clerk_banned ? (
+                      <Button size="sm" variant="outline" disabled={unban.isPending} onClick={() => unban.mutate(u.id)}>
+                        Unban
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={patch.isPending}
+                          onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}
+                        >
+                          {u.is_active ? "Deactivate" : "Reactivate"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={u.is_admin}
+                          title={u.is_admin ? "Remove admin role before banning" : undefined}
+                          onClick={() => setConfirmBanId(u.id)}
+                        >
+                          Ban
+                        </Button>
+                      </>
+                    )
+                  )}
+                </>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={patch.isPending}
-                onClick={() => patch.mutate({ id: u.id, body: { is_admin: !u.is_admin } })}
-              >
-                {u.is_admin ? "Remove admin" : "Make admin"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={patch.isPending}
-                onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}
-              >
-                {u.is_active ? "Deactivate" : "Reactivate"}
-              </Button>
             </div>
           </div>
         ))}
@@ -149,15 +293,23 @@ function UsersTab() {
 // Invites tab
 // ---------------------------------------------------------------------------
 
+const INVITE_HISTORY_PAGE_SIZE = 20;
+
 function InvitesTab() {
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
+  const [historyPage, setHistoryPage] = useState(0);
 
   const { data: invites = [], isLoading } = useQuery({
     queryKey: ["admin", "invites"],
     queryFn: listInvites,
+  });
+
+  const { data: pendingSignups = [] } = useQuery({
+    queryKey: ["admin", "pending-signups"],
+    queryFn: listPendingSignups,
   });
 
   const send = useMutation({
@@ -171,6 +323,26 @@ function InvitesTab() {
     onError: (err: Error) => setError(err.message),
   });
 
+  const removePending = (id: string) =>
+    qc.setQueryData(["admin", "pending-signups"], (old: PendingSignup[] | undefined) =>
+      old ? old.filter((p) => p.id !== id) : []
+    );
+
+  const approve = useMutation({
+    mutationFn: (id: string) => approvePendingSignup(id),
+    onSuccess: (_, id) => { removePending(id); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
+  });
+
+  const dismiss = useMutation({
+    mutationFn: (id: string) => dismissPendingSignup(id),
+    onSuccess: (_, id) => removePending(id),
+  });
+
+  const banSignup = useMutation({
+    mutationFn: (id: string) => banPendingSignup(id),
+    onSuccess: (_, id) => removePending(id),
+  });
+
   const revoke = useMutation({
     mutationFn: (id: string) => revokeInvite(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "invites"] }),
@@ -181,6 +353,27 @@ function InvitesTab() {
 
   return (
     <div className="space-y-6">
+      {pendingSignups.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium">Waiting to join ({pendingSignups.length})</h2>
+          <p className="text-xs text-muted-foreground">
+            These users signed up through Clerk but have no invite. Add them to the database or dismiss.
+          </p>
+          <div className="divide-y border rounded-lg overflow-hidden">
+            {pendingSignups.map((ps) => (
+              <PendingSignupRow
+                key={ps.id}
+                signup={ps}
+                onApprove={() => approve.mutate(ps.id)}
+                onDismiss={() => dismiss.mutate(ps.id)}
+                onBan={() => banSignup.mutate(ps.id)}
+                isWorking={approve.isPending || dismiss.isPending || banSignup.isPending}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="border rounded-lg p-4 space-y-3">
         <h2 className="text-sm font-medium">Send invite</h2>
         <div className="flex gap-2">
@@ -216,17 +409,99 @@ function InvitesTab() {
           )}
           {past.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground">Past invites</h2>
+              <h2 className="text-sm font-medium text-muted-foreground">
+                Past invites ({past.length})
+              </h2>
               <div className="divide-y border rounded-lg overflow-hidden opacity-60">
-                {past.map((inv) => (
+                {past.slice(historyPage * INVITE_HISTORY_PAGE_SIZE, (historyPage + 1) * INVITE_HISTORY_PAGE_SIZE).map((inv) => (
                   <InviteRow key={inv.id} invite={inv} />
                 ))}
               </div>
+              {past.length > INVITE_HISTORY_PAGE_SIZE && (
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    disabled={historyPage === 0}
+                    onClick={() => setHistoryPage((p) => p - 1)}
+                  >
+                    ← Previous
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {historyPage + 1} / {Math.ceil(past.length / INVITE_HISTORY_PAGE_SIZE)}
+                  </span>
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    disabled={(historyPage + 1) * INVITE_HISTORY_PAGE_SIZE >= past.length}
+                    onClick={() => setHistoryPage((p) => p + 1)}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {invites.length === 0 && <p className="text-sm text-muted-foreground">No invites yet.</p>}
         </>
       )}
+    </div>
+  );
+}
+
+function PendingSignupRow({
+  signup,
+  onApprove,
+  onDismiss,
+  onBan,
+  isWorking,
+}: {
+  signup: PendingSignup;
+  onApprove: () => void;
+  onDismiss: () => void;
+  onBan: () => void;
+  isWorking: boolean;
+}) {
+  const [confirming, setConfirming] = useState<"dismiss" | "ban" | null>(null);
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{signup.display_name || signup.email}</p>
+        <p className="text-xs text-muted-foreground truncate">{signup.email}</p>
+        <p className="text-xs text-muted-foreground">
+          Signed up {new Date(signup.created_at).toLocaleDateString()}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {confirming === "dismiss" ? (
+          <>
+            <span className="text-xs text-muted-foreground font-medium">Dismiss?</span>
+            <Button size="sm" variant="outline" disabled={isWorking} onClick={() => { setConfirming(null); onDismiss(); }}>
+              Confirm
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
+          </>
+        ) : confirming === "ban" ? (
+          <>
+            <span className="text-xs text-destructive font-medium">Ban?</span>
+            <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => { setConfirming(null); onBan(); }}>
+              Confirm
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" disabled={isWorking} onClick={onApprove}>
+              Add user
+            </Button>
+            <Button size="sm" variant="outline" disabled={isWorking} onClick={() => setConfirming("dismiss")}>
+              Dismiss
+            </Button>
+            <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => setConfirming("ban")}>
+              Ban
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
