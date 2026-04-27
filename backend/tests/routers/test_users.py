@@ -7,7 +7,9 @@ from app.models.project import Project
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
-from app.routers.users import CURRENT_EULA_VERSION
+
+# Version seeded by migration 0025 — update here if the seed changes.
+SEEDED_EULA_VERSION = "0.3"
 
 # ---------------------------------------------------------------------------
 # GET /api/users/me
@@ -29,7 +31,7 @@ class TestGetSettings:
         assert "measurement_system" in data
         assert "ai_training_consent" in data
         assert "eula_accepted_version" in data
-        assert data["current_eula_version"] == CURRENT_EULA_VERSION
+        assert data["current_eula_version"] == SEEDED_EULA_VERSION
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.get("/api/users/me")
@@ -119,10 +121,10 @@ class TestUpdateSettings:
 
 class TestAcceptEula:
     async def test_accept_current_version(self, auth_client: AsyncClient):
-        resp = await auth_client.post("/api/users/me/eula", json={"version": CURRENT_EULA_VERSION})
+        resp = await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
         assert resp.status_code == 200
         data = resp.json()
-        assert data["eula_accepted_version"] == CURRENT_EULA_VERSION
+        assert data["eula_accepted_version"] == SEEDED_EULA_VERSION
 
     async def test_wrong_version_returns_422(self, auth_client: AsyncClient):
         resp = await auth_client.post("/api/users/me/eula", json={"version": "99.9"})
@@ -131,13 +133,13 @@ class TestAcceptEula:
     async def test_persists_version_and_timestamp(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        await auth_client.post("/api/users/me/eula", json={"version": CURRENT_EULA_VERSION})
+        await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
         await db_session.refresh(test_user)
-        assert test_user.eula_accepted_version == CURRENT_EULA_VERSION
+        assert test_user.eula_accepted_version == SEEDED_EULA_VERSION
         assert test_user.eula_accepted_at is not None
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient):
-        resp = await client.post("/api/users/me/eula", json={"version": CURRENT_EULA_VERSION})
+        resp = await client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
         assert resp.status_code == 401
 
 
@@ -281,7 +283,7 @@ class TestAuthMeNewFields:
         data = (await auth_client.get("/auth/me")).json()
         assert "eula_accepted_version" in data
         assert "current_eula_version" in data
-        assert data["current_eula_version"] == CURRENT_EULA_VERSION
+        assert data["current_eula_version"] == SEEDED_EULA_VERSION
 
     async def test_includes_measurement_system(self, auth_client: AsyncClient):
         data = (await auth_client.get("/auth/me")).json()
@@ -294,3 +296,27 @@ class TestAuthMeNewFields:
     async def test_includes_ai_training_consent(self, auth_client: AsyncClient):
         data = (await auth_client.get("/auth/me")).json()
         assert "ai_training_consent" in data
+
+
+# ---------------------------------------------------------------------------
+# GET /api/eula/current
+# ---------------------------------------------------------------------------
+
+
+class TestGetCurrentEula:
+    async def test_returns_200_unauthenticated(self, client: AsyncClient):
+        resp = await client.get("/api/eula/current")
+        assert resp.status_code == 200
+
+    async def test_returns_version(self, client: AsyncClient):
+        data = (await client.get("/api/eula/current")).json()
+        assert data["version"] == SEEDED_EULA_VERSION
+
+    async def test_returns_body_html(self, client: AsyncClient):
+        data = (await client.get("/api/eula/current")).json()
+        assert "body_html" in data
+        assert len(data["body_html"]) > 0
+
+    async def test_returns_effective_date(self, client: AsyncClient):
+        data = (await client.get("/api/eula/current")).json()
+        assert "effective_date" in data

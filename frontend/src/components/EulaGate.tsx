@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { acceptEula, deleteAccount } from "@/api/users";
+import { acceptEula, deleteAccount, getCurrentEula } from "@/api/users";
 import { Button } from "@/components/ui/button";
 import { EulaContent } from "@/components/EulaContent";
 import type { ReactNode } from "react";
@@ -11,24 +12,32 @@ interface Props {
 
 export function EulaGate({ children }: Props) {
   const { user, isLoading, refetch } = useAuth();
+  const [agreed, setAgreed] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { data: eula, isLoading: eulaLoading } = useQuery({
+    queryKey: ["eula", "current"],
+    queryFn: getCurrentEula,
+    staleTime: 5 * 60 * 1000,
+    enabled: !isLoading && !!user,
+  });
+
   if (isLoading || !user) return <>{children}</>;
 
-  const eulaRequired = user.eula_accepted_version !== user.current_eula_version;
+  const eulaRequired = eula && user.eula_accepted_version !== eula.version;
   if (!eulaRequired) return <>{children}</>;
 
   const isNewUser = user.eula_accepted_version === null;
 
   async function handleAccept() {
-    if (!user) return;
+    if (!eula || !agreed) return;
     setAccepting(true);
     setError(null);
     try {
-      await acceptEula(user.current_eula_version);
+      await acceptEula(eula.version);
       refetch();
     } catch {
       setError("Failed to record acceptance. Please try again.");
@@ -49,6 +58,14 @@ export function EulaGate({ children }: Props) {
     }
   }
 
+  if (eulaLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading terms…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-start justify-center bg-background py-8 px-4">
       <div className="w-full max-w-2xl space-y-6">
@@ -62,15 +79,27 @@ export function EulaGate({ children }: Props) {
         </div>
 
         <div className="rounded-lg border bg-card p-6 max-h-[60vh] overflow-y-auto">
-          <EulaContent />
+          {eula && <EulaContent bodyHtml={eula.body_html} />}
         </div>
+
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-input accent-primary"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+          />
+          <span className="text-sm">
+            I have read and agree to the WeftMark Terms of Service.
+          </span>
+        </label>
 
         {error && (
           <p className="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</p>
         )}
 
         <div className="flex flex-col gap-3">
-          <Button onClick={handleAccept} disabled={accepting} className="w-full">
+          <Button onClick={handleAccept} disabled={!agreed || accepting} className="w-full">
             {accepting ? "Recording acceptance…" : "I Accept the Terms of Service"}
           </Button>
 
@@ -113,7 +142,7 @@ export function EulaGate({ children }: Props) {
         </div>
 
         <p className="text-center text-xs text-muted-foreground">
-          WeftMark v{user.current_eula_version} Terms of Service
+          WeftMark{eula ? ` v${eula.version}` : ""} Terms of Service
         </p>
       </div>
     </div>

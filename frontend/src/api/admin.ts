@@ -106,3 +106,22 @@ export const dismissPendingSignup = (id: string) =>
   api.delete<void>(`/api/admin/pending-signups/${id}`);
 export const banPendingSignup = (id: string) =>
   api.post<void>(`/api/admin/pending-signups/${id}/ban`, {});
+
+export interface AdminEulaVersion {
+  id: number;
+  version: string;
+  body_html: string;
+  effective_date: string;
+  created_at: string;
+}
+
+export interface EulaVersionSummary {
+  id: number;
+  version: string;
+  effective_date: string;
+  created_at: string;
+}
+
+export const getAdminEula = () => api.get<AdminEulaVersion>("/api/admin/eula");
+export const createEulaVersion = (version: string, body_html: string, effective_date?: string) =>
+  api.post<EulaVersionSummary>("/api/admin/eula", { version, body_html, effective_date });
