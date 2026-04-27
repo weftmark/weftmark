@@ -7,7 +7,6 @@ WeavingPatternView feature (issue #8).
 import io
 import tempfile
 import uuid
-from unittest.mock import patch
 
 from httpx import AsyncClient
 from PIL import Image
@@ -145,12 +144,7 @@ class TestGetDrawdown:
         tmp.close()
 
         project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
-
-        with (
-            patch("app.routers.projects.storage.drawdown_exists", return_value=False),
-            patch("app.routers.projects.storage.save_drawdown"),
-        ):
-            resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "image/png"
@@ -164,12 +158,7 @@ class TestGetDrawdown:
         tmp.close()
 
         project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
-
-        with (
-            patch("app.routers.projects.storage.drawdown_exists", return_value=False),
-            patch("app.routers.projects.storage.save_drawdown"),
-        ):
-            resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.headers.get("X-Pixels-Per-Row") == str(rendering.DRAWDOWN_SCALE)
 
@@ -181,41 +170,28 @@ class TestGetDrawdown:
         tmp.close()
 
         project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
-
-        with (
-            patch("app.routers.projects.storage.drawdown_exists", return_value=False),
-            patch("app.routers.projects.storage.save_drawdown"),
-        ):
-            resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.headers.get("X-Total-Rows") == "4"
 
-    async def test_serves_cached_drawdown_without_rerendering(
+    async def test_response_has_cache_control_header(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user, wif_path="irrelevant.wif", weft_threads=6)
-        cached_png = _fake_png()
+        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
+        tmp.write(_WIF)
+        tmp.close()
 
-        with (
-            patch("app.routers.projects.storage.drawdown_exists", return_value=True),
-            patch("app.routers.projects.storage.read_drawdown", return_value=cached_png) as mock_read,
-        ):
-            resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
-        assert resp.status_code == 200
-        assert resp.content == cached_png
-        mock_read.assert_called_once()
+        assert resp.headers.get("Cache-Control") == "public, max-age=31536000, immutable"
 
-    async def test_cached_response_has_correct_headers(
-        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
-    ):
-        project = await _insert_project(db_session, test_user, wif_path="irrelevant.wif", weft_threads=8)
+    async def test_response_has_etag_header(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
+        tmp.write(_WIF)
+        tmp.close()
 
-        with (
-            patch("app.routers.projects.storage.drawdown_exists", return_value=True),
-            patch("app.routers.projects.storage.read_drawdown", return_value=_fake_png()),
-        ):
-            resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
-        assert resp.headers.get("X-Pixels-Per-Row") == str(rendering.DRAWDOWN_SCALE)
-        assert resp.headers.get("X-Total-Rows") == "8"
+        assert resp.headers.get("ETag") == f'"{project.id}"'

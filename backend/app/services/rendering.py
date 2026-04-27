@@ -11,6 +11,7 @@ import io
 import os
 import tempfile
 
+from fastapi import HTTPException
 from PIL import Image as PILImage
 from PIL import ImageDraw as _ImageDraw
 
@@ -26,6 +27,8 @@ if not hasattr(_ImageDraw.ImageDraw, "textsize"):
 from pyweaving import Draft  # noqa: E402
 from pyweaving.render import ImageRenderer  # noqa: E402
 from pyweaving.wif import WIFReader  # noqa: E402
+
+from app.config import get_settings
 
 DRAWDOWN_SCALE = 20
 
@@ -74,6 +77,16 @@ def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[byt
 
     if drawdown_w <= 0 or drawdown_h <= 0:
         raise ValueError("Draft has no drawdown data to render")
+
+    _s = get_settings()
+    if drawdown_w > _s.render_max_width or drawdown_h > _s.render_max_height:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Draft dimensions ({drawdown_w}x{drawdown_h}px) exceed the rendering limit "
+                f"({_s.render_max_width}x{_s.render_max_height}px)."
+            ),
+        )
 
     renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
     full_im = renderer.make_pil_image()

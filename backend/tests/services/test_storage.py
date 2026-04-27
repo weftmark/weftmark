@@ -33,28 +33,6 @@ def _pid() -> uuid.UUID:
 
 
 # ---------------------------------------------------------------------------
-# project_dir
-# ---------------------------------------------------------------------------
-
-
-class TestProjectDir:
-    def test_returns_path(self, tmp_path):
-        p = storage.project_dir(_pid())
-        assert p.is_dir()
-
-    def test_path_under_upload_root(self, tmp_path):
-        pid = _pid()
-        p = storage.project_dir(pid)
-        assert str(tmp_path) in str(p)
-
-    def test_idempotent(self):
-        pid = _pid()
-        p1 = storage.project_dir(pid)
-        p2 = storage.project_dir(pid)
-        assert p1 == p2
-
-
-# ---------------------------------------------------------------------------
 # save_wif / read_wif
 # ---------------------------------------------------------------------------
 
@@ -233,6 +211,52 @@ class TestYarnPhoto:
 
     def test_delete_nonexistent_is_silent(self):
         storage.delete_yarn_photo("yarn/nonexistent/profile.jpg")
+
+
+# ---------------------------------------------------------------------------
+# Generic read_file / file_exists
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Activity photos
+# ---------------------------------------------------------------------------
+
+
+class TestActivityPhoto:
+    def test_save_returns_relative_path(self):
+        aid, phid = _pid(), _pid()
+        rel = storage.save_activity_photo(aid, phid, ".jpg", b"JPEG")
+        assert not rel.startswith("/")
+
+    def test_round_trip_via_read_file(self):
+        aid, phid = _pid(), _pid()
+        data = b"JPEG DATA"
+        rel = storage.save_activity_photo(aid, phid, ".jpg", data)
+        assert storage.read_file(rel) == data
+
+    def test_extension_preserved(self):
+        aid, phid = _pid(), _pid()
+        rel = storage.save_activity_photo(aid, phid, ".jpg", b"data")
+        assert rel.endswith(".jpg")
+
+    def test_delete_removes_file(self):
+        aid, phid = _pid(), _pid()
+        rel = storage.save_activity_photo(aid, phid, ".jpg", b"data")
+        storage.delete_activity_photo(rel)
+        assert storage.file_exists(rel) is False
+
+    def test_delete_nonexistent_is_silent(self):
+        storage.delete_activity_photo("activities/nonexistent/photos/x.jpg")
+
+    def test_multiple_photos_same_activity(self):
+        aid = _pid()
+        ph1, ph2 = _pid(), _pid()
+        rel1 = storage.save_activity_photo(aid, ph1, ".jpg", b"a")
+        rel2 = storage.save_activity_photo(aid, ph2, ".jpg", b"b")
+        assert rel1 != rel2
+        assert storage.read_file(rel1) == b"a"
+        assert storage.read_file(rel2) == b"b"
 
 
 # ---------------------------------------------------------------------------

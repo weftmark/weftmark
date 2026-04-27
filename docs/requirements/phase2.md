@@ -4,6 +4,31 @@ Features deferred from the initial build. Noted here to ensure architectural dec
 
 ---
 
+## Social Login — Google and Apple OIDC
+
+**Deferred:** 2026-04-26. Deferred because the platform currently uses a self-hosted Authentik instance as the sole OIDC provider, which is sufficient for single-user / small-team use. Social login becomes worth adding when onboarding external users.
+
+**Description:** Allow users to sign in with an existing Google or Apple account instead of requiring a local Authentik credential.
+
+**Implementation approach:** Configure Authentik to add Google and Apple as upstream social identity providers (Authentik supports both natively). No backend code changes are required — the backend only sees Authentik-issued tokens and is unaware of the upstream provider.
+
+**Google:**
+
+- Create an OAuth 2.0 client in Google Cloud Console, set the redirect URI to the Authentik callback endpoint
+- Add a Google social source in Authentik admin → Sources → OAuth
+
+**Apple:**
+
+- Requires an Apple Developer account and a Services ID
+- Add an Apple social source in Authentik admin → Sources → Apple
+- Note: Apple requires `https` on the redirect URI, so the Authentik instance must be publicly reachable with a valid TLS cert before this can be tested
+
+**Architectural notes for Phase 1:** No changes needed. The `oidc_sub` claim on the `User` model is already the unique identifier regardless of upstream provider. Authentik handles deduplication and account linking — if a user signs in with Google using the same email as an existing Authentik-local account, Authentik can be configured to merge them automatically.
+
+**Prerequisite:** Authentik instance must be publicly accessible (not just on the local network) with valid TLS before Apple OIDC can be enabled.
+
+---
+
 ## New User Onboarding Flow
 
 **Deferred:** 2026-04-25. Deferred because the core audience (the initial user) already knows the app structure. Worth building once external users are onboarded.
@@ -178,7 +203,7 @@ If a public third-party app ecosystem develops (someone else building a commerci
 
 - A fully valid WIF 1.1 file with threading, tieup, treadling, color table, and metadata
 - A rendered drawdown preview (reusing the existing PyWeaving rendering pipeline)
-- The WIF is marked with `Source Program=Weaving Site AI` and `Source Version=<model version>` in the `[WIF]` header
+- The WIF is marked with `Source Program=WeftMark AI` and `Source Version=<model version>` in the `[WIF]` header
 
 **Ownership and attribution:**
 

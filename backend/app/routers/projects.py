@@ -188,33 +188,26 @@ async def get_drawdown(
     if not project.wif_path:
         raise HTTPException(status_code=404, detail="No WIF file for this project")
 
-    total_rows = project.weft_threads or 0
-
-    if storage.drawdown_exists(project_id):
-        png = storage.read_drawdown(project_id)
-        return Response(
-            content=png,
-            media_type="image/png",
-            headers={
-                "X-Pixels-Per-Row": str(rendering.DRAWDOWN_SCALE),
-                "X-Total-Rows": str(total_rows),
-            },
-        )
+    if not storage.file_exists(project.wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not found in storage")
 
     wif_bytes = storage.read_file(project.wif_path)
     try:
         draft = rendering.load_draft(wif_bytes)
         png, total_rows = rendering.render_drawdown_only(draft)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
 
-    storage.save_drawdown(project_id, png)
     return Response(
         content=png,
         media_type="image/png",
         headers={
             "X-Pixels-Per-Row": str(rendering.DRAWDOWN_SCALE),
             "X-Total-Rows": str(total_rows),
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "ETag": f'"{project_id}"',
         },
     )
 

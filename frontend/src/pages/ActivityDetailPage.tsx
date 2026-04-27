@@ -349,6 +349,83 @@ function WeavingPatternView({
 }
 
 // ---------------------------------------------------------------------------
+// Abandoned drawdown preview — full design, unweaved portion desaturated
+// ---------------------------------------------------------------------------
+
+function AbandonedDrawdownView({
+  projectId,
+  currentPick,
+  totalPicks,
+}: {
+  projectId: string;
+  currentPick: number;
+  totalPicks: number;
+}) {
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/projects/${projectId}/drawdown`, { credentials: "include" })
+      .then((res) => res.blob())
+      .then((blob) => {
+        if (cancelled) return;
+        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+        const url = URL.createObjectURL(blob);
+        objectUrlRef.current = url;
+        setImgSrc(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, [projectId]);
+
+  if (!imgSrc) return null;
+
+  // Image is flipped: row 0 (top) = last pick, row N-1 (bottom) = pick 1.
+  // currentPick is the next pick to weave — abandoned here without weaving it.
+  // Unweaved: picks currentPick..totalPicks → top (totalPicks - currentPick + 1) rows.
+  const unweavedFraction = (totalPicks - currentPick + 1) / totalPicks;
+  const abandonPct = `${unweavedFraction * 100}%`;
+
+  return (
+    <div className="rounded-lg border overflow-x-auto relative bg-white dark:bg-zinc-900">
+      <div className="relative">
+        <img
+          src={imgSrc}
+          alt="Abandoned weaving pattern"
+          className="block w-full"
+          style={{ imageRendering: "pixelated" }}
+        />
+        {/* Desaturate unweaved portion — top of image */}
+        <div
+          className="absolute left-0 top-0 right-0 pointer-events-none"
+          style={{
+            height: abandonPct,
+            backdropFilter: "saturate(0) brightness(1.6)",
+            WebkitBackdropFilter: "saturate(0) brightness(1.6)",
+          }}
+        />
+        <div
+          className="absolute left-0 top-0 right-0 pointer-events-none bg-white/50 dark:bg-zinc-900/55"
+          style={{ height: abandonPct }}
+        />
+        {/* Amber line at the abandon point */}
+        <div
+          className="absolute left-0 right-0 pointer-events-none h-[2px] bg-amber-500"
+          style={{ top: abandonPct }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Step controls
 // ---------------------------------------------------------------------------
 
@@ -820,7 +897,9 @@ export function ActivityDetailPage() {
     setStepping(true);
     try {
       const updated = await jumpActivity(id, pick);
-      queryClient.setQueryData(["activity", id], updated);
+      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+        old ? { ...updated, photos: old.photos } : updated
+      );
     } finally {
       setStepping(false);
     }
@@ -831,7 +910,9 @@ export function ActivityDetailPage() {
     setStepping(true);
     try {
       const updated = await stepActivity(id, direction);
-      queryClient.setQueryData(["activity", id], updated);
+      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+        old ? { ...updated, photos: old.photos } : updated
+      );
     } finally {
       setStepping(false);
     }
@@ -969,6 +1050,7 @@ export function ActivityDetailPage() {
 
   const isFinished = displayPick > activity.total_picks;
   const isActiveTracking = activity.status === "active" && !isPlanning;
+  const isAbandoned = activity.status === "abandoned";
 
   // Badge for planning vs active
   const badgeClasses = isPlanning
@@ -994,7 +1076,9 @@ export function ActivityDetailPage() {
                   const trimmed = nameInput.trim();
                   if (!trimmed) { setEditingName(false); return; }
                   const updated = await renameActivity(id!, trimmed);
-                  queryClient.setQueryData(["activity", id], updated);
+                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                    old ? { ...updated, photos: old.photos } : updated
+                  );
                   queryClient.invalidateQueries({ queryKey: ["activities"] });
                   setEditingName(false);
                 }}
@@ -1010,7 +1094,9 @@ export function ActivityDetailPage() {
                     const trimmed = nameInput.trim();
                     if (trimmed && trimmed !== activity.name) {
                       const updated = await renameActivity(id!, trimmed);
-                      queryClient.setQueryData(["activity", id], updated);
+                      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                        old ? { ...updated, photos: old.photos } : updated
+                      );
                       queryClient.invalidateQueries({ queryKey: ["activities"] });
                     }
                     setEditingName(false);
@@ -1077,10 +1163,24 @@ export function ActivityDetailPage() {
           </div>
         )}
 
+        {/* Abandoned banner */}
+        {isAbandoned && (
+          <div className="mx-auto max-w-2xl px-8 pt-6">
+            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">This activity was not completed</p>
+              <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
+                Abandoned at pick {activity.current_pick} of {activity.total_picks}
+                {" "}({Math.round((activity.current_pick - 1) / activity.total_picks * 100)}% woven)
+                {activity.abandoned_at && ` · ${new Date(activity.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Progress + color mode */}
         <div className="mx-auto max-w-2xl px-8 pt-6 space-y-3">
-          {!isPlanning && <ProgressBar current={activity.current_pick} total={activity.total_picks} />}
-          {picksData?.has_weft_colors && (
+          {!isPlanning && !isCompleted && <ProgressBar current={activity.current_pick} total={activity.total_picks} />}
+          {picksData?.has_weft_colors && !isFinished && !isCompleted && (
             <div className="flex items-center justify-end gap-4">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <span className="text-xs text-muted-foreground">Weft color</span>
@@ -1116,7 +1216,7 @@ export function ActivityDetailPage() {
         </div>
 
         {/* Pick instruction — stays compact */}
-        <div className="mx-auto max-w-2xl px-8 pt-4">
+        {!isCompleted && <div className="mx-auto max-w-2xl px-8 pt-4">
           {isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-lg font-medium">All {activity.total_picks} picks complete!</p>
@@ -1150,10 +1250,10 @@ export function ActivityDetailPage() {
               <p className="text-sm text-muted-foreground">Pick data loading…</p>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Pattern view — wider on large screens to show more warp threads */}
-        {picksData && !isFinished && (
+        {picksData && !isFinished && !isCompleted && !isAbandoned && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <WeavingPatternView
               projectId={activity.project_id}
@@ -1165,9 +1265,20 @@ export function ActivityDetailPage() {
           </div>
         )}
 
+        {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
+        {isAbandoned && (
+          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+            <AbandonedDrawdownView
+              projectId={activity.project_id}
+              currentPick={activity.current_pick}
+              totalPicks={activity.total_picks}
+            />
+          </div>
+        )}
+
         {/* Step controls — active tracking and planning */}
         <div className="mx-auto max-w-lg px-8 pb-6 space-y-6">
-          {(isActiveTracking || isPlanning) && (
+          {(isActiveTracking || isPlanning) && !isFinished && (
             <StepControls
               currentPick={displayPick}
               total={activity.total_picks}
@@ -1194,6 +1305,25 @@ export function ActivityDetailPage() {
 
         {/* Collapsible sections */}
         <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0 border-t">
+          {!isCompleted && (
+            <CollapsibleSection title={`Photos (${activity.photos.length}/20)`} defaultOpen={isAbandoned}>
+              <PhotoGrid
+                activityId={activity.id}
+                photos={activity.photos}
+                onUploaded={(p) =>
+                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                    old ? { ...old, photos: [...old.photos, p] } : old
+                  )
+                }
+                onDeleted={(photoId) =>
+                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                    old ? { ...old, photos: old.photos.filter((ph) => ph.id !== photoId) } : old
+                  )
+                }
+              />
+            </CollapsibleSection>
+          )}
+
           <CollapsibleSection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <dt className="text-muted-foreground">Type</dt>
