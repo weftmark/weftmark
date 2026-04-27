@@ -42,6 +42,9 @@ export function DashboardPage() {
         <span className="font-semibold">Weaving Tracker</span>
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">{user?.email}</span>
+          <Link to="/settings" className="text-sm text-muted-foreground hover:text-foreground">
+            Settings
+          </Link>
           {user?.is_admin && (
             <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground">
               Admin
