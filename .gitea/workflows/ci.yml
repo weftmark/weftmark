@@ -378,7 +378,7 @@ jobs:
           npx license-checker --json --out ../licenses-frontend.json
 
       - name: Upload dependency manifests
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: dependency-manifests-${{ github.sha }}
           path: |
