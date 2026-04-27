@@ -8,6 +8,7 @@ from app.models.loom import (
     LoomVersionPhoto,
     LoomVersionReceipt,
 )
+from app.models.pending_signup import PendingSignup
 from app.models.project import Project
 from app.models.user import User
 from app.models.user_identity import UserIdentity
@@ -18,6 +19,7 @@ __all__ = [
     "User",
     "UserIdentity",
     "Invite",
+    "PendingSignup",
     "Project",
     "Loom",
     "LoomVersion",

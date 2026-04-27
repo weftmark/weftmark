@@ -1,0 +1,1 @@
+{display_name} ({email}) was approved by {approved_by} and can now sign in to {app_name}.

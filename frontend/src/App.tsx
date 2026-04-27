@@ -1,12 +1,12 @@
-import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { ClerkProvider } from "@clerk/clerk-react";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { EulaGate } from "@/components/EulaGate";
 import { VersionGate } from "@/components/VersionGate";
 import { LoginPage } from "@/pages/LoginPage";
+import { RegisterPage } from "@/pages/RegisterPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { ProjectsPage } from "@/pages/ProjectsPage";
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
@@ -18,7 +18,6 @@ import { ActivitiesPage } from "@/pages/ActivitiesPage";
 import { ActivityDetailPage } from "@/pages/ActivityDetailPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
-import { configureApiClient } from "@/api/client";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
@@ -28,15 +27,6 @@ const queryClient = new QueryClient({
   },
 });
 
-/** Wires Clerk's getToken into the API client so all requests carry a Bearer token. */
-function ClerkTokenConfigurer() {
-  const { getToken } = useClerkAuth();
-  useEffect(() => {
-    configureApiClient(getToken);
-  }, [getToken]);
-  return null;
-}
-
 export default function App() {
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/login">
@@ -44,11 +34,10 @@ export default function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <BrowserRouter>
-              <ClerkTokenConfigurer />
               <EulaGate>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
                   <Route
                     path="/"
                     element={

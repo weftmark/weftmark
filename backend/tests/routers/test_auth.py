@@ -9,14 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invite import Invite
 from app.models.user import User
-from app.routers.auth import create_session_token
-
-
-class TestListProviders:
-    async def test_returns_list(self, client: AsyncClient):
-        resp = await client.get("/auth/providers")
-        assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
 
 
 class TestMe:
@@ -44,6 +36,14 @@ class TestMe:
         resp = await client.get("/auth/me")
         assert resp.status_code == 401
 
+    async def test_returns_is_superuser_false(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/auth/me")
+        assert resp.json()["is_superuser"] is False
+
+    async def test_superuser_returns_is_superuser_true(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/auth/me")
+        assert resp.json()["is_superuser"] is True
+
 
 class TestLogout:
     async def test_returns_200(self, auth_client: AsyncClient):
@@ -56,40 +56,33 @@ class TestLogout:
 
 
 class TestGetCurrentUser:
-    """Tests the real get_current_user dependency via raw_client (no override)."""
+    """Tests the real get_current_user dependency via raw_client (no override).
 
-    async def test_valid_token_returns_200(self, raw_client: AsyncClient, test_user: User):
-        token = create_session_token(test_user.id, test_user.email, test_user.is_admin)
-        resp = await raw_client.get("/auth/me", cookies={"session": token})
-        assert resp.status_code == 200
+    With Clerk JWT auth, get_current_user requires a valid Bearer token.
+    Without one it returns 401.
 
-    async def test_valid_token_returns_correct_user(self, raw_client: AsyncClient, test_user: User):
-        token = create_session_token(test_user.id, test_user.email, test_user.is_admin)
-        resp = await raw_client.get("/auth/me", cookies={"session": token})
-        assert resp.json()["email"] == test_user.email
+    verify_session_token is patched to return None (failed verification) so
+    tests don't depend on a real Clerk publishable key or network access.
+    """
 
-    async def test_missing_cookie_returns_401(self, raw_client: AsyncClient):
+    @pytest.fixture(autouse=True)
+    def _mock_clerk(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "clerk_publishable_key", "pk_test_dGVzdA")
+        with patch("app.deps.verify_session_token", return_value=None):
+            yield
+
+    async def test_missing_auth_header_returns_401(self, raw_client: AsyncClient):
         resp = await raw_client.get("/auth/me")
         assert resp.status_code == 401
 
-    async def test_invalid_token_returns_401(self, raw_client: AsyncClient):
-        resp = await raw_client.get("/auth/me", cookies={"session": "not.a.valid.token"})
+    async def test_invalid_bearer_token_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/auth/me", headers={"Authorization": "Bearer invalid.token.here"})
         assert resp.status_code == 401
 
-    async def test_inactive_user_returns_401(self, raw_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        test_user.is_active = False
-        await db_session.commit()
-        token = create_session_token(test_user.id, test_user.email, test_user.is_admin)
-        resp = await raw_client.get("/auth/me", cookies={"session": token})
-        assert resp.status_code == 401
-
-    async def test_soft_deleted_user_returns_401(
-        self, raw_client: AsyncClient, db_session: AsyncSession, test_user: User
-    ):
-        test_user.soft_delete()
-        await db_session.commit()
-        token = create_session_token(test_user.id, test_user.email, test_user.is_admin)
-        resp = await raw_client.get("/auth/me", cookies={"session": token})
+    async def test_non_bearer_auth_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/auth/me", headers={"Authorization": "Basic dXNlcjpwYXNz"})
         assert resp.status_code == 401
 
 
