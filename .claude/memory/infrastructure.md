@@ -9,6 +9,7 @@ type: project
 User registers all domains through **Cloudflare** (dash.cloudflare.com -> Registrar).
 
 **Implications:**
+
 - Check domain availability and register directly in Cloudflare dashboard
 - No need to transfer from a third-party registrar
 
@@ -20,19 +21,36 @@ Use **Cloudflare Origin CA certificate** (free, generated in Cloudflare dashboar
 
 ## Object storage
 
-**Decided:** Backblaze B2 (not Cloudflare R2).
+**Decided:** Cloudflare R2 (not Backblaze B2).
+
 - S3-compatible API — works with existing `STORAGE_BACKEND=s3` / boto3 code; only endpoint URL and credentials change in `.env`
-- B2 charges egress outside Cloudflare network — use Cloudflare CDN in front to keep most requests as cache hits and avoid egress costs
+- Zero egress fees — R2 has no egress charges, unlike B2
 
 ## Application hosting (VM)
 
-**Decided:** Free hosting on an Ubuntu VM in a data center (not DigitalOcean).
-- All services run in Docker containers on one host: frontend, backend, postgres, postgres-backup, workers, redis
-- Same docker-compose structure as local dev, just deployed to the VM
+**Decided:** Ubuntu 24.04 VM in a data center, managed via Komodo.
+
+- All services run in Docker containers on one host: frontend, backend, workers, redis, authentik
+- Komodo manages container lifecycle; pulls images from ghcr.io on deploy
+- nginx on the VM host as outer reverse proxy with CrowdSec bouncer (not Caddy — Caddy's auto-HTTPS is irrelevant since Cloudflare terminates TLS)
+- Topology: Cloudflare → nginx host (Cloudflare Origin CA cert, Full strict) → containers
 
 ## Postgres
 
-**Decided:** Self-hosted Postgres container on the VM (with a separate postgres-backup service container).
+**Decided:** Neon managed Postgres for production (free tier — backups + PITR included). Local Postgres container for development only.
+
+- Production: set `POSTGRES_DSN` in `.env` to the Neon connection string; individual `POSTGRES_*` vars are ignored when DSN is set
+- Dev: leave `POSTGRES_DSN` blank, use the `db` service in docker-compose as before
+- Neon pauses after 5 min inactivity — fine for prod, not for dev
+
+## Container registry
+
+**Decided:** GitHub Container Registry (ghcr.io) under the `weftmark` GitHub org.
+
+- Org: <https://github.com/weftmark>
+- Images: `ghcr.io/weftmark/weaving_site_backend`, `ghcr.io/weftmark/weaving_site_frontend`
+- Code is NOT mirrored to GitHub — Gitea remains the source of truth; ghcr.io is registry only
+- CD pipeline (Gitea Actions → build → push to ghcr.io → Komodo pulls) is a pending milestone ticket
 
 ## Platform name and domain
 
@@ -40,4 +58,4 @@ Use **Cloudflare Origin CA certificate** (free, generated in Cloudflare dashboar
 
 ## Email addresses
 
-admin@weftmark.com and feedback@weftmark.com are set up and should be used in SMTP config and email service sender.
+`admin@weftmark.com` and `feedback@weftmark.com` are set up and should be used in SMTP config and email service sender.
