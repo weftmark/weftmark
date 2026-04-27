@@ -251,27 +251,27 @@ export function SettingsPage() {
             {/* ── Privacy & data ── */}
             {activeSection === "privacy" && (
               <Section title="Privacy & data">
-                <Field label="Data use for AI/ML improvements">
+                <Field label="Opt out of data use">
                   <p className="text-xs text-muted-foreground">
                     Per our Terms of Service, your data is used for platform improvements by default.
-                    Toggle off below to opt out.
+                    Toggle on to opt out.
                   </p>
                   <div className="flex items-center gap-3 mt-2">
                     <button
                       role="switch"
-                      aria-checked={dataConsent}
+                      aria-checked={!dataConsent}
                       onClick={() => handleConsentToggle(!dataConsent)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        dataConsent ? "bg-primary" : "bg-input"
+                        !dataConsent ? "bg-primary" : "bg-input"
                       }`}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                          dataConsent ? "translate-x-6" : "translate-x-1"
+                          !dataConsent ? "translate-x-6" : "translate-x-1"
                         }`}
                       />
                     </button>
-                    <span className="text-sm">{dataConsent ? "Participating (default)" : "Opted out"}</span>
+                    <span className="text-sm">{!dataConsent ? "Opted out" : "Participating (default)"}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     Your content, settings, and tags — including WIF files, photos, and activity
