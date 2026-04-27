@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy import select
@@ -6,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import AsyncSessionLocal
 from app.models.user import User
+
+_LAST_ACTIVE_THROTTLE = timedelta(minutes=5)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -29,6 +32,11 @@ async def get_current_user(
     user = await db.scalar(select(User).where(User.id == payload["sub"], User.deleted_at.is_(None)))
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    now = datetime.now(timezone.utc)
+    if user.last_active_at is None or (now - user.last_active_at) > _LAST_ACTIVE_THROTTLE:
+        user.last_active_at = now
+        await db.commit()
 
     return user
 

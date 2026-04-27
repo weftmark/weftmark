@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,3 +21,4 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     idle_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     measurement_system: Mapped[str] = mapped_column(String(10), default="metric", nullable=False)
     ai_training_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
