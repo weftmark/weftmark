@@ -20,7 +20,7 @@ Before you read the full terms, here is the short version:
 
 ## 1. Who runs WeftMark
 
-WeftMark ("the platform," "we," "us") is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: [gx1400@gmail.com](mailto:gx1400@gmail.com)
+WeftMark ("the platform," "we," "us") is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: [hello@weftmark.com](mailto:hello@weftmark.com)
 
 ## 2. Accepting these terms
 
@@ -160,7 +160,7 @@ These terms are governed by the laws of the state of residence of the operator, 
 
 ## 17. Contact
 
-Questions about these terms or your data: [gx1400@gmail.com](mailto:gx1400@gmail.com)
+Questions about these terms or your data: [hello@weftmark.com](mailto:hello@weftmark.com)
 
 ---
 

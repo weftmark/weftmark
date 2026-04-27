@@ -18,7 +18,7 @@ export function EulaContent() {
 
       <section>
         <h3 className="font-semibold">1. Who runs WeftMark</h3>
-        <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:gx1400@gmail.com" className="underline">gx1400@gmail.com</a></p>
+        <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:hello@weftmark.com" className="underline">hello@weftmark.com</a></p>
       </section>
 
       <section>
@@ -92,7 +92,7 @@ export function EulaContent() {
 
       <section>
         <h3 className="font-semibold">15. Contact</h3>
-        <p>Questions about these terms or your data: <a href="mailto:gx1400@gmail.com" className="underline">gx1400@gmail.com</a></p>
+        <p>Questions about these terms or your data: <a href="mailto:hello@weftmark.com" className="underline">hello@weftmark.com</a></p>
       </section>
 
       <p className="text-xs text-muted-foreground pt-2 border-t">
