@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     api_url: str = "http://localhost:8000"
 
     # Database
+    # For local dev: set POSTGRES_* vars and leave POSTGRES_DSN blank.
+    # For managed Postgres (e.g. Neon): set POSTGRES_DSN to the full connection string;
+    # the individual POSTGRES_* vars are ignored.
+    postgres_dsn: str = ""
     postgres_host: str = "db"
     postgres_port: int = 5432
     postgres_db: str = "weaving_site"
@@ -25,6 +29,9 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.postgres_dsn:
+            url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
+            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -32,6 +39,9 @@ class Settings(BaseSettings):
 
     @property
     def database_url_sync(self) -> str:
+        if self.postgres_dsn:
+            url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
+            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
