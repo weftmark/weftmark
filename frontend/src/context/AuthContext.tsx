@@ -1,13 +1,18 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { api } from "@/api/client";
 
-interface User {
+export interface User {
   id: string;
   email: string;
   display_name: string;
   is_admin: boolean;
   theme: string;
+  activity_theme: string | null;
   idle_timeout_minutes: number;
+  measurement_system: string;
+  ai_training_consent: boolean;
+  eula_accepted_version: string | null;
+  current_eula_version: string;
 }
 
 interface AuthState {
