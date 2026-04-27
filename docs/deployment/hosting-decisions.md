@@ -4,18 +4,19 @@
 
 ---
 
-## 1. Object Storage — Backblaze B2
+## 1. Object Storage — Cloudflare R2
 
-**Decision:** Backblaze B2
+**Decision:** Cloudflare R2
 
 **Rationale:**
+
 - S3-compatible API — works with the existing `STORAGE_BACKEND=s3` / boto3 code; only the endpoint URL and credentials change in `.env`
-- Zero egress fees when served through Cloudflare CDN (B2 + Cloudflare are bandwidth alliance partners)
-- Lower per-GB cost than Cloudflare R2 at scale
+- Zero egress fees — R2 has no egress charges at all, unlike B2 which charges for downloads outside the Cloudflare network
+- Already in the Cloudflare ecosystem (domain, DNS, CDN all managed there) — single dashboard, no inter-service egress
 
-**Setup:** B2 bucket behind a Cloudflare CDN zone. Set `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME` in the production `.env`.
+**Setup:** R2 bucket created in the Cloudflare dashboard. Set `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME` in the production `.env`. R2 endpoint format: `https://<account-id>.r2.cloudflarestorage.com`.
 
-**Estimated cost:** $0/mo within free tier (10 GB storage, 1 GB/day download free); $0.006/GB storage thereafter.
+**Estimated cost:** $0/mo within free tier (10 GB storage, 1M Class A ops, 10M Class B ops/mo); $0.015/GB storage thereafter.
 
 ---
 
@@ -24,6 +25,7 @@
 **Decision:** Self-hosted Ubuntu VM in a data center
 
 **Rationale:**
+
 - Runs the full docker-compose stack on a single host: frontend (nginx), backend (FastAPI), worker (Celery), Redis, Authentik
 - Same docker-compose structure as local dev — no new tooling or deployment pipeline required
 - Free allocation eliminates VM cost
@@ -39,6 +41,7 @@
 **Decision:** Neon managed Postgres for production; local Postgres container for development.
 
 **Rationale:**
+
 - Neon free tier provides managed Postgres with automated backups and point-in-time recovery (PITR) at no cost, removing the operational burden of self-hosting WAL archiving and restore procedures
 - Neon pauses after 5 minutes of inactivity — acceptable for production traffic patterns, but disruptive in dev sessions where the database is hit repeatedly
 - Local Postgres container (existing docker-compose `db` service) is instant, offline-capable, and already working
@@ -56,10 +59,11 @@
 **Decision:** Cloudflare for domain registration, DNS, CDN, and TLS.
 
 **Rationale:**
+
 - `weftmark.com` registered through Cloudflare Registrar
 - Cloudflare proxies the domain (orange cloud on) — TLS termination at the edge, certificate handled automatically
 - Origin server uses a Cloudflare Origin CA certificate with **Full (strict)** SSL mode — no Certbot/ACME renewal to manage
-- Cloudflare CDN in front of B2 eliminates egress fees and improves global asset delivery
+- Cloudflare CDN in front of R2 eliminates egress fees and improves global asset delivery
 
 **Estimated cost:** $0/mo (free plan covers DNS, CDN, and DDoS protection); ~$11/yr for domain renewal.
 
@@ -80,11 +84,11 @@
 ## Monthly Cost Summary
 
 | Service | Cost |
-|---|---|
+| --- | --- |
 | Ubuntu VM | $0 |
 | Neon Postgres | $0 |
-| Backblaze B2 | $0 (within free tier) |
-| Cloudflare | $0 |
+| Cloudflare R2 | $0 (within free tier) |
+| Cloudflare DNS/CDN/TLS | $0 |
 | SMTP2Go | $0 (within free tier) |
 | weftmark.com domain | ~$1/mo ($11/yr) |
 | **Total** | **~$1/mo** |

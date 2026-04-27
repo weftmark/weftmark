@@ -21,10 +21,10 @@ Use **Cloudflare Origin CA certificate** (free, generated in Cloudflare dashboar
 
 ## Object storage
 
-**Decided:** Backblaze B2 (not Cloudflare R2).
+**Decided:** Cloudflare R2 (not Backblaze B2).
 
 - S3-compatible API — works with existing `STORAGE_BACKEND=s3` / boto3 code; only endpoint URL and credentials change in `.env`
-- B2 charges egress outside Cloudflare network — use Cloudflare CDN in front to keep most requests as cache hits and avoid egress costs
+- Zero egress fees — R2 has no egress charges, unlike B2
 
 ## Application hosting (VM)
 
