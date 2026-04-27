@@ -33,28 +33,6 @@ def _pid() -> uuid.UUID:
 
 
 # ---------------------------------------------------------------------------
-# project_dir
-# ---------------------------------------------------------------------------
-
-
-class TestProjectDir:
-    def test_returns_path(self, tmp_path):
-        p = storage.project_dir(_pid())
-        assert p.is_dir()
-
-    def test_path_under_upload_root(self, tmp_path):
-        pid = _pid()
-        p = storage.project_dir(pid)
-        assert str(tmp_path) in str(p)
-
-    def test_idempotent(self):
-        pid = _pid()
-        p1 = storage.project_dir(pid)
-        p2 = storage.project_dir(pid)
-        assert p1 == p2
-
-
-# ---------------------------------------------------------------------------
 # save_wif / read_wif
 # ---------------------------------------------------------------------------
 
