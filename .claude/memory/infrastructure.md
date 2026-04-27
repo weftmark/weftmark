@@ -28,10 +28,12 @@ Use **Cloudflare Origin CA certificate** (free, generated in Cloudflare dashboar
 
 ## Application hosting (VM)
 
-**Decided:** Free hosting on an Ubuntu VM in a data center (not DigitalOcean).
+**Decided:** Ubuntu 24.04 VM in a data center, managed via Komodo.
 
 - All services run in Docker containers on one host: frontend, backend, workers, redis, authentik
-- Same docker-compose structure as local dev, just deployed to the VM
+- Komodo manages container lifecycle; pulls images from ghcr.io on deploy
+- nginx on the VM host as outer reverse proxy with CrowdSec bouncer (not Caddy — Caddy's auto-HTTPS is irrelevant since Cloudflare terminates TLS)
+- Topology: Cloudflare → nginx host (Cloudflare Origin CA cert, Full strict) → containers
 
 ## Postgres
 

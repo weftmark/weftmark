@@ -22,15 +22,32 @@
 
 ## 2. Application Host — Ubuntu VM
 
-**Decision:** Self-hosted Ubuntu VM in a data center
+**Decision:** Self-hosted Ubuntu VM (Ubuntu 24.04) in a data center, managed via Komodo
 
 **Rationale:**
 
 - Runs the full docker-compose stack on a single host: frontend (nginx), backend (FastAPI), worker (Celery), Redis, Authentik
 - Same docker-compose structure as local dev — no new tooling or deployment pipeline required
 - Free allocation eliminates VM cost
+- Komodo manages container lifecycle and pulls images from ghcr.io on deploy
 
 **Instance sizing:** Minimum 2 vCPU / 4 GB RAM (8 GB recommended) to accommodate Authentik's footprint alongside the application stack. See [Proxmox VM sizing note in infrastructure memory](../../.claude/memory/infrastructure.md).
+
+**Estimated cost:** $0/mo.
+
+---
+
+## 3. Reverse Proxy — nginx + CrowdSec
+
+**Decision:** nginx as the outer reverse proxy on the VM host, with CrowdSec bouncer
+
+**Rationale:**
+
+- Caddy's automatic HTTPS advantage is irrelevant — Cloudflare terminates TLS at the edge; the origin only needs to accept Cloudflare-proxied traffic
+- `crowdsec-nginx-bouncer` is significantly more mature than the Caddy module; nginx access log format is what CrowdSec's log processor expects by default with no extra configuration
+- Consistent mental model — the frontend container already runs nginx internally
+
+**Topology:** Cloudflare (TLS) → nginx on VM host (port 443, Cloudflare Origin CA cert, Full strict mode) → frontend container nginx (port 3000) / backend (port 8000)
 
 **Estimated cost:** $0/mo.
 
