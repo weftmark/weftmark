@@ -201,10 +201,15 @@ async def get_drawdown(
             },
         )
 
+    if not storage.file_exists(project.wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not found in storage")
+
     wif_bytes = storage.read_file(project.wif_path)
     try:
         draft = rendering.load_draft(wif_bytes)
         png, total_rows = rendering.render_drawdown_only(draft)
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
 
