@@ -11,19 +11,13 @@ SessionStart hook — injects two blocks of context at the start of every sessio
 Gitea unreachable → exits 0 silently (hook must not block the session).
 """
 import json
+import os
 import sys
 import urllib.request
 
 
-def load_token(path=".env.local"):
-    try:
-        with open(path) as f:
-            for line in f:
-                if line.startswith("GITEA_TOKEN_ISSUES="):
-                    return line.split("=", 1)[1].strip()
-    except OSError:
-        pass
-    return None
+def load_token():
+    return os.environ.get("GITEA_TOKEN")
 
 
 def gitea_get(path, token):
