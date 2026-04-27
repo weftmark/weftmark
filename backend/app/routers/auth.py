@@ -1,10 +1,18 @@
 """
-OIDC authentication flow:
+OIDC authentication flow (multi-provider):
 
-  /auth/login        → redirect to provider authorization endpoint
-  /auth/callback     → exchange code, upsert user, set session cookie, redirect to frontend
-  /auth/logout       → clear session cookie
-  /auth/me           → return current user info
+  /auth/login?provider=X  → redirect to provider authorization endpoint
+  /auth/callback          → GET  — exchange code, resolve identity, set session cookie (Google et al.)
+  /auth/callback          → POST — same, for Apple's form_post response mode
+  /auth/logout            → clear session cookie
+  /auth/me                → return current user info
+  /auth/providers         → list enabled OIDC providers
+
+Identity resolution order on each login:
+  1. (provider, provider_sub) in user_identities → existing user
+  2. users.oidc_sub == provider_sub — legacy fallback for users that existed before migration
+  3. users.email == email — cross-provider linking (same email at a new provider)
+  4. New user — invite required unless bootstrap
 
 Invite flow:
   /auth/invite       POST   (admin) create invite + send email
@@ -15,6 +23,7 @@ Invite flow:
 Bootstrap rule: if zero users exist, the first OIDC registrant is granted admin with no invite.
 """
 
+import json
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -22,7 +31,7 @@ from typing import Any
 
 import httpx
 import jwt
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Query
+from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Query
 from fastapi.responses import JSONResponse, RedirectResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from jwt import PyJWKSet
@@ -35,6 +44,7 @@ from app.config import get_settings
 from app.deps import get_current_user, get_db, require_admin
 from app.models.invite import Invite
 from app.models.user import User
+from app.models.user_identity import UserIdentity
 from app.services.email import send_invite_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -48,30 +58,34 @@ _STATE_MAX_AGE = 600  # 10 minutes
 
 _signer = URLSafeTimedSerializer(settings.app_secret_key)
 
-# OIDC provider metadata — populated on startup via load_oidc_metadata()
-_oidc_metadata: dict[str, Any] = {}
+# Provider metadata keyed by provider name — populated on startup via load_oidc_metadata()
+_oidc_metadata: dict[str, dict[str, Any]] = {}
 
 
 async def load_oidc_metadata() -> None:
-    if not settings.oidc_discovery_url:
-        import logging
+    import logging
 
-        logging.getLogger(__name__).warning("OIDC_DISCOVERY_URL not set — auth disabled")
+    log = logging.getLogger(__name__)
+    providers = settings.active_providers
+    if not providers:
+        log.warning("No OIDC providers configured — auth disabled")
         return
-    discovery_url = settings.oidc_discovery_url.rstrip("/") + "/.well-known/openid-configuration"
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(discovery_url, timeout=10)
-            resp.raise_for_status()
-            _oidc_metadata.update(resp.json())
-    except Exception as exc:
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "Could not load OIDC metadata from %s: %s — auth routes will return 503 until resolved",
-            discovery_url,
-            exc,
-        )
+    for name, cfg in providers.items():
+        discovery_url = cfg["discovery_url"].rstrip("/") + "/.well-known/openid-configuration"
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(discovery_url, timeout=10)
+                resp.raise_for_status()
+                _oidc_metadata[name] = resp.json()
+                log.info("Loaded OIDC metadata for provider '%s'", name)
+        except Exception as exc:
+            log.warning(
+                "Could not load OIDC metadata for provider '%s' from %s: %s — "
+                "auth routes will return 503 until resolved",
+                name,
+                discovery_url,
+                exc,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -98,29 +112,49 @@ def decode_session_token(token: str) -> dict[str, Any] | None:
 
 
 # ---------------------------------------------------------------------------
+# Provider list
+# ---------------------------------------------------------------------------
+
+
+@router.get("/providers")
+async def list_providers() -> list[str]:
+    """Return names of configured and reachable OIDC providers."""
+    return list(_oidc_metadata.keys())
+
+
+# ---------------------------------------------------------------------------
 # OIDC login initiation
 # ---------------------------------------------------------------------------
 
 
 @router.get("/login")
-async def login(invite_token: str | None = Query(default=None)) -> RedirectResponse:
-    if not _oidc_metadata:
-        raise HTTPException(status_code=503, detail="OIDC provider not configured")
+async def login(
+    provider: str = Query(default="google"),
+    invite_token: str | None = Query(default=None),
+) -> RedirectResponse:
+    if provider not in _oidc_metadata:
+        raise HTTPException(status_code=503, detail=f"Provider '{provider}' not configured")
+
+    meta = _oidc_metadata[provider]
+    cfg = settings.active_providers[provider]
 
     state = secrets.token_urlsafe(32)
     nonce = secrets.token_urlsafe(32)
-    signed_state = _signer.dumps({"state": state, "nonce": nonce})
+    signed_state = _signer.dumps({"state": state, "nonce": nonce, "provider": provider})
 
-    authorization_endpoint = _oidc_metadata["authorization_endpoint"]
-    params = {
+    params: dict[str, str] = {
         "response_type": "code",
-        "client_id": settings.oidc_client_id,
-        "redirect_uri": settings.oidc_redirect_uri,
-        "scope": "openid email profile",
+        "client_id": cfg["client_id"],
+        "redirect_uri": cfg["redirect_uri"],
+        "scope": "openid name email" if provider == "apple" else "openid email profile",
         "state": state,
         "nonce": nonce,
     }
-    url = authorization_endpoint + "?" + "&".join(f"{k}={v}" for k, v in params.items())
+    if provider == "apple":
+        # Apple requires form_post so user name is delivered in the callback body
+        params["response_mode"] = "form_post"
+
+    url = meta["authorization_endpoint"] + "?" + "&".join(f"{k}={v}" for k, v in params.items())
 
     response = RedirectResponse(url=url, status_code=302)
     response.set_cookie(_STATE_COOKIE, signed_state, max_age=_STATE_MAX_AGE, httponly=True, samesite="lax")
@@ -132,18 +166,55 @@ async def login(invite_token: str | None = Query(default=None)) -> RedirectRespo
 
 # ---------------------------------------------------------------------------
 # OIDC callback
+# GET  — standard query-param redirect (Google et al.)
+# POST — Apple form_post (body contains code + state + optional user JSON)
 # ---------------------------------------------------------------------------
 
 
 @router.get("/callback")
-async def callback(
+async def callback_get(
     code: str = Query(),
     state: str = Query(),
     oidc_state: str | None = Cookie(default=None),
     oidc_invite: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    # Validate state
+    return await _handle_callback(code=code, state=state, oidc_state=oidc_state, oidc_invite=oidc_invite, db=db)
+
+
+@router.post("/callback")
+async def callback_post(
+    code: str = Form(),
+    state: str = Form(),
+    user: str | None = Form(default=None),  # Apple sends user JSON on first login only
+    oidc_state: str | None = Cookie(default=None),
+    oidc_invite: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    apple_user_data: dict[str, Any] | None = None
+    if user:
+        try:
+            apple_user_data = json.loads(user)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return await _handle_callback(
+        code=code,
+        state=state,
+        oidc_state=oidc_state,
+        oidc_invite=oidc_invite,
+        db=db,
+        extra_user_data=apple_user_data,
+    )
+
+
+async def _handle_callback(
+    code: str,
+    state: str,
+    oidc_state: str | None,
+    oidc_invite: str | None,
+    db: AsyncSession,
+    extra_user_data: dict[str, Any] | None = None,
+) -> RedirectResponse:
     if not oidc_state:
         raise HTTPException(status_code=400, detail="Missing OIDC state cookie")
     try:
@@ -152,9 +223,16 @@ async def callback(
         raise HTTPException(status_code=400, detail="Invalid or expired OIDC state")
     if signed_data["state"] != state:
         raise HTTPException(status_code=400, detail="State mismatch")
-    nonce = signed_data["nonce"]
 
-    # Parse invite token if present
+    nonce = signed_data["nonce"]
+    # Pre-migration sessions lack "provider" — default to google for backward compat
+    provider = signed_data.get("provider", "google")
+
+    if provider not in _oidc_metadata:
+        raise HTTPException(status_code=503, detail=f"Provider '{provider}' metadata unavailable")
+    meta = _oidc_metadata[provider]
+    cfg = settings.active_providers[provider]
+
     invite_token: str | None = None
     if oidc_invite:
         try:
@@ -165,13 +243,13 @@ async def callback(
     # Exchange code for tokens
     async with httpx.AsyncClient() as client:
         token_resp = await client.post(
-            _oidc_metadata["token_endpoint"],
+            meta["token_endpoint"],
             data={
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": settings.oidc_redirect_uri,
-                "client_id": settings.oidc_client_id,
-                "client_secret": settings.oidc_client_secret,
+                "redirect_uri": cfg["redirect_uri"],
+                "client_id": cfg["client_id"],
+                "client_secret": cfg["client_secret"],
             },
         )
         token_resp.raise_for_status()
@@ -180,7 +258,7 @@ async def callback(
     # Decode and verify ID token
     id_token = token_data["id_token"]
     async with httpx.AsyncClient() as client:
-        jwks_resp = await client.get(_oidc_metadata["jwks_uri"])
+        jwks_resp = await client.get(meta["jwks_uri"])
         jwks_resp.raise_for_status()
         jwks_data = jwks_resp.json()
 
@@ -195,7 +273,7 @@ async def callback(
             id_token,
             signing_key.key,
             algorithms=["RS256", "ES256"],
-            audience=settings.oidc_client_id,
+            audience=cfg["client_id"],
             options={"verify_at_hash": False},
         )
     except JWTError as exc:
@@ -204,19 +282,25 @@ async def callback(
     if claims.get("nonce") != nonce:
         raise HTTPException(status_code=400, detail="Nonce mismatch")
 
-    oidc_sub = claims["sub"]
+    provider_sub = claims["sub"]
     email = claims.get("email", "")
-    display_name = claims.get("name") or claims.get("preferred_username") or email
 
-    # Check for existing user
-    existing = await db.scalar(select(User).where(User.oidc_sub == oidc_sub))
-
-    if existing:
-        if existing.is_deleted or not existing.is_active:
-            raise HTTPException(status_code=403, detail="Account suspended")
-        user = existing
+    # Apple sends user name only on the first login (in the form body)
+    if extra_user_data and (name_data := extra_user_data.get("name")):
+        first = name_data.get("firstName", "")
+        last = name_data.get("lastName", "")
+        display_name = f"{first} {last}".strip() or email
     else:
-        # New user — require invite unless this is the first user (bootstrap)
+        display_name = claims.get("name") or claims.get("preferred_username") or email
+
+    # Identity resolution
+    resolved = await _resolve_identity(db, provider, provider_sub, email)
+
+    if resolved is not None:
+        if resolved.is_deleted or not resolved.is_active:
+            raise HTTPException(status_code=403, detail="Account suspended")
+        db_user = resolved
+    else:
         user_count = await db.scalar(select(func.count()).select_from(User))
         is_first_user = user_count == 0
 
@@ -230,17 +314,20 @@ async def callback(
                 _clear_oidc_cookies(response)
                 return response
 
-        user = User(
+        db_user = User(
             email=email,
             display_name=display_name,
-            oidc_sub=oidc_sub,
+            oidc_sub=provider_sub,
             is_admin=is_first_user,
         )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        db.add(db_user)
+        await db.flush()  # populate db_user.id before creating identity row
 
-    session_token = create_session_token(user.id, user.email, user.is_admin)
+    await _ensure_identity(db, db_user.id, provider, provider_sub, email)
+    await db.commit()
+    await db.refresh(db_user)
+
+    session_token = create_session_token(db_user.id, db_user.email, db_user.is_admin)
     response = RedirectResponse(url=settings.frontend_url, status_code=302)
     response.set_cookie(
         _SESSION_COOKIE,
@@ -251,6 +338,51 @@ async def callback(
     )
     _clear_oidc_cookies(response)
     return response
+
+
+async def _resolve_identity(db: AsyncSession, provider: str, provider_sub: str, email: str) -> User | None:
+    """Resolve an OIDC (provider, sub) pair to a User via three fallback strategies."""
+    # 1. Check user_identities table (primary path post-migration)
+    identity = await db.scalar(
+        select(UserIdentity).where(
+            UserIdentity.provider == provider,
+            UserIdentity.provider_sub == provider_sub,
+        )
+    )
+    if identity:
+        return await db.get(User, identity.user_id)
+
+    # 2. Legacy fallback: users.oidc_sub (users that existed before 0015 migration)
+    user = await db.scalar(select(User).where(User.oidc_sub == provider_sub, User.deleted_at.is_(None)))
+    if user:
+        return user
+
+    # 3. Cross-provider email linking (same verified email at a second provider)
+    if email:
+        user = await db.scalar(select(User).where(User.email == email, User.deleted_at.is_(None)))
+        if user:
+            return user
+
+    return None
+
+
+async def _ensure_identity(db: AsyncSession, user_id: uuid.UUID, provider: str, provider_sub: str, email: str) -> None:
+    """Insert a user_identities row if this (provider, sub) pair isn't already tracked."""
+    existing = await db.scalar(
+        select(UserIdentity).where(
+            UserIdentity.provider == provider,
+            UserIdentity.provider_sub == provider_sub,
+        )
+    )
+    if not existing:
+        db.add(
+            UserIdentity(
+                user_id=user_id,
+                provider=provider,
+                provider_sub=provider_sub,
+                email=email or None,
+            )
+        )
 
 
 async def _consume_invite(db: AsyncSession, email: str, token: str | None) -> Invite | None:

@@ -5,6 +5,13 @@ from app.models.user import User
 from app.routers.auth import create_session_token
 
 
+class TestListProviders:
+    async def test_returns_list(self, client: AsyncClient):
+        resp = await client.get("/auth/providers")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+
 class TestMe:
     async def test_returns_200(self, auth_client: AsyncClient):
         resp = await auth_client.get("/auth/me")
