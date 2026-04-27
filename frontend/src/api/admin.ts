@@ -7,16 +7,29 @@ export interface AdminUser {
   is_admin: boolean;
   is_active: boolean;
   created_at: string;
+  last_active_at: string | null;
 }
 
 export interface AdminStats {
   total_users: number;
   active_users: number;
+  active_7d: number;
+  active_30d: number;
+  active_90d: number;
   total_projects: number;
   total_activities: number;
   total_looms: number;
   total_yarn: number;
   pending_invites: number;
+}
+
+export interface AdminHealth {
+  cpu_percent: number;
+  memory_percent: number;
+  memory_used_mb: number;
+  memory_total_mb: number;
+  db_ping_ms: number;
+  uptime_seconds: number;
 }
 
 export interface InviteRecord {
@@ -30,6 +43,7 @@ export interface InviteRecord {
 
 export const listAdminUsers = () => api.get<AdminUser[]>("/api/admin/users");
 export const getAdminStats = () => api.get<AdminStats>("/api/admin/stats");
+export const getAdminHealth = () => api.get<AdminHealth>("/api/admin/health");
 export const patchAdminUser = (userId: string, body: { is_active?: boolean; is_admin?: boolean }) =>
   api.patch<AdminUser>(`/api/admin/users/${userId}`, body);
 
