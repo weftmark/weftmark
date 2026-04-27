@@ -1,6 +1,6 @@
 # WeftMark Terms of Service
 
-**Version 0.2 — effective [DATE TO BE FILLED IN BEFORE LAUNCH]**
+**Version 0.3 — effective [DATE TO BE FILLED IN BEFORE LAUNCH]**
 
 ---
 
@@ -8,7 +8,7 @@
 
 Before you read the full terms, here is the short version:
 
-- WeftMark is a personal hobby project built for weavers by a developer whose wife is a weaver. It is not a commercial product.
+- WeftMark is a hobby project built by a tech enthusiast for the fiber arts community — not a commercial product.
 - By uploading content you grant WeftMark a permanent, irrevocable license to that content for platform and development purposes, including AI/ML improvements.
 - Your uploaded content, settings, and tags may be used for AI model training and feature development unless you opt out.
 - Data use is **on by default**. You can opt out at any time from your settings page.
@@ -20,7 +20,7 @@ Before you read the full terms, here is the short version:
 
 ## 1. Who runs WeftMark
 
-WeftMark ("the platform," "we," "us") is operated by Derek Rowland as a personal hobby project built for his wife and her weaving community. It is not a registered company or commercial service. Contact: [gx1400@gmail.com](mailto:gx1400@gmail.com)
+WeftMark ("the platform," "we," "us") is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: [gx1400@gmail.com](mailto:gx1400@gmail.com)
 
 ## 2. Accepting these terms
 

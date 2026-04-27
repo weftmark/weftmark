@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 # Bump this string when the EULA text changes — all users will be prompted to re-accept.
-CURRENT_EULA_VERSION = "0.2"
+CURRENT_EULA_VERSION = "0.3"
 
 _VALID_THEMES = {"light", "dark"}
 _VALID_MEASUREMENT_SYSTEMS = {"metric", "imperial"}
