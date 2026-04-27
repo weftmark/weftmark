@@ -251,8 +251,12 @@ export function SettingsPage() {
             {/* ── Privacy & data ── */}
             {activeSection === "privacy" && (
               <Section title="Privacy & data">
-                <Field label="Allow platform to use my data for improvements">
-                  <div className="flex items-center gap-3">
+                <Field label="Data use for AI/ML improvements">
+                  <p className="text-xs text-muted-foreground">
+                    Per our Terms of Service, your data is used for platform improvements by default.
+                    Toggle off below to opt out.
+                  </p>
+                  <div className="flex items-center gap-3 mt-2">
                     <button
                       role="switch"
                       aria-checked={dataConsent}
@@ -267,16 +271,15 @@ export function SettingsPage() {
                         }`}
                       />
                     </button>
-                    <span className="text-sm">{dataConsent ? "On (default)" : "Off"}</span>
+                    <span className="text-sm">{dataConsent ? "Participating (default)" : "Opted out"}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    When on, your content, settings, and tags — including WIF files, photos, and
-                    activity data — may be used for AI/ML model training and feature improvements,
-                    as described in the Terms of Service. This is on by default per our terms.
+                    Your content, settings, and tags — including WIF files, photos, and activity
+                    data — may be used for AI/ML model training and feature improvements as described
+                    in the Terms of Service.
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    <strong>Note:</strong> Turning this off also disables all public sharing links
-                    for your projects.
+                    <strong>Note:</strong> Opting out also disables all public sharing links for your projects.
                   </p>
                 </Field>
 
