@@ -1657,7 +1657,7 @@
     "path": "/workspace/gx1400/weaving_site/frontend/node_modules/vite",
     "licenseFile": "/workspace/gx1400/weaving_site/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.19.0": {
+  "weaving-site@0.19.3": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/workspace/gx1400/weaving_site/frontend"
