@@ -349,6 +349,8 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.CI_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -359,10 +361,11 @@ jobs:
         run: |
           pip install cyclonedx-bom pip-licenses
           pip install -r backend/requirements.txt
+          mkdir -p sbom
           cyclonedx-py requirements backend/requirements.txt \
             --output-format JSON \
-            --output-file sbom-backend.json
-          pip-licenses --format=json --output-file licenses-backend.json
+            --output-file sbom/sbom-backend.json
+          pip-licenses --format=json --output-file sbom/licenses-backend.json
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -374,18 +377,26 @@ jobs:
           cd frontend && npm ci
           npx @cyclonedx/cyclonedx-npm \
             --output-format JSON \
-            --output-file ../sbom-frontend.json
-          npx license-checker --json --out ../licenses-frontend.json
+            --output-file ../sbom/sbom-frontend.json
+          npx license-checker --json --out ../sbom/licenses-frontend.json
+
+      - name: Commit SBOM manifests if changed
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci@weaving-site"
+          git add sbom/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update SBOM and license manifests [skip ci]"
+            git pull --rebase origin ${{ github.ref_name }}
+            git push origin ${{ github.ref_name }}
+          fi
 
       - name: Upload dependency manifests
         uses: actions/upload-artifact@v3
         with:
           name: dependency-manifests-${{ github.sha }}
-          path: |
-            sbom-backend.json
-            sbom-frontend.json
-            licenses-backend.json
-            licenses-frontend.json
+          path: sbom/
           retention-days: 90
 
   # ------------------------------------------------------------
