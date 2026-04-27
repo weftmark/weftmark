@@ -361,7 +361,7 @@ jobs:
           pip install -r backend/requirements.txt
           cyclonedx-py requirements backend/requirements.txt \
             --output-format JSON \
-            --outfile sbom-backend.json
+            --output-file sbom-backend.json
           pip-licenses --format=json --output-file licenses-backend.json
 
       - name: Set up Node
