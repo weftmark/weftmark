@@ -15,7 +15,7 @@ pillow==12.2.0
 aiosmtplib==3.0.2
 email-validator==2.2.0
 PyJWT[crypto]==2.12.0
-cryptography==44.0.3
+cryptography==46.0.6
 itsdangerous==2.2.0
 boto3==1.38.0
 psutil==6.1.1
