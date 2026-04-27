@@ -432,32 +432,32 @@ def _make_png(width: int = 10, height: int = 10) -> bytes:
 
 class TestResizeToJpeg:
     def test_returns_bytes(self):
-        from app.routers.activities import _resize_to_jpeg
+        from app.services.images import resize_to_jpeg
 
-        assert isinstance(_resize_to_jpeg(_make_jpeg()), bytes)
+        assert isinstance(resize_to_jpeg(_make_jpeg()), bytes)
 
     def test_output_is_jpeg(self):
-        from app.routers.activities import _resize_to_jpeg
+        from app.services.images import resize_to_jpeg
 
-        result = _resize_to_jpeg(_make_jpeg())
+        result = resize_to_jpeg(_make_jpeg())
         assert PILImage.open(io.BytesIO(result)).format == "JPEG"
 
     def test_png_input_converted_to_jpeg(self):
-        from app.routers.activities import _resize_to_jpeg
+        from app.services.images import resize_to_jpeg
 
-        result = _resize_to_jpeg(_make_png())
+        result = resize_to_jpeg(_make_png())
         assert PILImage.open(io.BytesIO(result)).format == "JPEG"
 
-    def test_large_image_resized_to_2048(self):
-        from app.routers.activities import _resize_to_jpeg
+    def test_large_image_resized_to_max_px(self):
+        from app.services.images import resize_to_jpeg
 
-        result = _resize_to_jpeg(_make_jpeg(3000, 3000))
+        result = resize_to_jpeg(_make_jpeg(3000, 3000), max_px=2048)
         assert max(PILImage.open(io.BytesIO(result)).size) <= 2048
 
     def test_small_image_not_upscaled(self):
-        from app.routers.activities import _resize_to_jpeg
+        from app.services.images import resize_to_jpeg
 
-        result = _resize_to_jpeg(_make_jpeg(50, 50))
+        result = resize_to_jpeg(_make_jpeg(50, 50))
         assert PILImage.open(io.BytesIO(result)).size == (50, 50)
 
 
@@ -553,6 +553,7 @@ class TestActivityPhotos:
                 activity_id=activity.id,
                 file_path=f"activities/{activity.id}/photos/photo{i}.jpg",
                 filename=f"photo{i}.jpg",
+                file_size_bytes=1024,
                 display_order=i + 1,
             )
             db_session.add(photo)
@@ -647,3 +648,73 @@ class TestActivityPhotos:
         activity = await _insert_active_activity(db_session, test_user, project, None)
         resp = await client.delete(f"/api/activities/{activity.id}/photos/{uuid.uuid4()}")
         assert resp.status_code == 401
+
+    async def test_upload_records_file_size_bytes(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 201
+        photo_id = uuid.UUID(resp.json()["id"])
+        from sqlalchemy import select as sa_select
+
+        photo = await db_session.scalar(sa_select(ActivityPhotoModel).where(ActivityPhotoModel.id == photo_id))
+        assert photo is not None
+        assert photo.file_size_bytes > 0
+
+
+# ---------------------------------------------------------------------------
+# TestStorageQuota
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestStorageQuota:
+    async def test_quota_exceeded_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from app.services.storage_quota import MAX_USER_STORAGE_BYTES
+
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        # Insert a photo that consumes the entire quota
+        photo = ActivityPhotoModel(
+            activity_id=activity.id,
+            file_path=f"activities/{activity.id}/photos/big.jpg",
+            filename="big.jpg",
+            file_size_bytes=MAX_USER_STORAGE_BYTES,
+            display_order=1,
+        )
+        db_session.add(photo)
+        await db_session.commit()
+
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 400
+        assert "Storage limit" in resp.json()["detail"]
+
+    async def test_get_user_storage_used_sums_activity_photos(self, db_session: AsyncSession, test_user: User):
+        from app.services.storage_quota import get_user_storage_used
+
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        for i in range(3):
+            db_session.add(
+                ActivityPhotoModel(
+                    activity_id=activity.id,
+                    file_path=f"activities/{activity.id}/photos/p{i}.jpg",
+                    filename=f"p{i}.jpg",
+                    file_size_bytes=100_000,
+                    display_order=i,
+                )
+            )
+        await db_session.commit()
+
+        used = await get_user_storage_used(test_user.id, db_session)
+        assert used == 300_000

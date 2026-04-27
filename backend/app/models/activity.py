@@ -21,6 +21,7 @@ class ActivityPhoto(Base, TimestampMixin):
     )
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     activity: Mapped["Activity"] = relationship("Activity", back_populates="photos")

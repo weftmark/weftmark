@@ -22,6 +22,8 @@ from app.models.loom import (
 )
 from app.models.user import User
 from app.services import storage
+from app.services.images import resize_to_jpeg
+from app.services.storage_quota import check_storage_quota
 
 router = APIRouter(prefix="/api/looms", tags=["looms"])
 
@@ -396,10 +398,13 @@ async def upload_loom_photo(
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+    try:
+        data = resize_to_jpeg(data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not process image file")
     if loom.photo_path:
         storage.delete_loom_photo(loom.photo_path)
-    ext = _ext(file.content_type or "")
-    loom.photo_path = storage.save_loom_photo(loom_id, ext, data)
+    loom.photo_path = storage.save_loom_photo(loom_id, ".jpg", data)
     await db.commit()
 
 
@@ -484,15 +489,20 @@ async def upload_version_photo(
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+    try:
+        data = resize_to_jpeg(data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not process image file")
+    await check_storage_quota(current_user.id, db, incoming_bytes=len(data))
     photo_id = uuid.uuid4()
-    ext = _ext(file.content_type or "")
-    path = storage.save_version_photo(loom_id, version_id, photo_id, ext, data)
+    path = storage.save_version_photo(loom_id, version_id, photo_id, ".jpg", data)
     display_order = max((p.display_order for p in version.photos), default=-1) + 1
     photo = LoomVersionPhoto(
         id=photo_id,
         loom_version_id=version_id,
-        filename=file.filename or f"{photo_id}{ext}",
+        filename=file.filename or f"{photo_id}.jpg",
         path=path,
+        file_size_bytes=len(data),
         display_order=display_order,
     )
     db.add(photo)
