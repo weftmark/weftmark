@@ -10,6 +10,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
     image: weaving_site_frontend:${APP_VERSION:-dev}
     container_name: weaving_site_frontend
     ports:
