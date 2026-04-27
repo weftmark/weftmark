@@ -542,6 +542,14 @@ class TestApprovePendingSignup:
         user = await db_session.scalar(select(User).where(User.clerk_user_id == signup.clerk_user_id))
         assert user.approved_by_email == admin_user.email
 
+    async def test_new_user_ai_training_consent_defaults_true(
+        self, admin_client: AsyncClient, db_session: AsyncSession
+    ):
+        signup = await self._create_signup(db_session, "consent")
+        await admin_client.post(f"/api/admin/pending-signups/{signup.id}/approve")
+        user = await db_session.scalar(select(User).where(User.clerk_user_id == signup.clerk_user_id))
+        assert user.ai_training_consent is True
+
     async def test_nonexistent_returns_404(self, admin_client: AsyncClient):
         resp = await admin_client.post(f"/api/admin/pending-signups/{uuid.uuid4()}/approve")
         assert resp.status_code == 404
