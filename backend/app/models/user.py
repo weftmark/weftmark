@@ -21,7 +21,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     activity_theme: Mapped[str | None] = mapped_column(String(50), nullable=True)
     idle_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     measurement_system: Mapped[str] = mapped_column(String(10), default="metric", nullable=False)
-    ai_training_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    ai_training_consent: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     eula_accepted_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
     eula_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

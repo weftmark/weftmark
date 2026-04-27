@@ -251,7 +251,7 @@ export function SettingsPage() {
             {/* ── Privacy & data ── */}
             {activeSection === "privacy" && (
               <Section title="Privacy & data">
-                <Field label="Allow platform to use my data">
+                <Field label="Allow platform to use my data for improvements">
                   <div className="flex items-center gap-3">
                     <button
                       role="switch"
@@ -267,12 +267,12 @@ export function SettingsPage() {
                         }`}
                       />
                     </button>
-                    <span className="text-sm">{dataConsent ? "On" : "Off (default)"}</span>
+                    <span className="text-sm">{dataConsent ? "On (default)" : "Off"}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    When on, anonymized usage data may be used to improve the platform. Your WIF
-                    files, photos, and personal activity data are never used for AI training
-                    regardless of this setting.
+                    When on, your content, settings, and tags — including WIF files, photos, and
+                    activity data — may be used for AI/ML model training and feature improvements,
+                    as described in the Terms of Service. This is on by default per our terms.
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     <strong>Note:</strong> Turning this off also disables all public sharing links
@@ -282,15 +282,16 @@ export function SettingsPage() {
 
                 {showConsentWarning && (
                   <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
-                    <p className="text-sm font-medium">Disable data use and sharing?</p>
+                    <p className="text-sm font-medium">Opt out of data use and disable sharing?</p>
                     <p className="text-sm text-muted-foreground">
-                      This will also immediately disable any public sharing links you have enabled
-                      for your projects. Anyone with those links will no longer be able to view
-                      your work. You can re-enable data use at any time to restore sharing.
+                      This will stop future use of your data for AI/ML improvements and immediately
+                      disable any public sharing links you have enabled. Anyone with those links
+                      will no longer be able to view your work. Data already used in model training
+                      cannot be retroactively removed. You can opt back in at any time.
                     </p>
                     <div className="flex gap-2">
                       <Button variant="destructive" size="sm" onClick={confirmConsentOptOut}>
-                        Disable data use and sharing
+                        Opt out and disable sharing
                       </Button>
                       <Button
                         variant="outline"
@@ -310,9 +311,10 @@ export function SettingsPage() {
                   <ul className="list-disc list-inside space-y-0.5">
                     <li>Email address and display name (from your sign-in provider)</li>
                     <li>WIF files, loom records, activities, photos, and yarn you create</li>
+                    <li>Settings, tags, and metadata you assign to your content</li>
                     <li>Last active timestamp</li>
                   </ul>
-                  <p className="pt-1">We never sell your data. See our Terms of Service for the full privacy policy.</p>
+                  <p className="pt-1">We never sell your data. See our Terms of Service for the full policy.</p>
                 </div>
               </Section>
             )}

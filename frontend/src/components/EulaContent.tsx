@@ -7,8 +7,9 @@ export function EulaContent() {
         <p className="font-medium mb-1">Plain-language summary</p>
         <ul className="space-y-1 list-disc list-inside text-muted-foreground">
           <li>WeftMark is a personal hobby project built by a weaver for weavers. It is not a commercial product.</li>
-          <li>You keep ownership of everything you upload — your WIF files, photos, and activity data are yours.</li>
-          <li>We store your data to run the service and for nothing else unless you explicitly opt in.</li>
+          <li>By uploading content you grant WeftMark a permanent, irrevocable license to that content for platform and development purposes, including AI/ML improvements.</li>
+          <li>Your content, settings, and tags may be used for AI model training and feature development unless you opt out.</li>
+          <li>Data use is <strong>on by default</strong>. You can opt out at any time from Settings → Privacy &amp; data.</li>
           <li>We do not sell your data. Ever.</li>
           <li>You can delete your account and all your data at any time from your settings page.</li>
           <li>This is a hobby platform. We cannot promise 100% uptime or that it will run forever.</li>
@@ -37,23 +38,26 @@ export function EulaContent() {
       </section>
 
       <section>
-        <h3 className="font-semibold">5. Your content</h3>
-        <p>You retain full ownership of everything you upload to WeftMark, including WIF files, photos, activity records, and any other data. By uploading content, you grant us a limited license to store, process, and display that content solely for the purpose of providing the service to you. We will not share your content with third parties without your permission, except as required by law.</p>
+        <h3 className="font-semibold">5. Content license</h3>
+        <p>You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and activity records.</p>
+        <p>By uploading content to WeftMark, you grant WeftMark a <strong>worldwide, royalty-free, perpetual, irrevocable, non-exclusive license</strong> to store, process, display, reproduce, and use that content for any purpose related to operating, improving, or developing the platform, including but not limited to AI and machine learning model training, feature development, and quality assurance.</p>
+        <p>This license survives account deletion. We will not sell your raw content to third parties.</p>
       </section>
 
       <section>
         <h3 className="font-semibold">6. What data we collect</h3>
-        <p>When you use WeftMark, we collect your email address and display name (from your identity provider), the content you create and upload, and basic usage information such as when you last used the platform. We collect only what we need to run the service.</p>
+        <p>When you use WeftMark, we collect your email address and display name (from your identity provider), the content you create and upload, settings and tags you assign to your content, and basic usage information such as when you last used the platform.</p>
       </section>
 
       <section>
         <h3 className="font-semibold">7. How we use your data</h3>
-        <p>We use your data to provide the WeftMark service, keep your account secure, and diagnose technical problems. We do not sell your data to anyone, share your data with advertisers, use your data for advertising targeting, or share your data with third parties except as required by law.</p>
+        <p>We use your data to provide the WeftMark service, keep your account secure, diagnose technical problems, improve platform features, and train AI and machine learning models (see section 8). We do not sell your data to anyone, share your data with advertisers, or use your data for advertising targeting.</p>
       </section>
 
       <section>
-        <h3 className="font-semibold">8. AI and machine learning</h3>
-        <p>We will <strong>never</strong> use your WIF files, photos, or personal activity data to train AI or machine learning models without your explicit opt-in consent. The data use consent toggle in your settings is off by default.</p>
+        <h3 className="font-semibold">8. AI and machine learning — opt-out</h3>
+        <p>By default, your content, settings, and metadata — including WIF files, photos, activity data, loom configurations, tags, and any other data you create on the platform — <strong>may be used for AI and machine learning model training and feature improvements</strong>.</p>
+        <p>You can opt out at any time from <strong>Settings → Privacy &amp; data</strong>. Opting out stops future use of your data for AI/ML training and disables public sharing links on your account. It does not retroactively remove data already used in model training. You can opt back in at any time.</p>
       </section>
 
       <section>
@@ -63,7 +67,7 @@ export function EulaContent() {
 
       <section>
         <h3 className="font-semibold">10. Data deletion</h3>
-        <p>You can permanently delete your account and all associated data at any time from your settings page. Deletion is immediate and irreversible. Some data may remain in database backups for up to 30 days but is not accessible or used for any purpose.</p>
+        <p>You can permanently delete your account and all associated data at any time from your settings page. Deletion removes your content from active storage and is irreversible. Some data may remain in database backups for up to 30 days. The content license granted prior to deletion survives for content already incorporated into model training or development artifacts.</p>
       </section>
 
       <section>
