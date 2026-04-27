@@ -57,6 +57,9 @@ export function ProjectsPage() {
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">{user?.email}</span>
+          <Link to="/settings" className="text-sm text-muted-foreground hover:text-foreground">
+            Settings
+          </Link>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Sign out
           </Button>

@@ -105,6 +105,131 @@ async def _insert_project(
 
 
 # ---------------------------------------------------------------------------
+# GET /api/projects
+# ---------------------------------------------------------------------------
+
+
+class TestListProjects:
+    async def test_returns_200(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/projects")
+        assert resp.status_code == 200
+
+    async def test_empty_list_when_no_projects(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/projects")
+        assert resp.json() == []
+
+    async def test_returns_created_project(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        resp = await auth_client.get("/api/projects")
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Test Project"
+
+    async def test_does_not_return_deleted_project(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        project.soft_delete()
+        await db_session.commit()
+        resp = await auth_client.get("/api/projects")
+        assert resp.json() == []
+
+    async def test_does_not_return_other_users_projects(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        await _insert_project(db_session, admin_user, wif_path="p/other.wif")
+        resp = await auth_client.get("/api/projects")
+        assert resp.json() == []
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/api/projects")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /api/projects/{project_id}
+# ---------------------------------------------------------------------------
+
+
+class TestGetProject:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        resp = await auth_client.get(f"/api/projects/{project.id}")
+        assert resp.status_code == 200
+
+    async def test_returns_project_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        data = (await auth_client.get(f"/api/projects/{project.id}")).json()
+        assert data["name"] == "Test Project"
+        assert data["wif_filename"] == "test.wif"
+        assert "has_preview" in data
+
+    async def test_nonexistent_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_other_users_project_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        project = await _insert_project(db_session, admin_user, wif_path="p/other.wif")
+        resp = await auth_client.get(f"/api/projects/{project.id}")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get(f"/api/projects/{uuid.uuid4()}")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/projects/{project_id}
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteProject:
+    async def test_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        resp = await auth_client.delete(f"/api/projects/{project.id}")
+        assert resp.status_code == 204
+
+    async def test_project_not_in_list_after_delete(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        await auth_client.delete(f"/api/projects/{project.id}")
+        resp = await auth_client.get("/api/projects")
+        assert resp.json() == []
+
+    async def test_get_after_delete_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        await auth_client.delete(f"/api/projects/{project.id}")
+        resp = await auth_client.get(f"/api/projects/{project.id}")
+        assert resp.status_code == 404
+
+    async def test_nonexistent_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.delete(f"/api/projects/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_other_users_project_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        project = await _insert_project(db_session, admin_user, wif_path="p/other.wif")
+        resp = await auth_client.delete(f"/api/projects/{project.id}")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.delete(f"/api/projects/{uuid.uuid4()}")
+        assert resp.status_code == 401
+
+    async def test_soft_deletes_in_db(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        await auth_client.delete(f"/api/projects/{project.id}")
+        await db_session.refresh(project)
+        assert project.deleted_at is not None
+
+
+# ---------------------------------------------------------------------------
 # GET /{project_id}/drawdown
 # ---------------------------------------------------------------------------
 

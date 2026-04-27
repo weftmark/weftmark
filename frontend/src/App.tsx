@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { EulaGate } from "@/components/EulaGate";
 import { VersionGate } from "@/components/VersionGate";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
@@ -14,6 +15,7 @@ import { YarnDetailPage } from "@/pages/YarnDetailPage";
 import { ActivitiesPage } from "@/pages/ActivitiesPage";
 import { ActivityDetailPage } from "@/pages/ActivityDetailPage";
 import { AdminPage } from "@/pages/AdminPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +29,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+          <EulaGate>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<LoginPage />} />
@@ -110,8 +113,17 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </EulaGate>
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>
