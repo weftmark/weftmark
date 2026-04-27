@@ -104,18 +104,6 @@ def preview_exists(preview_path: str | None) -> bool:
     return _exists(preview_path)
 
 
-def save_drawdown(project_id: uuid.UUID, data: bytes) -> None:
-    _put(f"projects/{project_id}/drawdown.png", data)
-
-
-def read_drawdown(project_id: uuid.UUID) -> bytes:
-    return _get(f"projects/{project_id}/drawdown.png")
-
-
-def drawdown_exists(project_id: uuid.UUID) -> bool:
-    return _exists(f"projects/{project_id}/drawdown.png")
-
-
 # ---------------------------------------------------------------------------
 # Looms — profile photo
 # ---------------------------------------------------------------------------
