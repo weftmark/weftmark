@@ -59,17 +59,100 @@ export function DashboardPage() {
           <p className="mt-1 text-sm text-muted-foreground">Welcome back, {user?.display_name}.</p>
         </div>
 
-        {/* Active activities */}
-        {activeActivities.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              Continue weaving
-            </h2>
-            <div className="space-y-3">
+        {/* Equipment */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Equipment</h2>
+            <Link to="/looms" className="text-xs text-muted-foreground hover:text-foreground">
+              View all →
+            </Link>
+          </div>
+          {looms.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">No looms added yet.</p>
+              <Link to="/looms" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
+                Add your first loom →
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {looms.slice(0, 3).map((loom) => (
+                <Link
+                  key={loom.id}
+                  to="/looms"
+                  className="rounded-lg border p-4 hover:border-ring transition-colors"
+                >
+                  <p className="text-sm font-medium truncate">{loom.model_name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{loom.manufacturer}</p>
+                </Link>
+              ))}
+              {looms.length > 3 && (
+                <Link
+                  to="/looms"
+                  className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
+                >
+                  <span className="text-xs text-muted-foreground">+{looms.length - 3} more</span>
+                </Link>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Projects */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Projects</h2>
+            <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
+              View all →
+            </Link>
+          </div>
+          {projects.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">No projects uploaded yet.</p>
+              <Link to="/projects" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
+                Upload a WIF file →
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {projects.slice(0, 3).map((project) => (
+                <Link
+                  key={project.id}
+                  to="/projects"
+                  className="rounded-lg border p-4 hover:border-ring transition-colors"
+                >
+                  <p className="text-sm font-medium truncate">{project.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{project.wif_filename}</p>
+                </Link>
+              ))}
+              {projects.length > 3 && (
+                <Link
+                  to="/projects"
+                  className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
+                >
+                  <span className="text-xs text-muted-foreground">+{projects.length - 3} more</span>
+                </Link>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Activities */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Activities</h2>
+            <Link to="/activities" className="text-xs text-muted-foreground hover:text-foreground">
+              View all →
+            </Link>
+          </div>
+
+          {activeActivities.length > 0 && (
+            <div className="space-y-3 mb-3">
               {activeActivities.map((a) => {
-                const pct = a.total_picks > 0
-                  ? Math.round((Math.min(a.current_pick - 1, a.total_picks) / a.total_picks) * 100)
-                  : 0;
+                const pct =
+                  a.total_picks > 0
+                    ? Math.round((Math.min(a.current_pick - 1, a.total_picks) / a.total_picks) * 100)
+                    : 0;
                 return (
                   <Link
                     key={a.id}
@@ -78,14 +161,21 @@ export function DashboardPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{a.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{ACTIVITY_TYPE_LABELS[a.activity_type]}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {ACTIVITY_TYPE_LABELS[a.activity_type]}
+                      </p>
                       <div className="mt-2">
                         <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                          <span>Pick {Math.min(a.current_pick, a.total_picks)} of {a.total_picks}</span>
+                          <span>
+                            Pick {Math.min(a.current_pick, a.total_picks)} of {a.total_picks}
+                          </span>
                           <span>{pct}%</span>
                         </div>
                         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
                         </div>
                       </div>
                     </div>
@@ -94,16 +184,10 @@ export function DashboardPage() {
                 );
               })}
             </div>
-          </section>
-        )}
+          )}
 
-        {/* Planning activities */}
-        {planningActivities.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              In planning
-            </h2>
-            <div className="space-y-2">
+          {planningActivities.length > 0 && (
+            <div className="space-y-2 mb-3">
               {planningActivities.map((a) => (
                 <Link
                   key={a.id}
@@ -120,71 +204,29 @@ export function DashboardPage() {
                 </Link>
               ))}
             </div>
-          </section>
-        )}
+          )}
 
-        {/* No active work */}
-        {activeActivities.length === 0 && planningActivities.length === 0 && (
-          <div className="rounded-lg border border-dashed p-10 text-center">
-            <p className="text-sm text-muted-foreground">No active activities.</p>
-            <Link to="/activities" className="mt-3 inline-block text-sm text-foreground underline underline-offset-2">
-              Start or plan an activity →
-            </Link>
-          </div>
-        )}
+          {activeActivities.length === 0 && planningActivities.length === 0 && (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <p className="text-sm text-muted-foreground">No active activities.</p>
+              <Link
+                to="/activities"
+                className="mt-2 inline-block text-sm text-foreground underline underline-offset-2"
+              >
+                Start or plan an activity →
+              </Link>
+            </div>
+          )}
 
-        {/* Summary stats */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Summary</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Link
-              to="/projects"
-              className="rounded-lg border p-4 text-center hover:border-ring transition-colors"
-            >
-              <p className="text-2xl font-bold tabular-nums">{projects.length}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Project{projects.length !== 1 ? "s" : ""}</p>
-            </Link>
-            <Link
-              to="/looms"
-              className="rounded-lg border p-4 text-center hover:border-ring transition-colors"
-            >
-              <p className="text-2xl font-bold tabular-nums">{looms.length}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Loom{looms.length !== 1 ? "s" : ""}</p>
-            </Link>
-            <Link
-              to="/activities"
-              className="rounded-lg border p-4 text-center hover:border-ring transition-colors"
-            >
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold tabular-nums">{completedCount}</p>
               <p className="mt-1 text-xs text-muted-foreground">Completed</p>
-            </Link>
-            <Link
-              to="/activities"
-              className="rounded-lg border p-4 text-center hover:border-ring transition-colors"
-            >
+            </div>
+            <div className="rounded-lg border p-4 text-center">
               <p className="text-2xl font-bold tabular-nums">{activities.length}</p>
               <p className="mt-1 text-xs text-muted-foreground">Total activities</p>
-            </Link>
-          </div>
-        </section>
-
-        {/* Nav */}
-        <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Navigate</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Link to="/activities" className="rounded-lg border p-4 hover:border-ring transition-colors">
-              <p className="font-medium text-sm">Activities</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Track weaving sessions — step through picks on your loom.</p>
-            </Link>
-            <Link to="/projects" className="rounded-lg border p-4 hover:border-ring transition-colors">
-              <p className="font-medium text-sm">Projects</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Upload and manage your WIF design files.</p>
-            </Link>
-            <Link to="/looms" className="rounded-lg border p-4 hover:border-ring transition-colors">
-              <p className="font-medium text-sm">Equipment</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Manage your looms and configuration history.</p>
-            </Link>
-
+            </div>
           </div>
         </section>
       </main>
