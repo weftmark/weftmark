@@ -5,6 +5,7 @@ export interface AdminUserCounts {
   activities_active: number;
   activities_completed: number;
   looms: number;
+  storage_bytes: number;
 }
 
 export interface AdminUser {
@@ -33,6 +34,7 @@ export interface AdminStats {
   total_looms: number;
   total_yarn: number;
   pending_invites: number;
+  total_storage_bytes: number;
 }
 
 export interface AdminHealth {

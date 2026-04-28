@@ -16,10 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
-from app.models.activity import Activity
+from app.models.activity import Activity, ActivityPhoto
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
-from app.models.loom import Loom
+from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
 from app.models.pending_signup import PendingSignup
 from app.models.project import Project
 from app.models.user import User
@@ -47,6 +47,7 @@ class AdminUserCounts(BaseModel):
     activities_active: int
     activities_completed: int
     looms: int
+    storage_bytes: int
 
 
 class AdminUserResponse(BaseModel):
@@ -83,6 +84,7 @@ class AdminStatsResponse(BaseModel):
     total_looms: int
     total_yarn: int
     pending_invites: int
+    total_storage_bytes: int
 
 
 class AdminHealthResponse(BaseModel):
@@ -413,6 +415,30 @@ async def list_users(
     ).all()
     loom_counts = {row.owner_id: row.cnt for row in loom_rows}
 
+    # Per-user storage: activity photos
+    activity_storage_rows = (
+        await db.execute(
+            select(Activity.owner_id, func.coalesce(func.sum(ActivityPhoto.file_size_bytes), 0).label("bytes"))
+            .join(ActivityPhoto, ActivityPhoto.activity_id == Activity.id)
+            .where(Activity.owner_id.in_(user_ids))
+            .group_by(Activity.owner_id)
+        )
+    ).all()
+    storage_bytes: dict[uuid.UUID, int] = {row.owner_id: int(row.bytes) for row in activity_storage_rows}
+
+    # Per-user storage: loom version photos
+    loom_storage_rows = (
+        await db.execute(
+            select(Loom.owner_id, func.coalesce(func.sum(LoomVersionPhoto.file_size_bytes), 0).label("bytes"))
+            .join(LoomVersion, LoomVersion.loom_id == Loom.id)
+            .join(LoomVersionPhoto, LoomVersionPhoto.loom_version_id == LoomVersion.id)
+            .where(Loom.owner_id.in_(user_ids))
+            .group_by(Loom.owner_id)
+        )
+    ).all()
+    for row in loom_storage_rows:
+        storage_bytes[row.owner_id] = storage_bytes.get(row.owner_id, 0) + int(row.bytes)
+
     return [
         AdminUserResponse(
             id=u.id,
@@ -431,6 +457,7 @@ async def list_users(
                 activities_active=activity_active.get(u.id, 0),
                 activities_completed=activity_completed.get(u.id, 0),
                 looms=loom_counts.get(u.id, 0),
+                storage_bytes=storage_bytes.get(u.id, 0),
             ),
         )
         for u in users
@@ -645,6 +672,8 @@ async def get_stats(
         .select_from(Invite)
         .where(Invite.accepted_at.is_(None), Invite.revoked_at.is_(None), Invite.expires_at > now)
     )
+    activity_storage = await db.scalar(select(func.coalesce(func.sum(ActivityPhoto.file_size_bytes), 0))) or 0
+    loom_storage = await db.scalar(select(func.coalesce(func.sum(LoomVersionPhoto.file_size_bytes), 0))) or 0
 
     return AdminStatsResponse(
         total_users=total_users,
@@ -657,6 +686,7 @@ async def get_stats(
         total_looms=total_looms,
         total_yarn=total_yarn,
         pending_invites=pending_invites,
+        total_storage_bytes=int(activity_storage) + int(loom_storage),
     )
 
 
