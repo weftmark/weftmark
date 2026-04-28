@@ -18,6 +18,7 @@ import { ActivitiesPage } from "@/pages/ActivitiesPage";
 import { ActivityDetailPage } from "@/pages/ActivityDetailPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { DevBanner } from "@/components/DevBanner";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
@@ -34,6 +35,7 @@ export default function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <BrowserRouter>
+              <DevBanner />
               <EulaGate>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
