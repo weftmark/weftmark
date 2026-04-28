@@ -9,7 +9,7 @@ interface Props {
   onClose: () => void;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export function CloneVersionModal({ loomId, source, onSuccess, onClose }: Props) {
   const [name, setName] = useState("");

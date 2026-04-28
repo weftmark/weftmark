@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "other"];
 

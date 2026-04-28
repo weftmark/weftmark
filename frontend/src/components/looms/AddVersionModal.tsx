@@ -9,7 +9,7 @@ interface Props {
   onClose: () => void;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 function showsShafts(t: LoomType) { return t === "floor_loom" || t === "table_loom" || t === "other"; }
 function showsTreadles(t: LoomType) { return t === "floor_loom" || t === "other"; }
