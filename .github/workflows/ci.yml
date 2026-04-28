@@ -601,7 +601,7 @@ jobs:
 
           # ── Determine bump level ──────────────────────────────────────────
           breaking = bool(
-              re.search(r"BREAKING CHANGE:", log) or
+              re.search(r"^BREAKING CHANGE:", log, re.MULTILINE) or
               re.search(r"^[a-z]+!:", log, re.MULTILINE)
           )
           has_feat = bool(re.search(r"^feat(\(.*?\))?:", log, re.MULTILINE))
