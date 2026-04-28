@@ -22,7 +22,7 @@ name: CI
 # [skip ci] is ignored on pull_request events — CI always runs on PRs.
 #
 # Required secrets:
-#   WEFTMARK_BOT_APP_ID      — GitHub App ID for weftmark-bot
+#   WEFTMARK_BOT_CLIENT_ID   — GitHub App Client ID for weftmark-bot
 #   WEFTMARK_BOT_PRIVATE_KEY — GitHub App private key (.pem contents)
 #
 # Version strategy:
@@ -69,7 +69,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.WEFTMARK_BOT_APP_ID }}
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
       - name: Check out code
@@ -283,7 +283,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.WEFTMARK_BOT_APP_ID }}
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
       - name: Check out code
@@ -454,7 +454,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.WEFTMARK_BOT_APP_ID }}
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
       - name: Check out code
@@ -556,7 +556,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.WEFTMARK_BOT_APP_ID }}
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
       - name: Check out code
@@ -679,7 +679,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.WEFTMARK_BOT_APP_ID }}
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
       - name: Check out code

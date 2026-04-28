@@ -188,6 +188,13 @@ celerybeat.pid
 
 
 # ------------------------------------------------------------
+# GitHub rulesets (real files contain installation IDs — use *.example.json as base)
+# ------------------------------------------------------------
+.github/rulesets/*.json
+!.github/rulesets/*.example.json
+
+
+# ------------------------------------------------------------
 # Claude Code
 # ------------------------------------------------------------
 .claude/scheduled_tasks.lock
