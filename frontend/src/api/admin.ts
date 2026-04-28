@@ -126,10 +126,17 @@ export const getAdminEula = () => api.get<AdminEulaVersion>("/api/admin/eula");
 export const createEulaVersion = (version: string, body_html: string, effective_date?: string) =>
   api.post<EulaVersionSummary>("/api/admin/eula", { version, body_html, effective_date });
 
+export interface ServicePermCheck {
+  name: string;
+  status: "ok" | "error";
+  message: string;
+}
+
 export interface ServiceCheck {
   service: string;
   status: "ok" | "error";
   message: string;
+  checks: ServicePermCheck[];
 }
 
 export const getAdminServices = () => api.get<ServiceCheck[]>("/api/admin/services");

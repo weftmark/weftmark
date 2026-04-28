@@ -28,6 +28,7 @@ import {
   type InviteRecord,
   type PendingSignup,
   type ServiceCheck,
+  type ServicePermCheck,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 
@@ -757,13 +758,45 @@ function HealthChart({
 // Services tab
 // ---------------------------------------------------------------------------
 
-function ServiceStatusDot({ status }: { status: ServiceCheck["status"] }) {
+function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean }) {
   return (
     <span
-      className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${
+      className={`inline-block rounded-full shrink-0 ${small ? "w-2 h-2" : "w-2.5 h-2.5"} ${
         status === "ok" ? "bg-green-500" : "bg-red-500"
       }`}
     />
+  );
+}
+
+function ServiceRow({ check }: { check: ServiceCheck }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-background">
+      <button
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 text-left"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <StatusDot status={check.status} />
+        <span className="text-sm font-medium w-32 shrink-0">{check.service}</span>
+        <span className={`text-sm flex-1 ${check.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+          {check.message}
+        </span>
+        <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && check.checks.length > 0 && (
+        <div className="border-t divide-y">
+          {check.checks.map((c: ServicePermCheck) => (
+            <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
+              <StatusDot status={c.status} small />
+              <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
+              <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                {c.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -793,13 +826,7 @@ function ServicesTab() {
       ) : (
         <div className="border rounded-lg divide-y overflow-hidden">
           {(data ?? []).map((check) => (
-            <div key={check.service} className="flex items-center gap-3 px-4 py-3 bg-background">
-              <ServiceStatusDot status={check.status} />
-              <span className="text-sm font-medium w-28 shrink-0">{check.service}</span>
-              <span className={`text-sm ${check.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
-                {check.message}
-              </span>
-            </div>
+            <ServiceRow key={check.service} check={check} />
           ))}
         </div>
       )}
