@@ -7,15 +7,20 @@ Workflow:
   3. Review the generated migration file in backend/alembic/versions/.
   4. Commit and push.
 
-The script reads from the database, compares against versions already seeded in
-existing migration files, and generates a new migration for any gaps.  It never
-commits, pushes, or modifies the database.
+The script reads EULA versions either from the REST API or directly from the
+database, compares against versions already seeded in existing migration files,
+and generates a new migration for any gaps.  It never commits, pushes, or
+modifies the database.
 
 Usage:
-  python tools/export_eula_migration.py [--db-url URL] [--dry-run]
+  python tools/export_eula_migration.py [--api-url URL] [--db-url URL] [--dry-run]
 
-  --db-url   Explicit connection string (postgresql://...).  Defaults to
+  --api-url  Fetch the current EULA from the public REST endpoint (GET URL).
+             Takes precedence over --db-url and .env database credentials.
+             Use this in CI pipelines that cannot access the database directly.
+  --db-url   Explicit DB connection string (postgresql://...).  Defaults to
              POSTGRES_DSN_DIRECT, then POSTGRES_DSN from the nearest .env file.
+             Ignored when --api-url is supplied.
   --dry-run  Print the migration content instead of writing the file.
 """
 
@@ -73,6 +78,30 @@ def _resolve_db_url(cli_url: str | None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# REST API: fetch current EULA version
+# ---------------------------------------------------------------------------
+
+def _fetch_api_version(api_url: str) -> list[dict]:
+    """Fetch the current EULA version from the public REST endpoint."""
+    import json
+    import urllib.request
+
+    req = urllib.request.Request(api_url, headers={"Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+    except Exception as exc:
+        sys.exit(f"ERROR: Could not fetch EULA from {api_url}: {exc}")
+
+    return [{
+        "version": data["version"],
+        "body_html": data["body_html"],
+        "effective_date": data["effective_date"],
+        "created_at": data.get("created_at", ""),
+    }]
+
+
+# ---------------------------------------------------------------------------
 # Database: fetch all EULA versions
 # ---------------------------------------------------------------------------
 
@@ -98,7 +127,7 @@ def _fetch_db_versions(db_url: str) -> list[dict]:
 
 def _seeded_versions() -> set[str]:
     """Return the set of EULA version strings already present in migration files."""
-    seeded: set[str] = []
+    seeded: list[str] = []
     # Look for  version="X.Y"  or  version='X.Y'  inside INSERT statements
     pattern = re.compile(r"""version\s*=\s*["']([^"']+)["']""")
     for path in MIGRATIONS_DIR.glob("*.py"):
@@ -189,19 +218,23 @@ def downgrade() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--api-url", help="REST endpoint to fetch current EULA (takes precedence over --db-url)")
     parser.add_argument("--db-url", help="Database connection string (overrides .env)")
     parser.add_argument("--dry-run", action="store_true", help="Print migration content; do not write file")
     args = parser.parse_args()
 
-    db_url = _resolve_db_url(args.db_url)
-
-    print("Connecting to database…")
-    try:
-        db_versions = _fetch_db_versions(db_url)
-    except Exception as exc:
-        sys.exit(f"ERROR: Could not connect to database: {exc}")
-
-    print(f"Found {len(db_versions)} EULA version(s) in database.")
+    if args.api_url:
+        print(f"Fetching EULA from {args.api_url}…")
+        db_versions = _fetch_api_version(args.api_url)
+        print(f"Found {len(db_versions)} EULA version(s) via API.")
+    else:
+        db_url = _resolve_db_url(args.db_url)
+        print("Connecting to database…")
+        try:
+            db_versions = _fetch_db_versions(db_url)
+        except Exception as exc:
+            sys.exit(f"ERROR: Could not connect to database: {exc}")
+        print(f"Found {len(db_versions)} EULA version(s) in database.")
 
     seeded = _seeded_versions()
     print(f"Already seeded in migrations: {sorted(seeded) or '(none)'}")
