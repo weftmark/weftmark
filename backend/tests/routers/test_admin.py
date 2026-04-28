@@ -881,3 +881,90 @@ class TestCreateEulaVersion:
     async def test_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.post("/api/admin/eula", json={"version": "1.3", "body_html": "<p>x</p>"})
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/services
+# ---------------------------------------------------------------------------
+
+
+class TestAdminServices:
+    @pytest.fixture(autouse=True)
+    def mock_external_probes(self):
+        from app.routers.admin import ServiceCheckResult
+
+        ok = lambda svc, n: ServiceCheckResult(  # noqa: E731
+            service=svc, status="ok", message=f"{n}/{n} checks passed", checks=[]
+        )
+        with (
+            patch("app.routers.admin._probe_s3", new_callable=AsyncMock, return_value=ok("S3", 3)),
+            patch("app.routers.admin._probe_clerk", new_callable=AsyncMock, return_value=ok("Clerk", 4)),
+            patch("app.routers.admin._probe_smtp", new_callable=AsyncMock, return_value=ok("SMTP", 4)),
+        ):
+            yield
+
+    async def test_returns_200(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/services")
+        assert resp.status_code == 200
+
+    async def test_returns_four_services(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/services")).json()
+        assert len(data) == 4
+        names = {s["service"] for s in data}
+        assert names == {"PostgreSQL", "S3", "Clerk", "SMTP"}
+
+    async def test_each_result_has_expected_fields(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/services")).json()
+        for s in data:
+            assert "service" in s
+            assert "status" in s
+            assert "message" in s
+            assert "checks" in s
+
+    async def test_postgres_probe_passes_against_test_db(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/services")).json()
+        pg = next(s for s in data if s["service"] == "PostgreSQL")
+        assert pg["status"] == "ok"
+
+    async def test_non_admin_returns_403(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/services")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/api/admin/services")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/test-email
+# ---------------------------------------------------------------------------
+
+
+class TestSendTestEmail:
+    @pytest.fixture(autouse=True)
+    def mock_email(self):
+        with patch("app.routers.admin.send_test_email", new_callable=AsyncMock) as m:
+            yield m
+
+    async def test_returns_200(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/admin/test-email")
+        assert resp.status_code == 200
+
+    async def test_returns_status_and_to(self, admin_client: AsyncClient, admin_user: User):
+        data = (await admin_client.post("/api/admin/test-email")).json()
+        assert data["status"] == "sent"
+        assert data["to"] == admin_user.email
+
+    async def test_calls_send_test_email_with_admin_email(
+        self, admin_client: AsyncClient, admin_user: User, mock_email: AsyncMock
+    ):
+        await admin_client.post("/api/admin/test-email")
+        mock_email.assert_called_once_with(admin_user.email)
+
+    async def test_non_admin_returns_403(self, auth_client: AsyncClient):
+        resp = await auth_client.post("/api/admin/test-email")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.post("/api/admin/test-email")
+        assert resp.status_code == 401
