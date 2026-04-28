@@ -49,9 +49,16 @@ export function PrivacyPage() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Questions</h2>
             <p className="text-stone-600 leading-relaxed">
-              If you have questions about your data, reach out through the project's GitHub
-              repository.{" "}
-              <span className="text-stone-400 text-sm">[Link coming — see issue #52]</span>
+              If you have questions about your data, reach out through the{" "}
+              <a
+                href="https://github.com/weftmark/weftmark"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-amber-800 underline hover:text-amber-900 transition-colors"
+              >
+                project's GitHub repository
+              </a>
+              .
             </p>
           </div>
         </div>
