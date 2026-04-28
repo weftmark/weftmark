@@ -143,6 +143,8 @@ jobs:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -163,26 +165,10 @@ jobs:
       - name: Install fonts (required by PyWeaving renderer)
         run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
 
-      - name: Wait for Postgres to accept connections
-        run: |
-          python3 - << 'EOF'
-          import socket, time, sys
-          for i in range(30):
-              try:
-                  socket.create_connection(("postgres", 5432), timeout=2).close()
-                  print("postgres ready")
-                  sys.exit(0)
-              except OSError:
-                  print(f"waiting for postgres... ({i+1}/30)")
-                  time.sleep(2)
-          print("postgres not ready after 60s")
-          sys.exit(1)
-          EOF
-
       - name: Run pytest
         run: cd backend && python -m pytest tests/ -v
         env:
-          POSTGRES_HOST: postgres
+          POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
@@ -203,6 +189,8 @@ jobs:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -220,26 +208,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
 
-      - name: Wait for Postgres to accept connections
-        run: |
-          python3 - << 'EOF'
-          import socket, time, sys
-          for i in range(30):
-              try:
-                  socket.create_connection(("postgres", 5432), timeout=2).close()
-                  print("postgres ready")
-                  sys.exit(0)
-              except OSError:
-                  print(f"waiting for postgres... ({i+1}/30)")
-                  time.sleep(2)
-          print("postgres not ready after 60s")
-          sys.exit(1)
-          EOF
-
       - name: Run migrations (upgrade head)
         run: cd backend && alembic upgrade head
         env:
-          POSTGRES_HOST: postgres
+          POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
@@ -249,7 +221,7 @@ jobs:
       - name: Verify no pending migrations (alembic check)
         run: cd backend && alembic check
         env:
-          POSTGRES_HOST: postgres
+          POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
