@@ -3,20 +3,26 @@ name: CI
 # Pipeline stages:
 #
 #   Backend lane:
-#     runner-check → backend-lint → backend-tests + migration-smoke-test
-#     → dependency-audit-backend → sbom-backend + docker-build-backend
+#     runner-check → backend-lint → docker-build-backend (every PR + dev/main push)
+#                               → backend-tests + migration-smoke-test
+#                                  → dependency-audit-backend → sbom-backend
 #
 #   Frontend lane:
-#     runner-check → frontend-lint → frontend-typecheck
-#     → dependency-audit-frontend → sbom-frontend + docker-build-frontend
+#     runner-check → frontend-lint → frontend-typecheck → docker-build-frontend (every PR + dev/main push)
+#                                                     → dependency-audit-frontend → sbom-frontend
 #
-#   Converge:
-#     docker-build-backend + docker-build-frontend → bump-version
+#   Converge (dev push):
+#     docker-build-* + dependency-audit-* → bump-version → docker-publish-dev-*
+#
+#   Converge (main push):
+#     docker-build-* + dependency-audit-* → promote-version-tag → docker-publish-main-*
 #
 # When each stage runs:
 #   Lint + frontend-typecheck run on EVERY push (fast feedback on feature branches).
-#   Tests, audit, Docker, SBOM run only on push to dev/main.
-#   bump-version runs only on push to dev/main.
+#   Docker builds run on EVERY PR (catch build failures early) and dev/main pushes.
+#   Tests, audit, SBOM run only on push to dev/main.
+#   bump-version runs only on push to dev.
+#   promote-version-tag + publish run only on push to main.
 #
 # Add [skip steps] to any commit message to run CI but skip all meaningful steps
 # (e.g. docs-only changes). All jobs complete immediately — satisfies branch protection.
@@ -26,6 +32,7 @@ name: CI
 # Required secrets:
 #   WEFTMARK_BOT_CLIENT_ID   — GitHub App Client ID for weftmark-bot
 #   WEFTMARK_BOT_PRIVATE_KEY — GitHub App private key (.pem contents)
+#   CLERK_PUBLISHABLE_KEY    — Clerk publishable key (baked into frontend image at build time)
 #
 # Version strategy:
 #   push to dev  → PATCH bump  (0.1.0 → 0.1.1), commit VERSION, tag v0.1.1-dev
@@ -158,7 +165,7 @@ jobs:
         run: ruff format --check backend/
 
   # ------------------------------------------------------------
-  # Stage 3 — Backend tests + migration smoke (PR or dev/main)
+  # Stage 3 — Backend tests + migration smoke (dev/main push only)
   # ------------------------------------------------------------
   backend-tests:
     name: Backend tests (pytest)
@@ -260,7 +267,7 @@ jobs:
           APP_SECRET_KEY: ci-alembic-key-not-for-production
 
   # ------------------------------------------------------------
-  # Stage 4 — Backend dependency audit (PR or dev/main)
+  # Stage 4 — Backend dependency audit (dev/main push only)
   # ------------------------------------------------------------
   dependency-audit-backend:
     name: Dependency audit — backend (pip-audit)
@@ -285,7 +292,9 @@ jobs:
           pip-audit -r backend/requirements.txt
 
   # ------------------------------------------------------------
-  # Stage 5 — Backend SBOM + Docker build (parallel, PR or dev/main)
+  # Stage 5 — Backend SBOM + Docker build (parallel)
+  # SBOM: dev/main push only
+  # Docker build: every PR + dev/main push (catches build failures early)
   # ------------------------------------------------------------
   sbom-backend:
     name: SBOM backend (CycloneDX + pip-licenses)
@@ -369,11 +378,16 @@ jobs:
   docker-build-backend:
     name: Docker build — backend
     runs-on: ubuntu-latest
-    needs: [dependency-audit-backend]
+    needs: [runner-check, backend-lint]
     if: >-
-      (github.ref_name == 'dev' ||
-       github.ref_name == 'main') &&
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      needs.runner-check.outputs.skip != 'true' &&
+      (
+        github.event_name == 'pull_request' ||
+        (
+          (github.ref_name == 'dev' || github.ref_name == 'main') &&
+          !contains(github.event.head_commit.message || '', '[skip ci]')
+        )
+      )
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -438,7 +452,7 @@ jobs:
         run: cd frontend && npx tsc -b --noEmit
 
   # ------------------------------------------------------------
-  # Stage 4 — Frontend dependency audit (PR or dev/main)
+  # Stage 4 — Frontend dependency audit (dev/main push only)
   # ------------------------------------------------------------
   dependency-audit-frontend:
     name: Dependency audit — frontend (npm audit)
@@ -461,7 +475,9 @@ jobs:
         run: cd frontend && npm ci && npm audit --audit-level=high
 
   # ------------------------------------------------------------
-  # Stage 5 — Frontend SBOM + Docker build (parallel, PR or dev/main)
+  # Stage 5 — Frontend SBOM + Docker build (parallel)
+  # SBOM: dev/main push only
+  # Docker build: every PR + dev/main push (catches build failures early)
   # ------------------------------------------------------------
   sbom-frontend:
     name: SBOM frontend (CycloneDX + license-checker)
@@ -544,11 +560,16 @@ jobs:
   docker-build-frontend:
     name: Docker build — frontend
     runs-on: ubuntu-latest
-    needs: [dependency-audit-frontend]
+    needs: [runner-check, frontend-typecheck]
     if: >-
-      (github.ref_name == 'dev' ||
-       github.ref_name == 'main') &&
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      needs.runner-check.outputs.skip != 'true' &&
+      (
+        github.event_name == 'pull_request' ||
+        (
+          (github.ref_name == 'dev' || github.ref_name == 'main') &&
+          !contains(github.event.head_commit.message || '', '[skip ci]')
+        )
+      )
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -563,11 +584,12 @@ jobs:
   # ------------------------------------------------------------
   # Stage 6a — Version bump (dev push only)
   # Bumps VERSION, commits, and tags v{new}-dev.
+  # Waits for both docker builds AND dependency audits to pass.
   # ------------------------------------------------------------
   bump-version:
     name: Bump version
     runs-on: ubuntu-latest
-    needs: [docker-build-backend, docker-build-frontend]
+    needs: [docker-build-backend, docker-build-frontend, dependency-audit-backend, dependency-audit-frontend]
     if: >-
       github.event_name == 'push' &&
       github.ref_name == 'dev' &&
@@ -686,11 +708,12 @@ jobs:
   # Stage 6b — Promote version tag (main push only)
   # No version bump — re-tags the current VERSION as v{ver}
   # (strips the -dev suffix set when the feature landed on dev).
+  # Waits for both docker builds AND dependency audits to pass.
   # ------------------------------------------------------------
   promote-version-tag:
     name: Promote version tag
     runs-on: ubuntu-latest
-    needs: [docker-build-backend, docker-build-frontend]
+    needs: [docker-build-backend, docker-build-frontend, dependency-audit-backend, dependency-audit-frontend]
     if: >-
       github.event_name == 'push' &&
       github.ref_name == 'main' &&
@@ -722,3 +745,183 @@ jobs:
           echo "Tag:     ${TAG}"
           git tag "${TAG}"
           git push origin "${TAG}"
+
+  # ------------------------------------------------------------
+  # Stage 7a — Publish dev images (dev push only)
+  # Runs after bump-version; checks out post-bump dev HEAD.
+  # Publishes :{version}-dev and :dev tags to ghcr.io.
+  # ------------------------------------------------------------
+  docker-publish-dev-backend:
+    name: Publish — backend (dev)
+    runs-on: ubuntu-latest
+    needs: [bump-version]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref_name == 'dev' &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
+
+      - name: Check out code (post-bump)
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: dev
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: weftmark-bot[bot]
+          password: ${{ steps.app-token.outputs.token }}
+
+      - name: Build and push backend image
+        run: |
+          docker build -f backend/Dockerfile \
+            -t ghcr.io/weftmark/weftmark-backend:${{ steps.version.outputs.version }}-dev \
+            -t ghcr.io/weftmark/weftmark-backend:dev \
+            .
+          docker push ghcr.io/weftmark/weftmark-backend:${{ steps.version.outputs.version }}-dev
+          docker push ghcr.io/weftmark/weftmark-backend:dev
+
+  docker-publish-dev-frontend:
+    name: Publish — frontend (dev)
+    runs-on: ubuntu-latest
+    needs: [bump-version]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref_name == 'dev' &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
+
+      - name: Check out code (post-bump)
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: dev
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: weftmark-bot[bot]
+          password: ${{ steps.app-token.outputs.token }}
+
+      - name: Build and push frontend image
+        run: |
+          docker build -f frontend/Dockerfile \
+            --build-arg VITE_CLERK_PUBLISHABLE_KEY="${{ secrets.CLERK_PUBLISHABLE_KEY }}" \
+            --build-arg VITE_APP_ENV="dev" \
+            -t ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }}-dev \
+            -t ghcr.io/weftmark/weftmark-frontend:dev \
+            ./frontend
+          docker push ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }}-dev
+          docker push ghcr.io/weftmark/weftmark-frontend:dev
+
+  # ------------------------------------------------------------
+  # Stage 7b — Publish production images (main push only)
+  # Runs after promote-version-tag; reads VERSION from main HEAD.
+  # Publishes :{version} and :latest tags to ghcr.io.
+  # ------------------------------------------------------------
+  docker-publish-main-backend:
+    name: Publish — backend (main)
+    runs-on: ubuntu-latest
+    needs: [promote-version-tag]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref_name == 'main' &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
+
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: weftmark-bot[bot]
+          password: ${{ steps.app-token.outputs.token }}
+
+      - name: Build and push backend image
+        run: |
+          docker build -f backend/Dockerfile \
+            -t ghcr.io/weftmark/weftmark-backend:${{ steps.version.outputs.version }} \
+            -t ghcr.io/weftmark/weftmark-backend:latest \
+            .
+          docker push ghcr.io/weftmark/weftmark-backend:${{ steps.version.outputs.version }}
+          docker push ghcr.io/weftmark/weftmark-backend:latest
+
+  docker-publish-main-frontend:
+    name: Publish — frontend (main)
+    runs-on: ubuntu-latest
+    needs: [promote-version-tag]
+    if: >-
+      github.event_name == 'push' &&
+      github.ref_name == 'main' &&
+      !contains(github.event.head_commit.message || '', '[skip ci]')
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
+
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: weftmark-bot[bot]
+          password: ${{ steps.app-token.outputs.token }}
+
+      - name: Build and push frontend image
+        run: |
+          docker build -f frontend/Dockerfile \
+            --build-arg VITE_CLERK_PUBLISHABLE_KEY="${{ secrets.CLERK_PUBLISHABLE_KEY }}" \
+            --build-arg VITE_APP_ENV="production" \
+            -t ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }} \
+            -t ghcr.io/weftmark/weftmark-frontend:latest \
+            ./frontend
+          docker push ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }}
+          docker push ghcr.io/weftmark/weftmark-frontend:latest
