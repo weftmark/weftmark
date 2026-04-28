@@ -354,15 +354,15 @@ jobs:
           pip-licenses --format=json --output-file sbom/licenses-backend.json
 
       - name: Commit backend manifests if changed
-        if: steps.detect.outputs.changed == 'true' && github.event_name == 'push'
+        if: steps.detect.outputs.changed == 'true' && github.event_name == 'push' && github.ref_name == 'dev'
         run: |
           git config user.name "weftmark-bot[bot]"
           git config user.email "weftmark-bot[bot]@users.noreply.github.com"
           git add sbom/sbom-backend.json sbom/licenses-backend.json
           if ! git diff --staged --quiet; then
             git commit -m "chore: update backend SBOM and license manifest [skip ci]"
-            git pull --rebase origin ${{ github.ref_name }}
-            git push origin ${{ github.ref_name }}
+            git pull --rebase origin dev
+            git push origin dev
           fi
 
       - name: Upload backend manifests
@@ -536,15 +536,15 @@ jobs:
           npx license-checker --json --out ../sbom/licenses-frontend.json
 
       - name: Commit frontend manifests if changed
-        if: steps.detect.outputs.changed == 'true' && github.event_name == 'push'
+        if: steps.detect.outputs.changed == 'true' && github.event_name == 'push' && github.ref_name == 'dev'
         run: |
           git config user.name "weftmark-bot[bot]"
           git config user.email "weftmark-bot[bot]@users.noreply.github.com"
           git add sbom/sbom-frontend.json sbom/licenses-frontend.json
           if ! git diff --staged --quiet; then
             git commit -m "chore: update frontend SBOM and license manifest [skip ci]"
-            git pull --rebase origin ${{ github.ref_name }}
-            git push origin ${{ github.ref_name }}
+            git pull --rebase origin dev
+            git push origin dev
           fi
 
       - name: Upload frontend manifests
@@ -743,8 +743,12 @@ jobs:
           TAG="v${VERSION}"
           echo "Version: ${VERSION}"
           echo "Tag:     ${TAG}"
-          git tag "${TAG}"
-          git push origin "${TAG}"
+          if git rev-parse "${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists — skipping creation"
+          else
+            git tag "${TAG}"
+            git push origin "${TAG}"
+          fi
 
   # ------------------------------------------------------------
   # Stage 7a — Publish dev images (dev push only)
@@ -883,7 +887,7 @@ jobs:
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Log in to ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
