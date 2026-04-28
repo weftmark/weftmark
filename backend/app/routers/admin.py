@@ -661,7 +661,8 @@ async def _probe_smtp() -> ServiceCheckResult:
         ServicePermCheck(name="config", status="ok", message=f"{settings.smtp_host}:{settings.smtp_port} configured")
     )
 
-    smtp = aiosmtplib.SMTP(hostname=settings.smtp_host, port=settings.smtp_port, timeout=5)
+    # start_tls=True mirrors aiosmtplib.send() — connect() handles STARTTLS automatically
+    smtp = aiosmtplib.SMTP(hostname=settings.smtp_host, port=settings.smtp_port, start_tls=True, timeout=5)
 
     try:
         await asyncio.wait_for(smtp.connect(), timeout=5.0)
@@ -670,21 +671,10 @@ async def _probe_smtp() -> ServiceCheckResult:
                 name="connect", status="ok", message=f"TCP connected to {settings.smtp_host}:{settings.smtp_port}"
             )
         )
-    except (asyncio.TimeoutError, Exception) as exc:
-        msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
-        checks.append(ServicePermCheck(name="connect", status="error", message=msg))
-        return _make_result("SMTP", checks)
-
-    try:
-        await asyncio.wait_for(smtp.starttls(), timeout=5.0)
         checks.append(ServicePermCheck(name="starttls", status="ok", message="STARTTLS negotiated"))
     except (asyncio.TimeoutError, Exception) as exc:
         msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
-        checks.append(ServicePermCheck(name="starttls", status="error", message=msg))
-        try:
-            await smtp.quit()
-        except Exception:
-            pass
+        checks.append(ServicePermCheck(name="connect", status="error", message=msg))
         return _make_result("SMTP", checks)
 
     try:
