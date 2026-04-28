@@ -51,7 +51,7 @@ jobs:
           git checkout -b "$branch"
           git add backend/alembic/versions/
           git commit -m "chore: persist EULA version ${{ steps.export.outputs.version }} to migrations [skip ci]"
-          git push origin "$branch"
+          git push origin "$branch" --force
 
       - name: Open pull request
         if: steps.export.outputs.has_changes == 'true'
