@@ -53,8 +53,16 @@ export function AboutPage() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Source code</h2>
             <p className="text-stone-600 leading-relaxed">
-              The source code will be available on GitHub once the repository is made public.{" "}
-              <span className="text-stone-400 text-sm">[Link coming — see issue #52]</span>
+              The source code is available on{" "}
+              <a
+                href="https://github.com/weftmark/weftmark"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-amber-800 underline hover:text-amber-900 transition-colors"
+              >
+                GitHub
+              </a>
+              .
             </p>
           </div>
         </div>
