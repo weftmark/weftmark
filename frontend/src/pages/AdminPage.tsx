@@ -266,7 +266,8 @@ function UsersTab() {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={patch.isPending}
+                          disabled={patch.isPending || (u.is_active && u.is_admin)}
+                          title={u.is_active && u.is_admin ? "Remove admin rights before deactivating" : undefined}
                           onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}
                         >
                           {u.is_active ? "Deactivate" : "Reactivate"}
@@ -275,7 +276,7 @@ function UsersTab() {
                           size="sm"
                           variant="destructive"
                           disabled={u.is_admin}
-                          title={u.is_admin ? "Remove admin role before banning" : undefined}
+                          title={u.is_admin ? "Remove admin rights before banning" : undefined}
                           onClick={() => setConfirmBanId(u.id)}
                         >
                           Ban

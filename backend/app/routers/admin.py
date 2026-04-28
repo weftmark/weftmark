@@ -198,6 +198,9 @@ async def patch_user(
         if body.is_admin is False and user.is_superuser:
             raise HTTPException(status_code=400, detail="Cannot remove admin from a superuser")
 
+    if body.is_active is False and user.is_admin:
+        raise HTTPException(status_code=422, detail="Remove admin rights before deactivating this user")
+
     if body.is_active is not None:
         user.is_active = body.is_active
     if body.is_admin is not None:
@@ -281,7 +284,7 @@ async def ban_user(
     if not user.clerk_user_id:
         raise HTTPException(status_code=400, detail="User has no Clerk account")
     if user.is_admin:
-        raise HTTPException(status_code=400, detail="Remove admin role before banning")
+        raise HTTPException(status_code=422, detail="Remove admin rights before banning this user")
 
     await ban_clerk_user(user.clerk_user_id)
     await set_user_metadata(user.clerk_user_id, {"status": "banned"})

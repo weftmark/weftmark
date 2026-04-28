@@ -129,6 +129,36 @@ class TestPatchAdminUser:
         resp = await raw_client.patch(f"/api/admin/users/{other.id}", json={"is_active": False})
         assert resp.status_code == 401
 
+    async def test_deactivate_admin_returns_422(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        other = User(
+            email="admin-to-deactivate@test.com",
+            display_name="Admin To Deactivate",
+            oidc_sub="admin-deactivate-sub",
+            is_admin=True,
+        )
+        db_session.add(other)
+        await db_session.commit()
+        resp = await superuser_client.patch(f"/api/admin/users/{other.id}", json={"is_active": False})
+        assert resp.status_code == 422
+
+    async def test_deactivate_after_admin_removal_succeeds(
+        self, superuser_client: AsyncClient, db_session: AsyncSession
+    ):
+        other = User(
+            email="demoted@test.com",
+            display_name="Demoted User",
+            oidc_sub="demoted-sub",
+            is_admin=True,
+        )
+        db_session.add(other)
+        await db_session.commit()
+        # Demote first
+        await superuser_client.patch(f"/api/admin/users/{other.id}", json={"is_admin": False})
+        # Now deactivate should succeed
+        resp = await superuser_client.patch(f"/api/admin/users/{other.id}", json={"is_active": False})
+        assert resp.status_code == 200
+        assert resp.json()["is_active"] is False
+
 
 # ---------------------------------------------------------------------------
 # GET /api/admin/stats
@@ -350,7 +380,7 @@ class TestBanUser:
         resp = await admin_client.post(f"/api/admin/users/{user.id}/ban")
         assert resp.status_code == 400
 
-    async def test_admin_user_returns_400(self, admin_client: AsyncClient, db_session: AsyncSession):
+    async def test_admin_user_returns_422(self, admin_client: AsyncClient, db_session: AsyncSession):
         user = User(
             email="other-admin@test.com",
             display_name="Other Admin",
@@ -361,7 +391,7 @@ class TestBanUser:
         db_session.add(user)
         await db_session.commit()
         resp = await admin_client.post(f"/api/admin/users/{user.id}/ban")
-        assert resp.status_code == 400
+        assert resp.status_code == 422
 
     async def test_nonexistent_returns_404(self, admin_client: AsyncClient):
         resp = await admin_client.post(f"/api/admin/users/{uuid.uuid4()}/ban")
