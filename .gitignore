@@ -195,9 +195,28 @@ celerybeat.pid
 
 
 # ------------------------------------------------------------
-# Claude Code
+# AI Agents & Coding Assistants
 # ------------------------------------------------------------
-.claude/scheduled_tasks.lock
+# Claude Code — entire directory excluded (settings, memory, session state)
+.claude/
+
+# Cursor
+.cursor/
+
+# Aider
+.aider*
+!.aider.conf.yml
+
+# Continue.dev
+.continue/
+
+# Windsurf / Codeium
+.windsurf/
+.codeium/
+
+# Roo Code
+.roo/
+.roomodes
 
 
 # ------------------------------------------------------------
