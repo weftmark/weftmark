@@ -75,6 +75,7 @@ class TestListAdminUsers:
             name="Storage Test Activity",
             activity_type="treadle",
             status="active",
+            total_picks=100,
         )
         db_session.add(activity)
         await db_session.flush()
@@ -243,6 +244,7 @@ class TestAdminStats:
             name="Stats Storage Activity",
             activity_type="treadle",
             status="active",
+            total_picks=100,
         )
         db_session.add(activity)
         await db_session.flush()
