@@ -105,10 +105,27 @@ class AdminVersionsResponse(BaseModel):
     psutil: str
 
 
+class ServicePermCheck(BaseModel):
+    name: str
+    status: Literal["ok", "error"]
+    message: str
+
+
 class ServiceCheckResult(BaseModel):
     service: str
     status: Literal["ok", "error"]
     message: str
+    checks: list[ServicePermCheck] = []
+
+
+def _make_result(service: str, checks: list[ServicePermCheck]) -> ServiceCheckResult:
+    failed = [c for c in checks if c.status == "error"]
+    status: Literal["ok", "error"] = "error" if failed else "ok"
+    if failed:
+        message = f"{len(failed)}/{len(checks)} check{'s' if len(failed) > 1 else ''} failed"
+    else:
+        message = f"{len(checks)}/{len(checks)} checks passed"
+    return ServiceCheckResult(service=service, status=status, message=message, checks=checks)
 
 
 # ---------------------------------------------------------------------------
@@ -117,25 +134,69 @@ class ServiceCheckResult(BaseModel):
 
 
 async def _probe_postgres(db: AsyncSession) -> ServiceCheckResult:
+    checks: list[ServicePermCheck] = []
+
+    # 1. Connectivity
     try:
         t0 = time.monotonic()
         await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=3.0)
         ms = round((time.monotonic() - t0) * 1000, 1)
-        return ServiceCheckResult(service="PostgreSQL", status="ok", message=f"Connected ({ms} ms)")
+        checks.append(ServicePermCheck(name="connect", status="ok", message=f"SELECT 1 → {ms} ms"))
     except asyncio.TimeoutError:
-        return ServiceCheckResult(service="PostgreSQL", status="error", message="Timed out after 3 s")
+        checks.append(ServicePermCheck(name="connect", status="error", message="Timed out after 3 s"))
+        return _make_result("PostgreSQL", checks)
     except Exception as exc:
-        return ServiceCheckResult(service="PostgreSQL", status="error", message=str(exc)[:120])
+        checks.append(ServicePermCheck(name="connect", status="error", message=str(exc)[:120]))
+        return _make_result("PostgreSQL", checks)
+
+    # 2. Table privileges (SELECT / INSERT / UPDATE / DELETE on users table)
+    try:
+        row = (
+            await db.execute(
+                text(
+                    "SELECT"
+                    " has_table_privilege(current_user, 'users', 'SELECT') AS sel,"
+                    " has_table_privilege(current_user, 'users', 'INSERT') AS ins,"
+                    " has_table_privilege(current_user, 'users', 'UPDATE') AS upd,"
+                    " has_table_privilege(current_user, 'users', 'DELETE') AS del_ok,"
+                    " has_schema_privilege(current_user, 'public', 'USAGE') AS schema_ok"
+                )
+            )
+        ).one()
+        for priv, col in [("SELECT", row.sel), ("INSERT", row.ins), ("UPDATE", row.upd), ("DELETE", row.del_ok)]:
+            checks.append(
+                ServicePermCheck(
+                    name=priv.lower(),
+                    status="ok" if col else "error",
+                    message="granted" if col else "not granted on users table",
+                )
+            )
+        checks.append(
+            ServicePermCheck(
+                name="schema_usage",
+                status="ok" if row.schema_ok else "error",
+                message="USAGE on public granted" if row.schema_ok else "USAGE on public not granted",
+            )
+        )
+    except Exception as exc:
+        checks.append(ServicePermCheck(name="privileges", status="error", message=str(exc)[:120]))
+
+    return _make_result("PostgreSQL", checks)
 
 
 async def _probe_s3() -> ServiceCheckResult:
     settings = get_settings()
-    if settings.storage_backend != "s3":
-        return ServiceCheckResult(service="S3", status="ok", message="Local storage (S3 not configured)")
-    if not settings.s3_bucket_name:
-        return ServiceCheckResult(service="S3", status="error", message="S3_BUCKET_NAME not set")
+    checks: list[ServicePermCheck] = []
 
-    def _check() -> None:
+    if settings.storage_backend != "s3":
+        checks.append(ServicePermCheck(name="storage_backend", status="ok", message="Local storage — S3 not in use"))
+        return _make_result("S3", checks)
+
+    if not settings.s3_bucket_name:
+        checks.append(ServicePermCheck(name="config", status="error", message="S3_BUCKET_NAME not set"))
+        return _make_result("S3", checks)
+
+    def _run_checks() -> list[tuple[str, bool, str]]:
         import boto3
 
         client = boto3.client(
@@ -145,21 +206,87 @@ async def _probe_s3() -> ServiceCheckResult:
             aws_secret_access_key=settings.s3_secret_access_key,
             region_name=settings.s3_region or "auto",
         )
-        client.head_bucket(Bucket=settings.s3_bucket_name)
+        bucket = settings.s3_bucket_name
+        results: list[tuple[str, bool, str]] = []
+
+        # bucket_accessible
+        try:
+            client.head_bucket(Bucket=bucket)
+            results.append(("bucket_accessible", True, f"Bucket '{bucket}' found"))
+        except Exception as e:
+            results.append(("bucket_accessible", False, str(e)[:100]))
+            return results  # further checks will also fail
+
+        # list_objects
+        try:
+            client.list_objects_v2(Bucket=bucket, MaxKeys=1)
+            results.append(("list_objects", True, "ListObjectsV2 permitted"))
+        except Exception as e:
+            results.append(("list_objects", False, str(e)[:100]))
+
+        # write + delete (combined — put then clean up)
+        test_key = "_health_check"
+        try:
+            client.put_object(Bucket=bucket, Key=test_key, Body=b"ok")
+            try:
+                client.delete_object(Bucket=bucket, Key=test_key)
+                results.append(("write_delete", True, "PutObject + DeleteObject permitted"))
+            except Exception as e:
+                results.append(("write_delete", False, f"Put OK but delete failed: {e!s:.80}"))
+        except Exception as e:
+            results.append(("write_delete", False, str(e)[:100]))
+
+        return results
 
     try:
-        await asyncio.wait_for(asyncio.to_thread(_check), timeout=5.0)
-        return ServiceCheckResult(service="S3", status="ok", message=f"Bucket '{settings.s3_bucket_name}' accessible")
+        raw = await asyncio.wait_for(asyncio.to_thread(_run_checks), timeout=10.0)
+        for name, ok, msg in raw:
+            checks.append(ServicePermCheck(name=name, status="ok" if ok else "error", message=msg))
     except asyncio.TimeoutError:
-        return ServiceCheckResult(service="S3", status="error", message="Timed out after 5 s")
-    except Exception as exc:
-        return ServiceCheckResult(service="S3", status="error", message=str(exc)[:120])
+        checks.append(ServicePermCheck(name="connect", status="error", message="Timed out after 10 s"))
+
+    return _make_result("S3", checks)
 
 
 async def _probe_clerk() -> ServiceCheckResult:
     settings = get_settings()
+    checks: list[ServicePermCheck] = []
+
+    # Config: secret key
+    sk_ok = bool(settings.clerk_secret_key and settings.clerk_secret_key.startswith("sk_"))
+    checks.append(
+        ServicePermCheck(
+            name="secret_key",
+            status="ok" if sk_ok else "error",
+            message="Set (sk_…)" if sk_ok else "Missing or unexpected format",
+        )
+    )
+
+    # Config: publishable key
+    pk_ok = bool(settings.clerk_publishable_key and settings.clerk_publishable_key.startswith("pk_"))
+    checks.append(
+        ServicePermCheck(
+            name="publishable_key",
+            status="ok" if pk_ok else "error",
+            message="Set (pk_…)" if pk_ok else "Missing or unexpected format",
+        )
+    )
+
+    # Config: webhook secret
+    wh_ok = bool(settings.clerk_webhook_secret and settings.clerk_webhook_secret.startswith("whsec_"))
+    checks.append(
+        ServicePermCheck(
+            name="webhook_secret",
+            status="ok" if wh_ok else "error",
+            message="Set (whsec_…)" if wh_ok else "Missing or unexpected format",
+        )
+    )
+
+    # API connectivity + auth
     if not settings.clerk_secret_key:
-        return ServiceCheckResult(service="Clerk", status="error", message="CLERK_SECRET_KEY not set")
+        checks.append(ServicePermCheck(name="api_auth", status="error", message="Skipped — secret key missing"))
+        return _make_result("Clerk", checks)
+
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.get(
@@ -167,12 +294,15 @@ async def _probe_clerk() -> ServiceCheckResult:
                 headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
             )
         if r.status_code == 200:
-            return ServiceCheckResult(service="Clerk", status="ok", message="Connected")
-        return ServiceCheckResult(service="Clerk", status="error", message=f"HTTP {r.status_code}")
+            checks.append(ServicePermCheck(name="api_auth", status="ok", message="GET /v1/users → 200"))
+        else:
+            checks.append(ServicePermCheck(name="api_auth", status="error", message=f"HTTP {r.status_code}"))
     except httpx.TimeoutException:
-        return ServiceCheckResult(service="Clerk", status="error", message="Timed out after 3 s")
+        checks.append(ServicePermCheck(name="api_auth", status="error", message="Timed out after 3 s"))
     except Exception as exc:
-        return ServiceCheckResult(service="Clerk", status="error", message=str(exc)[:120])
+        checks.append(ServicePermCheck(name="api_auth", status="error", message=str(exc)[:120]))
+
+    return _make_result("Clerk", checks)
 
 
 # ---------------------------------------------------------------------------
