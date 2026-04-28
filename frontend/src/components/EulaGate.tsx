@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { acceptEula, deleteAccount, getCurrentEula } from "@/api/users";
@@ -17,6 +17,8 @@ export function EulaGate({ children }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [scrolledToEnd, setScrolledToEnd] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: eula, isLoading: eulaLoading } = useQuery({
     queryKey: ["eula", "current"],
@@ -27,13 +29,24 @@ export function EulaGate({ children }: Props) {
 
   if (isLoading || !user) return <>{children}</>;
 
+  // Superusers are exempt from EULA acceptance
+  if (user.is_superuser) return <>{children}</>;
+
   const eulaRequired = eula && user.eula_accepted_version !== eula.version;
   if (!eulaRequired) return <>{children}</>;
 
   const isNewUser = user.eula_accepted_version === null;
 
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el || scrolledToEnd) return;
+    if (el.scrollHeight - el.scrollTop <= el.clientHeight + 24) {
+      setScrolledToEnd(true);
+    }
+  }
+
   async function handleAccept() {
-    if (!eula || !agreed) return;
+    if (!eula || !agreed || !scrolledToEnd) return;
     setAccepting(true);
     setError(null);
     try {
@@ -78,15 +91,26 @@ export function EulaGate({ children }: Props) {
           </p>
         </div>
 
-        <div className="rounded-lg border bg-card p-6 max-h-[60vh] overflow-y-auto">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="rounded-lg border bg-card p-6 max-h-[60vh] overflow-y-auto"
+        >
           {eula && <EulaContent bodyHtml={eula.body_html} />}
         </div>
 
-        <label className="flex items-start gap-3 cursor-pointer select-none">
+        {!scrolledToEnd && (
+          <p className="text-xs text-muted-foreground text-center">
+            Scroll to the end of the Terms of Service to continue.
+          </p>
+        )}
+
+        <label className={`flex items-start gap-3 select-none ${scrolledToEnd ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
           <input
             type="checkbox"
             className="mt-0.5 h-4 w-4 shrink-0 rounded border-input accent-primary"
             checked={agreed}
+            disabled={!scrolledToEnd}
             onChange={(e) => setAgreed(e.target.checked)}
           />
           <span className="text-sm">
@@ -99,7 +123,7 @@ export function EulaGate({ children }: Props) {
         )}
 
         <div className="flex flex-col gap-3">
-          <Button onClick={handleAccept} disabled={!agreed || accepting} className="w-full">
+          <Button onClick={handleAccept} disabled={!agreed || !scrolledToEnd || accepting} className="w-full">
             {accepting ? "Recording acceptance…" : "I Accept the Terms of Service"}
           </Button>
 
