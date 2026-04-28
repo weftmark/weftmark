@@ -19,9 +19,12 @@ class Settings(BaseSettings):
 
     # Database
     # For local dev: set POSTGRES_* vars and leave POSTGRES_DSN blank.
-    # For managed Postgres (e.g. Neon): set POSTGRES_DSN to the full connection string;
-    # the individual POSTGRES_* vars are ignored.
+    # For managed Postgres (e.g. Neon):
+    #   POSTGRES_DSN        — pooled connection string (app traffic)
+    #   POSTGRES_DSN_DIRECT — direct connection string (Alembic migrations only)
+    # If POSTGRES_DSN_DIRECT is blank, Alembic falls back to POSTGRES_DSN.
     postgres_dsn: str = ""
+    postgres_dsn_direct: str = ""
     postgres_host: str = "db"
     postgres_port: int = 5432
     postgres_db: str = "weaving_site"
@@ -31,8 +34,19 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         if self.postgres_dsn:
+            from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
             url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
-            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            # asyncpg uses ssl=true/require, not libpq's sslmode=; drop channel_binding entirely
+            parsed = urlparse(url)
+            params: dict[str, str] = {}
+            for k, v in parse_qs(parsed.query).items():
+                if k == "sslmode":
+                    params["ssl"] = v[0]
+                elif k != "channel_binding":
+                    params[k] = v[0]
+            return urlunparse(parsed._replace(query=urlencode(params)))
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -42,6 +56,18 @@ class Settings(BaseSettings):
     def database_url_sync(self) -> str:
         if self.postgres_dsn:
             url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
+            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+        return (
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    @property
+    def database_url_alembic(self) -> str:
+        """Direct (non-pooled) connection for Alembic DDL migrations."""
+        dsn = self.postgres_dsn_direct or self.postgres_dsn
+        if dsn:
+            url = dsn.replace("postgres://", "postgresql://", 1)
             return url.replace("postgresql+asyncpg://", "postgresql://", 1)
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
