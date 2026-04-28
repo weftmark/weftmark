@@ -26,7 +26,7 @@ services:
   # Backend — FastAPI application
   # Reachable only through the nginx proxy; not exposed to host.
   # Connected to both networks so nginx can reach it (public)
-  # and it can reach db/redis (internal).
+  # and it can reach db (internal).
   # Exposed: no
   # ----------------------------------------------------------
   backend:
@@ -42,34 +42,6 @@ services:
       - .env
     depends_on:
       db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - uploads:/app/uploads
-    restart: unless-stopped
-
-  # ----------------------------------------------------------
-  # Worker — Celery background task processor
-  # Handles: WIF rendering, PDF export, report generation
-  # No inbound connections needed; internal network only.
-  # Exposed: no
-  # ----------------------------------------------------------
-  worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    image: weaving_site_backend:${APP_VERSION:-dev}
-    container_name: weaving_site_worker
-    command: celery -A app.worker worker --loglevel=info
-    networks:
-      - internal
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
@@ -103,26 +75,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # ----------------------------------------------------------
-  # Redis — Broker for Celery and application caching
-  # Never exposed to host or public network.
-  # Exposed: no
-  # ----------------------------------------------------------
-  redis:
-    image: redis:7-alpine
-    container_name: weaving_site_redis
-    networks:
-      - internal
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-
 networks:
   public:
     driver: bridge
@@ -132,5 +84,4 @@ networks:
 
 volumes:
   postgres_data:
-  redis_data:
   uploads:
