@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useClerk } from "@clerk/clerk-react";
@@ -771,6 +771,8 @@ function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean 
 
 function ServiceRow({ check }: { check: ServiceCheck }) {
   const [open, setOpen] = useState(false);
+  const metaEntries = Object.entries(check.meta ?? {});
+  const hasContent = metaEntries.length > 0 || check.checks.length > 0;
   return (
     <div className="bg-background">
       <button
@@ -784,17 +786,31 @@ function ServiceRow({ check }: { check: ServiceCheck }) {
         </span>
         <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>
       </button>
-      {open && check.checks.length > 0 && (
-        <div className="border-t divide-y">
-          {check.checks.map((c: ServicePermCheck) => (
-            <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
-              <StatusDot status={c.status} small />
-              <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
-              <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
-                {c.message}
-              </span>
+      {open && hasContent && (
+        <div className="border-t">
+          {metaEntries.length > 0 && (
+            <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 pl-10 pr-4 py-2.5 bg-muted/10 border-b">
+              {metaEntries.map(([k, v]) => (
+                <React.Fragment key={k}>
+                  <span className="text-xs text-muted-foreground">{k}</span>
+                  <span className="text-xs font-mono break-all">{v}</span>
+                </React.Fragment>
+              ))}
             </div>
-          ))}
+          )}
+          {check.checks.length > 0 && (
+            <div className="divide-y">
+              {check.checks.map((c: ServicePermCheck) => (
+                <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
+                  <StatusDot status={c.status} small />
+                  <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
+                  <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                    {c.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

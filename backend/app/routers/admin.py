@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
 from app.models.activity import Activity
 from app.models.eula_version import EulaVersion
@@ -117,16 +117,45 @@ class ServiceCheckResult(BaseModel):
     status: Literal["ok", "error"]
     message: str
     checks: list[ServicePermCheck] = []
+    meta: dict[str, str] = {}
 
 
-def _make_result(service: str, checks: list[ServicePermCheck]) -> ServiceCheckResult:
+def _make_result(
+    service: str,
+    checks: list[ServicePermCheck],
+    meta: dict[str, str] | None = None,
+) -> ServiceCheckResult:
     failed = [c for c in checks if c.status == "error"]
     status: Literal["ok", "error"] = "error" if failed else "ok"
     if failed:
         message = f"{len(failed)}/{len(checks)} check{'s' if len(failed) > 1 else ''} failed"
     else:
         message = f"{len(checks)}/{len(checks)} checks passed"
-    return ServiceCheckResult(service=service, status=status, message=message, checks=checks)
+    return ServiceCheckResult(service=service, status=status, message=message, checks=checks, meta=meta or {})
+
+
+def _pg_conn_meta() -> dict[str, str]:
+    from urllib.parse import urlparse
+
+    settings = get_settings()
+    if settings.postgres_dsn:
+        parsed = urlparse(settings.postgres_dsn)
+        host = parsed.hostname or ""
+        db = (parsed.path or "").lstrip("/")
+        user = parsed.username or ""
+        port = str(parsed.port) if parsed.port else "5432"
+    else:
+        host = settings.postgres_host
+        db = settings.postgres_db
+        user = settings.postgres_user
+        port = str(settings.postgres_port)
+    if "-pooler" in host:
+        mode = "pooled (PgBouncer)"
+    elif host in ("db", "localhost", "127.0.0.1"):
+        mode = "local"
+    else:
+        mode = "direct"
+    return {"host": host, "port": port, "database": db, "user": user, "mode": mode}
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +165,7 @@ def _make_result(service: str, checks: list[ServicePermCheck]) -> ServiceCheckRe
 
 async def _probe_postgres(db: AsyncSession) -> ServiceCheckResult:
     checks: list[ServicePermCheck] = []
+    meta = _pg_conn_meta()
 
     # 1. Connectivity
     try:
@@ -145,10 +175,10 @@ async def _probe_postgres(db: AsyncSession) -> ServiceCheckResult:
         checks.append(ServicePermCheck(name="connect", status="ok", message=f"SELECT 1 → {ms} ms"))
     except asyncio.TimeoutError:
         checks.append(ServicePermCheck(name="connect", status="error", message="Timed out after 3 s"))
-        return _make_result("PostgreSQL", checks)
+        return _make_result("PostgreSQL", checks, meta=meta)
     except Exception as exc:
         checks.append(ServicePermCheck(name="connect", status="error", message=str(exc)[:120]))
-        return _make_result("PostgreSQL", checks)
+        return _make_result("PostgreSQL", checks, meta=meta)
 
     # 2. Table privileges (SELECT / INSERT / UPDATE / DELETE on users table)
     try:
@@ -182,20 +212,32 @@ async def _probe_postgres(db: AsyncSession) -> ServiceCheckResult:
     except Exception as exc:
         checks.append(ServicePermCheck(name="privileges", status="error", message=str(exc)[:120]))
 
-    return _make_result("PostgreSQL", checks)
+    return _make_result("PostgreSQL", checks, meta=meta)
+
+
+def _s3_conn_meta(settings: "Settings") -> dict[str, str]:
+    if settings.storage_backend != "s3":
+        return {"backend": "local"}
+    return {
+        "backend": "s3",
+        "bucket": settings.s3_bucket_name or "(not set)",
+        "endpoint": settings.s3_endpoint_url or "AWS default",
+        "region": settings.s3_region or "auto",
+    }
 
 
 async def _probe_s3() -> ServiceCheckResult:
     settings = get_settings()
     checks: list[ServicePermCheck] = []
+    meta = _s3_conn_meta(settings)
 
     if settings.storage_backend != "s3":
         checks.append(ServicePermCheck(name="storage_backend", status="ok", message="Local storage — S3 not in use"))
-        return _make_result("S3", checks)
+        return _make_result("S3", checks, meta=meta)
 
     if not settings.s3_bucket_name:
         checks.append(ServicePermCheck(name="config", status="error", message="S3_BUCKET_NAME not set"))
-        return _make_result("S3", checks)
+        return _make_result("S3", checks, meta=meta)
 
     def _run_checks() -> list[tuple[str, bool, str]]:
         import boto3
@@ -246,12 +288,23 @@ async def _probe_s3() -> ServiceCheckResult:
     except asyncio.TimeoutError:
         checks.append(ServicePermCheck(name="connect", status="error", message="Timed out after 10 s"))
 
-    return _make_result("S3", checks)
+    return _make_result("S3", checks, meta=meta)
+
+
+def _clerk_conn_meta(settings: "Settings") -> dict[str, str]:
+    def _prefix(val: str, n: int = 12) -> str:
+        return val[:n] + "…" if len(val) > n else val
+
+    return {
+        "publishable_key": _prefix(settings.clerk_publishable_key) if settings.clerk_publishable_key else "(not set)",
+        "environment": "live" if settings.clerk_publishable_key.startswith("pk_live_") else "test",
+    }
 
 
 async def _probe_clerk() -> ServiceCheckResult:
     settings = get_settings()
     checks: list[ServicePermCheck] = []
+    meta = _clerk_conn_meta(settings)
 
     # Config: secret key
     sk_ok = bool(settings.clerk_secret_key and settings.clerk_secret_key.startswith("sk_"))
@@ -286,7 +339,7 @@ async def _probe_clerk() -> ServiceCheckResult:
     # API connectivity + auth
     if not settings.clerk_secret_key:
         checks.append(ServicePermCheck(name="api_auth", status="error", message="Skipped — secret key missing"))
-        return _make_result("Clerk", checks)
+        return _make_result("Clerk", checks, meta=meta)
 
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
@@ -303,7 +356,7 @@ async def _probe_clerk() -> ServiceCheckResult:
     except Exception as exc:
         checks.append(ServicePermCheck(name="api_auth", status="error", message=str(exc)[:120]))
 
-    return _make_result("Clerk", checks)
+    return _make_result("Clerk", checks, meta=meta)
 
 
 # ---------------------------------------------------------------------------
@@ -638,11 +691,22 @@ async def get_health(
     )
 
 
+def _smtp_conn_meta(settings: "Settings") -> dict[str, str]:
+    return {
+        "host": settings.smtp_host or "(not set)",
+        "port": str(settings.smtp_port),
+        "user": settings.smtp_user or "(not set)",
+        "from": settings.smtp_from_email or "(not set)",
+        "from_name": settings.smtp_from_name or "(not set)",
+    }
+
+
 async def _probe_smtp() -> ServiceCheckResult:
     import aiosmtplib
 
     settings = get_settings()
     checks: list[ServicePermCheck] = []
+    meta = _smtp_conn_meta(settings)
 
     missing = [
         k
@@ -656,7 +720,7 @@ async def _probe_smtp() -> ServiceCheckResult:
     ]
     if missing:
         checks.append(ServicePermCheck(name="config", status="error", message=f"Missing: {', '.join(missing)}"))
-        return _make_result("SMTP", checks)
+        return _make_result("SMTP", checks, meta=meta)
     checks.append(
         ServicePermCheck(name="config", status="ok", message=f"{settings.smtp_host}:{settings.smtp_port} configured")
     )
@@ -675,7 +739,7 @@ async def _probe_smtp() -> ServiceCheckResult:
     except (asyncio.TimeoutError, Exception) as exc:
         msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
         checks.append(ServicePermCheck(name="connect", status="error", message=msg))
-        return _make_result("SMTP", checks)
+        return _make_result("SMTP", checks, meta=meta)
 
     try:
         await asyncio.wait_for(smtp.login(settings.smtp_user, settings.smtp_password), timeout=5.0)
@@ -689,7 +753,7 @@ async def _probe_smtp() -> ServiceCheckResult:
         except Exception:
             pass
 
-    return _make_result("SMTP", checks)
+    return _make_result("SMTP", checks, meta=meta)
 
 
 # ---------------------------------------------------------------------------

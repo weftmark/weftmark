@@ -137,6 +137,7 @@ export interface ServiceCheck {
   status: "ok" | "error";
   message: string;
   checks: ServicePermCheck[];
+  meta?: Record<string, string>;
 }
 
 export const getAdminServices = () => api.get<ServiceCheck[]>("/api/admin/services");
