@@ -140,3 +140,4 @@ export interface ServiceCheck {
 }
 
 export const getAdminServices = () => api.get<ServiceCheck[]>("/api/admin/services");
+export const sendTestEmail = () => api.post<{ status: string; to: string }>("/api/admin/test-email", {});
