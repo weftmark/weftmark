@@ -549,7 +549,7 @@ export function YarnDetailPage() {
               {(yarn.sett_min || yarn.sett_max) && (<><dt className="text-muted-foreground">Sett (epi)</dt><dd>{yarn.sett_min && yarn.sett_max ? `${yarn.sett_min}–${yarn.sett_max}` : yarn.sett_min ?? yarn.sett_max}</dd></>)}
               {yarn.purchase_source && (<><dt className="text-muted-foreground">Purchased from</dt><dd>{yarn.purchase_source}</dd></>)}
               {yarn.purchase_price && (<><dt className="text-muted-foreground">Price / unit</dt><dd>${yarn.purchase_price}</dd></>)}
-              {yarn.purchase_date && (<><dt className="text-muted-foreground">Purchase date</dt><dd>{yarn.purchase_date}</dd></>)}
+              {yarn.purchase_date && (<><dt className="text-muted-foreground">Purchase date</dt><dd>{new Date(yarn.purchase_date + "T00:00:00").toLocaleDateString()}</dd></>)}
             </dl>
           )}
           {!editing && yarn.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{yarn.notes}</p>}
