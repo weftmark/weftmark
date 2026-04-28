@@ -32,6 +32,7 @@ import {
   type ServicePermCheck,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
+import { formatBytes } from "@/lib/image-utils";
 
 type Tab = "users" | "invites" | "stats" | "health" | "services" | "eula";
 
@@ -180,7 +181,7 @@ function UsersTab() {
               <p className="text-xs text-muted-foreground">
                 Last active: {formatLastActive(u.last_active_at)}
                 {" · "}
-                {u.counts.projects}p · {u.counts.looms}l · {u.counts.activities_active} active / {u.counts.activities_completed} done
+                {u.counts.projects}p · {u.counts.looms}l · {u.counts.activities_active} active / {u.counts.activities_completed} done · {formatBytes(u.counts.storage_bytes)}
               </p>
               {u.approved_by_name && (
                 <p className="text-xs text-muted-foreground">
@@ -570,6 +571,7 @@ function StatsTab() {
     { label: "Activities", value: data.total_activities },
     { label: "Looms", value: data.total_looms },
     { label: "Yarn entries", value: data.total_yarn },
+    { label: "Total storage (photos)", value: formatBytes(data.total_storage_bytes) },
   ];
 
   return (
@@ -580,7 +582,7 @@ function StatsTab() {
   );
 }
 
-function StatTable({ title, rows }: { title: string; rows: { label: string; value: number }[] }) {
+function StatTable({ title, rows }: { title: string; rows: { label: string; value: number | string }[] }) {
   return (
     <div>
       <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{title}</h2>

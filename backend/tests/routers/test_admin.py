@@ -7,6 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.activity import Activity, ActivityPhoto
 from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
 from app.models.project import Project
@@ -50,6 +51,47 @@ class TestListAdminUsers:
         resp = await admin_client.get("/api/admin/users")
         user_data = next(u for u in resp.json() if u["email"] == admin_user.email)
         assert user_data["counts"]["projects"] >= 1
+
+    async def test_counts_include_storage_bytes(self, admin_client: AsyncClient, admin_user: User):
+        resp = await admin_client.get("/api/admin/users")
+        user_data = next(u for u in resp.json() if u["email"] == admin_user.email)
+        assert "storage_bytes" in user_data["counts"]
+        assert isinstance(user_data["counts"]["storage_bytes"], int)
+
+    async def test_storage_bytes_reflects_activity_photos(
+        self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        project = Project(
+            owner_id=admin_user.id,
+            name="Storage Test Project",
+            wif_filename="s.wif",
+            wif_path="s.wif",
+        )
+        db_session.add(project)
+        await db_session.flush()
+        activity = Activity(
+            owner_id=admin_user.id,
+            project_id=project.id,
+            name="Storage Test Activity",
+            activity_type="treadle",
+            status="active",
+            total_picks=100,
+        )
+        db_session.add(activity)
+        await db_session.flush()
+        photo = ActivityPhoto(
+            activity_id=activity.id,
+            file_path="activities/test/photo.jpg",
+            filename="photo.jpg",
+            file_size_bytes=512_000,
+            display_order=1,
+        )
+        db_session.add(photo)
+        await db_session.commit()
+
+        resp = await admin_client.get("/api/admin/users")
+        user_data = next(u for u in resp.json() if u["email"] == admin_user.email)
+        assert user_data["counts"]["storage_bytes"] >= 512_000
 
     async def test_does_not_return_deleted_users(self, admin_client: AsyncClient, db_session: AsyncSession):
         deleted_user = User(
@@ -182,6 +224,43 @@ class TestAdminStats:
         assert "total_looms" in data
         assert "total_yarn" in data
         assert "pending_invites" in data
+        assert "total_storage_bytes" in data
+
+    async def test_total_storage_bytes_reflects_photos(
+        self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        before = (await admin_client.get("/api/admin/stats")).json()["total_storage_bytes"]
+        project = Project(
+            owner_id=admin_user.id,
+            name="Stats Storage Project",
+            wif_filename="s.wif",
+            wif_path="s.wif",
+        )
+        db_session.add(project)
+        await db_session.flush()
+        activity = Activity(
+            owner_id=admin_user.id,
+            project_id=project.id,
+            name="Stats Storage Activity",
+            activity_type="treadle",
+            status="active",
+            total_picks=100,
+        )
+        db_session.add(activity)
+        await db_session.flush()
+        db_session.add(
+            ActivityPhoto(
+                activity_id=activity.id,
+                file_path="activities/stats/photo.jpg",
+                filename="photo.jpg",
+                file_size_bytes=1_048_576,
+                display_order=1,
+            )
+        )
+        await db_session.commit()
+
+        after = (await admin_client.get("/api/admin/stats")).json()["total_storage_bytes"]
+        assert after >= before + 1_048_576
 
     async def test_total_users_increments(self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User):
         before = (await admin_client.get("/api/admin/stats")).json()["total_users"]
