@@ -29,3 +29,10 @@ repos:
         entry: bash -c 'cd frontend && npx tsc -b --noEmit'
         pass_filenames: false
         files: ^frontend/src/.*\.(ts|tsx)$
+
+      - id: strip-conda-prefix
+        name: Strip conda environment prefix
+        language: system
+        entry: bash -c 'sed -i "/^prefix:/d" environment.yml'
+        files: ^environment\.yml$
+        pass_filenames: false
