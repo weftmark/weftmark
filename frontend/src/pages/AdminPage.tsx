@@ -22,14 +22,16 @@ import {
   banPendingSignup,
   getAdminEula,
   createEulaVersion,
+  getAdminServices,
   type AdminHealth,
   type ElevateContentSummary,
   type InviteRecord,
   type PendingSignup,
+  type ServiceCheck,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 
-type Tab = "users" | "invites" | "stats" | "health" | "eula";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "eula";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -83,7 +85,7 @@ export function AdminPage() {
 
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
         <div className="flex gap-2 border-b pb-2">
-          {(["users", "invites", "stats", "health", "eula"] as Tab[]).map((t) => (
+          {(["users", "invites", "stats", "health", "services", "eula"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -102,6 +104,7 @@ export function AdminPage() {
         {tab === "invites" && <InvitesTab />}
         {tab === "stats" && <StatsTab />}
         {tab === "health" && <HealthTab />}
+        {tab === "services" && <ServicesTab />}
         {tab === "eula" && <EulaTab />}
       </main>
     </div>
@@ -746,6 +749,60 @@ function HealthChart({
       <div className="overflow-hidden">
         <Sparkline values={values} max={max} color={color} />
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Services tab
+// ---------------------------------------------------------------------------
+
+function ServiceStatusDot({ status }: { status: ServiceCheck["status"] }) {
+  return (
+    <span
+      className={`inline-block w-2.5 h-2.5 rounded-full shrink-0 ${
+        status === "ok" ? "bg-green-500" : "bg-red-500"
+      }`}
+    />
+  );
+}
+
+function ServicesTab() {
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["admin", "services"],
+    queryFn: getAdminServices,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  const lastChecked = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {lastChecked ? `Last checked ${lastChecked}` : "Checking…"}
+        </p>
+        <Button size="sm" variant="outline" disabled={isFetching} onClick={() => refetch()}>
+          {isFetching ? "Checking…" : "Refresh"}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Checking services…</p>
+      ) : (
+        <div className="border rounded-lg divide-y overflow-hidden">
+          {(data ?? []).map((check) => (
+            <div key={check.service} className="flex items-center gap-3 px-4 py-3 bg-background">
+              <ServiceStatusDot status={check.status} />
+              <span className="text-sm font-medium w-28 shrink-0">{check.service}</span>
+              <span className={`text-sm ${check.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                {check.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

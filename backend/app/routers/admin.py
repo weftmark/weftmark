@@ -1,16 +1,20 @@
+import asyncio
 import importlib.metadata
 import logging
 import platform
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
+import httpx
 import psutil
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.deps import get_db, require_admin, require_superuser
 from app.models.activity import Activity
 from app.models.eula_version import EulaVersion
@@ -99,6 +103,76 @@ class AdminVersionsResponse(BaseModel):
     pillow: str
     boto3: str
     psutil: str
+
+
+class ServiceCheckResult(BaseModel):
+    service: str
+    status: Literal["ok", "error"]
+    message: str
+
+
+# ---------------------------------------------------------------------------
+# Service-check probes
+# ---------------------------------------------------------------------------
+
+
+async def _probe_postgres(db: AsyncSession) -> ServiceCheckResult:
+    try:
+        t0 = time.monotonic()
+        await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=3.0)
+        ms = round((time.monotonic() - t0) * 1000, 1)
+        return ServiceCheckResult(service="PostgreSQL", status="ok", message=f"Connected ({ms} ms)")
+    except asyncio.TimeoutError:
+        return ServiceCheckResult(service="PostgreSQL", status="error", message="Timed out after 3 s")
+    except Exception as exc:
+        return ServiceCheckResult(service="PostgreSQL", status="error", message=str(exc)[:120])
+
+
+async def _probe_s3() -> ServiceCheckResult:
+    settings = get_settings()
+    if settings.storage_backend != "s3":
+        return ServiceCheckResult(service="S3", status="ok", message="Local storage (S3 not configured)")
+    if not settings.s3_bucket_name:
+        return ServiceCheckResult(service="S3", status="error", message="S3_BUCKET_NAME not set")
+
+    def _check() -> None:
+        import boto3
+
+        client = boto3.client(
+            "s3",
+            endpoint_url=settings.s3_endpoint_url or None,
+            aws_access_key_id=settings.s3_access_key_id,
+            aws_secret_access_key=settings.s3_secret_access_key,
+            region_name=settings.s3_region or "auto",
+        )
+        client.head_bucket(Bucket=settings.s3_bucket_name)
+
+    try:
+        await asyncio.wait_for(asyncio.to_thread(_check), timeout=5.0)
+        return ServiceCheckResult(service="S3", status="ok", message=f"Bucket '{settings.s3_bucket_name}' accessible")
+    except asyncio.TimeoutError:
+        return ServiceCheckResult(service="S3", status="error", message="Timed out after 5 s")
+    except Exception as exc:
+        return ServiceCheckResult(service="S3", status="error", message=str(exc)[:120])
+
+
+async def _probe_clerk() -> ServiceCheckResult:
+    settings = get_settings()
+    if not settings.clerk_secret_key:
+        return ServiceCheckResult(service="Clerk", status="error", message="CLERK_SECRET_KEY not set")
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(
+                "https://api.clerk.com/v1/users?limit=1",
+                headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
+            )
+        if r.status_code == 200:
+            return ServiceCheckResult(service="Clerk", status="ok", message="Connected")
+        return ServiceCheckResult(service="Clerk", status="error", message=f"HTTP {r.status_code}")
+    except httpx.TimeoutException:
+        return ServiceCheckResult(service="Clerk", status="error", message="Timed out after 3 s")
+    except Exception as exc:
+        return ServiceCheckResult(service="Clerk", status="error", message=str(exc)[:120])
 
 
 # ---------------------------------------------------------------------------
@@ -431,6 +505,24 @@ async def get_health(
         db_ping_ms=db_ping_ms,
         uptime_seconds=uptime_seconds,
     )
+
+
+# ---------------------------------------------------------------------------
+# Services connection check
+# ---------------------------------------------------------------------------
+
+
+@router.get("/services", response_model=list[ServiceCheckResult])
+async def check_services(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> list[ServiceCheckResult]:
+    results = await asyncio.gather(
+        _probe_postgres(db),
+        _probe_s3(),
+        _probe_clerk(),
+    )
+    return list(results)
 
 
 # ---------------------------------------------------------------------------
