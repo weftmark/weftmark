@@ -190,7 +190,10 @@ celerybeat.pid
 # ------------------------------------------------------------
 # Claude Code
 # ------------------------------------------------------------
-.claude/scheduled_tasks.lock
+# Exclude entirely from public GitHub — memory files contain internal
+# infrastructure detail, personal preferences, and Gitea-specific config.
+# Memories continue to work locally and on the private Gitea instance.
+.claude/
 
 
 # ------------------------------------------------------------
