@@ -66,7 +66,7 @@ jobs:
     outputs:
       skip: ${{ steps.detect-skip.outputs.skip }}
     steps:
-      - name: Detect [skip steps]
+      - name: Detect skip-steps marker
         id: detect-skip
         run: |
           if [[ "${{ github.event_name }}" == "push" && "${{ contains(github.event.head_commit.message, '[skip steps]') }}" == "true" ]]; then
