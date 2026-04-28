@@ -97,7 +97,7 @@ export function AdminPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t}
+              {t === "eula" ? "EULA" : t}
             </button>
           ))}
         </div>
@@ -885,6 +885,52 @@ function ServicesTab() {
 // EULA tab
 // ---------------------------------------------------------------------------
 
+type LintIssue = { level: "error" | "warning"; message: string };
+type LintResult = { ok: boolean; issues: LintIssue[] };
+
+function lintHtml(html: string): LintResult {
+  const issues: LintIssue[] = [];
+  if (!html.trim()) return { ok: false, issues: [{ level: "error", message: "HTML is empty" }] };
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  // Parser error nodes (browsers inject these for severely malformed markup)
+  if (doc.querySelector("parseerror")) {
+    issues.push({ level: "error", message: "HTML parse error — check for malformed tags" });
+  }
+
+  // Disallowed elements
+  for (const tag of ["script", "iframe", "object", "embed", "form"]) {
+    if (doc.body.querySelector(tag)) {
+      issues.push({ level: "error", message: `Disallowed element: <${tag}>` });
+    }
+  }
+
+  // Inline event handlers
+  for (const el of doc.body.querySelectorAll("*")) {
+    for (const attr of el.attributes) {
+      if (attr.name.startsWith("on")) {
+        issues.push({ level: "error", message: `Inline event handler: ${attr.name} on <${el.tagName.toLowerCase()}>` });
+        break;
+      }
+    }
+  }
+
+  // javascript: hrefs
+  for (const a of doc.body.querySelectorAll("a[href]")) {
+    if ((a.getAttribute("href") ?? "").toLowerCase().startsWith("javascript:")) {
+      issues.push({ level: "error", message: "javascript: URL in <a> href" });
+    }
+  }
+
+  // Inline <style> blocks (warning only)
+  if (doc.body.querySelector("style")) {
+    issues.push({ level: "warning", message: "<style> tag found — may affect page layout" });
+  }
+
+  return { ok: issues.every((i) => i.level !== "error"), issues };
+}
+
 function EulaTab() {
   const qc = useQueryClient();
   const { data: current, isLoading } = useQuery({
@@ -892,22 +938,45 @@ function EulaTab() {
     queryFn: getAdminEula,
   });
 
-  const [version, setVersion] = useState("");
+  const currentVersion = current?.version ?? null;
+  const nextVersion = React.useMemo(() => {
+    if (!currentVersion) return "";
+    const [major, minor] = currentVersion.split(".").map(Number);
+    return `${major}.${(minor ?? 0) + 1}`;
+  }, [currentVersion]);
+  const [versionOverride, setVersionOverride] = useState<string | null>(null);
+  const version = versionOverride ?? nextVersion;
+  const setVersion = setVersionOverride;
   const [bodyHtml, setBodyHtml] = useState("");
-  const [effectiveDate, setEffectiveDate] = useState("");
-  const [showPreview, setShowPreview] = useState(false);
+  const [effectiveDate, setEffectiveDate] = useState(
+    () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  );
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [lintResult, setLintResult] = useState<LintResult | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState(false);
 
+  const versionValid = /^\d+\.\d+$/.test(version.trim());
+
+  function handleBodyHtmlChange(val: string) {
+    setBodyHtml(val);
+    setLintResult(null); // reset lint when content changes
+  }
+
   const { mutate: publish, isPending } = useMutation({
-    mutationFn: () => createEulaVersion(version.trim(), bodyHtml.trim(), effectiveDate || undefined),
+    mutationFn: () => createEulaVersion(
+      version.trim(),
+      bodyHtml.trim(),
+      effectiveDate ? new Date(effectiveDate).toISOString() : undefined,
+    ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "eula"] });
       qc.invalidateQueries({ queryKey: ["eula", "current"] });
       setFormSuccess(true);
-      setVersion("");
+      setVersionOverride(null);
       setBodyHtml("");
-      setEffectiveDate("");
+      setEffectiveDate(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+      setLintResult(null);
       setFormError(null);
       setTimeout(() => setFormSuccess(false), 3000);
     },
@@ -921,7 +990,9 @@ function EulaTab() {
     setFormError(null);
     setFormSuccess(false);
     if (!version.trim()) { setFormError("Version is required"); return; }
+    if (!versionValid) { setFormError("Version must be in x.y format (e.g. 0.4)"); return; }
     if (!bodyHtml.trim()) { setFormError("Body HTML is required"); return; }
+    if (!lintResult?.ok) { setFormError("HTML must pass lint before publishing"); return; }
     publish();
   }
 
@@ -936,25 +1007,12 @@ function EulaTab() {
           Effective {current ? new Date(current.effective_date).toLocaleDateString() : "—"}
           {" · "}Published {current ? new Date(current.created_at).toLocaleString() : "—"}
         </p>
-        <div className="flex items-center gap-4">
-          <button
-            className="text-xs text-muted-foreground underline"
-            onClick={() => setShowPreview(!showPreview)}
-            type="button"
-          >
-            {showPreview ? "Hide" : "Preview"} current HTML
-          </button>
-          {current && (
-            <button
-              className="text-xs text-muted-foreground underline"
-              onClick={() => setBodyHtml(current.body_html)}
-              type="button"
-            >
-              Copy to editor
-            </button>
-          )}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" type="button" onClick={() => setShowCurrent((v) => !v)}>
+            {showCurrent ? "Hide" : "View"} current EULA
+          </Button>
         </div>
-        {showPreview && current && (
+        {showCurrent && current && (
           <div className="rounded-lg border p-4 max-h-[40vh] overflow-y-auto">
             <EulaContent bodyHtml={current.body_html} />
           </div>
@@ -973,15 +1031,18 @@ function EulaTab() {
         <div className="space-y-1">
           <label className="text-xs font-medium">Version string</label>
           <input
-            className="w-full rounded border bg-background px-3 py-1.5 text-sm"
+            className={`w-full rounded border bg-background px-3 py-1.5 text-sm ${version && !versionValid ? "border-destructive" : ""}`}
             placeholder="e.g. 0.4"
             value={version}
             onChange={(e) => setVersion(e.target.value)}
           />
+          {version && !versionValid && (
+            <p className="text-xs text-destructive">Must be x.y format (e.g. 0.4)</p>
+          )}
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">Effective date (optional, defaults to now)</label>
+          <label className="text-xs font-medium">Effective date</label>
           <input
             type="datetime-local"
             className="w-full rounded border bg-background px-3 py-1.5 text-sm"
@@ -991,14 +1052,63 @@ function EulaTab() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">Body HTML</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium">Body HTML</label>
+            {current && (
+              <Button variant="outline" size="sm" type="button" onClick={() => {
+                const html = current.body_html.replace(/Version \d+\.\d+/, `Version ${version}`);
+                setBodyHtml(html);
+                setLintResult(null);
+              }}>
+                Copy to editor
+              </Button>
+            )}
+          </div>
           <textarea
             className="w-full rounded border bg-background px-3 py-1.5 text-sm font-mono min-h-[240px]"
             placeholder="<p>Paste full EULA HTML here…</p>"
             value={bodyHtml}
-            onChange={(e) => setBodyHtml(e.target.value)}
+            onChange={(e) => handleBodyHtmlChange(e.target.value)}
           />
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!bodyHtml.trim()}
+          onClick={() => setLintResult(lintHtml(bodyHtml))}
+        >
+          Lint &amp; preview
+        </Button>
+
+        {/* Lint results */}
+        {lintResult && (
+          <div className={`rounded-lg border p-3 space-y-1 ${lintResult.ok ? "border-green-500/40 bg-green-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+            {lintResult.issues.length === 0 ? (
+              <p className="text-xs text-green-600 font-medium">✓ No issues found</p>
+            ) : (
+              lintResult.issues.map((issue, i) => (
+                <p key={i} className={`text-xs ${issue.level === "error" ? "text-destructive" : "text-yellow-600"}`}>
+                  {issue.level === "error" ? "✗" : "⚠"} {issue.message}
+                </p>
+              ))
+            )}
+            {lintResult.ok && (
+              <p className="text-xs text-green-600 font-medium">✓ Lint passed — HTML is safe to publish</p>
+            )}
+          </div>
+        )}
+
+        {/* New EULA preview */}
+        {lintResult?.ok && bodyHtml.trim() && (
+          <div className="space-y-1">
+            <p className="text-xs font-medium">Preview</p>
+            <div className="rounded-lg border p-4 max-h-[40vh] overflow-y-auto">
+              <EulaContent bodyHtml={bodyHtml} />
+            </div>
+          </div>
+        )}
 
         {formError && (
           <p className="text-sm text-destructive">{formError}</p>
@@ -1007,9 +1117,11 @@ function EulaTab() {
           <p className="text-sm text-green-600">EULA version published.</p>
         )}
 
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Publishing…" : "Publish new version"}
-        </Button>
+        {lintResult?.ok && (
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Publishing…" : "Publish new version"}
+          </Button>
+        )}
       </form>
     </div>
   );
