@@ -17,6 +17,15 @@ def _render(name: str, **kwargs: str) -> tuple[str, str]:
 
 async def _send(to: list[str], subject: str, txt: str, html: str) -> None:
     settings = get_settings()
+    if settings.app_env == "dev":
+        subject = f"[DEV] {subject}"
+        txt = "*** DEV ENVIRONMENT — this email was sent from a non-production system ***\n\n" + txt
+        html = (
+            '<div style="background:#f59e0b;color:#000;font-weight:bold;padding:8px 12px;'
+            'margin-bottom:16px;border-radius:4px;font-family:sans-serif;">'
+            "⚠️ DEV ENVIRONMENT — this email was sent from a non-production system"
+            "</div>\n" + html
+        )
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
