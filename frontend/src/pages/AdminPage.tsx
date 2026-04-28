@@ -936,13 +936,24 @@ function EulaTab() {
           Effective {current ? new Date(current.effective_date).toLocaleDateString() : "—"}
           {" · "}Published {current ? new Date(current.created_at).toLocaleString() : "—"}
         </p>
-        <button
-          className="text-xs text-muted-foreground underline"
-          onClick={() => setShowPreview(!showPreview)}
-          type="button"
-        >
-          {showPreview ? "Hide" : "Preview"} current HTML
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            className="text-xs text-muted-foreground underline"
+            onClick={() => setShowPreview(!showPreview)}
+            type="button"
+          >
+            {showPreview ? "Hide" : "Preview"} current HTML
+          </button>
+          {current && (
+            <button
+              className="text-xs text-muted-foreground underline"
+              onClick={() => setBodyHtml(current.body_html)}
+              type="button"
+            >
+              Copy to editor
+            </button>
+          )}
+        </div>
         {showPreview && current && (
           <div className="rounded-lg border p-4 max-h-[40vh] overflow-y-auto">
             <EulaContent bodyHtml={current.body_html} />
