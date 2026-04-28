@@ -44,5 +44,9 @@
       }
     }
   ],
-  "bypass_actors": []
+  "bypass_actors": [],
+
+  "_notes": [
+    "TODO: add 'required_deployments' rule once deployment environments are configured in GitHub Settings → Environments"
+  ]
 }
