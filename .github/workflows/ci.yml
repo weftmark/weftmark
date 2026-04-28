@@ -590,12 +590,12 @@ jobs:
 
           if last_tag:
               log = subprocess.run(
-                  ["git", "log", f"{last_tag}..HEAD", "--pretty=format:%s%n%b"],
+                  ["git", "log", f"{last_tag}..HEAD", "--first-parent", "--pretty=format:%s%n%b"],
                   capture_output=True, text=True
               ).stdout
           else:
               log = subprocess.run(
-                  ["git", "log", "--pretty=format:%s%n%b"],
+                  ["git", "log", "--first-parent", "--pretty=format:%s%n%b"],
                   capture_output=True, text=True
               ).stdout
 
