@@ -1,20 +1,17 @@
 # WeftMark
 
-A multi-user web platform for managing weaving projects — from design upload and preview through loom-side step tracking, yarn inventory, and project reporting.
+A web platform for handweavers to manage projects from design upload through loom-side step tracking.
 
-> **This project was designed and built with [Claude AI](https://claude.ai) (Anthropic).** The requirements, architecture decisions, and implementation were developed collaboratively through conversation with Claude. Project memory and decision rationale are preserved in `.claude/memory/` and `docs/requirements/` so future sessions can pick up with full context.
+> **Built with [Claude AI](https://claude.ai) (Anthropic).** Requirements, architecture decisions, and implementation were developed collaboratively through conversation with Claude.
 
 ---
 
 ## What It Does
 
-- **Upload WIF files** — import weaving drafts from software like TempoWeave, Fiberworks PCW, WeavIt, and others. Files are linted against the WIF 1.1 standard with detailed warnings.
-- **Preview designs** — render drawdown, threading diagram, and tie-up views using PyWeaving. Zoom, pan, color simulation, and repeat views included.
-- **Track weaving at the loom** — step-by-step pick tracking with lift-tracking (lever looms) and treadle-tracking (floor looms) activity types. Designed for tablet and mobile use at the loom.
-- **Manage equipment** — document your looms with versioned state history to track upgrades over time.
-- **Manage yarn inventory** — track individual skeins with unique IDs, estimate consumption from WIF data, and deduct inventory as projects progress.
-- **Generate reports** — warping plans, tie-up sheets, session logs, and full activity reports exportable as PDF.
-- **Share selectively** — projects are private by default; share via revocable slug URLs with no account required for viewers.
+- **Upload WIF files** — import weaving drafts from software like TempoWeave, Fiberworks PCW, WeavIt, and others. Files are validated against the WIF 1.1 standard.
+- **Preview designs** — render drawdown, threading diagram, and tie-up views. Zoom, pan, colour simulation, and repeat views included.
+- **Track weaving at the loom** — step-by-step pick tracking with lift-tracking (lever looms) and treadle-tracking (floor looms) activity types.
+- **Manage equipment** — document your looms and track configuration changes over time.
 
 ---
 
@@ -22,12 +19,10 @@ A multi-user web platform for managing weaving projects — from design upload a
 
 | Layer | Technology |
 | --- | --- |
-| Frontend | React, Vite, TypeScript, Tailwind CSS, shadcn/ui, TanStack Query, React Router |
+| Frontend | React 18, Vite, TypeScript, Tailwind CSS, TanStack Query, React Router |
 | Backend | FastAPI (Python), SQLAlchemy, Alembic |
 | Database | PostgreSQL |
-| Task Queue | Celery + Redis |
-| Rendering | PyWeaving |
-| Authentication | Authentik (OIDC) — any OIDC-compliant provider supported |
+| Authentication | [Clerk](https://clerk.com) |
 | Deployment | Docker + Docker Compose |
 
 ---
@@ -35,32 +30,18 @@ A multi-user web platform for managing weaving projects — from design upload a
 ## Repository Structure
 
 ```text
-weaving_site/
-├── .claude/
-│   └── memory/             # Project memory for Claude AI sessions
-│       ├── MEMORY.md       # Memory index
-│       ├── project.md      # Platform decisions and architecture
-│       └── feedback.md     # Collaboration preferences
-├── docs/
-│   ├── requirements/       # Full feature requirements
-│   │   ├── README.md       # Requirements index
-│   │   ├── overview.md
-│   │   ├── wif-import.md
-│   │   ├── design-preview.md
-│   │   ├── activities.md
-│   │   ├── equipment-inventory.md
-│   │   ├── yarn-inventory.md
-│   │   ├── reports.md
-│   │   ├── sharing-profiles.md
-│   │   ├── admin.md
-│   │   └── phase2.md
-│   ├── samples/            # Sample WIF files for development
-│   └── standard/           # WIF 1.1 specification
-├── frontend/               # React application (Vite)
+weftmark/
 ├── backend/                # FastAPI application
+│   ├── app/                # Routes, models, services
+│   ├── alembic/            # Database migrations
+│   └── tests/              # pytest test suite
+├── frontend/               # React application (Vite)
+│   └── src/
+├── docs/
+│   ├── requirements/       # Feature requirements
+│   └── standard/           # WIF 1.1 specification
 ├── docker-compose.yml
-├── .env.example
-└── README.md
+└── .env.example            # Required environment variables (copy to .env)
 ```
 
 ---
@@ -70,18 +51,17 @@ weaving_site/
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) and Docker Compose
-- An OIDC provider (Authentik recommended for local development)
+- A [Clerk](https://clerk.com) account (free tier is sufficient for local development)
 
 ### Setup
 
 ```bash
 # Clone the repository
-git clone <repo-url>
-cd weaving_site
+git clone https://github.com/weftmark/weftmark.git
+cd weftmark
 
-# Copy environment config
+# Copy environment config and fill in values
 cp .env.example .env
-# Edit .env with your configuration
 
 # Start all services
 docker compose up
@@ -89,7 +69,9 @@ docker compose up
 
 The frontend will be available at `http://localhost:3000` and the API at `http://localhost:8000`.
 
-### Development
+See `.env.example` for all required environment variables and where to obtain them.
+
+### Local Development (without Docker)
 
 ```bash
 # Backend (FastAPI)
@@ -97,7 +79,8 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload
 
 # Frontend (React)
 cd frontend
@@ -107,25 +90,27 @@ npm run dev
 
 ---
 
+## Running Tests
+
+```bash
+# Backend
+cd backend
+pytest
+
+# Frontend type check
+cd frontend
+npx tsc -b --noEmit
+```
+
+---
+
 ## Documentation
 
-- **Project Status:** [`STATUS.md`](STATUS.md) — what's built, what's in progress, what's next
-- **Requirements:** [`docs/requirements/`](docs/requirements/README.md)
+- **Requirements:** [`docs/requirements/`](docs/requirements/)
 - **WIF Standard:** [`docs/standard/standard-wif1-1.txt`](docs/standard/standard-wif1-1.txt)
-- **Project Memory:** [`.claude/memory/`](.claude/memory/MEMORY.md)
 
 ---
 
 ## License
 
-This project is licensed under the **PolyForm Noncommercial License 1.0.0**. You may use, modify, and distribute this software for any noncommercial purpose. Commercial use is not permitted without explicit written permission from the author.
-
-See [LICENSE](LICENSE) for the full terms.
-
----
-
-## Built With Claude
-
-This project was conceived, designed, and built in collaboration with **Claude** by [Anthropic](https://anthropic.com). Requirements were gathered through structured conversation, architectural decisions were made collaboratively, and all documentation reflects those discussions.
-
-If you are a Claude session picking up this project: read [`.claude/memory/MEMORY.md`](.claude/memory/MEMORY.md) first, then the relevant requirements documents before making any changes.
+Source-available under the **Business Source License 1.1 (BUSL-1.1)**. The source code is publicly visible for review and learning. Commercial use is not permitted. See [LICENSE](LICENSE) for full terms.
