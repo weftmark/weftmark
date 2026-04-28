@@ -432,32 +432,32 @@ def _make_png(width: int = 10, height: int = 10) -> bytes:
 
 class TestResizeToJpeg:
     def test_returns_bytes(self):
-        from app.routers.activities import _resize_to_jpeg
+        from app.services.images import resize_to_jpeg
 
-        assert isinstance(_resize_to_jpeg(_make_jpeg()), bytes)
+        assert isinstance(resize_to_jpeg(_make_jpeg()), bytes)
 
     def test_output_is_jpeg(self):
-        from app.routers.activities import _resize_to_jpeg
+        from app.services.images import resize_to_jpeg
 
-        result = _resize_to_jpeg(_make_jpeg())
+        result = resize_to_jpeg(_make_jpeg())
         assert PILImage.open(io.BytesIO(result)).format == "JPEG"
 
     def test_png_input_converted_to_jpeg(self):
-        from app.routers.activities import _resize_to_jpeg
+        from app.services.images import resize_to_jpeg
 
-        result = _resize_to_jpeg(_make_png())
+        result = resize_to_jpeg(_make_png())
         assert PILImage.open(io.BytesIO(result)).format == "JPEG"
 
-    def test_large_image_resized_to_2048(self):
-        from app.routers.activities import _resize_to_jpeg
+    def test_large_image_resized_to_max_px(self):
+        from app.services.images import resize_to_jpeg
 
-        result = _resize_to_jpeg(_make_jpeg(3000, 3000))
+        result = resize_to_jpeg(_make_jpeg(3000, 3000), max_px=2048)
         assert max(PILImage.open(io.BytesIO(result)).size) <= 2048
 
     def test_small_image_not_upscaled(self):
-        from app.routers.activities import _resize_to_jpeg
+        from app.services.images import resize_to_jpeg
 
-        result = _resize_to_jpeg(_make_jpeg(50, 50))
+        result = resize_to_jpeg(_make_jpeg(50, 50))
         assert PILImage.open(io.BytesIO(result)).size == (50, 50)
 
 
@@ -553,6 +553,7 @@ class TestActivityPhotos:
                 activity_id=activity.id,
                 file_path=f"activities/{activity.id}/photos/photo{i}.jpg",
                 filename=f"photo{i}.jpg",
+                file_size_bytes=1024,
                 display_order=i + 1,
             )
             db_session.add(photo)
@@ -646,4 +647,550 @@ class TestActivityPhotos:
         project = await _insert_project(db_session, test_user)
         activity = await _insert_active_activity(db_session, test_user, project, None)
         resp = await client.delete(f"/api/activities/{activity.id}/photos/{uuid.uuid4()}")
+        assert resp.status_code == 401
+
+    async def test_upload_records_file_size_bytes(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 201
+        photo_id = uuid.UUID(resp.json()["id"])
+        from sqlalchemy import select as sa_select
+
+        photo = await db_session.scalar(sa_select(ActivityPhotoModel).where(ActivityPhotoModel.id == photo_id))
+        assert photo is not None
+        assert photo.file_size_bytes > 0
+
+
+# ---------------------------------------------------------------------------
+# TestStorageQuota
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestStorageQuota:
+    async def test_quota_exceeded_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from app.services.storage_quota import MAX_USER_STORAGE_BYTES
+
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        # Insert a photo that consumes the entire quota
+        photo = ActivityPhotoModel(
+            activity_id=activity.id,
+            file_path=f"activities/{activity.id}/photos/big.jpg",
+            filename="big.jpg",
+            file_size_bytes=MAX_USER_STORAGE_BYTES,
+            display_order=1,
+        )
+        db_session.add(photo)
+        await db_session.commit()
+
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/photos",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 400
+        assert "Storage limit" in resp.json()["detail"]
+
+    async def test_get_user_storage_used_sums_activity_photos(self, db_session: AsyncSession, test_user: User):
+        from app.services.storage_quota import get_user_storage_used
+
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        for i in range(3):
+            db_session.add(
+                ActivityPhotoModel(
+                    activity_id=activity.id,
+                    file_path=f"activities/{activity.id}/photos/p{i}.jpg",
+                    filename=f"p{i}.jpg",
+                    file_size_bytes=100_000,
+                    display_order=i,
+                )
+            )
+        await db_session.commit()
+
+        used = await get_user_storage_used(test_user.id, db_session)
+        assert used == 300_000
+
+
+# ---------------------------------------------------------------------------
+# TestGetActivity
+# ---------------------------------------------------------------------------
+
+
+class TestGetActivity:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.get(f"/api/activities/{activity.id}")
+        assert resp.status_code == 200
+
+    async def test_returns_activity_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.get(f"/api/activities/{activity.id}")).json()
+        assert body["name"] == activity.name
+        assert body["activity_type"] == "treadle"
+        assert body["status"] == "active"
+        assert "photos" in body
+        assert "project_name" in body
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/activities/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_other_users_activity_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        project = await _insert_project(db_session, admin_user)
+        activity = await _insert_active_activity(db_session, admin_user, project, None)
+        resp = await auth_client.get(f"/api/activities/{activity.id}")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.get(f"/api/activities/{activity.id}")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestListActivities
+# ---------------------------------------------------------------------------
+
+
+class TestListActivities:
+    async def test_returns_empty_list(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/activities")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_returns_activities(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        await _insert_active_activity(db_session, test_user, project, None)
+        data = (await auth_client.get("/api/activities")).json()
+        assert len(data) >= 1
+
+    async def test_filter_by_project_id(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        await _insert_active_activity(db_session, test_user, project, None)
+        data = (await auth_client.get(f"/api/activities?project_id={project.id}")).json()
+        assert all(a["project_id"] == str(project.id) for a in data)
+        assert len(data) == 1
+
+    async def test_filter_by_loom_id(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user)
+        await _insert_active_activity(db_session, test_user, project, loom)
+        await _insert_active_activity(db_session, test_user, project, None)
+        data = (await auth_client.get(f"/api/activities?loom_id={loom.id}")).json()
+        assert len(data) == 1
+        assert data[0]["loom_id"] == str(loom.id)
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get("/api/activities")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestRenameActivity
+# ---------------------------------------------------------------------------
+
+
+class TestRenameActivity:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.patch(f"/api/activities/{activity.id}", json={"name": "Renamed"})
+        assert resp.status_code == 200
+
+    async def test_renames_activity(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.patch(f"/api/activities/{activity.id}", json={"name": "New Name"})).json()
+        assert body["name"] == "New Name"
+
+    async def test_empty_name_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.patch(f"/api/activities/{activity.id}", json={"name": "   "})
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(f"/api/activities/{uuid.uuid4()}", json={"name": "x"})
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.patch(f"/api/activities/{activity.id}", json={"name": "x"})
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestDeleteActivity
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteActivity:
+    async def test_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.delete(f"/api/activities/{activity.id}")
+        assert resp.status_code == 204
+
+    async def test_not_in_list_after_delete(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        await auth_client.delete(f"/api/activities/{activity.id}")
+        data = (await auth_client.get("/api/activities")).json()
+        assert all(a["id"] != str(activity.id) for a in data)
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.delete(f"/api/activities/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.delete(f"/api/activities/{activity.id}")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestStepActivity
+# ---------------------------------------------------------------------------
+
+
+class TestStepActivity:
+    async def test_advance_increments_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "advance"})).json()
+        assert body["current_pick"] == 2
+
+    async def test_reverse_decrements_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        activity.current_pick = 2
+        await db_session.commit()
+        body = (await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "reverse"})).json()
+        assert body["current_pick"] == 1
+
+    async def test_reverse_at_first_pick_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "reverse"})
+        assert resp.status_code == 400
+
+    async def test_advance_past_last_pick_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        activity.current_pick = activity.total_picks + 1
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "advance"})
+        assert resp.status_code == 400
+
+    async def test_invalid_direction_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "sideways"})
+        assert resp.status_code == 400
+
+    async def test_completed_activity_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        activity.status = "completed"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "advance"})
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/activities/{uuid.uuid4()}/step", json={"direction": "advance"})
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.post(f"/api/activities/{activity.id}/step", json={"direction": "advance"})
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestJumpActivity
+# ---------------------------------------------------------------------------
+
+
+class TestJumpActivity:
+    async def test_jumps_to_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.post(f"/api/activities/{activity.id}/jump", json={"pick": 2})).json()
+        assert body["current_pick"] == 2
+
+    async def test_clamps_above_total_plus_one(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.post(f"/api/activities/{activity.id}/jump", json={"pick": 999})).json()
+        assert body["current_pick"] == activity.total_picks + 1
+
+    async def test_clamps_below_one(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.post(f"/api/activities/{activity.id}/jump", json={"pick": 0})).json()
+        assert body["current_pick"] == 1
+
+    async def test_completed_activity_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        activity.status = "completed"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/jump", json={"pick": 1})
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/activities/{uuid.uuid4()}/jump", json={"pick": 1})
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestCompleteActivity
+# ---------------------------------------------------------------------------
+
+
+class TestCompleteActivity:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(f"/api/activities/{activity.id}/complete")
+        assert resp.status_code == 200
+
+    async def test_status_becomes_completed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.post(f"/api/activities/{activity.id}/complete")).json()
+        assert body["status"] == "completed"
+
+    async def test_sets_completed_at(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        await auth_client.post(f"/api/activities/{activity.id}/complete")
+        await db_session.refresh(activity)
+        assert activity.completed_at is not None
+
+    async def test_already_completed_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        activity.status = "completed"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/complete")
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/activities/{uuid.uuid4()}/complete")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.post(f"/api/activities/{activity.id}/complete")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestAbandonActivity
+# ---------------------------------------------------------------------------
+
+
+class TestAbandonActivity:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(f"/api/activities/{activity.id}/abandon")
+        assert resp.status_code == 200
+
+    async def test_status_becomes_abandoned(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.post(f"/api/activities/{activity.id}/abandon")).json()
+        assert body["status"] == "abandoned"
+
+    async def test_sets_abandoned_at(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        await auth_client.post(f"/api/activities/{activity.id}/abandon")
+        await db_session.refresh(activity)
+        assert activity.abandoned_at is not None
+
+    async def test_already_abandoned_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        activity.status = "abandoned"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/activities/{activity.id}/abandon")
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/activities/{uuid.uuid4()}/abandon")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.post(f"/api/activities/{activity.id}/abandon")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestAssignLoom
+# ---------------------------------------------------------------------------
+
+
+class TestAssignLoom:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        loom, _ = await _insert_loom(db_session, test_user)
+        resp = await auth_client.post(f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(loom.id)})
+        assert resp.status_code == 200
+
+    async def test_assigns_loom(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        loom, _ = await _insert_loom(db_session, test_user)
+        body = (
+            await auth_client.post(f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(loom.id)})
+        ).json()
+        assert body["loom_id"] == str(loom.id)
+
+    async def test_assigns_with_version(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        loom, version = await _insert_loom(db_session, test_user)
+        body = (
+            await auth_client.post(
+                f"/api/activities/{activity.id}/assign-loom",
+                json={"loom_id": str(loom.id), "loom_version_id": str(version.id)},
+            )
+        ).json()
+        assert body["loom_version_id"] == str(version.id)
+
+    async def test_wrong_version_for_loom_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        loom_a, _ = await _insert_loom(db_session, test_user)
+        _, version_b = await _insert_loom(db_session, test_user, model_name="Other Loom")
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/assign-loom",
+            json={"loom_id": str(loom_a.id), "loom_version_id": str(version_b.id)},
+        )
+        assert resp.status_code == 400
+
+    async def test_already_has_loom_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, loom)
+        resp = await auth_client.post(f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(loom.id)})
+        assert resp.status_code == 400
+
+    async def test_not_active_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        activity.status = "completed"
+        await db_session.commit()
+        loom, _ = await _insert_loom(db_session, test_user)
+        resp = await auth_client.post(f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(loom.id)})
+        assert resp.status_code == 400
+
+    async def test_loom_conflict_returns_409(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user)
+        await _insert_active_activity(db_session, test_user, project, loom)
+        activity2 = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.post(f"/api/activities/{activity2.id}/assign-loom", json={"loom_id": str(loom.id)})
+        assert resp.status_code == 409
+
+    async def test_other_users_loom_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, admin_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        other_loom, _ = await _insert_loom(db_session, admin_user)
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(other_loom.id)}
+        )
+        assert resp.status_code == 404
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            f"/api/activities/{uuid.uuid4()}/assign-loom", json={"loom_id": str(uuid.uuid4())}
+        )
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestGetPicks
+# ---------------------------------------------------------------------------
+
+
+class TestGetPicks:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await auth_client.get(f"/api/activities/{activity.id}/picks")
+        assert resp.status_code == 200
+
+    async def test_returns_picks_data(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.get(f"/api/activities/{activity.id}/picks")).json()
+        assert "activity_type" in body
+        assert "total_picks" in body
+        assert "picks" in body
+        assert isinstance(body["picks"], list)
+        assert "has_weft_colors" in body
+
+    async def test_returns_correct_pick_count(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        body = (await auth_client.get(f"/api/activities/{activity.id}/picks")).json()
+        assert body["total_picks"] == len(body["picks"])
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/activities/{uuid.uuid4()}/picks")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        resp = await client.get(f"/api/activities/{activity.id}/picks")
         assert resp.status_code == 401

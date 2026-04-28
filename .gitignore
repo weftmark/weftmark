@@ -188,9 +188,35 @@ celerybeat.pid
 
 
 # ------------------------------------------------------------
-# Claude Code
+# GitHub rulesets (real files contain installation IDs — use *.example.json as base)
 # ------------------------------------------------------------
-.claude/scheduled_tasks.lock
+.github/rulesets/*.json
+!.github/rulesets/*.example.json
+
+
+# ------------------------------------------------------------
+# AI Agents & Coding Assistants
+# ------------------------------------------------------------
+# Claude Code — entire directory excluded (settings, memory, session state)
+.claude/
+
+# Cursor
+.cursor/
+
+# Aider
+.aider*
+!.aider.conf.yml
+
+# Continue.dev
+.continue/
+
+# Windsurf / Codeium
+.windsurf/
+.codeium/
+
+# Roo Code
+.roo/
+.roomodes
 
 
 # ------------------------------------------------------------

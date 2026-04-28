@@ -41,12 +41,12 @@ class TestUserDefaults:
         await db_session.refresh(user)
         assert user.measurement_system == "metric"
 
-    async def test_ai_training_consent_defaults_false(self, db_session: AsyncSession):
+    async def test_ai_training_consent_defaults_true(self, db_session: AsyncSession):
         user = User(email="u@example.com", display_name="U", oidc_sub="sub-001")
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
-        assert user.ai_training_consent is False
+        assert user.ai_training_consent is True
 
     async def test_timestamps_set_on_create(self, db_session: AsyncSession):
         user = User(email="u@example.com", display_name="U", oidc_sub="sub-001")

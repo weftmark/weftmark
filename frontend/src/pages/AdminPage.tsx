@@ -1,21 +1,40 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useClerk } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import {
   listAdminUsers,
   getAdminStats,
   getAdminHealth,
   getAdminVersions,
   patchAdminUser,
+  banUser,
+  unbanUser,
+  elevateToSuperuser,
   listInvites,
   createInvite,
   revokeInvite,
+  listPendingSignups,
+  approvePendingSignup,
+  dismissPendingSignup,
+  banPendingSignup,
+  getAdminEula,
+  createEulaVersion,
+  getAdminServices,
+  sendTestEmail,
   type AdminHealth,
+  type ElevateContentSummary,
   type InviteRecord,
+  type PendingSignup,
+  type ServiceCheck,
+  type ServicePermCheck,
 } from "@/api/admin";
+import { EulaContent } from "@/components/EulaContent";
+import { formatBytes } from "@/lib/image-utils";
 
-type Tab = "users" | "invites" | "stats" | "health";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "eula";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -40,21 +59,36 @@ function formatUptime(seconds: number): string {
 
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>("users");
+  const { user: currentUser } = useAuth();
+  const { signOut } = useClerk();
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Dashboard
-          </Link>
+          {!currentUser?.is_superuser && (
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+              ← Dashboard
+            </Link>
+          )}
           <span className="font-semibold">Admin</span>
+          {currentUser?.is_superuser && (
+            <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
+          )}
         </div>
+        {currentUser?.is_superuser && (
+          <button
+            onClick={() => signOut()}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Sign out
+          </button>
+        )}
       </header>
 
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
         <div className="flex gap-2 border-b pb-2">
-          {(["users", "invites", "stats", "health"] as Tab[]).map((t) => (
+          {(["users", "invites", "stats", "health", "services", "eula"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -64,7 +98,7 @@ export function AdminPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t}
+              {t === "eula" ? "EULA" : t}
             </button>
           ))}
         </div>
@@ -73,6 +107,8 @@ export function AdminPage() {
         {tab === "invites" && <InvitesTab />}
         {tab === "stats" && <StatsTab />}
         {tab === "health" && <HealthTab />}
+        {tab === "services" && <ServicesTab />}
+        {tab === "eula" && <EulaTab />}
       </main>
     </div>
   );
@@ -84,15 +120,51 @@ export function AdminPage() {
 
 function UsersTab() {
   const qc = useQueryClient();
+  const { user: currentUser } = useAuth();
+  const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
+  const [elevateId, setElevateId] = useState<string | null>(null);
+  const [elevateContent, setElevateContent] = useState<ElevateContentSummary | null>(null);
+
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: listAdminUsers,
   });
 
   const patch = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { is_active?: boolean; is_admin?: boolean } }) =>
+    mutationFn: ({ id, body }: { id: string; body: { is_active?: boolean; is_admin?: boolean; is_superuser?: boolean } }) =>
       patchAdminUser(id, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+
+  const ban = useMutation({
+    mutationFn: (id: string) => banUser(id),
+    onSuccess: () => { setConfirmBanId(null); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
+    onError: () => setConfirmBanId(null),
+  });
+
+  const unban = useMutation({
+    mutationFn: (id: string) => unbanUser(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+
+  const elevate = useMutation({
+    mutationFn: ({ id, force }: { id: string; force: boolean }) => elevateToSuperuser(id, force),
+    onSuccess: () => {
+      setElevateId(null);
+      setElevateContent(null);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+    onError: (err: Error) => {
+      try {
+        const body = JSON.parse(err.message);
+        if (body?.detail?.code === "has_content") {
+          setElevateContent(body.detail.summary);
+          return;
+        }
+      } catch {}
+      setElevateId(null);
+      setElevateContent(null);
+    },
   });
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -109,34 +181,117 @@ function UsersTab() {
               <p className="text-xs text-muted-foreground">
                 Last active: {formatLastActive(u.last_active_at)}
                 {" · "}
-                {u.counts.projects}p · {u.counts.looms}l · {u.counts.activities_active} active / {u.counts.activities_completed} done
+                {u.counts.projects}p · {u.counts.looms}l · {u.counts.activities_active} active / {u.counts.activities_completed} done · {formatBytes(u.counts.storage_bytes)}
               </p>
+              {u.approved_by_name && (
+                <p className="text-xs text-muted-foreground">
+                  Approved by {u.approved_by_name}{u.approved_by_email ? ` (${u.approved_by_email})` : ""}
+                </p>
+              )}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {u.is_admin && (
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              {u.is_superuser && (
+                <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
+              )}
+              {u.is_admin && !u.is_superuser && (
                 <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">admin</span>
               )}
-              {!u.is_active && (
-                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">
-                  deactivated
-                </span>
+              {u.clerk_banned ? (
+                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">banned</span>
+              ) : !u.is_active ? (
+                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">deactivated</span>
+              ) : null}
+
+              {confirmBanId === u.id ? (
+                <>
+                  <span className="text-xs text-destructive font-medium">Ban {u.display_name}?</span>
+                  <Button size="sm" variant="destructive" disabled={ban.isPending} onClick={() => ban.mutate(u.id)}>
+                    Confirm
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setConfirmBanId(null)}>Cancel</Button>
+                </>
+              ) : elevateId === u.id ? (
+                <>
+                  {elevateContent ? (
+                    <span className="text-xs text-destructive font-medium">
+                      Has {[
+                        elevateContent.activities && `${elevateContent.activities} activities`,
+                        elevateContent.looms && `${elevateContent.looms} looms`,
+                        elevateContent.projects && `${elevateContent.projects} projects`,
+                        elevateContent.yarn && `${elevateContent.yarn} yarn`,
+                      ].filter(Boolean).join(", ")} — all will be deleted.
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground font-medium">Make {u.display_name} a superuser?</span>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={elevate.isPending}
+                    onClick={() => elevate.mutate({ id: u.id, force: !!elevateContent })}
+                  >
+                    Confirm
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setElevateId(null); setElevateContent(null); }}>
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {currentUser?.is_superuser && (
+                    <>
+                      {!u.is_superuser && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={patch.isPending || u.clerk_banned}
+                          onClick={() => patch.mutate({ id: u.id, body: { is_admin: !u.is_admin } })}
+                        >
+                          {u.is_admin ? "Remove admin" : "Make admin"}
+                        </Button>
+                      )}
+                      {!u.is_superuser && u.is_admin && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={elevate.isPending || u.clerk_banned}
+                          onClick={() => { setElevateId(u.id); elevate.mutate({ id: u.id, force: false }); }}
+                        >
+                          Make superuser
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {!u.is_superuser && (
+                    u.clerk_banned ? (
+                      <Button size="sm" variant="outline" disabled={unban.isPending} onClick={() => unban.mutate(u.id)}>
+                        Unban
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={patch.isPending || (u.is_active && u.is_admin)}
+                          title={u.is_active && u.is_admin ? "Remove admin rights before deactivating" : undefined}
+                          onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}
+                        >
+                          {u.is_active ? "Deactivate" : "Reactivate"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={u.is_admin}
+                          title={u.is_admin ? "Remove admin rights before banning" : undefined}
+                          onClick={() => setConfirmBanId(u.id)}
+                        >
+                          Ban
+                        </Button>
+                      </>
+                    )
+                  )}
+                </>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={patch.isPending}
-                onClick={() => patch.mutate({ id: u.id, body: { is_admin: !u.is_admin } })}
-              >
-                {u.is_admin ? "Remove admin" : "Make admin"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={patch.isPending}
-                onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}
-              >
-                {u.is_active ? "Deactivate" : "Reactivate"}
-              </Button>
             </div>
           </div>
         ))}
@@ -149,15 +304,23 @@ function UsersTab() {
 // Invites tab
 // ---------------------------------------------------------------------------
 
+const INVITE_HISTORY_PAGE_SIZE = 20;
+
 function InvitesTab() {
   const qc = useQueryClient();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
+  const [historyPage, setHistoryPage] = useState(0);
 
   const { data: invites = [], isLoading } = useQuery({
     queryKey: ["admin", "invites"],
     queryFn: listInvites,
+  });
+
+  const { data: pendingSignups = [] } = useQuery({
+    queryKey: ["admin", "pending-signups"],
+    queryFn: listPendingSignups,
   });
 
   const send = useMutation({
@@ -171,6 +334,26 @@ function InvitesTab() {
     onError: (err: Error) => setError(err.message),
   });
 
+  const removePending = (id: string) =>
+    qc.setQueryData(["admin", "pending-signups"], (old: PendingSignup[] | undefined) =>
+      old ? old.filter((p) => p.id !== id) : []
+    );
+
+  const approve = useMutation({
+    mutationFn: (id: string) => approvePendingSignup(id),
+    onSuccess: (_, id) => { removePending(id); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
+  });
+
+  const dismiss = useMutation({
+    mutationFn: (id: string) => dismissPendingSignup(id),
+    onSuccess: (_, id) => removePending(id),
+  });
+
+  const banSignup = useMutation({
+    mutationFn: (id: string) => banPendingSignup(id),
+    onSuccess: (_, id) => removePending(id),
+  });
+
   const revoke = useMutation({
     mutationFn: (id: string) => revokeInvite(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "invites"] }),
@@ -181,6 +364,27 @@ function InvitesTab() {
 
   return (
     <div className="space-y-6">
+      {pendingSignups.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-medium">Waiting to join ({pendingSignups.length})</h2>
+          <p className="text-xs text-muted-foreground">
+            These users signed up through Clerk but have no invite. Add them to the database or dismiss.
+          </p>
+          <div className="divide-y border rounded-lg overflow-hidden">
+            {pendingSignups.map((ps) => (
+              <PendingSignupRow
+                key={ps.id}
+                signup={ps}
+                onApprove={() => approve.mutate(ps.id)}
+                onDismiss={() => dismiss.mutate(ps.id)}
+                onBan={() => banSignup.mutate(ps.id)}
+                isWorking={approve.isPending || dismiss.isPending || banSignup.isPending}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="border rounded-lg p-4 space-y-3">
         <h2 className="text-sm font-medium">Send invite</h2>
         <div className="flex gap-2">
@@ -216,17 +420,99 @@ function InvitesTab() {
           )}
           {past.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground">Past invites</h2>
+              <h2 className="text-sm font-medium text-muted-foreground">
+                Past invites ({past.length})
+              </h2>
               <div className="divide-y border rounded-lg overflow-hidden opacity-60">
-                {past.map((inv) => (
+                {past.slice(historyPage * INVITE_HISTORY_PAGE_SIZE, (historyPage + 1) * INVITE_HISTORY_PAGE_SIZE).map((inv) => (
                   <InviteRow key={inv.id} invite={inv} />
                 ))}
               </div>
+              {past.length > INVITE_HISTORY_PAGE_SIZE && (
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    disabled={historyPage === 0}
+                    onClick={() => setHistoryPage((p) => p - 1)}
+                  >
+                    ← Previous
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {historyPage + 1} / {Math.ceil(past.length / INVITE_HISTORY_PAGE_SIZE)}
+                  </span>
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    disabled={(historyPage + 1) * INVITE_HISTORY_PAGE_SIZE >= past.length}
+                    onClick={() => setHistoryPage((p) => p + 1)}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {invites.length === 0 && <p className="text-sm text-muted-foreground">No invites yet.</p>}
         </>
       )}
+    </div>
+  );
+}
+
+function PendingSignupRow({
+  signup,
+  onApprove,
+  onDismiss,
+  onBan,
+  isWorking,
+}: {
+  signup: PendingSignup;
+  onApprove: () => void;
+  onDismiss: () => void;
+  onBan: () => void;
+  isWorking: boolean;
+}) {
+  const [confirming, setConfirming] = useState<"dismiss" | "ban" | null>(null);
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{signup.display_name || signup.email}</p>
+        <p className="text-xs text-muted-foreground truncate">{signup.email}</p>
+        <p className="text-xs text-muted-foreground">
+          Signed up {new Date(signup.created_at).toLocaleDateString()}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {confirming === "dismiss" ? (
+          <>
+            <span className="text-xs text-muted-foreground font-medium">Dismiss?</span>
+            <Button size="sm" variant="outline" disabled={isWorking} onClick={() => { setConfirming(null); onDismiss(); }}>
+              Confirm
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
+          </>
+        ) : confirming === "ban" ? (
+          <>
+            <span className="text-xs text-destructive font-medium">Ban?</span>
+            <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => { setConfirming(null); onBan(); }}>
+              Confirm
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" disabled={isWorking} onClick={onApprove}>
+              Add user
+            </Button>
+            <Button size="sm" variant="outline" disabled={isWorking} onClick={() => setConfirming("dismiss")}>
+              Dismiss
+            </Button>
+            <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => setConfirming("ban")}>
+              Ban
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -285,6 +571,7 @@ function StatsTab() {
     { label: "Activities", value: data.total_activities },
     { label: "Looms", value: data.total_looms },
     { label: "Yarn entries", value: data.total_yarn },
+    { label: "Total storage (photos)", value: formatBytes(data.total_storage_bytes) },
   ];
 
   return (
@@ -295,7 +582,7 @@ function StatsTab() {
   );
 }
 
-function StatTable({ title, rows }: { title: string; rows: { label: string; value: number }[] }) {
+function StatTable({ title, rows }: { title: string; rows: { label: string; value: number | string }[] }) {
   return (
     <div>
       <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{title}</h2>
@@ -466,6 +753,378 @@ function HealthChart({
       <div className="overflow-hidden">
         <Sparkline values={values} max={max} color={color} />
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Services tab
+// ---------------------------------------------------------------------------
+
+function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean }) {
+  return (
+    <span
+      className={`inline-block rounded-full shrink-0 ${small ? "w-2 h-2" : "w-2.5 h-2.5"} ${
+        status === "ok" ? "bg-green-500" : "bg-red-500"
+      }`}
+    />
+  );
+}
+
+function ServiceRow({ check }: { check: ServiceCheck }) {
+  const [open, setOpen] = useState(false);
+  const metaEntries = Object.entries(check.meta ?? {});
+  const hasContent = metaEntries.length > 0 || check.checks.length > 0;
+  return (
+    <div className="bg-background">
+      <button
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 text-left"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <StatusDot status={check.status} />
+        <span className="text-sm font-medium w-32 shrink-0">{check.service}</span>
+        <span className={`text-sm flex-1 ${check.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+          {check.message}
+        </span>
+        <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && hasContent && (
+        <div className="border-t">
+          {metaEntries.length > 0 && (
+            <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 pl-10 pr-4 py-2.5 bg-muted/10 border-b">
+              {metaEntries.map(([k, v]) => (
+                <React.Fragment key={k}>
+                  <span className="text-xs text-muted-foreground">{k}</span>
+                  <span className="text-xs font-mono break-all">{v}</span>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+          {check.checks.length > 0 && (
+            <div className="divide-y">
+              {check.checks.map((c: ServicePermCheck) => (
+                <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
+                  <StatusDot status={c.status} small />
+                  <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
+                  <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                    {c.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ServicesTab() {
+  const { user: currentUser } = useAuth();
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["admin", "services"],
+    queryFn: getAdminServices,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const testEmail = useMutation({
+    mutationFn: sendTestEmail,
+    onSuccess: (d) => setTestResult({ ok: true, msg: `Sent to ${d.to}` }),
+    onError: (e: Error) => setTestResult({ ok: false, msg: e.message }),
+  });
+
+  const lastChecked = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {lastChecked ? `Last checked ${lastChecked}` : "Checking…"}
+        </p>
+        <Button size="sm" variant="outline" disabled={isFetching} onClick={() => refetch()}>
+          {isFetching ? "Checking…" : "Refresh"}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Checking services…</p>
+      ) : (
+        <div className="border rounded-lg divide-y overflow-hidden">
+          {(data ?? []).map((check) => (
+            <ServiceRow key={check.service} check={check} />
+          ))}
+        </div>
+      )}
+
+      <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium">Test Email</p>
+          <p className="text-xs text-muted-foreground">
+            Sends a test email to {currentUser?.email}
+          </p>
+          {testResult && (
+            <p className={`text-xs mt-1 ${testResult.ok ? "text-green-600" : "text-destructive"}`}>
+              {testResult.msg}
+            </p>
+          )}
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={testEmail.isPending}
+          onClick={() => { setTestResult(null); testEmail.mutate(); }}
+        >
+          {testEmail.isPending ? "Sending…" : "Send Test Email"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// EULA tab
+// ---------------------------------------------------------------------------
+
+type LintIssue = { level: "error" | "warning"; message: string };
+type LintResult = { ok: boolean; issues: LintIssue[] };
+
+function lintHtml(html: string): LintResult {
+  const issues: LintIssue[] = [];
+  if (!html.trim()) return { ok: false, issues: [{ level: "error", message: "HTML is empty" }] };
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  // Parser error nodes (browsers inject these for severely malformed markup)
+  if (doc.querySelector("parseerror")) {
+    issues.push({ level: "error", message: "HTML parse error — check for malformed tags" });
+  }
+
+  // Disallowed elements
+  for (const tag of ["script", "iframe", "object", "embed", "form"]) {
+    if (doc.body.querySelector(tag)) {
+      issues.push({ level: "error", message: `Disallowed element: <${tag}>` });
+    }
+  }
+
+  // Inline event handlers
+  for (const el of doc.body.querySelectorAll("*")) {
+    for (const attr of el.attributes) {
+      if (attr.name.startsWith("on")) {
+        issues.push({ level: "error", message: `Inline event handler: ${attr.name} on <${el.tagName.toLowerCase()}>` });
+        break;
+      }
+    }
+  }
+
+  // javascript: hrefs
+  for (const a of doc.body.querySelectorAll("a[href]")) {
+    if ((a.getAttribute("href") ?? "").toLowerCase().startsWith("javascript:")) {
+      issues.push({ level: "error", message: "javascript: URL in <a> href" });
+    }
+  }
+
+  // Inline <style> blocks (warning only)
+  if (doc.body.querySelector("style")) {
+    issues.push({ level: "warning", message: "<style> tag found — may affect page layout" });
+  }
+
+  return { ok: issues.every((i) => i.level !== "error"), issues };
+}
+
+function EulaTab() {
+  const qc = useQueryClient();
+  const { data: current, isLoading } = useQuery({
+    queryKey: ["admin", "eula"],
+    queryFn: getAdminEula,
+  });
+
+  const currentVersion = current?.version ?? null;
+  const nextVersion = React.useMemo(() => {
+    if (!currentVersion) return "";
+    const [major, minor] = currentVersion.split(".").map(Number);
+    return `${major}.${(minor ?? 0) + 1}`;
+  }, [currentVersion]);
+  const [versionOverride, setVersionOverride] = useState<string | null>(null);
+  const version = versionOverride ?? nextVersion;
+  const setVersion = setVersionOverride;
+  const [bodyHtml, setBodyHtml] = useState("");
+  const [effectiveDate, setEffectiveDate] = useState(
+    () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  );
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [lintResult, setLintResult] = useState<LintResult | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState(false);
+
+  const versionValid = /^\d+\.\d+$/.test(version.trim());
+
+  function handleBodyHtmlChange(val: string) {
+    setBodyHtml(val);
+    setLintResult(null); // reset lint when content changes
+  }
+
+  const { mutate: publish, isPending } = useMutation({
+    mutationFn: () => createEulaVersion(
+      version.trim(),
+      bodyHtml.trim(),
+      effectiveDate ? new Date(effectiveDate).toISOString() : undefined,
+    ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "eula"] });
+      qc.invalidateQueries({ queryKey: ["eula", "current"] });
+      setFormSuccess(true);
+      setVersionOverride(null);
+      setBodyHtml("");
+      setEffectiveDate(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+      setLintResult(null);
+      setFormError(null);
+      setTimeout(() => setFormSuccess(false), 3000);
+    },
+    onError: (e: unknown) => {
+      setFormError(e instanceof Error ? e.message : "Failed to publish EULA version");
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    setFormSuccess(false);
+    if (!version.trim()) { setFormError("Version is required"); return; }
+    if (!versionValid) { setFormError("Version must be in x.y format (e.g. 0.4)"); return; }
+    if (!bodyHtml.trim()) { setFormError("Body HTML is required"); return; }
+    if (!lintResult?.ok) { setFormError("HTML must pass lint before publishing"); return; }
+    publish();
+  }
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  return (
+    <div className="space-y-6">
+      {/* Current version */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-medium">Current version: {current?.version}</h2>
+        <p className="text-xs text-muted-foreground">
+          Effective {current ? new Date(current.effective_date).toLocaleDateString() : "—"}
+          {" · "}Published {current ? new Date(current.created_at).toLocaleString() : "—"}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" type="button" onClick={() => setShowCurrent((v) => !v)}>
+            {showCurrent ? "Hide" : "View"} current EULA
+          </Button>
+        </div>
+        {showCurrent && current && (
+          <div className="rounded-lg border p-4 max-h-[40vh] overflow-y-auto">
+            <EulaContent bodyHtml={current.body_html} />
+          </div>
+        )}
+      </div>
+
+      <hr />
+
+      {/* Publish new version */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <h2 className="text-sm font-medium">Publish new version</h2>
+        <p className="text-xs text-muted-foreground">
+          Publishing a new version will require all users to re-accept on next login.
+        </p>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium">Version string</label>
+          <input
+            className={`w-full rounded border bg-background px-3 py-1.5 text-sm ${version && !versionValid ? "border-destructive" : ""}`}
+            placeholder="e.g. 0.4"
+            value={version}
+            onChange={(e) => setVersion(e.target.value)}
+          />
+          {version && !versionValid && (
+            <p className="text-xs text-destructive">Must be x.y format (e.g. 0.4)</p>
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-medium">Effective date</label>
+          <input
+            type="datetime-local"
+            className="w-full rounded border bg-background px-3 py-1.5 text-sm"
+            value={effectiveDate}
+            onChange={(e) => setEffectiveDate(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium">Body HTML</label>
+            {current && (
+              <Button variant="outline" size="sm" type="button" onClick={() => {
+                const html = current.body_html.replace(/Version \d+\.\d+/, `Version ${version}`);
+                setBodyHtml(html);
+                setLintResult(null);
+              }}>
+                Copy to editor
+              </Button>
+            )}
+          </div>
+          <textarea
+            className="w-full rounded border bg-background px-3 py-1.5 text-sm font-mono min-h-[240px]"
+            placeholder="<p>Paste full EULA HTML here…</p>"
+            value={bodyHtml}
+            onChange={(e) => handleBodyHtmlChange(e.target.value)}
+          />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!bodyHtml.trim()}
+          onClick={() => setLintResult(lintHtml(bodyHtml))}
+        >
+          Lint &amp; preview
+        </Button>
+
+        {/* Lint results */}
+        {lintResult && (
+          <div className={`rounded-lg border p-3 space-y-1 ${lintResult.ok ? "border-green-500/40 bg-green-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+            {lintResult.issues.length === 0 ? (
+              <p className="text-xs text-green-600 font-medium">✓ No issues found</p>
+            ) : (
+              lintResult.issues.map((issue, i) => (
+                <p key={i} className={`text-xs ${issue.level === "error" ? "text-destructive" : "text-yellow-600"}`}>
+                  {issue.level === "error" ? "✗" : "⚠"} {issue.message}
+                </p>
+              ))
+            )}
+            {lintResult.ok && (
+              <p className="text-xs text-green-600 font-medium">✓ Lint passed — HTML is safe to publish</p>
+            )}
+          </div>
+        )}
+
+        {/* New EULA preview */}
+        {lintResult?.ok && bodyHtml.trim() && (
+          <div className="space-y-1">
+            <p className="text-xs font-medium">Preview</p>
+            <div className="rounded-lg border p-4 max-h-[40vh] overflow-y-auto">
+              <EulaContent bodyHtml={bodyHtml} />
+            </div>
+          </div>
+        )}
+
+        {formError && (
+          <p className="text-sm text-destructive">{formError}</p>
+        )}
+        {formSuccess && (
+          <p className="text-sm text-green-600">EULA version published.</p>
+        )}
+
+        {lintResult?.ok && (
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Publishing…" : "Publish new version"}
+          </Button>
+        )}
+      </form>
     </div>
   );
 }

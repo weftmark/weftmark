@@ -6,8 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import activities, admin, auth, health, looms, projects, yarn
-from app.routers.auth import load_oidc_metadata
+from app.routers import activities, admin, auth, health, looms, projects, users, yarn
 from app.version import VERSION
 
 settings = get_settings()
@@ -19,7 +18,6 @@ start_time: datetime = datetime.now(timezone.utc)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global start_time
     start_time = datetime.now(timezone.utc)
-    await load_oidc_metadata()
     yield
 
 
@@ -27,9 +25,9 @@ app = FastAPI(
     title="WeftMark API",
     version=VERSION,
     lifespan=lifespan,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
+    docs_url="/api/docs" if settings.debug else None,
+    redoc_url="/api/redoc" if settings.debug else None,
+    openapi_url="/api/openapi.json" if settings.debug else None,
 )
 
 app.add_middleware(
@@ -42,6 +40,8 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(users.eula_router)
+app.include_router(users.router)
 app.include_router(projects.router)
 app.include_router(looms.router)
 app.include_router(yarn.router)

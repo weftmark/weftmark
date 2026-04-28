@@ -1,4 +1,3 @@
-import io
 import mimetypes
 import uuid
 from datetime import datetime, timezone
@@ -6,7 +5,6 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
-from PIL import Image as PILImage
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,22 +16,13 @@ from app.models.loom import Loom, LoomVersion
 from app.models.project import Project
 from app.models.user import User
 from app.services import storage, wif_parser
+from app.services.images import resize_to_jpeg
+from app.services.storage_quota import check_storage_quota
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 MAX_ACTIVITY_PHOTOS = 20
 MAX_PHOTO_SIZE = 25 * 1024 * 1024  # 25 MB raw (resized output is much smaller)
-_RESIZE_MAX_PX = 2048
-_JPEG_QUALITY = 85
-
-
-def _resize_to_jpeg(data: bytes) -> bytes:
-    """Resize to at most _RESIZE_MAX_PX on the longest side and encode as JPEG."""
-    img = PILImage.open(io.BytesIO(data))
-    img = img.convert("RGB")
-    img.thumbnail((_RESIZE_MAX_PX, _RESIZE_MAX_PX), PILImage.Resampling.LANCZOS)
-    out = io.BytesIO()
-    img.save(out, format="JPEG", quality=_JPEG_QUALITY, optimize=True)
-    return out.getvalue()
+_ACTIVITY_RESIZE_MAX_PX = 2048
 
 
 router = APIRouter(prefix="/api/activities", tags=["activities"])
@@ -553,9 +542,11 @@ async def upload_activity_photo(
         raise HTTPException(status_code=400, detail=f"Maximum {MAX_ACTIVITY_PHOTOS} photos per activity")
 
     try:
-        data = _resize_to_jpeg(data)
+        data = resize_to_jpeg(data, max_px=_ACTIVITY_RESIZE_MAX_PX)
     except Exception:
         raise HTTPException(status_code=400, detail="Could not process image file")
+
+    await check_storage_quota(current_user.id, db, incoming_bytes=len(data))
 
     photo_id = uuid.uuid4()
     file_path = storage.save_activity_photo(activity.id, photo_id, ".jpg", data)
@@ -573,6 +564,7 @@ async def upload_activity_photo(
         activity_id=activity.id,
         file_path=file_path,
         filename=file.filename or "photo.jpg",
+        file_size_bytes=len(data),
         display_order=max_order + 1,
     )
     db.add(photo)

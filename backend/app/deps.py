@@ -1,12 +1,14 @@
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import AsyncSessionLocal
 from app.models.user import User
+from app.services.clerk_auth import jwks_url_from_publishable_key, verify_session_token
 
 _LAST_ACTIVE_THROTTLE = timedelta(minutes=5)
 
@@ -17,20 +19,33 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_current_user(
-    session: str | None = Cookie(default=None),
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    from app.routers.auth import decode_session_token
+    settings = get_settings()
 
-    if not session:
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    payload = decode_session_token(session)
-    if payload is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    token = auth_header.removeprefix("Bearer ").strip()
 
-    user = await db.scalar(select(User).where(User.id == payload["sub"], User.deleted_at.is_(None)))
-    if user is None or not user.is_active:
+    if not settings.clerk_publishable_key:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Auth not configured")
+
+    jwks_url = jwks_url_from_publishable_key(settings.clerk_publishable_key)
+    clerk_user_id = verify_session_token(token, jwks_url)
+    if not clerk_user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+    user = await db.scalar(
+        select(User).where(
+            User.clerk_user_id == clerk_user_id,
+            User.deleted_at.is_(None),
+            User.is_active.is_(True),
+        )
+    )
+    if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     now = datetime.now(timezone.utc)
@@ -44,4 +59,10 @@ async def get_current_user(
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required")
+    return current_user
+
+
+async def require_superuser(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Superuser required")
     return current_user

@@ -2,9 +2,10 @@ import uuid
 from datetime import date
 
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.loom import Loom, LoomVersion
+from app.models.loom import Loom, LoomVersion, LoomVersionAccessory
 from app.models.user import User
 
 
@@ -200,4 +201,244 @@ class TestDeleteLoom:
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.delete(f"/api/looms/{uuid.uuid4()}")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /{loom_id}/versions
+# ---------------------------------------------------------------------------
+
+
+class TestAddVersion:
+    _VERSION_PAYLOAD = {
+        "effective_date": "2024-06-01",
+        "num_shafts": 8,
+        "num_treadles": 10,
+        "description": "Added second beam",
+    }
+
+    async def test_returns_201(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/versions", json=self._VERSION_PAYLOAD)
+        assert resp.status_code == 201
+
+    async def test_returns_version_fields(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/versions", json=self._VERSION_PAYLOAD)
+        data = resp.json()
+        assert data["num_shafts"] == 8
+        assert data["description"] == "Added second beam"
+
+    async def test_version_number_increments(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/versions", json=self._VERSION_PAYLOAD)
+        assert resp.json()["version_number"] == 2
+
+    async def test_loom_now_has_two_versions(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        await auth_client.post(f"/api/looms/{loom['id']}/versions", json=self._VERSION_PAYLOAD)
+        resp = await auth_client.get(f"/api/looms/{loom['id']}")
+        assert len(resp.json()["versions"]) == 2
+
+    async def test_unknown_loom_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/looms/{uuid.uuid4()}/versions", json=self._VERSION_PAYLOAD)
+        assert resp.status_code == 404
+
+    async def test_other_users_loom_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, admin_user)
+        resp = await auth_client.post(f"/api/looms/{loom.id}/versions", json=self._VERSION_PAYLOAD)
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(f"/api/looms/{uuid.uuid4()}/versions", json=self._VERSION_PAYLOAD)
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# PATCH /{loom_id}/versions/{version_id}
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateVersion:
+    async def _get_version_id(self, auth_client: AsyncClient) -> tuple[str, str]:
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        return loom["id"], version_id
+
+    async def test_returns_200(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_version_id(auth_client)
+        resp = await auth_client.patch(f"/api/looms/{loom_id}/versions/{version_id}", json={"name": "Initial setup"})
+        assert resp.status_code == 200
+
+    async def test_updates_name(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_version_id(auth_client)
+        await auth_client.patch(f"/api/looms/{loom_id}/versions/{version_id}", json={"name": "8-shaft floor"})
+        resp = await auth_client.get(f"/api/looms/{loom_id}")
+        version = next(v for v in resp.json()["versions"] if v["id"] == version_id)
+        assert version["name"] == "8-shaft floor"
+
+    async def test_updates_description(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_version_id(auth_client)
+        resp = await auth_client.patch(
+            f"/api/looms/{loom_id}/versions/{version_id}", json={"description": "Updated desc"}
+        )
+        assert resp.json()["description"] == "Updated desc"
+
+    async def test_unknown_loom_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}", json={"name": "x"})
+        assert resp.status_code == 404
+
+    async def test_unknown_version_returns_404(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.patch(f"/api/looms/{loom['id']}/versions/{uuid.uuid4()}", json={"name": "x"})
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.patch(f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}", json={"name": "x"})
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /{loom_id}/versions/{version_id}/clone
+# ---------------------------------------------------------------------------
+
+
+class TestCloneVersion:
+    _CLONE_PAYLOAD = {"effective_date": "2025-01-01", "name": "Cloned", "include_accessories": True}
+
+    async def test_returns_201(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/versions/{version_id}/clone", json=self._CLONE_PAYLOAD)
+        assert resp.status_code == 201
+
+    async def test_cloned_version_has_incremented_number(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/versions/{version_id}/clone", json=self._CLONE_PAYLOAD)
+        assert resp.json()["version_number"] == 2
+
+    async def test_cloned_version_inherits_shafts(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/versions/{version_id}/clone", json=self._CLONE_PAYLOAD)
+        assert resp.json()["num_shafts"] == loom["current_version"]["num_shafts"]
+
+    async def test_clone_without_accessories(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        # First add an accessory to the source version
+        await auth_client.post(
+            f"/api/looms/{loom['id']}/versions/{version_id}/accessories", json={"name": "Fly shuttle"}
+        )
+        payload = {**self._CLONE_PAYLOAD, "include_accessories": False}
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/versions/{version_id}/clone", json=payload)
+        assert resp.json()["accessories"] == []
+
+    async def test_clone_with_accessories_copies_them(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        await auth_client.post(f"/api/looms/{loom['id']}/versions/{version_id}/accessories", json={"name": "Back beam"})
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/versions/{version_id}/clone", json=self._CLONE_PAYLOAD)
+        assert len(resp.json()["accessories"]) == 1
+        assert resp.json()["accessories"][0]["name"] == "Back beam"
+
+    async def test_unknown_loom_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/clone", json=self._CLONE_PAYLOAD
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/clone", json=self._CLONE_PAYLOAD)
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /{loom_id}/versions/{version_id}/accessories
+# ---------------------------------------------------------------------------
+
+
+class TestAddAccessory:
+    async def test_returns_201(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        resp = await auth_client.post(
+            f"/api/looms/{loom['id']}/versions/{version_id}/accessories", json={"name": "Fly shuttle"}
+        )
+        assert resp.status_code == 201
+
+    async def test_returns_accessory_fields(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        resp = await auth_client.post(
+            f"/api/looms/{loom['id']}/versions/{version_id}/accessories", json={"name": "Fly shuttle"}
+        )
+        data = resp.json()
+        assert data["name"] == "Fly shuttle"
+        assert "id" in data
+
+    async def test_accessory_appears_in_version(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        await auth_client.post(
+            f"/api/looms/{loom['id']}/versions/{version_id}/accessories", json={"name": "Boat shuttle"}
+        )
+        resp = await auth_client.get(f"/api/looms/{loom['id']}")
+        version = next(v for v in resp.json()["versions"] if v["id"] == version_id)
+        assert any(a["name"] == "Boat shuttle" for a in version["accessories"])
+
+    async def test_unknown_loom_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/accessories", json={"name": "x"}
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/accessories", json={"name": "x"})
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# DELETE /{loom_id}/versions/{version_id}/accessories/{accessory_id}
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteAccessory:
+    async def _create_accessory(self, auth_client: AsyncClient) -> tuple[str, str, str]:
+        loom = await _create_loom(auth_client)
+        loom_id = loom["id"]
+        version_id = loom["current_version"]["id"]
+        resp = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/accessories", json={"name": "Umbrella swift"}
+        )
+        acc_id = resp.json()["id"]
+        return loom_id, version_id, acc_id
+
+    async def test_returns_204(self, auth_client: AsyncClient):
+        loom_id, version_id, acc_id = await self._create_accessory(auth_client)
+        resp = await auth_client.delete(f"/api/looms/{loom_id}/versions/{version_id}/accessories/{acc_id}")
+        assert resp.status_code == 204
+
+    async def test_accessory_removed_from_db(self, auth_client: AsyncClient, db_session: AsyncSession):
+        loom_id, version_id, acc_id = await self._create_accessory(auth_client)
+        await auth_client.delete(f"/api/looms/{loom_id}/versions/{version_id}/accessories/{acc_id}")
+        db_session.expire_all()
+        row = await db_session.scalar(select(LoomVersionAccessory).where(LoomVersionAccessory.id == uuid.UUID(acc_id)))
+        assert row is None
+
+    async def test_unknown_accessory_returns_404(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        version_id = loom["current_version"]["id"]
+        resp = await auth_client.delete(f"/api/looms/{loom['id']}/versions/{version_id}/accessories/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_unknown_loom_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.delete(f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/accessories/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.delete(f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/accessories/{uuid.uuid4()}")
         assert resp.status_code == 401

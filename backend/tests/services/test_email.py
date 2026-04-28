@@ -10,7 +10,24 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.email import send_invite_email
+from app.services.email import (
+    send_account_approved_email,
+    send_account_denied_email,
+    send_approval_confirmation_to_admins,
+    send_invite_email,
+    send_pending_signup_notification,
+    send_signup_received_email,
+)
+
+
+def _decoded_body(msg) -> str:
+    """Return all MIME body parts as a single decoded string.
+
+    MIMEText encodes non-ASCII content (e.g. → arrows in templates) as
+    base64. get_payload(decode=True) handles both plain and base64 parts.
+    """
+    return " ".join(p.get_payload(decode=True).decode("utf-8") for p in msg.get_payload())
+
 
 # ---------------------------------------------------------------------------
 # Fixture: deterministic settings
@@ -214,3 +231,200 @@ class TestInviteUrl:
         assert "aaa" in body1
         assert "bbb" in body2
         assert "bbb" not in body1
+
+
+# ---------------------------------------------------------------------------
+# Template rendering
+# ---------------------------------------------------------------------------
+
+
+class TestTemplateRendering:
+    def test_render_returns_txt_and_html(self):
+        from app.services.email import _render
+
+        txt, html = _render(
+            "account_approved",
+            display_name="Alice",
+            app_name="TestApp",
+            login_url="http://example.com/login",
+        )
+        assert "Alice" in txt
+        assert "Alice" in html
+        assert "TestApp" in txt
+        assert "TestApp" in html
+
+    def test_render_substitutes_all_placeholders(self):
+        from app.services.email import _render
+
+        txt, _ = _render(
+            "account_denied",
+            display_name="Bob",
+            app_name="TestApp",
+        )
+        assert "Bob" in txt
+        assert "{" not in txt
+
+
+# ---------------------------------------------------------------------------
+# send_pending_signup_notification
+# ---------------------------------------------------------------------------
+
+
+class TestSendPendingSignupNotification:
+    async def _call(self, admin_emails=None, display_name="Alice", email="alice@test.com"):
+        if admin_emails is None:
+            admin_emails = ["admin@example.com"]
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_pending_signup_notification(admin_emails, display_name, email)
+        return mock_send
+
+    async def test_send_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipients_include_admin(self):
+        mock = await self._call(admin_emails=["a@test.com", "b@test.com"])
+        msg, *_ = mock.call_args.args
+        assert "a@test.com" in msg["To"]
+        assert "b@test.com" in msg["To"]
+
+    async def test_subject_mentions_signup(self):
+        mock = await self._call()
+        msg, *_ = mock.call_args.args
+        assert "sign" in msg["Subject"].lower() or "approval" in msg["Subject"].lower()
+
+    async def test_body_contains_display_name(self):
+        mock = await self._call(display_name="Weaver Jane")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "Weaver Jane" in combined
+
+
+# ---------------------------------------------------------------------------
+# send_signup_received_email
+# ---------------------------------------------------------------------------
+
+
+class TestSendSignupReceivedEmail:
+    async def _call(self, to="user@test.com", display_name="Bob"):
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_signup_received_email(to, display_name)
+        return mock_send
+
+    async def test_send_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipient_is_user(self):
+        mock = await self._call(to="specific@test.com")
+        msg, *_ = mock.call_args.args
+        assert "specific@test.com" in msg["To"]
+
+    async def test_body_contains_display_name(self):
+        mock = await self._call(display_name="Carol Weaver")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "Carol Weaver" in combined
+
+
+# ---------------------------------------------------------------------------
+# send_account_approved_email
+# ---------------------------------------------------------------------------
+
+
+class TestSendAccountApprovedEmail:
+    async def _call(self, to="user@test.com", display_name="Dave"):
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_account_approved_email(to, display_name)
+        return mock_send
+
+    async def test_send_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipient_is_user(self):
+        mock = await self._call(to="dave@test.com")
+        msg, *_ = mock.call_args.args
+        assert "dave@test.com" in msg["To"]
+
+    async def test_subject_mentions_account(self):
+        mock = await self._call()
+        msg, *_ = mock.call_args.args
+        assert (
+            "account" in msg["Subject"].lower()
+            or "approved" in msg["Subject"].lower()
+            or "ready" in msg["Subject"].lower()
+        )
+
+    async def test_body_contains_login_url(self):
+        mock = await self._call()
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "login" in combined.lower() or "sign" in combined.lower()
+
+
+# ---------------------------------------------------------------------------
+# send_account_denied_email
+# ---------------------------------------------------------------------------
+
+
+class TestSendAccountDeniedEmail:
+    async def _call(self, to="user@test.com", display_name="Eve"):
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_account_denied_email(to, display_name)
+        return mock_send
+
+    async def test_send_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipient_is_user(self):
+        mock = await self._call(to="eve@test.com")
+        msg, *_ = mock.call_args.args
+        assert "eve@test.com" in msg["To"]
+
+    async def test_body_contains_display_name(self):
+        mock = await self._call(display_name="Eve Woven")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "Eve Woven" in combined
+
+
+# ---------------------------------------------------------------------------
+# send_approval_confirmation_to_admins
+# ---------------------------------------------------------------------------
+
+
+class TestSendApprovalConfirmationToAdmins:
+    async def _call(self, admin_emails=None, display_name="Frank", email="frank@test.com", approved_by="Admin A"):
+        if admin_emails is None:
+            admin_emails = ["admin@example.com"]
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_approval_confirmation_to_admins(admin_emails, display_name, email, approved_by)
+        return mock_send
+
+    async def test_send_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipients_include_all_admins(self):
+        mock = await self._call(admin_emails=["x@test.com", "y@test.com"])
+        msg, *_ = mock.call_args.args
+        assert "x@test.com" in msg["To"]
+        assert "y@test.com" in msg["To"]
+
+    async def test_subject_contains_user_name(self):
+        mock = await self._call(display_name="Frank Loom")
+        msg, *_ = mock.call_args.args
+        assert "Frank Loom" in msg["Subject"]
+
+    async def test_body_contains_approved_by(self):
+        mock = await self._call(approved_by="Super Admin")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "Super Admin" in combined

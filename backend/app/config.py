@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     # Application
     app_secret_key: str = "change-me-in-production"
+    app_env: str = "dev"
     debug: bool = False
     allowed_origins: str = "http://localhost:3000"
     frontend_url: str = "http://localhost:3000"
@@ -18,9 +19,12 @@ class Settings(BaseSettings):
 
     # Database
     # For local dev: set POSTGRES_* vars and leave POSTGRES_DSN blank.
-    # For managed Postgres (e.g. Neon): set POSTGRES_DSN to the full connection string;
-    # the individual POSTGRES_* vars are ignored.
+    # For managed Postgres (e.g. Neon):
+    #   POSTGRES_DSN        — pooled connection string (app traffic)
+    #   POSTGRES_DSN_DIRECT — direct connection string (Alembic migrations only)
+    # If POSTGRES_DSN_DIRECT is blank, Alembic falls back to POSTGRES_DSN.
     postgres_dsn: str = ""
+    postgres_dsn_direct: str = ""
     postgres_host: str = "db"
     postgres_port: int = 5432
     postgres_db: str = "weaving_site"
@@ -30,8 +34,19 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         if self.postgres_dsn:
+            from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
             url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
-            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            # asyncpg uses ssl=true/require, not libpq's sslmode=; drop channel_binding entirely
+            parsed = urlparse(url)
+            params: dict[str, str] = {}
+            for k, v in parse_qs(parsed.query).items():
+                if k == "sslmode":
+                    params["ssl"] = v[0]
+                elif k != "channel_binding":
+                    params[k] = v[0]
+            return urlunparse(parsed._replace(query=urlencode(params)))
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -47,43 +62,22 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
-    # Redis / Celery
-    redis_url: str = "redis://redis:6379/0"
-    celery_broker_url: str = "redis://redis:6379/1"
-    celery_result_backend: str = "redis://redis:6379/2"
-
-    # OIDC — primary provider (Google or any single OIDC endpoint)
-    oidc_discovery_url: str = ""
-    oidc_client_id: str = ""
-    oidc_client_secret: str = ""
-    oidc_redirect_uri: str = "http://localhost:3000/auth/callback"
-
-    # Apple Sign In (optional second provider)
-    # client_secret must be a pre-generated ES256 JWT (valid up to 6 months).
-    # Generate with: https://developer.apple.com/documentation/sign_in_with_apple/generate_and_validate_tokens
-    oidc_apple_client_id: str = ""
-    oidc_apple_client_secret: str = ""
-    oidc_apple_redirect_uri: str = "http://localhost:3000/auth/callback"
-
     @property
-    def active_providers(self) -> dict[str, dict[str, str]]:
-        """Returns configured OIDC providers keyed by provider name."""
-        providers: dict[str, dict[str, str]] = {}
-        if self.oidc_discovery_url and self.oidc_client_id:
-            providers["google"] = {
-                "discovery_url": self.oidc_discovery_url,
-                "client_id": self.oidc_client_id,
-                "client_secret": self.oidc_client_secret,
-                "redirect_uri": self.oidc_redirect_uri,
-            }
-        if self.oidc_apple_client_id:
-            providers["apple"] = {
-                "discovery_url": "https://appleid.apple.com",
-                "client_id": self.oidc_apple_client_id,
-                "client_secret": self.oidc_apple_client_secret,
-                "redirect_uri": self.oidc_apple_redirect_uri,
-            }
-        return providers
+    def database_url_alembic(self) -> str:
+        """Direct (non-pooled) connection for Alembic DDL migrations."""
+        dsn = self.postgres_dsn_direct or self.postgres_dsn
+        if dsn:
+            url = dsn.replace("postgres://", "postgresql://", 1)
+            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+        return (
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    # Clerk authentication
+    clerk_publishable_key: str = ""
+    clerk_secret_key: str = ""
+    clerk_webhook_secret: str = ""
 
     # SMTP (SMTP2Go)
     smtp_host: str = "mail.smtp2go.com"

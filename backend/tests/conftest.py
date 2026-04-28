@@ -132,6 +132,13 @@ def setup_database():
             async with local_engine.begin() as conn:
                 await conn.run_sync(Base.metadata.drop_all)
                 await conn.run_sync(Base.metadata.create_all)
+                # Seed reference data that tests rely on (not truncated per-test)
+                await conn.execute(
+                    text(
+                        "INSERT INTO eula_versions (version, body_html, effective_date) "
+                        "VALUES ('0.3', '<p>Test EULA v0.3</p>', '2026-04-01 00:00:00+00')"
+                    )
+                )
 
         asyncio.run(_create())
         db_ok = True
@@ -170,6 +177,13 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
         tables = [t for t in Base.metadata.tables.keys() if t in existing]
         if tables:
             await cleanup.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
+            # Re-seed reference data consumed by tests (EULA version must always exist).
+            await cleanup.execute(
+                text(
+                    "INSERT INTO eula_versions (version, body_html, effective_date) "
+                    "VALUES ('0.3', '<p>Test EULA v0.3</p>', '2026-04-01 00:00:00+00')"
+                )
+            )
             await cleanup.commit()
 
 
@@ -254,6 +268,36 @@ async def raw_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, No
         yield db_session
 
     app.dependency_overrides[get_db] = _override_get_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def superuser_user(db_session: AsyncSession) -> User:
+    user = User(
+        email="superuser@example.com",
+        display_name="Super User",
+        oidc_sub="superuser-oidc-sub-001",
+        is_admin=True,
+        is_superuser=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.commit()
+    return user
+
+
+@pytest.fixture
+async def superuser_client(db_session: AsyncSession, superuser_user: User) -> AsyncGenerator[AsyncClient, None]:
+    async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    async def _override_get_current_user() -> User:
+        return superuser_user
+
+    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_current_user] = _override_get_current_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()

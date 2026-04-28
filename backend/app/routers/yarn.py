@@ -15,6 +15,7 @@ from app.deps import get_current_user, get_db
 from app.models.user import User
 from app.models.yarn import Skein, Yarn
 from app.services import storage
+from app.services.images import resize_to_jpeg
 
 router = APIRouter(prefix="/api/yarn", tags=["yarn"])
 
@@ -303,10 +304,13 @@ async def upload_yarn_photo(
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+    try:
+        data = resize_to_jpeg(data)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not process image file")
     if yarn.photo_path:
         storage.delete_yarn_photo(yarn.photo_path)
-    ext = _ext(file.content_type or "")
-    yarn.photo_path = storage.save_yarn_photo(yarn_id, ext, data)
+    yarn.photo_path = storage.save_yarn_photo(yarn_id, ".jpg", data)
     await db.commit()
 
 
