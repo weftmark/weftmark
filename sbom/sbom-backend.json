@@ -67,8 +67,8 @@
       "version": "0.30.0"
     },
     {
-      "bom-ref": "requirements-L20",
-      "description": "requirements line 20: boto3==1.38.0",
+      "bom-ref": "requirements-L21",
+      "description": "requirements line 21: boto3==1.38.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -193,8 +193,8 @@
       "version": "12.2.0"
     },
     {
-      "bom-ref": "requirements-L21",
-      "description": "requirements line 21: psutil==6.1.1",
+      "bom-ref": "requirements-L22",
+      "description": "requirements line 22: psutil==6.1.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -319,6 +319,21 @@
       "version": "2.0.36"
     },
     {
+      "bom-ref": "requirements-L20",
+      "description": "requirements line 20: svix==1.92.2",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/svix/"
+        }
+      ],
+      "name": "svix",
+      "purl": "pkg:pypi/svix@1.92.2",
+      "type": "library",
+      "version": "1.92.2"
+    },
+    {
       "bom-ref": "requirements-L2",
       "description": "requirements line 2: uvicorn[standard]==0.32.1",
       "externalReferences": [
@@ -384,6 +399,9 @@
       "ref": "requirements-L21"
     },
     {
+      "ref": "requirements-L22"
+    },
+    {
       "ref": "requirements-L3"
     },
     {
@@ -406,7 +424,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-04-27T13:23:19.899341+00:00",
+    "timestamp": "2026-04-28T16:40:01.892249+00:00",
     "tools": {
       "components": [
         {
@@ -510,7 +528,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:11db8b53-a5bc-45ea-9d80-394424d7c5dd",
+  "serialNumber": "urn:uuid:73e59fcf-2b8a-466d-ae18-3e3eb193f8be",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
