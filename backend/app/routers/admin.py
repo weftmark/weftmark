@@ -528,6 +528,23 @@ async def patch_user(
         )
         or 0
     )
+    activity_storage = (
+        await db.scalar(
+            select(func.coalesce(func.sum(ActivityPhoto.file_size_bytes), 0))
+            .join(Activity, ActivityPhoto.activity_id == Activity.id)
+            .where(Activity.owner_id == user.id)
+        )
+        or 0
+    )
+    loom_storage = (
+        await db.scalar(
+            select(func.coalesce(func.sum(LoomVersionPhoto.file_size_bytes), 0))
+            .join(LoomVersion, LoomVersionPhoto.loom_version_id == LoomVersion.id)
+            .join(Loom, LoomVersion.loom_id == Loom.id)
+            .where(Loom.owner_id == user.id)
+        )
+        or 0
+    )
 
     return AdminUserResponse(
         id=user.id,
@@ -546,6 +563,7 @@ async def patch_user(
             activities_active=act_active,
             activities_completed=act_completed,
             looms=looms,
+            storage_bytes=int(activity_storage) + int(loom_storage),
         ),
     )
 
@@ -590,7 +608,7 @@ async def ban_user(
         approved_by_name=user.approved_by_name,
         approved_by_email=user.approved_by_email,
         is_superuser=user.is_superuser,
-        counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0),
+        counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
     )
 
 
@@ -625,7 +643,7 @@ async def unban_user(
         approved_by_name=user.approved_by_name,
         approved_by_email=user.approved_by_email,
         is_superuser=user.is_superuser,
-        counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0),
+        counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
     )
 
 
