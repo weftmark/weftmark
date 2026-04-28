@@ -29,6 +29,7 @@ from app.services.email import (
     send_account_approved_email,
     send_account_denied_email,
     send_approval_confirmation_to_admins,
+    send_test_email,
 )
 from app.version import VERSION
 
@@ -637,6 +638,70 @@ async def get_health(
     )
 
 
+async def _probe_smtp() -> ServiceCheckResult:
+    import aiosmtplib
+
+    settings = get_settings()
+    checks: list[ServicePermCheck] = []
+
+    missing = [
+        k
+        for k, v in {
+            "smtp_host": settings.smtp_host,
+            "smtp_user": settings.smtp_user,
+            "smtp_password": settings.smtp_password,
+            "smtp_from_email": settings.smtp_from_email,
+        }.items()
+        if not v
+    ]
+    if missing:
+        checks.append(ServicePermCheck(name="config", status="error", message=f"Missing: {', '.join(missing)}"))
+        return _make_result("SMTP", checks)
+    checks.append(
+        ServicePermCheck(name="config", status="ok", message=f"{settings.smtp_host}:{settings.smtp_port} configured")
+    )
+
+    smtp = aiosmtplib.SMTP(hostname=settings.smtp_host, port=settings.smtp_port, timeout=5)
+
+    try:
+        await asyncio.wait_for(smtp.connect(), timeout=5.0)
+        checks.append(
+            ServicePermCheck(
+                name="connect", status="ok", message=f"TCP connected to {settings.smtp_host}:{settings.smtp_port}"
+            )
+        )
+    except (asyncio.TimeoutError, Exception) as exc:
+        msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
+        checks.append(ServicePermCheck(name="connect", status="error", message=msg))
+        return _make_result("SMTP", checks)
+
+    try:
+        await asyncio.wait_for(smtp.starttls(), timeout=5.0)
+        checks.append(ServicePermCheck(name="starttls", status="ok", message="STARTTLS negotiated"))
+    except (asyncio.TimeoutError, Exception) as exc:
+        msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
+        checks.append(ServicePermCheck(name="starttls", status="error", message=msg))
+        try:
+            await smtp.quit()
+        except Exception:
+            pass
+        return _make_result("SMTP", checks)
+
+    try:
+        await asyncio.wait_for(smtp.login(settings.smtp_user, settings.smtp_password), timeout=5.0)
+        checks.append(ServicePermCheck(name="auth", status="ok", message=f"Authenticated as {settings.smtp_user}"))
+    except (asyncio.TimeoutError, Exception) as exc:
+        msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
+        checks.append(ServicePermCheck(name="auth", status="error", message=msg))
+    finally:
+        try:
+            await smtp.quit()
+        except Exception:
+            pass
+
+    return _make_result("SMTP", checks)
+
+
 # ---------------------------------------------------------------------------
 # Services connection check
 # ---------------------------------------------------------------------------
@@ -651,8 +716,22 @@ async def check_services(
         _probe_postgres(db),
         _probe_s3(),
         _probe_clerk(),
+        _probe_smtp(),
     )
     return list(results)
+
+
+# ---------------------------------------------------------------------------
+# Test email
+# ---------------------------------------------------------------------------
+
+
+@router.post("/test-email", status_code=200)
+async def send_test_email_endpoint(
+    admin: User = Depends(require_admin),
+) -> dict:
+    await send_test_email(admin.email)
+    return {"status": "sent", "to": admin.email}
 
 
 # ---------------------------------------------------------------------------
