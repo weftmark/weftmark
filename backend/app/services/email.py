@@ -98,6 +98,19 @@ async def send_approval_confirmation_to_admins(
     await _send(admin_emails, f"Account approved — {display_name} ({email})", txt, html)
 
 
+async def send_test_email(to_email: str) -> None:
+    settings = get_settings()
+    txt = (
+        f"This is a test email from {settings.smtp_from_name}.\n\n"
+        "If you received this, your SMTP configuration is working correctly."
+    )
+    html = (
+        f"<p>This is a test email from <strong>{settings.smtp_from_name}</strong>.</p>"
+        "<p>If you received this, your SMTP configuration is working correctly.</p>"
+    )
+    await _send([to_email], f"{settings.smtp_from_name} — Test Email", txt, html)
+
+
 async def send_invite_email(to_email: str, invite_token: str, expires_days: int) -> None:
     settings = get_settings()
     invite_url = f"{settings.frontend_url}/register?token={invite_token}"
