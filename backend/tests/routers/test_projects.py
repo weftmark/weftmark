@@ -8,6 +8,7 @@ import io
 import tempfile
 import uuid
 
+import pytest
 from httpx import AsyncClient
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -320,3 +321,170 @@ class TestGetDrawdown:
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.headers.get("ETag") == f'"{project.id}"'
+
+
+# ---------------------------------------------------------------------------
+# POST /api/projects  (WIF upload)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateProject:
+    @pytest.fixture(autouse=True)
+    def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+
+    async def test_returns_201(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/projects",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "My Project"},
+        )
+        assert resp.status_code == 201
+
+    async def test_returns_project_fields(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/projects",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "My Project"},
+        )
+        data = resp.json()
+        assert data["name"] == "My Project"
+        assert data["wif_filename"] == "test.wif"
+        assert "has_treadling" in data
+        assert "lint_warnings" in data
+
+    async def test_non_wif_extension_returns_400(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/projects",
+            files={"wif_file": ("test.txt", b"not a wif", "text/plain")},
+            data={"name": "My Project"},
+        )
+        assert resp.status_code == 400
+
+    async def test_with_description(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/projects",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "Described Project", "description": "A test project"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["description"] == "A test project"
+
+    async def test_appears_in_list(self, auth_client: AsyncClient):
+        await auth_client.post(
+            "/api/projects",
+            files={"wif_file": ("list.wif", _WIF, "application/octet-stream")},
+            data={"name": "Listed Project"},
+        )
+        data = (await auth_client.get("/api/projects")).json()
+        assert any(p["name"] == "Listed Project" for p in data)
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.post(
+            "/api/projects",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "My Project"},
+        )
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /api/projects/{project_id}/preview
+# ---------------------------------------------------------------------------
+
+
+class TestGetPreview:
+    async def test_returns_404_when_no_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        resp = await auth_client.get(f"/api/projects/{project.id}/preview")
+        assert resp.status_code == 404
+
+    async def test_other_users_project_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        project = await _insert_project(db_session, admin_user, wif_path="p/other.wif")
+        resp = await auth_client.get(f"/api/projects/{project.id}/preview")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(
+        self, raw_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
+        resp = await raw_client.get(f"/api/projects/{project.id}/preview")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /api/projects/{project_id}/generate-liftplan
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateLiftplan:
+    @pytest.fixture(autouse=True)
+    def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+
+    async def _create_project_with_wif(
+        self,
+        db_session,
+        user: User,
+        *,
+        has_treadling: bool = True,
+        has_tieup: bool = True,
+    ) -> Project:
+        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
+        tmp.write(_WIF)
+        tmp.close()
+        project = Project(
+            owner_id=user.id,
+            name="Liftplan Project",
+            wif_filename="test.wif",
+            wif_path=tmp.name,
+            has_treadling=has_treadling,
+            has_tieup=has_tieup,
+            has_liftplan=False,
+            num_shafts=4,
+            num_treadles=4,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        return project
+
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await self._create_project_with_wif(db_session, test_user)
+        resp = await auth_client.post(f"/api/projects/{project.id}/generate-liftplan")
+        assert resp.status_code == 200
+
+    async def test_has_liftplan_after_generation(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await self._create_project_with_wif(db_session, test_user)
+        body = (await auth_client.post(f"/api/projects/{project.id}/generate-liftplan")).json()
+        assert body["has_liftplan"] is True
+
+    async def test_no_treadling_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await self._create_project_with_wif(db_session, test_user, has_treadling=False)
+        resp = await auth_client.post(f"/api/projects/{project.id}/generate-liftplan")
+        assert resp.status_code == 400
+
+    async def test_no_tieup_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await self._create_project_with_wif(db_session, test_user, has_tieup=False)
+        resp = await auth_client.post(f"/api/projects/{project.id}/generate-liftplan")
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/generate-liftplan")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(
+        self, raw_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await self._create_project_with_wif(db_session, test_user)
+        resp = await raw_client.post(f"/api/projects/{project.id}/generate-liftplan")
+        assert resp.status_code == 401
