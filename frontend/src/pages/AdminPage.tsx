@@ -22,14 +22,17 @@ import {
   banPendingSignup,
   getAdminEula,
   createEulaVersion,
+  getAdminServices,
   type AdminHealth,
   type ElevateContentSummary,
   type InviteRecord,
   type PendingSignup,
+  type ServiceCheck,
+  type ServicePermCheck,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 
-type Tab = "users" | "invites" | "stats" | "health" | "eula";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "eula";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -83,7 +86,7 @@ export function AdminPage() {
 
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
         <div className="flex gap-2 border-b pb-2">
-          {(["users", "invites", "stats", "health", "eula"] as Tab[]).map((t) => (
+          {(["users", "invites", "stats", "health", "services", "eula"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -102,6 +105,7 @@ export function AdminPage() {
         {tab === "invites" && <InvitesTab />}
         {tab === "stats" && <StatsTab />}
         {tab === "health" && <HealthTab />}
+        {tab === "services" && <ServicesTab />}
         {tab === "eula" && <EulaTab />}
       </main>
     </div>
@@ -746,6 +750,86 @@ function HealthChart({
       <div className="overflow-hidden">
         <Sparkline values={values} max={max} color={color} />
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Services tab
+// ---------------------------------------------------------------------------
+
+function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean }) {
+  return (
+    <span
+      className={`inline-block rounded-full shrink-0 ${small ? "w-2 h-2" : "w-2.5 h-2.5"} ${
+        status === "ok" ? "bg-green-500" : "bg-red-500"
+      }`}
+    />
+  );
+}
+
+function ServiceRow({ check }: { check: ServiceCheck }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-background">
+      <button
+        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 text-left"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <StatusDot status={check.status} />
+        <span className="text-sm font-medium w-32 shrink-0">{check.service}</span>
+        <span className={`text-sm flex-1 ${check.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+          {check.message}
+        </span>
+        <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && check.checks.length > 0 && (
+        <div className="border-t divide-y">
+          {check.checks.map((c: ServicePermCheck) => (
+            <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
+              <StatusDot status={c.status} small />
+              <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
+              <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                {c.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ServicesTab() {
+  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["admin", "services"],
+    queryFn: getAdminServices,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  const lastChecked = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {lastChecked ? `Last checked ${lastChecked}` : "Checking…"}
+        </p>
+        <Button size="sm" variant="outline" disabled={isFetching} onClick={() => refetch()}>
+          {isFetching ? "Checking…" : "Refresh"}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Checking services…</p>
+      ) : (
+        <div className="border rounded-lg divide-y overflow-hidden">
+          {(data ?? []).map((check) => (
+            <ServiceRow key={check.service} check={check} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
