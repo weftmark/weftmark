@@ -472,9 +472,24 @@ jobs:
           git add VERSION frontend/package.json
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
 
-      - name: Push version commit and tag
+      - name: Push version commit
         run: |
           git pull --rebase origin dev
           git push origin dev
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
+
+      - name: Create tag via API (produces Verified tag)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
+          TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
+            --method POST \
+            --field tag="${{ steps.version.outputs.tag }}" \
+            --field message="Release ${{ steps.version.outputs.tag }}" \
+            --field object="$COMMIT_SHA" \
+            --field type="commit" \
+            --jq '.sha')
+          gh api repos/${{ github.repository }}/git/refs \
+            --method POST \
+            --field ref="refs/tags/${{ steps.version.outputs.tag }}" \
+            --field sha="$TAG_SHA"
