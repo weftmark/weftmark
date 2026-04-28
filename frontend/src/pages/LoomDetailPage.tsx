@@ -520,7 +520,7 @@ function VersionCard({
           {isCurrent && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">current</span>}
           {version.description && <span className="ml-2 text-xs text-muted-foreground font-normal">{version.description}</span>}
         </span>
-        <span className="text-xs text-muted-foreground">{version.effective_date} {open ? "▲" : "▼"}</span>
+        <span className="text-xs text-muted-foreground">{new Date(version.effective_date + "T00:00:00").toLocaleDateString()} {open ? "▲" : "▼"}</span>
       </button>
 
       {open && (
@@ -667,7 +667,7 @@ export function LoomDetailPage() {
           <ProfilePhoto loom={loom} onChanged={invalidate} />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
             {loom.serial_number && (<><dt className="text-muted-foreground">Serial number</dt><dd className="col-span-1 sm:col-span-2">{loom.serial_number}</dd></>)}
-            {loom.purchase_date && (<><dt className="text-muted-foreground">Purchased</dt><dd className="col-span-1 sm:col-span-2">{loom.purchase_date}</dd></>)}
+            {loom.purchase_date && (<><dt className="text-muted-foreground">Purchased</dt><dd className="col-span-1 sm:col-span-2">{new Date(loom.purchase_date + "T00:00:00").toLocaleDateString()}</dd></>)}
             {loom.purchase_price && (<><dt className="text-muted-foreground">Purchase price</dt><dd className="col-span-1 sm:col-span-2">{loom.purchase_price}</dd></>)}
             {loom.vendor && (<><dt className="text-muted-foreground">Purchased from</dt><dd className="col-span-1 sm:col-span-2">{loom.vendor}</dd></>)}
           </dl>
