@@ -41,19 +41,19 @@ services:
       - internal
     env_file:
       - .env
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
       - uploads:/app/uploads
     restart: unless-stopped
 
   # ----------------------------------------------------------
-  # Database — PostgreSQL
-  # Never exposed to host or public network.
-  # Exposed: no
+  # Database — PostgreSQL (local dev only)
+  # Only starts when the "local-db" profile is active.
+  # Set COMPOSE_PROFILES=local-db in .env to enable.
+  # When POSTGRES_DSN is set (e.g. Neon), leave COMPOSE_PROFILES
+  # unset — this container will not start.
   # ----------------------------------------------------------
   db:
+    profiles: ["local-db"]
     image: postgres:16-alpine
     container_name: weaving_site_db
     networks:
