@@ -195,9 +195,31 @@ celerybeat.pid
 
 
 # ------------------------------------------------------------
-# Claude Code
+# AI Agents & Coding Assistants
 # ------------------------------------------------------------
+# Claude Code — session state and memory (project settings in
+# .claude/settings.json are intentionally tracked; see below)
 .claude/scheduled_tasks.lock
+.claude/todos/
+.claude/memory/
+
+# Cursor
+.cursor/
+
+# Aider
+.aider*
+!.aider.conf.yml
+
+# Continue.dev
+.continue/
+
+# Windsurf / Codeium
+.windsurf/
+.codeium/
+
+# Roo Code
+.roo/
+.roomodes
 
 
 # ------------------------------------------------------------
