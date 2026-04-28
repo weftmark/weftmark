@@ -1,0 +1,75 @@
+name: Publish Dev Images
+
+# Manual trigger only — publishes :{version}-dev and :dev tags to ghcr.io.
+# Always reads VERSION and builds from the dev branch regardless of which
+# branch this workflow is dispatched from.
+#
+# Required secrets:
+#   CLERK_PUBLISHABLE_KEY — Clerk publishable key (baked into frontend image at build time)
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  publish-backend:
+    name: Publish — backend (dev)
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: dev
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        run: |
+          docker build -f backend/Dockerfile \
+            -t ghcr.io/weftmark/weftmark-backend:${{ steps.version.outputs.version }}-dev \
+            -t ghcr.io/weftmark/weftmark-backend:dev \
+            .
+          docker push ghcr.io/weftmark/weftmark-backend:${{ steps.version.outputs.version }}-dev
+          docker push ghcr.io/weftmark/weftmark-backend:dev
+
+  publish-frontend:
+    name: Publish — frontend (dev)
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: dev
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend image
+        run: |
+          docker build -f frontend/Dockerfile \
+            --build-arg VITE_CLERK_PUBLISHABLE_KEY="${{ secrets.CLERK_PUBLISHABLE_KEY }}" \
+            --build-arg VITE_APP_ENV="dev" \
+            -t ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }}-dev \
+            -t ghcr.io/weftmark/weftmark-frontend:dev \
+            ./frontend
+          docker push ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }}-dev
+          docker push ghcr.io/weftmark/weftmark-frontend:dev
