@@ -23,6 +23,7 @@ import {
   getAdminEula,
   createEulaVersion,
   getAdminServices,
+  sendTestEmail,
   type AdminHealth,
   type ElevateContentSummary,
   type InviteRecord,
@@ -801,11 +802,19 @@ function ServiceRow({ check }: { check: ServiceCheck }) {
 }
 
 function ServicesTab() {
+  const { user: currentUser } = useAuth();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["admin", "services"],
     queryFn: getAdminServices,
     staleTime: 0,
     refetchOnMount: true,
+  });
+
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const testEmail = useMutation({
+    mutationFn: sendTestEmail,
+    onSuccess: (d) => setTestResult({ ok: true, msg: `Sent to ${d.to}` }),
+    onError: (e: Error) => setTestResult({ ok: false, msg: e.message }),
   });
 
   const lastChecked = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
@@ -830,6 +839,28 @@ function ServicesTab() {
           ))}
         </div>
       )}
+
+      <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium">Test Email</p>
+          <p className="text-xs text-muted-foreground">
+            Sends a test email to {currentUser?.email}
+          </p>
+          {testResult && (
+            <p className={`text-xs mt-1 ${testResult.ok ? "text-green-600" : "text-destructive"}`}>
+              {testResult.msg}
+            </p>
+          )}
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={testEmail.isPending}
+          onClick={() => { setTestResult(null); testEmail.mutate(); }}
+        >
+          {testEmail.isPending ? "Sending…" : "Send Test Email"}
+        </Button>
+      </div>
     </div>
   );
 }
