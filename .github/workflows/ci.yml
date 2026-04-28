@@ -41,6 +41,18 @@ on:
   pull_request:
     branches: [main, dev]
 
+# Prevents duplicate runs when a feature branch push also has an open PR.
+# github.head_ref is set on pull_request events (branch name e.g. feature/foo);
+# it's empty on push events, so || github.ref falls back to the push ref.
+# Both events for the same branch land in the same group — the later one cancels
+# the earlier. cancel-in-progress is disabled on dev/main so version bumps always
+# complete.
+# NOTE: review this if CI behaves unexpectedly (e.g. legitimate runs being
+# cancelled, version bumps skipped, or duplicate runs still appearing).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' && github.ref != 'refs/heads/main' }}
+
 jobs:
 
   # ------------------------------------------------------------
