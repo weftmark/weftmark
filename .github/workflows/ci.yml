@@ -18,8 +18,10 @@ name: CI
 #   Tests, audit, Docker, SBOM run only on push to dev/main.
 #   bump-version runs only on push to dev/main.
 #
-# Add [skip ci] to any commit message to skip CI entirely (e.g. docs-only changes).
-# [skip ci] is ignored on pull_request events — CI always runs on PRs.
+# Add [skip steps] to any commit message to run CI but skip all meaningful steps
+# (e.g. docs-only changes). All jobs complete immediately — satisfies branch protection.
+# [skip ci] is reserved for bot auto-commits (version bumps, SBOM) that should not
+# run CI at all. Do not use [skip ci] in manual commits.
 #
 # Required secrets:
 #   WEFTMARK_BOT_CLIENT_ID   — GitHub App Client ID for weftmark-bot
@@ -61,23 +63,35 @@ jobs:
   runner-check:
     name: Runner smoke test
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'pull_request' ||
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+    outputs:
+      skip: ${{ steps.detect-skip.outputs.skip }}
     steps:
+      - name: Detect [skip steps]
+        id: detect-skip
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ contains(github.event.head_commit.message, '[skip steps]') }}" == "true" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "CI steps skipped via [skip steps]"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Generate bot token
         id: app-token
+        if: steps.detect-skip.outputs.skip != 'true'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
       - name: Check out code
+        if: steps.detect-skip.outputs.skip != 'true'
         uses: actions/checkout@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Validate bot token
+        if: steps.detect-skip.outputs.skip != 'true'
         env:
           BOT_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
@@ -92,6 +106,7 @@ jobs:
           echo "✅ Bot token valid (HTTP $HTTP) — push permission verified at the push steps"
 
       - name: Print environment info
+        if: steps.detect-skip.outputs.skip != 'true'
         run: |
           echo "Runner: $(uname -a)"
           echo "Event:  ${{ github.event_name }}"
@@ -101,6 +116,7 @@ jobs:
           echo "Docker: $(docker --version 2>/dev/null || echo 'not available')"
 
       - name: Confirm repo structure
+        if: steps.detect-skip.outputs.skip != 'true'
         run: |
           echo "=== Backend ==="
           ls backend/
@@ -120,20 +136,25 @@ jobs:
     needs: [runner-check]
     steps:
       - name: Check out code
+        if: needs.runner-check.outputs.skip != 'true'
         uses: actions/checkout@v6
 
       - name: Set up Python
+        if: needs.runner-check.outputs.skip != 'true'
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Install Ruff
+        if: needs.runner-check.outputs.skip != 'true'
         run: pip install ruff==0.15.11
 
       - name: Ruff lint
+        if: needs.runner-check.outputs.skip != 'true'
         run: ruff check backend/
 
       - name: Ruff format check
+        if: needs.runner-check.outputs.skip != 'true'
         run: ruff format --check backend/
 
   # ------------------------------------------------------------
@@ -373,17 +394,21 @@ jobs:
     needs: [runner-check]
     steps:
       - name: Check out code
+        if: needs.runner-check.outputs.skip != 'true'
         uses: actions/checkout@v6
 
       - name: Set up Node
+        if: needs.runner-check.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: "20"
 
       - name: Install dependencies
+        if: needs.runner-check.outputs.skip != 'true'
         run: cd frontend && npm ci
 
       - name: ESLint
+        if: needs.runner-check.outputs.skip != 'true'
         run: cd frontend && npm run lint
 
   # ------------------------------------------------------------
@@ -392,20 +417,24 @@ jobs:
   frontend-typecheck:
     name: Frontend type check (tsc)
     runs-on: ubuntu-latest
-    needs: [frontend-lint]
+    needs: [frontend-lint, runner-check]
     steps:
       - name: Check out code
+        if: needs.runner-check.outputs.skip != 'true'
         uses: actions/checkout@v6
 
       - name: Set up Node
+        if: needs.runner-check.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: "20"
 
       - name: Install dependencies
+        if: needs.runner-check.outputs.skip != 'true'
         run: cd frontend && npm ci
 
       - name: Type check
+        if: needs.runner-check.outputs.skip != 'true'
         run: cd frontend && npx tsc -b --noEmit
 
   # ------------------------------------------------------------
