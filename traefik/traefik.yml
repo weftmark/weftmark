@@ -1,0 +1,87 @@
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  format: json
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: keep
+      names:
+        Authorization: drop
+
+api:
+  dashboard: true
+  insecure: true  # bound to 127.0.0.1:8080 — access via SSH tunnel only
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+    # Restore real client IPs from Cloudflare (orange cloud). Keep this list
+    # current: https://www.cloudflare.com/ips/
+    forwardedHeaders:
+      trustedIPs:
+        - "173.245.48.0/20"
+        - "103.21.244.0/22"
+        - "103.22.200.0/22"
+        - "103.31.4.0/22"
+        - "141.101.64.0/18"
+        - "108.162.192.0/18"
+        - "190.93.240.0/20"
+        - "188.114.96.0/20"
+        - "197.234.240.0/22"
+        - "198.41.128.0/17"
+        - "162.158.0.0/15"
+        - "104.16.0.0/13"
+        - "104.24.0.0/14"
+        - "172.64.0.0/13"
+        - "131.0.72.0/22"
+        - "2400:cb00::/32"
+        - "2606:4700::/32"
+        - "2803:f800::/32"
+        - "2405:b500::/32"
+        - "2405:8100::/32"
+        - "2a06:98c0::/29"
+        - "2c0f:f248::/32"
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: traefik_proxy
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: ${ACME_EMAIL}
+      # acme.json is created by Traefik on first run with 600 permissions
+      storage: /etc/traefik/acme/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        # Use Cloudflare DNS for propagation checks (avoids split-horizon issues)
+        resolvers:
+          - "1.1.1.1:53"
+          - "8.8.8.8:53"
+
+# Uncomment after CrowdSec is running. Pin to a specific version from:
+# https://plugins.traefik.io/plugins/6335346ca4caa9ddeffda116/crowdsec-bouncer-traefik-plugin
+# experimental:
+#   plugins:
+#     crowdsec-bouncer:
+#       moduleName: github.com/crowdsecurity/cs-bouncer-traefik-plugin
+#       version: v1.0.9

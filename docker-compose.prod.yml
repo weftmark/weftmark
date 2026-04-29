@@ -3,15 +3,20 @@ services:
   # ----------------------------------------------------------
   # Frontend — React application served via nginx
   # Pulls the published image from ghcr.io.
-  # Reverse proxy: https://weftmark.com → localhost:3000
+  # Traefik routes https://weftmark.com → this container via traefik_proxy network.
   # ----------------------------------------------------------
   frontend:
     image: ghcr.io/weftmark/weftmark-frontend:latest
     container_name: weftmark_frontend_prod
-    ports:
-      - "127.0.0.1:3000:80"
     networks:
+      - traefik_proxy
       - public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.weftmark-prod.rule=Host(`weftmark.com`) || Host(`www.weftmark.com`)"
+      - "traefik.http.routers.weftmark-prod.entrypoints=websecure"
+      - "traefik.http.routers.weftmark-prod.tls.certresolver=cloudflare"
+      - "traefik.http.services.weftmark-prod.loadbalancer.server.port=80"
     depends_on:
       backend:
         condition: service_healthy
@@ -81,6 +86,9 @@ services:
     restart: unless-stopped
 
 networks:
+  traefik_proxy:
+    external: true
+    name: traefik_proxy
   public:
     name: weftmark_prod_public
     driver: bridge
