@@ -11,7 +11,7 @@ from app.routers import activities, admin, auth, health, looms, projects, users,
 from app.version import VERSION
 
 settings = get_settings()
-configure_logging(settings.log_level, settings.app_env)
+configure_logging(settings.log_level)
 
 start_time: datetime = datetime.now(timezone.utc)
 

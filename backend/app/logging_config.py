@@ -19,12 +19,11 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(entry)
 
 
-def configure_logging(log_level: str, app_env: str) -> None:
+def configure_logging(log_level: str) -> None:
     level = getattr(logging, log_level.upper(), logging.INFO)
-    is_production = app_env == "production"
 
     handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(JsonFormatter() if is_production else logging.Formatter("%(levelname)s:%(name)s: %(message)s"))
+    handler.setFormatter(JsonFormatter())
 
     root = logging.getLogger()
     root.handlers.clear()
