@@ -71,6 +71,10 @@ The frontend will be available at `http://localhost:3000` and the API at `http:/
 
 See `.env.example` for all required environment variables and where to obtain them.
 
+> **Note — Clerk key is baked into the frontend image at build time.**
+> `VITE_CLERK_PUBLISHABLE_KEY` is compiled into the static JS bundle by Vite during `docker compose build`. This means the container cannot be reused across Clerk instances (e.g. dev vs prod) without a rebuild, and self-hosted deployments using a different Clerk account must build their own image.
+> Runtime configurability is tracked in [#87](https://github.com/weftmark/weftmark/issues/87) and will be addressed in a future release.
+
 ### Local Development (without Docker)
 
 ```bash
