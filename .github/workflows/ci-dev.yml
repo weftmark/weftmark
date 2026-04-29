@@ -5,7 +5,8 @@ name: Dev CI
 #
 # [skip steps] in a commit message: all validation steps are skipped but
 #   jobs still complete — satisfies branch protection for docs-only commits.
-# [skip ci]   is reserved for bot commits (version bumps, SBOM updates).
+# Bot push detection: when weftmark-bot[bot] pushes (version bumps, SBOM),
+#   runner-check sets skip=true so no validation or post-merge jobs re-run.
 #
 # Required secrets:
 #   WEFTMARK_BOT_CLIENT_ID   — GitHub App client ID
@@ -34,11 +35,14 @@ jobs:
     outputs:
       skip: ${{ steps.detect-skip.outputs.skip }}
     steps:
-      - name: Detect skip-steps marker
+      - name: Detect skip-steps marker or bot push
         id: detect-skip
         run: |
           if [[ "${{ github.event_name }}" == "push" && \
-                "${{ contains(github.event.head_commit.message, '[skip steps]') }}" == "true" ]]; then
+                "${{ github.actor }}" == "weftmark-bot[bot]" ]]; then
+            echo "skip=true"  >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "push" && \
+                  "${{ contains(github.event.head_commit.message, '[skip steps]') }}" == "true" ]]; then
             echo "skip=true"  >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -128,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-lint]
     if: >-
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      !(github.event_name == 'push' && github.actor == 'weftmark-bot[bot]')
     services:
       postgres:
         image: postgres:16
@@ -162,7 +166,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-lint]
     if: >-
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      !(github.event_name == 'push' && github.actor == 'weftmark-bot[bot]')
     services:
       postgres:
         image: postgres:16
@@ -205,7 +209,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend-tests, migration-smoke-test]
     if: >-
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      !(github.event_name == 'push' && github.actor == 'weftmark-bot[bot]')
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -218,7 +222,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [frontend-typecheck]
     if: >-
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      !(github.event_name == 'push' && github.actor == 'weftmark-bot[bot]')
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -231,8 +235,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [runner-check, backend-lint]
     if: >-
-      needs.runner-check.outputs.skip != 'true' &&
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      needs.runner-check.outputs.skip != 'true'
     steps:
       - uses: actions/checkout@v6
       - run: docker build -f backend/Dockerfile -t weaving-backend-check .
@@ -242,8 +245,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [runner-check, frontend-typecheck]
     if: >-
-      needs.runner-check.outputs.skip != 'true' &&
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      needs.runner-check.outputs.skip != 'true'
     steps:
       - uses: actions/checkout@v6
       - run: docker build -f frontend/Dockerfile -t weaving-frontend-check ./frontend
@@ -257,7 +259,7 @@ jobs:
     needs: [dependency-audit-backend]
     if: >-
       github.event_name == 'push' &&
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      github.actor != 'weftmark-bot[bot]'
     steps:
       - name: Generate bot token
         id: app-token
@@ -304,7 +306,7 @@ jobs:
           git config user.email "weftmark-bot[bot]@users.noreply.github.com"
           git add sbom/sbom-backend.json sbom/licenses-backend.json
           if ! git diff --staged --quiet; then
-            git commit -m "chore: update backend SBOM and license manifest [skip ci]"
+            git commit -m "chore: update backend SBOM and license manifest"
             git pull --rebase origin dev
             git push origin dev
           fi
@@ -322,7 +324,7 @@ jobs:
     needs: [dependency-audit-frontend]
     if: >-
       github.event_name == 'push' &&
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      github.actor != 'weftmark-bot[bot]'
     steps:
       - name: Generate bot token
         id: app-token
@@ -368,7 +370,7 @@ jobs:
           git config user.email "weftmark-bot[bot]@users.noreply.github.com"
           git add sbom/sbom-frontend.json sbom/licenses-frontend.json
           if ! git diff --staged --quiet; then
-            git commit -m "chore: update frontend SBOM and license manifest [skip ci]"
+            git commit -m "chore: update frontend SBOM and license manifest"
             git pull --rebase origin dev
             git push origin dev
           fi
@@ -386,7 +388,7 @@ jobs:
     needs: [docker-build-backend, docker-build-frontend, dependency-audit-backend, dependency-audit-frontend]
     if: >-
       github.event_name == 'push' &&
-      !contains(github.event.head_commit.message || '', '[skip ci]')
+      github.actor != 'weftmark-bot[bot]'
     steps:
       - name: Generate bot token
         id: app-token
@@ -470,11 +472,26 @@ jobs:
       - name: Commit version files
         run: |
           git add VERSION frontend/package.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip ci]"
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
 
-      - name: Push version commit and tag
+      - name: Push version commit
         run: |
           git pull --rebase origin dev
           git push origin dev
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
+
+      - name: Create tag via API (produces Verified tag)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
+          TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
+            --method POST \
+            --field tag="${{ steps.version.outputs.tag }}" \
+            --field message="Release ${{ steps.version.outputs.tag }}" \
+            --field object="$COMMIT_SHA" \
+            --field type="commit" \
+            --jq '.sha')
+          gh api repos/${{ github.repository }}/git/refs \
+            --method POST \
+            --field ref="refs/tags/${{ steps.version.outputs.tag }}" \
+            --field sha="$TAG_SHA"

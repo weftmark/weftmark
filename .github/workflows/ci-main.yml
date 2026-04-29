@@ -277,7 +277,9 @@ jobs:
           git config user.name  "weftmark-bot[bot]"
           git config user.email "weftmark-bot[bot]@users.noreply.github.com"
 
-      - name: Create production tag (idempotent)
+      - name: Create production tag via API (idempotent, produces Verified tag)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           VERSION=$(cat VERSION)
           TAG="v${VERSION}"
@@ -286,8 +288,19 @@ jobs:
           if git rev-parse "${TAG}" >/dev/null 2>&1; then
             echo "Tag ${TAG} already exists — skipping creation"
           else
-            git tag "${TAG}"
-            git push origin "${TAG}"
+            COMMIT_SHA=$(git rev-parse HEAD)
+            TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
+              --method POST \
+              --field tag="${TAG}" \
+              --field message="Release ${TAG}" \
+              --field object="$COMMIT_SHA" \
+              --field type="commit" \
+              --jq '.sha')
+            gh api repos/${{ github.repository }}/git/refs \
+              --method POST \
+              --field ref="refs/tags/${TAG}" \
+              --field sha="$TAG_SHA"
+            echo "Tag ${TAG} created"
           fi
 
   sbom-backend:
@@ -400,7 +413,7 @@ jobs:
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Log in to ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -432,7 +445,7 @@ jobs:
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Log in to ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
