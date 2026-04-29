@@ -2,7 +2,7 @@ name: Label new issues for triage
 
 on:
   issues:
-    types: [opened]
+    types: [opened, labeled]
 
 jobs:
   triage:
@@ -13,9 +13,23 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              labels: ['needs-triage'],
-            });
+            const { payload } = context;
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const issue_number = context.issue.number;
+
+            if (payload.action === 'opened') {
+              if (payload.issue.labels.length === 0) {
+                await github.rest.issues.addLabels({ owner, repo, issue_number, labels: ['needs-triage'] });
+              }
+            }
+
+            if (payload.action === 'labeled') {
+              const added = payload.label.name;
+              if (added !== 'needs-triage') {
+                const current = payload.issue.labels.map(l => l.name);
+                if (current.includes('needs-triage')) {
+                  await github.rest.issues.removeLabel({ owner, repo, issue_number, name: 'needs-triage' });
+                }
+              }
+            }
