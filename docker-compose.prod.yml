@@ -3,12 +3,13 @@ services:
   # ----------------------------------------------------------
   # Frontend — React application served via nginx
   # Pulls the published image from ghcr.io.
+  # Reverse proxy: https://weftmark.com → localhost:3000
   # ----------------------------------------------------------
   frontend:
     image: ghcr.io/weftmark/weftmark-frontend:latest
-    container_name: weftmark_frontend
+    container_name: weftmark_frontend_prod
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     networks:
       - public
     depends_on:
@@ -25,15 +26,18 @@ services:
   # ----------------------------------------------------------
   # Backend — FastAPI application
   # Pulls the published image from ghcr.io.
+  # Reverse proxy: https://weftmark.com/api/ → localhost:8000
   # ----------------------------------------------------------
   backend:
     image: ghcr.io/weftmark/weftmark-backend:latest
-    container_name: weftmark_backend
+    container_name: weftmark_backend_prod
+    ports:
+      - "127.0.0.1:8000:8000"
     networks:
       - public
       - internal
     env_file:
-      - .env
+      - .env.prod
     volumes:
       - uploads:/app/uploads
     depends_on:
@@ -50,19 +54,19 @@ services:
 
   # ----------------------------------------------------------
   # Database — PostgreSQL (optional, local-db profile only)
-  # Only starts when COMPOSE_PROFILES=local-db is set in .env.
+  # Only starts when COMPOSE_PROFILES=local-db is set in .env.prod.
   # Skip this if using a managed database (e.g. Neon).
   # ----------------------------------------------------------
   db:
     profiles: ["local-db"]
     image: postgres:16-alpine
-    container_name: weftmark_db
+    container_name: weftmark_db_prod
     networks:
       - internal
     ports:
       - "127.0.0.1:5433:5432"
     env_file:
-      - .env
+      - .env.prod
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -78,10 +82,14 @@ services:
 
 networks:
   public:
+    name: weftmark_prod_public
     driver: bridge
   internal:
+    name: weftmark_prod_internal
     driver: bridge
 
 volumes:
   postgres_data:
+    name: weftmark_prod_postgres_data
   uploads:
+    name: weftmark_prod_uploads
