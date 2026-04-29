@@ -17,4 +17,6 @@ RUN PYWEAVING_DATA=$(python -c "import pyweaving.render as r, os; print(os.path.
 COPY backend/ .
 COPY VERSION .
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN chmod +x entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
