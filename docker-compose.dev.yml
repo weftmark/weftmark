@@ -1,0 +1,95 @@
+services:
+
+  # ----------------------------------------------------------
+  # Frontend — React application served via nginx
+  # Pulls the dev image from ghcr.io.
+  # Reverse proxy: https://dev.weftmark.com → localhost:3001
+  # ----------------------------------------------------------
+  frontend:
+    image: ghcr.io/weftmark/weftmark-frontend:dev
+    container_name: weftmark_frontend_dev
+    ports:
+      - "127.0.0.1:3001:80"
+    networks:
+      - public
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Backend — FastAPI application
+  # Pulls the dev image from ghcr.io.
+  # Reverse proxy: https://dev.weftmark.com/api/ → localhost:8001
+  # ----------------------------------------------------------
+  backend:
+    image: ghcr.io/weftmark/weftmark-backend:dev
+    container_name: weftmark_backend_dev
+    ports:
+      - "127.0.0.1:8001:8000"
+    networks:
+      - public
+      - internal
+    env_file:
+      - .env.dev
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Database — PostgreSQL (optional, local-db profile only)
+  # Only starts when COMPOSE_PROFILES=local-db is set in .env.dev.
+  # Skip this if using a managed database (e.g. Neon).
+  # ----------------------------------------------------------
+  db:
+    profiles: ["local-db"]
+    image: postgres:16-alpine
+    container_name: weftmark_db_dev
+    networks:
+      - internal
+    ports:
+      - "127.0.0.1:5434:5432"
+    env_file:
+      - .env.dev
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  public:
+    name: weftmark_dev_public
+    driver: bridge
+  internal:
+    name: weftmark_dev_internal
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: weftmark_dev_postgres_data
+  uploads:
+    name: weftmark_dev_uploads
