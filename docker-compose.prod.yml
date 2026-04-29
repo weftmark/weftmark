@@ -1,0 +1,87 @@
+services:
+
+  # ----------------------------------------------------------
+  # Frontend — React application served via nginx
+  # Pulls the published image from ghcr.io.
+  # ----------------------------------------------------------
+  frontend:
+    image: ghcr.io/weftmark/weftmark-frontend:latest
+    container_name: weftmark_frontend
+    ports:
+      - "3000:80"
+    networks:
+      - public
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Backend — FastAPI application
+  # Pulls the published image from ghcr.io.
+  # ----------------------------------------------------------
+  backend:
+    image: ghcr.io/weftmark/weftmark-backend:latest
+    container_name: weftmark_backend
+    networks:
+      - public
+      - internal
+    env_file:
+      - .env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Database — PostgreSQL (optional, local-db profile only)
+  # Only starts when COMPOSE_PROFILES=local-db is set in .env.
+  # Skip this if using a managed database (e.g. Neon).
+  # ----------------------------------------------------------
+  db:
+    profiles: ["local-db"]
+    image: postgres:16-alpine
+    container_name: weftmark_db
+    networks:
+      - internal
+    ports:
+      - "127.0.0.1:5433:5432"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  public:
+    driver: bridge
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  uploads:
