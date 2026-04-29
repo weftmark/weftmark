@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     app_secret_key: str = "change-me-in-production"
     app_env: str = "dev"
     debug: bool = False
-    allowed_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000"
     frontend_url: str = "http://localhost:3000"
     api_url: str = "http://localhost:8000"
 
