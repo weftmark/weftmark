@@ -6,10 +6,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.logging_config import configure_logging
 from app.routers import activities, admin, auth, health, looms, projects, users, yarn
 from app.version import VERSION
 
 settings = get_settings()
+configure_logging(settings.log_level)
 
 start_time: datetime = datetime.now(timezone.utc)
 
