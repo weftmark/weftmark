@@ -3,13 +3,10 @@ from __future__ import annotations
 import asyncio
 from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_db
 from app.version import VERSION
 
 router = APIRouter(tags=["health"])
@@ -20,6 +17,7 @@ class ReadinessService(BaseModel):
     ok: bool
     critical: bool
     message: str = ""
+    detail: str = ""
 
 
 class ReadinessResponse(BaseModel):
@@ -36,8 +34,7 @@ def set_readiness(result: ReadinessResponse) -> None:
 
 
 @router.get("/health")
-async def health(db: AsyncSession = Depends(get_db)) -> dict:
-    await db.execute(text("SELECT 1"))
+async def health() -> dict:
     return {"status": "ok", "version": VERSION}
 
 
@@ -82,7 +79,17 @@ async def run_startup_probes() -> ReadinessResponse:
 
         critical = result.service in critical_names
         ok = result.status == "ok"
-        services.append(ReadinessService(name=result.service, ok=ok, critical=critical, message=result.message))
+
+        # Only expose the failure reason — no hosts, endpoints, or account IDs
+        detail = ""
+        if not ok:
+            failed_check = next((c for c in result.checks if c.status == "error"), None)
+            if failed_check:
+                detail = failed_check.message[:120]
+
+        services.append(
+            ReadinessService(name=result.service, ok=ok, critical=critical, message=result.message, detail=detail)
+        )
         if not ok:
             if critical:
                 has_hard_failure = True

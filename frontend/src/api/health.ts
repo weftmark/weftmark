@@ -3,6 +3,7 @@ export interface ReadinessService {
   ok: boolean;
   critical: boolean;
   message: string;
+  detail: string;
 }
 
 export interface ReadinessResponse {

@@ -756,10 +756,15 @@ async def _probe_smtp() -> ServiceCheckResult:
     checks: list[ServicePermCheck] = []
     meta = _smtp_conn_meta(settings)
 
+    if not settings.smtp_host:
+        checks.append(
+            ServicePermCheck(name="config", status="error", message="not configured — emails will not be sent")
+        )
+        return _make_result("SMTP", checks, meta=meta)
+
     missing = [
         k
         for k, v in {
-            "smtp_host": settings.smtp_host,
             "smtp_user": settings.smtp_user,
             "smtp_password": settings.smtp_password,
             "smtp_from_email": settings.smtp_from_email,
