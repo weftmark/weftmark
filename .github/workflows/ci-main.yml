@@ -12,7 +12,7 @@ name: Main CI
 # Required secrets:
 #   WEFTMARK_BOT_CLIENT_ID   — GitHub App client ID
 #   WEFTMARK_BOT_PRIVATE_KEY — GitHub App private key
-#   CLERK_PUBLISHABLE_KEY    — Clerk publishable key (baked into frontend image at build time)
+#   CLERK_PUBLISHABLE_KEY_PROD — Clerk publishable key for production (baked into frontend image at build time)
 
 on:
   pull_request:
@@ -454,7 +454,7 @@ jobs:
       - name: Build and push frontend image
         run: |
           docker build -f frontend/Dockerfile \
-            --build-arg VITE_CLERK_PUBLISHABLE_KEY="${{ secrets.CLERK_PUBLISHABLE_KEY }}" \
+            --build-arg VITE_CLERK_PUBLISHABLE_KEY="${{ secrets.CLERK_PUBLISHABLE_KEY_PROD }}" \
             --build-arg VITE_APP_ENV="production" \
             -t ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }} \
             -t ghcr.io/weftmark/weftmark-frontend:latest \
