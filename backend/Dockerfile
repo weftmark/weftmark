@@ -17,6 +17,6 @@ RUN PYWEAVING_DATA=$(python -c "import pyweaving.render as r, os; print(os.path.
 COPY backend/ .
 COPY VERSION .
 
-RUN chmod +x entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]

@@ -22,6 +22,7 @@ import { ActivityDetailPage } from "@/pages/ActivityDetailPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { DevBanner } from "@/components/DevBanner";
+import { ServiceHealthBanner } from "@/components/ServiceHealthBanner";
 import { useAuth } from "@/hooks/useAuth";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
@@ -57,6 +58,7 @@ export default function App() {
           <AuthProvider>
             <BrowserRouter>
               <DevBanner />
+              <ServiceHealthBanner />
               <EulaGate>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />

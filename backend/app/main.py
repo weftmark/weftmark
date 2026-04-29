@@ -18,6 +18,12 @@ start_time: datetime = datetime.now(timezone.utc)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global start_time
     start_time = datetime.now(timezone.utc)
+
+    from app.routers.health import run_startup_probes, set_readiness
+
+    readiness = await run_startup_probes()
+    set_readiness(readiness)
+
     yield
 
 
