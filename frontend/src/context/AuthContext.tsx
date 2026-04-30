@@ -1,4 +1,4 @@
-import { createContext, startTransition, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 import { api, configureApiClient } from "@/api/client";
 import { getHealthReady } from "@/api/health";
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // before any child component mounts and fires API calls.
   configureApiClient(getToken);
 
-  const fetchUser = () => {
+  const fetchUser = useCallback(() => {
     setIsLoading(true);
     api
       .get<User>("/auth/me")
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .finally(() => setIsLoading(false));
-  };
+  }, [isSignedIn]);
 
   // Only fetch once Clerk is loaded. If not signed in, skip the fetch entirely.
   useEffect(() => {
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     fetchUser(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, fetchUser]);
 
   // Apply theme class to document root
   useEffect(() => {
