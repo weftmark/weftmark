@@ -300,9 +300,19 @@ async def _probe_s3() -> ServiceCheckResult:
 
 
 def _clerk_conn_meta(settings: "Settings") -> dict[str, str]:
+    def _peek(val: str, prefix: str, n: int = 6) -> str:
+        rest = val[len(prefix) :]
+        return f"{prefix}{rest[:n]}…" if len(rest) > n else val
+
+    pk = settings.clerk_publishable_key
+    if pk:
+        pfx = "pk_live_" if pk.startswith("pk_live_") else "pk_test_"
+        pk_display = _peek(pk, pfx)
+    else:
+        pk_display = "(not set)"
     return {
-        "publishable_key": settings.clerk_publishable_key or "(not set)",
-        "environment": "live" if settings.clerk_publishable_key.startswith("pk_live_") else "test",
+        "publishable_key": pk_display,
+        "environment": "live" if pk and pk.startswith("pk_live_") else "test",
     }
 
 
@@ -312,10 +322,12 @@ async def _probe_clerk() -> ServiceCheckResult:
     meta = _clerk_conn_meta(settings)
 
     # Config: secret key
-    sk_ok = bool(settings.clerk_secret_key and settings.clerk_secret_key.startswith("sk_"))
+    sk = settings.clerk_secret_key
+    sk_ok = bool(sk and sk.startswith("sk_"))
     if sk_ok:
-        sk_env = "sk_live_…" if settings.clerk_secret_key.startswith("sk_live_") else "sk_test_…"
-        sk_msg = f"Set ({sk_env})"
+        sk_pfx = "sk_live_" if sk.startswith("sk_live_") else "sk_test_"
+        sk_peek = sk[len(sk_pfx) : len(sk_pfx) + 6]
+        sk_msg = f"Set ({sk_pfx}{sk_peek}…)"
     else:
         sk_msg = "Missing or unexpected format"
     checks.append(ServicePermCheck(name="secret_key", status="ok" if sk_ok else "error", message=sk_msg))
