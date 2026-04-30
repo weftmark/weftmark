@@ -596,7 +596,7 @@ function PhotoGrid({
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        if (photos.length >= 20) { setError("Maximum 20 photos reached."); break; }
+        if (photos.length >= 10) { setError("Maximum 10 photos reached."); break; }
         const photo = await uploadActivityPhoto(activityId, file);
         onUploaded(photo);
       }
@@ -616,8 +616,8 @@ function PhotoGrid({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-medium">Photos <span className="text-muted-foreground font-normal">({photos.length}/20)</span></p>
-        {photos.length < 20 && (
+        <p className="text-sm font-medium">Photos <span className="text-muted-foreground font-normal">({photos.length}/10)</span></p>
+        {photos.length < 10 && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -666,7 +666,7 @@ function PhotoGrid({
               </button>
             </div>
           ))}
-          {photos.length < 20 && (
+          {photos.length < 10 && (
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -1310,7 +1310,7 @@ export function ActivityDetailPage() {
         {/* Collapsible sections */}
         <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0 border-t">
           {!isCompleted && (
-            <CollapsibleSection title={`Photos (${activity.photos.length}/20)`} defaultOpen={isAbandoned}>
+            <CollapsibleSection title={`Photos (${activity.photos.length}/10)`} defaultOpen={isAbandoned}>
               <PhotoGrid
                 activityId={activity.id}
                 photos={activity.photos}
