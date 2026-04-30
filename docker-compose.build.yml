@@ -4,7 +4,7 @@ services:
   # Frontend — React application served via nginx
   # Entry point for all user traffic. Proxies /api/, /auth/,
   # and /health to the backend over the public network.
-  # Exposed: yes (port 3002 — local build access)
+  # Exposed: yes (port 3000 — local build access)
   # ----------------------------------------------------------
   frontend:
     build:
@@ -16,7 +16,7 @@ services:
     image: weaving_site_frontend:${APP_VERSION:-dev}
     container_name: weaving_site_frontend
     ports:
-      - "127.0.0.1:3002:80"
+      - "127.0.0.1:3000:80"
     networks:
       - public
     depends_on:
@@ -47,7 +47,7 @@ services:
       - public
       - internal
     env_file:
-      - .env
+      - .env.local
     volumes:
       - uploads:/app/uploads
     depends_on:
@@ -78,7 +78,7 @@ services:
     ports:
       - "127.0.0.1:5435:5432"
     env_file:
-      - .env
+      - .env.local
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
