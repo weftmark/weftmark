@@ -144,3 +144,11 @@ export interface ServiceCheck {
 
 export const getAdminServices = () => api.get<ServiceCheck[]>("/api/admin/services");
 export const sendTestEmail = () => api.post<{ status: string; to: string }>("/api/admin/test-email", {});
+
+export interface WebhookProbeResult {
+  status: "ok" | "skipped" | "error";
+  latency_ms: number | null;
+  message: string;
+}
+
+export const testWebhook = () => api.post<WebhookProbeResult>("/api/admin/test-webhook", {});

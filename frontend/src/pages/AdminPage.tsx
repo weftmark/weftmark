@@ -24,12 +24,14 @@ import {
   createEulaVersion,
   getAdminServices,
   sendTestEmail,
+  testWebhook,
   type AdminHealth,
   type ElevateContentSummary,
   type InviteRecord,
   type PendingSignup,
   type ServiceCheck,
   type ServicePermCheck,
+  type WebhookProbeResult,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 import { formatBytes } from "@/lib/image-utils";
@@ -819,6 +821,55 @@ function ServiceRow({ check }: { check: ServiceCheck }) {
   );
 }
 
+function WebhookHealthCard() {
+  const [result, setResult] = useState<WebhookProbeResult | null>(null);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+
+  const probe = useMutation({
+    mutationFn: testWebhook,
+    onSettled: (data) => {
+      if (data) { setResult(data); setLastChecked(new Date()); }
+    },
+  });
+
+  // Auto-test on mount and every 60s while this tab is open.
+  useEffect(() => {
+    probe.mutate();
+    const id = setInterval(() => probe.mutate(), 60_000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const statusColor =
+    !result || probe.isPending ? "text-muted-foreground" :
+    result.status === "ok" ? "text-green-600 dark:text-green-400" :
+    result.status === "skipped" ? "text-muted-foreground" :
+    "text-destructive";
+
+  const statusLabel =
+    probe.isPending ? "Testing…" :
+    !result ? "Not yet tested" :
+    result.status === "ok" ? `OK — ${result.latency_ms}ms` :
+    result.status === "skipped" ? "Skipped (WEBHOOK_BASE_URL not configured)" :
+    `Failed — ${result.message}`;
+
+  return (
+    <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">Webhook Health</p>
+        <p className={`text-xs mt-0.5 ${statusColor}`}>{statusLabel}</p>
+        {lastChecked && (
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Last tested {lastChecked.toLocaleTimeString()} · auto-refreshes every 60s
+          </p>
+        )}
+      </div>
+      <Button size="sm" variant="outline" disabled={probe.isPending} onClick={() => probe.mutate()}>
+        {probe.isPending ? "Testing…" : "Test Now"}
+      </Button>
+    </div>
+  );
+}
+
 function ServicesTab() {
   const { user: currentUser } = useAuth();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
@@ -857,6 +908,8 @@ function ServicesTab() {
           ))}
         </div>
       )}
+
+      <WebhookHealthCard />
 
       <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
         <div>
