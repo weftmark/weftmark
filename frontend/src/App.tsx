@@ -36,12 +36,8 @@ function RootRoute() {
       </div>
     );
   }
-  if (!isAuthenticated) return <LandingPage />;
-  return (
-    <ProtectedRoute>
-      <DashboardPage />
-    </ProtectedRoute>
-  );
+  if (isAuthenticated) return <Navigate to="/home" replace />;
+  return <LandingPage />;
 }
 
 const queryClient = new QueryClient({
@@ -66,6 +62,14 @@ export default function App() {
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/" element={<RootRoute />} />
+                  <Route
+                    path="/home"
+                    element={
+                      <ProtectedRoute>
+                        <DashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route
                     path="/projects"
                     element={

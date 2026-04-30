@@ -30,7 +30,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: Props) {
   }
 
   if (requireAdmin && !user?.is_admin) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return (
