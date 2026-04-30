@@ -27,7 +27,10 @@ def _clerk_request(secret_key: str, method: str, path: str) -> object:
     req = urllib.request.Request(
         f"{CLERK_API}{path}",
         method=method,
-        headers={"Authorization": f"Bearer {secret_key}"},
+        headers={
+            "Authorization": f"Bearer {secret_key}",
+            "User-Agent": "WeftMark-DevTools/1.0",
+        },
     )
     try:
         with urllib.request.urlopen(req) as resp:

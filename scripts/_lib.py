@@ -5,6 +5,12 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# Force UTF-8 output on Windows terminals that default to CP1252.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # ---------------------------------------------------------------------------
 # ANSI output
 # ---------------------------------------------------------------------------
@@ -19,20 +25,20 @@ RESET = "\033[0m"
 
 
 def ok(msg: str) -> None:
-    print(f"{GREEN}✓{RESET} {msg}")
+    print(f"{GREEN}ok{RESET}  {msg}")
 
 
 def warn(msg: str) -> None:
-    print(f"{YELLOW}⚠{RESET}  {msg}")
+    print(f"{YELLOW}!!{RESET}  {msg}")
 
 
 def fail(msg: str, exit_code: int = 1) -> None:
-    print(f"{RED}✗{RESET}  {msg}", file=sys.stderr)
+    print(f"{RED}ERR{RESET} {msg}", file=sys.stderr)
     sys.exit(exit_code)
 
 
 def info(msg: str) -> None:
-    print(f"{CYAN}→{RESET} {msg}")
+    print(f"{CYAN}>>{RESET} {msg}")
 
 
 def header(msg: str) -> None:
@@ -40,7 +46,7 @@ def header(msg: str) -> None:
 
 
 def dry(msg: str) -> None:
-    print(f"{DIM}  (dry-run){RESET} {msg}")
+    print(f"{DIM}  [dry-run]{RESET} {msg}")
 
 
 # ---------------------------------------------------------------------------
