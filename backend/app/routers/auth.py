@@ -186,10 +186,29 @@ async def _handle_user_updated(db: AsyncSession, data: dict) -> None:
 async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
     clerk_user_id: str = data["id"]
     user = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id, User.deleted_at.is_(None)))
-    if user:
-        user.soft_delete()
-        await db.commit()
-        log.info("Soft-deleted User record for Clerk user %s", clerk_user_id)
+    if user is None:
+        return
+
+    if user.deletion_state is not None:
+        # Admin-initiated deletion already in progress — Celery task handles cleanup.
+        log.info(
+            "webhook_user_deleted clerk_user_id=%s deletion_state=%s — deletion already in progress",
+            clerk_user_id,
+            user.deletion_state,
+        )
+        return
+
+    # Unexpected Clerk-side deletion (e.g. deleted via Clerk dashboard).
+    # Flag the record so admins can review and choose to delete all data.
+    user.clerk_errored = True
+    user.is_active = False
+    await write_audit_log(db, event_type="user.clerk_errored", target_user_id=user.id, target_email=user.email)
+    await db.commit()
+    log.warning(
+        "webhook_user_deleted_unexpected clerk_user_id=%s user_id=%s — flagged as clerk_errored",
+        clerk_user_id,
+        user.id,
+    )
 
 
 async def _consume_invite(db: AsyncSession, email: str) -> Invite | None:

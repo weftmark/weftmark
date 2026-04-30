@@ -13,6 +13,7 @@ import {
   banUser,
   unbanUser,
   elevateToSuperuser,
+  deleteUser,
   listInvites,
   createInvite,
   revokeInvite,
@@ -129,6 +130,7 @@ function UsersTab() {
   const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
   const [elevateId, setElevateId] = useState<string | null>(null);
   const [elevateContent, setElevateContent] = useState<ElevateContentSummary | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin", "users"],
@@ -172,6 +174,12 @@ function UsersTab() {
     },
   });
 
+  const del = useMutation({
+    mutationFn: (id: string) => deleteUser(id),
+    onSuccess: () => { setDeleteId(null); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
+    onError: () => setDeleteId(null),
+  });
+
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
@@ -201,11 +209,21 @@ function UsersTab() {
               {u.is_admin && !u.is_superuser && (
                 <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">admin</span>
               )}
-              {u.clerk_banned ? (
-                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">banned</span>
-              ) : !u.is_active ? (
-                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">deactivated</span>
-              ) : null}
+              {u.clerk_errored && (
+                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive font-medium">errored</span>
+              )}
+              {u.deletion_state && (
+                <span className="text-xs border border-yellow-500 rounded px-1.5 py-0.5 text-yellow-600">
+                  deleting:{u.deletion_state}
+                </span>
+              )}
+              {!u.clerk_errored && !u.deletion_state && (
+                u.clerk_banned ? (
+                  <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">banned</span>
+                ) : !u.is_active ? (
+                  <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">deactivated</span>
+                ) : null
+              )}
 
               {confirmBanId === u.id ? (
                 <>
@@ -241,59 +259,82 @@ function UsersTab() {
                     Cancel
                   </Button>
                 </>
+              ) : deleteId === u.id ? (
+                <>
+                  <span className="text-xs text-destructive font-medium">
+                    Delete {u.display_name}? All data and S3 storage will be permanently removed.
+                  </span>
+                  <Button size="sm" variant="destructive" disabled={del.isPending} onClick={() => del.mutate(u.id)}>
+                    Delete
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+                </>
               ) : (
                 <>
-                  {currentUser?.is_superuser && (
+                  {!u.deletion_state && (
                     <>
-                      {!u.is_superuser && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={patch.isPending || u.clerk_banned}
-                          onClick={() => patch.mutate({ id: u.id, body: { is_admin: !u.is_admin } })}
-                        >
-                          {u.is_admin ? "Remove admin" : "Make admin"}
-                        </Button>
+                      {currentUser?.is_superuser && (
+                        <>
+                          {!u.is_superuser && !u.clerk_errored && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={patch.isPending || u.clerk_banned}
+                              onClick={() => patch.mutate({ id: u.id, body: { is_admin: !u.is_admin } })}
+                            >
+                              {u.is_admin ? "Remove admin" : "Make admin"}
+                            </Button>
+                          )}
+                          {!u.is_superuser && u.is_admin && !u.clerk_errored && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={elevate.isPending || u.clerk_banned}
+                              onClick={() => { setElevateId(u.id); elevate.mutate({ id: u.id, force: false }); }}
+                            >
+                              Make superuser
+                            </Button>
+                          )}
+                          {!u.is_superuser && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => setDeleteId(u.id)}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </>
                       )}
-                      {!u.is_superuser && u.is_admin && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={elevate.isPending || u.clerk_banned}
-                          onClick={() => { setElevateId(u.id); elevate.mutate({ id: u.id, force: false }); }}
-                        >
-                          Make superuser
-                        </Button>
+                      {!u.is_superuser && !u.clerk_errored && (
+                        u.clerk_banned ? (
+                          <Button size="sm" variant="outline" disabled={unban.isPending} onClick={() => unban.mutate(u.id)}>
+                            Unban
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={patch.isPending || (u.is_active && u.is_admin)}
+                              title={u.is_active && u.is_admin ? "Remove admin rights before deactivating" : undefined}
+                              onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}
+                            >
+                              {u.is_active ? "Deactivate" : "Reactivate"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={u.is_admin}
+                              title={u.is_admin ? "Remove admin rights before banning" : undefined}
+                              onClick={() => setConfirmBanId(u.id)}
+                            >
+                              Ban
+                            </Button>
+                          </>
+                        )
                       )}
                     </>
-                  )}
-                  {!u.is_superuser && (
-                    u.clerk_banned ? (
-                      <Button size="sm" variant="outline" disabled={unban.isPending} onClick={() => unban.mutate(u.id)}>
-                        Unban
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={patch.isPending || (u.is_active && u.is_admin)}
-                          title={u.is_active && u.is_admin ? "Remove admin rights before deactivating" : undefined}
-                          onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}
-                        >
-                          {u.is_active ? "Deactivate" : "Reactivate"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={u.is_admin}
-                          title={u.is_admin ? "Remove admin rights before banning" : undefined}
-                          onClick={() => setConfirmBanId(u.id)}
-                        >
-                          Ban
-                        </Button>
-                      </>
-                    )
                   )}
                 </>
               )}

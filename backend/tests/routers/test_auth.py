@@ -240,3 +240,106 @@ class TestRevokeInvite:
         invite = await self._create_invite_db(db_session, admin_user)
         resp = await client.delete(f"/auth/invite/{invite.id}")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Clerk errored user — 401 enforcement
+# ---------------------------------------------------------------------------
+
+
+class TestClerkErroredUser:
+    """Users flagged clerk_errored=True must receive 401 on all requests."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_clerk(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "clerk_publishable_key", "pk_test_dGVzdA")
+        with patch("app.deps.verify_session_token", return_value="clerk_errored_001"):
+            yield
+
+    async def test_clerk_errored_user_gets_401(self, raw_client: AsyncClient, db_session: AsyncSession):
+        user = User(
+            email="errored@example.com",
+            display_name="Errored User",
+            clerk_user_id="clerk_errored_001",
+            is_active=False,
+            clerk_errored=True,
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        resp = await raw_client.get("/auth/me", headers={"Authorization": "Bearer fake.token"})
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# _handle_user_deleted webhook paths
+# ---------------------------------------------------------------------------
+
+
+class TestHandleUserDeleted:
+    """Unit-level tests for the user.deleted webhook handler."""
+
+    async def test_unexpected_deletion_flags_clerk_errored(self, db_session: AsyncSession):
+        """user.deleted for a user with no deletion_state sets clerk_errored=True and is_active=False."""
+        from app.routers.auth import _handle_user_deleted
+
+        user = User(
+            email="deleted@example.com",
+            display_name="Deleted User",
+            clerk_user_id="clerk_del_001",
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        await _handle_user_deleted(db_session, {"id": "clerk_del_001"})
+        await db_session.refresh(user)
+
+        assert user.clerk_errored is True
+        assert user.is_active is False
+
+    async def test_unexpected_deletion_does_not_soft_delete(self, db_session: AsyncSession):
+        """Unexpected webhook deletion must not soft-delete the record (admins need to review it)."""
+        from app.routers.auth import _handle_user_deleted
+
+        user = User(
+            email="nodelete@example.com",
+            display_name="No Delete",
+            clerk_user_id="clerk_del_002",
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        await _handle_user_deleted(db_session, {"id": "clerk_del_002"})
+        await db_session.refresh(user)
+
+        assert user.deleted_at is None
+
+    async def test_in_progress_deletion_is_noop(self, db_session: AsyncSession):
+        """user.deleted for a user already in the deletion pipeline must not change state."""
+        from datetime import datetime, timezone
+
+        from app.routers.auth import _handle_user_deleted
+
+        user = User(
+            email="inprogress@example.com",
+            display_name="In Progress",
+            clerk_user_id="clerk_del_003",
+            deletion_state="pending",
+            deletion_initiated_at=datetime.now(timezone.utc),
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        await _handle_user_deleted(db_session, {"id": "clerk_del_003"})
+        await db_session.refresh(user)
+
+        assert user.clerk_errored is False
+        assert user.deletion_state == "pending"
+
+    async def test_unknown_clerk_user_is_noop(self, db_session: AsyncSession):
+        """user.deleted for an unrecognised clerk_user_id must not raise."""
+        from app.routers.auth import _handle_user_deleted
+
+        await _handle_user_deleted(db_session, {"id": "clerk_unknown_xyz"})
