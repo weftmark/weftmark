@@ -65,20 +65,29 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
         wh = Webhook(settings.clerk_webhook_secret)
         event = wh.verify(payload, headers)
     except WebhookVerificationError:
+        log.info("webhook_rejected reason=invalid_signature")
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     event_type = event.get("type")
     data = event.get("data", {})
+    clerk_user_id = data.get("id", "unknown")
 
-    if event_type == "user.created":
-        await _handle_user_created(db, data)
-    elif event_type == "user.updated":
-        await _handle_user_updated(db, data)
-    elif event_type == "user.deleted":
-        await _handle_user_deleted(db, data)
-    else:
-        log.debug("Ignoring unhandled Clerk event type: %s", event_type)
+    log.info("webhook_received event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
 
+    try:
+        if event_type == "user.created":
+            await _handle_user_created(db, data)
+        elif event_type == "user.updated":
+            await _handle_user_updated(db, data)
+        elif event_type == "user.deleted":
+            await _handle_user_deleted(db, data)
+        else:
+            log.info("webhook_ignored event_type=%s", event_type)
+    except Exception:
+        log.exception("webhook_processing_failed event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
+        raise
+
+    log.info("webhook_processed event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
     return {"status": "ok"}
 
 

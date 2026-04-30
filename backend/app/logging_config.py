@@ -5,6 +5,34 @@ import logging
 import sys
 from datetime import datetime, timezone
 
+# Standard LogRecord attributes — extras beyond these are included in the output.
+_STDLIB_ATTRS = frozenset(
+    {
+        "args",
+        "created",
+        "exc_info",
+        "exc_text",
+        "filename",
+        "funcName",
+        "levelname",
+        "levelno",
+        "lineno",
+        "message",
+        "module",
+        "msecs",
+        "msg",
+        "name",
+        "pathname",
+        "process",
+        "processName",
+        "relativeCreated",
+        "stack_info",
+        "taskName",
+        "thread",
+        "threadName",
+    }
+)
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -16,6 +44,13 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             entry["exc_info"] = self.formatException(record.exc_info)
+        for key, val in record.__dict__.items():
+            if key not in _STDLIB_ATTRS and not key.startswith("_"):
+                try:
+                    json.dumps(val)
+                    entry[key] = val
+                except (TypeError, ValueError):
+                    entry[key] = str(val)
         return json.dumps(entry)
 
 
