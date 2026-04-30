@@ -45,15 +45,23 @@ async def get_current_user(
         log.info("auth_failure reason=invalid_token method=%s path=%s", method, path)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
-    user = await db.scalar(
-        select(User).where(
-            User.clerk_user_id == clerk_user_id,
-            User.deleted_at.is_(None),
-            User.is_active.is_(True),
-        )
-    )
+    user = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id))
     if user is None:
         log.info("auth_failure reason=user_not_found clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    if user.deleted_at is not None:
+        log.info(
+            "auth_failure reason=user_deleted clerk_user_id=%s deletion_state=%s method=%s path=%s",
+            clerk_user_id,
+            user.deletion_state,
+            method,
+            path,
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    if not user.is_active:
+        log.info("auth_failure reason=user_inactive clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     now = datetime.now(timezone.utc)

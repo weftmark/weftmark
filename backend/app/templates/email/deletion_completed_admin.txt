@@ -1,0 +1,4 @@
+User deletion completed successfully in {app_name}.
+
+User:    {display_name} ({email})
+Status:  Complete — all data has been permanently deleted

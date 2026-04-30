@@ -1,0 +1,12 @@
+<p style="color:#b91c1c;font-weight:bold;">A user deletion task has stalled and requires attention in <strong>{app_name}</strong>.</p>
+
+<table style="border-collapse:collapse;margin:16px 0;">
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">User</td><td style="padding:4px 0;"><strong>{display_name}</strong> ({email})</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">User ID</td><td style="padding:4px 0;font-family:monospace;">{user_id}</td></tr>
+  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Status</td><td style="padding:4px 0;color:#b91c1c;font-weight:bold;">Stalled — retry limit exceeded</td></tr>
+</table>
+
+<p>The user's account remains blocked but their data has not been fully purged.
+Check the worker logs for details and re-trigger deletion from the admin panel.</p>
+
+<p><a href="{admin_url}">View Admin Panel</a></p>

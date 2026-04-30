@@ -62,6 +62,8 @@ class AdminUserResponse(BaseModel):
     last_active_at: datetime | None
     approved_by_name: str | None
     approved_by_email: str | None
+    deletion_state: str | None
+    deletion_initiated_at: datetime | None
     counts: AdminUserCounts
 
     model_config = {"from_attributes": False}
@@ -371,8 +373,16 @@ async def list_users(
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[AdminUserResponse]:
+    from sqlalchemy import or_
+
     users = list(
-        (await db.scalars(select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.asc()))).all()
+        (
+            await db.scalars(
+                select(User)
+                .where(or_(User.deleted_at.is_(None), User.deletion_state.is_not(None)))
+                .order_by(User.created_at.asc())
+            )
+        ).all()
     )
     if not users:
         return []
@@ -452,6 +462,8 @@ async def list_users(
             approved_by_name=u.approved_by_name,
             approved_by_email=u.approved_by_email,
             is_superuser=u.is_superuser,
+            deletion_state=u.deletion_state,
+            deletion_initiated_at=u.deletion_initiated_at,
             counts=AdminUserCounts(
                 projects=project_counts.get(u.id, 0),
                 activities_active=activity_active.get(u.id, 0),
@@ -558,6 +570,8 @@ async def patch_user(
         approved_by_name=user.approved_by_name,
         approved_by_email=user.approved_by_email,
         is_superuser=user.is_superuser,
+        deletion_state=user.deletion_state,
+        deletion_initiated_at=user.deletion_initiated_at,
         counts=AdminUserCounts(
             projects=projects,
             activities_active=act_active,
@@ -608,6 +622,8 @@ async def ban_user(
         approved_by_name=user.approved_by_name,
         approved_by_email=user.approved_by_email,
         is_superuser=user.is_superuser,
+        deletion_state=user.deletion_state,
+        deletion_initiated_at=user.deletion_initiated_at,
         counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
     )
 
@@ -643,8 +659,45 @@ async def unban_user(
         approved_by_name=user.approved_by_name,
         approved_by_email=user.approved_by_email,
         is_superuser=user.is_superuser,
+        deletion_state=user.deletion_state,
+        deletion_initiated_at=user.deletion_initiated_at,
         counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
     )
+
+
+# ---------------------------------------------------------------------------
+# Delete user
+# ---------------------------------------------------------------------------
+
+
+class DeleteUserRequest(BaseModel):
+    confirm: str
+
+
+@router.post("/users/{user_id}/delete", status_code=202)
+async def delete_user(
+    user_id: uuid.UUID,
+    body: DeleteUserRequest,
+    requesting_user: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    if body.confirm != "DELETE USER":
+        raise HTTPException(status_code=422, detail='confirm must be exactly "DELETE USER"')
+
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == requesting_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account via admin panel")
+    if user.deletion_state is not None:
+        raise HTTPException(status_code=409, detail=f"Deletion already in state: {user.deletion_state}")
+
+    from app.services.deletion import initiate_user_deletion
+
+    await initiate_user_deletion(db, user)
+    log.info("admin_delete_initiated user_id=%s by=%s", user_id, requesting_user.email)
+
+    return {"status": "pending", "user_id": str(user_id)}
 
 
 # ---------------------------------------------------------------------------

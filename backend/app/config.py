@@ -101,6 +101,9 @@ class Settings(BaseSettings):
     s3_bucket_name: str = ""
     s3_region: str = ""
 
+    # Redis / Celery
+    redis_url: str = "redis://redis:6379/0"
+
     # Rendering
     render_max_width: int = 4000
     render_max_height: int = 4000
