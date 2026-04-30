@@ -7,6 +7,25 @@ export function configureApiClient(getter: TokenGetter) {
   _getToken = getter;
 }
 
+export async function getAuthToken(): Promise<string | null> {
+  if (!_getToken) return null;
+  return _getToken();
+}
+
+export async function downloadAuthed(url: string, filename: string): Promise<void> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(url, { headers, credentials: "include" });
+  if (!res.ok) throw new Error("Download failed");
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

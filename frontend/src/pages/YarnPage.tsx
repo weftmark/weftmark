@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listYarn, yarnPhotoUrl, type YarnSummary } from "@/api/yarn";
 import { AddYarnModal } from "@/components/yarn/AddYarnModal";
 import { Button } from "@/components/ui/button";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 
 function YarnCard({ yarn }: { yarn: YarnSummary }) {
   const skeinLabel = yarn.skein_count === 0
@@ -18,7 +19,7 @@ function YarnCard({ yarn }: { yarn: YarnSummary }) {
       className="flex items-start gap-3 rounded-lg border p-4 hover:border-ring transition-colors"
     >
       {yarn.has_photo ? (
-        <img
+        <AuthedImage
           src={yarnPhotoUrl(yarn.id)}
           alt={`${yarn.brand} ${yarn.name}`}
           className="h-14 w-14 rounded-md object-cover border shrink-0"

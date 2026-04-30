@@ -102,8 +102,15 @@ export interface UpdateSkeinPayload {
   notes?: string | null;
 }
 
+import { getAuthToken } from "@/api/client";
+
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: "include", ...init });
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const res = await fetch(url, { credentials: "include", ...init, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
     throw new Error(err.detail ?? "Request failed");
@@ -147,9 +154,12 @@ export function yarnPhotoUrl(id: string): string {
 export async function uploadYarnPhoto(id: string, file: File): Promise<void> {
   const form = new FormData();
   form.append("file", file);
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(`/api/yarn/${id}/photo`, {
     method: "PUT",
     credentials: "include",
+    headers,
     body: form,
   });
   if (!res.ok) {

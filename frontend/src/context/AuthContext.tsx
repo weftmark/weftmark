@@ -31,10 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Wire Clerk's token getter into the API client as soon as it's available.
-  useEffect(() => {
-    configureApiClient(getToken);
-  }, [getToken]);
+  // Wire Clerk's token getter synchronously during render so it's available
+  // before any child component mounts and fires API calls.
+  configureApiClient(getToken);
 
   const fetchUser = () => {
     setIsLoading(true);

@@ -128,8 +128,15 @@ export interface CloneVersionPayload {
   include_accessories?: boolean;
 }
 
+import { getAuthToken } from "@/api/client";
+
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: "include", ...init });
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const res = await fetch(url, { credentials: "include", ...init, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
     throw new Error(err.detail ?? "Request failed");
@@ -181,9 +188,12 @@ export function loomPhotoUrl(id: string): string {
 export async function uploadLoomPhoto(id: string, file: File): Promise<void> {
   const form = new FormData();
   form.append("file", file);
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(`/api/looms/${id}/photo`, {
     method: "PUT",
     credentials: "include",
+    headers,
     body: form,
   });
   if (!res.ok) {
@@ -203,9 +213,12 @@ export function versionPhotoUrl(loomId: string, versionId: string, photoId: stri
 export async function uploadVersionPhoto(loomId: string, versionId: string, file: File): Promise<LoomVersionPhoto> {
   const form = new FormData();
   form.append("file", file);
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(`/api/looms/${loomId}/versions/${versionId}/photos`, {
     method: "POST",
     credentials: "include",
+    headers,
     body: form,
   });
   if (!res.ok) {
@@ -232,9 +245,12 @@ export async function uploadVersionReceipt(
   const form = new FormData();
   form.append("file", file);
   if (description) form.append("description", description);
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(`/api/looms/${loomId}/versions/${versionId}/receipts`, {
     method: "POST",
     credentials: "include",
+    headers,
     body: form,
   });
   if (!res.ok) {
