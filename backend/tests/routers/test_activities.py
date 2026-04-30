@@ -80,18 +80,20 @@ _LOOM_PAYLOAD = {
 
 
 async def _insert_project(db_session: AsyncSession, owner: User) -> Project:
-    """Insert a project with a real WIF stored at a temp path."""
-    import tempfile
+    """Insert a project with WIF bytes written through the (mocked) storage layer."""
+    import uuid
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
-    tmp.write(_WIF)
-    tmp.close()
+    import app.services.storage as storage
+
+    project_id = uuid.uuid4()
+    wif_key = storage.save_wif(project_id, "test.wif", _WIF)
 
     project = Project(
+        id=project_id,
         owner_id=owner.id,
         name="Test Project",
         wif_filename="test.wif",
-        wif_path=tmp.name,
+        wif_path=wif_key,
         has_treadling=True,
         has_liftplan=True,
         num_shafts=4,

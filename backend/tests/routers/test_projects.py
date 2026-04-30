@@ -5,7 +5,6 @@ WeavingPatternView feature (issue #8).
 """
 
 import io
-import tempfile
 import uuid
 
 import pytest
@@ -264,12 +263,28 @@ class TestGetDrawdown:
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
         assert resp.status_code == 404
 
-    async def test_renders_and_returns_png(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
-        tmp.write(_WIF)
-        tmp.close()
+    async def _project_with_wif(self, db_session: AsyncSession, user: User) -> Project:
+        import app.services.storage as storage
 
-        project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
+        project_id = uuid.uuid4()
+        wif_key = storage.save_wif(project_id, "test.wif", _WIF)
+        project = Project(
+            id=project_id,
+            owner_id=user.id,
+            name="Test Project",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            weft_threads=4,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        return project
+
+    async def test_renders_and_returns_png(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await self._project_with_wif(db_session, test_user)
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.status_code == 200
@@ -279,11 +294,7 @@ class TestGetDrawdown:
     async def test_response_includes_pixels_per_row_header(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
-        tmp.write(_WIF)
-        tmp.close()
-
-        project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
+        project = await self._project_with_wif(db_session, test_user)
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.headers.get("X-Pixels-Per-Row") == str(rendering.DRAWDOWN_SCALE)
@@ -291,11 +302,7 @@ class TestGetDrawdown:
     async def test_response_includes_total_rows_header(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
-        tmp.write(_WIF)
-        tmp.close()
-
-        project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
+        project = await self._project_with_wif(db_session, test_user)
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.headers.get("X-Total-Rows") == "4"
@@ -303,21 +310,13 @@ class TestGetDrawdown:
     async def test_response_has_cache_control_header(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
-        tmp.write(_WIF)
-        tmp.close()
-
-        project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
+        project = await self._project_with_wif(db_session, test_user)
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.headers.get("Cache-Control") == "public, max-age=31536000, immutable"
 
     async def test_response_has_etag_header(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
-        tmp.write(_WIF)
-        tmp.close()
-
-        project = await _insert_project(db_session, test_user, wif_path=tmp.name, weft_threads=4)
+        project = await self._project_with_wif(db_session, test_user)
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
 
         assert resp.headers.get("ETag") == f'"{project.id}"'
@@ -424,12 +423,6 @@ class TestGetPreview:
 
 
 class TestGenerateLiftplan:
-    @pytest.fixture(autouse=True)
-    def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
-        import app.services.storage as _storage
-
-        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
-
     async def _create_project_with_wif(
         self,
         db_session,
@@ -438,14 +431,16 @@ class TestGenerateLiftplan:
         has_treadling: bool = True,
         has_tieup: bool = True,
     ) -> Project:
-        tmp = tempfile.NamedTemporaryFile(suffix=".wif", delete=False)
-        tmp.write(_WIF)
-        tmp.close()
+        import app.services.storage as storage
+
+        project_id = uuid.uuid4()
+        wif_key = storage.save_wif(project_id, "test.wif", _WIF)
         project = Project(
+            id=project_id,
             owner_id=user.id,
             name="Liftplan Project",
             wif_filename="test.wif",
-            wif_path=tmp.name,
+            wif_path=wif_key,
             has_treadling=has_treadling,
             has_tieup=has_tieup,
             has_liftplan=False,

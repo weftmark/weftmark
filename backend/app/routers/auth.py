@@ -76,7 +76,12 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
     log.info("webhook_received event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
 
     try:
-        if event_type == "user.created":
+        if event_type == "webhook.test":
+            from app.services.clerk_webhook_probe import signal_probe
+
+            signal_probe()
+            log.debug("Webhook probe test event received and signalled")
+        elif event_type == "user.created":
             await _handle_user_created(db, data)
         elif event_type == "user.updated":
             await _handle_user_updated(db, data)
@@ -251,6 +256,8 @@ class UserResponse(BaseModel):
     ai_training_consent: bool
     eula_accepted_version: str | None
     current_eula_version: str
+    storage_used_bytes: int
+    storage_quota_bytes: int
 
     model_config = {"from_attributes": True}
 
@@ -261,8 +268,10 @@ async def me(
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
     from app.routers.users import get_current_eula_version
+    from app.services.storage_quota import MAX_USER_STORAGE_BYTES, get_user_storage_used
 
     current_eula_version = await get_current_eula_version(db)
+    storage_used = await get_user_storage_used(current_user.id, db)
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
@@ -276,6 +285,8 @@ async def me(
         ai_training_consent=current_user.ai_training_consent,
         eula_accepted_version=current_user.eula_accepted_version,
         current_eula_version=current_eula_version,
+        storage_used_bytes=storage_used,
+        storage_quota_bytes=MAX_USER_STORAGE_BYTES,
     )
 
 
@@ -315,6 +326,7 @@ async def create_invite(
         created_by_id=admin.id,
     )
     db.add(invite)
+    await write_audit_log(db, event_type="invite.created", actor=admin, target_email=body.email)
     await db.commit()
     await db.refresh(invite)
 
@@ -334,7 +346,7 @@ async def list_invites(
 @router.delete("/invite/{invite_id}", status_code=204)
 async def revoke_invite(
     invite_id: uuid.UUID,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     invite = await db.scalar(select(Invite).where(Invite.id == invite_id))
@@ -343,4 +355,5 @@ async def revoke_invite(
     if invite.accepted_at is not None:
         raise HTTPException(status_code=400, detail="Invite already accepted")
     invite.revoked_at = datetime.now(timezone.utc)
+    await write_audit_log(db, event_type="invite.revoked", actor=admin, target_email=invite.email)
     await db.commit()

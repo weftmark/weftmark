@@ -301,3 +301,23 @@ async def superuser_client(db_session: AsyncSession, superuser_user: User) -> As
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def mock_storage(monkeypatch):
+    """Replace storage primitives with an in-memory dict for all tests.
+
+    Prevents any test from hitting real S3/R2 or requiring files on disk.
+    Tests that need to pre-populate storage can import and call the normal
+    storage service functions (save_wif, etc.) — they will write to this dict.
+    """
+    import app.services.storage as _storage
+
+    _store: dict[str, bytes] = {}
+
+    monkeypatch.setattr(_storage, "_put", lambda key, data: (_store.__setitem__(key, data), key)[1])
+    monkeypatch.setattr(_storage, "_get", lambda key: _store[key])
+    monkeypatch.setattr(_storage, "_delete", lambda key: _store.pop(key, None))
+    monkeypatch.setattr(_storage, "_exists", lambda key: bool(key) and key in _store)
+
+    return _store

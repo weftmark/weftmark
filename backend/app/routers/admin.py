@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
 from app.models.activity import Activity, ActivityPhoto
+from app.models.audit_log import AuditLog
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
@@ -24,6 +25,7 @@ from app.models.pending_signup import PendingSignup
 from app.models.project import Project
 from app.models.user import User
 from app.models.yarn import Yarn
+from app.services.audit import write_audit_log
 from app.services.clerk import ban_clerk_user, set_user_metadata, unban_clerk_user
 from app.services.email import (
     send_account_approved_email,
@@ -507,6 +509,8 @@ async def patch_user(
     if body.is_superuser is not None:
         user.is_superuser = body.is_superuser
 
+    changed = {k: v for k, v in body.model_dump(exclude_none=True).items()}
+    await write_audit_log(db, event_type="user.role_changed", actor=admin, target=user, details=changed)
     await db.commit()
     await db.refresh(user)
 
@@ -610,6 +614,7 @@ async def ban_user(
     await set_user_metadata(user.clerk_user_id, {"status": "banned"})
     user.clerk_banned = True
     user.is_active = False
+    await write_audit_log(db, event_type="user.banned", actor=admin, target=user)
     await db.commit()
     await db.refresh(user)
 
@@ -635,7 +640,7 @@ async def ban_user(
 @router.post("/users/{user_id}/unban", status_code=200)
 async def unban_user(
     user_id: uuid.UUID,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
@@ -648,6 +653,7 @@ async def unban_user(
     await set_user_metadata(user.clerk_user_id, {"status": "active"})
     user.clerk_banned = False
     user.is_active = True
+    await write_audit_log(db, event_type="user.unbanned", actor=admin, target=user)
     await db.commit()
     await db.refresh(user)
 
@@ -699,6 +705,13 @@ async def delete_user(
 
     from app.services.deletion import initiate_user_deletion
 
+    await write_audit_log(
+        db,
+        event_type="user.deleted",
+        actor=requesting_user,
+        target_user_id=user.id,
+        target_email=user.email,
+    )
     await initiate_user_deletion(db, user)
     log.info("admin_delete_initiated user_id=%s by=%s", user_id, requesting_user.email)
 
@@ -887,6 +900,93 @@ async def check_services(
 
 
 # ---------------------------------------------------------------------------
+# Webhook probe
+# ---------------------------------------------------------------------------
+
+
+class AuditLogEntry(BaseModel):
+    id: uuid.UUID
+    actor_email: str | None
+    event_type: str
+    target_email: str | None
+    details: dict | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AuditLogPage(BaseModel):
+    items: list[AuditLogEntry]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+class WebhookProbeResponse(BaseModel):
+    status: Literal["ok", "skipped", "error"]
+    latency_ms: int | None = None
+    message: str = ""
+
+
+@router.post("/test-webhook", response_model=WebhookProbeResponse, status_code=200)
+async def test_webhook(
+    _: User = Depends(require_superuser),
+) -> WebhookProbeResponse:
+    from app.services.clerk_webhook_probe import run_webhook_probe
+
+    result = await run_webhook_probe()
+    return WebhookProbeResponse(status=result.status, latency_ms=result.latency_ms, message=result.message)
+
+
+# ---------------------------------------------------------------------------
+# Audit log
+# ---------------------------------------------------------------------------
+
+
+@router.get("/audit-log", response_model=AuditLogPage)
+async def list_audit_log(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    page: int = 1,
+    page_size: int = 50,
+    event_type: str | None = None,
+    q: str | None = None,
+) -> AuditLogPage:
+    from sqlalchemy import or_
+
+    stmt = select(AuditLog)
+    count_stmt = select(func.count()).select_from(AuditLog)
+
+    if event_type:
+        stmt = stmt.where(AuditLog.event_type == event_type)
+        count_stmt = count_stmt.where(AuditLog.event_type == event_type)
+    if q:
+        like = f"%{q}%"
+        filter_q = or_(AuditLog.actor_email.ilike(like), AuditLog.target_email.ilike(like))
+        stmt = stmt.where(filter_q)
+        count_stmt = count_stmt.where(filter_q)
+
+    total = await db.scalar(count_stmt) or 0
+    pages = max(1, (total + page_size - 1) // page_size)
+    offset = (page - 1) * page_size
+
+    rows = await db.scalars(stmt.order_by(AuditLog.created_at.desc()).offset(offset).limit(page_size))
+    items = [
+        AuditLogEntry(
+            id=r.id,
+            actor_email=r.actor_email,
+            event_type=r.event_type,
+            target_email=r.target_email,
+            details=r.details,
+            created_at=r.created_at,
+        )
+        for r in rows.all()
+    ]
+    return AuditLogPage(items=items, total=total, page=page, page_size=page_size, pages=pages)
+
+
+# ---------------------------------------------------------------------------
 # Test email
 # ---------------------------------------------------------------------------
 
@@ -982,6 +1082,13 @@ async def elevate_to_superuser(
         await db.execute(Yarn.__table__.delete().where(Yarn.owner_id == user_id))
 
     user.is_superuser = True
+    await write_audit_log(
+        db,
+        event_type="user.elevated",
+        actor=admin,
+        target=user,
+        details={"content_deleted": has_content},
+    )
     await db.commit()
     if user.clerk_user_id:
         await set_user_metadata(user.clerk_user_id, {"is_superuser": True})
@@ -1041,6 +1148,12 @@ async def approve_pending_signup(
     )
     db.add(user)
     await db.delete(signup)
+    await write_audit_log(
+        db,
+        event_type="signup.approved",
+        actor=admin,
+        target_email=signup.email,
+    )
     await db.commit()
     await set_user_metadata(signup.clerk_user_id, {"status": "active", "is_admin": False, "is_superuser": False})
 
@@ -1065,13 +1178,14 @@ async def approve_pending_signup(
 @router.post("/pending-signups/{signup_id}/ban", status_code=204)
 async def ban_pending_signup(
     signup_id: uuid.UUID,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
         raise HTTPException(status_code=404, detail="Pending signup not found")
     email, display_name, clerk_user_id = signup.email, signup.display_name, signup.clerk_user_id
+    await write_audit_log(db, event_type="signup.banned", actor=admin, target_email=email)
     await db.delete(signup)
     await db.commit()
     await ban_clerk_user(clerk_user_id)
@@ -1085,13 +1199,14 @@ async def ban_pending_signup(
 @router.delete("/pending-signups/{signup_id}", status_code=204)
 async def dismiss_pending_signup(
     signup_id: uuid.UUID,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
         raise HTTPException(status_code=404, detail="Pending signup not found")
     email, display_name, clerk_user_id = signup.email, signup.display_name, signup.clerk_user_id
+    await write_audit_log(db, event_type="signup.dismissed", actor=admin, target_email=email)
     await db.delete(signup)
     await db.commit()
     await set_user_metadata(clerk_user_id, {"status": "denied"})
@@ -1149,7 +1264,7 @@ async def get_eula_admin(
 @router.post("/eula", response_model=EulaVersionResponse, status_code=201)
 async def create_eula_version(
     body: EulaCreateRequest,
-    _: User = Depends(require_superuser),
+    admin: User = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> EulaVersionResponse:
     existing = await db.scalar(select(EulaVersion).where(EulaVersion.version == body.version))
@@ -1159,6 +1274,7 @@ async def create_eula_version(
     effective = body.effective_date or datetime.now(timezone.utc)
     row = EulaVersion(version=body.version, body_html=body.body_html, effective_date=effective)
     db.add(row)
+    await write_audit_log(db, event_type="eula.created", actor=admin, details={"version": body.version})
     await db.commit()
     await db.refresh(row)
     log.info("New EULA version created: %s (effective %s)", row.version, row.effective_date)
