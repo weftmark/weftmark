@@ -1,5 +1,22 @@
 name: Main CI
 
+# ============================================================
+# NO FILE WRITES POLICY — this workflow must never commit or
+# push files back to the repository.
+#
+# Allowed:  verify, build, create git tags via API, publish
+#           images to ghcr.io, upload Actions artifacts.
+# Forbidden: git commit, git push, auto-committing SBOMs,
+#            version bumps, lockfile updates, or any other
+#            file write of any kind.
+#
+# If a generated artifact (SBOM, snapshot, etc.) is stale,
+# this workflow MUST FAIL — not auto-fix. The fix must be
+# implemented on dev or a hotfix/* branch and merged via PR.
+#
+# The no-write-guard job below enforces this at PR time.
+# ============================================================
+#
 # PR to main  — runs full validation suite (satisfies branch protection).
 # Push to main — promote version tag, update SBOMs (artifact only, no commit),
 #                and publish :{version} + :latest images to ghcr.io.
@@ -70,6 +87,28 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}")
           [ "$HTTP" = "200" ] || { echo "Bot token invalid (HTTP $HTTP)"; exit 1; }
           echo "Bot token valid (HTTP $HTTP)"
+
+  # ------------------------------------------------------------------
+  # No-write guard — PRs to main only
+  # Rejects any ci-main.yml that contains git commit or git push.
+  # ------------------------------------------------------------------
+  no-write-guard:
+    name: No file writes in main CI
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check ci-main.yml for forbidden write commands
+        run: |
+          # Match only lines where git is the first shell token (command position).
+          # This avoids false positives from comments, step names, and echo strings.
+          HITS=$(grep -En '^\s+git (commit|push)\b' .github/workflows/ci-main.yml || true)
+          if [ -n "$HITS" ]; then
+            echo "ERR: ci-main.yml contains a git write command — file writes are forbidden on main CI."
+            echo "$HITS"
+            exit 1
+          fi
+          echo "ok: no git write commands found in ci-main.yml"
 
   # ------------------------------------------------------------------
   # Validation — runs on every PR and push (respects skip flag)
