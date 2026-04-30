@@ -34,3 +34,4 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     clerk_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     deletion_state: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
     deletion_initiated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    clerk_errored: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

@@ -64,6 +64,7 @@ class AdminUserResponse(BaseModel):
     approved_by_email: str | None
     deletion_state: str | None
     deletion_initiated_at: datetime | None
+    clerk_errored: bool
     counts: AdminUserCounts
 
     model_config = {"from_attributes": False}
@@ -464,6 +465,7 @@ async def list_users(
             is_superuser=u.is_superuser,
             deletion_state=u.deletion_state,
             deletion_initiated_at=u.deletion_initiated_at,
+            clerk_errored=u.clerk_errored,
             counts=AdminUserCounts(
                 projects=project_counts.get(u.id, 0),
                 activities_active=activity_active.get(u.id, 0),
@@ -572,6 +574,7 @@ async def patch_user(
         is_superuser=user.is_superuser,
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
+        clerk_errored=user.clerk_errored,
         counts=AdminUserCounts(
             projects=projects,
             activities_active=act_active,
@@ -624,6 +627,7 @@ async def ban_user(
         is_superuser=user.is_superuser,
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
+        clerk_errored=user.clerk_errored,
         counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
     )
 
@@ -661,6 +665,7 @@ async def unban_user(
         is_superuser=user.is_superuser,
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
+        clerk_errored=user.clerk_errored,
         counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
     )
 

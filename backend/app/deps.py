@@ -60,6 +60,10 @@ async def get_current_user(
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
+    if user.clerk_errored:
+        log.info("auth_failure reason=clerk_errored clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
     if not user.is_active:
         log.info("auth_failure reason=user_inactive clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")

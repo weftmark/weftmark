@@ -16,6 +16,9 @@ export interface AdminUser {
   is_superuser: boolean;
   is_active: boolean;
   clerk_banned: boolean;
+  clerk_errored: boolean;
+  deletion_state: string | null;
+  deletion_initiated_at: string | null;
   created_at: string;
   last_active_at: string | null;
   approved_by_name: string | null;
@@ -86,6 +89,11 @@ export interface ElevateContentSummary {
 export const elevateToSuperuser = (userId: string, confirmDeleteContent: boolean) =>
   api.post<{ status: string }>(`/api/admin/users/${userId}/elevate-to-superuser`, {
     confirm_delete_content: confirmDeleteContent,
+  });
+
+export const deleteUser = (userId: string) =>
+  api.post<{ status: string; user_id: string }>(`/api/admin/users/${userId}/delete`, {
+    confirm: "DELETE USER",
   });
 
 export const listInvites = () => api.get<InviteRecord[]>("/auth/invites");
