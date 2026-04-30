@@ -231,6 +231,8 @@ class UserResponse(BaseModel):
     ai_training_consent: bool
     eula_accepted_version: str | None
     current_eula_version: str
+    storage_used_bytes: int
+    storage_quota_bytes: int
 
     model_config = {"from_attributes": True}
 
@@ -241,8 +243,10 @@ async def me(
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
     from app.routers.users import get_current_eula_version
+    from app.services.storage_quota import MAX_USER_STORAGE_BYTES, get_user_storage_used
 
     current_eula_version = await get_current_eula_version(db)
+    storage_used = await get_user_storage_used(current_user.id, db)
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
@@ -256,6 +260,8 @@ async def me(
         ai_training_consent=current_user.ai_training_consent,
         eula_accepted_version=current_user.eula_accepted_version,
         current_eula_version=current_eula_version,
+        storage_used_bytes=storage_used,
+        storage_quota_bytes=MAX_USER_STORAGE_BYTES,
     )
 
 
