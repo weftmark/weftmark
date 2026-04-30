@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createLoom, type CreateLoomPayload, type LoomType, LOOM_TYPE_LABELS } from "@/api/looms";
+import { createLoom, type CreateLoomPayload, type LoomType, LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -9,10 +9,10 @@ interface Props {
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
-const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "other"];
+const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby", "other"];
 
-function showsShafts(t: LoomType) { return t === "floor_loom" || t === "table_loom" || t === "other"; }
-function showsTreadles(t: LoomType) { return t === "floor_loom" || t === "other"; }
+function showsShafts(t: LoomType) { return t === "floor_loom" || t === "table_loom" || t === "dobby" || t === "other"; }
+function showsTreadles(t: LoomType) { return t === "floor_loom"; }
 function showsHeddles(t: LoomType) { return t === "rigid_heddle" || t === "other"; }
 
 export function NewLoomModal({ onSuccess, onClose }: Props) {
@@ -21,7 +21,8 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
   const [modelName, setModelName] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [numShafts, setNumShafts] = useState("4");
-  const [numTreadles, setNumTreadles] = useState("4");
+  const [numTreadles, setNumTreadles] = useState("6"); // default: 4 shafts + 2
+  const [treadlesManuallySet, setTreadlesManuallySet] = useState(false);
   const [numHeddles, setNumHeddles] = useState("");
   const [weavingWidth, setWeavingWidth] = useState("");
   const [weavingWidthUnit, setWeavingWidthUnit] = useState("cm");
@@ -29,10 +30,29 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
   const [warpWasteUnit, setWarpWasteUnit] = useState("cm");
   const [effectiveDate, setEffectiveDate] = useState(today());
   const [notes, setNotes] = useState("");
-  const [supportsLift, setSupportsLift] = useState(false);
-  const [supportsTreadle, setSupportsTreadle] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const isUnsupported = !SUPPORTED_LOOM_TYPES.has(loomType);
+
+  const handleTypeChange = (newType: LoomType) => {
+    setLoomType(newType);
+    setAcknowledged(false);
+    setTreadlesManuallySet(false);
+    if (newType === "floor_loom") {
+      const s = parseInt(numShafts, 10);
+      if (!isNaN(s)) setNumTreadles(String(s + 2));
+    }
+  };
+
+  const handleShaftsChange = (val: string) => {
+    setNumShafts(val);
+    if (loomType === "floor_loom" && !treadlesManuallySet) {
+      const s = parseInt(val, 10);
+      if (!isNaN(s)) setNumTreadles(String(s + 2));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +64,6 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
         manufacturer,
         model_name: modelName,
         serial_number: serialNumber || undefined,
-        supports_lift_tracking: supportsLift,
-        supports_treadle_tracking: supportsTreadle,
         notes: notes || undefined,
         effective_date: effectiveDate,
         num_shafts: showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
@@ -77,13 +95,32 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
             <select
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={loomType}
-              onChange={(e) => setLoomType(e.target.value as LoomType)}
+              onChange={(e) => handleTypeChange(e.target.value as LoomType)}
             >
               {LOOM_TYPES.map((t) => (
                 <option key={t} value={t}>{LOOM_TYPE_LABELS[t]}</option>
               ))}
             </select>
           </div>
+
+          {/* Unsupported type warning + acknowledgement */}
+          {isUnsupported && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
+              <p className="font-medium text-amber-900 dark:text-amber-200">Activity tracking not supported</p>
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                This loom type is not currently supported for activity tracking. You can save it for documentation
+                and it will be available if support is added later, but activities cannot be created using it.
+              </p>
+              <label className="flex items-center gap-2 text-xs text-amber-900 dark:text-amber-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acknowledged}
+                  onChange={(e) => setAcknowledged(e.target.checked)}
+                />
+                I understand this loom cannot be used for activity tracking
+              </label>
+            </div>
+          )}
 
           {/* Identity */}
           <div className="grid grid-cols-2 gap-3">
@@ -142,8 +179,8 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                     min={1}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={numShafts}
-                    onChange={(e) => setNumShafts(e.target.value)}
-                    required={loomType !== "other"}
+                    onChange={(e) => handleShaftsChange(e.target.value)}
+                    required={loomType !== "other" && loomType !== "dobby"}
                   />
                 </div>
               )}
@@ -155,8 +192,8 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                     min={0}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={numTreadles}
-                    onChange={(e) => setNumTreadles(e.target.value)}
-                    required={loomType !== "other"}
+                    onChange={(e) => { setNumTreadles(e.target.value); setTreadlesManuallySet(true); }}
+                    required
                   />
                 </div>
               )}
@@ -225,27 +262,6 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
             </div>
           )}
 
-          {/* Activity tracking */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Activity tracking</p>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={supportsLift}
-                onChange={(e) => setSupportsLift(e.target.checked)}
-              />
-              Supports lift tracking
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={supportsTreadle}
-                onChange={(e) => setSupportsTreadle(e.target.checked)}
-              />
-              Supports treadle tracking
-            </label>
-          </div>
-
           <div>
             <label className="mb-1 block text-sm font-medium">Notes (optional)</label>
             <textarea
@@ -265,7 +281,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || (isUnsupported && !acknowledged)}>
               {loading ? "Creating…" : "Create loom"}
             </Button>
           </div>

@@ -8,7 +8,15 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
-LOOM_TYPES = ("floor_loom", "table_loom", "rigid_heddle", "inkle", "other")
+LOOM_TYPES = ("floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby", "other")
+
+# Only these types support activity tracking (treadle or lift).
+ACTIVITY_SUPPORTED_LOOM_TYPES = frozenset({"floor_loom", "table_loom"})
+
+
+def loom_tracking_flags(loom_type: str) -> tuple[bool, bool]:
+    """Return (supports_lift_tracking, supports_treadle_tracking) derived from loom_type."""
+    return loom_type == "table_loom", loom_type == "floor_loom"
 
 
 class Loom(Base, TimestampMixin, SoftDeleteMixin):
