@@ -13,7 +13,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate("/", { replace: true });
+      navigate("/home", { replace: true });
     }
   }, [isAuthenticated, isLoading, navigate]);
 
@@ -54,7 +54,7 @@ export function LoginPage() {
         <SignIn
           routing="hash"
           signUpUrl="/register"
-          fallbackRedirectUrl="/"
+          fallbackRedirectUrl="/home"
           appearance={{
             elements: {
               rootBox: "w-full",
