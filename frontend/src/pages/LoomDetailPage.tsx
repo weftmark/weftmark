@@ -16,6 +16,8 @@ import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
 import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
 import { Button } from "@/components/ui/button";
+import { AuthedImage } from "@/components/ui/AuthedImage";
+import { downloadAuthed } from "@/api/client";
 import { resizeImageToFile, formatBytes } from "@/lib/image-utils";
 
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — must match backend MAX_FILE_SIZE
@@ -119,7 +121,7 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
   return (
     <div className="flex items-start gap-4">
       {loom.has_photo ? (
-        <img
+        <AuthedImage
           src={loomPhotoUrl(loom.id)}
           alt="Loom profile"
           className="h-32 w-32 rounded-lg object-cover border"
@@ -243,7 +245,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
       <div className="flex flex-wrap gap-2 items-start">
         {version.photos.map((p) => (
           <div key={p.id} className="flex flex-col items-center gap-1">
-            <img src={versionPhotoUrl(loom.id, version.id, p.id)} alt={p.filename} className="h-20 w-20 rounded object-cover border" />
+            <AuthedImage src={versionPhotoUrl(loom.id, version.id, p.id)} alt={p.filename} className="h-20 w-20 rounded object-cover border" />
             {confirmId !== p.id ? (
               <button
                 onClick={() => setConfirmId(p.id)}
@@ -338,12 +340,11 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
         <ul className="mb-3 space-y-2">
           {version.receipts.map((r) => (
             <li key={r.id} className="flex items-center gap-2 text-sm">
-              <a
-                href={versionReceiptUrl(loom.id, version.id, r.id)}
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2 text-muted-foreground hover:text-foreground truncate max-w-xs"
-              >{r.description || r.filename}</a>
+              <button
+                type="button"
+                onClick={() => downloadAuthed(versionReceiptUrl(loom.id, version.id, r.id), r.filename).catch(() => {})}
+                className="underline underline-offset-2 text-muted-foreground hover:text-foreground truncate max-w-xs text-left"
+              >{r.description || r.filename}</button>
               <span className="ml-auto shrink-0">
                 {confirmId !== r.id ? (
                   <button onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">

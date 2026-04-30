@@ -11,6 +11,7 @@ import {
 } from "@/api/yarn";
 import { CloneYarnModal } from "@/components/yarn/CloneYarnModal";
 import { Button } from "@/components/ui/button";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 import { resizeImageToFile, formatBytes } from "@/lib/image-utils";
 
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
@@ -80,7 +81,7 @@ function YarnPhoto({ yarn, onChanged }: { yarn: YarnDetail; onChanged: () => voi
   return (
     <div className="flex items-start gap-4">
       {yarn.has_photo ? (
-        <img src={yarnPhotoUrl(yarn.id)} alt="Yarn" className="h-32 w-32 rounded-lg object-cover border" />
+        <AuthedImage src={yarnPhotoUrl(yarn.id)} alt="Yarn" className="h-32 w-32 rounded-lg object-cover border" />
       ) : yarn.color_hex ? (
         <div className="h-32 w-32 rounded-lg border shrink-0" style={{ backgroundColor: yarn.color_hex }} />
       ) : (

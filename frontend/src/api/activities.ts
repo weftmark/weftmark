@@ -75,6 +75,8 @@ export interface PicksResponse {
   has_weft_colors: boolean;
 }
 
+import { getAuthToken } from "@/api/client";
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -85,7 +87,12 @@ export class ApiError extends Error {
 }
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: "include", ...init });
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const res = await fetch(url, { credentials: "include", ...init, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Request failed" }));
     throw new ApiError(err.detail ?? "Request failed", res.status);

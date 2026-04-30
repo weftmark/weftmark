@@ -1,0 +1,10 @@
+A user deletion has been queued in {app_name}.
+
+User:        {display_name} ({email})
+Status:      Pending — data cascade in progress
+
+All user data (projects, activities, looms, uploads) will be permanently
+deleted by the background task. The user's account is already blocked.
+
+View the admin panel for status updates:
+{admin_url}

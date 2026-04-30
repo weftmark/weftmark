@@ -3,15 +3,20 @@ services:
   # ----------------------------------------------------------
   # Frontend — React application served via nginx
   # Pulls the dev image from ghcr.io.
-  # Reverse proxy: https://dev.weftmark.com → localhost:3001
+  # Traefik routes https://dev.weftmark.com → this container via traefik_proxy network.
   # ----------------------------------------------------------
   frontend:
     image: ghcr.io/weftmark/weftmark-frontend:dev
     container_name: weftmark_frontend_dev
-    ports:
-      - "127.0.0.1:3001:80"
     networks:
+      - traefik_proxy
       - public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.weftmark-dev.rule=Host(`dev.weftmark.com`)"
+      - "traefik.http.routers.weftmark-dev.entrypoints=websecure"
+      - "traefik.http.routers.weftmark-dev.tls.certresolver=cloudflare"
+      - "traefik.http.services.weftmark-dev.loadbalancer.server.port=80"
     depends_on:
       backend:
         condition: service_healthy
@@ -41,6 +46,8 @@ services:
     volumes:
       - uploads:/app/uploads
     depends_on:
+      redis:
+        condition: service_healthy
       db:
         condition: service_healthy
         required: false
@@ -50,6 +57,42 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Celery worker — background task processor
+  # ----------------------------------------------------------
+  worker:
+    image: ghcr.io/weftmark/weftmark-backend:dev
+    container_name: weftmark_worker_dev
+    entrypoint: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    networks:
+      - internal
+    env_file:
+      - .env.dev
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Redis — Celery broker and result backend
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: weftmark_redis_dev
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   # ----------------------------------------------------------
@@ -81,6 +124,9 @@ services:
     restart: unless-stopped
 
 networks:
+  traefik_proxy:
+    external: true
+    name: traefik_proxy
   public:
     name: weftmark_dev_public
     driver: bridge

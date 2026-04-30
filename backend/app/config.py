@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     clerk_publishable_key: str = ""
     clerk_secret_key: str = ""
     clerk_webhook_secret: str = ""
+    webhook_base_url: str = ""  # public URL reachable by Svix, e.g. https://api.example.com
+    clerk_webhook_probe_timeout_s: int = 10
 
     # SMTP (SMTP2Go)
     smtp_host: str = "mail.smtp2go.com"
@@ -100,6 +102,9 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = ""
     s3_bucket_name: str = ""
     s3_region: str = ""
+
+    # Redis / Celery
+    redis_url: str = "redis://redis:6379/0"
 
     # Rendering
     render_max_width: int = 4000

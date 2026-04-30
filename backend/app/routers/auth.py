@@ -36,6 +36,7 @@ from app.deps import get_current_user, get_db, require_admin
 from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
 from app.models.user import User
+from app.services.audit import write_audit_log
 from app.services.clerk import set_user_metadata
 from app.services.email import send_invite_email, send_pending_signup_notification, send_signup_received_email
 
@@ -65,20 +66,34 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
         wh = Webhook(settings.clerk_webhook_secret)
         event = wh.verify(payload, headers)
     except WebhookVerificationError:
+        log.info("webhook_rejected reason=invalid_signature")
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     event_type = event.get("type")
     data = event.get("data", {})
+    clerk_user_id = data.get("id", "unknown")
 
-    if event_type == "user.created":
-        await _handle_user_created(db, data)
-    elif event_type == "user.updated":
-        await _handle_user_updated(db, data)
-    elif event_type == "user.deleted":
-        await _handle_user_deleted(db, data)
-    else:
-        log.debug("Ignoring unhandled Clerk event type: %s", event_type)
+    log.info("webhook_received event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
 
+    try:
+        if event_type == "webhook.test":
+            from app.services.clerk_webhook_probe import signal_probe
+
+            signal_probe()
+            log.debug("Webhook probe test event received and signalled")
+        elif event_type == "user.created":
+            await _handle_user_created(db, data)
+        elif event_type == "user.updated":
+            await _handle_user_updated(db, data)
+        elif event_type == "user.deleted":
+            await _handle_user_deleted(db, data)
+        else:
+            log.info("webhook_ignored event_type=%s", event_type)
+    except Exception:
+        log.exception("webhook_processing_failed event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
+        raise
+
+    log.info("webhook_processed event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
     return {"status": "ok"}
 
 
@@ -171,10 +186,29 @@ async def _handle_user_updated(db: AsyncSession, data: dict) -> None:
 async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
     clerk_user_id: str = data["id"]
     user = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id, User.deleted_at.is_(None)))
-    if user:
-        user.soft_delete()
-        await db.commit()
-        log.info("Soft-deleted User record for Clerk user %s", clerk_user_id)
+    if user is None:
+        return
+
+    if user.deletion_state is not None:
+        # Admin-initiated deletion already in progress — Celery task handles cleanup.
+        log.info(
+            "webhook_user_deleted clerk_user_id=%s deletion_state=%s — deletion already in progress",
+            clerk_user_id,
+            user.deletion_state,
+        )
+        return
+
+    # Unexpected Clerk-side deletion (e.g. deleted via Clerk dashboard).
+    # Flag the record so admins can review and choose to delete all data.
+    user.clerk_errored = True
+    user.is_active = False
+    await write_audit_log(db, event_type="user.clerk_errored", target_user_id=user.id, target_email=user.email)
+    await db.commit()
+    log.warning(
+        "webhook_user_deleted_unexpected clerk_user_id=%s user_id=%s — flagged as clerk_errored",
+        clerk_user_id,
+        user.id,
+    )
 
 
 async def _consume_invite(db: AsyncSession, email: str) -> Invite | None:
@@ -292,6 +326,7 @@ async def create_invite(
         created_by_id=admin.id,
     )
     db.add(invite)
+    await write_audit_log(db, event_type="invite.created", actor=admin, target_email=body.email)
     await db.commit()
     await db.refresh(invite)
 
@@ -311,7 +346,7 @@ async def list_invites(
 @router.delete("/invite/{invite_id}", status_code=204)
 async def revoke_invite(
     invite_id: uuid.UUID,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     invite = await db.scalar(select(Invite).where(Invite.id == invite_id))
@@ -320,4 +355,5 @@ async def revoke_invite(
     if invite.accepted_at is not None:
         raise HTTPException(status_code=400, detail="Invite already accepted")
     invite.revoked_at = datetime.now(timezone.utc)
+    await write_audit_log(db, event_type="invite.revoked", actor=admin, target_email=invite.email)
     await db.commit()

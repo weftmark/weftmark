@@ -7,6 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
+DELETION_STATES = ("pending", "in_progress", "complete", "stalled", "aborted")
+
 
 class User(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "users"
@@ -30,3 +32,6 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     approved_by_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     approved_by_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     clerk_banned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    deletion_state: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
+    deletion_initiated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+    clerk_errored: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

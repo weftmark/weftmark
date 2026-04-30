@@ -120,3 +120,40 @@ class TestUserFields:
         await db_session.commit()
         await db_session.refresh(user)
         assert user.is_admin is True
+
+
+class TestUserDeletionFields:
+    async def test_deletion_state_defaults_none(self, db_session: AsyncSession):
+        user = User(email="u@example.com", display_name="U", oidc_sub="sub-001")
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+        assert user.deletion_state is None
+
+    async def test_deletion_initiated_at_defaults_none(self, db_session: AsyncSession):
+        user = User(email="u@example.com", display_name="U", oidc_sub="sub-001")
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+        assert user.deletion_initiated_at is None
+
+    async def test_deletion_state_persists(self, db_session: AsyncSession):
+        user = User(email="u@example.com", display_name="U", oidc_sub="sub-001")
+        db_session.add(user)
+        await db_session.commit()
+        user.deletion_state = "pending"
+        await db_session.commit()
+        await db_session.refresh(user)
+        assert user.deletion_state == "pending"
+
+    async def test_deletion_initiated_at_persists(self, db_session: AsyncSession):
+        from datetime import datetime, timezone
+
+        user = User(email="u@example.com", display_name="U", oidc_sub="sub-001")
+        db_session.add(user)
+        await db_session.commit()
+        now = datetime.now(timezone.utc)
+        user.deletion_initiated_at = now
+        await db_session.commit()
+        await db_session.refresh(user)
+        assert user.deletion_initiated_at is not None

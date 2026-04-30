@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta, timezone
 
@@ -9,6 +10,8 @@ from app.config import get_settings
 from app.database import AsyncSessionLocal
 from app.models.user import User
 from app.services.clerk_auth import jwks_url_from_publishable_key, verify_session_token
+
+log = logging.getLogger(__name__)
 
 _LAST_ACTIVE_THROTTLE = timedelta(minutes=5)
 
@@ -23,9 +26,12 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     settings = get_settings()
+    method = request.method
+    path = request.url.path
 
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
+        log.info("auth_failure reason=no_token method=%s path=%s", method, path)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     token = auth_header.removeprefix("Bearer ").strip()
@@ -36,16 +42,30 @@ async def get_current_user(
     jwks_url = jwks_url_from_publishable_key(settings.clerk_publishable_key)
     clerk_user_id = verify_session_token(token, jwks_url)
     if not clerk_user_id:
+        log.info("auth_failure reason=invalid_token method=%s path=%s", method, path)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
-    user = await db.scalar(
-        select(User).where(
-            User.clerk_user_id == clerk_user_id,
-            User.deleted_at.is_(None),
-            User.is_active.is_(True),
-        )
-    )
+    user = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id))
     if user is None:
+        log.info("auth_failure reason=user_not_found clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    if user.deleted_at is not None:
+        log.info(
+            "auth_failure reason=user_deleted clerk_user_id=%s deletion_state=%s method=%s path=%s",
+            clerk_user_id,
+            user.deletion_state,
+            method,
+            path,
+        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    if user.clerk_errored:
+        log.info("auth_failure reason=clerk_errored clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    if not user.is_active:
+        log.info("auth_failure reason=user_inactive clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     now = datetime.now(timezone.utc)

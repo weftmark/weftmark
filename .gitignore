@@ -11,9 +11,10 @@
 .env
 .env.dev
 .env.prod
+.env.traefik
 .env.local
 .env.*.local
-# .env.example is intentionally tracked
+# .env.example and .env.*.example are intentionally tracked
 
 
 # ------------------------------------------------------------

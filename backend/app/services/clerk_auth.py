@@ -42,5 +42,5 @@ def verify_session_token(token: str, jwks_url: str) -> str | None:
         )
         return payload.get("sub")
     except Exception as exc:
-        log.debug("Clerk token verification failed: %s", exc)
+        log.info("jwt_verification_failed type=%s detail=%s", type(exc).__name__, exc)
         return None

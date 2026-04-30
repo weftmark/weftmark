@@ -21,21 +21,34 @@ export interface Project {
   updated_at: string;
 }
 
+import { getAuthToken } from "@/api/client";
+
 export interface ProjectDetail extends Project {
   wif_source_software: string | null;
   wif_source_version: string | null;
 }
 
-export async function listProjects(): Promise<Project[]> {
-  const res = await fetch("/api/projects", { credentials: "include" });
-  if (!res.ok) throw new Error("Failed to load projects");
+async function req<T>(url: string, init?: RequestInit): Promise<T> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const res = await fetch(url, { credentials: "include", ...init, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(err.detail ?? "Request failed");
+  }
+  if (res.status === 204) return undefined as T;
   return res.json();
 }
 
+export async function listProjects(): Promise<Project[]> {
+  return req("/api/projects");
+}
+
 export async function getProject(id: string): Promise<ProjectDetail> {
-  const res = await fetch(`/api/projects/${id}`, { credentials: "include" });
-  if (!res.ok) throw new Error("Failed to load project");
-  return res.json();
+  return req(`/api/projects/${id}`);
 }
 
 export async function uploadProject(
@@ -47,25 +60,11 @@ export async function uploadProject(
   form.append("name", name);
   form.append("wif_file", file);
   if (description) form.append("description", description);
-
-  const res = await fetch("/api/projects", {
-    method: "POST",
-    credentials: "include",
-    body: form,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Upload failed" }));
-    throw new Error(err.detail ?? "Upload failed");
-  }
-  return res.json();
+  return req("/api/projects", { method: "POST", body: form });
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  const res = await fetch(`/api/projects/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error("Failed to delete project");
+  return req(`/api/projects/${id}`, { method: "DELETE" });
 }
 
 export function previewUrl(id: string): string {
@@ -73,13 +72,5 @@ export function previewUrl(id: string): string {
 }
 
 export async function generateLiftplan(id: string): Promise<ProjectDetail> {
-  const res = await fetch(`/api/projects/${id}/generate-liftplan`, {
-    method: "POST",
-    credentials: "include",
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Failed to generate lift plan" }));
-    throw new Error(err.detail ?? "Failed to generate lift plan");
-  }
-  return res.json();
+  return req(`/api/projects/${id}/generate-liftplan`, { method: "POST" });
 }
