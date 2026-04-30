@@ -1,0 +1,24 @@
+name: Check merge source
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-source-branch:
+    name: Source branch must be dev or hotfix/*
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify source branch
+        env:
+          SOURCE: ${{ github.head_ref }}
+        run: |
+          if [[ "$SOURCE" == "dev" || "$SOURCE" == hotfix/* ]]; then
+            echo "ok  Source branch '$SOURCE' is allowed to merge into main."
+          else
+            echo "ERR Source branch '$SOURCE' is not allowed to merge into main."
+            echo "    Only 'dev' and 'hotfix/*' branches may target main."
+            echo "    Merge your changes into 'dev' first, then open a release PR from dev."
+            exit 1
+          fi
