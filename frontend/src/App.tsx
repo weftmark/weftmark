@@ -21,6 +21,8 @@ import { ActivitiesPage } from "@/pages/ActivitiesPage";
 import { ActivityDetailPage } from "@/pages/ActivityDetailPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { SignOutPage } from "@/pages/SignOutPage";
+import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 import { DevBanner } from "@/components/DevBanner";
 import { ServiceHealthBanner } from "@/components/ServiceHealthBanner";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,7 +50,7 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/login">
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/sign-out">
       <VersionGate>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
@@ -59,6 +61,8 @@ export default function App() {
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/sign-out" element={<SignOutPage />} />
+                  <Route path="/unauthorized" element={<UnauthorizedPage />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/" element={<RootRoute />} />
