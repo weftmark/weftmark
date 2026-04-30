@@ -35,7 +35,7 @@ import {
 import { EulaContent } from "@/components/EulaContent";
 import { formatBytes } from "@/lib/image-utils";
 
-type Tab = "users" | "invites" | "stats" | "health" | "services" | "eula" | "audit";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "audit" | "superuser";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -88,8 +88,8 @@ export function AdminPage() {
       </header>
 
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
-        <div className="flex gap-2 border-b pb-2">
-          {(["users", "invites", "stats", "health", "services", "eula", "audit"] as Tab[]).map((t) => (
+        <div className="flex gap-2 border-b pb-2 flex-wrap">
+          {(["users", "invites", "stats", "health", "services", "audit"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -99,9 +99,21 @@ export function AdminPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t === "eula" ? "EULA" : t}
+              {t}
             </button>
           ))}
+          {currentUser?.is_superuser && (
+            <button
+              onClick={() => setTab("superuser")}
+              className={`px-3 py-1.5 text-sm rounded capitalize ${
+                tab === "superuser"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              superuser
+            </button>
+          )}
         </div>
 
         {tab === "users" && <UsersTab />}
@@ -109,8 +121,8 @@ export function AdminPage() {
         {tab === "stats" && <StatsTab />}
         {tab === "health" && <HealthTab />}
         {tab === "services" && <ServicesTab />}
-        {tab === "eula" && <EulaTab />}
         {tab === "audit" && <AuditLogTab />}
+        {tab === "superuser" && <SuperuserTab />}
       </main>
     </div>
   );
@@ -1287,6 +1299,58 @@ function EulaTab() {
           </Button>
         )}
       </form>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Superuser tab
+// ---------------------------------------------------------------------------
+
+type SuperuserSubTab = "eula" | "storage" | "deletion";
+
+function SuperuserTab() {
+  const [sub, setSub] = useState<SuperuserSubTab>("eula");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 border-b pb-2">
+        {(["eula", "storage", "deletion"] as SuperuserSubTab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setSub(t)}
+            className={`px-3 py-1.5 text-sm rounded capitalize ${
+              sub === t
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t === "eula" ? "EULA" : t}
+          </button>
+        ))}
+      </div>
+
+      {sub === "eula" && <EulaTab />}
+      {sub === "storage" && <StorageAuditTab />}
+      {sub === "deletion" && <DeletionTab />}
+    </div>
+  );
+}
+
+function StorageAuditTab() {
+  return (
+    <div className="rounded-lg border border-dashed p-8 text-center">
+      <p className="text-sm font-medium text-muted-foreground">Storage Audit</p>
+      <p className="text-xs text-muted-foreground mt-1">Coming soon — per-user S3 storage breakdown.</p>
+    </div>
+  );
+}
+
+function DeletionTab() {
+  return (
+    <div className="rounded-lg border border-dashed p-8 text-center">
+      <p className="text-sm font-medium text-muted-foreground">Deletion Queue</p>
+      <p className="text-xs text-muted-foreground mt-1">Coming soon — in-progress and pending user deletion states.</p>
     </div>
   );
 }
