@@ -300,18 +300,9 @@ async def _probe_s3() -> ServiceCheckResult:
 
 
 def _clerk_conn_meta(settings: "Settings") -> dict[str, str]:
-    def _peek(val: str, prefix: str, n: int = 6) -> str:
-        rest = val[len(prefix) :]
-        return f"{prefix}{rest[:n]}…" if len(rest) > n else val
-
     pk = settings.clerk_publishable_key
-    if pk:
-        pfx = "pk_live_" if pk.startswith("pk_live_") else "pk_test_"
-        pk_display = _peek(pk, pfx)
-    else:
-        pk_display = "(not set)"
     return {
-        "publishable_key": pk_display,
+        "publishable_key": pk or "(not set)",
         "environment": "live" if pk and pk.startswith("pk_live_") else "test",
     }
 
