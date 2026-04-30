@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProject, deleteProject, generateLiftplan, previewUrl } from "@/api/projects";
+import { getProject, deleteProject, generateLiftplan, previewUrl, downloadWif } from "@/api/projects";
 import { listActivities } from "@/api/activities";
 import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
@@ -15,6 +15,8 @@ export function ProjectDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showDangerZone, setShowDangerZone] = useState(false);
   const [showCreateActivity, setShowCreateActivity] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -96,7 +98,30 @@ export function ProjectDetailPage() {
               <h2 className="text-base font-semibold">Design Info</h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">File</dt>
-                <dd>{project.wif_filename}</dd>
+                <dd className="flex items-center gap-2">
+                  <span>{project.wif_filename}</span>
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                    disabled={downloading}
+                    onClick={async () => {
+                      setDownloadError(null);
+                      setDownloading(true);
+                      try {
+                        await downloadWif(project.id, project.wif_filename);
+                      } catch {
+                        setDownloadError("Download failed");
+                      } finally {
+                        setDownloading(false);
+                      }
+                    }}
+                  >
+                    {downloading ? "Downloading…" : "Download"}
+                  </button>
+                </dd>
+                {downloadError && (
+                  <dd className="col-span-2 text-xs text-destructive">{downloadError}</dd>
+                )}
                 <dt className="text-muted-foreground">Shafts</dt>
                 <dd>{project.num_shafts ?? "—"}</dd>
                 <dt className="text-muted-foreground">Treadles</dt>
