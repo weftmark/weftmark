@@ -228,6 +228,33 @@ export function DashboardPage() {
             </div>
           </div>
         </section>
+
+        {/* Storage */}
+        {user && (
+          <section>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Storage</h2>
+            <div className="rounded-lg border p-4">
+              {(() => {
+                const usedMB = user.storage_used_bytes / (1024 * 1024);
+                const quotaMB = user.storage_quota_bytes / (1024 * 1024);
+                const pct = Math.min(Math.round((user.storage_used_bytes / user.storage_quota_bytes) * 100), 100);
+                const barColor = pct >= 90 ? "bg-red-500" : pct >= 75 ? "bg-amber-500" : "bg-primary";
+                return (
+                  <>
+                    <div className="mb-2 flex justify-between text-sm">
+                      <span>{usedMB < 1 ? `${Math.round(usedMB * 1024)} KB` : `${usedMB.toFixed(1)} MB`} used</span>
+                      <span className="text-muted-foreground">{Math.round(quotaMB)} MB total</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted-foreground text-right">{pct}% used</p>
+                  </>
+                );
+              })()}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
