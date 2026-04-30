@@ -20,7 +20,7 @@ from app.services.images import resize_to_jpeg
 from app.services.storage_quota import check_storage_quota
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
-MAX_ACTIVITY_PHOTOS = 20
+MAX_ACTIVITY_PHOTOS = 10
 MAX_PHOTO_SIZE = 25 * 1024 * 1024  # 25 MB raw (resized output is much smaller)
 _ACTIVITY_RESIZE_MAX_PX = 2048
 
