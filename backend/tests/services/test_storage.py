@@ -7,10 +7,18 @@ before each test via a session-scoped monkeypatch on the upload_dir attribute.
 """
 
 import uuid
+from unittest.mock import MagicMock
 
 import pytest
 
 import app.services.storage as storage
+
+# Capture originals at import time — before the autouse mock_storage fixture can
+# replace them.  These references let us test the real S3 code paths directly.
+_real_put = storage._put
+_real_get = storage._get
+_real_delete = storage._delete
+_real_exists = storage._exists
 
 # ---------------------------------------------------------------------------
 # Fixture: redirect every storage call to tmp_path
@@ -294,3 +302,60 @@ class TestGenericReadExists:
         rel2 = storage.save_wif(pid2, "a.wif", b"project two")
         assert storage.read_wif(rel1) == b"project one"
         assert storage.read_wif(rel2) == b"project two"
+
+
+# ---------------------------------------------------------------------------
+# S3 code paths — use real function references captured before autouse patches
+# ---------------------------------------------------------------------------
+
+
+class TestS3Paths:
+    @pytest.fixture(autouse=True)
+    def _s3_env(self, monkeypatch):
+        mock_client = MagicMock()
+        mock_client.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"wif bytes"))}
+        monkeypatch.setattr(storage, "_s3_client", mock_client)
+        monkeypatch.setattr(storage.settings, "storage_backend", "s3")
+        monkeypatch.setattr(storage.settings, "s3_bucket_name", "test-bucket")
+        return mock_client
+
+    def test_put_calls_s3_put_object(self, _s3_env):
+        _real_put("projects/abc/original.wif", b"data")
+        _s3_env.put_object.assert_called_once_with(Bucket="test-bucket", Key="projects/abc/original.wif", Body=b"data")
+
+    def test_put_returns_key(self, _s3_env):
+        assert _real_put("some/key", b"x") == "some/key"
+
+    def test_get_calls_s3_get_object(self, _s3_env):
+        result = _real_get("projects/abc/original.wif")
+        _s3_env.get_object.assert_called_once_with(Bucket="test-bucket", Key="projects/abc/original.wif")
+        assert result == b"wif bytes"
+
+    def test_delete_calls_s3_delete_object(self, _s3_env):
+        _real_delete("projects/abc/original.wif")
+        _s3_env.delete_object.assert_called_once_with(Bucket="test-bucket", Key="projects/abc/original.wif")
+
+    def test_exists_true_when_head_succeeds(self, _s3_env):
+        _s3_env.head_object.return_value = {}
+        assert _real_exists("some/key") is True
+
+    def test_exists_false_when_client_error(self, _s3_env, monkeypatch):
+        from botocore.exceptions import ClientError
+
+        _s3_env.head_object.side_effect = ClientError({"Error": {"Code": "404", "Message": "Not Found"}}, "HeadObject")
+        assert _real_exists("some/key") is False
+
+    def test_exists_false_for_empty_key(self, _s3_env):
+        assert _real_exists("") is False
+
+    def test_exists_false_for_none(self, _s3_env):
+        assert _real_exists(None) is False
+
+    def test_s3_client_constructed_when_none(self, monkeypatch):
+        monkeypatch.setattr(storage, "_s3_client", None)
+        monkeypatch.setattr(storage.settings, "storage_backend", "s3")
+        monkeypatch.setattr(storage.settings, "s3_bucket_name", "test-bucket")
+        mock_boto3_client = MagicMock()
+        monkeypatch.setattr("boto3.client", mock_boto3_client)
+        storage._s3()
+        mock_boto3_client.assert_called_once()
