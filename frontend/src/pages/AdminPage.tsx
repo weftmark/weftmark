@@ -25,7 +25,9 @@ import {
   getAdminServices,
   sendTestEmail,
   testWebhook,
+  getAuditLog,
   type AdminHealth,
+  type AuditLogEntry,
   type ElevateContentSummary,
   type InviteRecord,
   type PendingSignup,
@@ -36,7 +38,7 @@ import {
 import { EulaContent } from "@/components/EulaContent";
 import { formatBytes } from "@/lib/image-utils";
 
-type Tab = "users" | "invites" | "stats" | "health" | "services" | "eula";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "eula" | "audit";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -90,7 +92,7 @@ export function AdminPage() {
 
       <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
         <div className="flex gap-2 border-b pb-2">
-          {(["users", "invites", "stats", "health", "services", "eula"] as Tab[]).map((t) => (
+          {(["users", "invites", "stats", "health", "services", "eula", "audit"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -111,6 +113,7 @@ export function AdminPage() {
         {tab === "health" && <HealthTab />}
         {tab === "services" && <ServicesTab />}
         {tab === "eula" && <EulaTab />}
+        {tab === "audit" && <AuditLogTab />}
       </main>
     </div>
   );
@@ -1179,5 +1182,167 @@ function EulaTab() {
         )}
       </form>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Audit log tab
+// ---------------------------------------------------------------------------
+
+const EVENT_TYPES = [
+  "user.role_changed",
+  "user.banned",
+  "user.unbanned",
+  "user.deleted",
+  "user.elevated",
+  "signup.approved",
+  "signup.dismissed",
+  "signup.banned",
+  "invite.created",
+  "invite.revoked",
+  "eula.created",
+] as const;
+
+function eventBadgeClass(eventType: string): string {
+  if (eventType.startsWith("user.ban") || eventType === "signup.banned") return "bg-destructive/10 text-destructive";
+  if (eventType === "user.deleted") return "bg-destructive/10 text-destructive";
+  if (eventType === "user.elevated" || eventType === "signup.approved") return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+  if (eventType === "user.unbanned") return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+  return "bg-muted text-muted-foreground";
+}
+
+function formatAuditTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, { dateStyle: "short", timeStyle: "medium" });
+}
+
+function AuditLogTab() {
+  const [page, setPage] = useState(1);
+  const [eventType, setEventType] = useState<string>("");
+  const [q, setQ] = useState<string>("");
+  const [debouncedQ, setDebouncedQ] = useState<string>("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => { setPage(1); }, [eventType, debouncedQ]); // eslint-disable-line react-hooks/set-state-in-effect
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["audit-log", page, eventType, debouncedQ],
+    queryFn: () => getAuditLog({ page, page_size: 50, event_type: eventType || undefined, q: debouncedQ || undefined }),
+  });
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Audit Log</h2>
+
+      <div className="flex gap-2 flex-wrap">
+        <select
+          value={eventType}
+          onChange={(e) => setEventType(e.target.value)}
+          className="text-sm border rounded px-2 py-1.5 bg-background"
+        >
+          <option value="">All events</option>
+          {EVENT_TYPES.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          placeholder="Search by email…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="text-sm border rounded px-2 py-1.5 bg-background w-52"
+        />
+        {data && (
+          <span className="text-xs text-muted-foreground self-center ml-auto">
+            {data.total.toLocaleString()} event{data.total !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {isError && <p className="text-sm text-destructive">Failed to load audit log.</p>}
+
+      {data && data.items.length === 0 && (
+        <p className="text-sm text-muted-foreground">No events found.</p>
+      )}
+
+      {data && data.items.length > 0 && (
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 text-xs text-muted-foreground">
+              <tr>
+                <th className="text-left px-3 py-2">Time</th>
+                <th className="text-left px-3 py-2">Event</th>
+                <th className="text-left px-3 py-2">Actor</th>
+                <th className="text-left px-3 py-2">Target</th>
+                <th className="text-left px-3 py-2">Details</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {data.items.map((entry) => (
+                <AuditLogRow key={entry.id} entry={entry} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {data && data.pages > 1 && (
+        <div className="flex items-center gap-2 justify-center text-sm">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="px-2 py-1 border rounded disabled:opacity-40"
+          >
+            ←
+          </button>
+          <span className="text-muted-foreground">Page {data.page} of {data.pages}</span>
+          <button
+            disabled={page >= data.pages}
+            onClick={() => setPage((p) => p + 1)}
+            className="px-2 py-1 border rounded disabled:opacity-40"
+          >
+            →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasDetails = entry.details && Object.keys(entry.details).length > 0;
+
+  return (
+    <>
+      <tr
+        className={`hover:bg-muted/30 ${hasDetails ? "cursor-pointer" : ""}`}
+        onClick={() => hasDetails && setExpanded((v) => !v)}
+      >
+        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatAuditTime(entry.created_at)}</td>
+        <td className="px-3 py-2">
+          <span className={`inline-block text-xs font-medium px-1.5 py-0.5 rounded ${eventBadgeClass(entry.event_type)}`}>
+            {entry.event_type}
+          </span>
+        </td>
+        <td className="px-3 py-2 text-muted-foreground">{entry.actor_email ?? <span className="italic">system</span>}</td>
+        <td className="px-3 py-2 text-muted-foreground">{entry.target_email ?? "—"}</td>
+        <td className="px-3 py-2 text-muted-foreground text-xs">
+          {hasDetails ? (expanded ? "▲ hide" : "▼ show") : "—"}
+        </td>
+      </tr>
+      {expanded && hasDetails && (
+        <tr>
+          <td colSpan={5} className="px-3 pb-2 bg-muted/20">
+            <pre className="text-xs font-mono whitespace-pre-wrap">{JSON.stringify(entry.details, null, 2)}</pre>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

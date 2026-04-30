@@ -152,3 +152,30 @@ export interface WebhookProbeResult {
 }
 
 export const testWebhook = () => api.post<WebhookProbeResult>("/api/admin/test-webhook", {});
+
+export interface AuditLogEntry {
+  id: string;
+  actor_email: string | null;
+  event_type: string;
+  target_email: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AuditLogPage {
+  items: AuditLogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+export const getAuditLog = (params: { page?: number; page_size?: number; event_type?: string; q?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.event_type) qs.set("event_type", params.event_type);
+  if (params.q) qs.set("q", params.q);
+  const query = qs.toString();
+  return api.get<AuditLogPage>(`/api/admin/audit-log${query ? `?${query}` : ""}`);
+};
