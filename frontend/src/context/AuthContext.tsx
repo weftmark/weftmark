@@ -15,6 +15,8 @@ export interface User {
   ai_training_consent: boolean;
   eula_accepted_version: string | null;
   current_eula_version: string;
+  storage_used_bytes: number;
+  storage_quota_bytes: number;
 }
 
 interface AuthState {
