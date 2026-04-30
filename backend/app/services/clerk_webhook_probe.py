@@ -19,6 +19,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Literal
 
+import httpx
+from svix.webhooks import Webhook
+
+from app.config import get_settings
+
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -67,8 +72,6 @@ class WebhookProbeResult:
 
 async def run_webhook_probe() -> WebhookProbeResult:
     """Run the webhook round-trip probe and return the result."""
-    from app.config import get_settings
-
     settings = get_settings()
 
     if not settings.webhook_base_url:
@@ -95,8 +98,6 @@ async def run_webhook_probe() -> WebhookProbeResult:
         ts = datetime.now(timezone.utc)
         payload = json.dumps({"type": "webhook.test", "data": {"probe_id": msg_id}}).encode()
 
-        from svix.webhooks import Webhook
-
         wh = Webhook(settings.clerk_webhook_secret)
         signature = wh.sign(msg_id, ts, payload)
 
@@ -106,8 +107,6 @@ async def run_webhook_probe() -> WebhookProbeResult:
             "svix-timestamp": str(int(ts.timestamp())),
             "svix-signature": signature,
         }
-
-        import httpx
 
         start = time.monotonic()
         try:
