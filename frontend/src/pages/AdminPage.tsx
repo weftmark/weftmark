@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { UserDetailModal, type UserDetailTarget } from "@/components/admin/UserDetailModal";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useClerk } from "@clerk/clerk-react";
@@ -9,11 +10,6 @@ import {
   getAdminStats,
   getAdminHealth,
   getAdminVersions,
-  patchAdminUser,
-  banUser,
-  unbanUser,
-  elevateToSuperuser,
-  deleteUser,
   listInvites,
   createInvite,
   revokeInvite,
@@ -27,9 +23,9 @@ import {
   sendTestEmail,
   testWebhook,
   getAuditLog,
+  type AdminUser,
   type AdminHealth,
   type AuditLogEntry,
-  type ElevateContentSummary,
   type InviteRecord,
   type PendingSignup,
   type ServiceCheck,
@@ -121,227 +117,296 @@ export function AdminPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Users tab — helpers
+// ---------------------------------------------------------------------------
+
+type SortKey =
+  | "name" | "status" | "role" | "projects" | "activities"
+  | "looms" | "storage" | "last_login" | "joined";
+
+interface UserRow {
+  id: string;
+  display_name: string;
+  email: string;
+  status: "active" | "inactive" | "banned" | "pending" | "errored" | "deleting";
+  role: "superuser" | "admin" | "user";
+  projects: number;
+  activities: number;
+  looms: number;
+  storage_bytes: number;
+  last_active_at: string | null;
+  created_at: string;
+  _target: UserDetailTarget;
+}
+
+function deriveStatus(u: AdminUser): UserRow["status"] {
+  if (u.deletion_state) return "deleting";
+  if (u.clerk_errored) return "errored";
+  if (u.clerk_banned) return "banned";
+  if (!u.is_active) return "inactive";
+  return "active";
+}
+
+function deriveRole(u: AdminUser): UserRow["role"] {
+  if (u.is_superuser) return "superuser";
+  if (u.is_admin) return "admin";
+  return "user";
+}
+
+function formatShortDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+const STATUS_PILL: Record<UserRow["status"], string> = {
+  active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  inactive: "bg-muted text-muted-foreground",
+  banned: "bg-destructive/10 text-destructive",
+  pending: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  errored: "bg-destructive/10 text-destructive",
+  deleting: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+};
+
+function StatusPill({ status }: { status: UserRow["status"] }) {
+  return (
+    <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_PILL[status]}`}>
+      {status}
+    </span>
+  );
+}
+
+function SortTh({
+  label, k, sort, dir, onSort,
+}: {
+  label: string; k: SortKey; sort: SortKey; dir: "asc" | "desc"; onSort: (k: SortKey) => void;
+}) {
+  const active = sort === k;
+  return (
+    <th
+      className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none hover:text-foreground whitespace-nowrap"
+      onClick={() => onSort(k)}
+    >
+      {label}{active ? (dir === "asc" ? " ↑" : " ↓") : ""}
+    </th>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Users tab
 // ---------------------------------------------------------------------------
 
-function UsersTab() {
-  const qc = useQueryClient();
-  const { user: currentUser } = useAuth();
-  const [confirmBanId, setConfirmBanId] = useState<string | null>(null);
-  const [elevateId, setElevateId] = useState<string | null>(null);
-  const [elevateContent, setElevateContent] = useState<ElevateContentSummary | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+const f = "text-sm border rounded px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring";
 
-  const { data: users = [], isLoading } = useQuery({
+function UsersTab() {
+  const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["admin", "users"],
     queryFn: listAdminUsers,
   });
-
-  const patch = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { is_active?: boolean; is_admin?: boolean; is_superuser?: boolean } }) =>
-      patchAdminUser(id, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  const { data: pendingSignups = [], isLoading: pendingLoading } = useQuery({
+    queryKey: ["admin", "pending-signups"],
+    queryFn: listPendingSignups,
   });
 
-  const ban = useMutation({
-    mutationFn: (id: string) => banUser(id),
-    onSuccess: () => { setConfirmBanId(null); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
-    onError: () => setConfirmBanId(null),
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "superuser" | "user">("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "active" | "inactive" | "banned" | "pending" | "errored" | "deleting"
+  >("all");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [selected, setSelected] = useState<UserDetailTarget | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const rows: UserRow[] = [
+    ...users.map((u) => ({
+      id: u.id,
+      display_name: u.display_name,
+      email: u.email,
+      status: deriveStatus(u),
+      role: deriveRole(u),
+      projects: u.counts.projects,
+      activities: u.counts.activities_active + u.counts.activities_completed,
+      looms: u.counts.looms,
+      storage_bytes: u.counts.storage_bytes,
+      last_active_at: u.last_active_at,
+      created_at: u.created_at,
+      _target: { kind: "user" as const, user: u },
+    })),
+    ...pendingSignups.map((p) => ({
+      id: p.id,
+      display_name: p.display_name || p.email,
+      email: p.email,
+      status: "pending" as const,
+      role: "user" as const,
+      projects: 0,
+      activities: 0,
+      looms: 0,
+      storage_bytes: 0,
+      last_active_at: null,
+      created_at: p.created_at,
+      _target: { kind: "pending" as const, signup: p },
+    })),
+  ];
+
+  const q = debouncedSearch.toLowerCase();
+  const filtered = rows.filter((r) => {
+    if (q && !r.display_name.toLowerCase().includes(q) && !r.email.toLowerCase().includes(q))
+      return false;
+    if (roleFilter !== "all" && r.role !== roleFilter) return false;
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    return true;
   });
 
-  const unban = useMutation({
-    mutationFn: (id: string) => unbanUser(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  const ROLE_ORDER: Record<UserRow["role"], number> = { superuser: 0, admin: 1, user: 2 };
+  const sorted = [...filtered].sort((a, b) => {
+    let cmp = 0;
+    switch (sortKey) {
+      case "name": cmp = a.display_name.localeCompare(b.display_name); break;
+      case "status": cmp = a.status.localeCompare(b.status); break;
+      case "role": cmp = ROLE_ORDER[a.role] - ROLE_ORDER[b.role]; break;
+      case "projects": cmp = a.projects - b.projects; break;
+      case "activities": cmp = a.activities - b.activities; break;
+      case "looms": cmp = a.looms - b.looms; break;
+      case "storage": cmp = a.storage_bytes - b.storage_bytes; break;
+      case "last_login":
+        cmp = (a.last_active_at ?? "").localeCompare(b.last_active_at ?? ""); break;
+      case "joined": cmp = a.created_at.localeCompare(b.created_at); break;
+    }
+    return sortDir === "asc" ? cmp : -cmp;
   });
 
-  const elevate = useMutation({
-    mutationFn: ({ id, force }: { id: string; force: boolean }) => elevateToSuperuser(id, force),
-    onSuccess: () => {
-      setElevateId(null);
-      setElevateContent(null);
-      qc.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: (err: Error) => {
-      try {
-        const body = JSON.parse(err.message);
-        if (body?.detail?.code === "has_content") {
-          setElevateContent(body.detail.summary);
-          return;
-        }
-      } catch {}
-      setElevateId(null);
-      setElevateContent(null);
-    },
-  });
+  const handleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir("asc"); }
+  };
 
-  const del = useMutation({
-    mutationFn: (id: string) => deleteUser(id),
-    onSuccess: () => { setDeleteId(null); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
-    onError: () => setDeleteId(null),
-  });
-
-  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (usersLoading || pendingLoading)
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm text-muted-foreground">{users.length} user{users.length !== 1 ? "s" : ""}</p>
-      <div className="divide-y border rounded-lg overflow-hidden">
-        {users.map((u) => (
-          <div key={u.id} className="flex items-center justify-between px-4 py-3 bg-background gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{u.display_name}</p>
-              <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-              <p className="text-xs text-muted-foreground">
-                Last active: {formatLastActive(u.last_active_at)}
-                {" · "}
-                {u.counts.projects}p · {u.counts.looms}l · {u.counts.activities_active} active / {u.counts.activities_completed} done · {formatBytes(u.counts.storage_bytes)}
-              </p>
-              {u.approved_by_name && (
-                <p className="text-xs text-muted-foreground">
-                  Approved by {u.approved_by_name}{u.approved_by_email ? ` (${u.approved_by_email})` : ""}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-              {u.is_superuser && (
-                <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
-              )}
-              {u.is_admin && !u.is_superuser && (
-                <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">admin</span>
-              )}
-              {u.clerk_errored && (
-                <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive font-medium">errored</span>
-              )}
-              {u.deletion_state && (
-                <span className="text-xs border border-yellow-500 rounded px-1.5 py-0.5 text-yellow-600">
-                  deleting:{u.deletion_state}
-                </span>
-              )}
-              {!u.clerk_errored && !u.deletion_state && (
-                u.clerk_banned ? (
-                  <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">banned</span>
-                ) : !u.is_active ? (
-                  <span className="text-xs border border-destructive rounded px-1.5 py-0.5 text-destructive">deactivated</span>
-                ) : null
-              )}
-
-              {confirmBanId === u.id ? (
-                <>
-                  <span className="text-xs text-destructive font-medium">Ban {u.display_name}?</span>
-                  <Button size="sm" variant="destructive" disabled={ban.isPending} onClick={() => ban.mutate(u.id)}>
-                    Confirm
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setConfirmBanId(null)}>Cancel</Button>
-                </>
-              ) : elevateId === u.id ? (
-                <>
-                  {elevateContent ? (
-                    <span className="text-xs text-destructive font-medium">
-                      Has {[
-                        elevateContent.activities && `${elevateContent.activities} activities`,
-                        elevateContent.looms && `${elevateContent.looms} looms`,
-                        elevateContent.projects && `${elevateContent.projects} projects`,
-                        elevateContent.yarn && `${elevateContent.yarn} yarn`,
-                      ].filter(Boolean).join(", ")} — all will be deleted.
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground font-medium">Make {u.display_name} a superuser?</span>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={elevate.isPending}
-                    onClick={() => elevate.mutate({ id: u.id, force: !!elevateContent })}
-                  >
-                    Confirm
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => { setElevateId(null); setElevateContent(null); }}>
-                    Cancel
-                  </Button>
-                </>
-              ) : deleteId === u.id ? (
-                <>
-                  <span className="text-xs text-destructive font-medium">
-                    Delete {u.display_name}? All data and S3 storage will be permanently removed.
-                  </span>
-                  <Button size="sm" variant="destructive" disabled={del.isPending} onClick={() => del.mutate(u.id)}>
-                    Delete
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
-                </>
-              ) : (
-                <>
-                  {!u.deletion_state && (
-                    <>
-                      {currentUser?.is_superuser && (
-                        <>
-                          {!u.is_superuser && !u.clerk_errored && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={patch.isPending || u.clerk_banned}
-                              onClick={() => patch.mutate({ id: u.id, body: { is_admin: !u.is_admin } })}
-                            >
-                              {u.is_admin ? "Remove admin" : "Make admin"}
-                            </Button>
-                          )}
-                          {!u.is_superuser && u.is_admin && !u.clerk_errored && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={elevate.isPending || u.clerk_banned}
-                              onClick={() => { setElevateId(u.id); elevate.mutate({ id: u.id, force: false }); }}
-                            >
-                              Make superuser
-                            </Button>
-                          )}
-                          {!u.is_superuser && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => setDeleteId(u.id)}
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </>
-                      )}
-                      {!u.is_superuser && !u.clerk_errored && (
-                        u.clerk_banned ? (
-                          <Button size="sm" variant="outline" disabled={unban.isPending} onClick={() => unban.mutate(u.id)}>
-                            Unban
-                          </Button>
-                        ) : (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={patch.isPending || (u.is_active && u.is_admin)}
-                              title={u.is_active && u.is_admin ? "Remove admin rights before deactivating" : undefined}
-                              onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}
-                            >
-                              {u.is_active ? "Deactivate" : "Reactivate"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              disabled={u.is_admin}
-                              title={u.is_admin ? "Remove admin rights before banning" : undefined}
-                              onClick={() => setConfirmBanId(u.id)}
-                            >
-                              Ban
-                            </Button>
-                          </>
-                        )
-                      )}
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        ))}
+    <div className="space-y-3">
+      {/* Filter bar */}
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="search"
+          placeholder="Search name or email…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className={`flex-1 min-w-40 ${f}`}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+          className={f}
+        >
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="banned">Banned</option>
+          <option value="pending">Pending</option>
+          <option value="errored">Errored</option>
+          <option value="deleting">Deleting</option>
+        </select>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
+          className={f}
+        >
+          <option value="all">All roles</option>
+          <option value="superuser">Superuser</option>
+          <option value="admin">Admin</option>
+          <option value="user">User</option>
+        </select>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        {sorted.length === rows.length
+          ? `${rows.length} user${rows.length !== 1 ? "s" : ""}`
+          : `${sorted.length} of ${rows.length} users`}
+      </p>
+
+      {/* Table */}
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm min-w-[700px]">
+          <thead>
+            <tr className="border-b bg-muted/40">
+              <SortTh label="Name" k="name" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Status" k="status" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Role" k="role" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Projects" k="projects" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Activities" k="activities" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Looms" k="looms" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Storage" k="storage" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Last login" k="last_login" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Joined" k="joined" sort={sortKey} dir={sortDir} onSort={handleSort} />
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {sorted.map((row) => (
+              <tr
+                key={row.id}
+                className="cursor-pointer hover:bg-muted/30"
+                onClick={() => setSelected(row._target)}
+              >
+                <td className="px-3 py-2.5 min-w-[160px]">
+                  <p className="max-w-[180px] truncate font-medium leading-tight">
+                    {row.display_name}
+                  </p>
+                  <p className="max-w-[180px] truncate text-xs text-muted-foreground">
+                    {row.email}
+                  </p>
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap">
+                  <StatusPill status={row.status} />
+                </td>
+                <td className="px-3 py-2.5 capitalize text-muted-foreground whitespace-nowrap">
+                  {row.role}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums">
+                  {row.projects || "—"}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums">
+                  {row.activities || "—"}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums">
+                  {row.looms || "—"}
+                </td>
+                <td className="px-3 py-2.5 text-right text-xs tabular-nums">
+                  {row.storage_bytes ? formatBytes(row.storage_bytes) : "—"}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
+                  {formatLastActive(row.last_active_at)}
+                </td>
+                <td className="px-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
+                  {formatShortDate(row.created_at)}
+                </td>
+              </tr>
+            ))}
+            {sorted.length === 0 && (
+              <tr>
+                <td
+                  colSpan={9}
+                  className="px-3 py-8 text-center text-sm text-muted-foreground"
+                >
+                  No users match the current filters.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {selected && (
+        <UserDetailModal target={selected} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 }
