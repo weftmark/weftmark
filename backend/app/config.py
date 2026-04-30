@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # Application
     app_secret_key: str = "change-me-in-production"
     app_env: str = "dev"
+    seed_enabled: bool = False
     debug: bool = False
     log_level: str = "INFO"
     cors_origins: str = "http://localhost:3000"
