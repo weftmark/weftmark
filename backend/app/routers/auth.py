@@ -36,6 +36,7 @@ from app.deps import get_current_user, get_db, require_admin
 from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
 from app.models.user import User
+from app.services.audit import write_audit_log
 from app.services.clerk import set_user_metadata
 from app.services.email import send_invite_email, send_pending_signup_notification, send_signup_received_email
 
@@ -306,6 +307,7 @@ async def create_invite(
         created_by_id=admin.id,
     )
     db.add(invite)
+    await write_audit_log(db, event_type="invite.created", actor=admin, target_email=body.email)
     await db.commit()
     await db.refresh(invite)
 
@@ -325,7 +327,7 @@ async def list_invites(
 @router.delete("/invite/{invite_id}", status_code=204)
 async def revoke_invite(
     invite_id: uuid.UUID,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     invite = await db.scalar(select(Invite).where(Invite.id == invite_id))
@@ -334,4 +336,5 @@ async def revoke_invite(
     if invite.accepted_at is not None:
         raise HTTPException(status_code=400, detail="Invite already accepted")
     invite.revoked_at = datetime.now(timezone.utc)
+    await write_audit_log(db, event_type="invite.revoked", actor=admin, target_email=invite.email)
     await db.commit()
