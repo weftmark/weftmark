@@ -43,7 +43,7 @@ export function ProjectsPage() {
     queryClient.invalidateQueries({ queryKey: ["projects"] });
   };
 
-  const handleLogout = () => signOut({ redirectUrl: "/login" });
+  const handleLogout = () => signOut();
 
   return (
     <div className="flex min-h-screen flex-col">
