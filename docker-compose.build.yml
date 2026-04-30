@@ -34,7 +34,7 @@ services:
   # Backend — FastAPI application
   # Reachable only through the nginx proxy; not exposed to host.
   # Connected to both networks so nginx can reach it (public)
-  # and it can reach db (internal).
+  # and it can reach db and redis (internal).
   # Exposed: no
   # ----------------------------------------------------------
   backend:
@@ -51,6 +51,8 @@ services:
     volumes:
       - uploads:/app/uploads
     depends_on:
+      redis:
+        condition: service_healthy
       db:
         condition: service_healthy
         required: false
@@ -63,9 +65,51 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------
+  # Celery worker — background task processor
+  # Uses the same backend image; runs the Celery worker instead of uvicorn.
+  # ----------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: weaving_site_backend:${APP_VERSION:-dev}
+    container_name: weaving_site_worker
+    entrypoint: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    networks:
+      - internal
+    env_file:
+      - .env.local
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+        required: false
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Redis — Celery broker and result backend
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: weaving_site_redis
+    networks:
+      - internal
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
   # Database — PostgreSQL (local dev only)
   # Only starts when the "local-db" profile is active.
-  # Set COMPOSE_PROFILES=local-db in .env to enable.
+  # Set COMPOSE_PROFILES=local-db in .env.local to enable.
   # When POSTGRES_DSN is set (e.g. Neon), leave COMPOSE_PROFILES
   # unset — this container will not start.
   # ----------------------------------------------------------

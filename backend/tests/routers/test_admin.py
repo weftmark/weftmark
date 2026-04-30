@@ -1047,3 +1047,92 @@ class TestSendTestEmail:
     async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
         resp = await raw_client.post("/api/admin/test-email")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/users/{user_id}/delete
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteUser:
+    @pytest.fixture(autouse=True)
+    def mock_deletion_service(self):
+        with patch("app.services.deletion.initiate_user_deletion", new_callable=AsyncMock) as m:
+            yield m
+
+    async def _create_target(self, db_session: AsyncSession) -> User:
+        user = User(
+            email=f"del-target-{uuid.uuid4().hex[:6]}@test.com",
+            display_name="Delete Target",
+            oidc_sub=f"del-sub-{uuid.uuid4().hex}",
+        )
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+        return user
+
+    async def test_returns_202(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        target = await self._create_target(db_session)
+        resp = await superuser_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "DELETE USER"})
+        assert resp.status_code == 202
+
+    async def test_returns_pending_status_and_user_id(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        target = await self._create_target(db_session)
+        resp = await superuser_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "DELETE USER"})
+        data = resp.json()
+        assert data["status"] == "pending"
+        assert data["user_id"] == str(target.id)
+
+    async def test_wrong_confirm_returns_422(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        target = await self._create_target(db_session)
+        resp = await superuser_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "WRONG STRING"})
+        assert resp.status_code == 422
+
+    async def test_empty_confirm_returns_422(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        target = await self._create_target(db_session)
+        resp = await superuser_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": ""})
+        assert resp.status_code == 422
+
+    async def test_nonexistent_user_returns_404(self, superuser_client: AsyncClient):
+        resp = await superuser_client.post(f"/api/admin/users/{uuid.uuid4()}/delete", json={"confirm": "DELETE USER"})
+        assert resp.status_code == 404
+
+    async def test_self_delete_returns_400(self, superuser_client: AsyncClient, superuser_user: User):
+        resp = await superuser_client.post(
+            f"/api/admin/users/{superuser_user.id}/delete", json={"confirm": "DELETE USER"}
+        )
+        assert resp.status_code == 400
+
+    async def test_already_pending_returns_409(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        target = await self._create_target(db_session)
+        target.deletion_state = "pending"
+        await db_session.commit()
+        resp = await superuser_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "DELETE USER"})
+        assert resp.status_code == 409
+
+    async def test_already_in_progress_returns_409(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        target = await self._create_target(db_session)
+        target.deletion_state = "in_progress"
+        await db_session.commit()
+        resp = await superuser_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "DELETE USER"})
+        assert resp.status_code == 409
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient, db_session: AsyncSession):
+        target = await self._create_target(db_session)
+        resp = await admin_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "DELETE USER"})
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient, db_session: AsyncSession):
+        target = await self._create_target(db_session)
+        resp = await raw_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "DELETE USER"})
+        assert resp.status_code == 401
+
+    async def test_calls_initiate_user_deletion(
+        self,
+        superuser_client: AsyncClient,
+        db_session: AsyncSession,
+        mock_deletion_service: AsyncMock,
+    ):
+        target = await self._create_target(db_session)
+        await superuser_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "DELETE USER"})
+        mock_deletion_service.assert_called_once()

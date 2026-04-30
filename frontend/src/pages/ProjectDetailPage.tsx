@@ -6,6 +6,7 @@ import { listActivities } from "@/api/activities";
 import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
 import { Button } from "@/components/ui/button";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -189,7 +190,7 @@ export function ProjectDetailPage() {
             <h2 className="text-base font-semibold mb-3">Design Preview</h2>
             {project.has_preview ? (
               <div className="overflow-auto rounded-lg border bg-white p-2">
-                <img
+                <AuthedImage
                   src={previewUrl(project.id)}
                   alt={`Draft preview for ${project.name}`}
                   className="max-w-full"

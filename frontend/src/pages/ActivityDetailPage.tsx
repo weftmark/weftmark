@@ -9,7 +9,9 @@ import {
   type ActivitySummary, type ActivityPhoto, type PickRow,
 } from "@/api/activities";
 import { previewUrl } from "@/api/projects";
+import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button } from "@/components/ui/button";
 
 // ---------------------------------------------------------------------------
@@ -72,7 +74,7 @@ function DesignPreviewModal({ projectId, onClose }: { projectId: string; onClose
         >
           Close ✕
         </button>
-        <img
+        <AuthedImage
           src={previewUrl(projectId)}
           alt="WIF design preview"
           className="w-full rounded-lg shadow-2xl"
@@ -207,20 +209,20 @@ function WeavingPatternView({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/projects/${projectId}/drawdown`, { credentials: "include" })
-      .then((res) => {
-        const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
-        if (!cancelled) setPixelsPerRow(ppr);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (cancelled) return;
-        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-        const url = URL.createObjectURL(blob);
-        objectUrlRef.current = url;
-        setImgSrc(url);
-      })
-      .catch(() => {});
+    async function load() {
+      const token = await getAuthToken();
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`/api/projects/${projectId}/drawdown`, { credentials: "include", headers });
+      const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
+      if (!cancelled) setPixelsPerRow(ppr);
+      const blob = await res.blob();
+      if (cancelled) return;
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      objectUrlRef.current = url;
+      setImgSrc(url);
+    }
+    load().catch(() => {});
     return () => {
       cancelled = true;
       if (objectUrlRef.current) {
@@ -366,16 +368,18 @@ function AbandonedDrawdownView({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/projects/${projectId}/drawdown`, { credentials: "include" })
-      .then((res) => res.blob())
-      .then((blob) => {
-        if (cancelled) return;
-        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-        const url = URL.createObjectURL(blob);
-        objectUrlRef.current = url;
-        setImgSrc(url);
-      })
-      .catch(() => {});
+    async function load() {
+      const token = await getAuthToken();
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`/api/projects/${projectId}/drawdown`, { credentials: "include", headers });
+      const blob = await res.blob();
+      if (cancelled) return;
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      objectUrlRef.current = url;
+      setImgSrc(url);
+    }
+    load().catch(() => {});
     return () => {
       cancelled = true;
       if (objectUrlRef.current) {
@@ -646,7 +650,7 @@ function PhotoGrid({
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {photos.map((p) => (
             <div key={p.id} className="group relative aspect-square">
-              <img
+              <AuthedImage
                 src={activityPhotoUrl(activityId, p.id)}
                 alt={p.filename}
                 className="w-full h-full object-cover rounded-md border cursor-pointer"
@@ -679,7 +683,7 @@ function PhotoGrid({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightbox(null)}
         >
-          <img
+          <AuthedImage
             src={activityPhotoUrl(activityId, lightbox)}
             alt=""
             className="max-h-full max-w-full rounded-lg shadow-2xl"
@@ -769,7 +773,7 @@ function CompletedSummary({
       <div>
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
         <div className="overflow-auto rounded-lg border bg-white p-2">
-          <img
+          <AuthedImage
             src={previewUrl(activity.project_id)}
             alt={`Design for ${activity.project_name}`}
             className="max-w-full mx-auto block"

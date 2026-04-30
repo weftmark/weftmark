@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listActivities, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS, type ActivitySummary } from "@/api/activities";
 import { previewUrl } from "@/api/projects";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
 import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
 import { Button } from "@/components/ui/button";
@@ -118,7 +119,7 @@ function ActivityCard({ activity, onAssign }: {
               Close ✕
             </button>
             <p className="absolute -top-9 left-0 text-white/70 text-sm truncate max-w-xs">{activity.name}</p>
-            <img
+            <AuthedImage
               src={previewUrl(activity.project_id)}
               alt="Design preview"
               className="w-full rounded-lg shadow-2xl"

@@ -98,6 +98,44 @@ async def send_approval_confirmation_to_admins(
     await _send(admin_emails, f"Account approved — {display_name} ({email})", txt, html)
 
 
+async def send_deletion_created_admin(admin_emails: list[str], display_name: str, email: str) -> None:
+    settings = get_settings()
+    txt, html = _render(
+        "deletion_created_admin",
+        display_name=display_name,
+        email=email,
+        app_name=settings.smtp_from_name,
+        admin_url=f"{settings.frontend_url}/admin",
+    )
+    await _send(admin_emails, f"User deletion queued — {display_name} ({email})", txt, html)
+
+
+async def send_deletion_completed_admin(admin_emails: list[str], display_name: str, email: str) -> None:
+    settings = get_settings()
+    txt, html = _render(
+        "deletion_completed_admin",
+        display_name=display_name,
+        email=email,
+        app_name=settings.smtp_from_name,
+    )
+    await _send(admin_emails, f"User deletion complete — {display_name} ({email})", txt, html)
+
+
+async def send_deletion_stalled_superuser(
+    superuser_emails: list[str], display_name: str, email: str, user_id: str
+) -> None:
+    settings = get_settings()
+    txt, html = _render(
+        "deletion_stalled_superuser",
+        display_name=display_name,
+        email=email,
+        user_id=user_id,
+        app_name=settings.smtp_from_name,
+        admin_url=f"{settings.frontend_url}/admin",
+    )
+    await _send(superuser_emails, f"User deletion stalled — {display_name} ({email})", txt, html)
+
+
 async def send_test_email(to_email: str) -> None:
     settings = get_settings()
     txt = (
