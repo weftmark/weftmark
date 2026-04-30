@@ -75,7 +75,12 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
     log.info("webhook_received event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
 
     try:
-        if event_type == "user.created":
+        if event_type == "webhook.test":
+            from app.services.clerk_webhook_probe import signal_probe
+
+            signal_probe()
+            log.debug("Webhook probe test event received and signalled")
+        elif event_type == "user.created":
             await _handle_user_created(db, data)
         elif event_type == "user.updated":
             await _handle_user_updated(db, data)

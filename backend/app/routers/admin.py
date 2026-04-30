@@ -882,6 +882,27 @@ async def check_services(
 
 
 # ---------------------------------------------------------------------------
+# Webhook probe
+# ---------------------------------------------------------------------------
+
+
+class WebhookProbeResponse(BaseModel):
+    status: Literal["ok", "skipped", "error"]
+    latency_ms: int | None = None
+    message: str = ""
+
+
+@router.post("/test-webhook", response_model=WebhookProbeResponse, status_code=200)
+async def test_webhook(
+    _: User = Depends(require_superuser),
+) -> WebhookProbeResponse:
+    from app.services.clerk_webhook_probe import run_webhook_probe
+
+    result = await run_webhook_probe()
+    return WebhookProbeResponse(status=result.status, latency_ms=result.latency_ms, message=result.message)
+
+
+# ---------------------------------------------------------------------------
 # Test email
 # ---------------------------------------------------------------------------
 
