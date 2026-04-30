@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.deps import get_current_user, get_db
 from app.models.activity import Activity, ActivityPhoto, ActivityStep
-from app.models.loom import Loom, LoomVersion
+from app.models.loom import ACTIVITY_SUPPORTED_LOOM_TYPES, Loom, LoomVersion
 from app.models.project import Project
 from app.models.user import User
 from app.services import storage, wif_parser
@@ -233,6 +233,12 @@ async def create_activity(
         if loom is None:
             raise HTTPException(status_code=404, detail="Loom not found")
 
+        if loom.loom_type not in ACTIVITY_SUPPORTED_LOOM_TYPES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Loom type '{loom.loom_type}' does not support activity tracking",
+            )
+
         if body.loom_version_id:
             version_ok = await db.scalar(
                 select(LoomVersion).where(
@@ -343,6 +349,12 @@ async def assign_loom(
     )
     if loom is None:
         raise HTTPException(status_code=404, detail="Loom not found")
+
+    if loom.loom_type not in ACTIVITY_SUPPORTED_LOOM_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Loom type '{loom.loom_type}' does not support activity tracking",
+        )
 
     if body.loom_version_id:
         version_ok = await db.scalar(

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  updateLoom, type LoomDetail, type UpdateLoomPayload, type LoomType, LOOM_TYPE_LABELS,
+  updateLoom, type LoomDetail, type UpdateLoomPayload, type LoomType, LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "other"];
+const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby", "other"];
 
 export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
   const [loomType, setLoomType] = useState<LoomType>(loom.loom_type);
@@ -20,11 +20,11 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
   const [purchaseDate, setPurchaseDate] = useState(loom.purchase_date ?? "");
   const [purchasePrice, setPurchasePrice] = useState(loom.purchase_price ?? "");
   const [vendor, setVendor] = useState(loom.vendor ?? "");
-  const [supportsLift, setSupportsLift] = useState(loom.supports_lift_tracking);
-  const [supportsTreadle, setSupportsTreadle] = useState(loom.supports_treadle_tracking);
   const [notes, setNotes] = useState(loom.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const isUnsupported = !SUPPORTED_LOOM_TYPES.has(loomType);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +39,6 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
         purchase_date: purchaseDate || undefined,
         purchase_price: purchasePrice ? parseFloat(String(purchasePrice)) : undefined,
         vendor: vendor || undefined,
-        supports_lift_tracking: supportsLift,
-        supports_treadle_tracking: supportsTreadle,
         notes: notes || undefined,
       };
       const updated = await updateLoom(loom.id, payload);
@@ -70,6 +68,13 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
               ))}
             </select>
           </div>
+
+          {/* Unsupported type info banner */}
+          {isUnsupported && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+              This loom type is not currently supported for activity tracking. Activities cannot be created using this loom.
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -137,26 +142,6 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
               />
             </div>
           </fieldset>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Activity tracking</p>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={supportsLift}
-                onChange={(e) => setSupportsLift(e.target.checked)}
-              />
-              Supports lift tracking
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={supportsTreadle}
-                onChange={(e) => setSupportsTreadle(e.target.checked)}
-              />
-              Supports treadle tracking
-            </label>
-          </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium">Notes</label>

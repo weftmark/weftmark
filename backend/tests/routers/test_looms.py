@@ -442,3 +442,55 @@ class TestDeleteAccessory:
     async def test_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.delete(f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/accessories/{uuid.uuid4()}")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Loom tracking flags — derived from loom_type, never from client input
+# ---------------------------------------------------------------------------
+
+
+class TestLoomTrackingFlags:
+    async def test_floor_loom_sets_treadle_tracking(self, auth_client: AsyncClient):
+        resp = await auth_client.post("/api/looms", json=_LOOM_PAYLOAD)
+        body = resp.json()
+        assert body["supports_treadle_tracking"] is True
+        assert body["supports_lift_tracking"] is False
+
+    async def test_table_loom_sets_lift_tracking(self, auth_client: AsyncClient):
+        payload = {**_LOOM_PAYLOAD, "loom_type": "table_loom"}
+        resp = await auth_client.post("/api/looms", json=payload)
+        body = resp.json()
+        assert body["supports_lift_tracking"] is True
+        assert body["supports_treadle_tracking"] is False
+
+    async def test_unsupported_type_clears_both_flags(self, auth_client: AsyncClient):
+        for loom_type in ("rigid_heddle", "inkle", "dobby", "other"):
+            payload = {**_LOOM_PAYLOAD, "loom_type": loom_type}
+            resp = await auth_client.post("/api/looms", json=payload)
+            body = resp.json()
+            assert body["supports_treadle_tracking"] is False, f"{loom_type} should not set treadle"
+            assert body["supports_lift_tracking"] is False, f"{loom_type} should not set lift"
+
+    async def test_dobby_can_be_created(self, auth_client: AsyncClient):
+        payload = {**_LOOM_PAYLOAD, "loom_type": "dobby"}
+        resp = await auth_client.post("/api/looms", json=payload)
+        assert resp.status_code == 201
+        assert resp.json()["loom_type"] == "dobby"
+
+    async def test_changing_type_updates_tracking_flags(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        assert loom["loom_type"] == "floor_loom"
+        assert loom["supports_treadle_tracking"] is True
+
+        resp = await auth_client.patch(f"/api/looms/{loom['id']}", json={"loom_type": "table_loom"})
+        body = resp.json()
+        assert body["loom_type"] == "table_loom"
+        assert body["supports_lift_tracking"] is True
+        assert body["supports_treadle_tracking"] is False
+
+    async def test_changing_to_unsupported_type_clears_flags(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.patch(f"/api/looms/{loom['id']}", json={"loom_type": "dobby"})
+        body = resp.json()
+        assert body["supports_treadle_tracking"] is False
+        assert body["supports_lift_tracking"] is False

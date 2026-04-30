@@ -10,7 +10,7 @@ import {
   addAccessory, deleteAccessory, updateVersion,
   type LoomDetail, type LoomVersion, type LoomVersionPhoto,
   type LoomVersionReceipt, type LoomVersionAccessory,
-  LOOM_TYPE_LABELS,
+  LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
@@ -664,6 +664,13 @@ export function LoomDetailPage() {
       </header>
 
       <main className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-8">
+        {!SUPPORTED_LOOM_TYPES.has(loom.loom_type) && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+            <span className="font-medium">Activity tracking not supported</span> — this loom type is not currently
+            supported for activity tracking. It has been saved for documentation and will be available if support
+            is added later.
+          </div>
+        )}
         <section className="space-y-4">
           <ProfilePhoto loom={loom} onChanged={invalidate} />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">

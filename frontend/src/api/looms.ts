@@ -1,12 +1,16 @@
-export type LoomType = "floor_loom" | "table_loom" | "rigid_heddle" | "inkle" | "other";
+export type LoomType = "floor_loom" | "table_loom" | "rigid_heddle" | "inkle" | "dobby" | "other";
 
 export const LOOM_TYPE_LABELS: Record<LoomType, string> = {
-  floor_loom: "Floor loom",
-  table_loom: "Table loom",
-  rigid_heddle: "Rigid heddle",
+  floor_loom: "Floor Loom — treadle tracking",
+  table_loom: "Table Loom — lift tracking",
+  rigid_heddle: "Rigid Heddle",
   inkle: "Inkle",
+  dobby: "Dobby Loom",
   other: "Other",
 };
+
+/** Loom types that support activity tracking (treadle or lift). */
+export const SUPPORTED_LOOM_TYPES = new Set<LoomType>(["floor_loom", "table_loom"]);
 
 export interface LoomVersionPhoto {
   id: string;
@@ -76,8 +80,6 @@ export interface CreateLoomPayload {
   purchase_date?: string;
   purchase_price?: number;
   vendor?: string;
-  supports_lift_tracking: boolean;
-  supports_treadle_tracking: boolean;
   notes?: string;
   effective_date: string;
   num_shafts?: number;
@@ -98,8 +100,6 @@ export interface UpdateLoomPayload {
   purchase_date?: string;
   purchase_price?: number;
   vendor?: string;
-  supports_lift_tracking?: boolean;
-  supports_treadle_tracking?: boolean;
   notes?: string;
 }
 

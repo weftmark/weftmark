@@ -19,6 +19,7 @@ from app.models.loom import (
     LoomVersionAccessory,
     LoomVersionPhoto,
     LoomVersionReceipt,
+    loom_tracking_flags,
 )
 from app.models.user import User
 from app.services import storage
@@ -35,7 +36,7 @@ def _content_disposition(disposition: str, filename: str) -> str:
     return f"{disposition}; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"
 
 
-LoomType = Literal["floor_loom", "table_loom", "rigid_heddle", "inkle", "other"]
+LoomType = Literal["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby", "other"]
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
@@ -177,8 +178,6 @@ class CreateLoomRequest(BaseModel):
     purchase_date: date | None = None
     purchase_price: Decimal | None = None
     vendor: str | None = None
-    supports_lift_tracking: bool = False
-    supports_treadle_tracking: bool = False
     notes: str | None = None
     # Initial version
     effective_date: date
@@ -200,8 +199,6 @@ class UpdateLoomRequest(BaseModel):
     purchase_date: date | None = None
     purchase_price: Decimal | None = None
     vendor: str | None = None
-    supports_lift_tracking: bool | None = None
-    supports_treadle_tracking: bool | None = None
     notes: str | None = None
 
 
@@ -291,6 +288,7 @@ async def create_loom(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomDetail:
+    lift, treadle = loom_tracking_flags(body.loom_type)
     loom = Loom(
         owner_id=current_user.id,
         loom_type=body.loom_type,
@@ -300,8 +298,8 @@ async def create_loom(
         purchase_date=body.purchase_date,
         purchase_price=body.purchase_price,
         vendor=body.vendor,
-        supports_lift_tracking=body.supports_lift_tracking,
-        supports_treadle_tracking=body.supports_treadle_tracking,
+        supports_lift_tracking=lift,
+        supports_treadle_tracking=treadle,
         notes=body.notes,
     )
     db.add(loom)
@@ -364,7 +362,11 @@ async def update_loom(
 ) -> LoomDetail:
     loom = await _get_owned_loom(loom_id, current_user, db)
     for field, value in body.model_dump(exclude_none=True).items():
-        setattr(loom, field, value)
+        if field == "loom_type":
+            loom.loom_type = value
+            loom.supports_lift_tracking, loom.supports_treadle_tracking = loom_tracking_flags(value)
+        else:
+            setattr(loom, field, value)
     await db.commit()
     loom = await _get_owned_loom(loom_id, current_user, db)
     return LoomDetail.from_loom(loom)
