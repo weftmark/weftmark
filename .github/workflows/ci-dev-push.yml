@@ -4,9 +4,9 @@ name: Dev push
 # Tests already passed on the PR — this workflow only does SBOM updates
 # and version bumping. No validation jobs run here.
 #
-# Jobs are serialised (sbom-backend → sbom-frontend → bump-version) so
-# that each git push sees the previous commit before rebasing, avoiding
-# a race between concurrent committers.
+# sbom-backend and sbom-frontend run in parallel — they write to separate
+# files so git pull --rebase handles ordering without conflicts.
+# bump-version waits for both before running.
 #
 # All jobs are skipped when weftmark-bot[bot] pushes (version bump commits
 # would otherwise re-trigger this workflow infinitely).
@@ -90,7 +90,6 @@ jobs:
   sbom-frontend:
     name: SBOM frontend (CycloneDX + license-checker)
     runs-on: ubuntu-latest
-    needs: [sbom-backend]
     if: github.actor != 'weftmark-bot[bot]'
     steps:
       - name: Generate bot token
