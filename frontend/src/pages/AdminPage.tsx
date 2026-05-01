@@ -32,6 +32,7 @@ import {
   type ServicePermCheck,
   type WebhookProbeResult,
 } from "@/api/admin";
+import { getHealthReady, type ReadinessResponse } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
 import { formatBytes } from "@/lib/image-utils";
 
@@ -991,6 +992,35 @@ function WebhookHealthCard() {
   );
 }
 
+function ReadinessCard({ readiness }: { readiness: ReadinessResponse }) {
+  const statusColor =
+    readiness.status === "ok" ? "text-green-600 dark:text-green-400" :
+    readiness.status === "error" ? "text-destructive" :
+    readiness.status === "starting" ? "text-muted-foreground" :
+    "text-amber-600 dark:text-amber-400";
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-muted/10 border-b">
+        <span className="text-sm font-medium">App Readiness</span>
+        <span className={`text-xs font-semibold uppercase ${statusColor}`}>{readiness.status}</span>
+      </div>
+      <div className="divide-y">
+        {readiness.services.map((s) => (
+          <div key={s.name} className="flex items-center gap-3 px-4 py-2.5">
+            <StatusDot status={s.ok ? "ok" : "error"} />
+            <span className="text-sm w-36 shrink-0">{s.name}</span>
+            <span className={`text-xs flex-1 ${s.ok ? "text-muted-foreground" : "text-destructive"}`}>
+              {s.message || (s.ok ? "ok" : "failed")}
+            </span>
+            {!s.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ServicesTab() {
   const { user: currentUser } = useAuth();
   const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
@@ -998,6 +1028,13 @@ function ServicesTab() {
     queryFn: getAdminServices,
     staleTime: 0,
     refetchOnMount: true,
+  });
+
+  const { data: readiness } = useQuery({
+    queryKey: ["health", "ready"],
+    queryFn: getHealthReady,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -1029,6 +1066,8 @@ function ServicesTab() {
           ))}
         </div>
       )}
+
+      {readiness && <ReadinessCard readiness={readiness} />}
 
       <WebhookHealthCard />
 
