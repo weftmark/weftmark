@@ -4,9 +4,9 @@ Signs a synthetic test event with the webhook secret and POSTs it to the
 configured public webhook URL.  The webhook handler recognises the event type
 and signals an asyncio.Event so the probe can measure end-to-end latency.
 
-Skipped gracefully when WEBHOOK_BASE_URL or CLERK_WEBHOOK_SECRET is unset
-(e.g. local dev without a tunnel).  A timeout is a soft failure — it sets
-degraded state, not an error, so the app still starts and serves users.
+WEBHOOK_BASE_URL overrides the base URL; falls back to API_URL when unset.
+Returns an error result (does not raise) when CLERK_WEBHOOK_SECRET is missing.
+A timeout is a soft failure — it sets degraded state so the app still starts.
 """
 
 from __future__ import annotations
