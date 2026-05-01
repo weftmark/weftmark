@@ -7,6 +7,7 @@ export function RegisterPage() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">WeftMark</h1>
           <p className="text-sm text-muted-foreground">Create your account</p>
+          <p className="text-xs text-amber-500 font-mono">WeftMark custom register page — not Clerk hosted</p>
         </div>
         <SignUp
           routing="hash"
