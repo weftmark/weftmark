@@ -50,6 +50,7 @@ export function LoginPage() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">WeftMark</h1>
           <p className="text-sm text-muted-foreground">Sign in to continue</p>
+          <p className="text-xs text-amber-500 font-mono">WeftMark custom login page — not Clerk hosted</p>
         </div>
         <SignIn
           routing="hash"
