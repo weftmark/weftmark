@@ -47,38 +47,27 @@ async def readiness() -> JSONResponse:
 
 
 async def run_startup_probes() -> ReadinessResponse:
-    """Run all service probes concurrently and return a ReadinessResponse."""
-    import logging as _logging
+    """Run service probes concurrently and return a ReadinessResponse.
 
+    Covers PostgreSQL, S3, Clerk API, and SMTP — services that gate startup.
+    Webhook round-trip health is checked separately via the admin Services tab.
+    """
     from app.database import AsyncSessionLocal
     from app.routers.admin import _probe_clerk, _probe_postgres, _probe_s3, _probe_smtp
-    from app.services.clerk_webhook_probe import run_webhook_probe
 
     try:
         async with AsyncSessionLocal() as db:
-            results, webhook_result = await asyncio.gather(
-                asyncio.gather(
-                    _probe_postgres(db),
-                    _probe_s3(),
-                    _probe_clerk(),
-                    _probe_smtp(),
-                    return_exceptions=True,
-                ),
-                run_webhook_probe(),
+            results = await asyncio.gather(
+                _probe_postgres(db),
+                _probe_s3(),
+                _probe_clerk(),
+                _probe_smtp(),
+                return_exceptions=True,
             )
     except Exception as exc:
         return ReadinessResponse(
             status="error",
             services=[ReadinessService(name="postgres", ok=False, critical=True, message=str(exc)[:120])],
-        )
-
-    if webhook_result.status == "skipped":
-        _logging.getLogger(__name__).warning(
-            "Webhook probe skipped: %s — new user registration is unverified", webhook_result.message
-        )
-    elif webhook_result.status == "error":
-        _logging.getLogger(__name__).error(
-            "Webhook probe FAILED at startup: %s — user.created events will not be processed", webhook_result.message
         )
 
     critical_names = {"PostgreSQL", "Clerk"}
@@ -109,20 +98,6 @@ async def run_startup_probes() -> ReadinessResponse:
                 has_hard_failure = True
             else:
                 has_soft_failure = True
-
-    # Webhook probe: skipped (no WEBHOOK_BASE_URL) → treat as ok for startup
-    # error → degraded, not critical — existing users unaffected, new registrations broken
-    webhook_ok = webhook_result.status in ("ok", "skipped")
-    services.append(
-        ReadinessService(
-            name="Clerk Webhook",
-            ok=webhook_ok,
-            critical=False,
-            message=webhook_result.message,
-        )
-    )
-    if not webhook_ok:
-        has_soft_failure = True
 
     if has_hard_failure:
         status: Literal["ok", "degraded", "error"] = "error"
