@@ -94,7 +94,6 @@ storybook-static/
 # ------------------------------------------------------------
 # Local override compose files are not tracked
 docker-compose.override.yml
-docker-compose.local.yml
 
 # Docker build context artifacts
 *.tar
