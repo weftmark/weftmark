@@ -31,7 +31,7 @@
 - Free allocation eliminates VM cost
 - Komodo manages container lifecycle and pulls images from ghcr.io on deploy
 
-**Instance sizing:** Minimum 2 vCPU / 4 GB RAM once Authentik is removed (see §6 Clerk migration). Current dev stack with Authentik still present needs 8 GB. See [Proxmox VM sizing note in infrastructure memory](../../.claude/memory/infrastructure.md).
+**Instance sizing:** Minimum 2 vCPU / 4 GB RAM.
 
 **Estimated cost:** $0/mo.
 
@@ -93,15 +93,15 @@
 **Rationale:**
 
 - Free for public images, generous storage on free org tier
-- Komodo pulls from ghcr.io on deploy — needs a registry reachable from the production VM; local Gitea at `10.10.10.90` is not reachable from the data centre
+- Komodo pulls from ghcr.io on deploy — needs a registry reachable from the production VM
 - Keeps the `weftmark` namespace clean and separate from personal GitHub activity
 
 **Image names:**
 
-- `ghcr.io/weftmark/weaving_site_backend:<version>`
-- `ghcr.io/weftmark/weaving_site_frontend:<version>`
+- `ghcr.io/weftmark/weftmark-backend:<version>`
+- `ghcr.io/weftmark/weftmark-frontend:<version>`
 
-**Note:** Code is NOT mirrored to GitHub — Gitea remains the source of truth. ghcr.io is used as the registry only. The CD pipeline (Gitea Actions → build → push → Komodo pull) is a pending milestone task.
+**Source:** `https://github.com/weftmark/weftmark` (org: `weftmark`). GitHub Actions CI/CD builds and pushes images on merge to `dev` (`:dev` tag) and `main` (`:latest` + `:{version}`).
 
 **Estimated cost:** $0/mo (public packages are free).
 
@@ -109,30 +109,18 @@
 
 ## 6. Authentication — Clerk
 
-**Decision:** Clerk hosted authentication (replacing Authentik)
+**Decision:** Clerk hosted authentication (replaced Authentik)
 
-**Status:** Developer has a Clerk free-tier account. Implementation pending before public launch. **P1 — must ship before users are onboarded.**
+**Status:** Shipped.
 
 **Why Clerk over Authentik:**
 
-- Authentik requires self-hosting (~2 GB RAM overhead), manual invite provisioning, and ongoing security maintenance. Clerk is fully managed.
-- Clerk provides built-in social login (Google, Apple, email magic link), MFA, user management dashboard, and session handling out of the box.
-- Removes Authentik from the docker-compose stack, reducing the minimum VM RAM requirement from 8 GB to ~2 GB.
+- Authentik required self-hosting (~2 GB RAM overhead), manual invite provisioning, and ongoing security maintenance. Clerk is fully managed.
+- Clerk provides built-in social login, MFA, user management dashboard, and session handling out of the box.
+- Removing Authentik from the docker-compose stack reduced the minimum VM RAM requirement.
 - Free tier: unlimited MAU on development; 10,000 MAU on production (as of 2026).
 
-**Implementation checklist:**
-
-- [ ] Install `clerk-backend-sdk` (Python) and `@clerk/clerk-react` (frontend)
-- [ ] Add `CLERK_SECRET_KEY` and `CLERK_PUBLISHABLE_KEY` to `.env` and deployment secrets
-- [ ] Create Clerk application; configure allowed origins and redirect URLs for `weftmark.com`
-- [ ] Swap `get_current_user` in `app/deps.py` to verify Clerk session tokens
-- [ ] Add webhook handler (`POST /auth/clerk/webhook`) to sync user creation/deletion to the local `users` table
-- [ ] Update `User` model: rename `oidc_sub` → `clerk_user_id`; add Alembic migration
-- [ ] Replace frontend auth: remove OIDC redirect hooks, add `<ClerkProvider>` to `App.tsx`, use Clerk's `<SignIn>` component
-- [ ] Update `docker-compose.yml`: remove Authentik service; remove Authentik env vars
-- [ ] Update VM sizing note — 4 GB RAM is now sufficient without Authentik
-
-**Architectural note:** The local `users` table remains the source of truth for app-level data (projects, activities, preferences). Clerk manages identity only; the webhook keeps the two in sync. The existing `Invite` model can be retired once Clerk's invitation emails are wired (Clerk supports restricting sign-ups to invited emails only).
+**Architectural note:** The local `users` table is the source of truth for app-level data (projects, activities, preferences). Clerk manages identity only; a webhook handler at `POST /webhooks/clerk` keeps the two in sync. Backend validates Bearer tokens in the `Authorization` header — not cookies. Users can self-register via Clerk; new accounts require admin approval before access is granted.
 
 **Estimated cost:** $0/mo on free tier.
 
