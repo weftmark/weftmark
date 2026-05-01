@@ -2,22 +2,15 @@ services:
 
   # ----------------------------------------------------------
   # Frontend — React application served via nginx
-  # Entry point for all user traffic; traefik routes to it via
-  # the traefik_proxy network.  Proxies /api/, /auth/, and
-  # /health to the backend over the internal public network.
+  # Proxies /api/, /auth/, and /health to the backend over the
+  # public network.  Traefik routing is added via override file
+  # in the orchestration repo (docker-compose.override.yml).
   # ----------------------------------------------------------
   frontend:
     image: ghcr.io/weftmark/weftmark-frontend:${IMAGE_TAG:-latest}
     container_name: ${STACK_NAME:-weftmark}_frontend
     networks:
-      - traefik_proxy
       - public
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.${STACK_NAME:-weftmark}.rule=${TRAEFIK_HOST_RULE}"
-      - "traefik.http.routers.${STACK_NAME:-weftmark}.entrypoints=websecure"
-      - "traefik.http.routers.${STACK_NAME:-weftmark}.tls.certresolver=cloudflare"
-      - "traefik.http.services.${STACK_NAME:-weftmark}.loadbalancer.server.port=80"
     depends_on:
       backend:
         condition: service_healthy
@@ -120,9 +113,6 @@ services:
     restart: unless-stopped
 
 networks:
-  traefik_proxy:
-    external: true
-    name: traefik_proxy
   public:
     name: ${STACK_NAME:-weftmark}_public
     driver: bridge
