@@ -27,7 +27,8 @@ jobs:
 
   sbom-backend:
     name: SBOM backend (CycloneDX + pip-licenses)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, unraid]
+    timeout-minutes: 20
     if: github.actor != 'weftmark-bot[bot]'
     steps:
       - name: Generate bot token
@@ -89,7 +90,8 @@ jobs:
 
   sbom-frontend:
     name: SBOM frontend (CycloneDX + license-checker)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, unraid]
+    timeout-minutes: 20
     needs: [sbom-backend]
     if: github.actor != 'weftmark-bot[bot]'
     steps:
@@ -151,7 +153,8 @@ jobs:
 
   bump-version:
     name: Bump version
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, unraid]
+    timeout-minutes: 20
     needs: [sbom-backend, sbom-frontend]
     if: github.actor != 'weftmark-bot[bot]'
     steps:

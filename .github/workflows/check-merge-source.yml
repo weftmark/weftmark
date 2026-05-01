@@ -8,7 +8,8 @@ on:
 jobs:
   check-source-branch:
     name: Source branch must be dev or hotfix/*
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, unraid]
+    timeout-minutes: 5
     steps:
       - name: Verify source branch
         env:

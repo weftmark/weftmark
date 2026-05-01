@@ -17,7 +17,8 @@ jobs:
 
   backend-lint:
     name: Backend lint (ruff)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, unraid]
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -29,7 +30,8 @@ jobs:
 
   frontend-lint:
     name: Frontend lint (eslint)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, unraid]
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -40,7 +42,8 @@ jobs:
 
   frontend-typecheck:
     name: Frontend type check (tsc)
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, unraid]
+    timeout-minutes: 15
     needs: [frontend-lint]
     steps:
       - uses: actions/checkout@v6
