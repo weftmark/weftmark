@@ -12,6 +12,7 @@ from app.models.loom import (
 )
 from app.models.pending_signup import PendingSignup
 from app.models.project import Project
+from app.models.seed_run import SeedRun
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
@@ -24,6 +25,7 @@ __all__ = [
     "Invite",
     "PendingSignup",
     "Project",
+    "SeedRun",
     "Loom",
     "LoomVersion",
     "LoomVersionPhoto",

@@ -12,14 +12,16 @@ import json
 import shutil
 import sys
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import get_settings
+from app.models.seed_run import SeedRun
 from app.models.user import User
 from app.services.clerk import set_user_metadata
 
@@ -60,6 +62,24 @@ async def _clerk_list_users(secret_key: str, limit: int = 2) -> list[dict]:
         )
         r.raise_for_status()
         return r.json()
+
+
+async def _clerk_delete_all_users(secret_key: str) -> int:
+    """Delete every user from the Clerk instance. Returns count deleted."""
+    deleted = 0
+    headers = {"Authorization": f"Bearer {secret_key}"}
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        while True:
+            r = await client.get(f"{_BASE}/users", headers=headers, params={"limit": 100})
+            r.raise_for_status()
+            users = r.json()
+            if not users:
+                break
+            for user in users:
+                d = await client.delete(f"{_BASE}/users/{user['id']}", headers=headers)
+                d.raise_for_status()
+                deleted += 1
+    return deleted
 
 
 async def _clerk_create_user(secret_key: str, email: str, username: str, password: str, display_name: str) -> dict:
@@ -190,29 +210,26 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
         sys.exit(1)
 
     try:
-        existing_clerk = await _clerk_list_users(settings.clerk_secret_key)
+        existing_clerk = await _clerk_list_users(settings.clerk_secret_key, limit=1)
+        user_word = "user" if len(existing_clerk) == 1 else "users"
+        count_str = (
+            f"{len(existing_clerk)} existing {user_word} — will be deleted" if existing_clerk else "0 existing users"
+        )
+        _ok(f"Clerk reachable ({count_str})")
     except Exception as exc:
         _err(f"Clerk API unreachable: {exc}")
         sys.exit(1)
-    if existing_clerk:
-        _err("Clerk already has users — aborting (use a clean Clerk instance)")
-        sys.exit(1)
-    _ok("Clerk has 0 users")
 
     engine = create_async_engine(settings.database_url, echo=False)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     try:
         async with session_factory() as session:
-            count = await session.scalar(select(func.count()).select_from(User))
+            await session.execute(text("SELECT 1"))
     except Exception as exc:
         _err(f"DB unreachable: {exc}")
         await engine.dispose()
         sys.exit(1)
-    if count:
-        _err(f"DB users table has {count} existing rows — aborting")
-        await engine.dispose()
-        sys.exit(1)
-    _ok("DB users table has 0 rows")
+    _ok("DB reachable")
 
     # ── Load config ────────────────────────────────────────────────────────
     config_file = Path(config_path)
@@ -237,6 +254,13 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
     _section("Reset")
 
     await engine.dispose()
+
+    try:
+        deleted_count = await _clerk_delete_all_users(settings.clerk_secret_key)
+        _ok(f"Clerk: deleted {deleted_count} user(s)")
+    except Exception as exc:
+        _err(f"Clerk user deletion failed: {exc}")
+        sys.exit(1)
 
     try:
         _alembic_reset()
@@ -312,6 +336,11 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
         if auto_password:
             generated_passwords.append((email, password))
 
+    # ── Record seed run ────────────────────────────────────────────────────
+    async with session_factory() as session:
+        await session.merge(SeedRun(id=1, ran_at=datetime.now(timezone.utc)))
+        await session.commit()
+
     await engine.dispose()
 
     # ── Summary ────────────────────────────────────────────────────────────
@@ -332,7 +361,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    seed_p = sub.add_parser("seed", help="Bootstrap a fresh WeftMark instance")
+    seed_p = sub.add_parser("seed", help="Wipe and reseed a dev WeftMark instance")
     seed_p.add_argument(
         "--config",
         default="seed.json",
