@@ -11,13 +11,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
         VITE_APP_ENV: ${APP_ENV:-dev}
         VITE_CLERK_SIGN_IN_URL: /login
         VITE_CLERK_SIGN_UP_URL: /register
         VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /home
         VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /home
     image: weaving_site_frontend:${APP_VERSION:-dev}
+    environment:
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
     container_name: weaving_site_frontend
     ports:
       - "127.0.0.1:3000:80"

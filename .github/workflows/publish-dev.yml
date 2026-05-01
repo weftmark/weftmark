@@ -5,7 +5,7 @@ name: Publish Dev Images
 # branch this workflow is dispatched from.
 #
 # Required secrets:
-#   CLERK_PUBLISHABLE_KEY_DEV — Clerk publishable key for dev/test (baked into frontend image at build time)
+#   CLERK_PUBLISHABLE_KEY_DEV secret is no longer required — key is injected at runtime
 
 on:
   workflow_dispatch:
@@ -66,7 +66,6 @@ jobs:
       - name: Build and push frontend image
         run: |
           docker build -f frontend/Dockerfile \
-            --build-arg VITE_CLERK_PUBLISHABLE_KEY="${{ secrets.CLERK_PUBLISHABLE_KEY_DEV }}" \
             --build-arg VITE_APP_ENV="dev" \
             -t ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }}-dev \
             -t ghcr.io/weftmark/weftmark-frontend:dev \
