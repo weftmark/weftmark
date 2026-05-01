@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity
 from app.models.activity import ActivityPhoto as ActivityPhotoModel
-from app.models.loom import Loom, LoomVersion
+from app.models.loom import Loom, LoomVersion, loom_tracking_flags
 from app.models.project import Project
 from app.models.user import User
 
@@ -106,13 +106,15 @@ async def _insert_project(db_session: AsyncSession, owner: User) -> Project:
 
 
 async def _insert_loom(db_session: AsyncSession, owner: User, **kwargs) -> tuple[Loom, LoomVersion]:
+    loom_type = kwargs.get("loom_type", "floor_loom")
+    lift, treadle = loom_tracking_flags(loom_type)
     loom = Loom(
         owner_id=owner.id,
-        loom_type=kwargs.get("loom_type", "floor_loom"),
+        loom_type=loom_type,
         manufacturer=kwargs.get("manufacturer", "Ashford"),
         model_name=kwargs.get("model_name", "Table Loom 8"),
-        supports_treadle_tracking=kwargs.get("supports_treadle_tracking", True),
-        supports_lift_tracking=kwargs.get("supports_lift_tracking", True),
+        supports_treadle_tracking=treadle,
+        supports_lift_tracking=lift,
     )
     db_session.add(loom)
     await db_session.flush()
@@ -1196,3 +1198,60 @@ class TestGetPicks:
         activity = await _insert_active_activity(db_session, test_user, project, None)
         resp = await client.get(f"/api/activities/{activity.id}/picks")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Unsupported loom type — activity creation and assignment
+# ---------------------------------------------------------------------------
+
+
+class TestUnsupportedLoomType:
+    async def test_unsupported_loom_type_blocks_create(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user, loom_type="rigid_heddle")
+        resp = await auth_client.post(
+            "/api/activities",
+            json=_base_payload(str(project.id), loom_id=str(loom.id)),
+        )
+        assert resp.status_code == 422
+
+    async def test_dobby_loom_blocks_create(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user, loom_type="dobby")
+        resp = await auth_client.post(
+            "/api/activities",
+            json=_base_payload(str(project.id), loom_id=str(loom.id)),
+        )
+        assert resp.status_code == 422
+
+    async def test_floor_loom_allowed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user, loom_type="floor_loom")
+        resp = await auth_client.post(
+            "/api/activities",
+            json=_base_payload(str(project.id), loom_id=str(loom.id)),
+        )
+        assert resp.status_code == 201
+
+    async def test_table_loom_allowed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        project = await _insert_project(db_session, test_user)
+        loom, _ = await _insert_loom(db_session, test_user, loom_type="table_loom")
+        resp = await auth_client.post(
+            "/api/activities",
+            json=_base_payload(str(project.id), activity_type="lift", loom_id=str(loom.id)),
+        )
+        assert resp.status_code == 201
+
+    async def test_unsupported_loom_type_blocks_assign(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        project = await _insert_project(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, project, None)
+        loom, _ = await _insert_loom(db_session, test_user, loom_type="inkle")
+        resp = await auth_client.post(
+            f"/api/activities/{activity.id}/assign-loom",
+            json={"loom_id": str(loom.id)},
+        )
+        assert resp.status_code == 422

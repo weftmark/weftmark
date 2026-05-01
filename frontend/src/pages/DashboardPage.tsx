@@ -26,7 +26,7 @@ export function DashboardPage() {
     queryFn: listLooms,
   });
 
-  const handleLogout = () => signOut({ redirectUrl: "/login" });
+  const handleLogout = () => signOut();
 
   const activeActivities = activities.filter((a) => a.status === "active" && !!a.loom_id);
   const planningActivities = activities.filter((a) => a.status === "active" && !a.loom_id);

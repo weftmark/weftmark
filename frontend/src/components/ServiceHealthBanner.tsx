@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getHealthReady, type ReadinessResponse, type ReadinessService } from "@/api/health";
+import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 
 function serviceLabel(s: ReadinessService): string {
   return s.detail ? `${s.name} (${s.detail})` : s.name;
@@ -9,17 +9,21 @@ export function ServiceHealthBanner() {
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
 
   useEffect(() => {
-    getHealthReady()
-      .then(setReadiness)
-      .catch(() => {
-        setReadiness({ status: "error", services: [{ name: "backend", ok: false, critical: true, message: "unreachable", detail: "" }] });
-      });
+    const check = () =>
+      getHealthDetailed()
+        .then(setReadiness)
+        .catch(() => {
+          setReadiness({ status: "error", services: [{ name: "backend", ok: false, critical: true, message: "unreachable", detail: "" }] });
+        });
+    check();
+    const id = setInterval(check, 30_000);
+    return () => clearInterval(id);
   }, []);
 
-  if (!readiness || readiness.status === "ok") return null;
+  if (!readiness || readiness.status === "ok" || readiness.status === "starting") return null;
 
   const failed = readiness.services.filter((s) => !s.ok);
-  const webhookDegraded = failed.some((s) => s.name === "Clerk Webhook");
+  const webhookFailed = failed.find((s) => s.name === "Clerk Webhook");
   const otherFailed = failed.filter((s) => s.name !== "Clerk Webhook");
 
   if (readiness.status === "error") {
@@ -33,7 +37,7 @@ export function ServiceHealthBanner() {
 
   return (
     <div className="w-full bg-amber-400 text-amber-950 text-center text-xs font-semibold py-1.5 px-4 select-none">
-      {webhookDegraded && (
+      {webhookFailed && (
         <span>
           New account registration is temporarily unavailable — existing users are unaffected.
           {otherFailed.length > 0 && "  "}

@@ -213,6 +213,29 @@ async def get_drawdown(
 
 
 # ---------------------------------------------------------------------------
+# WIF download
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{project_id}/wif")
+async def download_wif(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    project = await _get_owned_project(project_id, current_user, db)
+    if not project.wif_path or not storage.file_exists(project.wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not available for this project")
+    wif_bytes = storage.read_file(project.wif_path)
+    filename = project.wif_filename or "project.wif"
+    return Response(
+        content=wif_bytes,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ---------------------------------------------------------------------------
 # Delete (soft)
 # ---------------------------------------------------------------------------
 

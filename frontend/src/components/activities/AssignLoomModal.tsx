@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { assignLoom, completeActivity, abandonActivity, ApiError, type ActivitySummary } from "@/api/activities";
-import { listLooms, getLoom } from "@/api/looms";
+import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -90,10 +90,13 @@ export function AssignLoomModal({ activityId, activeActivities, onSuccess, onClo
             <label className="mb-1 block text-sm font-medium">Loom <span className="text-destructive">*</span></label>
             <select className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
               <option value="">Select a loom…</option>
-              {looms.map((l) => (
+              {looms.filter((l) => SUPPORTED_LOOM_TYPES.has(l.loom_type)).map((l) => (
                 <option key={l.id} value={l.id}>{l.manufacturer} {l.model_name}</option>
               ))}
             </select>
+            {looms.some((l) => !SUPPORTED_LOOM_TYPES.has(l.loom_type)) && (
+              <p className="mt-1 text-xs text-muted-foreground">Looms without activity tracking support are not shown.</p>
+            )}
           </div>
 
           {loomVersions.length > 1 && (

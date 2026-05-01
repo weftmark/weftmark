@@ -230,6 +230,7 @@ def _s3_conn_meta(settings: "Settings") -> dict[str, str]:
         "bucket": settings.s3_bucket_name or "(not set)",
         "endpoint": settings.s3_endpoint_url or "AWS default",
         "region": settings.s3_region or "auto",
+        "access_key_id": settings.s3_access_key_id or "(not set)",
     }
 
 
@@ -299,12 +300,10 @@ async def _probe_s3() -> ServiceCheckResult:
 
 
 def _clerk_conn_meta(settings: "Settings") -> dict[str, str]:
-    def _prefix(val: str, n: int = 12) -> str:
-        return val[:n] + "…" if len(val) > n else val
-
+    pk = settings.clerk_publishable_key
     return {
-        "publishable_key": _prefix(settings.clerk_publishable_key) if settings.clerk_publishable_key else "(not set)",
-        "environment": "live" if settings.clerk_publishable_key.startswith("pk_live_") else "test",
+        "publishable_key": pk or "(not set)",
+        "environment": "live" if pk and pk.startswith("pk_live_") else "test",
     }
 
 
@@ -314,14 +313,15 @@ async def _probe_clerk() -> ServiceCheckResult:
     meta = _clerk_conn_meta(settings)
 
     # Config: secret key
-    sk_ok = bool(settings.clerk_secret_key and settings.clerk_secret_key.startswith("sk_"))
-    checks.append(
-        ServicePermCheck(
-            name="secret_key",
-            status="ok" if sk_ok else "error",
-            message="Set (sk_…)" if sk_ok else "Missing or unexpected format",
-        )
-    )
+    sk = settings.clerk_secret_key
+    sk_ok = bool(sk and sk.startswith("sk_"))
+    if sk_ok:
+        sk_pfx = "sk_live_" if sk.startswith("sk_live_") else "sk_test_"
+        sk_peek = sk[len(sk_pfx) : len(sk_pfx) + 6]
+        sk_msg = f"Set ({sk_pfx}{sk_peek}…)"
+    else:
+        sk_msg = "Missing or unexpected format"
+    checks.append(ServicePermCheck(name="secret_key", status="ok" if sk_ok else "error", message=sk_msg))
 
     # Config: publishable key
     pk_ok = bool(settings.clerk_publishable_key and settings.clerk_publishable_key.startswith("pk_"))

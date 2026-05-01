@@ -74,3 +74,17 @@ export function previewUrl(id: string): string {
 export async function generateLiftplan(id: string): Promise<ProjectDetail> {
   return req(`/api/projects/${id}/generate-liftplan`, { method: "POST" });
 }
+
+export async function downloadWif(id: string, filename: string): Promise<void> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(`/api/projects/${id}/wif`, { credentials: "include", headers });
+  if (!res.ok) throw new Error("WIF file not available");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

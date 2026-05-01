@@ -11,7 +11,7 @@ export function RegisterPage() {
         <SignUp
           routing="hash"
           signInUrl="/login"
-          fallbackRedirectUrl="/"
+          fallbackRedirectUrl="/home"
           appearance={{
             elements: {
               rootBox: "w-full",

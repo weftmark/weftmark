@@ -10,7 +10,7 @@ import {
   addAccessory, deleteAccessory, updateVersion,
   type LoomDetail, type LoomVersion, type LoomVersionPhoto,
   type LoomVersionReceipt, type LoomVersionAccessory,
-  LOOM_TYPE_LABELS,
+  LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
@@ -603,6 +603,7 @@ export function LoomDetailPage() {
   const [cloneSource, setCloneSource] = useState<LoomVersion | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
 
   const { data: loom, isLoading, error } = useQuery({
     queryKey: ["loom", id],
@@ -664,6 +665,13 @@ export function LoomDetailPage() {
       </header>
 
       <main className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-8">
+        {!SUPPORTED_LOOM_TYPES.has(loom.loom_type) && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+            <span className="font-medium">Activity tracking not supported</span> — this loom type is not currently
+            supported for activity tracking. It has been saved for documentation and will be available if support
+            is added later.
+          </div>
+        )}
         <section className="space-y-4">
           <ProfilePhoto loom={loom} onChanged={invalidate} />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
@@ -722,15 +730,34 @@ export function LoomDetailPage() {
         </section>
 
         <section className="border-t pt-6">
-          {!confirmDelete ? (
-            <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>Delete loom</Button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <p className="text-sm text-destructive">Delete this loom? This cannot be undone.</p>
-              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
-              <Button size="sm" onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                {deleting ? "Deleting…" : "Confirm delete"}
-              </Button>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between text-sm font-medium text-destructive hover:text-destructive/80"
+            onClick={() => { setDangerZoneOpen((o) => !o); setConfirmDelete(false); }}
+          >
+            <span>Danger zone</span>
+            <span className="text-xs text-muted-foreground">{dangerZoneOpen ? "▲ collapse" : "▼ expand"}</span>
+          </button>
+          {dangerZoneOpen && (
+            <div className="mt-4 rounded-md border border-destructive/30 px-4 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">Delete this loom</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Permanently removes the loom and all its configurations. This cannot be undone.</p>
+                </div>
+                {!confirmDelete ? (
+                  <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
+                    Delete loom
+                  </Button>
+                ) : (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
+                    <Button size="sm" onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      {deleting ? "Deleting…" : "Confirm delete"}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </section>

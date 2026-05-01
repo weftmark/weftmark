@@ -1,0 +1,262 @@
+name: Dev push
+
+# Post-merge bookkeeping for pushes to dev.
+# Tests already passed on the PR — this workflow only does SBOM updates
+# and version bumping. No validation jobs run here.
+#
+# Jobs are serialised (sbom-backend → sbom-frontend → bump-version) so
+# that each git push sees the previous commit before rebasing, avoiding
+# a race between concurrent committers.
+#
+# All jobs are skipped when weftmark-bot[bot] pushes (version bump commits
+# would otherwise re-trigger this workflow infinitely).
+#
+# Required secrets:
+#   WEFTMARK_BOT_CLIENT_ID   — GitHub App client ID
+#   WEFTMARK_BOT_PRIVATE_KEY — GitHub App private key
+
+on:
+  push:
+    branches: [dev]
+
+concurrency:
+  group: dev-push-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+
+  sbom-backend:
+    name: SBOM backend (CycloneDX + pip-licenses)
+    runs-on: ubuntu-latest
+    if: github.actor != 'weftmark-bot[bot]'
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Detect backend package changes
+        id: detect
+        run: |
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            git diff --name-only HEAD~1 HEAD | grep -q "^backend/requirements" \
+              && echo "changed=true" >> $GITHUB_OUTPUT \
+              || echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - if: steps.detect.outputs.changed == 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Generate backend SBOM and license manifest
+        if: steps.detect.outputs.changed == 'true'
+        run: |
+          pip install cyclonedx-bom pip-licenses
+          pip install -r backend/requirements.txt
+          mkdir -p sbom
+          cyclonedx-py requirements backend/requirements.txt \
+            --output-format JSON --output-file sbom/sbom-backend.json
+          pip-licenses --format=json --output-file sbom/licenses-backend.json
+
+      - name: Commit if changed
+        if: steps.detect.outputs.changed == 'true'
+        run: |
+          git config user.name  "weftmark-bot[bot]"
+          git config user.email "weftmark-bot[bot]@users.noreply.github.com"
+          git add sbom/sbom-backend.json sbom/licenses-backend.json
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update backend SBOM and license manifest [skip actions]"
+            git pull --rebase origin dev
+            git push origin dev
+          fi
+
+      - uses: actions/upload-artifact@v6
+        if: steps.detect.outputs.changed == 'true'
+        with:
+          name: sbom-backend-${{ github.sha }}
+          path: sbom/sbom-backend.json
+          retention-days: 90
+
+  sbom-frontend:
+    name: SBOM frontend (CycloneDX + license-checker)
+    runs-on: ubuntu-latest
+    needs: [sbom-backend]
+    if: github.actor != 'weftmark-bot[bot]'
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Detect frontend package changes
+        id: detect
+        run: |
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            git diff --name-only HEAD~1 HEAD | grep -qE "^frontend/package(-lock)?\.json" \
+              && echo "changed=true" >> $GITHUB_OUTPUT \
+              || echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - if: steps.detect.outputs.changed == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Generate frontend SBOM and license manifest
+        if: steps.detect.outputs.changed == 'true'
+        run: |
+          cd frontend && npm ci
+          mkdir -p ../sbom
+          npx @cyclonedx/cyclonedx-npm \
+            --output-format JSON --output-file ../sbom/sbom-frontend.json
+          npx license-checker --json --out ../sbom/licenses-frontend.json
+
+      - name: Commit if changed
+        if: steps.detect.outputs.changed == 'true'
+        run: |
+          git config user.name  "weftmark-bot[bot]"
+          git config user.email "weftmark-bot[bot]@users.noreply.github.com"
+          git add sbom/sbom-frontend.json sbom/licenses-frontend.json
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update frontend SBOM and license manifest [skip actions]"
+            git pull --rebase origin dev
+            git push origin dev
+          fi
+
+      - uses: actions/upload-artifact@v6
+        if: steps.detect.outputs.changed == 'true'
+        with:
+          name: sbom-frontend-${{ github.sha }}
+          path: sbom/sbom-frontend.json
+          retention-days: 90
+
+  bump-version:
+    name: Bump version
+    runs-on: ubuntu-latest
+    needs: [sbom-backend, sbom-frontend]
+    if: github.actor != 'weftmark-bot[bot]'
+    steps:
+      - name: Generate bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "weftmark-bot[bot]"
+          git config user.email "weftmark-bot[bot]@users.noreply.github.com"
+
+      - name: Determine and apply version bump
+        id: version
+        run: |
+          python3 - << 'PYEOF'
+          import subprocess, re, os
+
+          with open("VERSION") as f:
+              current = f.read().strip()
+          major, minor, patch = map(int, current.split("."))
+
+          result = subprocess.run(
+              ["git", "describe", "--tags", "--abbrev=0"],
+              capture_output=True, text=True
+          )
+          last_tag = result.stdout.strip() if result.returncode == 0 else None
+
+          if last_tag:
+              log = subprocess.run(
+                  ["git", "log", f"{last_tag}..HEAD", "--first-parent", "--pretty=format:%s%n%b"],
+                  capture_output=True, text=True
+              ).stdout
+          else:
+              log = subprocess.run(
+                  ["git", "log", "--first-parent", "--pretty=format:%s%n%b"],
+                  capture_output=True, text=True
+              ).stdout
+
+          breaking = bool(
+              re.search(r"^BREAKING CHANGE:", log, re.MULTILINE) or
+              re.search(r"^[a-z]+!:", log, re.MULTILINE)
+          )
+          has_feat = bool(re.search(r"^feat(\(.*?\))?:", log, re.MULTILINE))
+
+          if breaking:
+              bump = "major"
+          elif has_feat:
+              bump = "minor"
+          else:
+              bump = "patch"
+
+          if bump == "major":
+              new_ver = f"{major + 1}.0.0"
+          elif bump == "minor":
+              new_ver = f"{major}.{minor + 1}.0"
+          else:
+              new_ver = f"{major}.{minor}.{patch + 1}"
+
+          tag = f"v{new_ver}-dev"
+          print(f"Bump: {bump}  ({current} → {new_ver})")
+
+          with open("VERSION", "w") as f:
+              f.write(new_ver + "\n")
+
+          pkg = open("frontend/package.json").read()
+          pkg = re.sub(r'("version"\s*:\s*")[^"]+(")', rf'\g<1>{new_ver}\2', pkg)
+          open("frontend/package.json", "w").write(pkg)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
+              gh_out.write(f"new_version={new_ver}\n")
+              gh_out.write(f"tag={tag}\n")
+          PYEOF
+
+      - name: Commit version files
+        run: |
+          git add VERSION frontend/package.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip actions]"
+
+      - name: Push version commit
+        run: |
+          git pull --rebase origin dev
+          git push origin dev
+
+      - name: Create tag via API (produces Verified tag)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          COMMIT_SHA=$(git rev-parse HEAD)
+          TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
+            --method POST \
+            --field tag="${{ steps.version.outputs.tag }}" \
+            --field message="Release ${{ steps.version.outputs.tag }}" \
+            --field object="$COMMIT_SHA" \
+            --field type="commit" \
+            --jq '.sha')
+          gh api repos/${{ github.repository }}/git/refs \
+            --method POST \
+            --field ref="refs/tags/${{ steps.version.outputs.tag }}" \
+            --field sha="$TAG_SHA"

@@ -11,10 +11,12 @@
 .env
 .env.dev
 .env.prod
-.env.traefik
 .env.local
 .env.*.local
 # .env.example and .env.*.example are intentionally tracked
+
+# Seed config (contains credentials — seed.example.json is tracked)
+backend/seed.json
 
 
 # ------------------------------------------------------------
@@ -92,7 +94,6 @@ storybook-static/
 # ------------------------------------------------------------
 # Local override compose files are not tracked
 docker-compose.override.yml
-docker-compose.local.yml
 
 # Docker build context artifacts
 *.tar

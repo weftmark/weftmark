@@ -4,9 +4,9 @@ Signs a synthetic test event with the webhook secret and POSTs it to the
 configured public webhook URL.  The webhook handler recognises the event type
 and signals an asyncio.Event so the probe can measure end-to-end latency.
 
-Skipped gracefully when WEBHOOK_BASE_URL or CLERK_WEBHOOK_SECRET is unset
-(e.g. local dev without a tunnel).  A timeout is a soft failure — it sets
-degraded state, not an error, so the app still starts and serves users.
+WEBHOOK_BASE_URL overrides the base URL; falls back to API_URL when unset.
+Returns an error result (does not raise) when CLERK_WEBHOOK_SECRET is missing.
+A timeout is a soft failure — it sets degraded state so the app still starts.
 """
 
 from __future__ import annotations
@@ -74,13 +74,11 @@ async def run_webhook_probe() -> WebhookProbeResult:
     """Run the webhook round-trip probe and return the result."""
     settings = get_settings()
 
-    if not settings.webhook_base_url:
-        return WebhookProbeResult("skipped", message="WEBHOOK_BASE_URL not configured — skipping probe")
-
     if not settings.clerk_webhook_secret:
         return WebhookProbeResult("error", message="CLERK_WEBHOOK_SECRET not configured")
 
-    webhook_url = settings.webhook_base_url.rstrip("/") + "/auth/clerk/webhook"
+    base = (settings.webhook_base_url or settings.api_url).rstrip("/")
+    webhook_url = base + "/auth/clerk/webhook"
     timeout = settings.clerk_webhook_probe_timeout_s
 
     global _pending_event
@@ -96,10 +94,11 @@ async def run_webhook_probe() -> WebhookProbeResult:
 
         msg_id = f"msg_{uuid.uuid4().hex}"
         ts = datetime.now(timezone.utc)
-        payload = json.dumps({"type": "webhook.test", "data": {"probe_id": msg_id}}).encode()
+        payload_str = json.dumps({"type": "webhook.test", "data": {"probe_id": msg_id}})
+        payload_bytes = payload_str.encode()
 
         wh = Webhook(settings.clerk_webhook_secret)
-        signature = wh.sign(msg_id, ts, payload)
+        signature = wh.sign(msg_id, ts, payload_str)
 
         headers = {
             "Content-Type": "application/json",
@@ -111,7 +110,7 @@ async def run_webhook_probe() -> WebhookProbeResult:
         start = time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                r = await client.post(webhook_url, content=payload, headers=headers)
+                r = await client.post(webhook_url, content=payload_bytes, headers=headers)
             if r.status_code not in (200, 202, 204):
                 return WebhookProbeResult("error", message=f"Webhook endpoint returned HTTP {r.status_code}")
         except httpx.TimeoutException:

@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "email": "superuser@example.com",
+      "username": "superuser",
+      "password": "change-me-123",
+      "display_name": "Super User",
+      "role": "superuser"
+    },
+    {
+      "email": "admin@example.com",
+      "username": "admin1",
+      "password": null,
+      "display_name": "Admin One",
+      "role": "admin"
+    },
+    {
+      "email": "user@example.com",
+      "username": "user1",
+      "password": null,
+      "display_name": "Regular User",
+      "role": "user"
+    }
+  ]
+}

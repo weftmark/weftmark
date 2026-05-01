@@ -30,11 +30,10 @@ A multi-user, invite-only web platform for managing weaving projects. Users can 
 
 ### Authentication
 
-- OIDC-based authentication (any OIDC-compliant provider supported via configuration)
-- Reference implementation: **Authentik** (self-hosted)
-- Invite-only registration — users cannot self-register
-- Session stored as a signed JWT in an httpOnly cookie; signed with `APP_SECRET_KEY`
-- Bootstrap rule: the first user to authenticate becomes admin with no invite required
+- Clerk hosted authentication
+- Users can self-register; new accounts require admin approval before access is granted
+- Backend validates Bearer tokens in the `Authorization` header
+- Bootstrap rule: the first user to register becomes admin with no approval required
 
 ### Frontend
 
@@ -66,9 +65,9 @@ A multi-user, invite-only web platform for managing weaving projects. Users can 
 ## API Security
 
 - All `/api/*` endpoints require authentication via `Depends(get_current_user)`
-- Authentication is enforced by validating the signed session JWT from the httpOnly cookie
+- Authentication is enforced by validating the Clerk Bearer token from the `Authorization` header
 - Admin-only endpoints additionally use `Depends(require_admin)`
-- Unauthenticated endpoints: `/health`, `/auth/login`, `/auth/callback`, `/auth/logout`
+- Unauthenticated endpoints: `/health`, `/webhooks/clerk`
 - Swagger UI (`/api/docs`) is only available when `DEBUG=true`; disabled in production
 
 ---
@@ -86,19 +85,17 @@ Two networks are defined to limit the blast radius of any compromised service:
 
 | Service | Exposed to host | Networks | Notes |
 | --- | --- | --- | --- |
-| `frontend` (nginx) | **Yes** — port 3000 | public | Single user entry point; proxies `/api/`, `/auth/`, `/health` to backend |
-| `authentik-server` | **Yes** — port 9000 | public + internal | Browser redirects directly to it for OIDC authorization; admin UI |
+| `frontend` (nginx) | **Yes** — port 3000 | public | Single user entry point; proxies `/api/` and `/health` to backend |
 | `backend` | **No** | public + internal | Reached only through nginx; on internal to access db and redis |
 | `worker` | No | internal | Background jobs only; no inbound connections needed |
 | `db` | No | internal | Never reachable from host or public network |
 | `redis` | No | internal | Never reachable from host or public network |
-| `authentik-worker` | No | internal | Background jobs for Authentik only |
 
 ### Rationale
 
 - `db` and `redis` are on `internal` only — a compromise of the frontend or nginx container cannot directly reach the data tier
 - `backend` is not port-bound to the host — all traffic must pass through nginx, which enforces routing rules
-- `authentik-server` must be host-exposed because the browser is redirected to it directly during the OIDC authorization flow; this cannot be proxied through nginx without breaking the OIDC redirect URI
+- `backend` handles auth by validating Bearer tokens inline — no separate auth service needs host exposure
 
 ---
 
