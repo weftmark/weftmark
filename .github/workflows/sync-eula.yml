@@ -5,8 +5,7 @@ on:
 
 jobs:
   sync-eula:
-    runs-on: [self-hosted, linux, x64, unraid]
-    timeout-minutes: 15
+    runs-on: ubuntu-latest
 
     steps:
       - name: Generate bot token

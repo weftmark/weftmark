@@ -6,8 +6,7 @@ on:
 
 jobs:
   triage:
-    runs-on: [self-hosted, linux, x64, unraid]
-    timeout-minutes: 5
+    runs-on: ubuntu-latest
     permissions:
       issues: write
     steps:
