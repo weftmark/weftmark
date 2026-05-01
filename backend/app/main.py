@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.logging_config import configure_logging
 from app.middleware import SecurityHeadersMiddleware
-from app.routers import activities, admin, auth, dev, health, logs, looms, projects, users, yarn
+from app.routers import activities, admin, auth, dev, health, logs, looms, projects, system, users, yarn
 from app.version import VERSION
 
 settings = get_settings()
@@ -52,6 +52,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(system.router)
 app.include_router(logs.router)
 if settings.app_env == "dev":
     app.include_router(dev.router)
