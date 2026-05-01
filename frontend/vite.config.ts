@@ -19,6 +19,8 @@ export default defineConfig({
       "/auth": "http://localhost:8000",
       "/api": "http://localhost:8000",
       "/health": "http://localhost:8000",
+      "/system": "http://localhost:8000",
+      "/dev": "http://localhost:8000",
     },
   },
 });
