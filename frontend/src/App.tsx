@@ -25,6 +25,7 @@ import { SignOutPage } from "@/pages/SignOutPage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 import { DevBanner } from "@/components/DevBanner";
 import { ServiceHealthBanner } from "@/components/ServiceHealthBanner";
+import { SystemGate } from "@/components/SystemGate";
 import { useAuth } from "@/hooks/useAuth";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
@@ -52,6 +53,7 @@ export default function App() {
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/sign-out">
       <VersionGate>
+        <SystemGate>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <BrowserRouter>
@@ -160,6 +162,7 @@ export default function App() {
             </BrowserRouter>
           </AuthProvider>
         </QueryClientProvider>
+        </SystemGate>
       </VersionGate>
     </ClerkProvider>
   );
