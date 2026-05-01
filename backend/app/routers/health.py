@@ -62,9 +62,7 @@ async def health_detailed() -> JSONResponse:
     Returns the same shape as /health/ready with an added checked_at timestamp.
     """
     if _detailed_cache is None:
-        return JSONResponse(
-            {"status": "starting", "services": [], "checked_at": None}, status_code=503
-        )
+        return JSONResponse({"status": "starting", "services": [], "checked_at": None}, status_code=503)
     return JSONResponse(_detailed_cache.model_dump())
 
 
@@ -194,9 +192,7 @@ async def _run_detailed_probes() -> ReadinessResponse:
             checked_at=datetime.now(timezone.utc).isoformat(),
         )
 
-    return _build_readiness_from_results(
-        results, webhook_result, checked_at=datetime.now(timezone.utc).isoformat()
-    )
+    return _build_readiness_from_results(results, webhook_result, checked_at=datetime.now(timezone.utc).isoformat())
 
 
 async def _detailed_refresh_loop() -> None:
