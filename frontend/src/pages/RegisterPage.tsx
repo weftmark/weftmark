@@ -10,8 +10,6 @@ export function RegisterPage() {
         </div>
         <SignUp
           routing="hash"
-          signInUrl="/login"
-          fallbackRedirectUrl="/home"
           appearance={{
             elements: {
               rootBox: "w-full",
