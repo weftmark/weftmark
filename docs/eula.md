@@ -42,11 +42,11 @@ WeftMark is a web application for weavers. It lets you:
 
 ## 4. Your account
 
-You sign in using a third-party identity provider (currently Google; Apple Sign In coming later). We do not store your password — authentication is handled entirely by the provider you choose.
+You sign in using a third-party identity provider. We do not store your password — authentication is handled entirely by the provider you choose.
 
 You are responsible for maintaining the security of your account. If you believe your account has been compromised, contact us immediately.
 
-WeftMark is currently invite-only. You must be invited by an existing user or the platform administrator to register.
+Access to WeftMark requires account approval. You may register and your account will be activated once approved by an administrator.
 
 ## 5. Content license
 

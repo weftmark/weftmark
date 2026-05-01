@@ -95,7 +95,7 @@ Before implementing any new feature:
 2. **Write tests** — add to `tests/routers/` or `tests/models/` as appropriate
 3. **Run tests** — confirm they fail (they should, feature not built yet)
 4. **Implement feature** — write code until all tests pass
-5. **Commit** — feature + tests together; update coverage estimate in this file and STATUS.md
+5. **Commit** — feature + tests together; update coverage estimate in this file
 
 ---
 
