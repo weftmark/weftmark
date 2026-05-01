@@ -21,7 +21,6 @@ import {
   createEulaVersion,
   getAdminServices,
   sendTestEmail,
-  testWebhook,
   getAuditLog,
   type AdminUser,
   type AdminHealth,
@@ -30,9 +29,8 @@ import {
   type PendingSignup,
   type ServiceCheck,
   type ServicePermCheck,
-  type WebhookProbeResult,
 } from "@/api/admin";
-import { getHealthReady, type ReadinessResponse } from "@/api/health";
+import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
 import { formatBytes } from "@/lib/image-utils";
 
@@ -895,24 +893,26 @@ function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean 
   );
 }
 
-function ServiceRow({ check }: { check: ServiceCheck }) {
+function CombinedServiceRow({ service, detail }: { service: ReadinessService; detail?: ServiceCheck }) {
   const [open, setOpen] = useState(false);
-  const metaEntries = Object.entries(check.meta ?? {});
-  const hasContent = metaEntries.length > 0 || check.checks.length > 0;
+  const metaEntries = Object.entries(detail?.meta ?? {});
+  const hasDetail = detail && (metaEntries.length > 0 || detail.checks.length > 0);
+
   return (
     <div className="bg-background">
       <button
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 text-left"
-        onClick={() => setOpen((o) => !o)}
+        className={`w-full flex items-center gap-3 px-4 py-3 text-left ${hasDetail ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
+        onClick={hasDetail ? () => setOpen((o) => !o) : undefined}
       >
-        <StatusDot status={check.status} />
-        <span className="text-sm font-medium w-32 shrink-0">{check.service}</span>
-        <span className={`text-sm flex-1 ${check.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
-          {check.message}
+        <StatusDot status={service.ok ? "ok" : "error"} />
+        <span className="text-sm font-medium w-32 shrink-0">{service.name}</span>
+        <span className={`text-sm flex-1 ${!service.ok ? "text-destructive" : "text-muted-foreground"}`}>
+          {service.message || (service.ok ? "ok" : "failed")}
         </span>
-        <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>
+        {!service.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
+        {hasDetail && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
       </button>
-      {open && hasContent && (
+      {open && hasDetail && (
         <div className="border-t">
           {metaEntries.length > 0 && (
             <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 pl-10 pr-4 py-2.5 bg-muted/10 border-b">
@@ -924,9 +924,9 @@ function ServiceRow({ check }: { check: ServiceCheck }) {
               ))}
             </div>
           )}
-          {check.checks.length > 0 && (
+          {detail!.checks.length > 0 && (
             <div className="divide-y">
-              {check.checks.map((c: ServicePermCheck) => (
+              {detail!.checks.map((c: ServicePermCheck) => (
                 <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
                   <StatusDot status={c.status} small />
                   <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
@@ -943,99 +943,33 @@ function ServiceRow({ check }: { check: ServiceCheck }) {
   );
 }
 
-function WebhookHealthCard() {
-  const [result, setResult] = useState<WebhookProbeResult | null>(null);
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
-
-  const probe = useMutation({
-    mutationFn: testWebhook,
-    onSettled: (data) => {
-      if (data) { setResult(data); setLastChecked(new Date()); }
-    },
-  });
-
-  // Auto-test on mount and every 60s while this tab is open.
-  useEffect(() => {
-    probe.mutate();
-    const id = setInterval(() => probe.mutate(), 60_000);
-    return () => clearInterval(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const statusColor =
-    !result || probe.isPending ? "text-muted-foreground" :
-    result.status === "ok" ? "text-green-600 dark:text-green-400" :
-    result.status === "skipped" ? "text-muted-foreground" :
-    "text-destructive";
-
-  const statusLabel =
-    probe.isPending ? "Testing…" :
-    !result ? "Not yet tested" :
-    result.status === "ok" ? `OK — ${result.latency_ms}ms` :
-    result.status === "skipped" ? "Skipped (WEBHOOK_BASE_URL not configured)" :
-    `Failed — ${result.message}`;
-
-  return (
-    <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">Webhook Health</p>
-        <p className={`text-xs mt-0.5 ${statusColor}`}>{statusLabel}</p>
-        {lastChecked && (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Last tested {lastChecked.toLocaleTimeString()} · auto-refreshes every 60s
-          </p>
-        )}
-      </div>
-      <Button size="sm" variant="outline" disabled={probe.isPending} onClick={() => probe.mutate()}>
-        {probe.isPending ? "Testing…" : "Test Now"}
-      </Button>
-    </div>
-  );
-}
-
-function ReadinessCard({ readiness }: { readiness: ReadinessResponse }) {
-  const statusColor =
-    readiness.status === "ok" ? "text-green-600 dark:text-green-400" :
-    readiness.status === "error" ? "text-destructive" :
-    readiness.status === "starting" ? "text-muted-foreground" :
-    "text-amber-600 dark:text-amber-400";
-
-  return (
-    <div className="border rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-muted/10 border-b">
-        <span className="text-sm font-medium">App Readiness</span>
-        <span className={`text-xs font-semibold uppercase ${statusColor}`}>{readiness.status}</span>
-      </div>
-      <div className="divide-y">
-        {readiness.services.map((s) => (
-          <div key={s.name} className="flex items-center gap-3 px-4 py-2.5">
-            <StatusDot status={s.ok ? "ok" : "error"} />
-            <span className="text-sm w-36 shrink-0">{s.name}</span>
-            <span className={`text-xs flex-1 ${s.ok ? "text-muted-foreground" : "text-destructive"}`}>
-              {s.message || (s.ok ? "ok" : "failed")}
-            </span>
-            {!s.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function ServicesTab() {
   const { user: currentUser } = useAuth();
-  const { data, isLoading, isFetching, refetch, dataUpdatedAt } = useQuery({
+
+  // Live status from /health/detailed — auto-refreshes every 30s
+  const [detailed, setDetailed] = useState<ReadinessResponse | null>(null);
+  const [detailedAt, setDetailedAt] = useState<Date | null>(null);
+
+  useEffect(() => {
+    const poll = () =>
+      getHealthDetailed()
+        .then((d) => { setDetailed(d); setDetailedAt(new Date()); })
+        .catch(() => {});
+    poll();
+    const id = setInterval(poll, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Detailed diagnostics — on demand only
+  const { data: diagnostics, isFetching: diagFetching, refetch: runDiag, dataUpdatedAt: diagAt } = useQuery({
     queryKey: ["admin", "services"],
     queryFn: getAdminServices,
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: Infinity,
+    enabled: false,
   });
 
-  const { data: readiness } = useQuery({
-    queryKey: ["health", "ready"],
-    queryFn: getHealthReady,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  });
+  const diagTime = diagAt ? new Date(diagAt).toLocaleTimeString() : null;
+  const getDetail = (name: string) => diagnostics?.find((d) => d.service === name);
 
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const testEmail = useMutation({
@@ -1044,32 +978,31 @@ function ServicesTab() {
     onError: (e: Error) => setTestResult({ ok: false, msg: e.message }),
   });
 
-  const lastChecked = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          {lastChecked ? `Last checked ${lastChecked}` : "Checking…"}
-        </p>
-        <Button size="sm" variant="outline" disabled={isFetching} onClick={() => refetch()}>
-          {isFetching ? "Checking…" : "Refresh"}
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs text-muted-foreground">
+            {detailedAt
+              ? `Updated ${detailedAt.toLocaleTimeString()} · auto-refreshes every 30s`
+              : "Loading…"}
+          </span>
+        </div>
+        <Button size="sm" variant="outline" disabled={diagFetching} onClick={() => runDiag()}>
+          {diagFetching ? "Running…" : diagTime ? `Diagnostics: ${diagTime}` : "Run diagnostics"}
         </Button>
       </div>
 
-      {isLoading ? (
+      {!detailed || detailed.status === "starting" ? (
         <p className="text-sm text-muted-foreground">Checking services…</p>
       ) : (
         <div className="border rounded-lg divide-y overflow-hidden">
-          {(data ?? []).map((check) => (
-            <ServiceRow key={check.service} check={check} />
+          {detailed.services.map((svc) => (
+            <CombinedServiceRow key={svc.name} service={svc} detail={getDetail(svc.name)} />
           ))}
         </div>
       )}
-
-      {readiness && <ReadinessCard readiness={readiness} />}
-
-      <WebhookHealthCard />
 
       <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
         <div>
