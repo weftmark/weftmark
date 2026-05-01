@@ -9,11 +9,18 @@ import app.services.clerk_webhook_probe as probe_module
 from app.services.clerk_webhook_probe import run_webhook_probe, signal_probe
 
 
-def _mock_settings(*, base_url: str = "https://example.com", secret: str = "whsec_test", timeout: int = 5):
+def _mock_settings(
+    *,
+    base_url: str = "https://example.com",
+    secret: str = "whsec_test",
+    timeout: int = 5,
+    api_url: str = "https://api.example.com",
+):
     return MagicMock(
         webhook_base_url=base_url,
         clerk_webhook_secret=secret,
         clerk_webhook_probe_timeout_s=timeout,
+        api_url=api_url,
     )
 
 
@@ -50,12 +57,6 @@ class TestSignalProbe:
 
 
 class TestRunWebhookProbeConfig:
-    async def test_skipped_when_no_base_url(self, monkeypatch):
-        monkeypatch.setattr(probe_module, "get_settings", lambda: _mock_settings(base_url=""))
-        result = await run_webhook_probe()
-        assert result.status == "skipped"
-        assert "WEBHOOK_BASE_URL" in result.message
-
     async def test_error_when_no_webhook_secret(self, monkeypatch):
         monkeypatch.setattr(probe_module, "get_settings", lambda: _mock_settings(secret=""))
         result = await run_webhook_probe()
@@ -158,6 +159,23 @@ class TestRunWebhookProbeNetwork:
             await run_webhook_probe()
 
         assert calls and calls[0] == "https://api.example.com/auth/clerk/webhook"
+
+    async def test_webhook_url_falls_back_to_api_url(self, monkeypatch):
+        monkeypatch.setattr(
+            probe_module,
+            "get_settings",
+            lambda: _mock_settings(base_url="", api_url="https://fallback.example.com/"),
+        )
+        calls: list[str] = []
+
+        async def capture_url(url, *_a, **_kw):
+            calls.append(url)
+            return MagicMock(status_code=200)
+
+        with patch("httpx.AsyncClient", return_value=_patched_client(post_side_effect=capture_url)):
+            await run_webhook_probe()
+
+        assert calls and calls[0] == "https://fallback.example.com/auth/clerk/webhook"
 
 
 # ---------------------------------------------------------------------------

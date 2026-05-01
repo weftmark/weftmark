@@ -27,7 +27,7 @@ interface Props {
 }
 
 type Confirm =
-  | "deactivate" | "ban" | "delete" | "elevate" | "elevate-force"
+  | "deactivate" | "ban" | "delete" | "grant-admin" | "elevate" | "elevate-force"
   | "dismiss-signup" | "ban-signup"
   | null;
 
@@ -64,8 +64,8 @@ function ConfirmInline({
   busy: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
-      <span className="flex-1 text-sm">{message}</span>
+    <div className="flex w-full items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
+      <span className="shrink text-sm">{message}</span>
       <Button
         type="button"
         size="sm"
@@ -75,7 +75,7 @@ function ConfirmInline({
       >
         {confirmLabel}
       </Button>
-      <Button type="button" size="sm" variant="outline" onClick={onCancel}>
+      <Button type="button" size="sm" variant="outline" className="ml-auto" onClick={onCancel}>
         Cancel
       </Button>
     </div>
@@ -320,83 +320,43 @@ export function UserDetailModal({ target, onClose }: Props) {
 
           {/* Actions */}
           {!u.deletion_state && !u.is_superuser && (
-            <div className="border-t pt-4 space-y-2">
+            <div className="border-t pt-4 space-y-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Actions
               </p>
 
-              {/* Deactivate / reactivate */}
-              {!u.clerk_errored && !u.clerk_banned && (
-                confirming === "deactivate" ? (
-                  <ConfirmInline
-                    message={`${u.is_active ? "Deactivate" : "Reactivate"} ${u.display_name}?`}
-                    confirmLabel={u.is_active ? "Deactivate" : "Reactivate"}
-                    onConfirm={() => patch.mutate({ is_active: !u.is_active })}
-                    onCancel={() => setConfirming(null)}
-                    busy={busy}
-                  />
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy || (u.is_active && u.is_admin)}
-                    title={
-                      u.is_active && u.is_admin
-                        ? "Remove admin rights before deactivating"
-                        : undefined
-                    }
-                    onClick={() => setConfirming("deactivate")}
-                  >
-                    {u.is_active ? "Deactivate" : "Reactivate"}
-                  </Button>
-                )
-              )}
+              {/* ── Role (superuser only) ───────────────────────────── */}
+              {currentUser?.is_superuser && !u.clerk_errored && (
+                <div className="inline-flex flex-col gap-2">
+                  <p className="text-xs text-muted-foreground">Role</p>
 
-              {/* Ban / unban */}
-              {!u.clerk_errored && (
-                u.clerk_banned ? (
-                  <Button size="sm" variant="outline" disabled={busy} onClick={() => unban.mutate()}>
-                    Unban
-                  </Button>
-                ) : confirming === "ban" ? (
-                  <ConfirmInline
-                    message={`Ban ${u.display_name}?`}
-                    destructive
-                    confirmLabel="Ban"
-                    onConfirm={() => ban.mutate()}
-                    onCancel={() => setConfirming(null)}
-                    busy={busy}
-                  />
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy || u.is_admin}
-                    title={u.is_admin ? "Remove admin rights before banning" : undefined}
-                    onClick={() => setConfirming("ban")}
-                  >
-                    Ban
-                  </Button>
-                )
-              )}
-
-              {/* Superuser-only actions */}
-              {currentUser?.is_superuser && (
-                <>
                   {/* Grant / revoke admin */}
-                  {!u.clerk_errored && confirming !== "delete" && (
+                  {confirming === "grant-admin" ? (
+                    <ConfirmInline
+                      message={
+                        u.is_admin
+                          ? `Remove admin rights from ${u.display_name}?`
+                          : `Grant admin rights to ${u.display_name}?`
+                      }
+                      confirmLabel={u.is_admin ? "Remove admin" : "Grant admin"}
+                      onConfirm={() => patch.mutate({ is_admin: !u.is_admin })}
+                      onCancel={() => setConfirming(null)}
+                      busy={busy}
+                    />
+                  ) : (
                     <Button
                       size="sm"
-                      variant="outline"
+                      variant={u.is_admin ? "outline" : "default"}
+                      className={u.is_admin ? "border-amber-400 text-amber-700 hover:bg-amber-50 hover:text-amber-800" : ""}
                       disabled={busy || u.clerk_banned}
-                      onClick={() => patch.mutate({ is_admin: !u.is_admin })}
+                      onClick={() => setConfirming("grant-admin")}
                     >
                       {u.is_admin ? "Remove admin" : "Grant admin"}
                     </Button>
                   )}
 
                   {/* Elevate to superuser */}
-                  {u.is_admin && !u.clerk_errored && (
+                  {u.is_admin && (
                     confirming === "elevate" ? (
                       <ConfirmInline
                         message={`Make ${u.display_name} a superuser?`}
@@ -427,7 +387,7 @@ export function UserDetailModal({ target, onClose }: Props) {
                     ) : (
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="default"
                         disabled={busy || u.clerk_banned}
                         onClick={() => setConfirming("elevate")}
                       >
@@ -435,14 +395,65 @@ export function UserDetailModal({ target, onClose }: Props) {
                       </Button>
                     )
                   )}
+                </div>
+              )}
 
-                  {/* Delete */}
-                  {confirming === "delete" ? (
+              {/* ── Account management ──────────────────────────────── */}
+              {!u.clerk_errored && (
+                <div className="inline-flex flex-col gap-2">
+                  {currentUser?.is_superuser && (
+                    <p className="text-xs text-muted-foreground">Account</p>
+                  )}
+
+                  {/* Deactivate / reactivate */}
+                  {!u.clerk_banned && (
+                    confirming === "deactivate" ? (
+                      <ConfirmInline
+                        message={`${u.is_active ? "Deactivate" : "Reactivate"} ${u.display_name}?`}
+                        confirmLabel={u.is_active ? "Deactivate" : "Reactivate"}
+                        onConfirm={() => patch.mutate({ is_active: !u.is_active })}
+                        onCancel={() => setConfirming(null)}
+                        busy={busy}
+                      />
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant={u.is_active ? "outline" : "default"}
+                        className={
+                          u.is_active
+                            ? "border-amber-400 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                            : "bg-green-600 hover:bg-green-700"
+                        }
+                        disabled={busy || (u.is_active && u.is_admin)}
+                        title={
+                          u.is_active && u.is_admin
+                            ? "Remove admin rights before deactivating"
+                            : undefined
+                        }
+                        onClick={() => setConfirming("deactivate")}
+                      >
+                        {u.is_active ? "Deactivate" : "Reactivate"}
+                      </Button>
+                    )
+                  )}
+
+                  {/* Ban / unban */}
+                  {u.clerk_banned ? (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="bg-green-600 hover:bg-green-700"
+                      disabled={busy}
+                      onClick={() => unban.mutate()}
+                    >
+                      Unban
+                    </Button>
+                  ) : confirming === "ban" ? (
                     <ConfirmInline
-                      message={`Delete ${u.display_name}? All data and S3 storage will be permanently removed.`}
+                      message={`Ban ${u.display_name}?`}
                       destructive
-                      confirmLabel="Delete"
-                      onConfirm={() => del.mutate()}
+                      confirmLabel="Ban"
+                      onConfirm={() => ban.mutate()}
                       onCancel={() => setConfirming(null)}
                       busy={busy}
                     />
@@ -450,13 +461,38 @@ export function UserDetailModal({ target, onClose }: Props) {
                     <Button
                       size="sm"
                       variant="destructive"
-                      disabled={busy}
-                      onClick={() => setConfirming("delete")}
+                      disabled={busy || u.is_admin}
+                      title={u.is_admin ? "Remove admin rights before banning" : undefined}
+                      onClick={() => setConfirming("ban")}
                     >
-                      Delete user
+                      Ban
                     </Button>
                   )}
-                </>
+
+                  {/* Delete (superuser only) */}
+                  {currentUser?.is_superuser && (
+                    confirming === "delete" ? (
+                      <ConfirmInline
+                        message={`Delete ${u.display_name}? All data and S3 storage will be permanently removed.`}
+                        destructive
+                        confirmLabel="Delete"
+                        onConfirm={() => del.mutate()}
+                        onCancel={() => setConfirming(null)}
+                        busy={busy}
+                      />
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className=""
+                        disabled={busy}
+                        onClick={() => setConfirming("delete")}
+                      >
+                        Delete user
+                      </Button>
+                    )
+                  )}
+                </div>
               )}
             </div>
           )}

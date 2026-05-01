@@ -9,11 +9,15 @@ export function ServiceHealthBanner() {
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
 
   useEffect(() => {
-    getHealthReady()
-      .then(setReadiness)
-      .catch(() => {
-        setReadiness({ status: "error", services: [{ name: "backend", ok: false, critical: true, message: "unreachable", detail: "" }] });
-      });
+    const check = () =>
+      getHealthReady()
+        .then(setReadiness)
+        .catch(() => {
+          setReadiness({ status: "error", services: [{ name: "backend", ok: false, critical: true, message: "unreachable", detail: "" }] });
+        });
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
   }, []);
 
   if (!readiness || readiness.status === "ok") return null;
