@@ -106,6 +106,9 @@ async def run_webhook_probe() -> WebhookProbeResult:
             "svix-timestamp": str(int(ts.timestamp())),
             "svix-signature": signature,
         }
+        if settings.cf_zero_trust_enabled:
+            headers["CF-Access-Client-Id"] = settings.cf_access_client_id
+            headers["CF-Access-Client-Secret"] = settings.cf_access_client_secret
 
         start = time.monotonic()
         try:
