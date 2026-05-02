@@ -9,6 +9,8 @@ services:
   frontend:
     image: ghcr.io/weftmark/weftmark-frontend:${IMAGE_TAG:-latest}
     container_name: ${STACK_NAME:-weftmark}_frontend
+    environment:
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
     networks:
       - public
     depends_on:
@@ -31,6 +33,39 @@ services:
   backend:
     image: ghcr.io/weftmark/weftmark-backend:${IMAGE_TAG:-latest}
     container_name: ${STACK_NAME:-weftmark}_backend
+    environment:
+      APP_ENV: ${APP_ENV}
+      APP_SECRET_KEY: ${APP_SECRET_KEY}
+      DEBUG: ${DEBUG}
+      LOG_LEVEL: ${LOG_LEVEL}
+      SEED_ENABLED: ${SEED_ENABLED}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      FRONTEND_URL: ${FRONTEND_URL}
+      API_URL: ${API_URL}
+      POSTGRES_DSN: ${POSTGRES_DSN}
+      POSTGRES_DSN_DIRECT: ${POSTGRES_DSN_DIRECT}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET}
+      WEBHOOK_BASE_URL: ${WEBHOOK_BASE_URL}
+      STORAGE_BACKEND: ${STORAGE_BACKEND}
+      UPLOAD_DIR: ${UPLOAD_DIR}
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+      INVITE_EXPIRY_DAYS_DEFAULT: ${INVITE_EXPIRY_DAYS_DEFAULT}
+      REDIS_URL: ${REDIS_URL}
+      RENDER_MAX_WIDTH: ${RENDER_MAX_WIDTH}
+      RENDER_MAX_HEIGHT: ${RENDER_MAX_HEIGHT}
+      RENDER_DEFAULT_ZOOM: ${RENDER_DEFAULT_ZOOM}
     networks:
       - public
       - internal
@@ -59,6 +94,33 @@ services:
     image: ghcr.io/weftmark/weftmark-backend:${IMAGE_TAG:-latest}
     container_name: ${STACK_NAME:-weftmark}_worker
     entrypoint: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    environment:
+      APP_ENV: ${APP_ENV}
+      APP_SECRET_KEY: ${APP_SECRET_KEY}
+      DEBUG: ${DEBUG}
+      LOG_LEVEL: ${LOG_LEVEL}
+      POSTGRES_DSN: ${POSTGRES_DSN}
+      POSTGRES_DSN_DIRECT: ${POSTGRES_DSN_DIRECT}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      STORAGE_BACKEND: ${STORAGE_BACKEND}
+      UPLOAD_DIR: ${UPLOAD_DIR}
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE}
+      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+      INVITE_EXPIRY_DAYS_DEFAULT: ${INVITE_EXPIRY_DAYS_DEFAULT}
+      REDIS_URL: ${REDIS_URL}
+      RENDER_MAX_WIDTH: ${RENDER_MAX_WIDTH}
+      RENDER_MAX_HEIGHT: ${RENDER_MAX_HEIGHT}
+      RENDER_DEFAULT_ZOOM: ${RENDER_DEFAULT_ZOOM}
     networks:
       - internal
     volumes:
