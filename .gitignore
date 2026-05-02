@@ -12,6 +12,7 @@
 .env.dev
 .env.prod
 .env.local
+.env.komodo
 .env.*.local
 # .env.example and .env.*.example are intentionally tracked
 
