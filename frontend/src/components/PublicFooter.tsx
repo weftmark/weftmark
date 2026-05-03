@@ -7,7 +7,7 @@ export function PublicFooter() {
         <nav className="flex gap-4 text-sm text-stone-600">
           <Link to="/about" className="hover:text-stone-900 transition-colors">About</Link>
           <Link to="/privacy" className="hover:text-stone-900 transition-colors">Privacy</Link>
-          <span className="text-stone-400">Terms</span>
+          <Link to="/terms" className="hover:text-stone-900 transition-colors">Terms</Link>
           <span className="text-stone-400">Contact</span>
         </nav>
         <p className="text-xs text-stone-500">Built by a weaver, with AI assistance.</p>

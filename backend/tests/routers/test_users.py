@@ -8,9 +8,7 @@ from app.models.project import Project
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
-
-# Version seeded by migration 0025 — update here if the seed changes.
-SEEDED_EULA_VERSION = "0.3"
+from tests.conftest import SEEDED_EULA_VERSION
 
 # ---------------------------------------------------------------------------
 # GET /api/users/me
@@ -113,35 +111,6 @@ class TestUpdateSettings:
         await auth_client.patch("/api/users/me", json={"theme": "dark"})
         await db_session.refresh(test_user)
         assert test_user.theme == "dark"
-
-
-# ---------------------------------------------------------------------------
-# POST /api/users/me/eula
-# ---------------------------------------------------------------------------
-
-
-class TestAcceptEula:
-    async def test_accept_current_version(self, auth_client: AsyncClient):
-        resp = await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["eula_accepted_version"] == SEEDED_EULA_VERSION
-
-    async def test_wrong_version_returns_422(self, auth_client: AsyncClient):
-        resp = await auth_client.post("/api/users/me/eula", json={"version": "99.9"})
-        assert resp.status_code == 422
-
-    async def test_persists_version_and_timestamp(
-        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
-    ):
-        await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
-        await db_session.refresh(test_user)
-        assert test_user.eula_accepted_version == SEEDED_EULA_VERSION
-        assert test_user.eula_accepted_at is not None
-
-    async def test_unauthenticated_returns_401(self, client: AsyncClient):
-        resp = await client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
-        assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
