@@ -64,6 +64,7 @@ export interface AdminVersions {
 export interface InviteRecord {
   id: string;
   email: string;
+  role: string;
   expires_at: string;
   accepted_at: string | null;
   revoked_at: string | null;
@@ -97,8 +98,8 @@ export const deleteUser = (userId: string) =>
   });
 
 export const listInvites = () => api.get<InviteRecord[]>("/auth/invites");
-export const createInvite = (email: string, expires_days?: number) =>
-  api.post<InviteRecord>("/auth/invite", { email, expires_days });
+export const createInvite = (email: string, role: string = "user", expires_days?: number) =>
+  api.post<InviteRecord>("/auth/invite", { email, role, expires_days });
 export const revokeInvite = (inviteId: string) => api.delete<void>(`/auth/invite/${inviteId}`);
 
 export interface PendingSignup {

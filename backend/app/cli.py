@@ -17,13 +17,12 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import get_settings
 from app.models.seed_run import SeedRun
 from app.models.user import User
-from app.services.clerk import set_user_metadata
 
 _BACKEND_DIR = Path(__file__).parent.parent
 _ALEMBIC_INI = _BACKEND_DIR / "alembic.ini"
@@ -164,21 +163,45 @@ def _clear_s3(settings: Any) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def _poll_db_for_user(
+async def _preregister_user(
     session_factory: async_sessionmaker,
-    clerk_user_id: str,
+    email: str,
+    display_name: str,
+    role: str,
+) -> User:
+    """Insert a pre-created User record (clerk_user_id=None). The webhook attaches the ID."""
+    is_admin = role in ("admin", "superuser")
+    is_superuser = role == "superuser"
+    async with session_factory() as session:
+        user = User(
+            email=email,
+            display_name=display_name,
+            is_admin=is_admin,
+            is_superuser=is_superuser,
+            ai_training_consent=True,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
+
+
+async def _poll_for_clerk_attach(
+    session_factory: async_sessionmaker,
+    user_id: uuid.UUID,
     timeout: int,
 ) -> User:
+    """Poll until the webhook attaches a clerk_user_id to the pre-created User."""
     loop = asyncio.get_event_loop()
     deadline = loop.time() + timeout
     while True:
         async with session_factory() as session:
-            user = await session.scalar(select(User).where(User.clerk_user_id == clerk_user_id))
-            if user:
+            user = await session.get(User, user_id)
+            if user and user.clerk_user_id is not None:
                 return user
         if loop.time() >= deadline:
             raise TimeoutError(
-                f"clerk_user_id={clerk_user_id} not found in DB after {timeout}s — "
+                f"user_id={user_id} never received a clerk_user_id after {timeout}s — "
                 "is the webhook configured and reachable?"
             )
         await asyncio.sleep(1)
@@ -294,6 +317,11 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
         if auto_password:
             password = uuid.uuid4().hex
 
+        # 1. Pre-create the User record with the intended role.
+        pre_user = await _preregister_user(session_factory, email, display_name, role)
+        _ok(f"{email} pre-registered in DB (id={pre_user.id}, role={role})")
+
+        # 2. Create the Clerk account — the webhook will attach the clerk_user_id.
         try:
             clerk_user = await _clerk_create_user(settings.clerk_secret_key, email, username, password, display_name)
             clerk_user_id: str = clerk_user["id"]
@@ -307,31 +335,14 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
             await engine.dispose()
             sys.exit(1)
 
+        # 3. Poll until the webhook attaches the Clerk ID to the pre-created User.
         try:
-            db_user = await _poll_db_for_user(session_factory, clerk_user_id, poll_timeout)
-            _ok(f"{email} confirmed in DB (id={db_user.id})")
+            db_user = await _poll_for_clerk_attach(session_factory, pre_user.id, poll_timeout)
+            _ok(f"{email} confirmed in DB (clerk_user_id={db_user.clerk_user_id})")
         except TimeoutError as exc:
             _err(str(exc))
             await engine.dispose()
             sys.exit(1)
-
-        is_admin = role in ("admin", "superuser")
-        is_superuser = role == "superuser"
-
-        async with session_factory() as session:
-            user = await session.get(User, db_user.id)
-            user.is_admin = is_admin
-            user.is_superuser = is_superuser
-            await session.commit()
-
-        await set_user_metadata(
-            clerk_user_id,
-            {
-                "is_admin": is_admin,
-                "is_superuser": is_superuser,
-            },
-        )
-        _ok(f"{email} role '{role}' applied")
 
         if auto_password:
             generated_passwords.append((email, password))
