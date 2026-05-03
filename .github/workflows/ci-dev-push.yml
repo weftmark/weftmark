@@ -75,7 +75,7 @@ jobs:
           git config user.email "weftmark-bot[bot]@users.noreply.github.com"
           git add sbom/sbom-backend.json sbom/licenses-backend.json
           if ! git diff --staged --quiet; then
-            git commit -m "chore: update backend SBOM and license manifest [skip actions]"
+            git commit -m "chore: update backend SBOM and license manifest"
             git pull --rebase origin dev
             git push origin dev
           fi
@@ -136,7 +136,7 @@ jobs:
           git config user.email "weftmark-bot[bot]@users.noreply.github.com"
           git add sbom/sbom-frontend.json sbom/licenses-frontend.json
           if ! git diff --staged --quiet; then
-            git commit -m "chore: update frontend SBOM and license manifest [skip actions]"
+            git commit -m "chore: update frontend SBOM and license manifest"
             git pull --rebase origin dev
             git push origin dev
           fi
@@ -236,7 +236,7 @@ jobs:
       - name: Commit version files
         run: |
           git add VERSION frontend/package.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }} [skip actions]"
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
 
       - name: Push version commit
         run: |
