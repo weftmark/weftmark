@@ -340,6 +340,18 @@ async def create_invite(
     if active_user is not None:
         raise HTTPException(status_code=409, detail="A user with this email already exists")
 
+    # Block inviting an email that has a pending self-signup — admin should approve it instead.
+    pending_signup = await db.scalar(select(PendingSignup).where(PendingSignup.email == body.email))
+    if pending_signup is not None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "reason": "pending_signup_exists",
+                "pending_signup_id": str(pending_signup.id),
+                "message": "This email already has a pending signup request.",
+            },
+        )
+
     # Reuse an existing unclaimed User record (even if soft-deleted by a prior revoke) or create one.
     pre_user = await db.scalar(select(User).where(User.email == body.email, User.clerk_user_id.is_(None)))
     if pre_user is not None:

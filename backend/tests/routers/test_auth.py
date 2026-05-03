@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invite import Invite
+from app.models.pending_signup import PendingSignup
 from app.models.user import User
 
 
@@ -218,6 +219,23 @@ class TestCreateInvite:
         await db_session.refresh(soft_deleted)
         assert soft_deleted.deleted_at is None
         assert soft_deleted.is_admin is True
+
+    async def test_pending_signup_email_returns_409_with_reason(
+        self, admin_client: AsyncClient, db_session: AsyncSession
+    ):
+        signup = PendingSignup(
+            clerk_user_id="clerk_pending_test",
+            email="waiting@example.com",
+            display_name="Waiting User",
+        )
+        db_session.add(signup)
+        await db_session.commit()
+
+        resp = await admin_client.post("/auth/invite", json={"email": "waiting@example.com"})
+        assert resp.status_code == 409
+        detail = resp.json()["detail"]
+        assert detail["reason"] == "pending_signup_exists"
+        assert detail["pending_signup_id"] == str(signup.id)
 
 
 # ---------------------------------------------------------------------------
