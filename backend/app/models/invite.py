@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 
-INVITE_ROLES = ("user", "admin", "superuser")
+INVITE_ROLES = ("user", "admin")
 
 
 class Invite(Base, TimestampMixin):

@@ -328,14 +328,17 @@ async def create_invite(
     if body.role not in INVITE_ROLES:
         raise HTTPException(status_code=422, detail=f"role must be one of: {', '.join(INVITE_ROLES)}")
 
+    if body.role == "admin" and not admin.is_superuser:
+        raise HTTPException(status_code=403, detail="Only superusers can invite admins")
+
     expires_days = body.expires_days or settings.invite_expiry_days_default
 
     # Pre-create the User record so the webhook just attaches the Clerk ID on sign-up.
     pre_user = User(
         email=body.email,
         display_name=body.email,  # updated from Clerk data when the webhook fires
-        is_admin=body.role in ("admin", "superuser"),
-        is_superuser=body.role == "superuser",
+        is_admin=body.role == "admin",
+        is_superuser=False,
         ai_training_consent=True,
     )
     db.add(pre_user)

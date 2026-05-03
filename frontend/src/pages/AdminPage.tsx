@@ -430,7 +430,9 @@ const INVITE_HISTORY_PAGE_SIZE = 20;
 
 function InvitesTab() {
   const qc = useQueryClient();
+  const { user: currentUser } = useAuth();
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"user" | "admin">("user");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const [historyPage, setHistoryPage] = useState(0);
@@ -446,10 +448,11 @@ function InvitesTab() {
   });
 
   const send = useMutation({
-    mutationFn: (addr: string) => createInvite(addr),
-    onSuccess: (_, addr) => {
-      setSent(addr);
+    mutationFn: () => createInvite(email, role),
+    onSuccess: () => {
+      setSent(email);
       setEmail("");
+      setRole("user");
       setError(null);
       qc.invalidateQueries({ queryKey: ["admin", "invites"] });
     },
@@ -515,10 +518,20 @@ function InvitesTab() {
             placeholder="email@example.com"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setSent(null); setError(null); }}
-            onKeyDown={(e) => e.key === "Enter" && email && send.mutate(email)}
+            onKeyDown={(e) => e.key === "Enter" && email && send.mutate()}
             className="flex-1 text-sm border rounded px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
           />
-          <Button size="sm" disabled={!email || send.isPending} onClick={() => send.mutate(email)}>
+          {currentUser?.is_superuser && (
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as "user" | "admin")}
+              className="text-sm border rounded px-2 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          )}
+          <Button size="sm" disabled={!email || send.isPending} onClick={() => send.mutate()}>
             Send
           </Button>
         </div>
@@ -654,7 +667,7 @@ function InviteRow({ invite, onRevoke }: { invite: InviteRecord; onRevoke?: () =
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{invite.email}</p>
         <p className="text-xs text-muted-foreground">
-          {status} · expires {new Date(invite.expires_at).toLocaleDateString()}
+          {invite.role} · {status} · expires {new Date(invite.expires_at).toLocaleDateString()}
         </p>
       </div>
       {isPending && onRevoke && (
