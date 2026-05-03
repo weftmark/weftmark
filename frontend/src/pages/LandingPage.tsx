@@ -43,7 +43,7 @@ export function LandingPage() {
         {/* Hero */}
         <section className="bg-gradient-to-br from-stone-50 via-white to-amber-50/30 px-6 py-16 lg:py-24">
           <div className="mx-auto max-w-6xl">
-            <div className="grid items-center gap-12 lg:grid-cols-2">
+            <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.4fr]">
               {/* Text */}
               <div className="order-2 lg:order-1">
                 <span className="mb-5 inline-block rounded-full bg-amber-100 px-3.5 py-1 text-xs font-medium tracking-wide text-amber-800">
@@ -61,13 +61,13 @@ export function LandingPage() {
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Link
                     to="/login"
-                    className="rounded-lg bg-amber-800 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-900"
+                    className="rounded-lg bg-amber-800 px-6 py-3 text-center text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-900"
                   >
                     Sign In
                   </Link>
                   <Link
                     to="/register"
-                    className="rounded-lg border border-stone-300 px-6 py-3 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50"
+                    className="rounded-lg border border-stone-300 px-6 py-3 text-center text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50"
                   >
                     Create Account
                   </Link>
