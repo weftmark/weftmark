@@ -435,7 +435,6 @@ function InvitesTab() {
   const [role, setRole] = useState<"user" | "admin">("user");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
-  const [pendingApprove, setPendingApprove] = useState<{ id: string } | null>(null);
   const [historyPage, setHistoryPage] = useState(0);
 
   const { data: invites = [], isLoading } = useQuery({
@@ -455,15 +454,13 @@ function InvitesTab() {
       setEmail("");
       setRole("user");
       setError(null);
-      setPendingApprove(null);
       qc.invalidateQueries({ queryKey: ["admin", "invites"] });
     },
     onError: (err: Error) => {
       try {
         const parsed = JSON.parse(err.message);
         if (parsed?.detail?.reason === "pending_signup_exists") {
-          setPendingApprove({ id: parsed.detail.pending_signup_id });
-          setError("This email already has a pending signup request.");
+          setError("This email already has a pending signup request. Use the Approve button in the list above.");
           return;
         }
         setError(parsed?.detail?.message ?? parsed?.detail ?? err.message);
@@ -480,7 +477,11 @@ function InvitesTab() {
 
   const approve = useMutation({
     mutationFn: (id: string) => approvePendingSignup(id),
-    onSuccess: (_, id) => { removePending(id); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
+    onSuccess: (_, id) => {
+      removePending(id);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "invites"] });
+    },
   });
 
   const dismiss = useMutation({
@@ -531,7 +532,7 @@ function InvitesTab() {
             type="email"
             placeholder="email@example.com"
             value={email}
-            onChange={(e) => { setEmail(e.target.value); setSent(null); setError(null); setPendingApprove(null); }}
+            onChange={(e) => { setEmail(e.target.value); setSent(null); setError(null); }}
             onKeyDown={(e) => e.key === "Enter" && email && send.mutate()}
             className="flex-1 text-sm border rounded px-3 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
           />
@@ -551,27 +552,6 @@ function InvitesTab() {
         </div>
         {sent && <p className="text-xs text-green-600">Invite sent to {sent}</p>}
         {error && <p className="text-xs text-destructive">{error}</p>}
-        {pendingApprove && (
-          <div className="flex items-center gap-2">
-            <p className="text-xs text-amber-600">This person is already waiting for approval.</p>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={approve.isPending}
-              onClick={() =>
-                approve.mutate(pendingApprove.id, {
-                  onSuccess: () => {
-                    setPendingApprove(null);
-                    setError(null);
-                    setEmail("");
-                  },
-                })
-              }
-            >
-              Approve instead
-            </Button>
-          </div>
-        )}
       </div>
 
       {isLoading ? (
