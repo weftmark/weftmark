@@ -78,8 +78,6 @@ After every push, check CI status proactively: `gh run list --repo weftmark/weft
 
 Bot actor: `weftmark-bot[bot]`. Post-merge jobs use `if: github.actor != 'weftmark-bot[bot]'` to prevent infinite re-triggering. Bot commits do **not** use `[skip actions]` — that token propagates into merge commit bodies and suppresses PR CI on the target branch. The actor guard is sufficient.
 
-Append `[skip ci]` to commit messages for documentation-only changes (`.md` files, comments) to avoid unnecessary CI runs.
-
 ## Development rules
 
 ### Pull before starting work
