@@ -1,7 +1,7 @@
 {
   "name": "weaving-site",
   "private": true,
-  "version": "0.74.4",
+  "version": "0.75.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
     "@tanstack/react-query": "^5.51.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "lucide-react": "^1.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",
