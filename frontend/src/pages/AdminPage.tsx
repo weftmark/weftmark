@@ -22,6 +22,8 @@ import {
   getAdminServices,
   sendTestEmail,
   getAuditLog,
+  getReconcileReport,
+  backfillClerkUser,
   type AdminUser,
   type AdminHealth,
   type AuditLogEntry,
@@ -29,6 +31,7 @@ import {
   type PendingSignup,
   type ServiceCheck,
   type ServicePermCheck,
+  type ReconcileReport,
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
@@ -1307,7 +1310,7 @@ function EulaTab() {
 // Superuser tab
 // ---------------------------------------------------------------------------
 
-type SuperuserSubTab = "eula" | "storage" | "deletion";
+type SuperuserSubTab = "eula" | "storage" | "deletion" | "reconcile";
 
 function SuperuserTab() {
   const [sub, setSub] = useState<SuperuserSubTab>("eula");
@@ -1315,7 +1318,7 @@ function SuperuserTab() {
   return (
     <div className="space-y-4">
       <div className="flex gap-2 border-b pb-2">
-        {(["eula", "storage", "deletion"] as SuperuserSubTab[]).map((t) => (
+        {(["eula", "storage", "deletion", "reconcile"] as SuperuserSubTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setSub(t)}
@@ -1333,6 +1336,7 @@ function SuperuserTab() {
       {sub === "eula" && <EulaTab />}
       {sub === "storage" && <StorageAuditTab />}
       {sub === "deletion" && <DeletionTab />}
+      {sub === "reconcile" && <ReconcileTab />}
     </div>
   );
 }
@@ -1355,6 +1359,150 @@ function DeletionTab() {
   );
 }
 
+function ReconcileTab() {
+  const queryClient = useQueryClient();
+  const [ran, setRan] = useState(false);
+  const [report, setReport] = useState<ReconcileReport | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState<string | null>(null);
+  const [backfillResults, setBackfillResults] = useState<Record<string, string>>({});
+
+  async function runReconcile() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getReconcileReport();
+      setReport(data);
+      setRan(true);
+    } catch {
+      setError("Failed to run reconciliation. Check that the Clerk API key is configured.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleBackfill(clerkUserId: string, role: "user" | "admin") {
+    setBackfilling(clerkUserId);
+    try {
+      const result = await backfillClerkUser(clerkUserId, role);
+      setBackfillResults((prev) => ({ ...prev, [clerkUserId]: result.status }));
+      setReport((prev) =>
+        prev
+          ? { ...prev, clerk_only: prev.clerk_only.filter((u) => u.clerk_user_id !== clerkUserId) }
+          : prev
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch {
+      setBackfillResults((prev) => ({ ...prev, [clerkUserId]: "error" }));
+    } finally {
+      setBackfilling(null);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-sm font-medium">Clerk ↔ DB Reconciliation</h2>
+        <p className="text-xs text-muted-foreground">
+          Cross-references Clerk accounts against the database. Use this to backfill users created
+          directly in the Clerk dashboard.
+        </p>
+      </div>
+
+      <Button onClick={runReconcile} disabled={loading} size="sm">
+        {loading ? "Running…" : ran ? "Re-run reconciliation" : "Run reconciliation"}
+      </Button>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {report && (
+        <div className="space-y-6">
+          {/* In Clerk, not in DB */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">
+              In Clerk, not in DB
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({report.clerk_only.length} {report.clerk_only.length === 1 ? "user" : "users"})
+              </span>
+            </h3>
+            {report.clerk_only.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No unmatched Clerk accounts.</p>
+            ) : (
+              <div className="rounded-lg border divide-y text-sm">
+                {report.clerk_only.map((u) => (
+                  <div key={u.clerk_user_id} className="flex items-center justify-between px-3 py-2 gap-4">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{u.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{u.clerk_user_id}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {backfillResults[u.clerk_user_id] ? (
+                        <span className="text-xs text-green-600 font-medium capitalize">
+                          {backfillResults[u.clerk_user_id]}
+                        </span>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={backfilling === u.clerk_user_id}
+                            onClick={() => handleBackfill(u.clerk_user_id, "user")}
+                          >
+                            Backfill as user
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={backfilling === u.clerk_user_id}
+                            onClick={() => handleBackfill(u.clerk_user_id, "admin")}
+                          >
+                            Backfill as admin
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* In DB, not in Clerk */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">
+              In DB, not in Clerk
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({report.db_only.length} {report.db_only.length === 1 ? "user" : "users"})
+              </span>
+            </h3>
+            {report.db_only.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No orphaned DB records.</p>
+            ) : (
+              <div className="rounded-lg border divide-y text-sm">
+                {report.db_only.map((u) => (
+                  <div key={u.user_id} className="flex items-center justify-between px-3 py-2 gap-4">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{u.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                    </div>
+                    {u.clerk_errored && (
+                      <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded shrink-0">
+                        clerk errored
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Audit log tab
 // ---------------------------------------------------------------------------
@@ -1365,6 +1513,8 @@ const EVENT_TYPES = [
   "user.unbanned",
   "user.deleted",
   "user.elevated",
+  "user.backfilled",
+  "user.clerk_errored",
   "signup.approved",
   "signup.dismissed",
   "signup.banned",

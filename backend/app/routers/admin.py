@@ -26,7 +26,7 @@ from app.models.project import Project
 from app.models.user import User
 from app.models.yarn import Yarn
 from app.services.audit import write_audit_log
-from app.services.clerk import ban_clerk_user, set_user_metadata, unban_clerk_user
+from app.services.clerk import ban_clerk_user, get_clerk_user, list_clerk_users, set_user_metadata, unban_clerk_user
 from app.services.email import (
     send_account_approved_email,
     send_account_denied_email,
@@ -1334,3 +1334,139 @@ async def get_versions(
         boto3=_pkg("boto3"),
         psutil=_pkg("psutil"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Clerk ↔ DB reconciliation (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class ReconcileClerkOnlyUser(BaseModel):
+    clerk_user_id: str
+    email: str
+    display_name: str
+
+
+class ReconcileDbOnlyUser(BaseModel):
+    user_id: str
+    email: str
+    display_name: str
+    clerk_errored: bool
+
+
+class ReconcileReport(BaseModel):
+    clerk_only: list[ReconcileClerkOnlyUser]
+    db_only: list[ReconcileDbOnlyUser]
+
+
+class BackfillRequest(BaseModel):
+    role: Literal["user", "admin"] = "user"
+
+
+class BackfillResponse(BaseModel):
+    status: str
+    user_id: str
+    email: str
+
+
+@router.get("/reconcile", response_model=ReconcileReport)
+async def get_reconcile_report(
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> ReconcileReport:
+    clerk_users = await list_clerk_users()
+    clerk_ids = {u["id"] for u in clerk_users}
+
+    db_users = list(
+        await db.scalars(
+            select(User).where(
+                User.clerk_user_id.is_not(None),
+                User.deleted_at.is_(None),
+                User.deletion_state.is_(None),
+            )
+        )
+    )
+    db_clerk_ids = {u.clerk_user_id for u in db_users}
+
+    pending_ids = set(await db.scalars(select(PendingSignup.clerk_user_id)))
+
+    clerk_only = [
+        ReconcileClerkOnlyUser(
+            clerk_user_id=u["id"],
+            email=u["email"],
+            display_name=u["display_name"],
+        )
+        for u in clerk_users
+        if u["id"] not in db_clerk_ids and u["id"] not in pending_ids
+    ]
+
+    db_only = [
+        ReconcileDbOnlyUser(
+            user_id=str(u.id),
+            email=u.email,
+            display_name=u.display_name,
+            clerk_errored=u.clerk_errored,
+        )
+        for u in db_users
+        if u.clerk_user_id not in clerk_ids
+    ]
+
+    return ReconcileReport(clerk_only=clerk_only, db_only=db_only)
+
+
+@router.post("/reconcile/backfill/{clerk_user_id}", response_model=BackfillResponse, status_code=201)
+async def backfill_clerk_user(
+    clerk_user_id: str,
+    body: BackfillRequest,
+    admin: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> BackfillResponse:
+    existing = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id, User.deleted_at.is_(None)))
+    if existing:
+        raise HTTPException(status_code=409, detail="User already exists in DB")
+
+    clerk_data = await get_clerk_user(clerk_user_id)
+    if clerk_data is None:
+        raise HTTPException(status_code=404, detail="Clerk user not found")
+
+    email = clerk_data["email"]
+    display_name = clerk_data["display_name"]
+
+    # Attach to a pre-created User (unclaimed invite) if one exists for this email.
+    pre_user = await db.scalar(
+        select(User).where(
+            User.email == email,
+            User.clerk_user_id.is_(None),
+            User.deleted_at.is_(None),
+        )
+    )
+    if pre_user:
+        pre_user.clerk_user_id = clerk_user_id
+        pre_user.display_name = display_name
+        pre_user.is_active = True
+        user = pre_user
+        result_status = "attached"
+    else:
+        user = User(
+            email=email,
+            display_name=display_name,
+            clerk_user_id=clerk_user_id,
+            is_active=True,
+            is_admin=(body.role == "admin"),
+        )
+        db.add(user)
+        result_status = "created"
+
+    await write_audit_log(
+        db,
+        event_type="user.backfilled",
+        actor=admin,
+        target_email=email,
+        details={"clerk_user_id": clerk_user_id, "status": result_status},
+    )
+    await db.commit()
+    await db.refresh(user)
+    await set_user_metadata(clerk_user_id, {"status": "active"})
+
+    log.info("backfill clerk_user_id=%s user_id=%s status=%s", clerk_user_id, user.id, result_status)
+    return BackfillResponse(status=result_status, user_id=str(user.id), email=email)
