@@ -7,6 +7,7 @@ WeftMark is a multi-user web platform for managing weaving (loom) projects. All 
 - Requirements: `docs/requirements/` (start with `docs/requirements/README.md`)
 - WIF 1.1 spec: `docs/standard/standard-wif1-1.txt`
 - Sample WIF files: `docs/samples/`
+- License: Business Source License 1.1 (BSL) — see `LICENSE`. Non-production use permitted; converts to MIT on 2029-01-01. Do not ask about licensing — it is already decided.
 
 ## Tech stack
 
