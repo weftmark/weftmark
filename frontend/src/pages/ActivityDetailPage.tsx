@@ -1364,6 +1364,20 @@ export function ActivityDetailPage() {
               {activity.loom_name && (
                 <><dt className="text-muted-foreground">Loom</dt><dd>{activity.loom_name}</dd></>
               )}
+              {activity.project_metadata_overrides?.num_treadles && (
+                <><dt className="text-muted-foreground">Treadle count</dt>
+                <dd className="flex items-center gap-1.5">
+                  {activity.project_num_treadles}
+                  <span className="text-xs text-muted-foreground">(overridden from {activity.project_metadata_overrides.num_treadles.original})</span>
+                </dd></>
+              )}
+              {activity.project_metadata_overrides?.num_shafts && (
+                <><dt className="text-muted-foreground">Shaft count</dt>
+                <dd className="flex items-center gap-1.5">
+                  {activity.project_num_shafts}
+                  <span className="text-xs text-muted-foreground">(overridden from {activity.project_metadata_overrides.num_shafts.original})</span>
+                </dd></>
+              )}
               {activity.num_items > 1 && (
                 <><dt className="text-muted-foreground">Items</dt><dd>{activity.num_items}</dd></>
               )}

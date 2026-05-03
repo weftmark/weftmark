@@ -19,8 +19,11 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     # Original WIF file (never mutated after upload)
     wif_filename: Mapped[str] = mapped_column(String(512), nullable=False)
     wif_path: Mapped[str] = mapped_column(String(512), nullable=False)
-    # Liftplan-augmented WIF (set only after generate_liftplan; original wif_path is preserved)
-    wif_liftplan_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # App-modified WIF (accumulates changes like generated liftplan, metadata overrides;
+    # original wif_path is never mutated after upload)
+    wif_modified_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Tracks metadata values overridden by the user e.g. {"num_treadles": {"original": 11, "override": 10}}
+    metadata_overrides: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Parsed WIF metadata
     num_shafts: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -72,6 +72,7 @@ class ActivityDetail(ActivitySummary):
     project_num_treadles: int | None
     project_effective_num_treadles: int | None
     project_effective_num_shafts: int | None
+    project_metadata_overrides: dict | None
     loom_name: str | None
     photos: list[ActivityPhotoSchema] = []
 
@@ -148,8 +149,8 @@ def _wif_path_for_activity(project: Project, activity_type: str) -> str:
     the case where the liftplan was embedded in the original WIF by the user's
     design software).
     """
-    if activity_type == "lift" and project.wif_liftplan_path and storage.file_exists(project.wif_liftplan_path):
-        return project.wif_liftplan_path
+    if activity_type == "lift" and project.wif_modified_path and storage.file_exists(project.wif_modified_path):
+        return project.wif_modified_path
     return project.wif_path
 
 
@@ -193,6 +194,7 @@ def _to_detail(
         project_num_treadles=project.num_treadles,
         project_effective_num_treadles=project.effective_num_treadles,
         project_effective_num_shafts=project.effective_num_shafts,
+        project_metadata_overrides=project.metadata_overrides,
         loom_name=f"{loom.manufacturer} {loom.model_name}" if loom else None,
         photos=[ActivityPhotoSchema.model_validate(p) for p in (photos or [])],
     )

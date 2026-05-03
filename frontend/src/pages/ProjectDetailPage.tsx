@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProject, deleteProject, generateLiftplan, previewUrl, downloadWif, downloadWifLiftplan } from "@/api/projects";
+import { getProject, deleteProject, generateLiftplan, overrideProjectMetadata, previewUrl, downloadWif, downloadWifModified } from "@/api/projects";
 import { listActivities } from "@/api/activities";
 import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
@@ -41,6 +41,15 @@ export function ProjectDetailPage() {
 
   const generateMutation = useMutation({
     mutationFn: () => generateLiftplan(id!),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["project", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+
+  const overrideMutation = useMutation({
+    mutationFn: ({ field, value }: { field: "num_treadles" | "num_shafts"; value: number }) =>
+      overrideProjectMetadata(id!, field, value),
     onSuccess: (updated) => {
       queryClient.setQueryData(["project", id], updated);
       queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -114,9 +123,9 @@ export function ProjectDetailPage() {
                       }
                     }}
                   >
-                    {downloading ? "Downloading…" : project.has_liftplan_file ? "Download original" : "Download"}
+                    {downloading ? "Downloading…" : project.has_modified_file ? "Download original" : "Download"}
                   </button>
-                  {project.has_liftplan_file && (
+                  {project.has_modified_file && (
                     <button
                       type="button"
                       className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
@@ -125,7 +134,7 @@ export function ProjectDetailPage() {
                         setDownloadError(null);
                         setDownloading(true);
                         try {
-                          await downloadWifLiftplan(project.id, project.wif_filename);
+                          await downloadWifModified(project.id, project.wif_filename);
                         } catch {
                           setDownloadError("Download failed");
                         } finally {
@@ -133,7 +142,7 @@ export function ProjectDetailPage() {
                         }
                       }}
                     >
-                      Download with lift plan
+                      Download modified
                     </button>
                   )}
                 </dd>
@@ -210,6 +219,72 @@ export function ProjectDetailPage() {
                   >
                     {generateMutation.isPending ? "Generating…" : "Generate lift plan"}
                   </Button>
+                </div>
+              )}
+
+              {/* Treadle metadata mismatch — offer override */}
+              {project.effective_num_treadles != null &&
+                project.num_treadles != null &&
+                project.effective_num_treadles !== project.num_treadles && (
+                <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm dark:border-stone-700 dark:bg-stone-900/30">
+                  <p className="font-medium text-stone-700 dark:text-stone-300">Treadle metadata mismatch</p>
+                  <p className="mt-0.5 text-stone-600 dark:text-stone-400 text-xs">
+                    [WEAVING] declares {project.num_treadles} treadles but the treadling data only uses {project.effective_num_treadles}.
+                    {project.metadata_overrides?.num_treadles
+                      ? ` (overridden from ${project.metadata_overrides.num_treadles.original})`
+                      : " Override to fix loom compatibility checks and correct the exported file."}
+                  </p>
+                  {overrideMutation.isError && overrideMutation.variables?.field === "num_treadles" && (
+                    <p className="mt-1 text-xs text-destructive">
+                      {overrideMutation.error instanceof Error ? overrideMutation.error.message : "Override failed"}
+                    </p>
+                  )}
+                  {!project.metadata_overrides?.num_treadles && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={() => overrideMutation.mutate({ field: "num_treadles", value: project.effective_num_treadles! })}
+                      disabled={overrideMutation.isPending}
+                    >
+                      {overrideMutation.isPending && overrideMutation.variables?.field === "num_treadles"
+                        ? "Overriding…"
+                        : `Set treadles to ${project.effective_num_treadles}`}
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Shaft metadata mismatch — offer override */}
+              {project.effective_num_shafts != null &&
+                project.num_shafts != null &&
+                project.effective_num_shafts !== project.num_shafts && (
+                <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm dark:border-stone-700 dark:bg-stone-900/30">
+                  <p className="font-medium text-stone-700 dark:text-stone-300">Shaft metadata mismatch</p>
+                  <p className="mt-0.5 text-stone-600 dark:text-stone-400 text-xs">
+                    [WEAVING] declares {project.num_shafts} shafts but the lift plan only uses {project.effective_num_shafts}.
+                    {project.metadata_overrides?.num_shafts
+                      ? ` (overridden from ${project.metadata_overrides.num_shafts.original})`
+                      : " Override to fix loom compatibility checks and correct the exported file."}
+                  </p>
+                  {overrideMutation.isError && overrideMutation.variables?.field === "num_shafts" && (
+                    <p className="mt-1 text-xs text-destructive">
+                      {overrideMutation.error instanceof Error ? overrideMutation.error.message : "Override failed"}
+                    </p>
+                  )}
+                  {!project.metadata_overrides?.num_shafts && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="mt-2"
+                      onClick={() => overrideMutation.mutate({ field: "num_shafts", value: project.effective_num_shafts! })}
+                      disabled={overrideMutation.isPending}
+                    >
+                      {overrideMutation.isPending && overrideMutation.variables?.field === "num_shafts"
+                        ? "Overriding…"
+                        : `Set shafts to ${project.effective_num_shafts}`}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
