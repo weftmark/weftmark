@@ -333,15 +333,29 @@ async def create_invite(
 
     expires_days = body.expires_days or settings.invite_expiry_days_default
 
-    # Pre-create the User record so the webhook just attaches the Clerk ID on sign-up.
-    pre_user = User(
-        email=body.email,
-        display_name=body.email,  # updated from Clerk data when the webhook fires
-        is_admin=body.role == "admin",
-        is_superuser=False,
-        ai_training_consent=True,
+    # Block re-inviting an already-active user.
+    active_user = await db.scalar(
+        select(User).where(User.email == body.email, User.clerk_user_id.is_not(None), User.deleted_at.is_(None))
     )
-    db.add(pre_user)
+    if active_user is not None:
+        raise HTTPException(status_code=409, detail="A user with this email already exists")
+
+    # Reuse an existing unclaimed User record (e.g. from a prior invite) or create one.
+    pre_user = await db.scalar(
+        select(User).where(User.email == body.email, User.clerk_user_id.is_(None), User.deleted_at.is_(None))
+    )
+    if pre_user is not None:
+        pre_user.is_admin = body.role == "admin"
+        pre_user.is_superuser = False
+    else:
+        pre_user = User(
+            email=body.email,
+            display_name=body.email,  # updated from Clerk data when the webhook fires
+            is_admin=body.role == "admin",
+            is_superuser=False,
+            ai_training_consent=True,
+        )
+        db.add(pre_user)
     await db.flush()
 
     token = secrets.token_urlsafe(32)
