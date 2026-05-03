@@ -1,4 +1,6 @@
 Hi {display_name},
 
-Your {app_name} account has been approved. You can sign in now:
-{login_url}
+Great news -- your {app_name} account has been approved. You can now
+sign in and start managing your weaving projects.
+
+Sign in: {login_url}
