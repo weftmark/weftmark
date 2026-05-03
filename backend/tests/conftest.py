@@ -181,7 +181,7 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
             await cleanup.execute(
                 text(
                     "INSERT INTO eula_versions (version, body_html, effective_date) "
-                    "VALUES ('0.3', '<p>Test EULA v0.3</p>', '2026-04-01 00:00:00+00')"
+                    "VALUES ('0.9', '<p>Test EULA v0.9</p>', '2026-04-29 00:00:00+00')"
                 )
             )
             await cleanup.commit()
