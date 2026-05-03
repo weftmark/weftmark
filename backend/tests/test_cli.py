@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.cli import _clear_local, _poll_db_for_user, cmd_seed
+from app.cli import _clear_local, _poll_for_clerk_attach, cmd_seed
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -199,10 +199,10 @@ async def test_seed_deletes_clerk_users_before_alembic(tmp_path):
     config.write_text(json.dumps({"users": [{"email": "a@b.com", "username": "a", "role": "user"}]}))
 
     delete_mock = AsyncMock(return_value=3)
-    mock_db_user = MagicMock()
-    mock_db_user.id = 1
-    session.scalar = AsyncMock(return_value=mock_db_user)
-    session.get = AsyncMock(return_value=MagicMock(is_admin=False, is_superuser=False))
+    pre_user = MagicMock()
+    pre_user.id = uuid.uuid4()
+    attached_user = MagicMock()
+    attached_user.clerk_user_id = "user_new"
 
     with (
         patch("app.cli.get_settings", return_value=settings),
@@ -212,9 +212,9 @@ async def test_seed_deletes_clerk_users_before_alembic(tmp_path):
         patch("app.cli.async_sessionmaker", return_value=factory),
         patch("app.cli._alembic_reset"),
         patch("app.cli._clear_storage"),
+        patch("app.cli._preregister_user", AsyncMock(return_value=pre_user)),
         patch("app.cli._clerk_create_user", AsyncMock(return_value={"id": "user_new"})),
-        patch("app.cli._poll_db_for_user", AsyncMock(return_value=mock_db_user)),
-        patch("app.cli.set_user_metadata", AsyncMock()),
+        patch("app.cli._poll_for_clerk_attach", AsyncMock(return_value=attached_user)),
     ):
         await cmd_seed(str(config), 5)
 
@@ -245,40 +245,44 @@ async def test_seed_aborts_when_clerk_delete_fails(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# _poll_db_for_user — success
+# _poll_for_clerk_attach — success
 # ---------------------------------------------------------------------------
 
 
-async def test_poll_db_returns_user_when_found():
-    user_id = str(uuid.uuid4())
+async def test_poll_for_clerk_attach_returns_user_when_attached():
+    user_id = uuid.uuid4()
     mock_user = MagicMock()
-    mock_user.clerk_user_id = user_id
+    mock_user.clerk_user_id = "user_abc123"
 
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    session.scalar = AsyncMock(return_value=mock_user)
+    session.get = AsyncMock(return_value=mock_user)
     factory = MagicMock(return_value=session)
 
-    result = await _poll_db_for_user(factory, user_id, timeout=5)
+    result = await _poll_for_clerk_attach(factory, user_id, timeout=5)
 
     assert result is mock_user
 
 
 # ---------------------------------------------------------------------------
-# _poll_db_for_user — timeout
+# _poll_for_clerk_attach — timeout
 # ---------------------------------------------------------------------------
 
 
-async def test_poll_db_raises_timeout_when_user_never_arrives():
+async def test_poll_for_clerk_attach_raises_timeout_when_never_attached():
+    user_id = uuid.uuid4()
+    mock_user = MagicMock()
+    mock_user.clerk_user_id = None
+
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
-    session.scalar = AsyncMock(return_value=None)
+    session.get = AsyncMock(return_value=mock_user)
     factory = MagicMock(return_value=session)
 
     with pytest.raises(TimeoutError):
-        await _poll_db_for_user(factory, "user_missing", timeout=0)
+        await _poll_for_clerk_attach(factory, user_id, timeout=0)
 
 
 # ---------------------------------------------------------------------------
