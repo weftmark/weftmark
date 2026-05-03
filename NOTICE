@@ -26,6 +26,27 @@ license that applies only to modifications of certifi itself. This project does
 not modify certifi. Source is available at the URL above.
 
 -------------------------------------------------------------------------------
-Full dependency manifests (backend and frontend) are generated as CI artifacts
-with each build. See the repository for the complete list of dependencies and
-their licenses.
+chardet 5.2.0
+License: GNU Lesser General Public License v2 or later (LGPLv2+)
+Source:  https://github.com/chardet/chardet
+
+chardet is used as a character encoding detection library (transitive
+dependency). It is dynamically linked and used as a library without
+modification. Under the LGPL, dynamic linking of an unmodified library does not
+impose licensing obligations on the application using it. Source is available at
+the URL above.
+
+-------------------------------------------------------------------------------
+fqdn 1.5.1
+License: Mozilla Public License 2.0 (MPL 2.0)
+Source:  https://github.com/ypid/fqdn
+
+fqdn is used for fully-qualified domain name validation (transitive
+dependency). MPL 2.0 is a weak copyleft license that applies only to
+modifications of fqdn itself. This project does not modify fqdn. Source is
+available at the URL above.
+
+-------------------------------------------------------------------------------
+Full dependency manifests and SBOMs (backend and frontend) are committed to the
+repository under /sbom. See https://github.com/weftmark/weftmark/tree/main/sbom
+for the complete list of dependencies and their licenses.
