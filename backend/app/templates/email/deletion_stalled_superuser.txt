@@ -1,11 +1,12 @@
-A user deletion task has stalled and requires attention in {app_name}.
+ACTION REQUIRED: User Deletion Stalled
+
+The background deletion task has exceeded its retry limit. The user's
+account remains blocked but data has not been fully purged. Manual
+intervention is required.
 
 User:     {display_name} ({email})
 User ID:  {user_id}
-Status:   Stalled — the background task exceeded its retry limit
+Status:   Stalled -- retry limit exceeded
 
-Manual intervention is required. The user's account remains blocked but their
-data has not been fully purged. Check the worker logs for details and
-re-trigger deletion from the admin panel.
-
+Check the worker logs and re-trigger deletion from the admin panel:
 {admin_url}

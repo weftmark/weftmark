@@ -1,5 +1,7 @@
 Hi {display_name},
 
-{app_name} is currently invite only and your sign-up request was not approved at this time.
+Thank you for your interest in {app_name}. After review, we are unable
+to approve your sign-up request at this time.
 
-If you believe this is an error, please contact the administrator.
+If you believe this is an error or would like to discuss further,
+please contact the site administrator.

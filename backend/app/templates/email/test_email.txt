@@ -1,0 +1,10 @@
+SMTP Test — {app_name}
+
+This is a test email. If you received this message, your SMTP
+configuration is working correctly.
+
+Status:    Delivered successfully
+Sent from: {app_name}
+
+No action is required. This message was triggered from the
+Admin > Services tab.
