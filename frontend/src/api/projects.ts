@@ -18,6 +18,7 @@ export interface Project {
   lint_warnings: string[];
   lint_errors: string[];
   has_preview: boolean;
+  has_liftplan_file: boolean;
   is_shared: boolean;
   created_at: string;
   updated_at: string;
@@ -87,6 +88,21 @@ export async function downloadWif(id: string, filename: string): Promise<void> {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadWifLiftplan(id: string, filename: string): Promise<void> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(`/api/projects/${id}/wif-liftplan`, { credentials: "include", headers });
+  if (!res.ok) throw new Error("Lift plan file not available");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const base = filename.replace(/\.wif$/i, "");
+  a.download = `${base}-liftplan.wif`;
   a.click();
   URL.revokeObjectURL(url);
 }

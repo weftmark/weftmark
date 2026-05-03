@@ -140,6 +140,19 @@ async def _check_loom_conflict(
         raise HTTPException(status_code=409, detail="This loom already has an active activity")
 
 
+def _wif_path_for_activity(project: Project, activity_type: str) -> str:
+    """Return the correct WIF path for an activity type.
+
+    For lift activities, prefer the liftplan-augmented file when available so
+    that the original upload is never mutated. Falls back to wif_path (covers
+    the case where the liftplan was embedded in the original WIF by the user's
+    design software).
+    """
+    if activity_type == "lift" and project.wif_liftplan_path and storage.file_exists(project.wif_liftplan_path):
+        return project.wif_liftplan_path
+    return project.wif_path
+
+
 async def _get_owned_activity(activity_id: uuid.UUID, user: User, db: AsyncSession) -> Activity:
     activity = await db.scalar(
         select(Activity).where(
@@ -216,7 +229,7 @@ async def create_activity(
         raise HTTPException(status_code=400, detail="WIF file has no [LIFTPLAN] section")
 
     # Parse pick count from WIF
-    wif_bytes = storage.read_file(project.wif_path)
+    wif_bytes = storage.read_file(_wif_path_for_activity(project, body.activity_type))
     try:
         pick_data = wif_parser.parse_picks(wif_bytes, body.activity_type)
     except ValueError as exc:
@@ -636,7 +649,7 @@ async def get_picks(
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    wif_bytes = storage.read_file(project.wif_path)
+    wif_bytes = storage.read_file(_wif_path_for_activity(project, activity.activity_type))
     try:
         pick_data = wif_parser.parse_picks(wif_bytes, activity.activity_type)
     except ValueError as exc:

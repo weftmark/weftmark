@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProject, deleteProject, generateLiftplan, previewUrl, downloadWif } from "@/api/projects";
+import { getProject, deleteProject, generateLiftplan, previewUrl, downloadWif, downloadWifLiftplan } from "@/api/projects";
 import { listActivities } from "@/api/activities";
 import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
@@ -96,7 +96,7 @@ export function ProjectDetailPage() {
               <h2 className="text-base font-semibold">Design Info</h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">File</dt>
-                <dd className="flex items-center gap-2">
+                <dd className="flex flex-wrap items-center gap-2">
                   <span>{project.wif_filename}</span>
                   <button
                     type="button"
@@ -114,8 +114,28 @@ export function ProjectDetailPage() {
                       }
                     }}
                   >
-                    {downloading ? "Downloading…" : "Download"}
+                    {downloading ? "Downloading…" : project.has_liftplan_file ? "Download original" : "Download"}
                   </button>
+                  {project.has_liftplan_file && (
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                      disabled={downloading}
+                      onClick={async () => {
+                        setDownloadError(null);
+                        setDownloading(true);
+                        try {
+                          await downloadWifLiftplan(project.id, project.wif_filename);
+                        } catch {
+                          setDownloadError("Download failed");
+                        } finally {
+                          setDownloading(false);
+                        }
+                      }}
+                    >
+                      Download with lift plan
+                    </button>
+                  )}
                 </dd>
                 {downloadError && (
                   <dd className="col-span-2 text-xs text-destructive">{downloadError}</dd>

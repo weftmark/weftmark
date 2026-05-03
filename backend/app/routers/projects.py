@@ -43,6 +43,7 @@ class ProjectSummary(BaseModel):
     lint_warnings: list[str]
     lint_errors: list[str]
     has_preview: bool
+    has_liftplan_file: bool
     is_shared: bool
     created_at: datetime
     updated_at: datetime
@@ -53,6 +54,7 @@ class ProjectSummary(BaseModel):
     def from_project(cls, p: Project) -> "ProjectSummary":
         data = {c.key: getattr(p, c.key) for c in p.__table__.columns}
         data["has_preview"] = storage.preview_exists(p.preview_path)
+        data["has_liftplan_file"] = bool(p.wif_liftplan_path and storage.file_exists(p.wif_liftplan_path))
         return cls(**data)
 
 
@@ -240,6 +242,30 @@ async def download_wif(
 
 
 # ---------------------------------------------------------------------------
+# WIF with generated lift plan download
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{project_id}/wif-liftplan")
+async def download_wif_liftplan(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    project = await _get_owned_project(project_id, current_user, db)
+    if not project.wif_liftplan_path or not storage.file_exists(project.wif_liftplan_path):
+        raise HTTPException(status_code=404, detail="No generated lift plan file for this project")
+    wif_bytes = storage.read_file(project.wif_liftplan_path)
+    base = (project.wif_filename or "project.wif").rsplit(".", 1)[0]
+    filename = f"{base}-liftplan.wif"
+    return Response(
+        content=wif_bytes,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ---------------------------------------------------------------------------
 # Delete (soft)
 # ---------------------------------------------------------------------------
 
@@ -279,7 +305,8 @@ async def generate_liftplan(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    project.wif_path = storage.save_wif(project.id, project.wif_filename, updated_bytes)
+    liftplan_filename = project.wif_filename.rsplit(".", 1)[0] + "-liftplan.wif"
+    project.wif_liftplan_path = storage.save_wif(project.id, liftplan_filename, updated_bytes)
     project.has_liftplan = True
     project.liftplan_generated = True
 

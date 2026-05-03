@@ -16,9 +16,11 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Original WIF file
+    # Original WIF file (never mutated after upload)
     wif_filename: Mapped[str] = mapped_column(String(512), nullable=False)
     wif_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    # Liftplan-augmented WIF (set only after generate_liftplan; original wif_path is preserved)
+    wif_liftplan_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     # Parsed WIF metadata
     num_shafts: Mapped[int | None] = mapped_column(Integer, nullable=True)
