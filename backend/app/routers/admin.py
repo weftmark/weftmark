@@ -1159,6 +1159,18 @@ async def approve_pending_signup(
         )
         db.add(user)
 
+    # Revoke any pending invites for this email so they clear from the invite list.
+    pending_invites = await db.scalars(
+        select(Invite).where(
+            Invite.email == signup.email,
+            Invite.accepted_at.is_(None),
+            Invite.revoked_at.is_(None),
+        )
+    )
+    now = datetime.now(timezone.utc)
+    for invite in pending_invites:
+        invite.revoked_at = now
+
     await db.delete(signup)
     await write_audit_log(
         db,
