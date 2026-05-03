@@ -93,6 +93,7 @@ jobs:
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Build QA issue body
+        id: qa-body
         env:
           VERSION: ${{ steps.version.outputs.version }}
           REPO: ${{ github.repository }}
@@ -101,9 +102,10 @@ jobs:
       - name: Create QA issue
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          TITLE_SUFFIX: ${{ steps.qa-body.outputs.title_suffix }}
         run: |
           gh issue create \
             --repo "${{ github.repository }}" \
-            --title "QA: v${VERSION}-dev" \
+            --title "QA: v${VERSION}-dev${TITLE_SUFFIX}" \
             --body-file qa_issue_body.md \
             --label "qa"

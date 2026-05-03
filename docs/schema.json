@@ -1,0 +1,2010 @@
+{
+  "tables": {
+    "activities": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "project_id",
+          "position": 3,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "loom_id",
+          "position": 4,
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "loom_version_id",
+          "position": 5,
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "name",
+          "position": 6,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "activity_type",
+          "position": 7,
+          "type": "varchar(10)",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "position": 8,
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "current_pick",
+          "position": 9,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "total_picks",
+          "position": 10,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "finished_length_per_item",
+          "position": 11,
+          "type": "numeric(8,1)",
+          "nullable": true
+        },
+        {
+          "name": "num_items",
+          "position": 12,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "waste_between_items",
+          "position": 13,
+          "type": "numeric(8,1)",
+          "nullable": true
+        },
+        {
+          "name": "warp_waste_allowance",
+          "position": 14,
+          "type": "numeric(8,1)",
+          "nullable": true
+        },
+        {
+          "name": "length_unit",
+          "position": 15,
+          "type": "varchar(5)",
+          "nullable": false
+        },
+        {
+          "name": "completed_at",
+          "position": 16,
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "abandoned_at",
+          "position": 17,
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "notes",
+          "position": 18,
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "position": 19,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 20,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "position": 21,
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "loom_id",
+          "references_table": "looms",
+          "references_column": "id",
+          "constraint": "activities_loom_id_fkey"
+        },
+        {
+          "column": "loom_version_id",
+          "references_table": "loom_versions",
+          "references_column": "id",
+          "constraint": "activities_loom_version_id_fkey"
+        },
+        {
+          "column": "owner_id",
+          "references_table": "users",
+          "references_column": "id",
+          "constraint": "activities_owner_id_fkey"
+        },
+        {
+          "column": "project_id",
+          "references_table": "projects",
+          "references_column": "id",
+          "constraint": "activities_project_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "activities_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        },
+        {
+          "name": "ix_activities_owner_id",
+          "columns": [
+            "owner_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "ix_activities_project_id",
+          "columns": [
+            "project_id"
+          ],
+          "unique": false,
+          "primary": false
+        }
+      ],
+      "check_constraints": []
+    },
+    "activity_photos": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "activity_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "file_path",
+          "position": 3,
+          "type": "varchar(500)",
+          "nullable": false
+        },
+        {
+          "name": "filename",
+          "position": 4,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "file_size_bytes",
+          "position": 5,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "display_order",
+          "position": 6,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 7,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 8,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "activity_id",
+          "references_table": "activities",
+          "references_column": "id",
+          "constraint": "activity_photos_activity_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "activity_photos_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        },
+        {
+          "name": "ix_activity_photos_activity_id",
+          "columns": [
+            "activity_id"
+          ],
+          "unique": false,
+          "primary": false
+        }
+      ],
+      "check_constraints": []
+    },
+    "activity_steps": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "activity_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "event_type",
+          "position": 3,
+          "type": "varchar(10)",
+          "nullable": false
+        },
+        {
+          "name": "from_pick",
+          "position": 4,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "to_pick",
+          "position": 5,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 6,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 7,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "activity_id",
+          "references_table": "activities",
+          "references_column": "id",
+          "constraint": "activity_steps_activity_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "activity_steps_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        },
+        {
+          "name": "ix_activity_steps_activity_id",
+          "columns": [
+            "activity_id"
+          ],
+          "unique": false,
+          "primary": false
+        }
+      ],
+      "check_constraints": []
+    },
+    "alembic_version": {
+      "columns": [
+        {
+          "name": "version_num",
+          "position": 1,
+          "type": "varchar(32)",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "version_num"
+      ],
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "alembic_version_pkc",
+          "columns": [
+            "version_num"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "audit_logs": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "actor_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "actor_email",
+          "position": 3,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "event_type",
+          "position": 4,
+          "type": "varchar(64)",
+          "nullable": false
+        },
+        {
+          "name": "target_user_id",
+          "position": 5,
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "target_email",
+          "position": 6,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "details",
+          "position": 7,
+          "type": "json",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "position": 8,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "audit_logs_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        },
+        {
+          "name": "ix_audit_logs_actor_email",
+          "columns": [
+            "actor_email"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "ix_audit_logs_created_at",
+          "columns": [
+            "created_at"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "ix_audit_logs_event_type",
+          "columns": [
+            "event_type"
+          ],
+          "unique": false,
+          "primary": false
+        }
+      ],
+      "check_constraints": []
+    },
+    "eula_versions": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('eula_versions_id_seq'::regclass)"
+        },
+        {
+          "name": "version",
+          "position": 2,
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "body_html",
+          "position": 3,
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "effective_date",
+          "position": 4,
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 5,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "unique_constraints": [
+        {
+          "constraint": "eula_versions_version_key",
+          "columns": [
+            "version"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "eula_versions_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        },
+        {
+          "name": "eula_versions_version_key",
+          "columns": [
+            "version"
+          ],
+          "unique": true,
+          "primary": false
+        }
+      ],
+      "check_constraints": []
+    },
+    "invites": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "position": 2,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "token",
+          "position": 3,
+          "type": "varchar(512)",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "position": 4,
+          "type": "timestamp with time zone",
+          "nullable": false
+        },
+        {
+          "name": "accepted_at",
+          "position": 5,
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "revoked_at",
+          "position": 6,
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_by_id",
+          "position": 7,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 8,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 9,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "role",
+          "position": 10,
+          "type": "varchar(20)",
+          "nullable": false,
+          "default": "'user'::character varying"
+        },
+        {
+          "name": "user_id",
+          "position": 11,
+          "type": "uuid",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "created_by_id",
+          "references_table": "users",
+          "references_column": "id",
+          "constraint": "invites_created_by_id_fkey"
+        },
+        {
+          "column": "user_id",
+          "references_table": "users",
+          "references_column": "id",
+          "constraint": "invites_user_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "invites_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        },
+        {
+          "name": "ix_invites_email",
+          "columns": [
+            "email"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "ix_invites_token",
+          "columns": [
+            "token"
+          ],
+          "unique": true,
+          "primary": false
+        }
+      ],
+      "check_constraints": []
+    },
+    "loom_version_accessories": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "loom_version_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "position": 3,
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 4,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 5,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "loom_version_id",
+          "references_table": "loom_versions",
+          "references_column": "id",
+          "constraint": "loom_version_accessories_loom_version_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_loom_version_accessories_loom_version_id",
+          "columns": [
+            "loom_version_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "loom_version_accessories_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "loom_version_photos": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "loom_version_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "filename",
+          "position": 3,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "path",
+          "position": 4,
+          "type": "varchar(500)",
+          "nullable": false
+        },
+        {
+          "name": "file_size_bytes",
+          "position": 5,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "display_order",
+          "position": 6,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 7,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 8,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "loom_version_id",
+          "references_table": "loom_versions",
+          "references_column": "id",
+          "constraint": "loom_version_photos_loom_version_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_loom_version_photos_loom_version_id",
+          "columns": [
+            "loom_version_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "loom_version_photos_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "loom_version_receipts": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "loom_version_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "filename",
+          "position": 3,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "path",
+          "position": 4,
+          "type": "varchar(500)",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "position": 5,
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "position": 6,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 7,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "loom_version_id",
+          "references_table": "loom_versions",
+          "references_column": "id",
+          "constraint": "loom_version_receipts_loom_version_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_loom_version_receipts_loom_version_id",
+          "columns": [
+            "loom_version_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "loom_version_receipts_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "loom_versions": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "loom_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "version_number",
+          "position": 3,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "position": 4,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "effective_date",
+          "position": 5,
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "position": 6,
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "num_shafts",
+          "position": 7,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "num_treadles",
+          "position": 8,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "num_heddles",
+          "position": 9,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "weaving_width",
+          "position": 10,
+          "type": "numeric(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "weaving_width_unit",
+          "position": 11,
+          "type": "varchar(5)",
+          "nullable": false
+        },
+        {
+          "name": "warp_waste_allowance",
+          "position": 12,
+          "type": "numeric(6,1)",
+          "nullable": true
+        },
+        {
+          "name": "warp_waste_unit",
+          "position": 13,
+          "type": "varchar(5)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 14,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 15,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "loom_id",
+          "references_table": "looms",
+          "references_column": "id",
+          "constraint": "loom_versions_loom_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_loom_versions_loom_id",
+          "columns": [
+            "loom_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "loom_versions_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "looms": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "loom_type",
+          "position": 3,
+          "type": "varchar(30)",
+          "nullable": false
+        },
+        {
+          "name": "manufacturer",
+          "position": 4,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "model_name",
+          "position": 5,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "serial_number",
+          "position": 6,
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        {
+          "name": "purchase_date",
+          "position": 7,
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "purchase_price",
+          "position": 8,
+          "type": "numeric(10,2)",
+          "nullable": true
+        },
+        {
+          "name": "vendor",
+          "position": 9,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "photo_path",
+          "position": 10,
+          "type": "varchar(500)",
+          "nullable": true
+        },
+        {
+          "name": "supports_lift_tracking",
+          "position": 11,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "supports_treadle_tracking",
+          "position": 12,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "notes",
+          "position": 13,
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "position": 14,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 15,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "position": 16,
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "owner_id",
+          "references_table": "users",
+          "references_column": "id",
+          "constraint": "looms_owner_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_looms_owner_id",
+          "columns": [
+            "owner_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "looms_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "pending_signups": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "clerk_user_id",
+          "position": 2,
+          "type": "varchar(64)",
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "position": 3,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "display_name",
+          "position": 4,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 5,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 6,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_pending_signups_clerk_user_id",
+          "columns": [
+            "clerk_user_id"
+          ],
+          "unique": true,
+          "primary": false
+        },
+        {
+          "name": "pending_signups_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "projects": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "position": 3,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "position": 4,
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "wif_filename",
+          "position": 5,
+          "type": "varchar(512)",
+          "nullable": false
+        },
+        {
+          "name": "wif_path",
+          "position": 6,
+          "type": "varchar(512)",
+          "nullable": false
+        },
+        {
+          "name": "num_shafts",
+          "position": 7,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "num_treadles",
+          "position": 8,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "warp_threads",
+          "position": 9,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "weft_threads",
+          "position": 10,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "has_threading",
+          "position": 11,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "has_tieup",
+          "position": 12,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "has_treadling",
+          "position": 13,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "has_liftplan",
+          "position": 14,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "has_color_palette",
+          "position": 15,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "liftplan_generated",
+          "position": 16,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "lint_warnings",
+          "position": 17,
+          "type": "jsonb",
+          "nullable": false
+        },
+        {
+          "name": "lint_errors",
+          "position": 18,
+          "type": "jsonb",
+          "nullable": false
+        },
+        {
+          "name": "wif_source_software",
+          "position": 19,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "wif_source_version",
+          "position": 20,
+          "type": "varchar(100)",
+          "nullable": true
+        },
+        {
+          "name": "preview_path",
+          "position": 21,
+          "type": "varchar(512)",
+          "nullable": true
+        },
+        {
+          "name": "is_shared",
+          "position": 22,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "share_slug",
+          "position": 23,
+          "type": "varchar(64)",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "position": 24,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 25,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "position": 26,
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "owner_id",
+          "references_table": "users",
+          "references_column": "id",
+          "constraint": "projects_owner_id_fkey"
+        }
+      ],
+      "unique_constraints": [
+        {
+          "constraint": "projects_share_slug_key",
+          "columns": [
+            "share_slug"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_projects_owner_id",
+          "columns": [
+            "owner_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "projects_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        },
+        {
+          "name": "projects_share_slug_key",
+          "columns": [
+            "share_slug"
+          ],
+          "unique": true,
+          "primary": false
+        }
+      ],
+      "check_constraints": []
+    },
+    "seed_runs": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('seed_runs_id_seq'::regclass)"
+        },
+        {
+          "name": "ran_at",
+          "position": 2,
+          "type": "timestamp with time zone",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "seed_runs_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "skeins": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "yarn_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "position": 3,
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "current_yardage",
+          "position": 4,
+          "type": "numeric(10,1)",
+          "nullable": true
+        },
+        {
+          "name": "current_weight_oz",
+          "position": 5,
+          "type": "numeric(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "current_weight_g",
+          "position": 6,
+          "type": "numeric(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "notes",
+          "position": 7,
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "position": 8,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 9,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "yarn_id",
+          "references_table": "yarns",
+          "references_column": "id",
+          "constraint": "skeins_yarn_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_skeins_yarn_id",
+          "columns": [
+            "yarn_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "skeins_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "user_identities": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "user_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "provider",
+          "position": 3,
+          "type": "varchar(64)",
+          "nullable": false
+        },
+        {
+          "name": "provider_sub",
+          "position": 4,
+          "type": "varchar(256)",
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "position": 5,
+          "type": "varchar(256)",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "position": 6,
+          "type": "timestamp with time zone",
+          "nullable": false
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "user_id",
+          "references_table": "users",
+          "references_column": "id",
+          "constraint": "user_identities_user_id_fkey"
+        }
+      ],
+      "unique_constraints": [
+        {
+          "constraint": "uq_user_identities_provider_sub",
+          "columns": [
+            "provider",
+            "provider_sub"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_user_identities_user_id",
+          "columns": [
+            "user_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "uq_user_identities_provider_sub",
+          "columns": [
+            "provider",
+            "provider_sub"
+          ],
+          "unique": true,
+          "primary": false
+        },
+        {
+          "name": "user_identities_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "users": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "position": 2,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "display_name",
+          "position": 3,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "oidc_sub",
+          "position": 4,
+          "type": "varchar(512)",
+          "nullable": true
+        },
+        {
+          "name": "clerk_user_id",
+          "position": 5,
+          "type": "varchar(64)",
+          "nullable": true
+        },
+        {
+          "name": "is_admin",
+          "position": 6,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "is_superuser",
+          "position": 7,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "is_active",
+          "position": 8,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "theme",
+          "position": 9,
+          "type": "varchar(20)",
+          "nullable": false
+        },
+        {
+          "name": "activity_theme",
+          "position": 10,
+          "type": "varchar(50)",
+          "nullable": true
+        },
+        {
+          "name": "idle_timeout_minutes",
+          "position": 11,
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "measurement_system",
+          "position": 12,
+          "type": "varchar(10)",
+          "nullable": false
+        },
+        {
+          "name": "ai_training_consent",
+          "position": 13,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "eula_accepted_version",
+          "position": 14,
+          "type": "varchar(20)",
+          "nullable": true
+        },
+        {
+          "name": "eula_accepted_at",
+          "position": 15,
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "last_active_at",
+          "position": 16,
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "approved_by_name",
+          "position": 17,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "approved_by_email",
+          "position": 18,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "clerk_banned",
+          "position": 19,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "deletion_state",
+          "position": 20,
+          "type": "varchar(20)",
+          "nullable": true
+        },
+        {
+          "name": "deletion_initiated_at",
+          "position": 21,
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "clerk_errored",
+          "position": 22,
+          "type": "boolean",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "position": 23,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 24,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "position": 25,
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_users_clerk_user_id",
+          "columns": [
+            "clerk_user_id"
+          ],
+          "unique": true,
+          "primary": false
+        },
+        {
+          "name": "ix_users_email",
+          "columns": [
+            "email"
+          ],
+          "unique": true,
+          "primary": false
+        },
+        {
+          "name": "ix_users_oidc_sub",
+          "columns": [
+            "oidc_sub"
+          ],
+          "unique": true,
+          "primary": false
+        },
+        {
+          "name": "users_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    },
+    "yarns": {
+      "columns": [
+        {
+          "name": "id",
+          "position": 1,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "position": 2,
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "brand",
+          "position": 3,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "name",
+          "position": 4,
+          "type": "varchar(255)",
+          "nullable": false
+        },
+        {
+          "name": "weight_notation",
+          "position": 5,
+          "type": "varchar(20)",
+          "nullable": true
+        },
+        {
+          "name": "weight_category",
+          "position": 6,
+          "type": "varchar(30)",
+          "nullable": true
+        },
+        {
+          "name": "fiber_content",
+          "position": 7,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "color_name",
+          "position": 8,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "color_hex",
+          "position": 9,
+          "type": "varchar(7)",
+          "nullable": true
+        },
+        {
+          "name": "unit_weight_oz",
+          "position": 10,
+          "type": "numeric(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "unit_weight_g",
+          "position": 11,
+          "type": "numeric(8,2)",
+          "nullable": true
+        },
+        {
+          "name": "unit_yardage",
+          "position": 12,
+          "type": "numeric(10,1)",
+          "nullable": true
+        },
+        {
+          "name": "yards_per_pound",
+          "position": 13,
+          "type": "numeric(10,1)",
+          "nullable": true
+        },
+        {
+          "name": "sett_min",
+          "position": 14,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "sett_max",
+          "position": 15,
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "purchase_source",
+          "position": 16,
+          "type": "varchar(255)",
+          "nullable": true
+        },
+        {
+          "name": "purchase_price",
+          "position": 17,
+          "type": "numeric(10,2)",
+          "nullable": true
+        },
+        {
+          "name": "purchase_date",
+          "position": 18,
+          "type": "date",
+          "nullable": true
+        },
+        {
+          "name": "notes",
+          "position": 19,
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "photo_path",
+          "position": 20,
+          "type": "varchar(500)",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "position": 21,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "position": 22,
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "deleted_at",
+          "position": 23,
+          "type": "timestamp with time zone",
+          "nullable": true
+        }
+      ],
+      "primary_key": [
+        "id"
+      ],
+      "foreign_keys": [
+        {
+          "column": "owner_id",
+          "references_table": "users",
+          "references_column": "id",
+          "constraint": "yarns_owner_id_fkey"
+        }
+      ],
+      "unique_constraints": [],
+      "indexes": [
+        {
+          "name": "ix_yarns_owner_id",
+          "columns": [
+            "owner_id"
+          ],
+          "unique": false,
+          "primary": false
+        },
+        {
+          "name": "yarns_pkey",
+          "columns": [
+            "id"
+          ],
+          "unique": true,
+          "primary": true
+        }
+      ],
+      "check_constraints": []
+    }
+  },
+  "enums": {}
+}

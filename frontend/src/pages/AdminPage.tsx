@@ -456,7 +456,18 @@ function InvitesTab() {
       setError(null);
       qc.invalidateQueries({ queryKey: ["admin", "invites"] });
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => {
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed?.detail?.reason === "pending_signup_exists") {
+          setError("This email already has a pending signup request. Use the Approve button in the list above.");
+          return;
+        }
+        setError(parsed?.detail?.message ?? parsed?.detail ?? err.message);
+      } catch {
+        setError(err.message);
+      }
+    },
   });
 
   const removePending = (id: string) =>
@@ -466,7 +477,11 @@ function InvitesTab() {
 
   const approve = useMutation({
     mutationFn: (id: string) => approvePendingSignup(id),
-    onSuccess: (_, id) => { removePending(id); qc.invalidateQueries({ queryKey: ["admin", "users"] }); },
+    onSuccess: (_, id) => {
+      removePending(id);
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
+      qc.invalidateQueries({ queryKey: ["admin", "invites"] });
+    },
   });
 
   const dismiss = useMutation({
@@ -493,7 +508,7 @@ function InvitesTab() {
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Waiting to join ({pendingSignups.length})</h2>
           <p className="text-xs text-muted-foreground">
-            These users signed up through Clerk but have no invite. Add them to the database or dismiss.
+            These users signed up through Clerk but have no invite. Approve them or dismiss.
           </p>
           <div className="divide-y border rounded-lg overflow-hidden">
             {pendingSignups.map((ps) => (
@@ -636,8 +651,8 @@ function PendingSignupRow({
           </>
         ) : (
           <>
-            <Button size="sm" disabled={isWorking} onClick={onApprove}>
-              Add user
+            <Button size="sm" disabled={isWorking} onClick={onApprove} className="bg-green-600 hover:bg-green-700 text-white">
+              Approve
             </Button>
             <Button size="sm" variant="outline" disabled={isWorking} onClick={() => setConfirming("dismiss")}>
               Dismiss

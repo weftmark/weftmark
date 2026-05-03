@@ -1138,15 +1138,39 @@ async def approve_pending_signup(
         await db.commit()
         return {"status": "already_exists"}
 
-    user = User(
-        email=signup.email,
-        display_name=signup.display_name,
-        clerk_user_id=signup.clerk_user_id,
-        is_admin=False,
-        approved_by_name=admin.display_name,
-        approved_by_email=admin.email,
+    # Attach to a pre-created User (from a prior invite) if one exists for this email.
+    pre_created = await db.scalar(
+        select(User).where(User.email == signup.email, User.clerk_user_id.is_(None), User.deleted_at.is_(None))
     )
-    db.add(user)
+    if pre_created is not None:
+        pre_created.clerk_user_id = signup.clerk_user_id
+        pre_created.display_name = signup.display_name
+        pre_created.approved_by_name = admin.display_name
+        pre_created.approved_by_email = admin.email
+        user = pre_created
+    else:
+        user = User(
+            email=signup.email,
+            display_name=signup.display_name,
+            clerk_user_id=signup.clerk_user_id,
+            is_admin=False,
+            approved_by_name=admin.display_name,
+            approved_by_email=admin.email,
+        )
+        db.add(user)
+
+    # Revoke any pending invites for this email so they clear from the invite list.
+    pending_invites = await db.scalars(
+        select(Invite).where(
+            Invite.email == signup.email,
+            Invite.accepted_at.is_(None),
+            Invite.revoked_at.is_(None),
+        )
+    )
+    now = datetime.now(timezone.utc)
+    for invite in pending_invites:
+        invite.revoked_at = now
+
     await db.delete(signup)
     await write_audit_log(
         db,
@@ -1155,7 +1179,9 @@ async def approve_pending_signup(
         target_email=signup.email,
     )
     await db.commit()
-    await set_user_metadata(signup.clerk_user_id, {"status": "active", "is_admin": False, "is_superuser": False})
+    await set_user_metadata(
+        signup.clerk_user_id, {"status": "active", "is_admin": user.is_admin, "is_superuser": False}
+    )
 
     admin_emails = list(await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None))))
 

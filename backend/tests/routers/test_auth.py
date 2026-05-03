@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.invite import Invite
+from app.models.pending_signup import PendingSignup
 from app.models.user import User
 
 
@@ -155,6 +156,86 @@ class TestCreateInvite:
     async def test_invalid_email_returns_422(self, admin_client: AsyncClient):
         resp = await admin_client.post("/auth/invite", json={"email": "not-an-email"})
         assert resp.status_code == 422
+
+    async def test_superuser_can_invite_admin_role(self, superuser_client: AsyncClient):
+        resp = await superuser_client.post("/auth/invite", json={"email": "newadmin@example.com", "role": "admin"})
+        assert resp.status_code == 201
+        assert resp.json()["role"] == "admin"
+
+    async def test_admin_cannot_invite_admin_role(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/auth/invite", json={"email": "newadmin@example.com", "role": "admin"})
+        assert resp.status_code == 403
+
+    async def test_active_user_email_returns_409(self, admin_client: AsyncClient, db_session: AsyncSession):
+        active = User(
+            email="active@example.com",
+            display_name="Active User",
+            clerk_user_id="clerk_active_123",
+            is_admin=False,
+            is_superuser=False,
+        )
+        db_session.add(active)
+        await db_session.commit()
+        resp = await admin_client.post("/auth/invite", json={"email": "active@example.com"})
+        assert resp.status_code == 409
+
+    async def test_reinvite_unclaimed_user_reuses_record(
+        self, admin_client: AsyncClient, db_session: AsyncSession, superuser_client: AsyncClient
+    ):
+        # First invite creates a pre-user record (user-role).
+        r1 = await admin_client.post("/auth/invite", json={"email": "reinvite@example.com"})
+        assert r1.status_code == 201
+
+        # Second invite (admin-role, sent by superuser) reuses the same User record.
+        r2 = await superuser_client.post("/auth/invite", json={"email": "reinvite@example.com", "role": "admin"})
+        assert r2.status_code == 201
+
+        users = list(
+            await db_session.scalars(
+                select(User).where(User.email == "reinvite@example.com", User.deleted_at.is_(None))
+            )
+        )
+        assert len(users) == 1
+        assert users[0].is_admin is True
+
+    async def test_reinvite_after_revoke_reuses_soft_deleted_record(
+        self, superuser_client: AsyncClient, db_session: AsyncSession
+    ):
+        # Simulate a soft-deleted pre-user (invite was previously revoked).
+        soft_deleted = User(
+            email="revoked@example.com",
+            display_name="revoked@example.com",
+            clerk_user_id=None,
+            is_admin=False,
+            is_superuser=False,
+            deleted_at=datetime.now(timezone.utc),
+        )
+        db_session.add(soft_deleted)
+        await db_session.commit()
+
+        resp = await superuser_client.post("/auth/invite", json={"email": "revoked@example.com", "role": "admin"})
+        assert resp.status_code == 201
+
+        await db_session.refresh(soft_deleted)
+        assert soft_deleted.deleted_at is None
+        assert soft_deleted.is_admin is True
+
+    async def test_pending_signup_email_returns_409_with_reason(
+        self, admin_client: AsyncClient, db_session: AsyncSession
+    ):
+        signup = PendingSignup(
+            clerk_user_id="clerk_pending_test",
+            email="waiting@example.com",
+            display_name="Waiting User",
+        )
+        db_session.add(signup)
+        await db_session.commit()
+
+        resp = await admin_client.post("/auth/invite", json={"email": "waiting@example.com"})
+        assert resp.status_code == 409
+        detail = resp.json()["detail"]
+        assert detail["reason"] == "pending_signup_exists"
+        assert detail["pending_signup_id"] == str(signup.id)
 
 
 # ---------------------------------------------------------------------------
