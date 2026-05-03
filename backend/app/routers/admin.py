@@ -885,18 +885,52 @@ async def _probe_smtp() -> ServiceCheckResult:
 # ---------------------------------------------------------------------------
 
 
+def _probe_webhook_info() -> ServiceCheckResult:
+    settings = get_settings()
+    checks: list[ServicePermCheck] = []
+
+    base = (settings.webhook_base_url or settings.api_url).rstrip("/")
+    meta = {"url": base + "/auth/clerk/webhook"}
+
+    if settings.clerk_webhook_secret and settings.clerk_webhook_secret.startswith("whsec_"):
+        checks.append(ServicePermCheck(name="secret", status="ok", message="configured"))
+    else:
+        checks.append(
+            ServicePermCheck(name="secret", status="error", message="CLERK_WEBHOOK_SECRET not configured or invalid")
+        )
+
+    if settings.cf_zero_trust_enabled:
+        checks.append(ServicePermCheck(name="cf_access", status="ok", message="Enabled"))
+        if settings.cf_access_client_id:
+            checks.append(ServicePermCheck(name="client_id", status="ok", message=settings.cf_access_client_id))
+        else:
+            checks.append(ServicePermCheck(name="client_id", status="error", message="CF_ACCESS_CLIENT_ID not set"))
+        if settings.cf_access_client_secret:
+            s = settings.cf_access_client_secret
+            obfuscated = s[:6] + "••••••" if len(s) > 6 else "••••••"
+            checks.append(ServicePermCheck(name="client_secret", status="ok", message=obfuscated))
+        else:
+            checks.append(
+                ServicePermCheck(name="client_secret", status="error", message="CF_ACCESS_CLIENT_SECRET not set")
+            )
+    else:
+        checks.append(ServicePermCheck(name="cf_access", status="ok", message="Disabled"))
+
+    return _make_result("Clerk Webhook", checks, meta=meta)
+
+
 @router.get("/services", response_model=list[ServiceCheckResult])
 async def check_services(
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[ServiceCheckResult]:
-    results = await asyncio.gather(
+    db_result, s3_result, clerk_result, smtp_result = await asyncio.gather(
         _probe_postgres(db),
         _probe_s3(),
         _probe_clerk(),
         _probe_smtp(),
     )
-    return list(results)
+    return [db_result, s3_result, clerk_result, smtp_result, _probe_webhook_info()]
 
 
 # ---------------------------------------------------------------------------
