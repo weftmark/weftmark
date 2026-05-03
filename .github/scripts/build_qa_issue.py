@@ -49,7 +49,24 @@ for p in pr_numbers:
         seen.add(p)
         unique_prs.append(p)
 
+_PREFIX_RE = re.compile(r"^[a-z]+(?:\([^)]+\))?!?:\s*", re.IGNORECASE)
+
+
+def _title_suffix(titles: list[str]) -> str:
+    """Return ' — <first clean title>(+N more)' or '' if no titles."""
+    cleaned = [_PREFIX_RE.sub("", t).strip() for t in titles if t]
+    cleaned = [t for t in cleaned if t]
+    if not cleaned:
+        return ""
+    first = cleaned[0][:57] + "…" if len(cleaned[0]) > 60 else cleaned[0]
+    suffix = f" — {first}"
+    if len(cleaned) > 1:
+        suffix += f" (+{len(cleaned) - 1} more)"
+    return suffix
+
+
 sections = []
+pr_titles: list[str] = []
 for pr_num in unique_prs:
     result = subprocess.run(
         ["gh", "pr", "view", pr_num, "--json", "title,body", "--repo", repo],
@@ -60,6 +77,7 @@ for pr_num in unique_prs:
         continue
     pr = json.loads(result.stdout)
     title = pr.get("title", f"PR #{pr_num}")
+    pr_titles.append(title)
     body = pr.get("body") or ""
     m = re.search(r"## Test plan\n(.*?)(?=\n## |\Z)", body, re.DOTALL | re.IGNORECASE)
     plan = m.group(1).strip() if m else "_No test plan specified._"
@@ -87,4 +105,10 @@ _Close this issue when all items above are validated on `dev.weftmark.com`._"""
 with open("qa_issue_body.md", "w") as f:
     f.write(issue_body)
 
-print(f"QA issue body written ({len(sections)} PR(s) included)")
+suffix = _title_suffix(pr_titles)
+github_output = os.environ.get("GITHUB_OUTPUT")
+if github_output:
+    with open(github_output, "a") as f:
+        f.write(f"title_suffix={suffix}\n")
+
+print(f"QA issue body written ({len(sections)} PR(s) included, suffix: '{suffix}')")
