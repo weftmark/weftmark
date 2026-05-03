@@ -33,7 +33,7 @@ _EULA_V03 = """\
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">1. Who runs WeftMark</h3>
-  <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:hello@weftmark.com">hello@weftmark.com</a></p>
+  <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:admin@weftmark.com">admin@weftmark.com</a></p>
 </section>
 
 <section style="margin-bottom:1rem">
@@ -107,7 +107,7 @@ _EULA_V03 = """\
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">15. Contact</h3>
-  <p>Questions about these terms or your data: <a href="mailto:hello@weftmark.com">hello@weftmark.com</a></p>
+  <p>Questions about these terms or your data: <a href="mailto:admin@weftmark.com">admin@weftmark.com</a></p>
 </section>
 
 <p style="font-size:0.75rem;color:#888;padding-top:0.5rem;border-top:1px solid #e5e5e5">
@@ -132,7 +132,7 @@ _EULA_V05 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">1. Who runs WeftMark</h3>
-  <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:hello@weftmark.com">hello@weftmark.com</a></p>
+  <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:admin@weftmark.com">admin@weftmark.com</a></p>
 </section>
 
 <section style="margin-bottom:1rem">
@@ -206,7 +206,7 @@ _EULA_V05 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">15. Contact</h3>
-  <p>Questions about these terms or your data: <a href="mailto:hello@weftmark.com">hello@weftmark.com</a></p>
+  <p>Questions about these terms or your data: <a href="mailto:admin@weftmark.com">admin@weftmark.com</a></p>
 </section>
 
 <p style="font-size:0.75rem;color:#888;padding-top:0.5rem;border-top:1px solid #e5e5e5">
@@ -244,12 +244,13 @@ _EULA_V09 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">1. Who runs WeftMark</h3>
-  <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:hello@weftmark.com">hello@weftmark.com</a></p>
+  <p>WeftMark is operated by Derek Rowland, a tech hobbyist whose family is deeply into fiber arts. It is a personal project built for the weaving and fiber arts community, not a registered company or commercial service. Contact: <a href="mailto:admin@weftmark.com">admin@weftmark.com</a></p>
 </section>
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">2. Accepting these terms</h3>
   <p>You must accept these Terms of Service to create an account and use WeftMark. By clicking "I Accept," you agree to these terms.</p>
+  <p>By accepting these Terms, you also acknowledge our <a href="/privacy">Privacy Policy</a>, which describes how we collect, use, and protect your personal data and explains your rights under applicable privacy laws. The Privacy Policy is incorporated into these Terms by reference.</p>
   <p>If you do not accept, you may choose to delete your account from the same screen. Deleting your account permanently removes all your data from our servers.</p>
 </section>
 
@@ -318,7 +319,7 @@ _EULA_V09 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">15. Contact</h3>
-  <p>Questions about these terms or your data: <a href="mailto:hello@weftmark.com">hello@weftmark.com</a></p>
+  <p>Questions about these terms or your data: <a href="mailto:admin@weftmark.com">admin@weftmark.com</a></p>
 </section>
 
 <p style="font-size:0.75rem;color:#888;padding-top:0.5rem;border-top:1px solid #e5e5e5">

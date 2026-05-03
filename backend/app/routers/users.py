@@ -28,6 +28,7 @@ from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
 from app.services import storage
+from app.services.audit import write_audit_log
 
 log = logging.getLogger(__name__)
 
@@ -213,6 +214,7 @@ async def accept_eula(
         )
     current_user.eula_accepted_version = current_version
     current_user.eula_accepted_at = datetime.now(timezone.utc)
+    await write_audit_log(db, event_type="eula.accepted", actor=current_user, details={"version": current_version})
     await db.commit()
     await db.refresh(current_user)
     return _to_response(current_user, current_version)

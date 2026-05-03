@@ -12,6 +12,7 @@ from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
 from app.models.project import Project
 from app.models.user import User
+from tests.conftest import SEEDED_EULA_VERSION
 
 # ---------------------------------------------------------------------------
 # GET /api/admin/users
@@ -896,7 +897,7 @@ class TestGetAdminEula:
 
     async def test_returns_current_version(self, superuser_client: AsyncClient):
         data = (await superuser_client.get("/api/admin/eula")).json()
-        assert data["version"] == "0.3"
+        assert data["version"] == SEEDED_EULA_VERSION
 
     async def test_returns_body_html(self, superuser_client: AsyncClient):
         data = (await superuser_client.get("/api/admin/eula")).json()
@@ -940,6 +941,141 @@ class TestCreateEulaVersion:
         await superuser_client.post("/api/admin/eula", json={"version": "2.0", "body_html": "<p>v2</p>"})
         resp = await superuser_client.post("/api/admin/eula", json={"version": "2.0", "body_html": "<p>dup</p>"})
         assert resp.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/reconcile  (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class TestGetReconcileReport:
+    @pytest.fixture(autouse=True)
+    def mock_list_clerk_users(self):
+        with patch(
+            "app.routers.admin.list_clerk_users",
+            new_callable=AsyncMock,
+            return_value=[
+                {"id": "clerk_abc", "email": "clerk_only@test.com", "display_name": "Clerk Only"},
+                {"id": "clerk_shared", "email": "shared@test.com", "display_name": "Shared"},
+            ],
+        ):
+            yield
+
+    async def test_returns_200(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/reconcile")
+        assert resp.status_code == 200
+
+    async def test_clerk_only_excludes_db_users(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        user = User(email="shared@test.com", display_name="Shared", clerk_user_id="clerk_shared")
+        db_session.add(user)
+        await db_session.commit()
+
+        data = (await superuser_client.get("/api/admin/reconcile")).json()
+        clerk_ids = [u["clerk_user_id"] for u in data["clerk_only"]]
+        assert "clerk_shared" not in clerk_ids
+        assert "clerk_abc" in clerk_ids
+
+    async def test_clerk_only_excludes_pending_signups(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        signup = PendingSignup(clerk_user_id="clerk_abc", email="clerk_only@test.com", display_name="Clerk Only")
+        db_session.add(signup)
+        await db_session.commit()
+
+        data = (await superuser_client.get("/api/admin/reconcile")).json()
+        clerk_ids = [u["clerk_user_id"] for u in data["clerk_only"]]
+        assert "clerk_abc" not in clerk_ids
+
+    async def test_db_only_lists_orphaned_users(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        orphan = User(email="orphan@test.com", display_name="Orphan", clerk_user_id="clerk_gone_999")
+        db_session.add(orphan)
+        await db_session.commit()
+
+        data = (await superuser_client.get("/api/admin/reconcile")).json()
+        db_emails = [u["email"] for u in data["db_only"]]
+        assert "orphan@test.com" in db_emails
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/reconcile")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get("/api/admin/reconcile")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/reconcile/backfill/{clerk_user_id}  (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class TestBackfillClerkUser:
+    @pytest.fixture(autouse=True)
+    def mock_clerk_and_metadata(self):
+        with (
+            patch(
+                "app.routers.admin.get_clerk_user",
+                new_callable=AsyncMock,
+                return_value={
+                    "id": "clerk_backfill_001",
+                    "email": "backfill@test.com",
+                    "display_name": "Backfill User",
+                },
+            ),
+            patch("app.routers.admin.set_user_metadata", new_callable=AsyncMock),
+        ):
+            yield
+
+    async def test_returns_201(self, superuser_client: AsyncClient):
+        resp = await superuser_client.post("/api/admin/reconcile/backfill/clerk_backfill_001")
+        assert resp.status_code == 201
+
+    async def test_creates_user_in_db(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        await superuser_client.post("/api/admin/reconcile/backfill/clerk_backfill_001")
+        user = await db_session.scalar(
+            select(User).where(User.clerk_user_id == "clerk_backfill_001", User.deleted_at.is_(None))
+        )
+        assert user is not None
+        assert user.email == "backfill@test.com"
+        assert user.is_active is True
+
+    async def test_returns_created_status(self, superuser_client: AsyncClient):
+        data = (await superuser_client.post("/api/admin/reconcile/backfill/clerk_backfill_001")).json()
+        assert data["status"] == "created"
+        assert data["email"] == "backfill@test.com"
+
+    async def test_attaches_to_pre_created_user(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        pre = User(email="backfill@test.com", display_name="Pre User", clerk_user_id=None)
+        db_session.add(pre)
+        await db_session.commit()
+        await db_session.refresh(pre)
+
+        data = (await superuser_client.post("/api/admin/reconcile/backfill/clerk_backfill_001")).json()
+        assert data["status"] == "attached"
+        assert data["user_id"] == str(pre.id)
+
+    async def test_conflict_if_user_already_exists(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        user = User(email="backfill@test.com", display_name="Existing", clerk_user_id="clerk_backfill_001")
+        db_session.add(user)
+        await db_session.commit()
+
+        resp = await superuser_client.post("/api/admin/reconcile/backfill/clerk_backfill_001")
+        assert resp.status_code == 409
+
+    async def test_not_found_if_clerk_user_missing(self, superuser_client: AsyncClient):
+        with patch("app.routers.admin.get_clerk_user", new_callable=AsyncMock, return_value=None):
+            resp = await superuser_client.post("/api/admin/reconcile/backfill/clerk_gone")
+        assert resp.status_code == 404
+
+    async def test_admin_role_sets_is_admin(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        await superuser_client.post("/api/admin/reconcile/backfill/clerk_backfill_001", json={"role": "admin"})
+        user = await db_session.scalar(
+            select(User).where(User.clerk_user_id == "clerk_backfill_001", User.deleted_at.is_(None))
+        )
+        assert user is not None
+        assert user.is_admin is True
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/admin/reconcile/backfill/clerk_backfill_001")
+        assert resp.status_code == 403
 
     async def test_new_version_becomes_current(self, superuser_client: AsyncClient, client: AsyncClient):
         await superuser_client.post(
@@ -986,11 +1122,24 @@ class TestAdminServices:
         resp = await admin_client.get("/api/admin/services")
         assert resp.status_code == 200
 
-    async def test_returns_four_services(self, admin_client: AsyncClient):
+    async def test_returns_five_services(self, admin_client: AsyncClient):
         data = (await admin_client.get("/api/admin/services")).json()
-        assert len(data) == 4
+        assert len(data) == 5
         names = {s["service"] for s in data}
-        assert names == {"PostgreSQL", "S3", "Clerk", "SMTP"}
+        assert names == {"PostgreSQL", "S3", "Clerk", "SMTP", "Clerk Webhook"}
+
+    async def test_webhook_service_includes_url(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/services")).json()
+        wh = next(s for s in data if s["service"] == "Clerk Webhook")
+        assert "url" in wh["meta"]
+        assert wh["meta"]["url"].endswith("/auth/clerk/webhook")
+
+    async def test_webhook_service_cf_disabled_by_default(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/services")).json()
+        wh = next(s for s in data if s["service"] == "Clerk Webhook")
+        cf_check = next((c for c in wh["checks"] if c["name"] == "cf_access"), None)
+        assert cf_check is not None
+        assert cf_check["message"] == "Disabled"
 
     async def test_each_result_has_expected_fields(self, admin_client: AsyncClient):
         data = (await admin_client.get("/api/admin/services")).json()

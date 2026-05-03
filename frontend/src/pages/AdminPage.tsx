@@ -21,7 +21,10 @@ import {
   createEulaVersion,
   getAdminServices,
   sendTestEmail,
+  testWebhook,
   getAuditLog,
+  getReconcileReport,
+  backfillClerkUser,
   type AdminUser,
   type AdminHealth,
   type AuditLogEntry,
@@ -29,6 +32,8 @@ import {
   type PendingSignup,
   type ServiceCheck,
   type ServicePermCheck,
+  type ReconcileReport,
+  type WebhookProbeResult,
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
@@ -923,8 +928,44 @@ function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean 
 
 function CombinedServiceRow({ service, detail }: { service: ReadinessService; detail?: ServiceCheck }) {
   const [open, setOpen] = useState(false);
+  const [webhookResult, setWebhookResult] = useState<WebhookProbeResult | null>(null);
+  const [webhookTesting, setWebhookTesting] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [emailSending, setEmailSending] = useState(false);
+  const isWebhook = service.name === "Clerk Webhook";
+  const isSmtp = service.name === "SMTP";
   const metaEntries = Object.entries(detail?.meta ?? {});
   const hasDetail = detail && (metaEntries.length > 0 || detail.checks.length > 0);
+
+  async function handleTestWebhook(e: React.MouseEvent) {
+    e.stopPropagation();
+    setWebhookTesting(true);
+    setWebhookResult(null);
+    try {
+      const result = await testWebhook();
+      setWebhookResult(result);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Request failed";
+      setWebhookResult({ status: "error", latency_ms: null, message: msg });
+    } finally {
+      setWebhookTesting(false);
+    }
+  }
+
+  async function handleTestEmail(e: React.MouseEvent) {
+    e.stopPropagation();
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const result = await sendTestEmail();
+      setEmailResult({ ok: true, msg: `Sent to ${result.to}` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Request failed";
+      setEmailResult({ ok: false, msg });
+    } finally {
+      setEmailSending(false);
+    }
+  }
 
   return (
     <div className="bg-background">
@@ -937,9 +978,43 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
         <span className={`text-sm flex-1 ${!service.ok ? "text-destructive" : "text-muted-foreground"}`}>
           {service.message || (service.ok ? "ok" : "failed")}
         </span>
+        {isWebhook && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-xs"
+            disabled={webhookTesting}
+            onClick={handleTestWebhook}
+          >
+            {webhookTesting ? "Testing…" : "Test"}
+          </Button>
+        )}
+        {isSmtp && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-xs"
+            disabled={emailSending}
+            onClick={handleTestEmail}
+          >
+            {emailSending ? "Sending…" : "Send Test"}
+          </Button>
+        )}
         {!service.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
         {hasDetail && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
       </button>
+      {webhookResult && (
+        <div className={`px-4 py-2 border-t text-xs font-mono ${webhookResult.status === "ok" ? "text-green-600" : "text-destructive"}`}>
+          {webhookResult.status === "ok"
+            ? `✓ Round-trip: ${webhookResult.latency_ms}ms`
+            : `✗ ${webhookResult.message}`}
+        </div>
+      )}
+      {emailResult && (
+        <div className={`px-4 py-2 border-t text-xs ${emailResult.ok ? "text-green-600" : "text-destructive"}`}>
+          {emailResult.ok ? `✓ ${emailResult.msg}` : `✗ ${emailResult.msg}`}
+        </div>
+      )}
       {open && hasDetail && (
         <div className="border-t">
           {metaEntries.length > 0 && (
@@ -972,8 +1047,6 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
 }
 
 function ServicesTab() {
-  const { user: currentUser } = useAuth();
-
   // Live status from /health/detailed — auto-refreshes every 30s
   const [detailed, setDetailed] = useState<ReadinessResponse | null>(null);
   const [detailedAt, setDetailedAt] = useState<Date | null>(null);
@@ -988,23 +1061,16 @@ function ServicesTab() {
     return () => clearInterval(id);
   }, []);
 
-  // Detailed diagnostics — on demand only
+  // Detailed diagnostics — runs on mount, re-runnable via button
   const { data: diagnostics, isFetching: diagFetching, refetch: runDiag, dataUpdatedAt: diagAt } = useQuery({
     queryKey: ["admin", "services"],
     queryFn: getAdminServices,
     staleTime: Infinity,
-    enabled: false,
+    enabled: true,
   });
 
   const diagTime = diagAt ? new Date(diagAt).toLocaleTimeString() : null;
   const getDetail = (name: string) => diagnostics?.find((d) => d.service === name);
-
-  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const testEmail = useMutation({
-    mutationFn: sendTestEmail,
-    onSuccess: (d) => setTestResult({ ok: true, msg: `Sent to ${d.to}` }),
-    onError: (e: Error) => setTestResult({ ok: false, msg: e.message }),
-  });
 
   return (
     <div className="space-y-4">
@@ -1018,7 +1084,7 @@ function ServicesTab() {
           </span>
         </div>
         <Button size="sm" variant="outline" disabled={diagFetching} onClick={() => runDiag()}>
-          {diagFetching ? "Running…" : diagTime ? `Diagnostics: ${diagTime}` : "Run diagnostics"}
+          {diagFetching ? "Running…" : diagTime ? `Re-run · ${diagTime}` : "Running…"}
         </Button>
       </div>
 
@@ -1032,27 +1098,6 @@ function ServicesTab() {
         </div>
       )}
 
-      <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium">Test Email</p>
-          <p className="text-xs text-muted-foreground">
-            Sends a test email to {currentUser?.email}
-          </p>
-          {testResult && (
-            <p className={`text-xs mt-1 ${testResult.ok ? "text-green-600" : "text-destructive"}`}>
-              {testResult.msg}
-            </p>
-          )}
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={testEmail.isPending}
-          onClick={() => { setTestResult(null); testEmail.mutate(); }}
-        >
-          {testEmail.isPending ? "Sending…" : "Send Test Email"}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -1307,7 +1352,7 @@ function EulaTab() {
 // Superuser tab
 // ---------------------------------------------------------------------------
 
-type SuperuserSubTab = "eula" | "storage" | "deletion";
+type SuperuserSubTab = "eula" | "storage" | "deletion" | "reconcile";
 
 function SuperuserTab() {
   const [sub, setSub] = useState<SuperuserSubTab>("eula");
@@ -1315,7 +1360,7 @@ function SuperuserTab() {
   return (
     <div className="space-y-4">
       <div className="flex gap-2 border-b pb-2">
-        {(["eula", "storage", "deletion"] as SuperuserSubTab[]).map((t) => (
+        {(["eula", "storage", "deletion", "reconcile"] as SuperuserSubTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setSub(t)}
@@ -1333,6 +1378,7 @@ function SuperuserTab() {
       {sub === "eula" && <EulaTab />}
       {sub === "storage" && <StorageAuditTab />}
       {sub === "deletion" && <DeletionTab />}
+      {sub === "reconcile" && <ReconcileTab />}
     </div>
   );
 }
@@ -1355,6 +1401,150 @@ function DeletionTab() {
   );
 }
 
+function ReconcileTab() {
+  const queryClient = useQueryClient();
+  const [ran, setRan] = useState(false);
+  const [report, setReport] = useState<ReconcileReport | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState<string | null>(null);
+  const [backfillResults, setBackfillResults] = useState<Record<string, string>>({});
+
+  async function runReconcile() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getReconcileReport();
+      setReport(data);
+      setRan(true);
+    } catch {
+      setError("Failed to run reconciliation. Check that the Clerk API key is configured.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleBackfill(clerkUserId: string, role: "user" | "admin") {
+    setBackfilling(clerkUserId);
+    try {
+      const result = await backfillClerkUser(clerkUserId, role);
+      setBackfillResults((prev) => ({ ...prev, [clerkUserId]: result.status }));
+      setReport((prev) =>
+        prev
+          ? { ...prev, clerk_only: prev.clerk_only.filter((u) => u.clerk_user_id !== clerkUserId) }
+          : prev
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch {
+      setBackfillResults((prev) => ({ ...prev, [clerkUserId]: "error" }));
+    } finally {
+      setBackfilling(null);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-sm font-medium">Clerk ↔ DB Reconciliation</h2>
+        <p className="text-xs text-muted-foreground">
+          Cross-references Clerk accounts against the database. Use this to backfill users created
+          directly in the Clerk dashboard.
+        </p>
+      </div>
+
+      <Button onClick={runReconcile} disabled={loading} size="sm">
+        {loading ? "Running…" : ran ? "Re-run reconciliation" : "Run reconciliation"}
+      </Button>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {report && (
+        <div className="space-y-6">
+          {/* In Clerk, not in DB */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">
+              In Clerk, not in DB
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({report.clerk_only.length} {report.clerk_only.length === 1 ? "user" : "users"})
+              </span>
+            </h3>
+            {report.clerk_only.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No unmatched Clerk accounts.</p>
+            ) : (
+              <div className="rounded-lg border divide-y text-sm">
+                {report.clerk_only.map((u) => (
+                  <div key={u.clerk_user_id} className="flex items-center justify-between px-3 py-2 gap-4">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{u.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{u.clerk_user_id}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {backfillResults[u.clerk_user_id] ? (
+                        <span className="text-xs text-green-600 font-medium capitalize">
+                          {backfillResults[u.clerk_user_id]}
+                        </span>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={backfilling === u.clerk_user_id}
+                            onClick={() => handleBackfill(u.clerk_user_id, "user")}
+                          >
+                            Backfill as user
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={backfilling === u.clerk_user_id}
+                            onClick={() => handleBackfill(u.clerk_user_id, "admin")}
+                          >
+                            Backfill as admin
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* In DB, not in Clerk */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">
+              In DB, not in Clerk
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({report.db_only.length} {report.db_only.length === 1 ? "user" : "users"})
+              </span>
+            </h3>
+            {report.db_only.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No orphaned DB records.</p>
+            ) : (
+              <div className="rounded-lg border divide-y text-sm">
+                {report.db_only.map((u) => (
+                  <div key={u.user_id} className="flex items-center justify-between px-3 py-2 gap-4">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{u.display_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                    </div>
+                    {u.clerk_errored && (
+                      <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded shrink-0">
+                        clerk errored
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Audit log tab
 // ---------------------------------------------------------------------------
@@ -1365,6 +1555,9 @@ const EVENT_TYPES = [
   "user.unbanned",
   "user.deleted",
   "user.elevated",
+  "user.backfilled",
+  "user.clerk_errored",
+  "eula.accepted",
   "signup.approved",
   "signup.dismissed",
   "signup.banned",

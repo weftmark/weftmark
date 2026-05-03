@@ -11,6 +11,7 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { LandingPage } from "@/pages/LandingPage";
 import { AboutPage } from "@/pages/AboutPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
+import { TermsPage } from "@/pages/TermsPage";
 import { ProjectsPage } from "@/pages/ProjectsPage";
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
 import { LoomsPage } from "@/pages/LoomsPage";
@@ -23,6 +24,7 @@ import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SignOutPage } from "@/pages/SignOutPage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
+import { PendingPage } from "@/pages/PendingPage";
 import { DevBanner } from "@/components/DevBanner";
 import { ServiceHealthBanner } from "@/components/ServiceHealthBanner";
 import { SystemGate } from "@/components/SystemGate";
@@ -63,7 +65,7 @@ export default function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/sign-out">
+    <ClerkProvider publishableKey={clerkPublishableKey} afterSignUpUrl="/pending" afterSignOutUrl="/sign-out">
       <VersionGate>
         <SystemGate>
         <QueryClientProvider client={queryClient}>
@@ -74,11 +76,13 @@ export default function App() {
               <EulaGate>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/pending" element={<PendingPage />} />
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/sign-out" element={<SignOutPage />} />
                   <Route path="/unauthorized" element={<UnauthorizedPage />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/terms" element={<TermsPage />} />
                   <Route path="/" element={<RootRoute />} />
                   <Route
                     path="/home"
