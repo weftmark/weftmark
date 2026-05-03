@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { AuthProvider } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { AppLayout } from "@/components/layout/AppLayout";
+import type { ReactNode } from "react";
 import { EulaGate } from "@/components/EulaGate";
 import { VersionGate } from "@/components/VersionGate";
 import { LoginPage } from "@/pages/LoginPage";
@@ -30,6 +32,14 @@ import { ServiceHealthBanner } from "@/components/ServiceHealthBanner";
 import { SystemGate } from "@/components/SystemGate";
 import { clerkPublishableKey, clerkKeyMissing } from "@/lib/env";
 import { useAuth } from "@/hooks/useAuth";
+
+function AuthRoute({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
+  return (
+    <ProtectedRoute requireAdmin={requireAdmin}>
+      <AppLayout>{children}</AppLayout>
+    </ProtectedRoute>
+  );
+}
 
 function RootRoute() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -84,94 +94,17 @@ export default function App() {
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/" element={<RootRoute />} />
-                  <Route
-                    path="/home"
-                    element={
-                      <ProtectedRoute>
-                        <DashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/projects"
-                    element={
-                      <ProtectedRoute>
-                        <ProjectsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/projects/:id"
-                    element={
-                      <ProtectedRoute>
-                        <ProjectDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/looms"
-                    element={
-                      <ProtectedRoute>
-                        <LoomsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/looms/:id"
-                    element={
-                      <ProtectedRoute>
-                        <LoomDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/yarn"
-                    element={
-                      <ProtectedRoute>
-                        <YarnPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/yarn/:id"
-                    element={
-                      <ProtectedRoute>
-                        <YarnDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/activities"
-                    element={
-                      <ProtectedRoute>
-                        <ActivitiesPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/activities/:id"
-                    element={
-                      <ProtectedRoute>
-                        <ActivityDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/admin"
-                    element={
-                      <ProtectedRoute requireAdmin>
-                        <AdminPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/settings"
-                    element={
-                      <ProtectedRoute>
-                        <SettingsPage />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/home" element={<AuthRoute><DashboardPage /></AuthRoute>} />
+                  <Route path="/projects" element={<AuthRoute><ProjectsPage /></AuthRoute>} />
+                  <Route path="/projects/:id" element={<AuthRoute><ProjectDetailPage /></AuthRoute>} />
+                  <Route path="/looms" element={<AuthRoute><LoomsPage /></AuthRoute>} />
+                  <Route path="/looms/:id" element={<AuthRoute><LoomDetailPage /></AuthRoute>} />
+                  <Route path="/yarn" element={<AuthRoute><YarnPage /></AuthRoute>} />
+                  <Route path="/yarn/:id" element={<AuthRoute><YarnDetailPage /></AuthRoute>} />
+                  <Route path="/activities" element={<AuthRoute><ActivitiesPage /></AuthRoute>} />
+                  <Route path="/activities/:id" element={<AuthRoute><ActivityDetailPage /></AuthRoute>} />
+                  <Route path="/admin" element={<AuthRoute requireAdmin><AdminPage /></AuthRoute>} />
+                  <Route path="/settings" element={<AuthRoute><SettingsPage /></AuthRoute>} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </EulaGate>

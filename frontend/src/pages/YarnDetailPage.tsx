@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getYarn, deleteYarn, updateYarn,
@@ -517,11 +518,12 @@ export function YarnDetailPage() {
   if (error || !yarn) return <div className="flex min-h-screen items-center justify-center"><p className="text-sm text-destructive">Yarn not found.</p></div>;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/yarn" className="text-sm text-muted-foreground hover:text-foreground">← Yarn</Link>
-          <span className="font-semibold">{yarn.brand} — {yarn.name}</span>
+    <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm">
+          <Link to="/yarn" className="text-stone-500 hover:text-stone-900">Yarn</Link>
+          <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+          <span className="font-medium text-stone-900">{yarn.brand} — {yarn.name}</span>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setShowClone(true)}>Clone yarn</Button>
@@ -529,9 +531,7 @@ export function YarnDetailPage() {
             {editing ? "Cancel edit" : "Edit"}
           </Button>
         </div>
-      </header>
-
-      <main className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-8">
+      </div>
 
         {/* Photo + summary */}
         <section className="space-y-4">
@@ -590,7 +590,6 @@ export function YarnDetailPage() {
             </div>
           )}
         </section>
-      </main>
 
       {showClone && (
         <CloneYarnModal

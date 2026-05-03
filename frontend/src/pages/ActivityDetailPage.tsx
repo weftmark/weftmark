@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { ChevronRight, Footprints, ChevronsUp } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getActivity, getActivityPicks, stepActivity, jumpActivity, completeActivity, abandonActivity,
@@ -103,65 +104,71 @@ function PickDisplay({
   colorMode: ColorMode;
   showWeftColor: boolean;
 }) {
-  const label = activityType === "lift" ? "Raise shafts" : "Press treadles";
-  const count = Math.max(totalCount, pick.active.length > 0 ? Math.max(...pick.active) : 0, 1);
+  const count = Math.max(totalCount, 1);
   const weftHex = pick.color ?? null;
 
-  const boxCls =
-    count <= 4  ? "h-14 w-14 text-base"
-    : count <= 8  ? "h-10 w-10 text-sm"
-    : count <= 16 ? "h-8 w-8 text-xs"
-    : "h-6 w-6 text-xs";
-
   return (
-    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-6 py-5 space-y-4">
-      <p className="text-center text-xs font-medium text-primary/80 uppercase tracking-wider">
-        {label} · pick {pick.pick}
-      </p>
-      <div className="flex flex-wrap justify-center gap-2">
-        {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
-          const active = pick.active.includes(n);
-          if (colorMode !== "theme" && active && weftHex) {
-            if (colorMode === "filled") {
-              const fg = contrastColor(weftHex);
-              return (
-                <div key={n} style={{ backgroundColor: weftHex, borderColor: fg }}
-                  className={`${boxCls} rounded-md border-2 flex items-center justify-center font-bold`}>
-                  <span style={{ color: fg }}>{n}</span>
-                </div>
-              );
-            }
-            if (colorMode === "strip") {
-              return (
-                <div key={n}
-                  className={`${boxCls} rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center font-bold`}>
-                  <span className="absolute bottom-0 left-0 right-0 h-[20%]"
-                    style={{ backgroundColor: weftHex }} />
-                  <span className="relative text-primary-foreground">{n}</span>
-                </div>
-              );
-            }
-          }
-          return (
-            <div key={n}
-              className={`${boxCls} rounded-md border-2 flex items-center justify-center font-bold ${
-                active
-                  ? "bg-primary border-primary text-primary-foreground"
-                  : "border-muted bg-muted/30 text-muted-foreground"
-              }`}>
-              {n}
-            </div>
-          );
-        })}
+    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4">
+      {/* Activity type icon — centered vertically */}
+      <div className="shrink-0 flex items-center text-primary/50">
+        {activityType === "lift" ? (
+          <ChevronsUp className="h-8 w-8" strokeWidth={1.5} />
+        ) : (
+          <Footprints className="h-8 w-8" strokeWidth={1.5} />
+        )}
       </div>
-      {showWeftColor && weftHex && (
+
+      {/* Box grid + optional weft bar — fills remaining height */}
+      <div className="flex-1 flex flex-col gap-2 min-h-0">
         <div
-          className="h-7 w-full rounded-md flex items-center justify-center text-xs font-semibold uppercase tracking-wider"
-          style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
+          className="flex-1 grid gap-1.5 min-h-0"
+          style={{ gridTemplateColumns: `repeat(${count}, 1fr)` }}
         >
-          Weft Color
+          {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
+            const active = pick.active.includes(n);
+            if (colorMode !== "theme" && active && weftHex) {
+              if (colorMode === "filled") {
+                const fg = contrastColor(weftHex);
+                return (
+                  <div key={n} style={{ backgroundColor: weftHex, borderColor: fg }}
+                    className="rounded-md border-2 flex items-center justify-center text-xs font-bold">
+                    <span style={{ color: fg }}>{n}</span>
+                  </div>
+                );
+              }
+              if (colorMode === "strip") {
+                return (
+                  <div key={n}
+                    className="rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center text-xs font-bold">
+                    <span className="absolute bottom-0 left-0 right-0 h-[20%]"
+                      style={{ backgroundColor: weftHex }} />
+                    <span className="relative text-primary-foreground">{n}</span>
+                  </div>
+                );
+              }
+            }
+            return (
+              <div key={n}
+                className={`rounded-md border-2 flex items-center justify-center text-xs font-bold ${
+                  active
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : "border-muted bg-muted/30 text-muted-foreground"
+                }`}>
+                {n}
+              </div>
+            );
+          })}
         </div>
-      )}
+
+        {showWeftColor && weftHex && (
+          <div
+            className="h-6 w-full shrink-0 rounded-md flex items-center justify-center text-xs font-semibold uppercase tracking-wider"
+            style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
+          >
+            Weft Color
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -456,7 +463,7 @@ function StepControls({
       <button
         onClick={() => onJump(Math.max(1, currentPick - 10))}
         disabled={atStart || disabled}
-        className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-input text-lg font-medium transition-colors hover:border-ring hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+        className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 text-primary/70 text-lg font-medium transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Back 10 picks"
         title="Back 10"
       >
@@ -466,7 +473,7 @@ function StepControls({
       <button
         onClick={() => onStep("reverse")}
         disabled={atStart || disabled}
-        className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-input text-3xl font-light transition-colors hover:border-ring hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+        className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary text-primary text-3xl font-light transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Previous pick"
       >
         ‹
@@ -482,7 +489,7 @@ function StepControls({
       <button
         onClick={() => onStep("advance")}
         disabled={pastEnd || disabled}
-        className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-input text-3xl font-light transition-colors hover:border-ring hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+        className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary text-primary text-3xl font-light transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Next pick"
       >
         ›
@@ -492,7 +499,7 @@ function StepControls({
       <button
         onClick={() => onJump(Math.min(total + 1, currentPick + 10))}
         disabled={pastEnd || disabled}
-        className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-input text-lg font-medium transition-colors hover:border-ring hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+        className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 text-primary/70 text-lg font-medium transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Forward 10 picks"
         title="Forward 10"
       >
@@ -527,8 +534,8 @@ function JumpToPick({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex items-center justify-center gap-2">
-      <label className="text-xs text-muted-foreground">Go to pick</label>
+    <form onSubmit={handleSubmit} className="flex items-center justify-center gap-3">
+      <label className="text-sm text-muted-foreground whitespace-nowrap">Go to pick</label>
       <input
         type="number"
         min={1}
@@ -536,13 +543,17 @@ function JumpToPick({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         disabled={disabled}
-        className="w-20 rounded border border-input bg-background px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+        className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
         placeholder="—"
       />
       <button
         type="submit"
         disabled={disabled || !value}
-        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30"
+        className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+          value && !disabled
+            ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+            : "border-input bg-background text-muted-foreground opacity-40"
+        }`}
       >
         Go
       </button>
@@ -558,7 +569,7 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
   const pct = total > 0 ? Math.round((Math.min(current - 1, total) / total) * 100) : 0;
   return (
     <div>
-      <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+      <div className="mb-1 flex justify-between text-sm text-muted-foreground">
         <span>{pct}% complete</span>
         <span>{Math.max(0, total - current + 1)} picks remaining</span>
       </div>
@@ -1065,64 +1076,72 @@ export function ActivityDetailPage() {
   const badgeLabel = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[activity.status];
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="shrink-0 border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/activities" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Activities
-          </Link>
-          <div className="flex items-center gap-2">
-            {editingName ? (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
+    <div className="flex flex-col">
+      {/* Page header */}
+      <div className="shrink-0 border-b border-stone-200 bg-white px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
+          <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
+            {activity.loom_id && (
+              <>
+                <Link to="/looms" className="text-stone-500 hover:text-stone-900">Equipment</Link>
+                <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+              </>
+            )}
+            <Link to="/projects" className="text-stone-500 hover:text-stone-900">Projects</Link>
+            <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+            <Link to="/activities" className="text-stone-500 hover:text-stone-900">Activities</Link>
+            <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+          </div>
+          {editingName ? (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const trimmed = nameInput.trim();
+                if (!trimmed) { setEditingName(false); return; }
+                const updated = await renameActivity(id!, trimmed);
+                queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                  old ? { ...updated, photos: old.photos } : updated
+                );
+                queryClient.invalidateQueries({ queryKey: ["activities"] });
+                setEditingName(false);
+              }}
+              className="flex items-center gap-2 min-w-0"
+            >
+              <input
+                autoFocus
+                className="rounded border border-input bg-background px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") setEditingName(false); }}
+                onBlur={async () => {
                   const trimmed = nameInput.trim();
-                  if (!trimmed) { setEditingName(false); return; }
-                  const updated = await renameActivity(id!, trimmed);
-                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
-                    old ? { ...updated, photos: old.photos } : updated
-                  );
-                  queryClient.invalidateQueries({ queryKey: ["activities"] });
+                  if (trimmed && trimmed !== activity.name) {
+                    const updated = await renameActivity(id!, trimmed);
+                    queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                      old ? { ...updated, photos: old.photos } : updated
+                    );
+                    queryClient.invalidateQueries({ queryKey: ["activities"] });
+                  }
                   setEditingName(false);
                 }}
-                className="flex items-center gap-2"
-              >
-                <input
-                  autoFocus
-                  className="rounded border border-input bg-background px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Escape") setEditingName(false); }}
-                  onBlur={async () => {
-                    const trimmed = nameInput.trim();
-                    if (trimmed && trimmed !== activity.name) {
-                      const updated = await renameActivity(id!, trimmed);
-                      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
-                        old ? { ...updated, photos: old.photos } : updated
-                      );
-                      queryClient.invalidateQueries({ queryKey: ["activities"] });
-                    }
-                    setEditingName(false);
-                  }}
-                />
-              </form>
-            ) : (
-              <button
-                onClick={() => { setNameInput(activity.name); setEditingName(true); }}
-                className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text"
-                title="Click to rename"
-              >
-                {activity.name}
-              </button>
-            )}
-            <span className="text-sm text-muted-foreground">{activity.project_name}</span>
-          </div>
+              />
+            </form>
+          ) : (
+            <button
+              onClick={() => { setNameInput(activity.name); setEditingName(true); }}
+              className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text truncate"
+              title="Click to rename"
+            >
+              {activity.name}
+            </button>
+          )}
+          <span className="text-sm text-muted-foreground truncate hidden sm:block">{activity.project_name}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setShowDesignPreview(true)}
-            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
             title="View WIF design preview"
           >
             View design
@@ -1131,10 +1150,10 @@ export function ActivityDetailPage() {
             {badgeLabel}
           </span>
         </div>
-      </header>
+      </div>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {/* Completed summary */}
         {isCompleted && (
           <CompletedSummary
@@ -1181,25 +1200,28 @@ export function ActivityDetailPage() {
           </div>
         )}
 
-        {/* Progress + color mode */}
-        <div className="mx-auto max-w-2xl px-8 pt-6 space-y-3">
-          {!isPlanning && !isCompleted && <ProgressBar current={activity.current_pick} total={activity.total_picks} />}
-          {picksData?.has_weft_colors && !isFinished && !isCompleted && (
-            <div className="flex items-center justify-end gap-4">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <span className="text-xs text-muted-foreground">Weft color</span>
-                <button
-                  role="switch"
-                  aria-checked={showWeftColor}
-                  onClick={() => setShowWeftColor((v) => !v)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 ${showWeftColor ? "bg-primary" : "bg-muted"}`}
-                >
-                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${showWeftColor ? "translate-x-4" : "translate-x-1"}`} />
-                </button>
-              </label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Color mode</span>
-                <div className="inline-flex rounded-md border border-input overflow-hidden text-xs">
+        {/* Progress bar + color controls — same row to save vertical space */}
+        {(!isPlanning && !isCompleted) || (picksData?.has_weft_colors && !isFinished && !isCompleted) ? (
+          <div className="mx-auto max-w-2xl px-8 pt-6 flex items-center gap-4">
+            {!isPlanning && !isCompleted && (
+              <div className="flex-1">
+                <ProgressBar current={activity.current_pick} total={activity.total_picks} />
+              </div>
+            )}
+            {picksData?.has_weft_colors && !isFinished && !isCompleted && (
+              <div className="shrink-0 flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className="text-sm text-muted-foreground">Weft</span>
+                  <button
+                    role="switch"
+                    aria-checked={showWeftColor}
+                    onClick={() => setShowWeftColor((v) => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 ${showWeftColor ? "bg-primary" : "bg-muted"}`}
+                  >
+                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${showWeftColor ? "translate-x-4" : "translate-x-1"}`} />
+                  </button>
+                </label>
+                <div className="inline-flex rounded-md border border-input overflow-hidden text-sm">
                   {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
                     <button
                       key={mode}
@@ -1215,9 +1237,9 @@ export function ActivityDetailPage() {
                   ))}
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        ) : null}
 
         {/* Pick instruction — stays compact */}
         {!isCompleted && <div className="mx-auto max-w-2xl px-8 pt-4">
@@ -1281,27 +1303,34 @@ export function ActivityDetailPage() {
         )}
 
         {/* Step controls — active tracking and planning */}
-        <div className="mx-auto max-w-lg px-8 pb-6 space-y-6">
+        <div className="w-full px-4 pb-6">
           {(isActiveTracking || isPlanning) && !isFinished && (
-            <StepControls
-              currentPick={displayPick}
-              total={activity.total_picks}
-              onStep={isPlanning ? handleLocalStep : handleStep}
-              onJump={isPlanning ? handleLocalJump : handleJump}
-              stepping={stepping}
-            />
-          )}
-
-          {(isActiveTracking || isPlanning) && !isFinished && (
-            <JumpToPick
-              total={activity.total_picks}
-              onJump={isPlanning ? handleLocalJump : handleJump}
-              disabled={stepping}
-            />
+            <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8 mb-4">
+              {/* Left 1/3 on desktop, below step buttons on mobile */}
+              <div className="order-2 lg:order-1 lg:flex lg:justify-center">
+                <JumpToPick
+                  total={activity.total_picks}
+                  onJump={isPlanning ? handleLocalJump : handleJump}
+                  disabled={stepping}
+                />
+              </div>
+              {/* Center 1/3 on desktop, top on mobile */}
+              <div className="order-1 lg:order-2 flex justify-center">
+                <StepControls
+                  currentPick={displayPick}
+                  total={activity.total_picks}
+                  onStep={isPlanning ? handleLocalStep : handleStep}
+                  onJump={isPlanning ? handleLocalJump : handleJump}
+                  stepping={stepping}
+                />
+              </div>
+              {/* Right 1/3 reserved for future use */}
+              <div className="hidden lg:block lg:order-3" />
+            </div>
           )}
 
           {(isActiveTracking || isPlanning) && (
-            <p className="text-center text-xs text-muted-foreground">
+            <p className="text-center text-sm text-muted-foreground">
               ← → arrow keys or spacebar to navigate picks
             </p>
           )}
@@ -1485,7 +1514,7 @@ export function ActivityDetailPage() {
             )}
           </CollapsibleSection>
         </div>
-      </main>
+      </div>
 
       {showDesignPreview && (
         <DesignPreviewModal
@@ -1498,6 +1527,11 @@ export function ActivityDetailPage() {
         <AssignLoomModal
           activityId={activity.id}
           activeActivities={allActivities.filter((a) => a.status === "active")}
+          activityType={activity.activity_type}
+          projectNumTreadles={activity.project_num_treadles}
+          projectNumShafts={activity.project_num_shafts}
+          projectEffectiveNumTreadles={activity.project_effective_num_treadles}
+          projectEffectiveNumShafts={activity.project_effective_num_shafts}
           onSuccess={() => {
             setShowAssignLoom(false);
             invalidate();

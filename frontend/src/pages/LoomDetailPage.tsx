@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listActivities } from "@/api/activities";
 import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
@@ -651,20 +652,19 @@ export function LoomDetailPage() {
   const currentVersionId = loom.current_version?.id;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/looms" className="text-sm text-muted-foreground hover:text-foreground">← Equipment</Link>
-          <span className="font-semibold">{loom.manufacturer} {loom.model_name}</span>
-          <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
+    <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm">
+          <Link to="/looms" className="text-stone-500 hover:text-stone-900">Equipment</Link>
+          <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+          <span className="font-medium text-stone-900">{loom.manufacturer} {loom.model_name}</span>
+          <span className="text-xs text-stone-400">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>
           <Button size="sm" onClick={() => setShowAddVersion(true)}>Add version</Button>
         </div>
-      </header>
-
-      <main className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-8">
+      </div>
         {!SUPPORTED_LOOM_TYPES.has(loom.loom_type) && (
           <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
             <span className="font-medium">Activity tracking not supported</span> — this loom type is not currently
@@ -761,7 +761,6 @@ export function LoomDetailPage() {
             </div>
           )}
         </section>
-      </main>
 
       {showAddVersion && (
         <AddVersionModal loomId={loom.id} loomType={loom.loom_type} onSuccess={handleVersionAdded} onClose={() => setShowAddVersion(false)} />

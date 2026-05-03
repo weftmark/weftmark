@@ -70,34 +70,25 @@ export function YarnPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
-          <span className="font-semibold">Yarn</span>
+    <div className="p-6 max-w-3xl mx-auto w-full">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold">Yarn inventory</h1>
+        <Button onClick={() => setShowAdd(true)}>Add yarn</Button>
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {error && <p className="text-sm text-destructive">Failed to load yarn inventory.</p>}
+
+      {!isLoading && yarns.length === 0 && (
+        <div className="rounded-lg border border-dashed p-12 text-center">
+          <p className="text-sm text-muted-foreground">No yarn yet. Add your first entry to start tracking your stash.</p>
+          <Button className="mt-4" onClick={() => setShowAdd(true)}>Add yarn</Button>
         </div>
-      </header>
+      )}
 
-      <main className="flex-1 p-6 max-w-3xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-semibold">Yarn inventory</h1>
-          <Button onClick={() => setShowAdd(true)}>Add yarn</Button>
-        </div>
-
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {error && <p className="text-sm text-destructive">Failed to load yarn inventory.</p>}
-
-        {!isLoading && yarns.length === 0 && (
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <p className="text-sm text-muted-foreground">No yarn yet. Add your first entry to start tracking your stash.</p>
-            <Button className="mt-4" onClick={() => setShowAdd(true)}>Add yarn</Button>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {yarns.map((y) => <YarnCard key={y.id} yarn={y} />)}
-        </div>
-      </main>
+      <div className="space-y-2">
+        {yarns.map((y) => <YarnCard key={y.id} yarn={y} />)}
+      </div>
 
       {showAdd && (
         <AddYarnModal onSuccess={handleAdded} onClose={() => setShowAdd(false)} />

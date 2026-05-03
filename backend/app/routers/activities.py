@@ -70,6 +70,8 @@ class ActivityDetail(ActivitySummary):
     project_name: str
     project_num_shafts: int | None
     project_num_treadles: int | None
+    project_effective_num_treadles: int | None
+    project_effective_num_shafts: int | None
     loom_name: str | None
     photos: list[ActivityPhotoSchema] = []
 
@@ -176,6 +178,8 @@ def _to_detail(
         project_name=project.name,
         project_num_shafts=project.num_shafts,
         project_num_treadles=project.num_treadles,
+        project_effective_num_treadles=project.effective_num_treadles,
+        project_effective_num_shafts=project.effective_num_shafts,
         loom_name=f"{loom.manufacturer} {loom.model_name}" if loom else None,
         photos=[ActivityPhotoSchema.model_validate(p) for p in (photos or [])],
     )

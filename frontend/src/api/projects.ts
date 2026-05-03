@@ -5,6 +5,8 @@ export interface Project {
   wif_filename: string;
   num_shafts: number | null;
   num_treadles: number | null;
+  effective_num_treadles: number | null;
+  effective_num_shafts: number | null;
   warp_threads: number | null;
   weft_threads: number | null;
   has_threading: boolean;

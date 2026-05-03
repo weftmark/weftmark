@@ -98,42 +98,33 @@ export function LoomsPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Dashboard
-          </Link>
-          <span className="font-semibold">Equipment</span>
-        </div>
-        <Button size="sm" onClick={() => setShowNew(true)}>
-          New loom
-        </Button>
-      </header>
+    <div className="p-6 max-w-4xl mx-auto w-full">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold">Equipment</h1>
+        <Button size="sm" onClick={() => setShowNew(true)}>New loom</Button>
+      </div>
 
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {error && (
-          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Failed to load looms
-          </p>
-        )}
-        {looms && looms.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-muted-foreground">No looms yet.</p>
-            <Button className="mt-4" onClick={() => setShowNew(true)}>
-              Add your first loom
-            </Button>
-          </div>
-        )}
-        {looms && looms.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {looms.map((l) => (
-              <LoomCard key={l.id} loom={l} activityCounts={activityCountsByLoom[l.id]} />
-            ))}
-          </div>
-        )}
-      </main>
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {error && (
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Failed to load looms
+        </p>
+      )}
+      {looms && looms.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-muted-foreground">No looms yet.</p>
+          <Button className="mt-4" onClick={() => setShowNew(true)}>
+            Add your first loom
+          </Button>
+        </div>
+      )}
+      {looms && looms.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {looms.map((l) => (
+            <LoomCard key={l.id} loom={l} activityCounts={activityCountsByLoom[l.id]} />
+          ))}
+        </div>
+      )}
 
       {showNew && (
         <NewLoomModal onSuccess={handleSuccess} onClose={() => setShowNew(false)} />

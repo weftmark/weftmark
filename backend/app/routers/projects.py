@@ -30,6 +30,8 @@ class ProjectSummary(BaseModel):
     wif_filename: str
     num_shafts: int | None
     num_treadles: int | None
+    effective_num_treadles: int | None
+    effective_num_shafts: int | None
     warp_threads: int | None
     weft_threads: int | None
     has_threading: bool
@@ -89,6 +91,8 @@ async def create_project(
         wif_path="",  # set after we have the project id
         num_shafts=lint.num_shafts,
         num_treadles=lint.num_treadles,
+        effective_num_treadles=lint.effective_num_treadles,
+        effective_num_shafts=lint.effective_num_shafts,
         warp_threads=lint.warp_threads,
         weft_threads=lint.weft_threads,
         has_threading=lint.has_threading,

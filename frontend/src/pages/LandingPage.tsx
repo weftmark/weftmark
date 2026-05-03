@@ -6,7 +6,7 @@ import { PublicFooter } from "@/components/PublicFooter";
 const FEATURES = [
   {
     title: "Track your weaves",
-    body: "Upload your WIF draft and step through every pick. Weftmark keeps your place so you can put down the shuttle and pick it right back up.",
+    body: "Upload your WIF draft and step through every pick. weftmark keeps your place so you can put down the shuttle and pick it right back up.",
     Icon: Layers,
   },
   {
@@ -40,7 +40,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-2.5">
             <WeftmarkLogo className="h-7 w-auto text-zinc-800" />
-            <span className="text-base font-semibold tracking-tight">Weftmark</span>
+            <span className="text-base font-semibold tracking-tight" style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
           </div>
           <Link
             to="/login"

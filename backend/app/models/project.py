@@ -26,6 +26,10 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     warp_threads: Mapped[int | None] = mapped_column(Integer, nullable=True)
     weft_threads: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Effective counts derived from actual treadling/liftplan data (may differ from declared metadata)
+    effective_num_treadles: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    effective_num_shafts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # Feature availability flags
     has_threading: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     has_tieup: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

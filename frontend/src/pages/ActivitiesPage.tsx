@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listActivities, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS, type ActivitySummary } from "@/api/activities";
 import { previewUrl } from "@/api/projects";
@@ -7,6 +7,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
 import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -191,76 +192,71 @@ export function ActivitiesPage() {
   const abandonedByYear = groupByYear(abandoned, (a) => a.abandoned_at);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
-          <span className="font-semibold">Activities</span>
-        </div>
+    <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Activities</h1>
         <Button size="sm" onClick={() => setShowCreate(true)}>New activity</Button>
-      </header>
+      </div>
 
-      <main className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-8">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {error && <p className="text-sm text-destructive">Failed to load activities.</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {error && <p className="text-sm text-destructive">Failed to load activities.</p>}
 
-        {!isLoading && activities.length === 0 && (
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <p className="text-sm text-muted-foreground">No activities yet. Start one to begin tracking a weaving session.</p>
-            <Button className="mt-4" onClick={() => setShowCreate(true)}>New activity</Button>
+      {!isLoading && activities.length === 0 && (
+        <div className="rounded-lg border border-dashed p-12 text-center">
+          <p className="text-sm text-muted-foreground">No activities yet. Start one to begin tracking a weaving session.</p>
+          <Button className="mt-4" onClick={() => setShowCreate(true)}>New activity</Button>
+        </div>
+      )}
+
+      {active.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {active.map((a) => <ActivityCard key={a.id} activity={a} />)}
           </div>
-        )}
+        </section>
+      )}
 
-        {active.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {active.map((a) => <ActivityCard key={a.id} activity={a} />)}
-            </div>
-          </section>
-        )}
+      {planning.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Planning</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {planning.map((a) => <ActivityCard key={a.id} activity={a} onAssign={setAssigningActivityId} />)}
+          </div>
+        </section>
+      )}
 
-        {planning.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Planning</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {planning.map((a) => <ActivityCard key={a.id} activity={a} onAssign={setAssigningActivityId} />)}
-            </div>
-          </section>
-        )}
+      {completedByYear.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Completed</h2>
+          <div className="space-y-4">
+            {completedByYear.map(({ year, items }) => (
+              <YearGroup
+                key={year}
+                year={year}
+                items={items}
+                defaultExpanded={year === currentYear}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
-        {completedByYear.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Completed</h2>
-            <div className="space-y-4">
-              {completedByYear.map(({ year, items }) => (
-                <YearGroup
-                  key={year}
-                  year={year}
-                  items={items}
-                  defaultExpanded={year === currentYear}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {abandonedByYear.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Abandoned</h2>
-            <div className="space-y-4">
-              {abandonedByYear.map(({ year, items }) => (
-                <YearGroup
-                  key={year}
-                  year={year}
-                  items={items}
-                  defaultExpanded={false}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
+      {abandonedByYear.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Abandoned</h2>
+          <div className="space-y-4">
+            {abandonedByYear.map(({ year, items }) => (
+              <YearGroup
+                key={year}
+                year={year}
+                items={items}
+                defaultExpanded={false}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {showCreate && (
         <CreateActivityModal

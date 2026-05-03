@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
@@ -11,7 +10,6 @@ type Section = "appearance" | "preferences" | "privacy" | "terms" | "account";
 
 export function SettingsPage() {
   const { user, refetch } = useAuth();
-  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<Section>("appearance");
 
   const { data: projects = [] } = useQuery({
@@ -115,12 +113,8 @@ export function SettingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="mb-6 flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            ← Back
-          </Button>
+    <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="mb-6">
           <h1 className="text-xl font-semibold">Settings</h1>
         </div>
 
@@ -468,7 +462,6 @@ export function SettingsPage() {
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }

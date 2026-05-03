@@ -5,13 +5,8 @@ import { listActivities } from "@/api/activities";
 import { ProjectCard } from "@/components/projects/ProjectCard";
 import { UploadWifModal } from "@/components/projects/UploadWifModal";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
-import { useClerk } from "@clerk/clerk-react";
-import { Link } from "react-router-dom";
 
 export function ProjectsPage() {
-  const { user } = useAuth();
-  const { signOut } = useClerk();
   const queryClient = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
 
@@ -43,57 +38,32 @@ export function ProjectsPage() {
     queryClient.invalidateQueries({ queryKey: ["projects"] });
   };
 
-  const handleLogout = () => signOut();
-
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
-          <span className="font-semibold">Projects</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">{user?.email}</span>
-          <Link to="/settings" className="text-sm text-muted-foreground hover:text-foreground">
-            Settings
-          </Link>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            Sign out
+    <div className="p-6 max-w-4xl mx-auto w-full">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold">Projects</h1>
+        <Button onClick={() => setShowUpload(true)}>New Project</Button>
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading projects…</p>}
+      {error && <p className="text-sm text-destructive">Failed to load projects.</p>}
+
+      {!isLoading && projects.length === 0 && (
+        <div className="rounded-lg border border-dashed p-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            No projects yet. Upload a WIF file to get started.
+          </p>
+          <Button className="mt-4" onClick={() => setShowUpload(true)}>
+            New Project
           </Button>
         </div>
-      </header>
+      )}
 
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-semibold">Projects</h1>
-          <Button onClick={() => setShowUpload(true)}>New Project</Button>
-        </div>
-
-        {isLoading && (
-          <p className="text-sm text-muted-foreground">Loading projects…</p>
-        )}
-
-        {error && (
-          <p className="text-sm text-destructive">Failed to load projects.</p>
-        )}
-
-        {!isLoading && projects.length === 0 && (
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              No projects yet. Upload a WIF file to get started.
-            </p>
-            <Button className="mt-4" onClick={() => setShowUpload(true)}>
-              New Project
-            </Button>
-          </div>
-        )}
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          {projects.map((p) => (
-            <ProjectCard key={p.id} project={p} activityCounts={activityCountsByProject[p.id]} />
-          ))}
-        </div>
-      </main>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {projects.map((p) => (
+          <ProjectCard key={p.id} project={p} activityCounts={activityCountsByProject[p.id]} />
+        ))}
+      </div>
 
       {showUpload && (
         <UploadWifModal
