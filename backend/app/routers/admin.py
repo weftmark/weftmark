@@ -900,18 +900,24 @@ def _probe_webhook_info() -> ServiceCheckResult:
         )
 
     if settings.cf_zero_trust_enabled:
-        checks.append(ServicePermCheck(name="cf_access", status="ok", message="Enabled"))
+        checks.append(
+            ServicePermCheck(
+                name="cf_access",
+                status="ok",
+                message="Enabled — requests pass through Cloudflare Zero Trust / Access",
+            )
+        )
         if settings.cf_access_client_id:
-            checks.append(ServicePermCheck(name="client_id", status="ok", message=settings.cf_access_client_id))
+            checks.append(ServicePermCheck(name="cf_client_id", status="ok", message=settings.cf_access_client_id))
         else:
-            checks.append(ServicePermCheck(name="client_id", status="error", message="CF_ACCESS_CLIENT_ID not set"))
+            checks.append(ServicePermCheck(name="cf_client_id", status="error", message="CF_ACCESS_CLIENT_ID not set"))
         if settings.cf_access_client_secret:
             s = settings.cf_access_client_secret
             obfuscated = s[:6] + "••••••" if len(s) > 6 else "••••••"
-            checks.append(ServicePermCheck(name="client_secret", status="ok", message=obfuscated))
+            checks.append(ServicePermCheck(name="cf_client_secret", status="ok", message=obfuscated))
         else:
             checks.append(
-                ServicePermCheck(name="client_secret", status="error", message="CF_ACCESS_CLIENT_SECRET not set")
+                ServicePermCheck(name="cf_client_secret", status="error", message="CF_ACCESS_CLIENT_SECRET not set")
             )
     else:
         checks.append(ServicePermCheck(name="cf_access", status="ok", message="Disabled"))
