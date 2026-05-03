@@ -21,6 +21,7 @@ import {
   createEulaVersion,
   getAdminServices,
   sendTestEmail,
+  testWebhook,
   getAuditLog,
   getReconcileReport,
   backfillClerkUser,
@@ -32,6 +33,7 @@ import {
   type ServiceCheck,
   type ServicePermCheck,
   type ReconcileReport,
+  type WebhookProbeResult,
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
@@ -926,8 +928,26 @@ function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean 
 
 function CombinedServiceRow({ service, detail }: { service: ReadinessService; detail?: ServiceCheck }) {
   const [open, setOpen] = useState(false);
+  const [webhookResult, setWebhookResult] = useState<WebhookProbeResult | null>(null);
+  const [webhookTesting, setWebhookTesting] = useState(false);
+  const isWebhook = service.name === "Clerk Webhook";
   const metaEntries = Object.entries(detail?.meta ?? {});
   const hasDetail = detail && (metaEntries.length > 0 || detail.checks.length > 0);
+
+  async function handleTestWebhook(e: React.MouseEvent) {
+    e.stopPropagation();
+    setWebhookTesting(true);
+    setWebhookResult(null);
+    try {
+      const result = await testWebhook();
+      setWebhookResult(result);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Request failed";
+      setWebhookResult({ status: "error", latency_ms: null, message: msg });
+    } finally {
+      setWebhookTesting(false);
+    }
+  }
 
   return (
     <div className="bg-background">
@@ -940,9 +960,27 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
         <span className={`text-sm flex-1 ${!service.ok ? "text-destructive" : "text-muted-foreground"}`}>
           {service.message || (service.ok ? "ok" : "failed")}
         </span>
+        {isWebhook && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-xs"
+            disabled={webhookTesting}
+            onClick={handleTestWebhook}
+          >
+            {webhookTesting ? "Testing…" : "Test"}
+          </Button>
+        )}
         {!service.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
         {hasDetail && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
       </button>
+      {webhookResult && (
+        <div className={`px-4 py-2 border-t text-xs font-mono ${webhookResult.status === "ok" ? "text-green-600" : "text-destructive"}`}>
+          {webhookResult.status === "ok"
+            ? `✓ Round-trip: ${webhookResult.latency_ms}ms`
+            : `✗ ${webhookResult.message}`}
+        </div>
+      )}
       {open && hasDetail && (
         <div className="border-t">
           {metaEntries.length > 0 && (
@@ -991,12 +1029,12 @@ function ServicesTab() {
     return () => clearInterval(id);
   }, []);
 
-  // Detailed diagnostics — on demand only
+  // Detailed diagnostics — runs on mount, re-runnable via button
   const { data: diagnostics, isFetching: diagFetching, refetch: runDiag, dataUpdatedAt: diagAt } = useQuery({
     queryKey: ["admin", "services"],
     queryFn: getAdminServices,
     staleTime: Infinity,
-    enabled: false,
+    enabled: true,
   });
 
   const diagTime = diagAt ? new Date(diagAt).toLocaleTimeString() : null;
@@ -1021,7 +1059,7 @@ function ServicesTab() {
           </span>
         </div>
         <Button size="sm" variant="outline" disabled={diagFetching} onClick={() => runDiag()}>
-          {diagFetching ? "Running…" : diagTime ? `Diagnostics: ${diagTime}` : "Run diagnostics"}
+          {diagFetching ? "Running…" : diagTime ? `Re-run · ${diagTime}` : "Running…"}
         </Button>
       </div>
 

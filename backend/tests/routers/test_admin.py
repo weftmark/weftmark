@@ -1122,11 +1122,24 @@ class TestAdminServices:
         resp = await admin_client.get("/api/admin/services")
         assert resp.status_code == 200
 
-    async def test_returns_four_services(self, admin_client: AsyncClient):
+    async def test_returns_five_services(self, admin_client: AsyncClient):
         data = (await admin_client.get("/api/admin/services")).json()
-        assert len(data) == 4
+        assert len(data) == 5
         names = {s["service"] for s in data}
-        assert names == {"PostgreSQL", "S3", "Clerk", "SMTP"}
+        assert names == {"PostgreSQL", "S3", "Clerk", "SMTP", "Clerk Webhook"}
+
+    async def test_webhook_service_includes_url(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/services")).json()
+        wh = next(s for s in data if s["service"] == "Clerk Webhook")
+        assert "url" in wh["meta"]
+        assert wh["meta"]["url"].endswith("/auth/clerk/webhook")
+
+    async def test_webhook_service_cf_disabled_by_default(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/services")).json()
+        wh = next(s for s in data if s["service"] == "Clerk Webhook")
+        cf_check = next((c for c in wh["checks"] if c["name"] == "cf_access"), None)
+        assert cf_check is not None
+        assert cf_check["message"] == "Disabled"
 
     async def test_each_result_has_expected_fields(self, admin_client: AsyncClient):
         data = (await admin_client.get("/api/admin/services")).json()
