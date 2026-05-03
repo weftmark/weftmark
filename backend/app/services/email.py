@@ -9,9 +9,16 @@ from app.config import get_settings
 _TEMPLATES = Path(__file__).parent.parent / "templates" / "email"
 
 
-def _render(name: str, **kwargs: str) -> tuple[str, str]:
-    txt = (_TEMPLATES / f"{name}.txt").read_text().format(**kwargs)
-    html = (_TEMPLATES / f"{name}.html").read_text().format(**kwargs)
+def _render(name: str, **kwargs) -> tuple[str, str]:
+    settings = get_settings()
+    kwargs.setdefault("app_name", settings.smtp_from_name)
+    kwargs.setdefault("frontend_url", settings.frontend_url)
+    raw_base_html = (_TEMPLATES / "_base.html").read_text()
+    raw_base_txt = (_TEMPLATES / "_base.txt").read_text()
+    raw_body_html = (_TEMPLATES / f"{name}.html").read_text()
+    raw_body_txt = (_TEMPLATES / f"{name}.txt").read_text()
+    html = raw_base_html.replace("__BODY__", raw_body_html).format(**kwargs)
+    txt = raw_base_txt.replace("__BODY__", raw_body_txt).format(**kwargs)
     return txt, html
 
 
@@ -20,12 +27,15 @@ async def _send(to: list[str], subject: str, txt: str, html: str) -> None:
     if settings.app_env == "dev":
         subject = f"[DEV] {subject}"
         txt = "*** DEV ENVIRONMENT — this email was sent from a non-production system ***\n\n" + txt
-        html = (
+        html = html.replace(
+            "<!-- DEV_BANNER -->",
             '<div style="background:#f59e0b;color:#000;font-weight:bold;padding:8px 12px;'
-            'margin-bottom:16px;border-radius:4px;font-family:sans-serif;">'
-            "⚠️ DEV ENVIRONMENT — this email was sent from a non-production system"
-            "</div>\n" + html
+            'font-family:Arial,Helvetica,sans-serif;">'
+            "DEV ENVIRONMENT — this email was sent from a non-production system"
+            "</div>",
         )
+    else:
+        html = html.replace("<!-- DEV_BANNER -->", "")
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
@@ -55,11 +65,7 @@ async def send_pending_signup_notification(admin_emails: list[str], display_name
 
 async def send_signup_received_email(to_email: str, display_name: str) -> None:
     settings = get_settings()
-    txt, html = _render(
-        "pending_signup_user_confirmation",
-        display_name=display_name,
-        app_name=settings.smtp_from_name,
-    )
+    txt, html = _render("pending_signup_user_confirmation", display_name=display_name)
     await _send([to_email], f"Your {settings.smtp_from_name} sign-up request was received", txt, html)
 
 
@@ -68,7 +74,6 @@ async def send_account_approved_email(to_email: str, display_name: str) -> None:
     txt, html = _render(
         "account_approved",
         display_name=display_name,
-        app_name=settings.smtp_from_name,
         login_url=f"{settings.frontend_url}/login",
     )
     await _send([to_email], f"Your {settings.smtp_from_name} account is ready", txt, html)
@@ -76,24 +81,18 @@ async def send_account_approved_email(to_email: str, display_name: str) -> None:
 
 async def send_account_denied_email(to_email: str, display_name: str) -> None:
     settings = get_settings()
-    txt, html = _render(
-        "account_denied",
-        display_name=display_name,
-        app_name=settings.smtp_from_name,
-    )
+    txt, html = _render("account_denied", display_name=display_name)
     await _send([to_email], f"Your {settings.smtp_from_name} sign-up request", txt, html)
 
 
 async def send_approval_confirmation_to_admins(
     admin_emails: list[str], display_name: str, email: str, approved_by: str
 ) -> None:
-    settings = get_settings()
     txt, html = _render(
         "approval_admin_confirmation",
         display_name=display_name,
         email=email,
         approved_by=approved_by,
-        app_name=settings.smtp_from_name,
     )
     await _send(admin_emails, f"Account approved — {display_name} ({email})", txt, html)
 
@@ -104,20 +103,13 @@ async def send_deletion_created_admin(admin_emails: list[str], display_name: str
         "deletion_created_admin",
         display_name=display_name,
         email=email,
-        app_name=settings.smtp_from_name,
         admin_url=f"{settings.frontend_url}/admin",
     )
     await _send(admin_emails, f"User deletion queued — {display_name} ({email})", txt, html)
 
 
 async def send_deletion_completed_admin(admin_emails: list[str], display_name: str, email: str) -> None:
-    settings = get_settings()
-    txt, html = _render(
-        "deletion_completed_admin",
-        display_name=display_name,
-        email=email,
-        app_name=settings.smtp_from_name,
-    )
+    txt, html = _render("deletion_completed_admin", display_name=display_name, email=email)
     await _send(admin_emails, f"User deletion complete — {display_name} ({email})", txt, html)
 
 
@@ -130,7 +122,6 @@ async def send_deletion_stalled_superuser(
         display_name=display_name,
         email=email,
         user_id=user_id,
-        app_name=settings.smtp_from_name,
         admin_url=f"{settings.frontend_url}/admin",
     )
     await _send(superuser_emails, f"User deletion stalled — {display_name} ({email})", txt, html)
@@ -138,45 +129,12 @@ async def send_deletion_stalled_superuser(
 
 async def send_test_email(to_email: str) -> None:
     settings = get_settings()
-    txt = (
-        f"This is a test email from {settings.smtp_from_name}.\n\n"
-        "If you received this, your SMTP configuration is working correctly."
-    )
-    html = (
-        f"<p>This is a test email from <strong>{settings.smtp_from_name}</strong>.</p>"
-        "<p>If you received this, your SMTP configuration is working correctly.</p>"
-    )
-    await _send([to_email], f"{settings.smtp_from_name} — Test Email", txt, html)
+    txt, html = _render("test_email")
+    await _send([to_email], f"{settings.smtp_from_name} — SMTP Test", txt, html)
 
 
 async def send_invite_email(to_email: str, invite_token: str, expires_days: int) -> None:
     settings = get_settings()
     invite_url = f"{settings.frontend_url}/register?token={invite_token}"
-
-    message = MIMEMultipart("alternative")
-    message["Subject"] = f"You've been invited to {settings.smtp_from_name}"
-    message["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
-    message["To"] = to_email
-
-    text_body = (
-        f"You've been invited to join {settings.smtp_from_name}.\n\n"
-        f"Click the link below to accept your invitation:\n{invite_url}\n\n"
-        f"This link expires in {expires_days} day(s) and can only be used once."
-    )
-    html_body = f"""
-    <p>You've been invited to join <strong>{settings.smtp_from_name}</strong>.</p>
-    <p><a href="{invite_url}">Accept Invitation</a></p>
-    <p>This link expires in {expires_days} day(s) and can only be used once.</p>
-    """
-
-    message.attach(MIMEText(text_body, "plain"))
-    message.attach(MIMEText(html_body, "html"))
-
-    await aiosmtplib.send(
-        message,
-        hostname=settings.smtp_host,
-        port=settings.smtp_port,
-        username=settings.smtp_user,
-        password=settings.smtp_password,
-        start_tls=True,
-    )
+    txt, html = _render("invite", invite_url=invite_url, expires_days=expires_days)
+    await _send([to_email], f"You've been invited to {settings.smtp_from_name}", txt, html)

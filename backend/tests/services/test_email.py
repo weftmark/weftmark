@@ -17,16 +17,25 @@ from app.services.email import (
     send_invite_email,
     send_pending_signup_notification,
     send_signup_received_email,
+    send_test_email,
 )
 
 
 def _decoded_body(msg) -> str:
-    """Return all MIME body parts as a single decoded string.
-
-    MIMEText encodes non-ASCII content (e.g. → arrows in templates) as
-    base64. get_payload(decode=True) handles both plain and base64 parts.
-    """
+    """Return all MIME body parts as a single decoded string."""
     return " ".join(p.get_payload(decode=True).decode("utf-8") for p in msg.get_payload())
+
+
+def _plain_body(msg) -> str:
+    """Return the plain-text MIME part decoded as a string."""
+    part = next(p for p in msg.get_payload() if p.get_content_type() == "text/plain")
+    return part.get_payload(decode=True).decode("utf-8")
+
+
+def _html_body(msg) -> str:
+    """Return the HTML MIME part decoded as a string."""
+    part = next(p for p in msg.get_payload() if p.get_content_type() == "text/html")
+    return part.get_payload(decode=True).decode("utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -41,12 +50,12 @@ SETTINGS_OVERRIDES = {
     "smtp_port": 587,
     "smtp_user": "smtpuser",
     "smtp_password": "smtppass",
+    "app_env": "test",
 }
 
 
 @pytest.fixture(autouse=True)
 def _patch_settings(monkeypatch):
-    """Override all settings consumed by send_invite_email."""
     from app.config import get_settings
 
     settings = get_settings()
@@ -55,11 +64,11 @@ def _patch_settings(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Helper: run send_invite_email with a mock SMTP sender
+# Helper: call send_invite_email with a mock SMTP sender
 # ---------------------------------------------------------------------------
 
 
-async def _send(to="user@test.com", token="tok123", days=7):
+async def _send_invite(to="user@test.com", token="tok123", days=7):
     mock_send = AsyncMock()
     with patch("app.services.email.aiosmtplib.send", mock_send):
         await send_invite_email(to, token, days)
@@ -67,37 +76,37 @@ async def _send(to="user@test.com", token="tok123", days=7):
 
 
 # ---------------------------------------------------------------------------
-# SMTP transport — what aiosmtplib.send receives
+# SMTP transport
 # ---------------------------------------------------------------------------
 
 
 class TestSmtpTransport:
     async def test_send_called_once(self):
-        mock = await _send()
+        mock = await _send_invite()
         mock.assert_called_once()
 
     async def test_smtp_hostname(self):
-        mock = await _send()
+        mock = await _send_invite()
         _, kwargs = mock.call_args
         assert kwargs["hostname"] == "smtp.example.com"
 
     async def test_smtp_port(self):
-        mock = await _send()
+        mock = await _send_invite()
         _, kwargs = mock.call_args
         assert kwargs["port"] == 587
 
     async def test_smtp_username(self):
-        mock = await _send()
+        mock = await _send_invite()
         _, kwargs = mock.call_args
         assert kwargs["username"] == "smtpuser"
 
     async def test_smtp_password(self):
-        mock = await _send()
+        mock = await _send_invite()
         _, kwargs = mock.call_args
         assert kwargs["password"] == "smtppass"
 
     async def test_start_tls_enabled(self):
-        mock = await _send()
+        mock = await _send_invite()
         _, kwargs = mock.call_args
         assert kwargs["start_tls"] is True
 
@@ -143,7 +152,7 @@ class TestMessageHeaders:
 
 
 # ---------------------------------------------------------------------------
-# Message body content
+# Invite plain text body
 # ---------------------------------------------------------------------------
 
 
@@ -153,7 +162,7 @@ class TestPlainTextBody:
         with patch("app.services.email.aiosmtplib.send", mock_send):
             await send_invite_email(to, token, days)
         msg, *_ = mock_send.call_args.args
-        return next(p for p in msg.get_payload() if p.get_content_type() == "text/plain").get_payload()
+        return _plain_body(msg)
 
     async def test_contains_invite_url(self):
         body = await self._plain(token="mytoken")
@@ -176,13 +185,18 @@ class TestPlainTextBody:
         assert "once" in body.lower()
 
 
+# ---------------------------------------------------------------------------
+# Invite HTML body
+# ---------------------------------------------------------------------------
+
+
 class TestHtmlBody:
     async def _html(self, token="abc", days=7):
         mock_send = AsyncMock()
         with patch("app.services.email.aiosmtplib.send", mock_send):
             await send_invite_email("u@t.com", token, days)
         msg, *_ = mock_send.call_args.args
-        return next(p for p in msg.get_payload() if p.get_content_type() == "text/html").get_payload()
+        return _html_body(msg)
 
     async def test_contains_invite_url(self):
         html = await self._html(token="htmltoken")
@@ -215,7 +229,7 @@ class TestInviteUrl:
         with patch("app.services.email.aiosmtplib.send", mock_send):
             await send_invite_email("u@t.com", token, 7)
         msg, *_ = mock_send.call_args.args
-        return next(p for p in msg.get_payload() if p.get_content_type() == "text/plain").get_payload()
+        return _plain_body(msg)
 
     async def test_token_appended_as_query_param(self):
         body = await self._url_in_plain("secrettoken")
@@ -245,24 +259,84 @@ class TestTemplateRendering:
         txt, html = _render(
             "account_approved",
             display_name="Alice",
-            app_name="TestApp",
             login_url="http://example.com/login",
         )
         assert "Alice" in txt
         assert "Alice" in html
-        assert "TestApp" in txt
-        assert "TestApp" in html
+        assert "Test Site" in txt
+        assert "Test Site" in html
 
     def test_render_substitutes_all_placeholders(self):
         from app.services.email import _render
 
-        txt, _ = _render(
-            "account_denied",
-            display_name="Bob",
-            app_name="TestApp",
-        )
+        txt, _ = _render("account_denied", display_name="Bob")
         assert "Bob" in txt
         assert "{" not in txt
+
+    def test_render_includes_base_footer(self):
+        from app.services.email import _render
+
+        txt, html = _render("account_approved", display_name="X", login_url="http://example.com/login")
+        assert "example.com" in txt
+        assert "example.com" in html
+
+    def test_render_invite_template(self):
+        from app.services.email import _render
+
+        txt, html = _render(
+            "invite",
+            invite_url="http://example.com/register?token=abc",
+            expires_days=7,
+        )
+        assert "http://example.com/register?token=abc" in txt
+        assert "http://example.com/register?token=abc" in html
+        assert "7" in txt
+
+    def test_render_test_email_template(self):
+        from app.services.email import _render
+
+        txt, html = _render("test_email")
+        assert "Test Site" in txt
+        assert "Test Site" in html
+
+
+# ---------------------------------------------------------------------------
+# send_test_email
+# ---------------------------------------------------------------------------
+
+
+class TestSendTestEmail:
+    async def _call(self, to="admin@test.com"):
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_test_email(to)
+        return mock_send
+
+    async def test_send_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipient_is_to_email(self):
+        mock = await self._call(to="specific@test.com")
+        msg, *_ = mock.call_args.args
+        assert "specific@test.com" in msg["To"]
+
+    async def test_subject_mentions_site_name(self):
+        mock = await self._call()
+        msg, *_ = mock.call_args.args
+        assert "Test Site" in msg["Subject"]
+
+    async def test_subject_mentions_smtp(self):
+        mock = await self._call()
+        msg, *_ = mock.call_args.args
+        assert "SMTP" in msg["Subject"] or "Test" in msg["Subject"]
+
+    async def test_body_confirms_delivery(self):
+        mock = await self._call()
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "test" in combined.lower()
+        assert "Test Site" in combined
 
 
 # ---------------------------------------------------------------------------

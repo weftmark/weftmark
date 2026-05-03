@@ -1,4 +1,10 @@
-{display_name} ({email}) signed up but has no invite.
+New Sign-up Request
 
-Review and approve at: {admin_url}
-Admin → Invites → Waiting to join
+A new user has requested access to {app_name} and is waiting for
+approval.
+
+Name:   {display_name}
+Email:  {email}
+
+Review and approve: {admin_url}
+Navigate to Admin > Invites > Waiting to Join.

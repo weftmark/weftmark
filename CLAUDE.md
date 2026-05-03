@@ -68,11 +68,14 @@ Three tiers: `main` (production-ready), `dev` (integration), working branches (`
 | `ci-main-pr.yml` | PR to `main` | lint, typecheck, dep audit, docker build; **no file writes allowed** |
 | `ci-main-push.yml` | push to `main` | promote version tag, SBOM artifacts, publish versioned + `:latest` images |
 | `check-merge-source.yml` | PR to `main` | enforces source must be `dev` or `hotfix/*` |
-| `publish-dev.yml` | manual dispatch | publishes `:dev` + `:{version}-dev` images to ghcr.io |
+| `publish-dev.yml` | manual dispatch | publishes `:dev` + `:{version}-dev` images to ghcr.io; auto-opens a QA issue listing test plans from all PRs in the build range |
+| `sync-main-to-dev.yml` | push to `main` | auto-opens `chore: sync main → dev` PR to keep branches in sync; skipped if already open or nothing to sync |
+| `sync-eula.yml` | manual dispatch | runs `tools/export_eula_migration.py` against the live API, commits new Alembic migration files, opens PR to `dev` |
+| `triage.yml` | issue opened / labeled | adds `needs-triage` label to new unlabelled issues; removes it when any other label is added |
 
 After every push, check CI status proactively: `gh run list --repo weftmark/weftmark --limit 3`. If failed, pull logs with `gh run view <id> --log-failed` and surface errors immediately.
 
-Bot actor: `weftmark-bot[bot]`. Post-merge jobs use `if: github.actor != 'weftmark-bot[bot]'` to prevent infinite re-triggering. Bot commits use `[skip actions]` in the message.
+Bot actor: `weftmark-bot[bot]`. Post-merge jobs use `if: github.actor != 'weftmark-bot[bot]'` to prevent infinite re-triggering. Bot commits do **not** use `[skip actions]` — that token propagates into merge commit bodies and suppresses PR CI on the target branch. The actor guard is sufficient.
 
 Append `[skip ci]` to commit messages for documentation-only changes (`.md` files, comments) to avoid unnecessary CI runs.
 

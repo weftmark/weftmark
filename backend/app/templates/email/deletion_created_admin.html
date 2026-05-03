@@ -1,11 +1,19 @@
-<p>A user deletion has been queued in <strong>{app_name}</strong>.</p>
-
-<table style="border-collapse:collapse;margin:16px 0;">
-  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">User</td><td style="padding:4px 0;"><strong>{display_name}</strong> ({email})</td></tr>
-  <tr><td style="padding:4px 12px 4px 0;color:#6b7280;">Status</td><td style="padding:4px 0;">Pending — data cascade in progress</td></tr>
+<p style="margin:0 0 16px;font-size:16px;font-weight:bold;color:#1d3557;">User Deletion Queued</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 16px;background:#f9fafb;border-radius:6px;overflow:hidden;">
+  <tr>
+    <td style="padding:10px 16px;color:#6b7280;font-size:14px;white-space:nowrap;vertical-align:top;width:80px;">User</td>
+    <td style="padding:10px 16px;font-size:14px;vertical-align:top;"><strong>{display_name}</strong> ({email})</td>
+  </tr>
+  <tr style="background:#f3f4f6;">
+    <td style="padding:10px 16px;color:#6b7280;font-size:14px;white-space:nowrap;vertical-align:top;">Status</td>
+    <td style="padding:10px 16px;font-size:14px;vertical-align:top;color:#d97706;font-weight:bold;">Pending &mdash; data cascade in progress</td>
+  </tr>
 </table>
-
-<p>All user data (projects, activities, looms, uploads) will be permanently
-deleted by the background task. The user's account is already blocked.</p>
-
-<p><a href="{admin_url}">View Admin Panel</a></p>
+<p style="margin:0 0 20px;font-size:14px;">All user data (projects, activities, looms, and uploads) will be permanently deleted by the background worker. The user's account is already blocked.</p>
+<table cellpadding="0" cellspacing="0" role="presentation">
+  <tr>
+    <td style="background:#1d3557;border-radius:6px;">
+      <a href="{admin_url}" style="display:inline-block;padding:12px 28px;color:#ffffff;font-weight:bold;text-decoration:none;font-size:15px;font-family:Arial,Helvetica,sans-serif;">View Admin Panel</a>
+    </td>
+  </tr>
+</table>

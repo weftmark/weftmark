@@ -1,0 +1,6 @@
+__BODY__
+
+---
+This is an automated message from {app_name}.
+{frontend_url}
+Do not reply to this email.
