@@ -250,6 +250,7 @@ _EULA_V09 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">2. Accepting these terms</h3>
   <p>You must accept these Terms of Service to create an account and use WeftMark. By clicking "I Accept," you agree to these terms.</p>
+  <p>By accepting these Terms, you also acknowledge our <a href="/privacy">Privacy Policy</a>, which describes how we collect, use, and protect your personal data and explains your rights under applicable privacy laws. The Privacy Policy is incorporated into these Terms by reference.</p>
   <p>If you do not accept, you may choose to delete your account from the same screen. Deleting your account permanently removes all your data from our servers.</p>
 </section>
 

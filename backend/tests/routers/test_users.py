@@ -9,8 +9,8 @@ from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
 
-# Version seeded by migration 0025 — update here if the seed changes.
-SEEDED_EULA_VERSION = "0.3"
+# Current version seeded by 0001_baseline — update here if the seed changes.
+SEEDED_EULA_VERSION = "0.9"
 
 # ---------------------------------------------------------------------------
 # GET /api/users/me
