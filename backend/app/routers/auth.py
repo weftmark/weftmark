@@ -203,9 +203,10 @@ async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
         return
 
     # Unexpected Clerk-side deletion (e.g. deleted via Clerk dashboard).
-    # Flag the record so admins can review and choose to delete all data.
+    # Null the clerk_user_id so the record is detached, and flag for admin review.
     user.clerk_errored = True
     user.is_active = False
+    user.clerk_user_id = None
     await write_audit_log(db, event_type="user.clerk_errored", target_user_id=user.id, target_email=user.email)
     await db.commit()
     log.warning(

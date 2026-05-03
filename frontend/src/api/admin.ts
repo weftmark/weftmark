@@ -188,3 +188,25 @@ export const getAuditLog = (params: { page?: number; page_size?: number; event_t
   const query = qs.toString();
   return api.get<AuditLogPage>(`/api/admin/audit-log${query ? `?${query}` : ""}`);
 };
+
+export interface ReconcileClerkOnlyUser {
+  clerk_user_id: string;
+  email: string;
+  display_name: string;
+}
+
+export interface ReconcileDbOnlyUser {
+  user_id: string;
+  email: string;
+  display_name: string;
+  clerk_errored: boolean;
+}
+
+export interface ReconcileReport {
+  clerk_only: ReconcileClerkOnlyUser[];
+  db_only: ReconcileDbOnlyUser[];
+}
+
+export const getReconcileReport = () => api.get<ReconcileReport>("/api/admin/reconcile");
+export const backfillClerkUser = (clerkUserId: string, role: "user" | "admin" = "user") =>
+  api.post<{ status: string; user_id: string; email: string }>(`/api/admin/reconcile/backfill/${clerkUserId}`, { role });
