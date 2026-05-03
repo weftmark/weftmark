@@ -1728,7 +1728,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.36.5": {
+  "weaving-site@0.63.0": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend"
