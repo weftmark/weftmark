@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity, ActivityStep
+from app.models.audit_log import AuditLog
 from app.models.project import Project
 from app.models.user import User
 from app.models.user_identity import UserIdentity
@@ -251,6 +252,59 @@ class TestDeleteAccount:
 
         assert await db_session.scalar(select(Yarn).where(Yarn.id == yarn_id)) is None
         assert await db_session.scalar(select(Skein).where(Skein.yarn_id == yarn_id)) is None
+
+
+# ---------------------------------------------------------------------------
+# POST /api/users/me/eula
+# ---------------------------------------------------------------------------
+
+
+class TestAcceptEula:
+    async def test_returns_200(self, auth_client: AsyncClient):
+        resp = await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
+        assert resp.status_code == 200
+
+    async def test_sets_accepted_version_on_user(
+        self, auth_client: AsyncClient, test_user: User, db_session: AsyncSession
+    ):
+        await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
+        await db_session.refresh(test_user)
+        assert test_user.eula_accepted_version == SEEDED_EULA_VERSION
+        assert test_user.eula_accepted_at is not None
+
+    async def test_writes_audit_log_entry(self, auth_client: AsyncClient, test_user: User, db_session: AsyncSession):
+        await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
+        entry = await db_session.scalar(
+            select(AuditLog).where(
+                AuditLog.actor_email == test_user.email,
+                AuditLog.event_type == "eula.accepted",
+            )
+        )
+        assert entry is not None
+        assert entry.details == {"version": SEEDED_EULA_VERSION}
+
+    async def test_each_acceptance_produces_separate_audit_entry(
+        self, auth_client: AsyncClient, test_user: User, db_session: AsyncSession
+    ):
+        await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
+        await auth_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
+        entries = list(
+            await db_session.scalars(
+                select(AuditLog).where(
+                    AuditLog.actor_email == test_user.email,
+                    AuditLog.event_type == "eula.accepted",
+                )
+            )
+        )
+        assert len(entries) == 2
+
+    async def test_version_mismatch_returns_422(self, auth_client: AsyncClient):
+        resp = await auth_client.post("/api/users/me/eula", json={"version": "0.0"})
+        assert resp.status_code == 422
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.post("/api/users/me/eula", json={"version": SEEDED_EULA_VERSION})
+        assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------

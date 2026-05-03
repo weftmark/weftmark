@@ -1515,6 +1515,7 @@ const EVENT_TYPES = [
   "user.elevated",
   "user.backfilled",
   "user.clerk_errored",
+  "eula.accepted",
   "signup.approved",
   "signup.dismissed",
   "signup.banned",
