@@ -930,7 +930,10 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
   const [open, setOpen] = useState(false);
   const [webhookResult, setWebhookResult] = useState<WebhookProbeResult | null>(null);
   const [webhookTesting, setWebhookTesting] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [emailSending, setEmailSending] = useState(false);
   const isWebhook = service.name === "Clerk Webhook";
+  const isSmtp = service.name === "SMTP";
   const metaEntries = Object.entries(detail?.meta ?? {});
   const hasDetail = detail && (metaEntries.length > 0 || detail.checks.length > 0);
 
@@ -946,6 +949,21 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
       setWebhookResult({ status: "error", latency_ms: null, message: msg });
     } finally {
       setWebhookTesting(false);
+    }
+  }
+
+  async function handleTestEmail(e: React.MouseEvent) {
+    e.stopPropagation();
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const result = await sendTestEmail();
+      setEmailResult({ ok: true, msg: `Sent to ${result.to}` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Request failed";
+      setEmailResult({ ok: false, msg });
+    } finally {
+      setEmailSending(false);
     }
   }
 
@@ -971,6 +989,17 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
             {webhookTesting ? "Testing…" : "Test"}
           </Button>
         )}
+        {isSmtp && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-xs"
+            disabled={emailSending}
+            onClick={handleTestEmail}
+          >
+            {emailSending ? "Sending…" : "Send Test"}
+          </Button>
+        )}
         {!service.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
         {hasDetail && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
       </button>
@@ -979,6 +1008,11 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
           {webhookResult.status === "ok"
             ? `✓ Round-trip: ${webhookResult.latency_ms}ms`
             : `✗ ${webhookResult.message}`}
+        </div>
+      )}
+      {emailResult && (
+        <div className={`px-4 py-2 border-t text-xs ${emailResult.ok ? "text-green-600" : "text-destructive"}`}>
+          {emailResult.ok ? `✓ ${emailResult.msg}` : `✗ ${emailResult.msg}`}
         </div>
       )}
       {open && hasDetail && (
@@ -1013,8 +1047,6 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
 }
 
 function ServicesTab() {
-  const { user: currentUser } = useAuth();
-
   // Live status from /health/detailed — auto-refreshes every 30s
   const [detailed, setDetailed] = useState<ReadinessResponse | null>(null);
   const [detailedAt, setDetailedAt] = useState<Date | null>(null);
@@ -1039,13 +1071,6 @@ function ServicesTab() {
 
   const diagTime = diagAt ? new Date(diagAt).toLocaleTimeString() : null;
   const getDetail = (name: string) => diagnostics?.find((d) => d.service === name);
-
-  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const testEmail = useMutation({
-    mutationFn: sendTestEmail,
-    onSuccess: (d) => setTestResult({ ok: true, msg: `Sent to ${d.to}` }),
-    onError: (e: Error) => setTestResult({ ok: false, msg: e.message }),
-  });
 
   return (
     <div className="space-y-4">
@@ -1073,27 +1098,6 @@ function ServicesTab() {
         </div>
       )}
 
-      <div className="border rounded-lg p-4 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium">Test Email</p>
-          <p className="text-xs text-muted-foreground">
-            Sends a test email to {currentUser?.email}
-          </p>
-          {testResult && (
-            <p className={`text-xs mt-1 ${testResult.ok ? "text-green-600" : "text-destructive"}`}>
-              {testResult.msg}
-            </p>
-          )}
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={testEmail.isPending}
-          onClick={() => { setTestResult(null); testEmail.mutate(); }}
-        >
-          {testEmail.isPending ? "Sending…" : "Send Test Email"}
-        </Button>
-      </div>
     </div>
   );
 }
