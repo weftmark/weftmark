@@ -6,18 +6,22 @@ Routes:
   GET  /auth/me             — return current user profile
 
 Invite management (admin only):
-  POST   /auth/invite         — create invite + send email
+  POST   /auth/invite         — create invite + pre-create User record + send email
   GET    /auth/invites         — list all invites
-  DELETE /auth/invite/{id}    — revoke invite
+  DELETE /auth/invite/{id}    — revoke invite + soft-delete pre-created User
 
 User creation flow:
-  1. Admin creates an invite for an email address.
-  2. Invitee receives an email with the WeftMark sign-up URL.
-  3. Invitee signs up via Clerk (Google, email, etc.).
-  4. Clerk fires user.created webhook.
-  5. Webhook checks for a valid invite (or first-user bootstrap).
-  6. If valid: creates User record in our DB, consumes invite.
-  7. If invalid: no DB record created — user gets 401 from all API routes.
+  1. Admin creates an invite (with role) for an email address.
+  2. A User record is pre-created in the DB with clerk_user_id=None and the intended role.
+  3. Invitee receives an email with the WeftMark sign-up URL.
+  4. Invitee signs up via Clerk (Google, email, etc.).
+  5. Clerk fires user.created webhook.
+  6. Webhook finds the pre-created User by email (clerk_user_id IS NULL), attaches the
+     Clerk ID, marks it active, and consumes the invite.
+  7. If no pre-created User exists: creates a PendingSignup instead.
+
+The seed CLI follows the same pattern: it pre-creates User records with the correct
+roles before creating Clerk accounts, so the webhook just attaches.
 """
 
 import logging
@@ -28,7 +32,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -112,50 +116,50 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
     last_name = (data.get("last_name") or "").strip()
     display_name = f"{first_name} {last_name}".strip() or email
 
-    user_count = await db.scalar(select(func.count()).select_from(User))
-    is_first_user = user_count == 0
+    # Find a pre-created User record (from an invite or the seed CLI).
+    user = await db.scalar(
+        select(User).where(User.email == email, User.clerk_user_id.is_(None), User.deleted_at.is_(None))
+    )
 
-    if not is_first_user:
-        invite = await _consume_invite(db, email)
-        if invite is None:
-            log.warning(
-                "Clerk user.created for %s (%s) — no valid invite found; skipping DB record",
-                clerk_user_id,
-                email,
+    if user is None:
+        # No pre-created record — treat as an unsolicited signup (pending review).
+        log.warning(
+            "Clerk user.created for %s (%s) — no pre-created User found; creating PendingSignup",
+            clerk_user_id,
+            email,
+        )
+        existing = await db.scalar(select(PendingSignup).where(PendingSignup.clerk_user_id == clerk_user_id))
+        if existing is None:
+            db.add(PendingSignup(clerk_user_id=clerk_user_id, email=email, display_name=display_name))
+            await db.commit()
+            await set_user_metadata(clerk_user_id, {"status": "pending_signup", "is_admin": False})
+            admin_emails = list(
+                await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None)))
             )
-            existing = await db.scalar(select(PendingSignup).where(PendingSignup.clerk_user_id == clerk_user_id))
-            if existing is None:
-                db.add(PendingSignup(clerk_user_id=clerk_user_id, email=email, display_name=display_name))
-                await db.commit()
-                await set_user_metadata(clerk_user_id, {"status": "pending_signup", "is_admin": False})
-                admin_emails = list(
-                    await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None)))
-                )
+            try:
+                await send_signup_received_email(email, display_name)
+            except Exception:
+                log.exception("Failed to send signup received email to %s", email)
+            if admin_emails:
                 try:
-                    await send_signup_received_email(email, display_name)
+                    await send_pending_signup_notification(admin_emails, display_name, email)
                 except Exception:
-                    log.exception("Failed to send signup received email to %s", email)
-                if admin_emails:
-                    try:
-                        await send_pending_signup_notification(admin_emails, display_name, email)
-                    except Exception:
-                        log.exception("Failed to send pending signup notification to admins")
-            return
+                    log.exception("Failed to send pending signup notification to admins")
+        return
 
-    user = User(
-        email=email,
-        display_name=display_name,
-        clerk_user_id=clerk_user_id,
-        is_admin=is_first_user,
-        is_superuser=is_first_user,
-        ai_training_consent=True,
-    )
-    db.add(user)
+    # Attach the Clerk ID and update the display name from Clerk's data.
+    user.clerk_user_id = clerk_user_id
+    user.display_name = display_name
     await db.commit()
+
+    # Consume the associated invite (audit trail; may already be consumed by seed CLI).
+    await _consume_invite(db, email)
+
     await set_user_metadata(
-        clerk_user_id, {"status": "active", "is_admin": is_first_user, "is_superuser": is_first_user}
+        clerk_user_id,
+        {"status": "active", "is_admin": user.is_admin, "is_superuser": user.is_superuser},
     )
-    log.info("Created User record for Clerk user %s (%s)", clerk_user_id, email)
+    log.info("Attached Clerk user %s to pre-created User for %s", clerk_user_id, email)
 
 
 async def _handle_user_updated(db: AsyncSession, data: dict) -> None:
@@ -297,12 +301,14 @@ async def me(
 
 class InviteRequest(BaseModel):
     email: EmailStr
+    role: str = "user"
     expires_days: int | None = None
 
 
 class InviteResponse(BaseModel):
     id: uuid.UUID
     email: str
+    role: str
     expires_at: datetime
     accepted_at: datetime | None
     revoked_at: datetime | None
@@ -317,13 +323,32 @@ async def create_invite(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> Invite:
+    from app.models.invite import INVITE_ROLES
+
+    if body.role not in INVITE_ROLES:
+        raise HTTPException(status_code=422, detail=f"role must be one of: {', '.join(INVITE_ROLES)}")
+
     expires_days = body.expires_days or settings.invite_expiry_days_default
+
+    # Pre-create the User record so the webhook just attaches the Clerk ID on sign-up.
+    pre_user = User(
+        email=body.email,
+        display_name=body.email,  # updated from Clerk data when the webhook fires
+        is_admin=body.role in ("admin", "superuser"),
+        is_superuser=body.role == "superuser",
+        ai_training_consent=True,
+    )
+    db.add(pre_user)
+    await db.flush()
+
     token = secrets.token_urlsafe(32)
     invite = Invite(
         email=body.email,
         token=token,
+        role=body.role,
         expires_at=datetime.now(timezone.utc) + timedelta(days=expires_days),
         created_by_id=admin.id,
+        user_id=pre_user.id,
     )
     db.add(invite)
     await write_audit_log(db, event_type="invite.created", actor=admin, target_email=body.email)
@@ -349,11 +374,20 @@ async def revoke_invite(
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
+    from datetime import datetime as _dt
+
     invite = await db.scalar(select(Invite).where(Invite.id == invite_id))
     if invite is None:
         raise HTTPException(status_code=404, detail="Invite not found")
     if invite.accepted_at is not None:
         raise HTTPException(status_code=400, detail="Invite already accepted")
-    invite.revoked_at = datetime.now(timezone.utc)
+    invite.revoked_at = _dt.now(timezone.utc)
+
+    # Soft-delete the pre-created User if it hasn't been claimed yet.
+    if invite.user_id is not None:
+        pre_user = await db.get(User, invite.user_id)
+        if pre_user is not None and pre_user.clerk_user_id is None:
+            pre_user.deleted_at = _dt.now(timezone.utc)
+
     await write_audit_log(db, event_type="invite.revoked", actor=admin, target_email=invite.email)
     await db.commit()
