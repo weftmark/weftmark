@@ -21,6 +21,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import get_settings
+from app.models.pending_signup import PendingSignup
 from app.models.seed_run import SeedRun
 from app.models.user import User
 from app.services.clerk import set_user_metadata
@@ -168,7 +169,8 @@ async def _poll_db_for_user(
     session_factory: async_sessionmaker,
     clerk_user_id: str,
     timeout: int,
-) -> User:
+) -> User | None:
+    """Poll DB until the webhook creates the user record. Returns None on timeout."""
     loop = asyncio.get_event_loop()
     deadline = loop.time() + timeout
     while True:
@@ -177,11 +179,37 @@ async def _poll_db_for_user(
             if user:
                 return user
         if loop.time() >= deadline:
-            raise TimeoutError(
-                f"clerk_user_id={clerk_user_id} not found in DB after {timeout}s — "
-                "is the webhook configured and reachable?"
-            )
+            return None
         await asyncio.sleep(1)
+
+
+async def _insert_user_directly(
+    session_factory: async_sessionmaker,
+    clerk_user_id: str,
+    email: str,
+    display_name: str,
+) -> User:
+    """Directly insert a User record, bypassing the invite requirement.
+
+    Used when the webhook rejects a seeded user (no invite). Also removes any
+    PendingSignup the webhook may have created for the same Clerk user.
+    """
+    async with session_factory() as session:
+        pending = await session.scalar(select(PendingSignup).where(PendingSignup.clerk_user_id == clerk_user_id))
+        if pending:
+            await session.delete(pending)
+        user = User(
+            email=email,
+            display_name=display_name,
+            clerk_user_id=clerk_user_id,
+            is_admin=False,
+            is_superuser=False,
+            ai_training_consent=True,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+        return user
 
 
 # ---------------------------------------------------------------------------
@@ -307,13 +335,14 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
             await engine.dispose()
             sys.exit(1)
 
-        try:
-            db_user = await _poll_db_for_user(session_factory, clerk_user_id, poll_timeout)
+        # First user goes through webhook (first-user bootstrap); subsequent users
+        # get rejected by the webhook (no invite) and need a direct DB insert.
+        db_user = await _poll_db_for_user(session_factory, clerk_user_id, min(poll_timeout, 10))
+        if db_user is None:
+            db_user = await _insert_user_directly(session_factory, clerk_user_id, email, display_name)
+            _ok(f"{email} inserted directly in DB (id={db_user.id})")
+        else:
             _ok(f"{email} confirmed in DB (id={db_user.id})")
-        except TimeoutError as exc:
-            _err(str(exc))
-            await engine.dispose()
-            sys.exit(1)
 
         is_admin = role in ("admin", "superuser")
         is_superuser = role == "superuser"
