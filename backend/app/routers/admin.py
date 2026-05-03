@@ -9,7 +9,7 @@ from typing import Literal
 
 import httpx
 import psutil
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1417,7 +1417,7 @@ async def get_reconcile_report(
 @router.post("/reconcile/backfill/{clerk_user_id}", response_model=BackfillResponse, status_code=201)
 async def backfill_clerk_user(
     clerk_user_id: str,
-    body: BackfillRequest,
+    body: BackfillRequest = Body(default_factory=BackfillRequest),
     admin: User = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> BackfillResponse:
