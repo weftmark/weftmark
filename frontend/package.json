@@ -1,11 +1,12 @@
 {
   "name": "weaving-site",
   "private": true,
-  "version": "0.57.3",
+  "version": "0.65.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "postbuild": "node -e \"const fs=require('fs');const p=JSON.parse(fs.readFileSync('./package.json','utf8'));fs.writeFileSync('dist/version.json',JSON.stringify({version:p.version,built_at:new Date().toISOString()}))\"",
     "preview": "vite preview",
     "lint": "eslint src/"
   },

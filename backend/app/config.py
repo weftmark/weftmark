@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     clerk_webhook_secret: str = ""
     webhook_base_url: str = ""  # public URL reachable by Svix, e.g. https://api.example.com
     clerk_webhook_probe_timeout_s: int = 10
+    cf_zero_trust_enabled: bool = False
+    cf_access_client_id: str = ""
+    cf_access_client_secret: str = ""
 
     # SMTP (SMTP2Go)
     smtp_host: str = "mail.smtp2go.com"

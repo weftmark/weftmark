@@ -25,9 +25,9 @@ import { SignOutPage } from "@/pages/SignOutPage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 import { DevBanner } from "@/components/DevBanner";
 import { ServiceHealthBanner } from "@/components/ServiceHealthBanner";
+import { SystemGate } from "@/components/SystemGate";
+import { clerkPublishableKey, clerkKeyMissing } from "@/lib/env";
 import { useAuth } from "@/hooks/useAuth";
-
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
 function RootRoute() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -49,9 +49,23 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  if (clerkKeyMissing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="w-full max-w-sm space-y-4 px-4 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">Configuration Error</h1>
+          <p className="text-sm text-muted-foreground">
+            CLERK_PUBLISHABLE_KEY is not set. Set it in the container environment and restart.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/sign-out">
+    <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/sign-out">
       <VersionGate>
+        <SystemGate>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <BrowserRouter>
@@ -160,6 +174,7 @@ export default function App() {
             </BrowserRouter>
           </AuthProvider>
         </QueryClientProvider>
+        </SystemGate>
       </VersionGate>
     </ClerkProvider>
   );
