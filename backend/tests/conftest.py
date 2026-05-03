@@ -15,6 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 # ---------------------------------------------------------------------------
+# Shared test constants — import these in test modules rather than hardcoding
+# ---------------------------------------------------------------------------
+
+SEEDED_EULA_VERSION = "0.9"
+
+# ---------------------------------------------------------------------------
 # Font patch — must run at import time (rendering tests require it)
 # ---------------------------------------------------------------------------
 
@@ -133,11 +139,13 @@ def setup_database():
                 await conn.run_sync(Base.metadata.drop_all)
                 await conn.run_sync(Base.metadata.create_all)
                 # Seed reference data that tests rely on (not truncated per-test)
+                _eula_body = f"<p>Test EULA v{SEEDED_EULA_VERSION}</p>"
                 await conn.execute(
                     text(
                         "INSERT INTO eula_versions (version, body_html, effective_date) "
-                        "VALUES ('0.9', '<p>Test EULA v0.9</p>', '2026-04-29 00:00:00+00')"
-                    )
+                        "VALUES (:v, :b, '2026-04-29 00:00:00+00')"
+                    ),
+                    {"v": SEEDED_EULA_VERSION, "b": _eula_body},
                 )
 
         asyncio.run(_create())
@@ -178,11 +186,13 @@ async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
         if tables:
             await cleanup.execute(text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
             # Re-seed reference data consumed by tests (EULA version must always exist).
+            _eula_body = f"<p>Test EULA v{SEEDED_EULA_VERSION}</p>"
             await cleanup.execute(
                 text(
                     "INSERT INTO eula_versions (version, body_html, effective_date) "
-                    "VALUES ('0.9', '<p>Test EULA v0.9</p>', '2026-04-29 00:00:00+00')"
-                )
+                    "VALUES (:v, :b, '2026-04-29 00:00:00+00')"
+                ),
+                {"v": SEEDED_EULA_VERSION, "b": _eula_body},
             )
             await cleanup.commit()
 

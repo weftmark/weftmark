@@ -12,6 +12,7 @@ from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
 from app.models.project import Project
 from app.models.user import User
+from tests.conftest import SEEDED_EULA_VERSION
 
 # ---------------------------------------------------------------------------
 # GET /api/admin/users
@@ -896,7 +897,7 @@ class TestGetAdminEula:
 
     async def test_returns_current_version(self, superuser_client: AsyncClient):
         data = (await superuser_client.get("/api/admin/eula")).json()
-        assert data["version"] == "0.3"
+        assert data["version"] == SEEDED_EULA_VERSION
 
     async def test_returns_body_html(self, superuser_client: AsyncClient):
         data = (await superuser_client.get("/api/admin/eula")).json()
