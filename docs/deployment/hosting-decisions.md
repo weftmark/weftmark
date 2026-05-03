@@ -130,7 +130,7 @@
 
 **Decision:** SMTP2Go for transactional email (invitations).
 
-**Status:** Account creation pending — weftmark.com domain must be active for 3 days before SMTP2Go will approve. Tracked in issue #62, due 2026-05-01.
+**Status:** Confirmed working in production (May 3, 2026). All transactional email flows validated — signup notifications, approval emails, and invite emails all delivered correctly.
 
 **Sender:** `admin@weftmark.com` / display name `WeftMark`
 

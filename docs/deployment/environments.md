@@ -60,6 +60,7 @@ The "test" slot becomes a **Neon branch + ephemeral deployment** — created on 
 - **Data:** Real data, never read or modified outside normal app operations.
 - **Update cadence:** Manual deploy after staging validation.
 - **Clerk:** Prod project. This is the source of truth for user identities.
+- **Status:** Live as of May 3, 2026 at v0.74.0. Full smoke test passed.
 
 ---
 

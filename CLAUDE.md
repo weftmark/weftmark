@@ -7,6 +7,7 @@ WeftMark is a multi-user web platform for managing weaving (loom) projects. All 
 - Requirements: `docs/requirements/` (start with `docs/requirements/README.md`)
 - WIF 1.1 spec: `docs/standard/standard-wif1-1.txt`
 - Sample WIF files: `docs/samples/`
+- License: Business Source License 1.1 (BSL) — see `LICENSE`. Non-production use permitted; converts to MIT on 2029-01-01. Do not ask about licensing — it is already decided.
 
 ## Tech stack
 
@@ -76,8 +77,6 @@ Three tiers: `main` (production-ready), `dev` (integration), working branches (`
 After every push, check CI status proactively: `gh run list --repo weftmark/weftmark --limit 3`. If failed, pull logs with `gh run view <id> --log-failed` and surface errors immediately.
 
 Bot actor: `weftmark-bot[bot]`. Post-merge jobs use `if: github.actor != 'weftmark-bot[bot]'` to prevent infinite re-triggering. Bot commits do **not** use `[skip actions]` — that token propagates into merge commit bodies and suppresses PR CI on the target branch. The actor guard is sufficient.
-
-Append `[skip ci]` to commit messages for documentation-only changes (`.md` files, comments) to avoid unnecessary CI runs.
 
 ## Development rules
 
