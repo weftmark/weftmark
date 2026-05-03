@@ -156,6 +156,47 @@ class TestCreateInvite:
         resp = await admin_client.post("/auth/invite", json={"email": "not-an-email"})
         assert resp.status_code == 422
 
+    async def test_superuser_can_invite_admin_role(self, superuser_client: AsyncClient):
+        resp = await superuser_client.post("/auth/invite", json={"email": "newadmin@example.com", "role": "admin"})
+        assert resp.status_code == 201
+        assert resp.json()["role"] == "admin"
+
+    async def test_admin_cannot_invite_admin_role(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/auth/invite", json={"email": "newadmin@example.com", "role": "admin"})
+        assert resp.status_code == 403
+
+    async def test_active_user_email_returns_409(self, admin_client: AsyncClient, db_session: AsyncSession):
+        active = User(
+            email="active@example.com",
+            display_name="Active User",
+            clerk_user_id="clerk_active_123",
+            is_admin=False,
+            is_superuser=False,
+        )
+        db_session.add(active)
+        await db_session.commit()
+        resp = await admin_client.post("/auth/invite", json={"email": "active@example.com"})
+        assert resp.status_code == 409
+
+    async def test_reinvite_unclaimed_user_reuses_record(
+        self, admin_client: AsyncClient, db_session: AsyncSession, superuser_client: AsyncClient
+    ):
+        # First invite creates a pre-user record (user-role).
+        r1 = await admin_client.post("/auth/invite", json={"email": "reinvite@example.com"})
+        assert r1.status_code == 201
+
+        # Second invite (admin-role, sent by superuser) reuses the same User record.
+        r2 = await superuser_client.post("/auth/invite", json={"email": "reinvite@example.com", "role": "admin"})
+        assert r2.status_code == 201
+
+        users = list(
+            await db_session.scalars(
+                select(User).where(User.email == "reinvite@example.com", User.deleted_at.is_(None))
+            )
+        )
+        assert len(users) == 1
+        assert users[0].is_admin is True
+
 
 # ---------------------------------------------------------------------------
 # GET /auth/invites  (admin only)
