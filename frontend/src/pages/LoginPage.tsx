@@ -17,9 +17,15 @@ export function LoginPage() {
     }
   }, [isAuthenticated, isLoading, navigate]);
 
-  // Clerk-authenticated but no DB record — show a holding page instead of looping.
-  if (clerkLoaded && isSignedIn && !isLoading && !isAuthenticated) {
-    const isDenied = clerkStatus === "denied";
+  useEffect(() => {
+    if (clerkLoaded && isSignedIn && !isLoading && !isAuthenticated && clerkStatus === "pending_signup") {
+      navigate("/pending", { replace: true });
+    }
+  }, [clerkLoaded, isSignedIn, isLoading, isAuthenticated, clerkStatus, navigate]);
+
+  // Clerk-authenticated but no DB record and not pending — show denied/holding page.
+  if (clerkLoaded && isSignedIn && !isLoading && !isAuthenticated && clerkStatus !== "pending_signup") {
+    const isDenied = clerkStatus === "denied" || clerkStatus === "banned";
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-full max-w-sm space-y-4 px-4 text-center">
