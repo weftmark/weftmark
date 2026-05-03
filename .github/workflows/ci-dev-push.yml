@@ -10,6 +10,8 @@ name: Dev push
 #
 # All jobs are skipped when weftmark-bot[bot] pushes (version bump commits
 # would otherwise re-trigger this workflow infinitely).
+# Note: do NOT put ci-skip tokens in bot commit messages; they propagate
+# into merge commit bodies and suppress PR workflows on the target branch.
 #
 # Required secrets:
 #   WEFTMARK_BOT_CLIENT_ID   — GitHub App client ID
