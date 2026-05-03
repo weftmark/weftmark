@@ -340,13 +340,12 @@ async def create_invite(
     if active_user is not None:
         raise HTTPException(status_code=409, detail="A user with this email already exists")
 
-    # Reuse an existing unclaimed User record (e.g. from a prior invite) or create one.
-    pre_user = await db.scalar(
-        select(User).where(User.email == body.email, User.clerk_user_id.is_(None), User.deleted_at.is_(None))
-    )
+    # Reuse an existing unclaimed User record (even if soft-deleted by a prior revoke) or create one.
+    pre_user = await db.scalar(select(User).where(User.email == body.email, User.clerk_user_id.is_(None)))
     if pre_user is not None:
         pre_user.is_admin = body.role == "admin"
         pre_user.is_superuser = False
+        pre_user.deleted_at = None
     else:
         pre_user = User(
             email=body.email,

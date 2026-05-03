@@ -197,6 +197,28 @@ class TestCreateInvite:
         assert len(users) == 1
         assert users[0].is_admin is True
 
+    async def test_reinvite_after_revoke_reuses_soft_deleted_record(
+        self, superuser_client: AsyncClient, db_session: AsyncSession
+    ):
+        # Simulate a soft-deleted pre-user (invite was previously revoked).
+        soft_deleted = User(
+            email="revoked@example.com",
+            display_name="revoked@example.com",
+            clerk_user_id=None,
+            is_admin=False,
+            is_superuser=False,
+            deleted_at=datetime.now(timezone.utc),
+        )
+        db_session.add(soft_deleted)
+        await db_session.commit()
+
+        resp = await superuser_client.post("/auth/invite", json={"email": "revoked@example.com", "role": "admin"})
+        assert resp.status_code == 201
+
+        await db_session.refresh(soft_deleted)
+        assert soft_deleted.deleted_at is None
+        assert soft_deleted.is_admin is True
+
 
 # ---------------------------------------------------------------------------
 # GET /auth/invites  (admin only)
