@@ -118,3 +118,4 @@ Reassess coverage completeness when:
 | 2026-04-25 | v0.2.x | 55% | Model imports provide baseline via `app.main` import in conftest |
 | 2026-04-25 | v0.2.x | 68% | Added router tests (health) + model tests (User); DB integration test infrastructure in place |
 | 2026-04-25 | v0.5.0 | 67% | 266 tests; activity creation, restart, clone covered; auth `/me` + token validation added; loom CRUD partially covered |
+| 2026-05-03 | v0.74.0 | — | First production deployment smoke test; 63 items tested end-to-end; 11 issues filed (#266–#275); 2 closed (see GitHub issue #277) |
