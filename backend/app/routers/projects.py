@@ -157,10 +157,7 @@ async def get_project(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
-    data = {c.key: getattr(project, c.key) for c in project.__table__.columns}
-    data["has_preview"] = storage.preview_exists(project.preview_path)
-    data["has_modified_file"] = bool(project.wif_modified_path and storage.file_exists(project.wif_modified_path))
-    return ProjectDetail(**data)
+    return ProjectDetail(**_project_detail_data(project))
 
 
 # ---------------------------------------------------------------------------
@@ -317,10 +314,7 @@ async def generate_liftplan(
 
     await db.commit()
     await db.refresh(project)
-    data = {c.key: getattr(project, c.key) for c in project.__table__.columns}
-    data["has_preview"] = storage.preview_exists(project.preview_path)
-    data["has_modified_file"] = bool(project.wif_modified_path and storage.file_exists(project.wif_modified_path))
-    return ProjectDetail(**data)
+    return ProjectDetail(**_project_detail_data(project))
 
 
 # ---------------------------------------------------------------------------
@@ -380,17 +374,35 @@ async def override_metadata(
     # Update the live metadata value on the project
     setattr(project, body.field, body.value)
 
+    # Re-lint the updated WIF so the mismatch warning is cleared
+    lint = wif_linter.lint(updated_bytes)
+    project.lint_warnings = lint.warnings
+    project.lint_errors = lint.errors
+
     await db.commit()
     await db.refresh(project)
-    data = {c.key: getattr(project, c.key) for c in project.__table__.columns}
-    data["has_preview"] = storage.preview_exists(project.preview_path)
-    data["has_modified_file"] = bool(project.wif_modified_path and storage.file_exists(project.wif_modified_path))
-    return ProjectDetail(**data)
+    return ProjectDetail(**_project_detail_data(project))
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _project_detail_data(project: Project) -> dict:
+    """Build the data dict for ProjectDetail, filtering any mismatch lint warnings
+    that are already covered by a metadata override so stale DB entries don't show."""
+    data = {c.key: getattr(project, c.key) for c in project.__table__.columns}
+    data["has_preview"] = storage.preview_exists(project.preview_path)
+    data["has_modified_file"] = bool(project.wif_modified_path and storage.file_exists(project.wif_modified_path))
+    overrides = project.metadata_overrides or {}
+    warnings = list(data.get("lint_warnings") or [])
+    if "num_treadles" in overrides:
+        warnings = [w for w in warnings if "[WEAVING] declares Treadles=" not in w]
+    if "num_shafts" in overrides:
+        warnings = [w for w in warnings if "[WEAVING] declares Shafts=" not in w]
+    data["lint_warnings"] = warnings
+    return data
 
 
 async def _get_owned_project(project_id: uuid.UUID, user: User, db: AsyncSession) -> Project:

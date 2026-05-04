@@ -150,9 +150,19 @@ export function ProjectDetailPage() {
                   <dd className="col-span-2 text-xs text-destructive">{downloadError}</dd>
                 )}
                 <dt className="text-muted-foreground">Shafts</dt>
-                <dd>{project.num_shafts ?? "—"}</dd>
+                <dd className="flex items-center gap-1.5">
+                  {project.num_shafts ?? "—"}
+                  {project.metadata_overrides?.num_shafts && (
+                    <span className="text-xs text-muted-foreground">(value overwritten)</span>
+                  )}
+                </dd>
                 <dt className="text-muted-foreground">Treadles</dt>
-                <dd>{project.num_treadles ?? "—"}</dd>
+                <dd className="flex items-center gap-1.5">
+                  {project.num_treadles ?? "—"}
+                  {project.metadata_overrides?.num_treadles && (
+                    <span className="text-xs text-muted-foreground">(value overwritten)</span>
+                  )}
+                </dd>
                 <dt className="text-muted-foreground">Warp threads</dt>
                 <dd>{project.warp_threads ?? "—"}</dd>
                 <dt className="text-muted-foreground">Weft threads</dt>
@@ -190,7 +200,7 @@ export function ProjectDetailPage() {
                     <span className="text-foreground">
                       ✓ Available
                       {project.liftplan_generated && (
-                        <span className="ml-1.5 text-xs text-muted-foreground">(algorithmically generated)</span>
+                        <span className="ml-1.5 text-xs text-muted-foreground">(computed)</span>
                       )}
                     </span>
                   ) : (

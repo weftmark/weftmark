@@ -570,8 +570,8 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
   return (
     <div>
       <div className="mb-1 flex justify-between text-sm text-muted-foreground">
-        <span>{pct}% complete</span>
-        <span>{Math.max(0, total - current + 1)} picks remaining</span>
+        <span>{pct}%<span className="hidden sm:inline"> complete</span></span>
+        <span>{Math.max(0, total - current + 1)} picks<span className="hidden sm:inline"> remaining</span></span>
       </div>
       <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
         <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${pct}%` }} />
