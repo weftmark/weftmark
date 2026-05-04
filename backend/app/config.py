@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # Application
     app_secret_key: str = "change-me-in-production"
     app_env: str = "dev"
-    app_name: str = "WeftMark"
+    app_name: str = "weftmark"
     seed_enabled: bool = False
     debug: bool = False
     log_level: str = "INFO"

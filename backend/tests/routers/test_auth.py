@@ -140,7 +140,7 @@ class TestCreateInvite:
         assert call_args[1]["admin_name"] == "Admin"  # admin fixture has display_name="Admin User"
 
     async def test_sends_invite_email_fallback_name(self, db_session: AsyncSession):
-        """Admin with no display_name falls back to 'A WeftMark admin'."""
+        """Admin with no display_name falls back to 'A weftmark admin'."""
 
         admin_no_name = User(
             email="noname@example.com",
@@ -155,8 +155,8 @@ class TestCreateInvite:
         # Verify the fallback logic directly
         display = admin_no_name.display_name or ""
         first_name = display.split()[0] if display.strip() else ""
-        admin_name = first_name or "A WeftMark admin"
-        assert admin_name == "A WeftMark admin"
+        admin_name = first_name or "A weftmark admin"
+        assert admin_name == "A weftmark admin"
 
     async def test_custom_expiry_days(self, admin_client: AsyncClient, db_session: AsyncSession):
         resp = await admin_client.post("/auth/invite", json={"email": "exp@example.com", "expires_days": 30})

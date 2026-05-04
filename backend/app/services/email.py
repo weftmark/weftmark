@@ -134,7 +134,7 @@ async def send_test_email(to_email: str) -> None:
 
 
 async def send_invite_email(
-    to_email: str, invite_token: str, expires_days: int, admin_name: str = "A WeftMark admin"
+    to_email: str, invite_token: str, expires_days: int, admin_name: str = "A weftmark admin"
 ) -> None:
     settings = get_settings()
     invite_url = f"{settings.frontend_url}/register?token={invite_token}"
