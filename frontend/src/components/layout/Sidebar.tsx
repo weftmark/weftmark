@@ -18,6 +18,14 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Activities", href: "/activities", icon: AppIcons.activities },
 ];
 
+const SETTINGS_SECTIONS = [
+  { id: "appearance", label: "Appearance" },
+  { id: "preferences", label: "Preferences" },
+  { id: "privacy", label: "Privacy & data" },
+  { id: "terms", label: "Terms" },
+  { id: "account", label: "Account" },
+];
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -101,10 +109,33 @@ export function Sidebar({ open, onClose }: Props) {
 
         {/* Bottom nav */}
         <div className="shrink-0 border-t border-border px-3 py-3 space-y-0.5">
-          <Link to="/settings" onClick={onClose} className={navCls("/settings")}>
+          <Link to="/settings/appearance" onClick={onClose} className={navCls("/settings")}>
             <AppIcons.settings className={iconCls("/settings")} strokeWidth={1.75} />
             Settings
           </Link>
+
+          {isActive("/settings") && (
+            <div className="ml-3 border-l border-border pl-2 space-y-0.5">
+              {SETTINGS_SECTIONS.map(({ id, label }) => {
+                const href = `/settings/${id}`;
+                const active = location.pathname === href;
+                return (
+                  <Link
+                    key={id}
+                    to={href}
+                    onClick={onClose}
+                    className={`block rounded-md px-2 py-1.5 text-xs transition-colors ${
+                      active
+                        ? "bg-accent/20 text-accent font-medium"
+                        : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
           {user?.is_admin && (
             <Link to="/admin" onClick={onClose} className={navCls("/admin")}>
