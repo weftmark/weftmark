@@ -133,8 +133,10 @@ async def send_test_email(to_email: str) -> None:
     await _send([to_email], f"{settings.smtp_from_name} — SMTP Test", txt, html)
 
 
-async def send_invite_email(to_email: str, invite_token: str, expires_days: int) -> None:
+async def send_invite_email(
+    to_email: str, invite_token: str, expires_days: int, admin_name: str = "A WeftMark admin"
+) -> None:
     settings = get_settings()
     invite_url = f"{settings.frontend_url}/register?token={invite_token}"
-    txt, html = _render("invite", invite_url=invite_url, expires_days=expires_days)
-    await _send([to_email], f"You've been invited to {settings.smtp_from_name}", txt, html)
+    txt, html = _render("invite", invite_url=invite_url, expires_days=expires_days, admin_name=admin_name)
+    await _send([to_email], f"{admin_name} has invited you to join {settings.smtp_from_name}", txt, html)
