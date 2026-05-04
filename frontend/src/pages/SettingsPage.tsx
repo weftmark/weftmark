@@ -126,7 +126,7 @@ export function SettingsPage() {
               <Section title="Appearance">
                 <Field label="Theme">
                   <div className="flex gap-2">
-                    {(["light", "dark"] as const).map((t) => (
+                    {(["light", "dark", "system"] as const).map((t) => (
                       <button
                         key={t}
                         onClick={() => {
