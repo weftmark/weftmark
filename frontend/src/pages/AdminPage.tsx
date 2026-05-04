@@ -849,6 +849,19 @@ function HealthTab() {
 
 declare const __APP_VERSION__: string;
 
+function InfoTable({ rows }: { rows: { label: string; value: string }[] }) {
+  return (
+    <div className="border rounded-lg divide-y overflow-hidden">
+      {rows.map(({ label, value }) => (
+        <div key={label} className="flex items-center justify-between px-4 py-2 bg-background">
+          <span className="text-sm">{label}</span>
+          <span className="text-xs font-mono text-muted-foreground">{value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function VersionsTable() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "versions"],
@@ -858,9 +871,15 @@ function VersionsTable() {
 
   if (isLoading || !data) return null;
 
-  const rows = [
+  const versions = [
     { label: "Frontend", value: __APP_VERSION__ },
     { label: "API", value: data.app },
+    { label: "PostgreSQL", value: `${data.postgres} · ${data.postgres_source}` },
+    { label: "Redis", value: data.redis_server },
+    { label: "Celery", value: data.celery },
+  ];
+
+  const deps = [
     { label: "Python", value: data.python },
     { label: "FastAPI", value: data.fastapi },
     { label: "SQLAlchemy", value: data.sqlalchemy },
@@ -871,17 +890,15 @@ function VersionsTable() {
     { label: "psutil", value: data.psutil },
   ];
 
-
   return (
-    <div>
-      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Versions</h2>
-      <div className="border rounded-lg divide-y overflow-hidden">
-        {rows.map(({ label, value }) => (
-          <div key={label} className="flex items-center justify-between px-4 py-2 bg-background">
-            <span className="text-sm">{label}</span>
-            <span className="text-xs font-mono text-muted-foreground">{value}</span>
-          </div>
-        ))}
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Versions</h2>
+        <InfoTable rows={versions} />
+      </div>
+      <div>
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Dependencies</h2>
+        <InfoTable rows={deps} />
       </div>
     </div>
   );

@@ -53,6 +53,10 @@ export interface AdminHealth {
 export interface AdminVersions {
   app: string;
   python: string;
+  redis_server: string;
+  celery: string;
+  postgres: string;
+  postgres_source: string;
   fastapi: string;
   sqlalchemy: string;
   alembic: string;

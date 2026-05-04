@@ -105,6 +105,10 @@ class AdminHealthResponse(BaseModel):
 class AdminVersionsResponse(BaseModel):
     app: str
     python: str
+    redis_server: str
+    celery: str
+    postgres: str
+    postgres_source: str
     fastapi: str
     sqlalchemy: str
     alembic: str
@@ -1368,13 +1372,38 @@ def _pkg(name: str) -> str:
         return "unknown"
 
 
+async def _redis_server_version() -> str:
+    try:
+        import redis.asyncio as aioredis
+
+        settings = get_settings()
+        client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        info = await client.info("server")
+        await client.aclose()
+        return info.get("redis_version", "unknown")
+    except Exception:
+        return "unavailable"
+
+
 @router.get("/versions", response_model=AdminVersionsResponse)
 async def get_versions(
     _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ) -> AdminVersionsResponse:
+    settings = get_settings()
+
+    pg_row = (await db.execute(text("SELECT version()"))).fetchone()
+    pg_full = pg_row[0] if pg_row else "unknown"
+    pg_version = pg_full.split()[1] if pg_full.startswith("PostgreSQL") else pg_full
+    pg_source = "remote" if settings.postgres_dsn else "local docker"
+
     return AdminVersionsResponse(
         app=VERSION,
         python=platform.python_version(),
+        redis_server=await _redis_server_version(),
+        celery=_pkg("celery"),
+        postgres=pg_version,
+        postgres_source=pg_source,
         fastapi=_pkg("fastapi"),
         sqlalchemy=_pkg("sqlalchemy"),
         alembic=_pkg("alembic"),
