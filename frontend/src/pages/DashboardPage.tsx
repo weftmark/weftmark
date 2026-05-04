@@ -104,10 +104,15 @@ export function DashboardPage() {
               <Link
                 key={project.id}
                 to="/projects"
-                className="rounded-lg border p-4 hover:border-ring transition-colors"
+                className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
               >
-                <p className="text-sm font-medium truncate">{project.name}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{project.wif_filename}</p>
+                <div className="shrink-0 mt-0.5">
+                  <AppIcons.project className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{project.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{project.wif_filename}</p>
+                </div>
               </Link>
             ))}
             {projects.length > 3 && (
@@ -210,13 +215,19 @@ export function DashboardPage() {
         )}
 
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="rounded-lg border p-4 text-center">
-            <p className="text-2xl font-bold tabular-nums">{completedCount}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Completed</p>
+          <div className="rounded-lg border p-4 flex items-center gap-3">
+            <AppIcons.activityCompleted className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+            <div>
+              <p className="text-2xl font-bold tabular-nums">{completedCount}</p>
+              <p className="text-xs text-muted-foreground">Completed</p>
+            </div>
           </div>
-          <div className="rounded-lg border p-4 text-center">
-            <p className="text-2xl font-bold tabular-nums">{activities.length}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Total activities</p>
+          <div className="rounded-lg border p-4 flex items-center gap-3">
+            <AppIcons.activityActive className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+            <div>
+              <p className="text-2xl font-bold tabular-nums">{activeActivities.length + planningActivities.length}</p>
+              <p className="text-xs text-muted-foreground">Active</p>
+            </div>
           </div>
         </div>
       </section>

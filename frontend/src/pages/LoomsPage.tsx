@@ -47,16 +47,10 @@ function LoomCard({ loom, activityCounts }: { loom: Loom; activityCounts?: LoomA
       )}
       <div className="mt-2 flex gap-2">
         {loom.supports_lift_tracking && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs flex items-center gap-1">
-            <AppIcons.lift className="h-3 w-3" />
-            lift tracking
-          </span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">lift tracking</span>
         )}
         {loom.supports_treadle_tracking && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs flex items-center gap-1">
-            <AppIcons.treadle className="h-3 w-3" />
-            treadle tracking
-          </span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">treadle tracking</span>
         )}
       </div>
       {activityCounts && (activityCounts.active + activityCounts.completed + activityCounts.abandoned) > 0 && (

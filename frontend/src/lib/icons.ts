@@ -7,6 +7,7 @@ import {
   CheckSquare,
   ChevronRight,
   ChevronsUp,
+  CircleCheck,
   CircleHelp,
   FolderOpen,
   Footprints,
@@ -14,10 +15,12 @@ import {
   Layers,
   LogOut,
   Menu,
+  Scroll,
   Settings,
   ShieldCheck,
   Wrench,
   X,
+  Zap,
 } from "lucide-react";
 
 export type { LucideIcon } from "lucide-react";
@@ -27,10 +30,13 @@ export const AppIcons = {
   treadle: Footprints,
   lift: ChevronsUp,
   planning: CircleHelp,
+  activityActive: Zap,
+  activityCompleted: CircleCheck,
 
   // ── Navigation ────────────────────────────────────────────────────────────
   dashboard: LayoutDashboard,
   projects: FolderOpen,
+  project: Scroll,
   activities: Activity,
   equipment: Wrench,
   settings: Settings,
