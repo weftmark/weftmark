@@ -26,23 +26,43 @@ def upgrade() -> None:
     # Rename the primary key index on drafts (was projects_pkey)
     op.execute("ALTER INDEX IF EXISTS projects_pkey RENAME TO drafts_pkey")
 
-    # Rename the unique constraint on share_slug
+    # Rename the unique constraint on share_slug (IF EXISTS not supported for constraints)
     op.execute(
-        "ALTER TABLE drafts RENAME CONSTRAINT IF EXISTS projects_share_slug_key TO drafts_share_slug_key"
+        """
+        DO $$ BEGIN
+            ALTER TABLE drafts RENAME CONSTRAINT projects_share_slug_key TO drafts_share_slug_key;
+        EXCEPTION WHEN undefined_object THEN NULL;
+        END $$
+        """
     )
 
     # Rename the FK constraint on activities referencing projects
     op.execute(
-        "ALTER TABLE activities RENAME CONSTRAINT IF EXISTS activities_project_id_fkey TO activities_draft_id_fkey"
+        """
+        DO $$ BEGIN
+            ALTER TABLE activities RENAME CONSTRAINT activities_project_id_fkey TO activities_draft_id_fkey;
+        EXCEPTION WHEN undefined_object THEN NULL;
+        END $$
+        """
     )
 
 
 def downgrade() -> None:
     op.execute(
-        "ALTER TABLE activities RENAME CONSTRAINT IF EXISTS activities_draft_id_fkey TO activities_project_id_fkey"
+        """
+        DO $$ BEGIN
+            ALTER TABLE activities RENAME CONSTRAINT activities_draft_id_fkey TO activities_project_id_fkey;
+        EXCEPTION WHEN undefined_object THEN NULL;
+        END $$
+        """
     )
     op.execute(
-        "ALTER TABLE drafts RENAME CONSTRAINT IF EXISTS drafts_share_slug_key TO projects_share_slug_key"
+        """
+        DO $$ BEGIN
+            ALTER TABLE drafts RENAME CONSTRAINT drafts_share_slug_key TO projects_share_slug_key;
+        EXCEPTION WHEN undefined_object THEN NULL;
+        END $$
+        """
     )
     op.execute("ALTER INDEX IF EXISTS drafts_pkey RENAME TO projects_pkey")
     op.execute("ALTER INDEX IF EXISTS ix_activities_draft_id RENAME TO ix_activities_project_id")
