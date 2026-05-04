@@ -35,6 +35,7 @@ import {
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
+import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
 
 type Tab = "users" | "invites" | "stats" | "health" | "services" | "audit" | "superuser";
@@ -355,8 +356,8 @@ function UsersTab() {
                   <p className="max-w-[180px] truncate font-medium leading-tight">
                     {row.display_name}
                   </p>
-                  <p className="max-w-[180px] truncate text-xs text-muted-foreground">
-                    {row.email}
+                  <p className="max-w-[180px] overflow-hidden text-xs text-muted-foreground">
+                    <CopyEmail email={row.email} />
                   </p>
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap">
@@ -611,7 +612,7 @@ function PendingSignupRow({
     <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{signup.display_name || signup.email}</p>
-        <p className="text-xs text-muted-foreground truncate">{signup.email}</p>
+        <p className="text-xs text-muted-foreground overflow-hidden"><CopyEmail email={signup.email} /></p>
         <p className="text-xs text-muted-foreground">
           Signed up {new Date(signup.created_at).toLocaleDateString()}
         </p>
@@ -664,7 +665,7 @@ function InviteRow({ invite, onRevoke }: { invite: InviteRecord; onRevoke?: () =
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
       <div className="min-w-0">
-        <p className="text-sm font-medium truncate">{invite.email}</p>
+        <p className="text-sm font-medium overflow-hidden"><CopyEmail email={invite.email} /></p>
         <p className="text-xs text-muted-foreground">
           {invite.role} · {status} · expires {new Date(invite.expires_at).toLocaleDateString()}
         </p>
@@ -1455,7 +1456,7 @@ function ReconcileTab() {
                   <div key={u.clerk_user_id} className="flex items-center justify-between px-3 py-2 gap-4">
                     <div className="min-w-0">
                       <p className="font-medium truncate">{u.display_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground overflow-hidden"><CopyEmail email={u.email} /></p>
                       <p className="text-xs text-muted-foreground font-mono">{u.clerk_user_id}</p>
                     </div>
                     <div className="flex gap-2 shrink-0">
@@ -1506,7 +1507,7 @@ function ReconcileTab() {
                   <div key={u.user_id} className="flex items-center justify-between px-3 py-2 gap-4">
                     <div className="min-w-0">
                       <p className="font-medium truncate">{u.display_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground overflow-hidden"><CopyEmail email={u.email} /></p>
                     </div>
                     {u.clerk_errored && (
                       <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded shrink-0">
@@ -1672,8 +1673,8 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
             {entry.event_type}
           </span>
         </td>
-        <td className="px-3 py-2 text-muted-foreground">{entry.actor_email ?? <span className="italic">system</span>}</td>
-        <td className="px-3 py-2 text-muted-foreground">{entry.target_email ?? "—"}</td>
+        <td className="px-3 py-2 text-muted-foreground">{entry.actor_email ? <CopyEmail email={entry.actor_email} /> : <span className="italic">system</span>}</td>
+        <td className="px-3 py-2 text-muted-foreground">{entry.target_email ? <CopyEmail email={entry.target_email} /> : "—"}</td>
         <td className="px-3 py-2 text-muted-foreground text-xs">
           {hasDetails ? (expanded ? "▲ hide" : "▼ show") : "—"}
         </td>
