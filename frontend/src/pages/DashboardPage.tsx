@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { listActivities, ACTIVITY_TYPE_LABELS } from "@/api/activities";
 import { listProjects } from "@/api/projects";
 import { listLooms } from "@/api/looms";
+import { AppIcons } from "@/lib/icons";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -55,10 +56,19 @@ export function DashboardPage() {
               <Link
                 key={loom.id}
                 to="/looms"
-                className="rounded-lg border p-4 hover:border-ring transition-colors"
+                className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
               >
-                <p className="text-sm font-medium truncate">{loom.model_name}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground truncate">{loom.manufacturer}</p>
+                <div className="shrink-0 mt-0.5">
+                  {loom.supports_lift_tracking
+                    ? <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                    : loom.supports_treadle_tracking
+                      ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                      : <AppIcons.equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{loom.model_name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{loom.manufacturer}</p>
+                </div>
               </Link>
             ))}
             {looms.length > 3 && (
@@ -134,6 +144,11 @@ export function DashboardPage() {
                   to={`/activities/${a.id}`}
                   className="flex items-center gap-4 rounded-lg border p-4 hover:border-ring transition-colors"
                 >
+                  <div className="shrink-0">
+                    {a.activity_type === "treadle"
+                      ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                      : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{a.name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -167,9 +182,10 @@ export function DashboardPage() {
               <Link
                 key={a.id}
                 to={`/activities/${a.id}`}
-                className="flex items-center justify-between rounded-lg border px-4 py-3 hover:border-ring transition-colors"
+                className="flex items-center gap-4 rounded-lg border px-4 py-3 hover:border-ring transition-colors"
               >
-                <div>
+                <AppIcons.planning className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{a.name}</p>
                   <p className="text-xs text-muted-foreground">{a.total_picks} picks planned</p>
                 </div>

@@ -7,6 +7,7 @@ import {
   CheckSquare,
   ChevronRight,
   ChevronsUp,
+  CircleHelp,
   FolderOpen,
   Footprints,
   LayoutDashboard,
@@ -25,6 +26,7 @@ export const AppIcons = {
   // ── Weaving — activity types ──────────────────────────────────────────────
   treadle: Footprints,
   lift: ChevronsUp,
+  planning: CircleHelp,
 
   // ── Navigation ────────────────────────────────────────────────────────────
   dashboard: LayoutDashboard,

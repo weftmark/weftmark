@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { listLooms, type Loom } from "@/api/looms";
+import { AppIcons } from "@/lib/icons";
 import { listActivities } from "@/api/activities";
 import { NewLoomModal } from "@/components/looms/NewLoomModal";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,20 @@ function LoomCard({ loom, activityCounts }: { loom: Loom; activityCounts?: LoomA
       className="rounded-lg border p-5 hover:border-ring transition-colors block"
     >
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="font-medium">{loom.manufacturer} {loom.model_name}</p>
-          {loom.serial_number && (
-            <p className="text-xs text-muted-foreground">S/N: {loom.serial_number}</p>
-          )}
+        <div className="flex items-start gap-3">
+          <div className="shrink-0 mt-0.5">
+            {loom.supports_lift_tracking
+              ? <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+              : loom.supports_treadle_tracking
+                ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                : <AppIcons.equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+          </div>
+          <div>
+            <p className="font-medium">{loom.manufacturer} {loom.model_name}</p>
+            {loom.serial_number && (
+              <p className="text-xs text-muted-foreground">S/N: {loom.serial_number}</p>
+            )}
+          </div>
         </div>
         <div className="text-right text-xs text-muted-foreground shrink-0">
           {v && <span>{v.num_shafts}S / {v.num_treadles}T</span>}
@@ -37,10 +47,16 @@ function LoomCard({ loom, activityCounts }: { loom: Loom; activityCounts?: LoomA
       )}
       <div className="mt-2 flex gap-2">
         {loom.supports_lift_tracking && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">lift tracking</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs flex items-center gap-1">
+            <AppIcons.lift className="h-3 w-3" />
+            lift tracking
+          </span>
         )}
         {loom.supports_treadle_tracking && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">treadle tracking</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs flex items-center gap-1">
+            <AppIcons.treadle className="h-3 w-3" />
+            treadle tracking
+          </span>
         )}
       </div>
       {activityCounts && (activityCounts.active + activityCounts.completed + activityCounts.abandoned) > 0 && (

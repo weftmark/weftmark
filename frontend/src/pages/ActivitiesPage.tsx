@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listActivities, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS, type ActivitySummary } from "@/api/activities";
+import { AppIcons } from "@/lib/icons";
 import { previewUrl } from "@/api/projects";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
@@ -58,43 +59,54 @@ function ActivityCard({ activity, onAssign }: {
   return (
     <div className="relative rounded-lg border hover:border-ring transition-colors">
       <Link to={`/activities/${activity.id}`} className="block p-4">
-        <div className="flex items-start justify-between gap-2">
-          <span className="font-medium">{activity.name}</span>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              aria-label="Preview design"
-              onClick={(e) => { e.preventDefault(); setShowPreview(true); }}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              title="Preview design"
-            >
-              <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
-                <rect x="0" y="0" width="5" height="5" rx="1" />
-                <rect x="7" y="0" width="5" height="5" rx="1" />
-                <rect x="0" y="7" width="5" height="5" rx="1" />
-                <rect x="7" y="7" width="5" height="5" rx="1" />
-              </svg>
-            </button>
-            <span className={`min-w-[5.5rem] text-center rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_COLORS[badgeKey]}`}>
-              {badgeLabel}
-            </span>
+        <div className="flex gap-3">
+          <div className="shrink-0 mt-0.5">
+            {isPlanning
+              ? <AppIcons.planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+              : activity.activity_type === "treadle"
+                ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-medium">{activity.name}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  aria-label="Preview design"
+                  onClick={(e) => { e.preventDefault(); setShowPreview(true); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Preview design"
+                >
+                  <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
+                    <rect x="0" y="0" width="5" height="5" rx="1" />
+                    <rect x="7" y="0" width="5" height="5" rx="1" />
+                    <rect x="0" y="7" width="5" height="5" rx="1" />
+                    <rect x="7" y="7" width="5" height="5" rx="1" />
+                  </svg>
+                </button>
+                <span className={`min-w-[5.5rem] text-center rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_COLORS[badgeKey]}`}>
+                  {badgeLabel}
+                </span>
+              </div>
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">{ACTIVITY_TYPE_LABELS[activity.activity_type]}</p>
+            {endDate && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{fmtDate(endDate)}</p>
+            )}
+            {!isPlanning && activity.status === "active" && (
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                  <span>Pick {Math.min(activity.current_pick, activity.total_picks)} of {activity.total_picks}</span>
+                  <span>{pct}%</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">{ACTIVITY_TYPE_LABELS[activity.activity_type]}</p>
-        {endDate && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{fmtDate(endDate)}</p>
-        )}
-        {!isPlanning && activity.status === "active" && (
-          <div className="mt-3">
-            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-              <span>Pick {Math.min(activity.current_pick, activity.total_picks)} of {activity.total_picks}</span>
-              <span>{pct}%</span>
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        )}
       </Link>
       {isPlanning && onAssign && (
         <div className="border-t px-3 pb-3 pt-2">
