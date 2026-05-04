@@ -24,6 +24,17 @@ Environment variables (from .env or shell):
   STORAGE_BACKEND                     — "s3" or "local" (default: local)
   S3_ENDPOINT_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME, S3_REGION
   UPLOAD_DIR                          — local storage root (when STORAGE_BACKEND=local)
+
+Local docker stack note:
+  POSTGRES_DSN is blank in the local compose env (the app builds the URL from individual
+  POSTGRES_* vars, but this script uses psycopg2 directly). Pass --db-url explicitly:
+
+  docker exec weaving_site_backend python migrate_storage_paths.py --dry-run \\
+    --db-url "postgresql://weaving_user:weaving_password@db:5432/weaving_site"
+
+  The URL scheme must be plain postgresql:// — not postgresql+asyncpg://.
+
+Related: issue #312 (project→draft rename)
 """
 
 from __future__ import annotations
