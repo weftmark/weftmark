@@ -27,5 +27,24 @@ else
     echo "Migrations complete."
 fi
 
+# Record migration timestamp in alembic_meta (best-effort; table may not exist on old DBs)
+python -c "
+import sys
+sys.path.insert(0, '/app')
+try:
+    from app.config import get_settings
+    import sqlalchemy as sa
+    url = get_settings().database_url_sync
+    engine = sa.create_engine(url)
+    with engine.begin() as c:
+        c.execute(sa.text(
+            \"INSERT INTO alembic_meta (key, value) VALUES ('last_migrated_at', now()::text) \"
+            \"ON CONFLICT (key) DO UPDATE SET value = now()::text\"
+        ))
+    engine.dispose()
+except Exception as e:
+    print(f'Warning: alembic_meta update skipped: {e}', file=sys.stderr)
+" || true
+
 echo "Starting server..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000

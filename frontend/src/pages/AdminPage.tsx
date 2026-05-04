@@ -18,6 +18,7 @@ import {
   getAdminEula,
   createEulaVersion,
   getAdminServices,
+  getAdminDbInfo,
   sendTestEmail,
   testWebhook,
   getAuditLog,
@@ -25,6 +26,7 @@ import {
   backfillClerkUser,
   type AdminUser,
   type AdminHealth,
+  type AdminDbInfo,
   type AuditLogEntry,
   type InviteRecord,
   type PendingSignup,
@@ -56,9 +58,11 @@ function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d} day${d !== 1 ? "s" : ""}`);
+  if (h > 0) parts.push(`${h} hour${h !== 1 ? "s" : ""}`);
+  parts.push(`${m} minute${m !== 1 ? "s" : ""}`);
+  return parts.join(", ");
 }
 
 export function AdminPage() {
@@ -799,8 +803,21 @@ function HealthTab() {
       <div className="flex items-center gap-2">
         <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
         <span className="text-xs text-muted-foreground">
-          Live · 3s interval · {history.length}/{MAX_HEALTH_POINTS} samples · {formatUptime(latest.uptime_seconds)} uptime
+          Live · 3s interval · {history.length}/{MAX_HEALTH_POINTS} samples
         </span>
+      </div>
+
+      <div className="border rounded-lg p-4 space-y-1">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-medium">Uptime</span>
+          <span className="text-sm tabular-nums text-muted-foreground">{formatUptime(latest.uptime_seconds)}</span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-muted-foreground">Last reboot</span>
+          <span className="text-xs font-mono text-muted-foreground">
+            {new Date(latest.started_at).toLocaleString()}
+          </span>
+        </div>
       </div>
 
       <HealthChart
@@ -830,6 +847,21 @@ function HealthTab() {
   );
 }
 
+declare const __APP_VERSION__: string;
+
+function InfoTable({ rows }: { rows: { label: string; value: string }[] }) {
+  return (
+    <div className="border rounded-lg divide-y overflow-hidden">
+      {rows.map(({ label, value }) => (
+        <div key={label} className="flex items-center justify-between px-4 py-2 bg-background">
+          <span className="text-sm">{label}</span>
+          <span className="text-xs font-mono text-muted-foreground">{value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function VersionsTable() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "versions"],
@@ -839,8 +871,15 @@ function VersionsTable() {
 
   if (isLoading || !data) return null;
 
-  const rows = [
-    { label: "App", value: data.app },
+  const versions = [
+    { label: "Frontend", value: __APP_VERSION__ },
+    { label: "API", value: data.app },
+    { label: "PostgreSQL", value: `${data.postgres} · ${data.postgres_source}` },
+    { label: "Redis", value: data.redis_server },
+    { label: "Celery", value: data.celery },
+  ];
+
+  const deps = [
     { label: "Python", value: data.python },
     { label: "FastAPI", value: data.fastapi },
     { label: "SQLAlchemy", value: data.sqlalchemy },
@@ -852,15 +891,14 @@ function VersionsTable() {
   ];
 
   return (
-    <div>
-      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Versions</h2>
-      <div className="border rounded-lg divide-y overflow-hidden">
-        {rows.map(({ label, value }) => (
-          <div key={label} className="flex items-center justify-between px-4 py-2 bg-background">
-            <span className="text-sm">{label}</span>
-            <span className="text-xs font-mono text-muted-foreground">{value}</span>
-          </div>
-        ))}
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Versions</h2>
+        <InfoTable rows={versions} />
+      </div>
+      <div>
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Dependencies</h2>
+        <InfoTable rows={deps} />
       </div>
     </div>
   );
@@ -1026,6 +1064,42 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
   );
 }
 
+function DbInfoPanel() {
+  const { data } = useQuery<AdminDbInfo>({
+    queryKey: ["admin", "db-info"],
+    queryFn: getAdminDbInfo,
+    staleTime: 60_000,
+  });
+
+  if (!data) return null;
+
+  const rows = [
+    { label: "Revision", value: data.revision ?? "unknown" },
+    { label: "At head", value: data.is_at_head ? "yes" : "no", warn: !data.is_at_head },
+    { label: "Last squash", value: data.last_squash_at ?? "—" },
+    {
+      label: "Last migrated",
+      value: data.last_migrated_at ? new Date(data.last_migrated_at).toLocaleString() : "—",
+    },
+  ];
+
+  return (
+    <div>
+      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Database</h2>
+      <div className="border rounded-lg divide-y overflow-hidden">
+        {rows.map(({ label, value, warn }) => (
+          <div key={label} className="flex items-center justify-between px-4 py-2 bg-background">
+            <span className="text-sm">{label}</span>
+            <span className={`text-xs font-mono ${warn ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ServicesTab() {
   // Live status from /health/detailed — auto-refreshes every 30s
   const [detailed, setDetailed] = useState<ReadinessResponse | null>(null);
@@ -1078,6 +1152,7 @@ function ServicesTab() {
         </div>
       )}
 
+      <DbInfoPanel />
     </div>
   );
 }
