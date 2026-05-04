@@ -23,6 +23,9 @@ def upgrade() -> None:
     # Rename the index on activities.project_id
     op.execute("ALTER INDEX IF EXISTS ix_activities_project_id RENAME TO ix_activities_draft_id")
 
+    # Rename the owner_id index on drafts (was ix_projects_owner_id)
+    op.execute("ALTER INDEX IF EXISTS ix_projects_owner_id RENAME TO ix_drafts_owner_id")
+
     # Rename the primary key index on drafts (was projects_pkey)
     op.execute("ALTER INDEX IF EXISTS projects_pkey RENAME TO drafts_pkey")
 
@@ -65,6 +68,7 @@ def downgrade() -> None:
         """
     )
     op.execute("ALTER INDEX IF EXISTS drafts_pkey RENAME TO projects_pkey")
+    op.execute("ALTER INDEX IF EXISTS ix_drafts_owner_id RENAME TO ix_projects_owner_id")
     op.execute("ALTER INDEX IF EXISTS ix_activities_draft_id RENAME TO ix_activities_project_id")
     op.alter_column("activities", "draft_id", new_column_name="project_id")
     op.rename_table("drafts", "projects")
