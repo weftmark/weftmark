@@ -29,9 +29,9 @@ export function SignOutPage() {
           </>
         ) : (
           <>
-            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-stone-100">
+            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-amber-50">
               <svg
-                className="h-5 w-5 text-stone-500"
+                className="h-5 w-5 text-amber-600"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
