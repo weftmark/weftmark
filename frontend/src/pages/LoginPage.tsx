@@ -45,12 +45,25 @@ export function LoginPage() {
     return (
       <AuthCard>
         <div className="text-center">
+          {isDenied ? (
+            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-stone-100">
+              <svg className="h-5 w-5 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+          ) : (
+            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-amber-50">
+              <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+              </svg>
+            </div>
+          )}
           <h1 className="text-lg font-semibold text-zinc-800">
             {isDenied ? "Account not approved" : "Approval pending"}
           </h1>
           <p className="mt-2 text-sm text-stone-600">
             {isDenied
-              ? "WeftMark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that changes."
+              ? "weftmark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that changes."
               : "Your sign-up request has been received. You'll get an email when an admin approves your account."}
           </p>
           <button

@@ -65,9 +65,21 @@ export function PendingPage() {
       <div className="text-center">
         {isDenied ? (
           <>
+            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-stone-100">
+              <svg
+                className="h-5 w-5 text-stone-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
             <h1 className="text-lg font-semibold text-zinc-800">Account not approved</h1>
             <p className="mt-2 text-sm text-stone-600">
-              WeftMark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that
+              weftmark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that
               changes.
             </p>
           </>
