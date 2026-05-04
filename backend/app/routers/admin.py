@@ -18,11 +18,11 @@ from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
 from app.models.activity import Activity, ActivityPhoto
 from app.models.audit_log import AuditLog
+from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
 from app.models.pending_signup import PendingSignup
-from app.models.project import Project
 from app.models.user import User
 from app.models.yarn import Yarn
 from app.services.audit import write_audit_log
@@ -45,7 +45,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 class AdminUserCounts(BaseModel):
-    projects: int
+    drafts: int
     activities_active: int
     activities_completed: int
     looms: int
@@ -84,7 +84,7 @@ class AdminStatsResponse(BaseModel):
     active_7d: int
     active_30d: int
     active_90d: int
-    total_projects: int
+    total_drafts: int
     total_activities: int
     total_looms: int
     total_yarn: int
@@ -392,15 +392,15 @@ async def list_users(
 
     user_ids = [u.id for u in users]
 
-    # Per-user project counts
-    project_rows = (
+    # Per-user draft counts
+    draft_rows = (
         await db.execute(
-            select(Project.owner_id, func.count().label("cnt"))
-            .where(Project.owner_id.in_(user_ids), Project.deleted_at.is_(None))
-            .group_by(Project.owner_id)
+            select(Draft.owner_id, func.count().label("cnt"))
+            .where(Draft.owner_id.in_(user_ids), Draft.deleted_at.is_(None))
+            .group_by(Draft.owner_id)
         )
     ).all()
-    project_counts = {row.owner_id: row.cnt for row in project_rows}
+    draft_counts = {row.owner_id: row.cnt for row in draft_rows}
 
     # Per-user activity counts by status
     activity_rows = (
@@ -469,7 +469,7 @@ async def list_users(
             deletion_initiated_at=u.deletion_initiated_at,
             clerk_errored=u.clerk_errored,
             counts=AdminUserCounts(
-                projects=project_counts.get(u.id, 0),
+                drafts=draft_counts.get(u.id, 0),
                 activities_active=activity_active.get(u.id, 0),
                 activities_completed=activity_completed.get(u.id, 0),
                 looms=loom_counts.get(u.id, 0),
@@ -518,9 +518,9 @@ async def patch_user(
         await set_user_metadata(user.clerk_user_id, {"is_admin": user.is_admin, "is_superuser": user.is_superuser})
 
     # Re-fetch counts for the patched user
-    projects = (
+    drafts = (
         await db.scalar(
-            select(func.count()).select_from(Project).where(Project.owner_id == user.id, Project.deleted_at.is_(None))
+            select(func.count()).select_from(Draft).where(Draft.owner_id == user.id, Draft.deleted_at.is_(None))
         )
         or 0
     )
@@ -580,7 +580,7 @@ async def patch_user(
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
         counts=AdminUserCounts(
-            projects=projects,
+            drafts=drafts,
             activities_active=act_active,
             activities_completed=act_completed,
             looms=looms,
@@ -633,7 +633,7 @@ async def ban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
-        counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
+        counts=AdminUserCounts(drafts=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
     )
 
 
@@ -672,7 +672,7 @@ async def unban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
-        counts=AdminUserCounts(projects=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
+        counts=AdminUserCounts(drafts=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
     )
 
 
@@ -752,7 +752,7 @@ async def get_stats(
         .select_from(User)
         .where(User.deleted_at.is_(None), User.last_active_at >= now - timedelta(days=90))
     )
-    total_projects = await count(select(func.count()).select_from(Project).where(Project.deleted_at.is_(None)))
+    total_drafts = await count(select(func.count()).select_from(Draft).where(Draft.deleted_at.is_(None)))
     total_activities = await count(select(func.count()).select_from(Activity).where(Activity.deleted_at.is_(None)))
     total_looms = await count(select(func.count()).select_from(Loom).where(Loom.deleted_at.is_(None)))
     total_yarn = await count(select(func.count()).select_from(Yarn).where(Yarn.deleted_at.is_(None)))
@@ -770,7 +770,7 @@ async def get_stats(
         active_7d=active_7d,
         active_30d=active_30d,
         active_90d=active_90d,
-        total_projects=total_projects,
+        total_drafts=total_drafts,
         total_activities=total_activities,
         total_looms=total_looms,
         total_yarn=total_yarn,
@@ -1052,7 +1052,7 @@ async def send_test_email_endpoint(
 class ElevateContentSummary(BaseModel):
     activities: int
     looms: int
-    projects: int
+    drafts: int
     yarn: int
 
 
@@ -1091,9 +1091,9 @@ async def elevate_to_superuser(
         )
         or 0
     )
-    projects = (
+    drafts = (
         await db.scalar(
-            select(func.count()).select_from(Project).where(Project.owner_id == user_id, Project.deleted_at.is_(None))
+            select(func.count()).select_from(Draft).where(Draft.owner_id == user_id, Draft.deleted_at.is_(None))
         )
         or 0
     )
@@ -1104,21 +1104,21 @@ async def elevate_to_superuser(
         or 0
     )
 
-    has_content = any([activities, looms, projects, yarn])
+    has_content = any([activities, looms, drafts, yarn])
 
     if has_content and not body.confirm_delete_content:
         raise HTTPException(
             status_code=409,
             detail={
                 "code": "has_content",
-                "summary": {"activities": activities, "looms": looms, "projects": projects, "yarn": yarn},
+                "summary": {"activities": activities, "looms": looms, "drafts": drafts, "yarn": yarn},
             },
         )
 
     if has_content:
         await db.execute(Activity.__table__.delete().where(Activity.owner_id == user_id))
         await db.execute(Loom.__table__.delete().where(Loom.owner_id == user_id))
-        await db.execute(Project.__table__.delete().where(Project.owner_id == user_id))
+        await db.execute(Draft.__table__.delete().where(Draft.owner_id == user_id))
         await db.execute(Yarn.__table__.delete().where(Yarn.owner_id == user_id))
 
     user.is_superuser = True

@@ -10,11 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.deps import get_current_user, get_db
-from app.models.project import Project
+from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering, storage, wif_linter, wif_modifier, wif_parser
 
-router = APIRouter(prefix="/api/projects", tags=["projects"])
+router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 settings = get_settings()
 
 
@@ -23,7 +23,7 @@ settings = get_settings()
 # ---------------------------------------------------------------------------
 
 
-class ProjectSummary(BaseModel):
+class DraftSummary(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
@@ -52,14 +52,14 @@ class ProjectSummary(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_project(cls, p: Project) -> "ProjectSummary":
-        data = {c.key: getattr(p, c.key) for c in p.__table__.columns}
-        data["has_preview"] = storage.preview_exists(p.preview_path)
-        data["has_modified_file"] = bool(p.wif_modified_path and storage.file_exists(p.wif_modified_path))
+    def from_draft(cls, d: Draft) -> "DraftSummary":
+        data = {c.key: getattr(d, c.key) for c in d.__table__.columns}
+        data["has_preview"] = storage.preview_exists(d.preview_path)
+        data["has_modified_file"] = bool(d.wif_modified_path and storage.file_exists(d.wif_modified_path))
         return cls(**data)
 
 
-class ProjectDetail(ProjectSummary):
+class DraftDetail(DraftSummary):
     wif_source_software: str | None
     wif_source_version: str | None
 
@@ -69,14 +69,14 @@ class ProjectDetail(ProjectSummary):
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=ProjectSummary, status_code=201)
-async def create_project(
+@router.post("", response_model=DraftSummary, status_code=201)
+async def create_draft(
     name: Annotated[str, Form()],
     wif_file: Annotated[UploadFile, File()],
     description: Annotated[str | None, Form()] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> ProjectSummary:
+) -> DraftSummary:
     if not wif_file.filename or not wif_file.filename.lower().endswith(".wif"):
         raise HTTPException(status_code=400, detail="File must have a .wif extension")
 
@@ -86,12 +86,12 @@ async def create_project(
 
     lint = wif_linter.lint(wif_bytes)
 
-    project = Project(
+    draft = Draft(
         owner_id=current_user.id,
         name=name,
         description=description,
         wif_filename=wif_file.filename,
-        wif_path="",  # set after we have the project id
+        wif_path="",  # set after we have the draft id
         num_shafts=lint.num_shafts,
         num_treadles=lint.num_treadles,
         effective_num_treadles=lint.effective_num_treadles,
@@ -108,23 +108,23 @@ async def create_project(
         wif_source_software=lint.source_software,
         wif_source_version=lint.source_version,
     )
-    db.add(project)
-    await db.flush()  # get project.id without committing
+    db.add(draft)
+    await db.flush()  # get draft.id without committing
 
-    project.wif_path = storage.save_wif(project.id, wif_file.filename, wif_bytes)
+    draft.wif_path = storage.save_wif(draft.id, wif_file.filename, wif_bytes)
 
     # Render preview if parseable
     if lint.is_parseable and not lint.errors:
         try:
-            draft = rendering.load_draft(wif_bytes)
-            png = rendering.render_full_draft(draft)
-            project.preview_path = storage.save_preview(project.id, png)
+            wif_draft = rendering.load_draft(wif_bytes)
+            png = rendering.render_full_draft(wif_draft)
+            draft.preview_path = storage.save_preview(draft.id, png)
         except Exception as exc:
-            project.lint_warnings = list(project.lint_warnings) + [f"Preview rendering failed: {exc}"]
+            draft.lint_warnings = list(draft.lint_warnings) + [f"Preview rendering failed: {exc}"]
 
     await db.commit()
-    await db.refresh(project)
-    return ProjectSummary.from_project(project)
+    await db.refresh(draft)
+    return DraftSummary.from_draft(draft)
 
 
 # ---------------------------------------------------------------------------
@@ -132,17 +132,17 @@ async def create_project(
 # ---------------------------------------------------------------------------
 
 
-@router.get("", response_model=list[ProjectSummary])
-async def list_projects(
+@router.get("", response_model=list[DraftSummary])
+async def list_drafts(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> list[ProjectSummary]:
+) -> list[DraftSummary]:
     result = await db.scalars(
-        select(Project)
-        .where(Project.owner_id == current_user.id, Project.deleted_at.is_(None))
-        .order_by(Project.created_at.desc())
+        select(Draft)
+        .where(Draft.owner_id == current_user.id, Draft.deleted_at.is_(None))
+        .order_by(Draft.created_at.desc())
     )
-    return [ProjectSummary.from_project(p) for p in result.all()]
+    return [DraftSummary.from_draft(d) for d in result.all()]
 
 
 # ---------------------------------------------------------------------------
@@ -150,14 +150,14 @@ async def list_projects(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{project_id}", response_model=ProjectDetail)
-async def get_project(
-    project_id: uuid.UUID,
+@router.get("/{draft_id}", response_model=DraftDetail)
+async def get_draft(
+    draft_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> ProjectDetail:
-    project = await _get_owned_project(project_id, current_user, db)
-    return ProjectDetail(**_project_detail_data(project))
+) -> DraftDetail:
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    return DraftDetail(**_draft_detail_data(draft))
 
 
 # ---------------------------------------------------------------------------
@@ -165,16 +165,16 @@ async def get_project(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{project_id}/preview")
+@router.get("/{draft_id}/preview")
 async def get_preview(
-    project_id: uuid.UUID,
+    draft_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    project = await _get_owned_project(project_id, current_user, db)
-    if not storage.preview_exists(project.preview_path):
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if not storage.preview_exists(draft.preview_path):
         raise HTTPException(status_code=404, detail="Preview not available")
-    png = storage.read_preview(project.preview_path)  # type: ignore[arg-type]
+    png = storage.read_preview(draft.preview_path)  # type: ignore[arg-type]
     return Response(content=png, media_type="image/png")
 
 
@@ -183,23 +183,23 @@ async def get_preview(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{project_id}/drawdown")
+@router.get("/{draft_id}/drawdown")
 async def get_drawdown(
-    project_id: uuid.UUID,
+    draft_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    project = await _get_owned_project(project_id, current_user, db)
-    if not project.wif_path:
-        raise HTTPException(status_code=404, detail="No WIF file for this project")
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if not draft.wif_path:
+        raise HTTPException(status_code=404, detail="No WIF file for this draft")
 
-    if not storage.file_exists(project.wif_path):
+    if not storage.file_exists(draft.wif_path):
         raise HTTPException(status_code=404, detail="WIF file not found in storage")
 
-    wif_bytes = storage.read_file(project.wif_path)
+    wif_bytes = storage.read_file(draft.wif_path)
     try:
-        draft = rendering.load_draft(wif_bytes)
-        png, total_rows = rendering.render_drawdown_only(draft)
+        wif_draft = rendering.load_draft(wif_bytes)
+        png, total_rows = rendering.render_drawdown_only(wif_draft)
     except HTTPException:
         raise
     except Exception as exc:
@@ -212,7 +212,7 @@ async def get_drawdown(
             "X-Pixels-Per-Row": str(rendering.DRAWDOWN_SCALE),
             "X-Total-Rows": str(total_rows),
             "Cache-Control": "public, max-age=31536000, immutable",
-            "ETag": f'"{project_id}"',
+            "ETag": f'"{draft_id}"',
         },
     )
 
@@ -222,17 +222,17 @@ async def get_drawdown(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{project_id}/wif")
+@router.get("/{draft_id}/wif")
 async def download_wif(
-    project_id: uuid.UUID,
+    draft_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    project = await _get_owned_project(project_id, current_user, db)
-    if not project.wif_path or not storage.file_exists(project.wif_path):
-        raise HTTPException(status_code=404, detail="WIF file not available for this project")
-    wif_bytes = storage.read_file(project.wif_path)
-    filename = project.wif_filename or "project.wif"
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if not draft.wif_path or not storage.file_exists(draft.wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not available for this draft")
+    wif_bytes = storage.read_file(draft.wif_path)
+    filename = draft.wif_filename or "draft.wif"
     return Response(
         content=wif_bytes,
         media_type="application/octet-stream",
@@ -245,17 +245,17 @@ async def download_wif(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{project_id}/wif-modified")
+@router.get("/{draft_id}/wif-modified")
 async def download_wif_modified(
-    project_id: uuid.UUID,
+    draft_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    project = await _get_owned_project(project_id, current_user, db)
-    if not project.wif_modified_path or not storage.file_exists(project.wif_modified_path):
-        raise HTTPException(status_code=404, detail="No modified WIF file for this project")
-    wif_bytes = storage.read_file(project.wif_modified_path)
-    base = (project.wif_filename or "project.wif").rsplit(".", 1)[0]
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if not draft.wif_modified_path or not storage.file_exists(draft.wif_modified_path):
+        raise HTTPException(status_code=404, detail="No modified WIF file for this draft")
+    wif_bytes = storage.read_file(draft.wif_modified_path)
+    base = (draft.wif_filename or "draft.wif").rsplit(".", 1)[0]
     filename = f"{base}-modified.wif"
     return Response(
         content=wif_bytes,
@@ -269,14 +269,14 @@ async def download_wif_modified(
 # ---------------------------------------------------------------------------
 
 
-@router.delete("/{project_id}", status_code=204)
-async def delete_project(
-    project_id: uuid.UUID,
+@router.delete("/{draft_id}", status_code=204)
+async def delete_draft(
+    draft_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    project = await _get_owned_project(project_id, current_user, db)
-    project.soft_delete()
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft.soft_delete()
     await db.commit()
 
 
@@ -285,36 +285,36 @@ async def delete_project(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{project_id}/generate-liftplan", response_model=ProjectDetail)
+@router.post("/{draft_id}/generate-liftplan", response_model=DraftDetail)
 async def generate_liftplan(
-    project_id: uuid.UUID,
+    draft_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> ProjectDetail:
-    project = await _get_owned_project(project_id, current_user, db)
+) -> DraftDetail:
+    draft = await _get_owned_draft(draft_id, current_user, db)
 
-    if not project.has_treadling:
+    if not draft.has_treadling:
         raise HTTPException(status_code=400, detail="WIF file has no [TREADLING] section — cannot compute lift plan")
-    if not project.has_tieup:
+    if not draft.has_tieup:
         raise HTTPException(status_code=400, detail="WIF file has no [TIEUP] section — cannot compute lift plan")
 
     # Read from modified file if one exists (to chain onto prior modifications)
-    has_mod = project.wif_modified_path and storage.file_exists(project.wif_modified_path)
-    source_path = project.wif_modified_path if has_mod else project.wif_path
+    has_mod = draft.wif_modified_path and storage.file_exists(draft.wif_modified_path)
+    source_path = draft.wif_modified_path if has_mod else draft.wif_path
     wif_bytes = storage.read_file(source_path)
     try:
         updated_bytes = wif_parser.compute_liftplan(wif_bytes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    modified_filename = project.wif_filename.rsplit(".", 1)[0] + "-modified.wif"
-    project.wif_modified_path = storage.save_wif(project.id, modified_filename, updated_bytes)
-    project.has_liftplan = True
-    project.liftplan_generated = True
+    modified_filename = draft.wif_filename.rsplit(".", 1)[0] + "-modified.wif"
+    draft.wif_modified_path = storage.save_wif(draft.id, modified_filename, updated_bytes)
+    draft.has_liftplan = True
+    draft.liftplan_generated = True
 
     await db.commit()
-    await db.refresh(project)
-    return ProjectDetail(**_project_detail_data(project))
+    await db.refresh(draft)
+    return DraftDetail(**_draft_detail_data(draft))
 
 
 # ---------------------------------------------------------------------------
@@ -332,13 +332,13 @@ class OverrideMetadataRequest(BaseModel):
     value: int
 
 
-@router.post("/{project_id}/override-metadata", response_model=ProjectDetail)
+@router.post("/{draft_id}/override-metadata", response_model=DraftDetail)
 async def override_metadata(
-    project_id: uuid.UUID,
+    draft_id: uuid.UUID,
     body: OverrideMetadataRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> ProjectDetail:
+) -> DraftDetail:
     if body.field not in _OVERRIDE_FIELDS:
         raise HTTPException(
             status_code=400, detail=f"Unsupported field '{body.field}'. Allowed: {list(_OVERRIDE_FIELDS)}"
@@ -346,13 +346,13 @@ async def override_metadata(
     if body.value < 1:
         raise HTTPException(status_code=400, detail="Value must be >= 1")
 
-    project = await _get_owned_project(project_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db)
 
     # Read from modified file if one already exists, otherwise original
     source_path = (
-        project.wif_modified_path
-        if project.wif_modified_path and storage.file_exists(project.wif_modified_path)
-        else project.wif_path
+        draft.wif_modified_path
+        if draft.wif_modified_path and storage.file_exists(draft.wif_modified_path)
+        else draft.wif_path
     )
     wif_bytes = storage.read_file(source_path)
 
@@ -362,26 +362,26 @@ async def override_metadata(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    modified_filename = project.wif_filename.rsplit(".", 1)[0] + "-modified.wif"
-    project.wif_modified_path = storage.save_wif(project.id, modified_filename, updated_bytes)
+    modified_filename = draft.wif_filename.rsplit(".", 1)[0] + "-modified.wif"
+    draft.wif_modified_path = storage.save_wif(draft.id, modified_filename, updated_bytes)
 
     # Record the override (original value preserved for display)
-    original_value = getattr(project, body.field)
-    overrides = dict(project.metadata_overrides or {})
+    original_value = getattr(draft, body.field)
+    overrides = dict(draft.metadata_overrides or {})
     overrides[body.field] = {"original": original_value, "override": body.value}
-    project.metadata_overrides = overrides
+    draft.metadata_overrides = overrides
 
-    # Update the live metadata value on the project
-    setattr(project, body.field, body.value)
+    # Update the live metadata value on the draft
+    setattr(draft, body.field, body.value)
 
     # Re-lint the updated WIF so the mismatch warning is cleared
     lint = wif_linter.lint(updated_bytes)
-    project.lint_warnings = lint.warnings
-    project.lint_errors = lint.errors
+    draft.lint_warnings = lint.warnings
+    draft.lint_errors = lint.errors
 
     await db.commit()
-    await db.refresh(project)
-    return ProjectDetail(**_project_detail_data(project))
+    await db.refresh(draft)
+    return DraftDetail(**_draft_detail_data(draft))
 
 
 # ---------------------------------------------------------------------------
@@ -389,13 +389,13 @@ async def override_metadata(
 # ---------------------------------------------------------------------------
 
 
-def _project_detail_data(project: Project) -> dict:
-    """Build the data dict for ProjectDetail, filtering any mismatch lint warnings
+def _draft_detail_data(draft: Draft) -> dict:
+    """Build the data dict for DraftDetail, filtering any mismatch lint warnings
     that are already covered by a metadata override so stale DB entries don't show."""
-    data = {c.key: getattr(project, c.key) for c in project.__table__.columns}
-    data["has_preview"] = storage.preview_exists(project.preview_path)
-    data["has_modified_file"] = bool(project.wif_modified_path and storage.file_exists(project.wif_modified_path))
-    overrides = project.metadata_overrides or {}
+    data = {c.key: getattr(draft, c.key) for c in draft.__table__.columns}
+    data["has_preview"] = storage.preview_exists(draft.preview_path)
+    data["has_modified_file"] = bool(draft.wif_modified_path and storage.file_exists(draft.wif_modified_path))
+    overrides = draft.metadata_overrides or {}
     warnings = list(data.get("lint_warnings") or [])
     if "num_treadles" in overrides:
         warnings = [w for w in warnings if "[WEAVING] declares Treadles=" not in w]
@@ -405,14 +405,14 @@ def _project_detail_data(project: Project) -> dict:
     return data
 
 
-async def _get_owned_project(project_id: uuid.UUID, user: User, db: AsyncSession) -> Project:
-    project = await db.scalar(
-        select(Project).where(
-            Project.id == project_id,
-            Project.owner_id == user.id,
-            Project.deleted_at.is_(None),
+async def _get_owned_draft(draft_id: uuid.UUID, user: User, db: AsyncSession) -> Draft:
+    draft = await db.scalar(
+        select(Draft).where(
+            Draft.id == draft_id,
+            Draft.owner_id == user.id,
+            Draft.deleted_at.is_(None),
         )
     )
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+    return draft

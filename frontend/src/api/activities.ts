@@ -14,7 +14,7 @@ export const ACTIVITY_STATUS_LABELS: Record<ActivityStatus, string> = {
 
 export interface ActivitySummary {
   id: string;
-  project_id: string;
+  draft_id: string;
   loom_id: string | null;
   loom_version_id: string | null;
   name: string;
@@ -42,19 +42,19 @@ export interface ActivityDetail extends ActivitySummary {
   warp_waste_allowance: string | null;
   completed_at: string | null;
   notes: string | null;
-  project_name: string;
-  project_num_shafts: number | null;
-  project_num_treadles: number | null;
-  project_effective_num_treadles: number | null;
-  project_effective_num_shafts: number | null;
-  project_metadata_overrides: Record<string, { original: number | null; override: number }> | null;
+  draft_name: string;
+  draft_num_shafts: number | null;
+  draft_num_treadles: number | null;
+  draft_effective_num_treadles: number | null;
+  draft_effective_num_shafts: number | null;
+  draft_metadata_overrides: Record<string, { original: number | null; override: number }> | null;
   loom_name: string | null;
   photos: ActivityPhoto[];
 }
 
 export interface CreateActivityPayload {
   name: string;
-  project_id: string;
+  draft_id: string;
   activity_type: ActivityType;
   loom_id?: string;
   loom_version_id?: string;
@@ -104,9 +104,9 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function listActivities(params?: { projectId?: string; loomId?: string }): Promise<ActivitySummary[]> {
+export function listActivities(params?: { draftId?: string; loomId?: string }): Promise<ActivitySummary[]> {
   const qs = new URLSearchParams();
-  if (params?.projectId) qs.set("project_id", params.projectId);
+  if (params?.draftId) qs.set("draft_id", params.draftId);
   if (params?.loomId) qs.set("loom_id", params.loomId);
   const query = qs.size ? `?${qs}` : "";
   return req(`/api/activities${query}`);

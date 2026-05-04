@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createActivity, completeActivity, abandonActivity, listActivities, ApiError, ACTIVITY_TYPE_LABELS, type ActivityType, type ActivitySummary } from "@/api/activities";
-import { listProjects } from "@/api/projects";
+import { listDrafts } from "@/api/drafts";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 
 interface Props {
   onSuccess: (id: string) => void;
   onClose: () => void;
-  defaultProjectId?: string;
+  defaultDraftId?: string;
 }
 
 const CM_PER_IN = 2.54;
@@ -22,9 +22,9 @@ function convertLen(value: string, toUnit: "cm" | "in"): string {
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Props) {
+export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Props) {
   const [name, setName] = useState("");
-  const [projectId, setProjectId] = useState(defaultProjectId ?? "");
+  const [draftId, setDraftId] = useState(defaultDraftId ?? "");
   const [activityType, setActivityType] = useState<ActivityType | "">("");
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
@@ -44,7 +44,7 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
   const [error, setError] = useState<string | null>(null);
   const [conflictActivity, setConflictActivity] = useState<ActivitySummary | null>(null);
 
-  const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: listProjects });
+  const { data: drafts = [] } = useQuery({ queryKey: ["drafts"], queryFn: listDrafts });
   const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: listLooms });
   const { data: loomDetail } = useQuery({
     queryKey: ["loom", loomId],
@@ -52,14 +52,14 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
     enabled: !!loomId,
   });
 
-  const selectedProject = projects.find((p) => p.id === projectId);
+  const selectedDraft = drafts.find((d) => d.id === draftId);
   const selectedLoom = looms.find((l) => l.id === loomId);
 
   // Filter activity types by what the WIF supports and loom supports
   const availableTypes: ActivityType[] = [];
-  if (selectedProject) {
-    if (selectedProject.has_treadling) availableTypes.push("treadle");
-    if (selectedProject.has_liftplan) availableTypes.push("lift");
+  if (selectedDraft) {
+    if (selectedDraft.has_treadling) availableTypes.push("treadle");
+    if (selectedDraft.has_liftplan) availableTypes.push("lift");
   }
 
   // Filter to types the loom also supports (if a loom is selected)
@@ -83,8 +83,8 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
   const loomShafts = selectedLoom?.current_version?.num_shafts ?? null;
 
   // Use effective counts (from actual treadling data) for compatibility; fall back to declared
-  const effectiveTreadles = selectedProject?.effective_num_treadles ?? selectedProject?.num_treadles ?? null;
-  const effectiveShafts = selectedProject?.effective_num_shafts ?? selectedProject?.num_shafts ?? null;
+  const effectiveTreadles = selectedDraft?.effective_num_treadles ?? selectedDraft?.num_treadles ?? null;
+  const effectiveShafts = selectedDraft?.effective_num_shafts ?? selectedDraft?.num_shafts ?? null;
 
   const treadleMismatch =
     !!selectedLoom &&
@@ -102,14 +102,14 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
 
   // Informational: declared metadata doesn't match actual usage
   const treadleMetaMismatch =
-    selectedProject?.num_treadles != null &&
-    selectedProject?.effective_num_treadles != null &&
-    selectedProject.num_treadles !== selectedProject.effective_num_treadles;
+    selectedDraft?.num_treadles != null &&
+    selectedDraft?.effective_num_treadles != null &&
+    selectedDraft.num_treadles !== selectedDraft.effective_num_treadles;
 
   const shaftMetaMismatch =
-    selectedProject?.num_shafts != null &&
-    selectedProject?.effective_num_shafts != null &&
-    selectedProject.num_shafts !== selectedProject.effective_num_shafts;
+    selectedDraft?.num_shafts != null &&
+    selectedDraft?.effective_num_shafts != null &&
+    selectedDraft.num_shafts !== selectedDraft.effective_num_shafts;
 
   const loomWasteInCurrentUnit = (allowance: string | null | undefined, wasteUnit: string): string => {
     if (!allowance) return "";
@@ -127,7 +127,7 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
 
   const _buildPayload = () => ({
     name: name.trim(),
-    project_id: projectId,
+    draft_id: draftId,
     activity_type: effectiveType as ActivityType,
     loom_id: loomId || undefined,
     loom_version_id: loomVersionId || undefined,
@@ -180,7 +180,7 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
     }
   };
 
-  const canSubmit = name.trim() && projectId && !!effectiveType && !loading;
+  const canSubmit = name.trim() && draftId && !!effectiveType && !loading;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -196,14 +196,14 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">WIF project <span className="text-destructive">*</span></label>
-            {defaultProjectId ? (
-              <p className="py-2 text-sm">{selectedProject?.name ?? "—"}</p>
+            <label className="mb-1 block text-sm font-medium">Draft <span className="text-destructive">*</span></label>
+            {defaultDraftId ? (
+              <p className="py-2 text-sm">{selectedDraft?.name ?? "—"}</p>
             ) : (
-              <select className={f} value={projectId} onChange={(e) => { setProjectId(e.target.value); setActivityType(""); }} required>
-                <option value="">Select a project…</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+              <select className={f} value={draftId} onChange={(e) => { setDraftId(e.target.value); setActivityType(""); }} required>
+                <option value="">Select a draft…</option>
+                {drafts.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
             )}
@@ -256,32 +256,32 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
               <p className="font-medium text-foreground">WIF metadata note</p>
               <p className="mt-0.5 text-xs text-subdued">
                 {treadleMetaMismatch
-                  ? `The WIF file declares ${selectedProject!.num_treadles} treadles in metadata, but the treadling data only uses ${selectedProject!.effective_num_treadles}. Loom compatibility uses the actual count (${selectedProject!.effective_num_treadles}). You can fix the declared count in your design software.`
-                  : `The WIF file declares ${selectedProject!.num_shafts} shafts in metadata, but the lift plan only uses ${selectedProject!.effective_num_shafts}. Loom compatibility uses the actual count (${selectedProject!.effective_num_shafts}). You can fix the declared count in your design software.`}
+                  ? `The WIF file declares ${selectedDraft!.num_treadles} treadles in metadata, but the treadling data only uses ${selectedDraft!.effective_num_treadles}. Loom compatibility uses the actual count (${selectedDraft!.effective_num_treadles}). You can fix the declared count in your design software.`
+                  : `The WIF file declares ${selectedDraft!.num_shafts} shafts in metadata, but the lift plan only uses ${selectedDraft!.effective_num_shafts}. Loom compatibility uses the actual count (${selectedDraft!.effective_num_shafts}). You can fix the declared count in your design software.`}
               </p>
             </div>
           )}
 
-          {selectedProject && (
+          {selectedDraft && (
             <div>
               <label className="mb-1 block text-sm font-medium">Activity type <span className="text-destructive">*</span></label>
               {filteredTypes.length === 0 ? (
                 <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-sm">
                   {selectedLoom && availableTypes.length > 0 ? (
                     <>
-                      <p className="font-medium text-destructive">Loom and project are incompatible</p>
+                      <p className="font-medium text-destructive">Loom and draft are incompatible</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         This WIF supports {availableTypes.map(t => ACTIVITY_TYPE_LABELS[t]).join(" and ")}, but the selected loom does not.
                         {availableTypes.includes("lift") && !selectedLoom.supports_lift_tracking && " The loom does not support lift tracking."}
                         {availableTypes.includes("treadle") && !selectedLoom.supports_treadle_tracking && " The loom does not support treadle tracking."}
-                        {" "}Try a different loom or go to the project page to generate a lift plan.
+                        {" "}Try a different loom or go to the draft page to generate a lift plan.
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="font-medium text-destructive">No activity types available</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        This WIF has no treadling or lift plan data. Go to the project page to generate a lift plan if the file has tieup and treadling sections.
+                        This WIF has no treadling or lift plan data. Go to the draft page to generate a lift plan if the file has tieup and treadling sections.
                       </p>
                     </>
                   )}

@@ -1,4 +1,4 @@
-export interface Project {
+export interface Draft {
   id: string;
   name: string;
   description: string | null;
@@ -27,7 +27,7 @@ export interface Project {
 
 import { getAuthToken } from "@/api/client";
 
-export interface ProjectDetail extends Project {
+export interface DraftDetail extends Draft {
   wif_source_software: string | null;
   wif_source_version: string | null;
 }
@@ -47,42 +47,42 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export async function listProjects(): Promise<Project[]> {
-  return req("/api/projects");
+export async function listDrafts(): Promise<Draft[]> {
+  return req("/api/drafts");
 }
 
-export async function getProject(id: string): Promise<ProjectDetail> {
-  return req(`/api/projects/${id}`);
+export async function getDraft(id: string): Promise<DraftDetail> {
+  return req(`/api/drafts/${id}`);
 }
 
-export async function uploadProject(
+export async function uploadDraft(
   name: string,
   file: File,
   description?: string,
-): Promise<Project> {
+): Promise<Draft> {
   const form = new FormData();
   form.append("name", name);
   form.append("wif_file", file);
   if (description) form.append("description", description);
-  return req("/api/projects", { method: "POST", body: form });
+  return req("/api/drafts", { method: "POST", body: form });
 }
 
-export async function deleteProject(id: string): Promise<void> {
-  return req(`/api/projects/${id}`, { method: "DELETE" });
+export async function deleteDraft(id: string): Promise<void> {
+  return req(`/api/drafts/${id}`, { method: "DELETE" });
 }
 
 export function previewUrl(id: string): string {
-  return `/api/projects/${id}/preview`;
+  return `/api/drafts/${id}/preview`;
 }
 
-export async function generateLiftplan(id: string): Promise<ProjectDetail> {
-  return req(`/api/projects/${id}/generate-liftplan`, { method: "POST" });
+export async function generateLiftplan(id: string): Promise<DraftDetail> {
+  return req(`/api/drafts/${id}/generate-liftplan`, { method: "POST" });
 }
 
 export async function downloadWif(id: string, filename: string): Promise<void> {
   const token = await getAuthToken();
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await fetch(`/api/projects/${id}/wif`, { credentials: "include", headers });
+  const res = await fetch(`/api/drafts/${id}/wif`, { credentials: "include", headers });
   if (!res.ok) throw new Error("WIF file not available");
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -96,7 +96,7 @@ export async function downloadWif(id: string, filename: string): Promise<void> {
 export async function downloadWifModified(id: string, filename: string): Promise<void> {
   const token = await getAuthToken();
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-  const res = await fetch(`/api/projects/${id}/wif-modified`, { credentials: "include", headers });
+  const res = await fetch(`/api/drafts/${id}/wif-modified`, { credentials: "include", headers });
   if (!res.ok) throw new Error("Modified file not available");
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -108,12 +108,12 @@ export async function downloadWifModified(id: string, filename: string): Promise
   URL.revokeObjectURL(url);
 }
 
-export async function overrideProjectMetadata(
+export async function overrideDraftMetadata(
   id: string,
   field: "num_treadles" | "num_shafts",
   value: number,
-): Promise<ProjectDetail> {
-  return req(`/api/projects/${id}/override-metadata`, {
+): Promise<DraftDetail> {
+  return req(`/api/drafts/${id}/override-metadata`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ field, value }),

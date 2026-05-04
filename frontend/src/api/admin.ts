@@ -1,7 +1,7 @@
 import { api } from "@/api/client";
 
 export interface AdminUserCounts {
-  projects: number;
+  drafts: number;
   activities_active: number;
   activities_completed: number;
   looms: number;
@@ -32,7 +32,7 @@ export interface AdminStats {
   active_7d: number;
   active_30d: number;
   active_90d: number;
-  total_projects: number;
+  total_drafts: number;
   total_activities: number;
   total_looms: number;
   total_yarn: number;
@@ -83,7 +83,7 @@ export const unbanUser = (userId: string) => api.post<AdminUser>(`/api/admin/use
 export interface ElevateContentSummary {
   activities: number;
   looms: number;
-  projects: number;
+  drafts: number;
   yarn: number;
 }
 

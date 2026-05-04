@@ -35,8 +35,8 @@ export const AppIcons = {
 
   // ── Navigation ────────────────────────────────────────────────────────────
   dashboard: LayoutDashboard,
-  projects: FolderOpen,
-  project: Scroll,
+  drafts: FolderOpen,
+  draft: Scroll,
   activities: Activity,
   equipment: Wrench,
   settings: Settings,

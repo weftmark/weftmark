@@ -13,8 +13,8 @@ from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.draft import Draft
 from app.models.loom import Loom
-from app.models.project import Project
 from app.models.user import User
 from app.models.yarn import Yarn
 from app.tasks.deletion import _delete_user
@@ -106,14 +106,14 @@ class TestDeleteUserHappyPath:
         await db_session.refresh(user)
         assert user.deletion_state == "complete"
 
-    async def test_deletes_projects(self, db_session, mock_db, mock_storage, mock_emails):
+    async def test_deletes_drafts(self, db_session, mock_db, mock_storage, mock_emails):
         user = await self._pending_user(db_session)
-        db_session.add(Project(owner_id=user.id, name="P", wif_filename="p.wif", wif_path="p/p.wif"))
+        db_session.add(Draft(owner_id=user.id, name="P", wif_filename="p.wif", wif_path="p/p.wif"))
         await db_session.commit()
 
         await _delete_user(_task_mock(), user.id)
 
-        assert await db_session.scalar(select(Project).where(Project.owner_id == user.id)) is None
+        assert await db_session.scalar(select(Draft).where(Draft.owner_id == user.id)) is None
 
     async def test_deletes_yarn(self, db_session, mock_db, mock_storage, mock_emails):
         user = await self._pending_user(db_session)

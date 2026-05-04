@@ -117,7 +117,7 @@ export function AdminPage() {
 // ---------------------------------------------------------------------------
 
 type SortKey =
-  | "name" | "status" | "role" | "projects" | "activities"
+  | "name" | "status" | "role" | "drafts" | "activities"
   | "looms" | "storage" | "last_login" | "joined";
 
 interface UserRow {
@@ -126,7 +126,7 @@ interface UserRow {
   email: string;
   status: "active" | "inactive" | "banned" | "pending" | "errored" | "deleting";
   role: "superuser" | "admin" | "user";
-  projects: number;
+  drafts: number;
   activities: number;
   looms: number;
   storage_bytes: number;
@@ -228,7 +228,7 @@ function UsersTab() {
       email: u.email,
       status: deriveStatus(u),
       role: deriveRole(u),
-      projects: u.counts.projects,
+      drafts: u.counts.drafts,
       activities: u.counts.activities_active + u.counts.activities_completed,
       looms: u.counts.looms,
       storage_bytes: u.counts.storage_bytes,
@@ -242,7 +242,7 @@ function UsersTab() {
       email: p.email,
       status: "pending" as const,
       role: "user" as const,
-      projects: 0,
+      drafts: 0,
       activities: 0,
       looms: 0,
       storage_bytes: 0,
@@ -268,7 +268,7 @@ function UsersTab() {
       case "name": cmp = a.display_name.localeCompare(b.display_name); break;
       case "status": cmp = a.status.localeCompare(b.status); break;
       case "role": cmp = ROLE_ORDER[a.role] - ROLE_ORDER[b.role]; break;
-      case "projects": cmp = a.projects - b.projects; break;
+      case "drafts": cmp = a.drafts - b.drafts; break;
       case "activities": cmp = a.activities - b.activities; break;
       case "looms": cmp = a.looms - b.looms; break;
       case "storage": cmp = a.storage_bytes - b.storage_bytes; break;
@@ -337,7 +337,7 @@ function UsersTab() {
               <SortTh label="Name" k="name" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Status" k="status" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Role" k="role" sort={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortTh label="Projects" k="projects" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Drafts" k="drafts" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Activities" k="activities" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Looms" k="looms" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Storage" k="storage" sort={sortKey} dir={sortDir} onSort={handleSort} />
@@ -367,7 +367,7 @@ function UsersTab() {
                   {row.role}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums">
-                  {row.projects || "—"}
+                  {row.drafts || "—"}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums">
                   {row.activities || "—"}
@@ -702,7 +702,7 @@ function StatsTab() {
   ];
 
   const contentRows = [
-    { label: "Projects", value: data.total_projects },
+    { label: "Drafts", value: data.total_drafts },
     { label: "Activities", value: data.total_activities },
     { label: "Looms", value: data.total_looms },
     { label: "Yarn entries", value: data.total_yarn },

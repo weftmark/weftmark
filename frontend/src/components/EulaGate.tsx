@@ -141,7 +141,7 @@ export function EulaGate({ children }: Props) {
               <p className="text-sm text-muted-foreground">
                 If you do not accept the Terms of Service, you may delete your account. This will
                 permanently remove all your WIF files, photos, activity records, looms, yarn, and
-                projects. This cannot be undone.
+                drafts. This cannot be undone.
               </p>
               <div className="flex gap-2">
                 <Button

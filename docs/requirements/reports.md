@@ -8,7 +8,7 @@ Each activity can generate a comprehensive report. The report is available as an
 
 | Section | Description |
 |---|---|
-| Project information | Design name, WIF source, creation date, activity type |
+| Draft information | Design name, WIF source, creation date, activity type |
 | Loom information | Loom name, model, version used |
 | Design rendering | Full drawdown preview image |
 | Warping plan | Calculated warp length, thread counts per color, threading color order |

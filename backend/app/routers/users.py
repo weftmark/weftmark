@@ -20,10 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
 from app.models.activity import Activity, ActivityPhoto, ActivityStep
+from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionAccessory, LoomVersionPhoto, LoomVersionReceipt
-from app.models.project import Project
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
@@ -186,13 +186,13 @@ async def update_settings(
         current_user.ai_training_consent = body.ai_training_consent
         if not body.ai_training_consent:
             shared = await db.scalars(
-                select(Project).where(
-                    Project.owner_id == current_user.id,
-                    Project.is_shared.is_(True),
+                select(Draft).where(
+                    Draft.owner_id == current_user.id,
+                    Draft.is_shared.is_(True),
                 )
             )
-            for proj in shared.all():
-                proj.is_shared = False
+            for draft in shared.all():
+                draft.is_shared = False
 
     await db.commit()
     await db.refresh(current_user)
@@ -299,13 +299,13 @@ async def _purge_user_storage(db: AsyncSession, user_id: uuid.UUID) -> None:
             for r in vr.all():
                 _safe_delete(r.path)
 
-    # Project WIF files and previews
-    projects = await db.scalars(select(Project).where(Project.owner_id == user_id))
-    for proj in projects.all():
-        if proj.wif_path:
-            _safe_delete(proj.wif_path)
-        if proj.preview_path:
-            _safe_delete(proj.preview_path)
+    # Draft WIF files and previews
+    drafts = await db.scalars(select(Draft).where(Draft.owner_id == user_id))
+    for draft in drafts.all():
+        if draft.wif_path:
+            _safe_delete(draft.wif_path)
+        if draft.preview_path:
+            _safe_delete(draft.preview_path)
 
 
 def _safe_delete(path: str) -> None:
@@ -334,7 +334,7 @@ async def _purge_user_db(db: AsyncSession, user_id: uuid.UUID, user: User) -> No
     await db.execute(delete(LoomVersion).where(LoomVersion.loom_id.in_(loom_ids_subq)))
     await db.execute(delete(Loom).where(Loom.owner_id == user_id))
 
-    await db.execute(delete(Project).where(Project.owner_id == user_id))
+    await db.execute(delete(Draft).where(Draft.owner_id == user_id))
 
     await db.execute(delete(Invite).where(Invite.created_by_id == user_id))
 

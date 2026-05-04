@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
-import { listProjects } from "@/api/projects";
+import { listDrafts } from "@/api/drafts";
 import { Button } from "@/components/ui/button";
 import { EulaContent } from "@/components/EulaContent";
 
@@ -14,11 +14,11 @@ export function SettingsPage() {
   const { section } = useParams<{ section: string }>();
   const activeSection: Section = (section as Section) ?? "appearance";
 
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: listProjects,
+  const { data: drafts = [] } = useQuery({
+    queryKey: ["drafts"],
+    queryFn: listDrafts,
   });
-  const sharedProjectCount = projects.filter((p) => p.is_shared).length;
+  const sharedDraftCount = drafts.filter((d) => d.is_shared).length;
 
   const { data: currentEula } = useQuery({
     queryKey: ["eula", "current"],
@@ -258,7 +258,7 @@ export function SettingsPage() {
                     in the Terms of Service.
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    <strong>Note:</strong> Opting out also disables all public sharing links for your projects.
+                    <strong>Note:</strong> Opting out also disables all public sharing links for your drafts.
                   </p>
                 </Field>
 
@@ -279,16 +279,16 @@ export function SettingsPage() {
                         </p>
                         <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
                           <li>
-                            Public sharing links for all your projects
-                            {sharedProjectCount > 0 && (
+                            Public sharing links for all your drafts
+                            {sharedDraftCount > 0 && (
                               <span className="font-medium text-foreground">
-                                {" "}({sharedProjectCount} currently active)
+                                {" "}({sharedDraftCount} currently active)
                               </span>
                             )}
                           </li>
                           <li>Any future sharing features tied to your account</li>
                         </ul>
-                        {sharedProjectCount > 0 && (
+                        {sharedDraftCount > 0 && (
                           <p className="text-xs text-amber-700 dark:text-amber-400 pt-1">
                             Anyone with your current sharing links will immediately lose access.
                           </p>
@@ -297,7 +297,7 @@ export function SettingsPage() {
 
                       <p className="text-xs text-muted-foreground">
                         You can opt back in at any time from this page. Re-opting in restores
-                        sharing access but does not re-enable individual project links — you will
+                        sharing access but does not re-enable individual draft links — you will
                         need to re-share those manually.
                       </p>
 
@@ -378,7 +378,7 @@ export function SettingsPage() {
                   <p className="text-sm font-medium text-destructive">Danger zone</p>
                   <p className="text-sm text-muted-foreground">
                     Permanently delete your account and all data: WIF files, photos, activity
-                    records, looms, yarn, and projects. This cannot be undone.
+                    records, looms, yarn, and drafts. This cannot be undone.
                   </p>
 
                   {!showDeleteConfirm ? (

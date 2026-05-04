@@ -37,7 +37,13 @@ function LoomCard({ loom, activityCounts }: { loom: Loom; activityCounts?: LoomA
           </div>
         </div>
         <div className="text-right text-xs text-muted-foreground shrink-0">
-          {v && <span>{v.num_shafts}S / {v.num_treadles}T</span>}
+          {v && (
+            <span>
+              {v.num_shafts != null ? `${v.num_shafts}S` : null}
+              {v.num_shafts != null && v.num_treadles != null ? " / " : null}
+              {v.num_treadles != null ? `${v.num_treadles}T` : null}
+            </span>
+          )}
         </div>
       </div>
       {v?.weaving_width && (
