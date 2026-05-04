@@ -8,9 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity, ActivityPhoto
+from app.models.draft import Draft
 from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
-from app.models.project import Project
 from app.models.user import User
 from tests.conftest import SEEDED_EULA_VERSION
 
@@ -39,19 +39,19 @@ class TestListAdminUsers:
         assert "is_active" in user_data
         assert "counts" in user_data
 
-    async def test_counts_include_projects(self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User):
-        project = Project(
+    async def test_counts_include_drafts(self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User):
+        draft = Draft(
             owner_id=admin_user.id,
-            name="Admin Project",
+            name="Admin Draft",
             wif_filename="test.wif",
             wif_path="projects/test/original.wif",
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.commit()
 
         resp = await admin_client.get("/api/admin/users")
         user_data = next(u for u in resp.json() if u["email"] == admin_user.email)
-        assert user_data["counts"]["projects"] >= 1
+        assert user_data["counts"]["drafts"] >= 1
 
     async def test_counts_include_storage_bytes(self, admin_client: AsyncClient, admin_user: User):
         resp = await admin_client.get("/api/admin/users")
@@ -62,17 +62,17 @@ class TestListAdminUsers:
     async def test_storage_bytes_reflects_activity_photos(
         self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
-        project = Project(
+        draft = Draft(
             owner_id=admin_user.id,
-            name="Storage Test Project",
+            name="Storage Test Draft",
             wif_filename="s.wif",
             wif_path="s.wif",
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.flush()
         activity = Activity(
             owner_id=admin_user.id,
-            project_id=project.id,
+            draft_id=draft.id,
             name="Storage Test Activity",
             activity_type="treadle",
             status="active",
@@ -220,7 +220,7 @@ class TestAdminStats:
         assert "active_7d" in data
         assert "active_30d" in data
         assert "active_90d" in data
-        assert "total_projects" in data
+        assert "total_drafts" in data
         assert "total_activities" in data
         assert "total_looms" in data
         assert "total_yarn" in data
@@ -231,17 +231,17 @@ class TestAdminStats:
         self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
         before = (await admin_client.get("/api/admin/stats")).json()["total_storage_bytes"]
-        project = Project(
+        draft = Draft(
             owner_id=admin_user.id,
-            name="Stats Storage Project",
+            name="Stats Storage Draft",
             wif_filename="s.wif",
             wif_path="s.wif",
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.flush()
         activity = Activity(
             owner_id=admin_user.id,
-            project_id=project.id,
+            draft_id=draft.id,
             name="Stats Storage Activity",
             activity_type="treadle",
             status="active",
@@ -809,13 +809,13 @@ class TestElevateToSuperuser:
         self, superuser_client: AsyncClient, db_session: AsyncSession
     ):
         target = await self._create_admin_target(db_session)
-        project = Project(
+        draft = Draft(
             owner_id=target.id,
-            name="Target Project",
+            name="Target Draft",
             wif_filename="test.wif",
             wif_path="projects/test/original.wif",
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.commit()
 
         resp = await superuser_client.post(
@@ -824,17 +824,17 @@ class TestElevateToSuperuser:
         assert resp.status_code == 409
         detail = resp.json()["detail"]
         assert detail["code"] == "has_content"
-        assert detail["summary"]["projects"] >= 1
+        assert detail["summary"]["drafts"] >= 1
 
     async def test_has_content_with_confirm_returns_200(self, superuser_client: AsyncClient, db_session: AsyncSession):
         target = await self._create_admin_target(db_session)
-        project = Project(
+        draft = Draft(
             owner_id=target.id,
-            name="Target Project 2",
+            name="Target Draft 2",
             wif_filename="test2.wif",
             wif_path="projects/test2/original.wif",
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.commit()
 
         resp = await superuser_client.post(

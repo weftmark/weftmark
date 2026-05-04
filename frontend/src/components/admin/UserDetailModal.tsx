@@ -306,7 +306,7 @@ export function UserDetailModal({ target, onClose }: Props) {
             <InfoRow label="Joined">{formatDate(u.created_at)}</InfoRow>
             <InfoRow label="Last login">{formatRelative(u.last_active_at)}</InfoRow>
             <InfoRow label="Storage">{formatBytes(u.counts.storage_bytes)}</InfoRow>
-            <InfoRow label="Projects">{u.counts.projects}</InfoRow>
+            <InfoRow label="Drafts">{u.counts.drafts}</InfoRow>
             <InfoRow label="Activities">
               {u.counts.activities_active} active, {u.counts.activities_completed} completed
             </InfoRow>
@@ -371,7 +371,7 @@ export function UserDetailModal({ target, onClose }: Props) {
                         message={`This user has ${[
                           elevateContent.activities && `${elevateContent.activities} activities`,
                           elevateContent.looms && `${elevateContent.looms} looms`,
-                          elevateContent.projects && `${elevateContent.projects} projects`,
+                          elevateContent.drafts && `${elevateContent.drafts} drafts`,
                           elevateContent.yarn && `${elevateContent.yarn} yarn`,
                         ]
                           .filter(Boolean)

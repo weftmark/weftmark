@@ -14,8 +14,8 @@ import { LandingPage } from "@/pages/LandingPage";
 import { AboutPage } from "@/pages/AboutPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { TermsPage } from "@/pages/TermsPage";
-import { ProjectsPage } from "@/pages/ProjectsPage";
-import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
+import { DraftsPage } from "@/pages/DraftsPage";
+import { DraftDetailPage } from "@/pages/DraftDetailPage";
 import { LoomsPage } from "@/pages/LoomsPage";
 import { LoomDetailPage } from "@/pages/LoomDetailPage";
 import { YarnPage } from "@/pages/YarnPage";
@@ -95,8 +95,8 @@ export default function App() {
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/" element={<RootRoute />} />
                   <Route path="/home" element={<AuthRoute><DashboardPage /></AuthRoute>} />
-                  <Route path="/projects" element={<AuthRoute><ProjectsPage /></AuthRoute>} />
-                  <Route path="/projects/:id" element={<AuthRoute><ProjectDetailPage /></AuthRoute>} />
+                  <Route path="/drafts" element={<AuthRoute><DraftsPage /></AuthRoute>} />
+                  <Route path="/drafts/:id" element={<AuthRoute><DraftDetailPage /></AuthRoute>} />
                   <Route path="/looms" element={<AuthRoute><LoomsPage /></AuthRoute>} />
                   <Route path="/looms/:id" element={<AuthRoute><LoomDetailPage /></AuthRoute>} />
                   <Route path="/yarn" element={<AuthRoute><YarnPage /></AuthRoute>} />

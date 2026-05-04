@@ -1,8 +1,4 @@
-"""Tests for the /api/projects router.
-
-Coverage focus: the GET /{project_id}/drawdown endpoint added for the
-WeavingPatternView feature (issue #8).
-"""
+"""Tests for the /api/drafts router."""
 
 import io
 import uuid
@@ -12,7 +8,7 @@ from httpx import AsyncClient
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.project import Project
+from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering
 
@@ -82,16 +78,16 @@ def _fake_png(width: int = 80, height: int = 80) -> bytes:
     return buf.getvalue()
 
 
-async def _insert_project(
+async def _insert_draft(
     db_session: AsyncSession,
     owner: User,
     *,
     wif_path: str = "",
     weft_threads: int = 4,
-) -> Project:
-    project = Project(
+) -> Draft:
+    draft = Draft(
         owner_id=owner.id,
-        name="Test Project",
+        name="Test Draft",
         wif_filename="test.wif",
         wif_path=wif_path,
         has_treadling=True,
@@ -99,138 +95,138 @@ async def _insert_project(
         num_treadles=4,
         weft_threads=weft_threads,
     )
-    db_session.add(project)
+    db_session.add(draft)
     await db_session.commit()
-    return project
+    return draft
 
 
 # ---------------------------------------------------------------------------
-# GET /api/projects
+# GET /api/drafts
 # ---------------------------------------------------------------------------
 
 
-class TestListProjects:
+class TestListDrafts:
     async def test_returns_200(self, auth_client: AsyncClient):
-        resp = await auth_client.get("/api/projects")
+        resp = await auth_client.get("/api/drafts")
         assert resp.status_code == 200
 
-    async def test_empty_list_when_no_projects(self, auth_client: AsyncClient):
-        resp = await auth_client.get("/api/projects")
+    async def test_empty_list_when_no_drafts(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/drafts")
         assert resp.json() == []
 
-    async def test_returns_created_project(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        resp = await auth_client.get("/api/projects")
+    async def test_returns_created_draft(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.get("/api/drafts")
         data = resp.json()
         assert len(data) == 1
-        assert data[0]["name"] == "Test Project"
+        assert data[0]["name"] == "Test Draft"
 
-    async def test_does_not_return_deleted_project(
+    async def test_does_not_return_deleted_draft(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        project.soft_delete()
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        draft.soft_delete()
         await db_session.commit()
-        resp = await auth_client.get("/api/projects")
+        resp = await auth_client.get("/api/drafts")
         assert resp.json() == []
 
-    async def test_does_not_return_other_users_projects(
+    async def test_does_not_return_other_users_drafts(
         self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
-        await _insert_project(db_session, admin_user, wif_path="p/other.wif")
-        resp = await auth_client.get("/api/projects")
+        await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
+        resp = await auth_client.get("/api/drafts")
         assert resp.json() == []
 
     async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
-        resp = await raw_client.get("/api/projects")
+        resp = await raw_client.get("/api/drafts")
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# GET /api/projects/{project_id}
+# GET /api/drafts/{draft_id}
 # ---------------------------------------------------------------------------
 
 
-class TestGetProject:
+class TestGetDraft:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        resp = await auth_client.get(f"/api/projects/{project.id}")
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}")
         assert resp.status_code == 200
 
-    async def test_returns_project_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        data = (await auth_client.get(f"/api/projects/{project.id}")).json()
-        assert data["name"] == "Test Project"
+    async def test_returns_draft_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        data = (await auth_client.get(f"/api/drafts/{draft.id}")).json()
+        assert data["name"] == "Test Draft"
         assert data["wif_filename"] == "test.wif"
         assert "has_preview" in data
 
     async def test_nonexistent_returns_404(self, auth_client: AsyncClient):
-        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}")
+        resp = await auth_client.get(f"/api/drafts/{uuid.uuid4()}")
         assert resp.status_code == 404
 
-    async def test_other_users_project_returns_404(
+    async def test_other_users_draft_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
-        project = await _insert_project(db_session, admin_user, wif_path="p/other.wif")
-        resp = await auth_client.get(f"/api/projects/{project.id}")
+        draft = await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}")
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
-        resp = await raw_client.get(f"/api/projects/{uuid.uuid4()}")
+        resp = await raw_client.get(f"/api/drafts/{uuid.uuid4()}")
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# DELETE /api/projects/{project_id}
+# DELETE /api/drafts/{draft_id}
 # ---------------------------------------------------------------------------
 
 
-class TestDeleteProject:
+class TestDeleteDraft:
     async def test_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        resp = await auth_client.delete(f"/api/projects/{project.id}")
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.delete(f"/api/drafts/{draft.id}")
         assert resp.status_code == 204
 
-    async def test_project_not_in_list_after_delete(
+    async def test_draft_not_in_list_after_delete(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        await auth_client.delete(f"/api/projects/{project.id}")
-        resp = await auth_client.get("/api/projects")
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        await auth_client.delete(f"/api/drafts/{draft.id}")
+        resp = await auth_client.get("/api/drafts")
         assert resp.json() == []
 
     async def test_get_after_delete_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        await auth_client.delete(f"/api/projects/{project.id}")
-        resp = await auth_client.get(f"/api/projects/{project.id}")
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        await auth_client.delete(f"/api/drafts/{draft.id}")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}")
         assert resp.status_code == 404
 
     async def test_nonexistent_returns_404(self, auth_client: AsyncClient):
-        resp = await auth_client.delete(f"/api/projects/{uuid.uuid4()}")
+        resp = await auth_client.delete(f"/api/drafts/{uuid.uuid4()}")
         assert resp.status_code == 404
 
-    async def test_other_users_project_returns_404(
+    async def test_other_users_draft_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
-        project = await _insert_project(db_session, admin_user, wif_path="p/other.wif")
-        resp = await auth_client.delete(f"/api/projects/{project.id}")
+        draft = await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
+        resp = await auth_client.delete(f"/api/drafts/{draft.id}")
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
-        resp = await raw_client.delete(f"/api/projects/{uuid.uuid4()}")
+        resp = await raw_client.delete(f"/api/drafts/{uuid.uuid4()}")
         assert resp.status_code == 401
 
     async def test_soft_deletes_in_db(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        await auth_client.delete(f"/api/projects/{project.id}")
-        await db_session.refresh(project)
-        assert project.deleted_at is not None
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        await auth_client.delete(f"/api/drafts/{draft.id}")
+        await db_session.refresh(draft)
+        assert draft.deleted_at is not None
 
 
 # ---------------------------------------------------------------------------
-# GET /{project_id}/drawdown
+# GET /{draft_id}/drawdown
 # ---------------------------------------------------------------------------
 
 
@@ -238,40 +234,40 @@ class TestGetDrawdown:
     async def test_returns_401_when_unauthenticated(
         self, client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user, wif_path="x.wif")
-        resp = await client.get(f"/api/projects/{project.id}/drawdown")
+        draft = await _insert_draft(db_session, test_user, wif_path="x.wif")
+        resp = await client.get(f"/api/drafts/{draft.id}/drawdown")
         assert resp.status_code == 401
 
-    async def test_returns_404_for_unknown_project(self, auth_client: AsyncClient):
-        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/drawdown")
+    async def test_returns_404_for_unknown_draft(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/drafts/{uuid.uuid4()}/drawdown")
         assert resp.status_code == 404
 
-    async def test_returns_404_for_other_users_project(
+    async def test_returns_404_for_other_users_draft(
         self,
         db_session: AsyncSession,
         auth_client: AsyncClient,
         admin_user: User,
     ):
-        other_project = await _insert_project(db_session, admin_user, wif_path="x.wif")
-        resp = await auth_client.get(f"/api/projects/{other_project.id}/drawdown")
+        other_draft = await _insert_draft(db_session, admin_user, wif_path="x.wif")
+        resp = await auth_client.get(f"/api/drafts/{other_draft.id}/drawdown")
         assert resp.status_code == 404
 
     async def test_returns_404_when_no_wif_path(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user, wif_path="")
-        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        draft = await _insert_draft(db_session, test_user, wif_path="")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
         assert resp.status_code == 404
 
-    async def _project_with_wif(self, db_session: AsyncSession, user: User) -> Project:
+    async def _draft_with_wif(self, db_session: AsyncSession, user: User) -> Draft:
         import app.services.storage as storage
 
-        project_id = uuid.uuid4()
-        wif_key = storage.save_wif(project_id, "test.wif", _WIF)
-        project = Project(
-            id=project_id,
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
             owner_id=user.id,
-            name="Test Project",
+            name="Test Draft",
             wif_filename="test.wif",
             wif_path=wif_key,
             has_treadling=True,
@@ -279,13 +275,13 @@ class TestGetDrawdown:
             num_treadles=4,
             weft_threads=4,
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.commit()
-        return project
+        return draft
 
     async def test_renders_and_returns_png(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await self._project_with_wif(db_session, test_user)
-        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
 
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "image/png"
@@ -294,40 +290,40 @@ class TestGetDrawdown:
     async def test_response_includes_pixels_per_row_header(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await self._project_with_wif(db_session, test_user)
-        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
 
         assert resp.headers.get("X-Pixels-Per-Row") == str(rendering.DRAWDOWN_SCALE)
 
     async def test_response_includes_total_rows_header(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await self._project_with_wif(db_session, test_user)
-        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
 
         assert resp.headers.get("X-Total-Rows") == "4"
 
     async def test_response_has_cache_control_header(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await self._project_with_wif(db_session, test_user)
-        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
 
         assert resp.headers.get("Cache-Control") == "public, max-age=31536000, immutable"
 
     async def test_response_has_etag_header(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await self._project_with_wif(db_session, test_user)
-        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
 
-        assert resp.headers.get("ETag") == f'"{project.id}"'
+        assert resp.headers.get("ETag") == f'"{draft.id}"'
 
 
 # ---------------------------------------------------------------------------
-# POST /api/projects  (WIF upload)
+# POST /api/drafts  (WIF upload)
 # ---------------------------------------------------------------------------
 
 
-class TestCreateProject:
+class TestCreateDraft:
     @pytest.fixture(autouse=True)
     def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
         import app.services.storage as _storage
@@ -336,61 +332,61 @@ class TestCreateProject:
 
     async def test_returns_201(self, auth_client: AsyncClient):
         resp = await auth_client.post(
-            "/api/projects",
+            "/api/drafts",
             files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
-            data={"name": "My Project"},
+            data={"name": "My Draft"},
         )
         assert resp.status_code == 201
 
-    async def test_returns_project_fields(self, auth_client: AsyncClient):
+    async def test_returns_draft_fields(self, auth_client: AsyncClient):
         resp = await auth_client.post(
-            "/api/projects",
+            "/api/drafts",
             files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
-            data={"name": "My Project"},
+            data={"name": "My Draft"},
         )
         data = resp.json()
-        assert data["name"] == "My Project"
+        assert data["name"] == "My Draft"
         assert data["wif_filename"] == "test.wif"
         assert "has_treadling" in data
         assert "lint_warnings" in data
 
     async def test_non_wif_extension_returns_400(self, auth_client: AsyncClient):
         resp = await auth_client.post(
-            "/api/projects",
+            "/api/drafts",
             files={"wif_file": ("test.txt", b"not a wif", "text/plain")},
-            data={"name": "My Project"},
+            data={"name": "My Draft"},
         )
         assert resp.status_code == 400
 
     async def test_with_description(self, auth_client: AsyncClient):
         resp = await auth_client.post(
-            "/api/projects",
+            "/api/drafts",
             files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
-            data={"name": "Described Project", "description": "A test project"},
+            data={"name": "Described Draft", "description": "A test draft"},
         )
         assert resp.status_code == 201
-        assert resp.json()["description"] == "A test project"
+        assert resp.json()["description"] == "A test draft"
 
     async def test_appears_in_list(self, auth_client: AsyncClient):
         await auth_client.post(
-            "/api/projects",
+            "/api/drafts",
             files={"wif_file": ("list.wif", _WIF, "application/octet-stream")},
-            data={"name": "Listed Project"},
+            data={"name": "Listed Draft"},
         )
-        data = (await auth_client.get("/api/projects")).json()
-        assert any(p["name"] == "Listed Project" for p in data)
+        data = (await auth_client.get("/api/drafts")).json()
+        assert any(d["name"] == "Listed Draft" for d in data)
 
     async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
         resp = await raw_client.post(
-            "/api/projects",
+            "/api/drafts",
             files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
-            data={"name": "My Project"},
+            data={"name": "My Draft"},
         )
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# GET /api/projects/{project_id}/preview
+# GET /api/drafts/{draft_id}/preview
 # ---------------------------------------------------------------------------
 
 
@@ -398,47 +394,47 @@ class TestGetPreview:
     async def test_returns_404_when_no_preview(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        resp = await auth_client.get(f"/api/projects/{project.id}/preview")
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/preview")
         assert resp.status_code == 404
 
-    async def test_other_users_project_returns_404(
+    async def test_other_users_draft_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
-        project = await _insert_project(db_session, admin_user, wif_path="p/other.wif")
-        resp = await auth_client.get(f"/api/projects/{project.id}/preview")
+        draft = await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/preview")
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(
         self, raw_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user, wif_path="p/x.wif")
-        resp = await raw_client.get(f"/api/projects/{project.id}/preview")
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await raw_client.get(f"/api/drafts/{draft.id}/preview")
         assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------
-# POST /api/projects/{project_id}/generate-liftplan
+# POST /api/drafts/{draft_id}/generate-liftplan
 # ---------------------------------------------------------------------------
 
 
 class TestGenerateLiftplan:
-    async def _create_project_with_wif(
+    async def _create_draft_with_wif(
         self,
         db_session,
         user: User,
         *,
         has_treadling: bool = True,
         has_tieup: bool = True,
-    ) -> Project:
+    ) -> Draft:
         import app.services.storage as storage
 
-        project_id = uuid.uuid4()
-        wif_key = storage.save_wif(project_id, "test.wif", _WIF)
-        project = Project(
-            id=project_id,
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
             owner_id=user.id,
-            name="Liftplan Project",
+            name="Liftplan Draft",
             wif_filename="test.wif",
             wif_path=wif_key,
             has_treadling=has_treadling,
@@ -447,39 +443,39 @@ class TestGenerateLiftplan:
             num_shafts=4,
             num_treadles=4,
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.commit()
-        return project
+        return draft
 
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await self._create_project_with_wif(db_session, test_user)
-        resp = await auth_client.post(f"/api/projects/{project.id}/generate-liftplan")
+        draft = await self._create_draft_with_wif(db_session, test_user)
+        resp = await auth_client.post(f"/api/drafts/{draft.id}/generate-liftplan")
         assert resp.status_code == 200
 
     async def test_has_liftplan_after_generation(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await self._create_project_with_wif(db_session, test_user)
-        body = (await auth_client.post(f"/api/projects/{project.id}/generate-liftplan")).json()
+        draft = await self._create_draft_with_wif(db_session, test_user)
+        body = (await auth_client.post(f"/api/drafts/{draft.id}/generate-liftplan")).json()
         assert body["has_liftplan"] is True
 
     async def test_no_treadling_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await self._create_project_with_wif(db_session, test_user, has_treadling=False)
-        resp = await auth_client.post(f"/api/projects/{project.id}/generate-liftplan")
+        draft = await self._create_draft_with_wif(db_session, test_user, has_treadling=False)
+        resp = await auth_client.post(f"/api/drafts/{draft.id}/generate-liftplan")
         assert resp.status_code == 400
 
     async def test_no_tieup_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await self._create_project_with_wif(db_session, test_user, has_tieup=False)
-        resp = await auth_client.post(f"/api/projects/{project.id}/generate-liftplan")
+        draft = await self._create_draft_with_wif(db_session, test_user, has_tieup=False)
+        resp = await auth_client.post(f"/api/drafts/{draft.id}/generate-liftplan")
         assert resp.status_code == 400
 
     async def test_not_found_returns_404(self, auth_client: AsyncClient):
-        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/generate-liftplan")
+        resp = await auth_client.post(f"/api/drafts/{uuid.uuid4()}/generate-liftplan")
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(
         self, raw_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await self._create_project_with_wif(db_session, test_user)
-        resp = await raw_client.post(f"/api/projects/{project.id}/generate-liftplan")
+        draft = await self._create_draft_with_wif(db_session, test_user)
+        resp = await raw_client.post(f"/api/drafts/{draft.id}/generate-liftplan")
         assert resp.status_code == 401

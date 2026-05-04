@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity
 from app.models.activity import ActivityPhoto as ActivityPhotoModel
+from app.models.draft import Draft
 from app.models.loom import Loom, LoomVersion, loom_tracking_flags
-from app.models.project import Project
 from app.models.user import User
 
 # ---------------------------------------------------------------------------
@@ -79,19 +79,19 @@ _LOOM_PAYLOAD = {
 # ---------------------------------------------------------------------------
 
 
-async def _insert_project(db_session: AsyncSession, owner: User) -> Project:
-    """Insert a project with WIF bytes written through the (mocked) storage layer."""
+async def _insert_draft(db_session: AsyncSession, owner: User) -> Draft:
+    """Insert a draft with WIF bytes written through the (mocked) storage layer."""
     import uuid
 
     import app.services.storage as storage
 
-    project_id = uuid.uuid4()
-    wif_key = storage.save_wif(project_id, "test.wif", _WIF)
+    draft_id = uuid.uuid4()
+    wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
 
-    project = Project(
-        id=project_id,
+    draft = Draft(
+        id=draft_id,
         owner_id=owner.id,
-        name="Test Project",
+        name="Test Draft",
         wif_filename="test.wif",
         wif_path=wif_key,
         has_treadling=True,
@@ -100,9 +100,9 @@ async def _insert_project(db_session: AsyncSession, owner: User) -> Project:
         num_treadles=2,
         weft_threads=2,
     )
-    db_session.add(project)
+    db_session.add(draft)
     await db_session.commit()
-    return project
+    return draft
 
 
 async def _insert_loom(db_session: AsyncSession, owner: User, **kwargs) -> tuple[Loom, LoomVersion]:
@@ -130,12 +130,10 @@ async def _insert_loom(db_session: AsyncSession, owner: User, **kwargs) -> tuple
     return loom, version
 
 
-async def _insert_active_activity(
-    db_session: AsyncSession, owner: User, project: Project, loom: Loom | None
-) -> Activity:
+async def _insert_active_activity(db_session: AsyncSession, owner: User, draft: Draft, loom: Loom | None) -> Activity:
     activity = Activity(
         owner_id=owner.id,
-        project_id=project.id,
+        draft_id=draft.id,
         loom_id=loom.id if loom else None,
         name="Existing activity",
         activity_type="treadle",
@@ -148,10 +146,10 @@ async def _insert_active_activity(
     return activity
 
 
-def _base_payload(project_id: str, **overrides) -> dict:
+def _base_payload(draft_id: str, **overrides) -> dict:
     return {
         "name": "My activity",
-        "project_id": project_id,
+        "draft_id": draft_id,
         "activity_type": "treadle",
         **overrides,
     }
@@ -164,13 +162,13 @@ def _base_payload(project_id: str, **overrides) -> dict:
 
 class TestCreateActivity:
     async def test_returns_201(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        resp = await auth_client.post("/api/activities", json=_base_payload(str(project.id)))
+        draft = await _insert_draft(db_session, test_user)
+        resp = await auth_client.post("/api/activities", json=_base_payload(str(draft.id)))
         assert resp.status_code == 201
 
     async def test_returns_activity_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        resp = await auth_client.post("/api/activities", json=_base_payload(str(project.id)))
+        draft = await _insert_draft(db_session, test_user)
+        resp = await auth_client.post("/api/activities", json=_base_payload(str(draft.id)))
         body = resp.json()
         assert body["name"] == "My activity"
         assert body["activity_type"] == "treadle"
@@ -178,37 +176,37 @@ class TestCreateActivity:
         assert body["current_pick"] == 1
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        resp = await client.post("/api/activities", json=_base_payload(str(project.id)))
+        draft = await _insert_draft(db_session, test_user)
+        resp = await client.post("/api/activities", json=_base_payload(str(draft.id)))
         assert resp.status_code == 401
 
-    async def test_unknown_project_returns_404(self, auth_client: AsyncClient):
+    async def test_unknown_draft_returns_404(self, auth_client: AsyncClient):
         resp = await auth_client.post("/api/activities", json=_base_payload(str(uuid.uuid4())))
         assert resp.status_code == 404
 
     async def test_invalid_activity_type_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        resp = await auth_client.post("/api/activities", json=_base_payload(str(project.id), activity_type="invalid"))
+        draft = await _insert_draft(db_session, test_user)
+        resp = await auth_client.post("/api/activities", json=_base_payload(str(draft.id), activity_type="invalid"))
         assert resp.status_code == 400
 
     async def test_with_valid_loom_returns_201(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        resp = await auth_client.post("/api/activities", json=_base_payload(str(project.id), loom_id=str(loom.id)))
+        resp = await auth_client.post("/api/activities", json=_base_payload(str(draft.id), loom_id=str(loom.id)))
         assert resp.status_code == 201
 
     async def test_with_valid_loom_version_returns_201(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, version = await _insert_loom(db_session, test_user)
         resp = await auth_client.post(
             "/api/activities",
-            json=_base_payload(str(project.id), loom_id=str(loom.id), loom_version_id=str(version.id)),
+            json=_base_payload(str(draft.id), loom_id=str(loom.id), loom_version_id=str(version.id)),
         )
         assert resp.status_code == 201
         assert resp.json()["loom_version_id"] == str(version.id)
@@ -216,52 +214,52 @@ class TestCreateActivity:
     async def test_loom_version_from_other_loom_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom_a, _ = await _insert_loom(db_session, test_user)
         loom_b, version_b = await _insert_loom(db_session, test_user, model_name="Other Loom")
         resp = await auth_client.post(
             "/api/activities",
-            json=_base_payload(str(project.id), loom_id=str(loom_a.id), loom_version_id=str(version_b.id)),
+            json=_base_payload(str(draft.id), loom_id=str(loom_a.id), loom_version_id=str(version_b.id)),
         )
         assert resp.status_code == 400
 
     async def test_loom_version_without_loom_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         _, version = await _insert_loom(db_session, test_user)
         resp = await auth_client.post(
             "/api/activities",
-            json=_base_payload(str(project.id), loom_version_id=str(version.id)),
+            json=_base_payload(str(draft.id), loom_version_id=str(version.id)),
         )
         assert resp.status_code == 400
 
     async def test_second_active_activity_on_same_loom_returns_409(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        await _insert_active_activity(db_session, test_user, project, loom)
-        resp = await auth_client.post("/api/activities", json=_base_payload(str(project.id), loom_id=str(loom.id)))
+        await _insert_active_activity(db_session, test_user, draft, loom)
+        resp = await auth_client.post("/api/activities", json=_base_payload(str(draft.id), loom_id=str(loom.id)))
         assert resp.status_code == 409
 
     async def test_completed_activity_does_not_block_new_one(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        existing = await _insert_active_activity(db_session, test_user, project, loom)
+        existing = await _insert_active_activity(db_session, test_user, draft, loom)
         existing.status = "completed"
         await db_session.commit()
-        resp = await auth_client.post("/api/activities", json=_base_payload(str(project.id), loom_id=str(loom.id)))
+        resp = await auth_client.post("/api/activities", json=_base_payload(str(draft.id), loom_id=str(loom.id)))
         assert resp.status_code == 201
 
     async def test_other_users_loom_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, admin_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, admin_user)
-        resp = await auth_client.post("/api/activities", json=_base_payload(str(project.id), loom_id=str(loom.id)))
+        resp = await auth_client.post("/api/activities", json=_base_payload(str(draft.id), loom_id=str(loom.id)))
         assert resp.status_code == 404
 
 
@@ -272,27 +270,27 @@ class TestCreateActivity:
 
 class TestRestartActivity:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, loom)
+        activity = await _insert_active_activity(db_session, test_user, draft, loom)
         activity.status = "abandoned"
         await db_session.commit()
         resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
         assert resp.status_code == 200
 
     async def test_status_becomes_active(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, loom)
+        activity = await _insert_active_activity(db_session, test_user, draft, loom)
         activity.status = "abandoned"
         await db_session.commit()
         resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
         assert resp.json()["status"] == "active"
 
     async def test_preserves_current_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, loom)
+        activity = await _insert_active_activity(db_session, test_user, draft, loom)
         activity.status = "abandoned"
         activity.current_pick = 2
         await db_session.commit()
@@ -302,8 +300,8 @@ class TestRestartActivity:
     async def test_completed_activity_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         activity.status = "completed"
         await db_session.commit()
         resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
@@ -312,24 +310,24 @@ class TestRestartActivity:
     async def test_active_activity_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(f"/api/activities/{activity.id}/restart")
         assert resp.status_code == 400
 
     async def test_loom_conflict_returns_409(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        abandoned = await _insert_active_activity(db_session, test_user, project, loom)
+        abandoned = await _insert_active_activity(db_session, test_user, draft, loom)
         abandoned.status = "abandoned"
         await db_session.commit()
-        await _insert_active_activity(db_session, test_user, project, loom)
+        await _insert_active_activity(db_session, test_user, draft, loom)
         resp = await auth_client.post(f"/api/activities/{abandoned.id}/restart")
         assert resp.status_code == 409
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.post(f"/api/activities/{activity.id}/restart")
         assert resp.status_code == 401
 
@@ -340,11 +338,11 @@ class TestRestartActivity:
 
 
 async def _insert_activity_with_status(
-    db_session: AsyncSession, owner: User, project: "Project", loom: "Loom | None", status: str
+    db_session: AsyncSession, owner: User, draft: "Draft", loom: "Loom | None", status: str
 ) -> Activity:
     activity = Activity(
         owner_id=owner.id,
-        project_id=project.id,
+        draft_id=draft.id,
         loom_id=loom.id if loom else None,
         name="Original activity",
         activity_type="treadle",
@@ -359,43 +357,43 @@ async def _insert_activity_with_status(
 
 class TestCloneActivity:
     async def test_returns_201(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, draft, None, "completed")
         resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
         assert resp.status_code == 201
 
     async def test_clone_starts_at_pick_1(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, draft, None, "completed")
         resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
         assert resp.json()["current_pick"] == 1
 
     async def test_clone_is_active(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, draft, None, "completed")
         resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
         assert resp.json()["status"] == "active"
 
     async def test_clone_copies_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_activity_with_status(db_session, test_user, project, None, "abandoned")
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, draft, None, "abandoned")
         resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
         body = resp.json()
         assert body["name"] == activity.name
         assert body["activity_type"] == activity.activity_type
-        assert body["project_id"] == str(activity.project_id)
+        assert body["draft_id"] == str(activity.draft_id)
 
     async def test_can_clone_active_activity(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_activity_with_status(db_session, test_user, project, None, "active")
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, draft, None, "active")
         resp = await auth_client.post(f"/api/activities/{activity.id}/clone")
         assert resp.status_code == 201
 
     async def test_loom_conflict_returns_409(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        completed = await _insert_activity_with_status(db_session, test_user, project, loom, "completed")
-        await _insert_active_activity(db_session, test_user, project, loom)
+        completed = await _insert_activity_with_status(db_session, test_user, draft, loom, "completed")
+        await _insert_active_activity(db_session, test_user, draft, loom)
         resp = await auth_client.post(f"/api/activities/{completed.id}/clone")
         assert resp.status_code == 409
 
@@ -404,8 +402,8 @@ class TestCloneActivity:
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_activity_with_status(db_session, test_user, project, None, "completed")
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_activity_with_status(db_session, test_user, draft, None, "completed")
         resp = await client.post(f"/api/activities/{activity.id}/clone")
         assert resp.status_code == 401
 
@@ -478,8 +476,8 @@ class TestActivityPhotos:
         monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
 
     async def test_upload_returns_201(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
@@ -487,8 +485,8 @@ class TestActivityPhotos:
         assert resp.status_code == 201
 
     async def test_upload_returns_schema(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("shot.jpg", _make_jpeg(), "image/jpeg")},
@@ -501,8 +499,8 @@ class TestActivityPhotos:
     async def test_second_upload_increments_display_order(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("a.jpg", _make_jpeg(), "image/jpeg")},
@@ -514,8 +512,8 @@ class TestActivityPhotos:
         assert resp.json()["display_order"] == 2
 
     async def test_png_stored_as_jpeg(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("photo.png", _make_png(), "image/png")},
@@ -529,8 +527,8 @@ class TestActivityPhotos:
     async def test_upload_too_large_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         big = b"X" * (26 * 1024 * 1024)
         resp = await auth_client.post(
             f"/api/activities/{activity.id}/photos",
@@ -541,8 +539,8 @@ class TestActivityPhotos:
     async def test_upload_wrong_type_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
@@ -550,8 +548,8 @@ class TestActivityPhotos:
         assert resp.status_code == 400
 
     async def test_upload_cap_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         for i in range(20):
             photo = ActivityPhotoModel(
                 activity_id=activity.id,
@@ -569,8 +567,8 @@ class TestActivityPhotos:
         assert resp.status_code == 400
 
     async def test_get_photo_returns_image(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         upload = await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
@@ -583,9 +581,9 @@ class TestActivityPhotos:
     async def test_get_photo_cross_activity_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        act1 = await _insert_active_activity(db_session, test_user, project, None)
-        act2 = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        act1 = await _insert_active_activity(db_session, test_user, draft, None)
+        act2 = await _insert_active_activity(db_session, test_user, draft, None)
         upload = await auth_client.post(
             f"/api/activities/{act1.id}/photos",
             files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
@@ -595,8 +593,8 @@ class TestActivityPhotos:
         assert resp.status_code == 404
 
     async def test_delete_photo_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         upload = await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
@@ -608,14 +606,14 @@ class TestActivityPhotos:
     async def test_delete_nonexistent_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.delete(f"/api/activities/{activity.id}/photos/{uuid.uuid4()}")
         assert resp.status_code == 404
 
     async def test_photos_appear_in_detail(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("snap.jpg", _make_jpeg(), "image/jpeg")},
@@ -629,8 +627,8 @@ class TestActivityPhotos:
     async def test_upload_unauthenticated_returns_401(
         self, client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
@@ -640,24 +638,24 @@ class TestActivityPhotos:
     async def test_get_unauthenticated_returns_401(
         self, client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.get(f"/api/activities/{activity.id}/photos/{uuid.uuid4()}")
         assert resp.status_code == 401
 
     async def test_delete_unauthenticated_returns_401(
         self, client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.delete(f"/api/activities/{activity.id}/photos/{uuid.uuid4()}")
         assert resp.status_code == 401
 
     async def test_upload_records_file_size_bytes(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(
             f"/api/activities/{activity.id}/photos",
             files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
@@ -683,8 +681,8 @@ class TestStorageQuota:
     ):
         from app.services.storage_quota import MAX_USER_STORAGE_BYTES
 
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         # Insert a photo that consumes the entire quota
         photo = ActivityPhotoModel(
             activity_id=activity.id,
@@ -706,8 +704,8 @@ class TestStorageQuota:
     async def test_get_user_storage_used_sums_activity_photos(self, db_session: AsyncSession, test_user: User):
         from app.services.storage_quota import get_user_storage_used
 
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         for i in range(3):
             db_session.add(
                 ActivityPhotoModel(
@@ -731,20 +729,20 @@ class TestStorageQuota:
 
 class TestGetActivity:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.get(f"/api/activities/{activity.id}")
         assert resp.status_code == 200
 
     async def test_returns_activity_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.get(f"/api/activities/{activity.id}")).json()
         assert body["name"] == activity.name
         assert body["activity_type"] == "treadle"
         assert body["status"] == "active"
         assert "photos" in body
-        assert "project_name" in body
+        assert "draft_name" in body
 
     async def test_not_found_returns_404(self, auth_client: AsyncClient):
         resp = await auth_client.get(f"/api/activities/{uuid.uuid4()}")
@@ -753,14 +751,14 @@ class TestGetActivity:
     async def test_other_users_activity_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
-        project = await _insert_project(db_session, admin_user)
-        activity = await _insert_active_activity(db_session, admin_user, project, None)
+        draft = await _insert_draft(db_session, admin_user)
+        activity = await _insert_active_activity(db_session, admin_user, draft, None)
         resp = await auth_client.get(f"/api/activities/{activity.id}")
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.get(f"/api/activities/{activity.id}")
         assert resp.status_code == 401
 
@@ -777,23 +775,23 @@ class TestListActivities:
         assert resp.json() == []
 
     async def test_returns_activities(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        await _insert_active_activity(db_session, test_user, draft, None)
         data = (await auth_client.get("/api/activities")).json()
         assert len(data) >= 1
 
-    async def test_filter_by_project_id(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        await _insert_active_activity(db_session, test_user, project, None)
-        data = (await auth_client.get(f"/api/activities?project_id={project.id}")).json()
-        assert all(a["project_id"] == str(project.id) for a in data)
+    async def test_filter_by_draft_id(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        await _insert_active_activity(db_session, test_user, draft, None)
+        data = (await auth_client.get(f"/api/activities?draft_id={draft.id}")).json()
+        assert all(a["draft_id"] == str(draft.id) for a in data)
         assert len(data) == 1
 
     async def test_filter_by_loom_id(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        await _insert_active_activity(db_session, test_user, project, loom)
-        await _insert_active_activity(db_session, test_user, project, None)
+        await _insert_active_activity(db_session, test_user, draft, loom)
+        await _insert_active_activity(db_session, test_user, draft, None)
         data = (await auth_client.get(f"/api/activities?loom_id={loom.id}")).json()
         assert len(data) == 1
         assert data[0]["loom_id"] == str(loom.id)
@@ -810,20 +808,20 @@ class TestListActivities:
 
 class TestRenameActivity:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.patch(f"/api/activities/{activity.id}", json={"name": "Renamed"})
         assert resp.status_code == 200
 
     async def test_renames_activity(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.patch(f"/api/activities/{activity.id}", json={"name": "New Name"})).json()
         assert body["name"] == "New Name"
 
     async def test_empty_name_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.patch(f"/api/activities/{activity.id}", json={"name": "   "})
         assert resp.status_code == 400
 
@@ -832,8 +830,8 @@ class TestRenameActivity:
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.patch(f"/api/activities/{activity.id}", json={"name": "x"})
         assert resp.status_code == 401
 
@@ -845,14 +843,14 @@ class TestRenameActivity:
 
 class TestDeleteActivity:
     async def test_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.delete(f"/api/activities/{activity.id}")
         assert resp.status_code == 204
 
     async def test_not_in_list_after_delete(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         await auth_client.delete(f"/api/activities/{activity.id}")
         data = (await auth_client.get("/api/activities")).json()
         assert all(a["id"] != str(activity.id) for a in data)
@@ -862,8 +860,8 @@ class TestDeleteActivity:
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.delete(f"/api/activities/{activity.id}")
         assert resp.status_code == 401
 
@@ -875,14 +873,14 @@ class TestDeleteActivity:
 
 class TestStepActivity:
     async def test_advance_increments_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "advance"})).json()
         assert body["current_pick"] == 2
 
     async def test_reverse_decrements_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         activity.current_pick = 2
         await db_session.commit()
         body = (await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "reverse"})).json()
@@ -891,16 +889,16 @@ class TestStepActivity:
     async def test_reverse_at_first_pick_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "reverse"})
         assert resp.status_code == 400
 
     async def test_advance_past_last_pick_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         activity.current_pick = activity.total_picks + 1
         await db_session.commit()
         resp = await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "advance"})
@@ -909,16 +907,16 @@ class TestStepActivity:
     async def test_invalid_direction_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "sideways"})
         assert resp.status_code == 400
 
     async def test_completed_activity_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         activity.status = "completed"
         await db_session.commit()
         resp = await auth_client.post(f"/api/activities/{activity.id}/step", json={"direction": "advance"})
@@ -929,8 +927,8 @@ class TestStepActivity:
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.post(f"/api/activities/{activity.id}/step", json={"direction": "advance"})
         assert resp.status_code == 401
 
@@ -942,30 +940,30 @@ class TestStepActivity:
 
 class TestJumpActivity:
     async def test_jumps_to_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.post(f"/api/activities/{activity.id}/jump", json={"pick": 2})).json()
         assert body["current_pick"] == 2
 
     async def test_clamps_above_total_plus_one(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.post(f"/api/activities/{activity.id}/jump", json={"pick": 999})).json()
         assert body["current_pick"] == activity.total_picks + 1
 
     async def test_clamps_below_one(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.post(f"/api/activities/{activity.id}/jump", json={"pick": 0})).json()
         assert body["current_pick"] == 1
 
     async def test_completed_activity_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         activity.status = "completed"
         await db_session.commit()
         resp = await auth_client.post(f"/api/activities/{activity.id}/jump", json={"pick": 1})
@@ -983,20 +981,20 @@ class TestJumpActivity:
 
 class TestCompleteActivity:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(f"/api/activities/{activity.id}/complete")
         assert resp.status_code == 200
 
     async def test_status_becomes_completed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.post(f"/api/activities/{activity.id}/complete")).json()
         assert body["status"] == "completed"
 
     async def test_sets_completed_at(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         await auth_client.post(f"/api/activities/{activity.id}/complete")
         await db_session.refresh(activity)
         assert activity.completed_at is not None
@@ -1004,8 +1002,8 @@ class TestCompleteActivity:
     async def test_already_completed_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         activity.status = "completed"
         await db_session.commit()
         resp = await auth_client.post(f"/api/activities/{activity.id}/complete")
@@ -1016,8 +1014,8 @@ class TestCompleteActivity:
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.post(f"/api/activities/{activity.id}/complete")
         assert resp.status_code == 401
 
@@ -1029,20 +1027,20 @@ class TestCompleteActivity:
 
 class TestAbandonActivity:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(f"/api/activities/{activity.id}/abandon")
         assert resp.status_code == 200
 
     async def test_status_becomes_abandoned(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.post(f"/api/activities/{activity.id}/abandon")).json()
         assert body["status"] == "abandoned"
 
     async def test_sets_abandoned_at(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         await auth_client.post(f"/api/activities/{activity.id}/abandon")
         await db_session.refresh(activity)
         assert activity.abandoned_at is not None
@@ -1050,8 +1048,8 @@ class TestAbandonActivity:
     async def test_already_abandoned_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         activity.status = "abandoned"
         await db_session.commit()
         resp = await auth_client.post(f"/api/activities/{activity.id}/abandon")
@@ -1062,8 +1060,8 @@ class TestAbandonActivity:
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.post(f"/api/activities/{activity.id}/abandon")
         assert resp.status_code == 401
 
@@ -1075,15 +1073,15 @@ class TestAbandonActivity:
 
 class TestAssignLoom:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         loom, _ = await _insert_loom(db_session, test_user)
         resp = await auth_client.post(f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(loom.id)})
         assert resp.status_code == 200
 
     async def test_assigns_loom(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         loom, _ = await _insert_loom(db_session, test_user)
         body = (
             await auth_client.post(f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(loom.id)})
@@ -1091,8 +1089,8 @@ class TestAssignLoom:
         assert body["loom_id"] == str(loom.id)
 
     async def test_assigns_with_version(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         loom, version = await _insert_loom(db_session, test_user)
         body = (
             await auth_client.post(
@@ -1105,8 +1103,8 @@ class TestAssignLoom:
     async def test_wrong_version_for_loom_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         loom_a, _ = await _insert_loom(db_session, test_user)
         _, version_b = await _insert_loom(db_session, test_user, model_name="Other Loom")
         resp = await auth_client.post(
@@ -1118,15 +1116,15 @@ class TestAssignLoom:
     async def test_already_has_loom_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, loom)
+        activity = await _insert_active_activity(db_session, test_user, draft, loom)
         resp = await auth_client.post(f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(loom.id)})
         assert resp.status_code == 400
 
     async def test_not_active_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         activity.status = "completed"
         await db_session.commit()
         loom, _ = await _insert_loom(db_session, test_user)
@@ -1134,18 +1132,18 @@ class TestAssignLoom:
         assert resp.status_code == 400
 
     async def test_loom_conflict_returns_409(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user)
-        await _insert_active_activity(db_session, test_user, project, loom)
-        activity2 = await _insert_active_activity(db_session, test_user, project, None)
+        await _insert_active_activity(db_session, test_user, draft, loom)
+        activity2 = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.post(f"/api/activities/{activity2.id}/assign-loom", json={"loom_id": str(loom.id)})
         assert resp.status_code == 409
 
     async def test_other_users_loom_returns_404(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, admin_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         other_loom, _ = await _insert_loom(db_session, admin_user)
         resp = await auth_client.post(
             f"/api/activities/{activity.id}/assign-loom", json={"loom_id": str(other_loom.id)}
@@ -1166,14 +1164,14 @@ class TestAssignLoom:
 
 class TestGetPicks:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await auth_client.get(f"/api/activities/{activity.id}/picks")
         assert resp.status_code == 200
 
     async def test_returns_picks_data(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.get(f"/api/activities/{activity.id}/picks")).json()
         assert "activity_type" in body
         assert "total_picks" in body
@@ -1184,8 +1182,8 @@ class TestGetPicks:
     async def test_returns_correct_pick_count(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         body = (await auth_client.get(f"/api/activities/{activity.id}/picks")).json()
         assert body["total_picks"] == len(body["picks"])
 
@@ -1194,8 +1192,8 @@ class TestGetPicks:
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         resp = await client.get(f"/api/activities/{activity.id}/picks")
         assert resp.status_code == 401
 
@@ -1209,46 +1207,46 @@ class TestUnsupportedLoomType:
     async def test_unsupported_loom_type_blocks_create(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user, loom_type="rigid_heddle")
         resp = await auth_client.post(
             "/api/activities",
-            json=_base_payload(str(project.id), loom_id=str(loom.id)),
+            json=_base_payload(str(draft.id), loom_id=str(loom.id)),
         )
         assert resp.status_code == 422
 
     async def test_dobby_loom_blocks_create(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user, loom_type="dobby")
         resp = await auth_client.post(
             "/api/activities",
-            json=_base_payload(str(project.id), loom_id=str(loom.id)),
+            json=_base_payload(str(draft.id), loom_id=str(loom.id)),
         )
         assert resp.status_code == 422
 
     async def test_floor_loom_allowed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user, loom_type="floor_loom")
         resp = await auth_client.post(
             "/api/activities",
-            json=_base_payload(str(project.id), loom_id=str(loom.id)),
+            json=_base_payload(str(draft.id), loom_id=str(loom.id)),
         )
         assert resp.status_code == 201
 
     async def test_table_loom_allowed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = await _insert_project(db_session, test_user)
+        draft = await _insert_draft(db_session, test_user)
         loom, _ = await _insert_loom(db_session, test_user, loom_type="table_loom")
         resp = await auth_client.post(
             "/api/activities",
-            json=_base_payload(str(project.id), activity_type="lift", loom_id=str(loom.id)),
+            json=_base_payload(str(draft.id), activity_type="lift", loom_id=str(loom.id)),
         )
         assert resp.status_code == 201
 
     async def test_unsupported_loom_type_blocks_assign(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = await _insert_project(db_session, test_user)
-        activity = await _insert_active_activity(db_session, test_user, project, None)
+        draft = await _insert_draft(db_session, test_user)
+        activity = await _insert_active_activity(db_session, test_user, draft, None)
         loom, _ = await _insert_loom(db_session, test_user, loom_type="inkle")
         resp = await auth_client.post(
             f"/api/activities/{activity.id}/assign-loom",

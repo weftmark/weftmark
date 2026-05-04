@@ -8,17 +8,17 @@ interface Props {
   activityId: string;
   activeActivities: ActivitySummary[];
   activityType?: string;
-  projectNumTreadles?: number | null;
-  projectNumShafts?: number | null;
-  projectEffectiveNumTreadles?: number | null;
-  projectEffectiveNumShafts?: number | null;
+  draftNumTreadles?: number | null;
+  draftNumShafts?: number | null;
+  draftEffectiveNumTreadles?: number | null;
+  draftEffectiveNumShafts?: number | null;
   onSuccess: () => void;
   onClose: () => void;
 }
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-export function AssignLoomModal({ activityId, activeActivities, activityType, projectNumTreadles, projectNumShafts, projectEffectiveNumTreadles, projectEffectiveNumShafts, onSuccess, onClose }: Props) {
+export function AssignLoomModal({ activityId, activeActivities, activityType, draftNumTreadles, draftNumShafts, draftEffectiveNumTreadles, draftEffectiveNumShafts, onSuccess, onClose }: Props) {
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,8 +39,8 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, pr
   const loomShafts = selectedLoom?.current_version?.num_shafts ?? null;
 
   // Use effective counts for compatibility; fall back to declared
-  const effectiveTreadles = projectEffectiveNumTreadles ?? projectNumTreadles ?? null;
-  const effectiveShafts = projectEffectiveNumShafts ?? projectNumShafts ?? null;
+  const effectiveTreadles = draftEffectiveNumTreadles ?? draftNumTreadles ?? null;
+  const effectiveShafts = draftEffectiveNumShafts ?? draftNumShafts ?? null;
 
   const treadleMismatch =
     !!selectedLoom &&
@@ -57,14 +57,14 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, pr
     (effectiveShafts ?? 0) > (loomShafts ?? 0);
 
   const treadleMetaMismatch =
-    projectNumTreadles != null &&
-    projectEffectiveNumTreadles != null &&
-    projectNumTreadles !== projectEffectiveNumTreadles;
+    draftNumTreadles != null &&
+    draftEffectiveNumTreadles != null &&
+    draftNumTreadles !== draftEffectiveNumTreadles;
 
   const shaftMetaMismatch =
-    projectNumShafts != null &&
-    projectEffectiveNumShafts != null &&
-    projectNumShafts !== projectEffectiveNumShafts;
+    draftNumShafts != null &&
+    draftEffectiveNumShafts != null &&
+    draftNumShafts !== draftEffectiveNumShafts;
 
   const handleLoomChange = (newLoomId: string) => {
     setLoomId(newLoomId);
@@ -166,8 +166,8 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, pr
               <p className="font-medium text-foreground">WIF metadata note</p>
               <p className="mt-0.5 text-xs text-subdued">
                 {treadleMetaMismatch
-                  ? `The WIF file declares ${projectNumTreadles} treadles in metadata, but the treadling data only uses ${projectEffectiveNumTreadles}. Loom compatibility uses the actual count (${projectEffectiveNumTreadles}). You can fix the declared count in your design software.`
-                  : `The WIF file declares ${projectNumShafts} shafts in metadata, but the lift plan only uses ${projectEffectiveNumShafts}. Loom compatibility uses the actual count (${projectEffectiveNumShafts}). You can fix the declared count in your design software.`}
+                  ? `The WIF file declares ${draftNumTreadles} treadles in metadata, but the treadling data only uses ${draftEffectiveNumTreadles}. Loom compatibility uses the actual count (${draftEffectiveNumTreadles}). You can fix the declared count in your design software.`
+                  : `The WIF file declares ${draftNumShafts} shafts in metadata, but the lift plan only uses ${draftEffectiveNumShafts}. Loom compatibility uses the actual count (${draftEffectiveNumShafts}). You can fix the declared count in your design software.`}
               </p>
             </div>
           )}

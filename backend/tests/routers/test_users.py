@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity, ActivityStep
 from app.models.audit_log import AuditLog
-from app.models.project import Project
+from app.models.draft import Draft
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
@@ -150,35 +150,35 @@ class TestDeleteAccount:
         result = await db_session.scalar(select(UserIdentity).where(UserIdentity.user_id == test_user.id))
         assert result is None
 
-    async def test_deletes_projects(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        project = Project(
+    async def test_deletes_drafts(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = Draft(
             owner_id=test_user.id,
-            name="Test Project",
+            name="Test Draft",
             wif_filename="test.wif",
             wif_path="projects/test/original.wif",
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.commit()
 
         await auth_client.request("DELETE", "/api/users/me", json={"confirm": "DELETE MY ACCOUNT"})
-        result = await db_session.scalar(select(Project).where(Project.owner_id == test_user.id))
+        result = await db_session.scalar(select(Draft).where(Draft.owner_id == test_user.id))
         assert result is None
 
     async def test_deletes_activities_and_steps(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        project = Project(
+        draft = Draft(
             owner_id=test_user.id,
             name="P",
             wif_filename="x.wif",
             wif_path="projects/x/original.wif",
         )
-        db_session.add(project)
+        db_session.add(draft)
         await db_session.flush()
 
         activity = Activity(
             owner_id=test_user.id,
-            project_id=project.id,
+            draft_id=draft.id,
             name="Test Activity",
             activity_type="treadle",
             status="active",

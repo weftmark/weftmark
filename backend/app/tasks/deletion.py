@@ -34,10 +34,10 @@ def run_user_deletion(self: Task, user_id: str) -> None:
 async def _delete_user(task: Task, user_id: uuid.UUID) -> None:
     from app.config import get_settings
     from app.models.activity import Activity, ActivityPhoto, ActivityStep
+    from app.models.draft import Draft
     from app.models.invite import Invite
     from app.models.loom import Loom, LoomVersion, LoomVersionAccessory, LoomVersionPhoto, LoomVersionReceipt
     from app.models.pending_signup import PendingSignup
-    from app.models.project import Project
     from app.models.user import User
     from app.models.user_identity import UserIdentity
     from app.models.yarn import Skein, Yarn
@@ -90,7 +90,7 @@ async def _delete_user(task: Task, user_id: uuid.UUID) -> None:
                 await db.execute(delete(LoomVersion).where(LoomVersion.loom_id.in_(loom_ids_subq)))
                 await db.execute(delete(Loom).where(Loom.owner_id == user_id))
 
-                await db.execute(delete(Project).where(Project.owner_id == user_id))
+                await db.execute(delete(Draft).where(Draft.owner_id == user_id))
                 await db.execute(delete(Invite).where(Invite.created_by_id == user_id))
                 await db.execute(delete(UserIdentity).where(UserIdentity.user_id == user_id))
 
@@ -127,8 +127,8 @@ async def _delete_user(task: Task, user_id: uuid.UUID) -> None:
 
 async def _purge_storage(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
     from app.models.activity import Activity, ActivityPhoto
+    from app.models.draft import Draft
     from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt
-    from app.models.project import Project
     from app.models.yarn import Yarn
 
     photos = await db.scalars(
@@ -162,12 +162,12 @@ async def _purge_storage(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
             for r in vr.all():
                 _safe_delete(storage, r.path)
 
-    projects = await db.scalars(select(Project).where(Project.owner_id == user_id))
-    for proj in projects.all():
-        if proj.wif_path:
-            _safe_delete(storage, proj.wif_path)
-        if proj.preview_path:
-            _safe_delete(storage, proj.preview_path)
+    drafts = await db.scalars(select(Draft).where(Draft.owner_id == user_id))
+    for draft in drafts.all():
+        if draft.wif_path:
+            _safe_delete(storage, draft.wif_path)
+        if draft.preview_path:
+            _safe_delete(storage, draft.preview_path)
 
 
 def _safe_delete(storage, path: str) -> None:

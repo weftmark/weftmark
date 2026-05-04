@@ -690,7 +690,7 @@ export function LoomDetailPage() {
           {activeActivity && (
             <div className="rounded-md border border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-700 px-3 py-2.5 text-sm flex items-center justify-between gap-4">
               <div>
-                <span className="font-medium text-green-900 dark:text-green-200">Active project: </span>
+                <span className="font-medium text-green-900 dark:text-green-200">Active activity: </span>
                 <span className="text-green-800 dark:text-green-300">{activeActivity.name}</span>
               </div>
               <Link
