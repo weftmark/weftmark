@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { CopyEmail } from "@/components/admin/CopyEmail";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-utils";
@@ -184,7 +185,7 @@ export function UserDetailModal({ target, onClose }: Props) {
                 <h2 className="text-base font-semibold">{s.display_name || s.email}</h2>
                 <Pill label="pending" cls="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" />
               </div>
-              <p className="text-sm text-muted-foreground">{s.email}</p>
+              <p className="text-sm text-muted-foreground overflow-hidden"><CopyEmail email={s.email} /></p>
             </div>
             <button
               onClick={onClose}
@@ -268,7 +269,7 @@ export function UserDetailModal({ target, onClose }: Props) {
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b">
           <div>
             <h2 className="text-base font-semibold">{u.display_name}</h2>
-            <p className="text-sm text-muted-foreground">{u.email}</p>
+            <p className="text-sm text-muted-foreground overflow-hidden"><CopyEmail email={u.email} /></p>
           </div>
           <button
             onClick={onClose}
