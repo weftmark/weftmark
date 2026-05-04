@@ -239,11 +239,11 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
           )}
 
           {(treadleMismatch || shaftMismatch) && selectedLoom && (
-            <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-2.5 text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">
+            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2.5 text-sm">
+              <p className="font-medium text-copper-on-subtle">
                 {treadleMismatch ? "Treadle count mismatch" : "Shaft count mismatch"}
               </p>
-              <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
+              <p className="mt-0.5 text-xs text-copper-on-subtle">
                 {treadleMismatch
                   ? `This design uses up to ${effectiveTreadles} treadles, but ${selectedLoom.manufacturer} ${selectedLoom.model_name} only has ${loomTreadles}. Treadle positions beyond ${loomTreadles} cannot be pressed.`
                   : `This design uses up to ${effectiveShafts} shafts, but ${selectedLoom.manufacturer} ${selectedLoom.model_name} only has ${loomShafts}. Shaft positions beyond ${loomShafts} cannot be raised.`}
@@ -252,9 +252,9 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
           )}
 
           {(treadleMetaMismatch || shaftMetaMismatch) && !treadleMismatch && !shaftMismatch && (
-            <div className="rounded-md border border-stone-200 bg-stone-50 dark:bg-stone-900/30 dark:border-stone-700 px-3 py-2.5 text-sm">
-              <p className="font-medium text-stone-700 dark:text-stone-300">WIF metadata note</p>
-              <p className="mt-0.5 text-xs text-stone-600 dark:text-stone-400">
+            <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+              <p className="font-medium text-foreground">WIF metadata note</p>
+              <p className="mt-0.5 text-xs text-subdued">
                 {treadleMetaMismatch
                   ? `The WIF file declares ${selectedProject!.num_treadles} treadles in metadata, but the treadling data only uses ${selectedProject!.effective_num_treadles}. Loom compatibility uses the actual count (${selectedProject!.effective_num_treadles}). You can fix the declared count in your design software.`
                   : `The WIF file declares ${selectedProject!.num_shafts} shafts in metadata, but the lift plan only uses ${selectedProject!.effective_num_shafts}. Loom compatibility uses the actual count (${selectedProject!.effective_num_shafts}). You can fix the declared count in your design software.`}
@@ -338,11 +338,11 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
           </div>
 
           {conflictActivity && (
-            <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
-              <p className="font-medium text-amber-900 dark:text-amber-200">
+            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+              <p className="font-medium text-copper-on-subtle">
                 This loom has an active activity: <span className="font-semibold">{conflictActivity.name}</span>
               </p>
-              <p className="text-amber-800 dark:text-amber-300 text-xs">
+              <p className="text-copper-on-subtle text-xs">
                 Mark it as completed or abandon it to start this new activity, or choose a different loom.
               </p>
               <div className="flex flex-wrap gap-2 pt-1">

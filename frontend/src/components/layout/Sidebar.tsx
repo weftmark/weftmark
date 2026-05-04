@@ -37,14 +37,14 @@ export function Sidebar({ open, onClose }: Props) {
     const active = isActive(href, exact);
     return `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
       active
-        ? "bg-amber-50 text-amber-800"
-        : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+        ? "bg-accent text-accent-foreground"
+        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
     }`;
   }
 
   function iconCls(href: string, exact?: boolean) {
     return `h-4 w-4 shrink-0 ${
-      isActive(href, exact) ? "text-amber-600" : "text-stone-400"
+      isActive(href, exact) ? "text-accent-foreground" : "text-muted-foreground"
     }`;
   }
 
@@ -60,19 +60,19 @@ export function Sidebar({ open, onClose }: Props) {
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-white border-r border-stone-200 transition-transform duration-200 ease-in-out lg:static lg:z-auto lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-card border-r border-border transition-transform duration-200 ease-in-out lg:static lg:z-auto lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Logo */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-stone-200 px-4">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
           <Link to="/home" className="flex items-center gap-2.5" onClick={onClose}>
-            <WeftmarkLogo className="h-6 w-auto text-zinc-800" />
-            <span className="text-sm font-semibold tracking-tight text-stone-900" style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
+            <WeftmarkLogo className="h-6 w-auto text-primary" />
+            <span className="text-sm font-semibold tracking-tight text-foreground" style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
           </Link>
           <button
             onClick={onClose}
-            className="rounded-md p-1 text-stone-400 hover:text-stone-600 lg:hidden"
+            className="rounded-md p-1 text-muted-foreground hover:text-subdued lg:hidden"
             aria-label="Close menu"
           >
             <AppIcons.close className="h-4 w-4" />
@@ -100,7 +100,7 @@ export function Sidebar({ open, onClose }: Props) {
         {user?.is_superuser && <div className="flex-1" />}
 
         {/* Bottom nav */}
-        <div className="shrink-0 border-t border-stone-200 px-3 py-3 space-y-0.5">
+        <div className="shrink-0 border-t border-border px-3 py-3 space-y-0.5">
           <Link to="/settings" onClick={onClose} className={navCls("/settings")}>
             <AppIcons.settings className={iconCls("/settings")} strokeWidth={1.75} />
             Settings
@@ -115,18 +115,18 @@ export function Sidebar({ open, onClose }: Props) {
 
           <button
             onClick={() => signOut()}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-subdued transition-colors hover:bg-muted hover:text-foreground"
           >
-            <AppIcons.logout className="h-4 w-4 shrink-0 text-stone-400" strokeWidth={1.75} />
+            <AppIcons.logout className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
             Sign out
           </button>
         </div>
 
         {/* User identity */}
         {user && (
-          <div className="shrink-0 border-t border-stone-200 bg-stone-50 px-4 py-3">
-            <p className="truncate text-xs font-medium text-stone-900">{user.display_name}</p>
-            <p className="truncate text-xs text-stone-400">{user.email}</p>
+          <div className="shrink-0 border-t border-border bg-muted px-4 py-3">
+            <p className="truncate text-xs font-medium text-foreground">{user.display_name}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
         )}
       </aside>

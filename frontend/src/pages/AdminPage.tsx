@@ -161,9 +161,9 @@ const STATUS_PILL: Record<UserRow["status"], string> = {
   active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   inactive: "bg-muted text-muted-foreground",
   banned: "bg-destructive/10 text-destructive",
-  pending: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  pending: "bg-copper-subtle text-copper-on-subtle",
   errored: "bg-destructive/10 text-destructive",
-  deleting: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  deleting: "bg-copper-subtle text-copper-on-subtle",
 };
 
 function StatusPill({ status }: { status: UserRow["status"] }) {

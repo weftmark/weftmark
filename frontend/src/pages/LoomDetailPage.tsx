@@ -150,16 +150,16 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
           />
         )}
         {pendingFile && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs dark:border-amber-800 dark:bg-amber-950">
-            <p className="font-medium text-amber-900 dark:text-amber-100">
+          <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
+            <p className="font-medium text-copper-on-subtle">
               Photo is {formatBytes(pendingFile.size)} — over the 5 MB limit
             </p>
             <div className="mt-1.5 flex gap-2">
-              <button onClick={handleResize} className="font-medium text-amber-800 hover:underline dark:text-amber-200">
+              <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
                 Resize &amp; upload
               </button>
-              <span className="text-amber-400">·</span>
-              <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-amber-700 hover:underline dark:text-amber-300">
+              <span className="text-muted-foreground">·</span>
+              <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
                 Cancel
               </button>
             </div>
@@ -275,16 +275,16 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
         )}
       </div>
       {pendingFile && (
-        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs dark:border-amber-800 dark:bg-amber-950">
-          <p className="font-medium text-amber-900 dark:text-amber-100">
+        <div className="mt-2 rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
+          <p className="font-medium text-copper-on-subtle">
             Photo is {formatBytes(pendingFile.size)} — over the 5 MB limit
           </p>
           <div className="mt-1.5 flex gap-2">
-            <button onClick={handleResize} className="font-medium text-amber-800 hover:underline dark:text-amber-200">
+            <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
               Resize &amp; upload
             </button>
-            <span className="text-amber-400">·</span>
-            <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-amber-700 hover:underline dark:text-amber-300">
+            <span className="text-muted-foreground">·</span>
+            <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
               Cancel
             </button>
           </div>
@@ -655,10 +655,10 @@ export function LoomDetailPage() {
     <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
-          <Link to="/looms" className="text-stone-500 hover:text-stone-900">Equipment</Link>
-          <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
-          <span className="font-medium text-stone-900">{loom.manufacturer} {loom.model_name}</span>
-          <span className="text-xs text-stone-400">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
+          <Link to="/looms" className="text-muted-foreground hover:text-foreground">Equipment</Link>
+          <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-medium text-foreground">{loom.manufacturer} {loom.model_name}</span>
+          <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>
@@ -666,7 +666,7 @@ export function LoomDetailPage() {
         </div>
       </div>
         {!SUPPORTED_LOOM_TYPES.has(loom.loom_type) && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm text-copper-on-subtle">
             <span className="font-medium">Activity tracking not supported</span> — this loom type is not currently
             supported for activity tracking. It has been saved for documentation and will be available if support
             is added later.

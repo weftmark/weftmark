@@ -8,6 +8,14 @@ const config: Config = {
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -31,6 +39,10 @@ const config: Config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        // Slate & Copper semantic tokens
+        subdued: "hsl(var(--subdued))",
+        "copper-subtle": "hsl(var(--copper-subtle))",
+        "copper-on-subtle": "hsl(var(--copper-on-subtle))",
       },
       borderRadius: {
         lg: "var(--radius)",
