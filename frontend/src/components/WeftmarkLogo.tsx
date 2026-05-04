@@ -8,7 +8,7 @@ export function WeftmarkLogo({ className = "" }: Props) {
       viewBox="0 0 200 72"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="Weftmark"
+      aria-label="weftmark"
       role="img"
     >
       <ellipse cx="100" cy="36" rx="90" ry="30" fill="currentColor" />

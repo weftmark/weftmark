@@ -79,6 +79,38 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
   const loomVersions = loomDetail?.versions ?? [];
   const selectedVersion = loomVersions.find((v) => v.id === loomVersionId);
 
+  const loomTreadles = selectedLoom?.current_version?.num_treadles ?? null;
+  const loomShafts = selectedLoom?.current_version?.num_shafts ?? null;
+
+  // Use effective counts (from actual treadling data) for compatibility; fall back to declared
+  const effectiveTreadles = selectedProject?.effective_num_treadles ?? selectedProject?.num_treadles ?? null;
+  const effectiveShafts = selectedProject?.effective_num_shafts ?? selectedProject?.num_shafts ?? null;
+
+  const treadleMismatch =
+    !!selectedLoom &&
+    (effectiveType === "treadle" || (!effectiveType && availableTypes.includes("treadle"))) &&
+    (effectiveTreadles ?? 0) > 0 &&
+    (loomTreadles ?? 0) > 0 &&
+    (effectiveTreadles ?? 0) > (loomTreadles ?? 0);
+
+  const shaftMismatch =
+    !!selectedLoom &&
+    (effectiveType === "lift" || (!effectiveType && availableTypes.includes("lift"))) &&
+    (effectiveShafts ?? 0) > 0 &&
+    (loomShafts ?? 0) > 0 &&
+    (effectiveShafts ?? 0) > (loomShafts ?? 0);
+
+  // Informational: declared metadata doesn't match actual usage
+  const treadleMetaMismatch =
+    selectedProject?.num_treadles != null &&
+    selectedProject?.effective_num_treadles != null &&
+    selectedProject.num_treadles !== selectedProject.effective_num_treadles;
+
+  const shaftMetaMismatch =
+    selectedProject?.num_shafts != null &&
+    selectedProject?.effective_num_shafts != null &&
+    selectedProject.num_shafts !== selectedProject.effective_num_shafts;
+
   const loomWasteInCurrentUnit = (allowance: string | null | undefined, wasteUnit: string): string => {
     if (!allowance) return "";
     return wasteUnit === lengthUnit ? allowance : convertLen(allowance, lengthUnit);
@@ -203,6 +235,30 @@ export function CreateActivityModal({ onSuccess, onClose, defaultProjectId }: Pr
                   <option key={v.id} value={v.id}>{v.name ?? `Version ${v.version_number}`}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {(treadleMismatch || shaftMismatch) && selectedLoom && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-2.5 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">
+                {treadleMismatch ? "Treadle count mismatch" : "Shaft count mismatch"}
+              </p>
+              <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
+                {treadleMismatch
+                  ? `This design uses up to ${effectiveTreadles} treadles, but ${selectedLoom.manufacturer} ${selectedLoom.model_name} only has ${loomTreadles}. Treadle positions beyond ${loomTreadles} cannot be pressed.`
+                  : `This design uses up to ${effectiveShafts} shafts, but ${selectedLoom.manufacturer} ${selectedLoom.model_name} only has ${loomShafts}. Shaft positions beyond ${loomShafts} cannot be raised.`}
+              </p>
+            </div>
+          )}
+
+          {(treadleMetaMismatch || shaftMetaMismatch) && !treadleMismatch && !shaftMismatch && (
+            <div className="rounded-md border border-stone-200 bg-stone-50 dark:bg-stone-900/30 dark:border-stone-700 px-3 py-2.5 text-sm">
+              <p className="font-medium text-stone-700 dark:text-stone-300">WIF metadata note</p>
+              <p className="mt-0.5 text-xs text-stone-600 dark:text-stone-400">
+                {treadleMetaMismatch
+                  ? `The WIF file declares ${selectedProject!.num_treadles} treadles in metadata, but the treadling data only uses ${selectedProject!.effective_num_treadles}. Loom compatibility uses the actual count (${selectedProject!.effective_num_treadles}). You can fix the declared count in your design software.`
+                  : `The WIF file declares ${selectedProject!.num_shafts} shafts in metadata, but the lift plan only uses ${selectedProject!.effective_num_shafts}. Loom compatibility uses the actual count (${selectedProject!.effective_num_shafts}). You can fix the declared count in your design software.`}
+              </p>
             </div>
           )}
 

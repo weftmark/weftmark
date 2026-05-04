@@ -16,15 +16,24 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Original WIF file
+    # Original WIF file (never mutated after upload)
     wif_filename: Mapped[str] = mapped_column(String(512), nullable=False)
     wif_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    # App-modified WIF (accumulates changes like generated liftplan, metadata overrides;
+    # original wif_path is never mutated after upload)
+    wif_modified_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Tracks metadata values overridden by the user e.g. {"num_treadles": {"original": 11, "override": 10}}
+    metadata_overrides: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Parsed WIF metadata
     num_shafts: Mapped[int | None] = mapped_column(Integer, nullable=True)
     num_treadles: Mapped[int | None] = mapped_column(Integer, nullable=True)
     warp_threads: Mapped[int | None] = mapped_column(Integer, nullable=True)
     weft_threads: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Effective counts derived from actual treadling/liftplan data (may differ from declared metadata)
+    effective_num_treadles: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    effective_num_shafts: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Feature availability flags
     has_threading: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

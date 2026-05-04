@@ -7,13 +7,18 @@ import { Button } from "@/components/ui/button";
 interface Props {
   activityId: string;
   activeActivities: ActivitySummary[];
+  activityType?: string;
+  projectNumTreadles?: number | null;
+  projectNumShafts?: number | null;
+  projectEffectiveNumTreadles?: number | null;
+  projectEffectiveNumShafts?: number | null;
   onSuccess: () => void;
   onClose: () => void;
 }
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-export function AssignLoomModal({ activityId, activeActivities, onSuccess, onClose }: Props) {
+export function AssignLoomModal({ activityId, activeActivities, activityType, projectNumTreadles, projectNumShafts, projectEffectiveNumTreadles, projectEffectiveNumShafts, onSuccess, onClose }: Props) {
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,6 +33,38 @@ export function AssignLoomModal({ activityId, activeActivities, onSuccess, onClo
   });
 
   const loomVersions = loomDetail?.versions ?? [];
+  const selectedLoom = looms.find((l) => l.id === loomId);
+
+  const loomTreadles = selectedLoom?.current_version?.num_treadles ?? null;
+  const loomShafts = selectedLoom?.current_version?.num_shafts ?? null;
+
+  // Use effective counts for compatibility; fall back to declared
+  const effectiveTreadles = projectEffectiveNumTreadles ?? projectNumTreadles ?? null;
+  const effectiveShafts = projectEffectiveNumShafts ?? projectNumShafts ?? null;
+
+  const treadleMismatch =
+    !!selectedLoom &&
+    (activityType === "treadle" || !activityType) &&
+    (effectiveTreadles ?? 0) > 0 &&
+    (loomTreadles ?? 0) > 0 &&
+    (effectiveTreadles ?? 0) > (loomTreadles ?? 0);
+
+  const shaftMismatch =
+    !!selectedLoom &&
+    (activityType === "lift" || !activityType) &&
+    (effectiveShafts ?? 0) > 0 &&
+    (loomShafts ?? 0) > 0 &&
+    (effectiveShafts ?? 0) > (loomShafts ?? 0);
+
+  const treadleMetaMismatch =
+    projectNumTreadles != null &&
+    projectEffectiveNumTreadles != null &&
+    projectNumTreadles !== projectEffectiveNumTreadles;
+
+  const shaftMetaMismatch =
+    projectNumShafts != null &&
+    projectEffectiveNumShafts != null &&
+    projectNumShafts !== projectEffectiveNumShafts;
 
   const handleLoomChange = (newLoomId: string) => {
     setLoomId(newLoomId);
@@ -108,6 +145,30 @@ export function AssignLoomModal({ activityId, activeActivities, onSuccess, onClo
                   <option key={v.id} value={v.id}>{v.name ?? `Version ${v.version_number}`}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {(treadleMismatch || shaftMismatch) && selectedLoom && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-2.5 text-sm">
+              <p className="font-medium text-amber-900 dark:text-amber-200">
+                {treadleMismatch ? "Treadle count mismatch" : "Shaft count mismatch"}
+              </p>
+              <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
+                {treadleMismatch
+                  ? `This design uses up to ${effectiveTreadles} treadles, but ${selectedLoom.manufacturer} ${selectedLoom.model_name} only has ${loomTreadles}. Treadle positions beyond ${loomTreadles} cannot be pressed.`
+                  : `This design uses up to ${effectiveShafts} shafts, but ${selectedLoom.manufacturer} ${selectedLoom.model_name} only has ${loomShafts}. Shaft positions beyond ${loomShafts} cannot be raised.`}
+              </p>
+            </div>
+          )}
+
+          {(treadleMetaMismatch || shaftMetaMismatch) && !treadleMismatch && !shaftMismatch && (
+            <div className="rounded-md border border-stone-200 bg-stone-50 dark:bg-stone-900/30 dark:border-stone-700 px-3 py-2.5 text-sm">
+              <p className="font-medium text-stone-700 dark:text-stone-300">WIF metadata note</p>
+              <p className="mt-0.5 text-xs text-stone-600 dark:text-stone-400">
+                {treadleMetaMismatch
+                  ? `The WIF file declares ${projectNumTreadles} treadles in metadata, but the treadling data only uses ${projectEffectiveNumTreadles}. Loom compatibility uses the actual count (${projectEffectiveNumTreadles}). You can fix the declared count in your design software.`
+                  : `The WIF file declares ${projectNumShafts} shafts in metadata, but the lift plan only uses ${projectEffectiveNumShafts}. Loom compatibility uses the actual count (${projectEffectiveNumShafts}). You can fix the declared count in your design software.`}
+              </p>
             </div>
           )}
 

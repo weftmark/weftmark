@@ -45,6 +45,9 @@ export interface ActivityDetail extends ActivitySummary {
   project_name: string;
   project_num_shafts: number | null;
   project_num_treadles: number | null;
+  project_effective_num_treadles: number | null;
+  project_effective_num_shafts: number | null;
+  project_metadata_overrides: Record<string, { original: number | null; override: number }> | null;
   loom_name: string | null;
   photos: ActivityPhoto[];
 }
