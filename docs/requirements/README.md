@@ -13,7 +13,7 @@ This directory contains the formal requirements for the WeftMark platform.
 | [equipment-inventory.md](equipment-inventory.md) | Loom inventory with versioned state history |
 | [yarn-inventory.md](yarn-inventory.md) | Yarn and thread inventory with skein-level tracking |
 | [reports.md](reports.md) | Activity report generation (screen and PDF) |
-| [sharing-profiles.md](sharing-profiles.md) | User profiles and project sharing via slug URLs |
+| [sharing-profiles.md](sharing-profiles.md) | User profiles and draft sharing via slug URLs |
 | [admin.md](admin.md) | Admin capabilities — invites, monitoring, WIF records |
 | [phase2.md](phase2.md) | Deferred features for future consideration |
 

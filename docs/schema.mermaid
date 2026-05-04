@@ -2,7 +2,7 @@ erDiagram
     activities {
         uuid id "PK"
         uuid owner_id "FK"
-        uuid project_id "FK"
+        uuid draft_id "FK"
         uuid loom_id "FK"
         uuid loom_version_id "FK"
         varchar name
@@ -143,7 +143,7 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
-    projects {
+    drafts {
         uuid id "PK"
         uuid owner_id "FK"
         varchar name
@@ -250,7 +250,7 @@ erDiagram
     looms ||--o{ activities : "loom_id"
     loom_versions ||--o{ activities : "loom_version_id"
     users ||--o{ activities : "owner_id"
-    projects ||--o{ activities : "project_id"
+    drafts ||--o{ activities : "draft_id"
     activities ||--o{ activity_photos : "activity_id"
     activities ||--o{ activity_steps : "activity_id"
     users ||--o{ invites : "created_by_id"
@@ -260,7 +260,7 @@ erDiagram
     loom_versions ||--o{ loom_version_receipts : "loom_version_id"
     looms ||--o{ loom_versions : "loom_id"
     users ||--o{ looms : "owner_id"
-    users ||--o{ projects : "owner_id"
+    users ||--o{ drafts : "owner_id"
     yarns ||--o{ skeins : "yarn_id"
     users ||--o{ user_identities : "user_id"
     users ||--o{ yarns : "owner_id"

@@ -2,7 +2,7 @@
 
 ## Project overview
 
-WeftMark is a multi-user web platform for managing weaving (loom) projects. All projects are private by default. Users can self-register via Clerk but are blocked until an admin approves them.
+WeftMark is a multi-user web platform for managing weaving drafts. All drafts are private by default. Users can self-register via Clerk but are blocked until an admin approves them.
 
 - Requirements: `docs/requirements/` (start with `docs/requirements/README.md`)
 - WIF 1.1 spec: `docs/standard/standard-wif1-1.txt`
