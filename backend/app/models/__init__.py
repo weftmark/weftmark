@@ -1,4 +1,5 @@
 from app.models.activity import Activity, ActivityStep
+from app.models.alembic_meta import AlembicMeta
 from app.models.audit_log import AuditLog
 from app.models.base import Base
 from app.models.draft import Draft
@@ -19,6 +20,7 @@ from app.models.yarn import Skein, Yarn
 
 __all__ = [
     "Base",
+    "AlembicMeta",
     "AuditLog",
     "User",
     "UserIdentity",

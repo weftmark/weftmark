@@ -18,6 +18,7 @@ import {
   getAdminEula,
   createEulaVersion,
   getAdminServices,
+  getAdminDbInfo,
   sendTestEmail,
   testWebhook,
   getAuditLog,
@@ -25,6 +26,7 @@ import {
   backfillClerkUser,
   type AdminUser,
   type AdminHealth,
+  type AdminDbInfo,
   type AuditLogEntry,
   type InviteRecord,
   type PendingSignup,
@@ -799,7 +801,7 @@ function HealthTab() {
       <div className="flex items-center gap-2">
         <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
         <span className="text-xs text-muted-foreground">
-          Live · 3s interval · {history.length}/{MAX_HEALTH_POINTS} samples · {formatUptime(latest.uptime_seconds)} uptime
+          Live · 3s interval · {history.length}/{MAX_HEALTH_POINTS} samples
         </span>
       </div>
 
@@ -823,6 +825,13 @@ function HealthTab() {
         values={pingValues}
         max={pingMax}
         color="rgb(245,158,11)"
+      />
+      <HealthChart
+        label="Uptime"
+        current={formatUptime(latest.uptime_seconds)}
+        values={history.map((h) => h.uptime_seconds)}
+        max={Math.max(latest.uptime_seconds, 60)}
+        color="rgb(168,85,247)"
       />
 
       <VersionsTable />
@@ -1026,6 +1035,42 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
   );
 }
 
+function DbInfoPanel() {
+  const { data } = useQuery<AdminDbInfo>({
+    queryKey: ["admin", "db-info"],
+    queryFn: getAdminDbInfo,
+    staleTime: 60_000,
+  });
+
+  if (!data) return null;
+
+  const rows = [
+    { label: "Revision", value: data.revision ?? "unknown" },
+    { label: "At head", value: data.is_at_head ? "yes" : "no", warn: !data.is_at_head },
+    { label: "Last squash", value: data.last_squash_at ?? "—" },
+    {
+      label: "Last migrated",
+      value: data.last_migrated_at ? new Date(data.last_migrated_at).toLocaleString() : "—",
+    },
+  ];
+
+  return (
+    <div>
+      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Database</h2>
+      <div className="border rounded-lg divide-y overflow-hidden">
+        {rows.map(({ label, value, warn }) => (
+          <div key={label} className="flex items-center justify-between px-4 py-2 bg-background">
+            <span className="text-sm">{label}</span>
+            <span className={`text-xs font-mono ${warn ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ServicesTab() {
   // Live status from /health/detailed — auto-refreshes every 30s
   const [detailed, setDetailed] = useState<ReadinessResponse | null>(null);
@@ -1078,6 +1123,7 @@ function ServicesTab() {
         </div>
       )}
 
+      <DbInfoPanel />
     </div>
   );
 }

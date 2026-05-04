@@ -113,6 +113,13 @@ class AdminVersionsResponse(BaseModel):
     psutil: str
 
 
+class AdminDbInfoResponse(BaseModel):
+    revision: str | None
+    is_at_head: bool
+    last_squash_at: str | None
+    last_migrated_at: str | None
+
+
 class ServicePermCheck(BaseModel):
     name: str
     status: Literal["ok", "error"]
@@ -1373,6 +1380,44 @@ async def get_versions(
         pillow=_pkg("pillow"),
         boto3=_pkg("boto3"),
         psutil=_pkg("psutil"),
+    )
+
+
+@router.get("/db-info", response_model=AdminDbInfoResponse)
+async def get_db_info(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> AdminDbInfoResponse:
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    rev_row = (await db.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))).fetchone()
+    revision = rev_row[0] if rev_row else None
+
+    try:
+        cfg = Config("/app/alembic.ini")
+        heads = set(ScriptDirectory.from_config(cfg).get_heads())
+        is_at_head = revision in heads
+    except Exception:
+        is_at_head = False
+
+    last_squash_at: str | None = None
+    last_migrated_at: str | None = None
+    try:
+        meta_rows = (await db.execute(text("SELECT key, value FROM alembic_meta"))).fetchall()
+        for key, value in meta_rows:
+            if key == "last_squash_at":
+                last_squash_at = value
+            elif key == "last_migrated_at":
+                last_migrated_at = value
+    except Exception:
+        pass
+
+    return AdminDbInfoResponse(
+        revision=revision,
+        is_at_head=is_at_head,
+        last_squash_at=last_squash_at,
+        last_migrated_at=last_migrated_at,
     )
 
 

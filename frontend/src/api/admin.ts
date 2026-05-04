@@ -61,6 +61,13 @@ export interface AdminVersions {
   psutil: string;
 }
 
+export interface AdminDbInfo {
+  revision: string | null;
+  is_at_head: boolean;
+  last_squash_at: string | null;
+  last_migrated_at: string | null;
+}
+
 export interface InviteRecord {
   id: string;
   email: string;
@@ -75,6 +82,7 @@ export const listAdminUsers = () => api.get<AdminUser[]>("/api/admin/users");
 export const getAdminStats = () => api.get<AdminStats>("/api/admin/stats");
 export const getAdminHealth = () => api.get<AdminHealth>("/api/admin/health");
 export const getAdminVersions = () => api.get<AdminVersions>("/api/admin/versions");
+export const getAdminDbInfo = () => api.get<AdminDbInfo>("/api/admin/db-info");
 export const patchAdminUser = (userId: string, body: { is_active?: boolean; is_admin?: boolean; is_superuser?: boolean }) =>
   api.patch<AdminUser>(`/api/admin/users/${userId}`, body);
 export const banUser = (userId: string) => api.post<AdminUser>(`/api/admin/users/${userId}/ban`, {});
