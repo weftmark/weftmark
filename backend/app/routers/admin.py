@@ -99,11 +99,16 @@ class AdminHealthResponse(BaseModel):
     memory_total_mb: int
     db_ping_ms: float
     uptime_seconds: int
+    started_at: str
 
 
 class AdminVersionsResponse(BaseModel):
     app: str
     python: str
+    redis_server: str
+    celery: str
+    postgres: str
+    postgres_source: str
     fastapi: str
     sqlalchemy: str
     alembic: str
@@ -111,6 +116,13 @@ class AdminVersionsResponse(BaseModel):
     pillow: str
     boto3: str
     psutil: str
+
+
+class AdminDbInfoResponse(BaseModel):
+    revision: str | None
+    is_at_head: bool
+    last_squash_at: str | None
+    last_migrated_at: str | None
 
 
 class ServicePermCheck(BaseModel):
@@ -807,6 +819,7 @@ async def get_health(
         memory_total_mb=mem.total // (1024 * 1024),
         db_ping_ms=db_ping_ms,
         uptime_seconds=uptime_seconds,
+        started_at=start_time.isoformat(),
     )
 
 
@@ -1359,13 +1372,38 @@ def _pkg(name: str) -> str:
         return "unknown"
 
 
+async def _redis_server_version() -> str:
+    try:
+        import redis.asyncio as aioredis
+
+        settings = get_settings()
+        client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        info = await client.info("server")
+        await client.aclose()
+        return info.get("redis_version", "unknown")
+    except Exception:
+        return "unavailable"
+
+
 @router.get("/versions", response_model=AdminVersionsResponse)
 async def get_versions(
     _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
 ) -> AdminVersionsResponse:
+    settings = get_settings()
+
+    pg_row = (await db.execute(text("SELECT version()"))).fetchone()
+    pg_full = pg_row[0] if pg_row else "unknown"
+    pg_version = pg_full.split()[1] if pg_full.startswith("PostgreSQL") else pg_full
+    pg_source = "remote" if settings.postgres_dsn else "local docker"
+
     return AdminVersionsResponse(
         app=VERSION,
         python=platform.python_version(),
+        redis_server=await _redis_server_version(),
+        celery=_pkg("celery"),
+        postgres=pg_version,
+        postgres_source=pg_source,
         fastapi=_pkg("fastapi"),
         sqlalchemy=_pkg("sqlalchemy"),
         alembic=_pkg("alembic"),
@@ -1373,6 +1411,44 @@ async def get_versions(
         pillow=_pkg("pillow"),
         boto3=_pkg("boto3"),
         psutil=_pkg("psutil"),
+    )
+
+
+@router.get("/db-info", response_model=AdminDbInfoResponse)
+async def get_db_info(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> AdminDbInfoResponse:
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    rev_row = (await db.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))).fetchone()
+    revision = rev_row[0] if rev_row else None
+
+    try:
+        cfg = Config("/app/alembic.ini")
+        heads = set(ScriptDirectory.from_config(cfg).get_heads())
+        is_at_head = revision in heads
+    except Exception:
+        is_at_head = False
+
+    last_squash_at: str | None = None
+    last_migrated_at: str | None = None
+    try:
+        meta_rows = (await db.execute(text("SELECT key, value FROM alembic_meta"))).fetchall()
+        for key, value in meta_rows:
+            if key == "last_squash_at":
+                last_squash_at = value
+            elif key == "last_migrated_at":
+                last_migrated_at = value
+    except Exception:
+        pass
+
+    return AdminDbInfoResponse(
+        revision=revision,
+        is_at_head=is_at_head,
+        last_squash_at=last_squash_at,
+        last_migrated_at=last_migrated_at,
     )
 
 

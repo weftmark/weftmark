@@ -47,11 +47,16 @@ export interface AdminHealth {
   memory_total_mb: number;
   db_ping_ms: number;
   uptime_seconds: number;
+  started_at: string;
 }
 
 export interface AdminVersions {
   app: string;
   python: string;
+  redis_server: string;
+  celery: string;
+  postgres: string;
+  postgres_source: string;
   fastapi: string;
   sqlalchemy: string;
   alembic: string;
@@ -59,6 +64,13 @@ export interface AdminVersions {
   pillow: string;
   boto3: string;
   psutil: string;
+}
+
+export interface AdminDbInfo {
+  revision: string | null;
+  is_at_head: boolean;
+  last_squash_at: string | null;
+  last_migrated_at: string | null;
 }
 
 export interface InviteRecord {
@@ -75,6 +87,7 @@ export const listAdminUsers = () => api.get<AdminUser[]>("/api/admin/users");
 export const getAdminStats = () => api.get<AdminStats>("/api/admin/stats");
 export const getAdminHealth = () => api.get<AdminHealth>("/api/admin/health");
 export const getAdminVersions = () => api.get<AdminVersions>("/api/admin/versions");
+export const getAdminDbInfo = () => api.get<AdminDbInfo>("/api/admin/db-info");
 export const patchAdminUser = (userId: string, body: { is_active?: boolean; is_admin?: boolean; is_superuser?: boolean }) =>
   api.patch<AdminUser>(`/api/admin/users/${userId}`, body);
 export const banUser = (userId: string) => api.post<AdminUser>(`/api/admin/users/${userId}/ban`, {});
