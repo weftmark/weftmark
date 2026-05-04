@@ -155,7 +155,7 @@ class TestDeleteAccount:
             owner_id=test_user.id,
             name="Test Draft",
             wif_filename="test.wif",
-            wif_path="projects/test/original.wif",
+            wif_path="drafts/test/original.wif",
         )
         db_session.add(draft)
         await db_session.commit()
@@ -171,7 +171,7 @@ class TestDeleteAccount:
             owner_id=test_user.id,
             name="P",
             wif_filename="x.wif",
-            wif_path="projects/x/original.wif",
+            wif_path="drafts/x/original.wif",
         )
         db_session.add(draft)
         await db_session.flush()

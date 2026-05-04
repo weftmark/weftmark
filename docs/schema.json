@@ -15,7 +15,7 @@
           "nullable": false
         },
         {
-          "name": "project_id",
+          "name": "draft_id",
           "position": 3,
           "type": "uuid",
           "nullable": false
@@ -154,10 +154,10 @@
           "constraint": "activities_owner_id_fkey"
         },
         {
-          "column": "project_id",
-          "references_table": "projects",
+          "column": "draft_id",
+          "references_table": "drafts",
           "references_column": "id",
-          "constraint": "activities_project_id_fkey"
+          "constraint": "activities_draft_id_fkey"
         }
       ],
       "unique_constraints": [],
@@ -179,9 +179,9 @@
           "primary": false
         },
         {
-          "name": "ix_activities_project_id",
+          "name": "ix_activities_draft_id",
           "columns": [
-            "project_id"
+            "draft_id"
           ],
           "unique": false,
           "primary": false
@@ -1214,7 +1214,7 @@
       ],
       "check_constraints": []
     },
-    "projects": {
+    "drafts": {
       "columns": [
         {
           "name": "id",
@@ -1383,12 +1383,12 @@
           "column": "owner_id",
           "references_table": "users",
           "references_column": "id",
-          "constraint": "projects_owner_id_fkey"
+          "constraint": "drafts_owner_id_fkey"
         }
       ],
       "unique_constraints": [
         {
-          "constraint": "projects_share_slug_key",
+          "constraint": "drafts_share_slug_key",
           "columns": [
             "share_slug"
           ]
@@ -1396,7 +1396,7 @@
       ],
       "indexes": [
         {
-          "name": "ix_projects_owner_id",
+          "name": "ix_drafts_owner_id",
           "columns": [
             "owner_id"
           ],
@@ -1404,7 +1404,7 @@
           "primary": false
         },
         {
-          "name": "projects_pkey",
+          "name": "drafts_pkey",
           "columns": [
             "id"
           ],
@@ -1412,7 +1412,7 @@
           "primary": true
         },
         {
-          "name": "projects_share_slug_key",
+          "name": "drafts_share_slug_key",
           "columns": [
             "share_slug"
           ],

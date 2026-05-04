@@ -1,7 +1,23 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { SignIn, useAuth as useClerkAuth, useClerk, useUser } from "@clerk/clerk-react";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthCard } from "@/components/auth/AuthCard";
+
+const CLERK_APPEARANCE = {
+  variables: {
+    colorPrimary: "#27272a",
+    colorBackground: "#ffffff",
+    colorInputBackground: "#fafaf9",
+    colorText: "#1c1917",
+    colorTextSecondary: "#57534e",
+    borderRadius: "0.5rem",
+  },
+  elements: {
+    headerTitle: "hidden",
+    headerSubtitle: "hidden",
+  },
+};
 
 export function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -23,53 +39,48 @@ export function LoginPage() {
     }
   }, [clerkLoaded, isSignedIn, isLoading, isAuthenticated, clerkStatus, navigate]);
 
-  // Clerk-authenticated but no DB record and not pending — show denied/holding page.
+  // Clerk-authenticated but WeftMark hasn't approved the account
   if (clerkLoaded && isSignedIn && !isLoading && !isAuthenticated && clerkStatus !== "pending_signup") {
     const isDenied = clerkStatus === "denied" || clerkStatus === "banned";
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="w-full max-w-sm space-y-4 px-4 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">WeftMark</h1>
-          {isDenied ? (
-            <p className="text-sm text-muted-foreground">
-              WeftMark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that changes.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              WeftMark is currently invite only. Admins have been notified of your sign-up request.
-            </p>
-          )}
+      <AuthCard>
+        <div className="text-center">
+          <h1 className="text-lg font-semibold text-zinc-800">
+            {isDenied ? "Account not approved" : "Approval pending"}
+          </h1>
+          <p className="mt-2 text-sm text-stone-600">
+            {isDenied
+              ? "WeftMark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that changes."
+              : "Your sign-up request has been received. You'll get an email when an admin approves your account."}
+          </p>
           <button
             onClick={() => signOut()}
-            className="text-sm underline underline-offset-2 text-muted-foreground hover:text-foreground"
+            className="mt-6 text-sm text-stone-500 underline underline-offset-2 hover:text-stone-700"
           >
             Sign out
           </button>
         </div>
-      </div>
+      </AuthCard>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-6 px-4">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">WeftMark</h1>
-          <p className="text-sm text-muted-foreground">Sign in to continue</p>
-          <p className="text-xs text-amber-500 font-mono">WeftMark custom login page — not Clerk hosted</p>
-        </div>
-        <SignIn
-          routing="hash"
-          appearance={{
-            elements: {
-              rootBox: "w-full",
-              card: "shadow-none border rounded-lg p-6 bg-card",
-              headerTitle: "hidden",
-              headerSubtitle: "hidden",
-            },
-          }}
-        />
+    <AuthCard
+      naked
+      footer={
+        <>
+          New to weftmark?{" "}
+          <Link to="/register" className="text-amber-700 underline underline-offset-2 hover:text-amber-800">
+            Request access
+          </Link>
+        </>
+      }
+    >
+      <div className="mb-5 text-center">
+        <h1 className="text-lg font-semibold text-zinc-800">Sign in</h1>
+        <p className="mt-1 text-sm text-stone-600">Welcome back</p>
       </div>
-    </div>
+      <SignIn routing="hash" appearance={CLERK_APPEARANCE} />
+    </AuthCard>
   );
 }
