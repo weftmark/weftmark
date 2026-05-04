@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Layers, CheckSquare, Wrench } from "lucide-react";
+import { AppIcons } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { PublicFooter } from "@/components/PublicFooter";
 
@@ -7,17 +7,17 @@ const FEATURES = [
   {
     title: "Track your weaves",
     body: "Upload your WIF draft and step through every pick. weftmark keeps your place so you can put down the shuttle and pick it right back up.",
-    Icon: Layers,
+    Icon: AppIcons.designLibrary,
   },
   {
     title: "Record every pick",
     body: "Advance, reverse, or jump to any row. Mark a project complete when the last pick is woven in.",
-    Icon: CheckSquare,
+    Icon: AppIcons.pickTracking,
   },
   {
     title: "Manage your tools",
     body: "Keep a record of your looms and yarn. Assign a loom to a project and track what's on the beam.",
-    Icon: Wrench,
+    Icon: AppIcons.toolManagement,
   },
 ];
 

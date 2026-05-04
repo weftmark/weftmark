@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronRight, Footprints, ChevronsUp } from "lucide-react";
+import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getActivity, getActivityPicks, stepActivity, jumpActivity, completeActivity, abandonActivity,
@@ -112,9 +112,9 @@ function PickDisplay({
       {/* Activity type icon — centered vertically */}
       <div className="shrink-0 flex items-center text-primary/50">
         {activityType === "lift" ? (
-          <ChevronsUp className="h-8 w-8" strokeWidth={1.5} />
+          <AppIcons.lift className="h-8 w-8" strokeWidth={1.5} />
         ) : (
-          <Footprints className="h-8 w-8" strokeWidth={1.5} />
+          <AppIcons.treadle className="h-8 w-8" strokeWidth={1.5} />
         )}
       </div>
 
@@ -1085,13 +1085,13 @@ export function ActivityDetailPage() {
             {activity.loom_id && (
               <>
                 <Link to="/looms" className="text-stone-500 hover:text-stone-900">Equipment</Link>
-                <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+                <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
               </>
             )}
             <Link to="/projects" className="text-stone-500 hover:text-stone-900">Projects</Link>
-            <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
             <Link to="/activities" className="text-stone-500 hover:text-stone-900">Activities</Link>
-            <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
           </div>
           {editingName ? (
             <form

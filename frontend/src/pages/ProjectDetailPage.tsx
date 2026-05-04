@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProject, deleteProject, generateLiftplan, overrideProjectMetadata, previewUrl, downloadWif, downloadWifModified } from "@/api/projects";
 import { listActivities } from "@/api/activities";
@@ -76,7 +76,7 @@ export function ProjectDetailPage() {
     <div className="p-6 max-w-5xl mx-auto w-full space-y-6">
       <div className="flex items-center gap-2 text-sm">
         <Link to="/projects" className="text-stone-500 hover:text-stone-900">Projects</Link>
-        <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+        <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
         <span className="font-medium text-stone-900">{project.name}</span>
       </div>
 

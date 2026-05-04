@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getYarn, deleteYarn, updateYarn,
@@ -522,7 +522,7 @@ export function YarnDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <Link to="/yarn" className="text-stone-500 hover:text-stone-900">Yarn</Link>
-          <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+          <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
           <span className="font-medium text-stone-900">{yarn.brand} — {yarn.name}</span>
         </div>
         <div className="flex items-center gap-2">

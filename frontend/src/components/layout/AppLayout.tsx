@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu } from "lucide-react";
+import { AppIcons } from "@/lib/icons";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { VersionBadge } from "@/components/layout/VersionFooter";
 import type { ReactNode } from "react";
@@ -23,7 +23,7 @@ export function AppLayout({ children }: Props) {
             className="rounded-md p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
             aria-label="Open navigation"
           >
-            <Menu className="h-5 w-5" />
+            <AppIcons.mobileMenu className="h-5 w-5" />
           </button>
         </div>
 

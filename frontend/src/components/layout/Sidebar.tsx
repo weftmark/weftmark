@@ -1,16 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useClerk } from "@clerk/clerk-react";
-import {
-  LayoutDashboard,
-  FolderOpen,
-  Activity,
-  Wrench,
-  Settings,
-  ShieldCheck,
-  LogOut,
-  X,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { AppIcons, type LucideIcon } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -22,10 +12,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/home", icon: LayoutDashboard, exact: true },
-  { label: "Projects", href: "/projects", icon: FolderOpen },
-  { label: "Activities", href: "/activities", icon: Activity },
-  { label: "Equipment", href: "/looms", icon: Wrench },
+  { label: "Dashboard", href: "/home", icon: AppIcons.dashboard, exact: true },
+  { label: "Projects", href: "/projects", icon: AppIcons.projects },
+  { label: "Activities", href: "/activities", icon: AppIcons.activities },
+  { label: "Equipment", href: "/looms", icon: AppIcons.equipment },
 ];
 
 interface Props {
@@ -85,7 +75,7 @@ export function Sidebar({ open, onClose }: Props) {
             className="rounded-md p-1 text-stone-400 hover:text-stone-600 lg:hidden"
             aria-label="Close menu"
           >
-            <X className="h-4 w-4" />
+            <AppIcons.close className="h-4 w-4" />
           </button>
         </div>
 
@@ -112,13 +102,13 @@ export function Sidebar({ open, onClose }: Props) {
         {/* Bottom nav */}
         <div className="shrink-0 border-t border-stone-200 px-3 py-3 space-y-0.5">
           <Link to="/settings" onClick={onClose} className={navCls("/settings")}>
-            <Settings className={iconCls("/settings")} strokeWidth={1.75} />
+            <AppIcons.settings className={iconCls("/settings")} strokeWidth={1.75} />
             Settings
           </Link>
 
           {user?.is_admin && (
             <Link to="/admin" onClick={onClose} className={navCls("/admin")}>
-              <ShieldCheck className={iconCls("/admin")} strokeWidth={1.75} />
+              <AppIcons.admin className={iconCls("/admin")} strokeWidth={1.75} />
               Admin
             </Link>
           )}
@@ -127,7 +117,7 @@ export function Sidebar({ open, onClose }: Props) {
             onClick={() => signOut()}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
           >
-            <LogOut className="h-4 w-4 shrink-0 text-stone-400" strokeWidth={1.75} />
+            <AppIcons.logout className="h-4 w-4 shrink-0 text-stone-400" strokeWidth={1.75} />
             Sign out
           </button>
         </div>
