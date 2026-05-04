@@ -47,6 +47,7 @@ export interface AdminHealth {
   memory_total_mb: number;
   db_ping_ms: number;
   uptime_seconds: number;
+  started_at: string;
 }
 
 export interface AdminVersions {

@@ -58,9 +58,11 @@ function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d} day${d !== 1 ? "s" : ""}`);
+  if (h > 0) parts.push(`${h} hour${h !== 1 ? "s" : ""}`);
+  parts.push(`${m} minute${m !== 1 ? "s" : ""}`);
+  return parts.join(", ");
 }
 
 export function AdminPage() {
@@ -805,6 +807,19 @@ function HealthTab() {
         </span>
       </div>
 
+      <div className="border rounded-lg p-4 space-y-1">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-medium">Uptime</span>
+          <span className="text-sm tabular-nums text-muted-foreground">{formatUptime(latest.uptime_seconds)}</span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-muted-foreground">Last reboot</span>
+          <span className="text-xs font-mono text-muted-foreground">
+            {new Date(latest.started_at).toLocaleString()}
+          </span>
+        </div>
+      </div>
+
       <HealthChart
         label="CPU"
         current={`${latest.cpu_percent}%`}
@@ -826,18 +841,13 @@ function HealthTab() {
         max={pingMax}
         color="rgb(245,158,11)"
       />
-      <HealthChart
-        label="Uptime"
-        current={formatUptime(latest.uptime_seconds)}
-        values={history.map((h) => h.uptime_seconds)}
-        max={Math.max(latest.uptime_seconds, 60)}
-        color="rgb(168,85,247)"
-      />
 
       <VersionsTable />
     </div>
   );
 }
+
+declare const __APP_VERSION__: string;
 
 function VersionsTable() {
   const { data, isLoading } = useQuery({
@@ -849,7 +859,8 @@ function VersionsTable() {
   if (isLoading || !data) return null;
 
   const rows = [
-    { label: "App", value: data.app },
+    { label: "Frontend", value: __APP_VERSION__ },
+    { label: "API", value: data.app },
     { label: "Python", value: data.python },
     { label: "FastAPI", value: data.fastapi },
     { label: "SQLAlchemy", value: data.sqlalchemy },
@@ -859,6 +870,7 @@ function VersionsTable() {
     { label: "boto3", value: data.boto3 },
     { label: "psutil", value: data.psutil },
   ];
+
 
   return (
     <div>

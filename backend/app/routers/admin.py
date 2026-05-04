@@ -99,6 +99,7 @@ class AdminHealthResponse(BaseModel):
     memory_total_mb: int
     db_ping_ms: float
     uptime_seconds: int
+    started_at: str
 
 
 class AdminVersionsResponse(BaseModel):
@@ -814,6 +815,7 @@ async def get_health(
         memory_total_mb=mem.total // (1024 * 1024),
         db_ping_ms=db_ping_ms,
         uptime_seconds=uptime_seconds,
+        started_at=start_time.isoformat(),
     )
 
 
