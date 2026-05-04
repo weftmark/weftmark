@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listActivities, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS, type ActivitySummary } from "@/api/activities";
+import { AppIcons } from "@/lib/icons";
 import { previewUrl } from "@/api/projects";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
 import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -57,43 +59,54 @@ function ActivityCard({ activity, onAssign }: {
   return (
     <div className="relative rounded-lg border hover:border-ring transition-colors">
       <Link to={`/activities/${activity.id}`} className="block p-4">
-        <div className="flex items-start justify-between gap-2">
-          <span className="font-medium">{activity.name}</span>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              aria-label="Preview design"
-              onClick={(e) => { e.preventDefault(); setShowPreview(true); }}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              title="Preview design"
-            >
-              <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
-                <rect x="0" y="0" width="5" height="5" rx="1" />
-                <rect x="7" y="0" width="5" height="5" rx="1" />
-                <rect x="0" y="7" width="5" height="5" rx="1" />
-                <rect x="7" y="7" width="5" height="5" rx="1" />
-              </svg>
-            </button>
-            <span className={`min-w-[5.5rem] text-center rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_COLORS[badgeKey]}`}>
-              {badgeLabel}
-            </span>
+        <div className="flex gap-3">
+          <div className="shrink-0 mt-0.5">
+            {isPlanning
+              ? <AppIcons.planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+              : activity.activity_type === "treadle"
+                ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <span className="font-medium">{activity.name}</span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  aria-label="Preview design"
+                  onClick={(e) => { e.preventDefault(); setShowPreview(true); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Preview design"
+                >
+                  <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
+                    <rect x="0" y="0" width="5" height="5" rx="1" />
+                    <rect x="7" y="0" width="5" height="5" rx="1" />
+                    <rect x="0" y="7" width="5" height="5" rx="1" />
+                    <rect x="7" y="7" width="5" height="5" rx="1" />
+                  </svg>
+                </button>
+                <span className={`min-w-[5.5rem] text-center rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_COLORS[badgeKey]}`}>
+                  {badgeLabel}
+                </span>
+              </div>
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">{ACTIVITY_TYPE_LABELS[activity.activity_type]}</p>
+            {endDate && (
+              <p className="mt-0.5 text-xs text-muted-foreground">{fmtDate(endDate)}</p>
+            )}
+            {!isPlanning && activity.status === "active" && (
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                  <span>Pick {Math.min(activity.current_pick, activity.total_picks)} of {activity.total_picks}</span>
+                  <span>{pct}%</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <p className="mt-0.5 text-sm text-muted-foreground">{ACTIVITY_TYPE_LABELS[activity.activity_type]}</p>
-        {endDate && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{fmtDate(endDate)}</p>
-        )}
-        {!isPlanning && activity.status === "active" && (
-          <div className="mt-3">
-            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-              <span>Pick {Math.min(activity.current_pick, activity.total_picks)} of {activity.total_picks}</span>
-              <span>{pct}%</span>
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        )}
       </Link>
       {isPlanning && onAssign && (
         <div className="border-t px-3 pb-3 pt-2">
@@ -191,76 +204,71 @@ export function ActivitiesPage() {
   const abandonedByYear = groupByYear(abandoned, (a) => a.abandoned_at);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
-          <span className="font-semibold">Activities</span>
-        </div>
+    <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Activities</h1>
         <Button size="sm" onClick={() => setShowCreate(true)}>New activity</Button>
-      </header>
+      </div>
 
-      <main className="flex-1 p-6 max-w-3xl mx-auto w-full space-y-8">
-        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {error && <p className="text-sm text-destructive">Failed to load activities.</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {error && <p className="text-sm text-destructive">Failed to load activities.</p>}
 
-        {!isLoading && activities.length === 0 && (
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <p className="text-sm text-muted-foreground">No activities yet. Start one to begin tracking a weaving session.</p>
-            <Button className="mt-4" onClick={() => setShowCreate(true)}>New activity</Button>
+      {!isLoading && activities.length === 0 && (
+        <div className="rounded-lg border border-dashed p-12 text-center">
+          <p className="text-sm text-muted-foreground">No activities yet. Start one to begin tracking a weaving session.</p>
+          <Button className="mt-4" onClick={() => setShowCreate(true)}>New activity</Button>
+        </div>
+      )}
+
+      {active.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {active.map((a) => <ActivityCard key={a.id} activity={a} />)}
           </div>
-        )}
+        </section>
+      )}
 
-        {active.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {active.map((a) => <ActivityCard key={a.id} activity={a} />)}
-            </div>
-          </section>
-        )}
+      {planning.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Planning</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {planning.map((a) => <ActivityCard key={a.id} activity={a} onAssign={setAssigningActivityId} />)}
+          </div>
+        </section>
+      )}
 
-        {planning.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Planning</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {planning.map((a) => <ActivityCard key={a.id} activity={a} onAssign={setAssigningActivityId} />)}
-            </div>
-          </section>
-        )}
+      {completedByYear.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Completed</h2>
+          <div className="space-y-4">
+            {completedByYear.map(({ year, items }) => (
+              <YearGroup
+                key={year}
+                year={year}
+                items={items}
+                defaultExpanded={year === currentYear}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
-        {completedByYear.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Completed</h2>
-            <div className="space-y-4">
-              {completedByYear.map(({ year, items }) => (
-                <YearGroup
-                  key={year}
-                  year={year}
-                  items={items}
-                  defaultExpanded={year === currentYear}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {abandonedByYear.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Abandoned</h2>
-            <div className="space-y-4">
-              {abandonedByYear.map(({ year, items }) => (
-                <YearGroup
-                  key={year}
-                  year={year}
-                  items={items}
-                  defaultExpanded={false}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
+      {abandonedByYear.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Abandoned</h2>
+          <div className="space-y-4">
+            {abandonedByYear.map(({ year, items }) => (
+              <YearGroup
+                key={year}
+                year={year}
+                items={items}
+                defaultExpanded={false}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {showCreate && (
         <CreateActivityModal

@@ -9,7 +9,7 @@ export function AboutPage() {
         <div className="mx-auto flex max-w-4xl items-center gap-3">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <WeftmarkLogo className="h-8 w-auto text-amber-800" />
-            <span className="text-lg font-semibold tracking-tight">Weftmark</span>
+            <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
           </Link>
         </div>
       </header>
@@ -17,9 +17,9 @@ export function AboutPage() {
       <main className="flex-1 px-6 py-16">
         <div className="mx-auto max-w-2xl space-y-10">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-4">About Weftmark</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-4">About weftmark</h1>
             <p className="text-stone-600 leading-relaxed">
-              Weftmark is a weaving companion built by a weaver to solve a weaver's problem: keeping
+              weftmark is a weaving companion built by a weaver to solve a weaver's problem: keeping
               track of where you are in a long treadling sequence. It is not a commercial product. It
               is a personal project, built in spare hours, to scratch a specific itch.
             </p>
@@ -28,7 +28,7 @@ export function AboutPage() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">How it was built</h2>
             <p className="text-stone-600 leading-relaxed">
-              Weftmark was built with significant assistance from AI tools — specifically Anthropic's
+              weftmark was built with significant assistance from AI tools — specifically Anthropic's
               Claude. Claude helped with code generation, architecture decisions, and code review
               throughout the project. The developer is not a professional software engineer.
             </p>

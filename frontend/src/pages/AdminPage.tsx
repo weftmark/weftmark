@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { UserDetailModal, type UserDetailTarget } from "@/components/admin/UserDetailModal";
-import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useClerk } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -65,33 +63,15 @@ function formatUptime(seconds: number): string {
 export function AdminPage() {
   const [tab, setTab] = useState<Tab>("users");
   const { user: currentUser } = useAuth();
-  const { signOut } = useClerk();
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {!currentUser?.is_superuser && (
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-              ← Dashboard
-            </Link>
-          )}
-          <span className="font-semibold">Admin</span>
-          {currentUser?.is_superuser && (
-            <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
-          )}
-        </div>
+    <div className="p-6 max-w-4xl mx-auto w-full space-y-6">
+      <div className="flex items-center gap-3">
+        <h1 className="text-xl font-semibold">Admin</h1>
         {currentUser?.is_superuser && (
-          <button
-            onClick={() => signOut()}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Sign out
-          </button>
+          <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
         )}
-      </header>
-
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
+      </div>
         <div className="flex gap-2 border-b pb-2 flex-wrap">
           {(["users", "invites", "stats", "health", "services", "audit"] as Tab[]).map((t) => (
             <button
@@ -127,7 +107,6 @@ export function AdminPage() {
         {tab === "services" && <ServicesTab />}
         {tab === "audit" && <AuditLogTab />}
         {tab === "superuser" && <SuperuserTab />}
-      </main>
     </div>
   );
 }

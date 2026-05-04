@@ -17,11 +17,15 @@ class LintResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
-    # Parsed metadata
+    # Parsed metadata (from [WEAVING] section)
     num_shafts: int | None = None
     num_treadles: int | None = None
     warp_threads: int | None = None
     weft_threads: int | None = None
+
+    # Effective counts derived from actual treadling/liftplan data
+    effective_num_treadles: int | None = None
+    effective_num_shafts: int | None = None
 
     # Feature flags
     has_threading: bool = False
@@ -86,6 +90,28 @@ def lint(wif_bytes: bytes) -> LintResult:
     result.has_liftplan = "LIFTPLAN" in sections
     result.has_color_palette = "COLOR PALETTE" in sections or "COLOR TABLE" in sections
 
+    # --- Effective counts from actual pick data ---
+    if result.has_treadling:
+        result.effective_num_treadles = _max_index_used(config, "TREADLING")
+    if result.has_liftplan:
+        result.effective_num_shafts = _max_index_used(config, "LIFTPLAN")
+
+    # Warn if declared metadata doesn't match actual usage
+    if result.num_treadles is not None and result.effective_num_treadles is not None:
+        if result.effective_num_treadles != result.num_treadles:
+            result.warnings.append(
+                f"[WEAVING] declares Treadles={result.num_treadles} but the highest treadle used "
+                f"in [TREADLING] is {result.effective_num_treadles}. "
+                f"Loom compatibility is based on the actual usage ({result.effective_num_treadles})."
+            )
+    if result.num_shafts is not None and result.effective_num_shafts is not None:
+        if result.effective_num_shafts != result.num_shafts:
+            result.warnings.append(
+                f"[WEAVING] declares Shafts={result.num_shafts} but the highest shaft used "
+                f"in [LIFTPLAN] is {result.effective_num_shafts}. "
+                f"Loom compatibility is based on the actual usage ({result.effective_num_shafts})."
+            )
+
     # Warp/weft thread counts
     if "WARP" in sections:
         try:
@@ -122,3 +148,28 @@ def _get(config: RawConfigParser, section: str, key: str) -> str | None:
         return config.get(section, key).strip() or None
     except Exception:
         return None
+
+
+def _max_index_used(config: RawConfigParser, section: str) -> int | None:
+    """Return the highest 1-based index referenced in any value of `section`.
+
+    TREADLING values look like "3" or "2,5". LIFTPLAN looks like "1,3,5".
+    We parse every comma-separated integer across all entries and return the max.
+    Returns None if the section is empty or no integers are found.
+    """
+    try:
+        items = config.items(section)
+    except Exception:
+        return None
+    max_val: int | None = None
+    for _key, val in items:
+        for token in val.split(","):
+            token = token.strip()
+            if token:
+                try:
+                    n = int(token)
+                    if max_val is None or n > max_val:
+                        max_val = n
+                except ValueError:
+                    continue
+    return max_val

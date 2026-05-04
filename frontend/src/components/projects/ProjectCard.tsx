@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import type { Project } from "@/api/projects";
+import { AppIcons } from "@/lib/icons";
 
 interface ActivityCounts {
   active: number;
@@ -17,8 +18,6 @@ export function ProjectCard({ project, activityCounts }: Props) {
   const navigate = useNavigate();
 
   const featureBadges = [
-    project.has_liftplan && "Lift-tracking",
-    project.has_treadling && "Treadle-tracking",
     project.has_threading && "Threading",
     project.has_tieup && "Tie-up",
   ].filter(Boolean) as string[];
@@ -33,11 +32,19 @@ export function ProjectCard({ project, activityCounts }: Props) {
           <h3 className="truncate font-medium">{project.name}</h3>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">{project.wif_filename}</p>
         </div>
-        {project.lint_errors.length > 0 && (
-          <span className="shrink-0 rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">
-            {project.lint_errors.length} error{project.lint_errors.length > 1 ? "s" : ""}
-          </span>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {project.has_liftplan && (
+            <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+          )}
+          {project.has_treadling && (
+            <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+          )}
+          {project.lint_errors.length > 0 && (
+            <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">
+              {project.lint_errors.length} error{project.lint_errors.length > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
       </div>
 
       {project.num_shafts != null && (
@@ -47,8 +54,19 @@ export function ProjectCard({ project, activityCounts }: Props) {
         </p>
       )}
 
+      {(project.has_liftplan || project.has_treadling) && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {project.has_liftplan && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs">lift tracking</span>
+          )}
+          {project.has_treadling && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs">treadle tracking</span>
+          )}
+        </div>
+      )}
+
       {featureBadges.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-1.5 flex flex-wrap gap-1">
           {featureBadges.map((b) => (
             <span
               key={b}

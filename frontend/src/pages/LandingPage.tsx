@@ -1,23 +1,23 @@
 import { Link } from "react-router-dom";
-import { Layers, CheckSquare, Wrench } from "lucide-react";
+import { AppIcons } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { PublicFooter } from "@/components/PublicFooter";
 
 const FEATURES = [
   {
     title: "Track your weaves",
-    body: "Upload your WIF draft and step through every pick. Weftmark keeps your place so you can put down the shuttle and pick it right back up.",
-    Icon: Layers,
+    body: "Upload your WIF draft and step through every pick. weftmark keeps your place so you can put down the shuttle and pick it right back up.",
+    Icon: AppIcons.designLibrary,
   },
   {
     title: "Record every pick",
     body: "Advance, reverse, or jump to any row. Mark a project complete when the last pick is woven in.",
-    Icon: CheckSquare,
+    Icon: AppIcons.pickTracking,
   },
   {
     title: "Manage your tools",
     body: "Keep a record of your looms and yarn. Assign a loom to a project and track what's on the beam.",
-    Icon: Wrench,
+    Icon: AppIcons.toolManagement,
   },
 ];
 
@@ -40,7 +40,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-2.5">
             <WeftmarkLogo className="h-7 w-auto text-zinc-800" />
-            <span className="text-base font-semibold tracking-tight">Weftmark</span>
+            <span className="text-base font-semibold tracking-tight" style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
           </div>
           <Link
             to="/login"

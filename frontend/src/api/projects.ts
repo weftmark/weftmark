@@ -5,6 +5,8 @@ export interface Project {
   wif_filename: string;
   num_shafts: number | null;
   num_treadles: number | null;
+  effective_num_treadles: number | null;
+  effective_num_shafts: number | null;
   warp_threads: number | null;
   weft_threads: number | null;
   has_threading: boolean;
@@ -16,6 +18,8 @@ export interface Project {
   lint_warnings: string[];
   lint_errors: string[];
   has_preview: boolean;
+  has_modified_file: boolean;
+  metadata_overrides: Record<string, { original: number | null; override: number }> | null;
   is_shared: boolean;
   created_at: string;
   updated_at: string;
@@ -87,4 +91,31 @@ export async function downloadWif(id: string, filename: string): Promise<void> {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function downloadWifModified(id: string, filename: string): Promise<void> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(`/api/projects/${id}/wif-modified`, { credentials: "include", headers });
+  if (!res.ok) throw new Error("Modified file not available");
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const base = filename.replace(/\.wif$/i, "");
+  a.download = `${base}-modified.wif`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function overrideProjectMetadata(
+  id: string,
+  field: "num_treadles" | "num_shafts",
+  value: number,
+): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/override-metadata`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ field, value }),
+  });
 }

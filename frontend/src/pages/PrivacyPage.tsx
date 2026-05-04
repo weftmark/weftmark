@@ -9,7 +9,7 @@ export function PrivacyPage() {
         <div className="mx-auto flex max-w-4xl items-center gap-3">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <WeftmarkLogo className="h-8 w-auto text-amber-800" />
-            <span className="text-lg font-semibold tracking-tight">Weftmark</span>
+            <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
           </Link>
         </div>
       </header>

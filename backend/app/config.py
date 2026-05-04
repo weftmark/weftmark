@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from_email: str = ""
-    smtp_from_name: str = "WeftMark"
+    smtp_from_name: str = "weftmark"
 
     # Invites
     invite_expiry_days_default: int = 7

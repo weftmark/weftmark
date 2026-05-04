@@ -70,6 +70,9 @@ class ActivityDetail(ActivitySummary):
     project_name: str
     project_num_shafts: int | None
     project_num_treadles: int | None
+    project_effective_num_treadles: int | None
+    project_effective_num_shafts: int | None
+    project_metadata_overrides: dict | None
     loom_name: str | None
     photos: list[ActivityPhotoSchema] = []
 
@@ -138,6 +141,19 @@ async def _check_loom_conflict(
         raise HTTPException(status_code=409, detail="This loom already has an active activity")
 
 
+def _wif_path_for_activity(project: Project, activity_type: str) -> str:
+    """Return the correct WIF path for an activity type.
+
+    For lift activities, prefer the liftplan-augmented file when available so
+    that the original upload is never mutated. Falls back to wif_path (covers
+    the case where the liftplan was embedded in the original WIF by the user's
+    design software).
+    """
+    if activity_type == "lift" and project.wif_modified_path and storage.file_exists(project.wif_modified_path):
+        return project.wif_modified_path
+    return project.wif_path
+
+
 async def _get_owned_activity(activity_id: uuid.UUID, user: User, db: AsyncSession) -> Activity:
     activity = await db.scalar(
         select(Activity).where(
@@ -176,6 +192,9 @@ def _to_detail(
         project_name=project.name,
         project_num_shafts=project.num_shafts,
         project_num_treadles=project.num_treadles,
+        project_effective_num_treadles=project.effective_num_treadles,
+        project_effective_num_shafts=project.effective_num_shafts,
+        project_metadata_overrides=project.metadata_overrides,
         loom_name=f"{loom.manufacturer} {loom.model_name}" if loom else None,
         photos=[ActivityPhotoSchema.model_validate(p) for p in (photos or [])],
     )
@@ -212,7 +231,7 @@ async def create_activity(
         raise HTTPException(status_code=400, detail="WIF file has no [LIFTPLAN] section")
 
     # Parse pick count from WIF
-    wif_bytes = storage.read_file(project.wif_path)
+    wif_bytes = storage.read_file(_wif_path_for_activity(project, body.activity_type))
     try:
         pick_data = wif_parser.parse_picks(wif_bytes, body.activity_type)
     except ValueError as exc:
@@ -632,7 +651,7 @@ async def get_picks(
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    wif_bytes = storage.read_file(project.wif_path)
+    wif_bytes = storage.read_file(_wif_path_for_activity(project, activity.activity_type))
     try:
         pick_data = wif_parser.parse_picks(wif_bytes, activity.activity_type)
     except ValueError as exc:
