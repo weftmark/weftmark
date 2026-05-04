@@ -783,7 +783,7 @@ function CompletedSummary({
       {/* Design preview */}
       <div>
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
-        <div className="overflow-auto rounded-lg border bg-white p-2">
+        <div className="overflow-auto rounded-lg border bg-card p-2">
           <AuthedImage
             src={previewUrl(activity.project_id)}
             alt={`Design for ${activity.project_name}`}
@@ -1078,20 +1078,20 @@ export function ActivityDetailPage() {
   return (
     <div className="flex flex-col">
       {/* Page header */}
-      <div className="shrink-0 border-b border-stone-200 bg-white px-6 py-3 flex items-center justify-between">
+      <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
           <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
             {activity.loom_id && (
               <>
-                <Link to="/looms" className="text-stone-500 hover:text-stone-900">Equipment</Link>
-                <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
+                <Link to="/looms" className="text-muted-foreground hover:text-foreground">Equipment</Link>
+                <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               </>
             )}
-            <Link to="/projects" className="text-stone-500 hover:text-stone-900">Projects</Link>
-            <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
-            <Link to="/activities" className="text-stone-500 hover:text-stone-900">Activities</Link>
-            <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
+            <Link to="/projects" className="text-muted-foreground hover:text-foreground">Projects</Link>
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <Link to="/activities" className="text-muted-foreground hover:text-foreground">Activities</Link>
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           {editingName ? (
             <form
@@ -1189,9 +1189,9 @@ export function ActivityDetailPage() {
         {/* Abandoned banner */}
         {isAbandoned && (
           <div className="mx-auto max-w-2xl px-8 pt-6">
-            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">This activity was not completed</p>
-              <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
+            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm">
+              <p className="font-medium text-copper-on-subtle">This activity was not completed</p>
+              <p className="mt-0.5 text-xs text-copper-on-subtle">
                 Abandoned at pick {activity.current_pick} of {activity.total_picks}
                 {" "}({Math.round((activity.current_pick - 1) / activity.total_picks * 100)}% woven)
                 {activity.abandoned_at && ` · ${new Date(activity.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
@@ -1444,11 +1444,11 @@ export function ActivityDetailPage() {
                   </div>
                 )}
                 {restartConflict && (
-                  <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
-                    <p className="font-medium text-amber-900 dark:text-amber-200">
+                  <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+                    <p className="font-medium text-copper-on-subtle">
                       This loom has an active activity: <span className="font-semibold">{restartConflict.name}</span>
                     </p>
-                    <p className="text-amber-800 dark:text-amber-300 text-xs">Resolve it to restart this one.</p>
+                    <p className="text-copper-on-subtle text-xs">Resolve it to restart this one.</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button type="button" size="sm" onClick={() => handleResolveAndRestart("complete")} disabled={actionLoading}>
                         {actionLoading ? "Working…" : "Mark completed & restart"}
@@ -1482,11 +1482,11 @@ export function ActivityDetailPage() {
                 </div>
               )}
               {cloneConflict && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
-                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+                  <p className="font-medium text-copper-on-subtle">
                     This loom has an active activity: <span className="font-semibold">{cloneConflict.name}</span>
                   </p>
-                  <p className="text-amber-800 dark:text-amber-300 text-xs">Resolve it to start the clone.</p>
+                  <p className="text-copper-on-subtle text-xs">Resolve it to start the clone.</p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button type="button" size="sm" onClick={() => handleResolveAndClone("complete")} disabled={actionLoading}>
                       {actionLoading ? "Working…" : "Mark completed & clone"}

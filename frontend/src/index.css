@@ -4,40 +4,60 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* === Slate & Copper — Light === */
+    --background: 60 9% 98%;            /* stone-50  */
+    --foreground: 20 10% 10%;           /* stone-900 */
+    --card: 0 0% 100%;                  /* white     */
+    --card-foreground: 20 10% 10%;      /* stone-900 */
+    --popover: 0 0% 100%;               /* white     */
+    --popover-foreground: 20 10% 10%;   /* stone-900 */
+    --primary: 240 4% 16%;              /* zinc-800  */
+    --primary-foreground: 0 0% 100%;    /* white     */
+    --secondary: 60 5% 96%;             /* stone-100 */
+    --secondary-foreground: 20 10% 10%; /* stone-900 */
+    --muted: 60 5% 96%;                 /* stone-100 */
+    --muted-foreground: 25 5% 45%;      /* stone-500 */
+    --accent: 32 95% 44%;               /* amber-600 */
+    --accent-foreground: 0 0% 100%;     /* white     */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 20 6% 90%;                /* stone-200 */
+    --input: 20 6% 90%;                 /* stone-200 */
+    --ring: 32 95% 44%;                 /* amber-600 */
     --radius: 0.5rem;
+
+    /* Slate & Copper extras */
+    --subdued: 33 5% 32%;               /* stone-600 */
+    --copper-subtle: 48 100% 96%;       /* amber-50  */
+    --copper-on-subtle: 26 91% 37%;     /* amber-700 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    /* === Slate & Copper — Dark === */
+    --background: 20 10% 10%;            /* stone-900 */
+    --foreground: 60 9% 98%;             /* stone-50  */
+    --card: 12 7% 15%;                   /* stone-800 */
+    --card-foreground: 60 9% 98%;        /* stone-50  */
+    --popover: 12 7% 15%;                /* stone-800 */
+    --popover-foreground: 60 9% 98%;     /* stone-50  */
+    --primary: 38 92% 50%;               /* amber-500 */
+    --primary-foreground: 20 10% 10%;    /* stone-900 */
+    --secondary: 31 6% 25%;              /* stone-700 */
+    --secondary-foreground: 60 9% 98%;   /* stone-50  */
+    --muted: 31 6% 25%;                  /* stone-700 */
+    --muted-foreground: 23 5% 64%;       /* stone-400 */
+    --accent: 38 92% 50%;                /* amber-500 */
+    --accent-foreground: 20 10% 10%;     /* stone-900 */
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 60 9% 98%;
+    --border: 31 6% 25%;                 /* stone-700 */
+    --input: 31 6% 25%;                  /* stone-700 */
+    --ring: 38 92% 50%;                  /* amber-500 */
+
+    /* Slate & Copper extras */
+    --subdued: 23 5% 64%;                /* stone-400 */
+    --copper-subtle: 21 92% 14%;         /* amber-950 */
+    --copper-on-subtle: 46 97% 65%;      /* amber-300 */
   }
 }
 

@@ -104,7 +104,8 @@ export default function App() {
                   <Route path="/activities" element={<AuthRoute><ActivitiesPage /></AuthRoute>} />
                   <Route path="/activities/:id" element={<AuthRoute><ActivityDetailPage /></AuthRoute>} />
                   <Route path="/admin" element={<AuthRoute requireAdmin><AdminPage /></AuthRoute>} />
-                  <Route path="/settings" element={<AuthRoute><SettingsPage /></AuthRoute>} />
+                  <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />
+                  <Route path="/settings/:section" element={<AuthRoute><SettingsPage /></AuthRoute>} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </EulaGate>

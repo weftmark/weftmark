@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
@@ -10,7 +11,8 @@ type Section = "appearance" | "preferences" | "privacy" | "terms" | "account";
 
 export function SettingsPage() {
   const { user, refetch } = useAuth();
-  const [activeSection, setActiveSection] = useState<Section>("appearance");
+  const { section } = useParams<{ section: string }>();
+  const activeSection: Section = (section as Section) ?? "appearance";
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -104,40 +106,9 @@ export function SettingsPage() {
     }
   }
 
-  const navItems: { id: Section; label: string }[] = [
-    { id: "appearance", label: "Appearance" },
-    { id: "preferences", label: "Preferences" },
-    { id: "privacy", label: "Privacy & data" },
-    { id: "terms", label: "Terms" },
-    { id: "account", label: "Account" },
-  ];
-
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold">Settings</h1>
-        </div>
-
-        <div className="flex gap-8">
-          {/* Sidebar nav */}
-          <nav className="w-44 shrink-0 space-y-1">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                  activeSection === item.id
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Content */}
-          <div className="flex-1 space-y-6">
+    <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="space-y-6">
             {(saveSuccess || saveError) && (
               <div
                 className={`rounded-md px-4 py-2 text-sm ${
@@ -155,7 +126,7 @@ export function SettingsPage() {
               <Section title="Appearance">
                 <Field label="Theme">
                   <div className="flex gap-2">
-                    {(["light", "dark"] as const).map((t) => (
+                    {(["light", "dark", "system"] as const).map((t) => (
                       <button
                         key={t}
                         onClick={() => {
@@ -460,7 +431,6 @@ export function SettingsPage() {
                 </div>
               </Section>
             )}
-          </div>
         </div>
     </div>
   );

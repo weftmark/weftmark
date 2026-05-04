@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 
 eula_router = APIRouter(prefix="/api/eula", tags=["users"])
 
-_VALID_THEMES = {"light", "dark"}
+_VALID_THEMES = {"light", "dark", "system"}
 _VALID_MEASUREMENT_SYSTEMS = {"metric", "imperial"}
 _VALID_ACTIVITY_THEMES = {"default", "compact", "high_contrast"}
 _VALID_IDLE_TIMEOUTS = {15, 30, 60, 120}

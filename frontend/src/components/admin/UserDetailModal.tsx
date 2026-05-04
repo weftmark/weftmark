@@ -183,7 +183,7 @@ export function UserDetailModal({ target, onClose }: Props) {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold">{s.display_name || s.email}</h2>
-                <Pill label="pending" cls="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" />
+                <Pill label="pending" cls="bg-copper-subtle text-copper-on-subtle" />
               </div>
               <p className="text-sm text-muted-foreground overflow-hidden"><CopyEmail email={s.email} /></p>
             </div>

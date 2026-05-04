@@ -75,9 +75,9 @@ export function ProjectDetailPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto w-full space-y-6">
       <div className="flex items-center gap-2 text-sm">
-        <Link to="/projects" className="text-stone-500 hover:text-stone-900">Projects</Link>
-        <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
-        <span className="font-medium text-stone-900">{project.name}</span>
+        <Link to="/projects" className="text-muted-foreground hover:text-foreground">Projects</Link>
+        <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="font-medium text-foreground">{project.name}</span>
       </div>
 
         {/* Lint status */}
@@ -210,9 +210,9 @@ export function ProjectDetailPage() {
               </dl>
 
               {!project.has_liftplan && project.has_treadling && project.has_tieup && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm dark:border-amber-800 dark:bg-amber-950">
-                  <p className="font-medium text-amber-900 dark:text-amber-100">Lift plan not in file</p>
-                  <p className="mt-0.5 text-amber-800 dark:text-amber-200 text-xs">
+                <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2.5 text-sm">
+                  <p className="font-medium text-copper-on-subtle">Lift plan not in file</p>
+                  <p className="mt-0.5 text-copper-on-subtle text-xs">
                     This WIF has treadling and tie-up data. A lift plan can be computed algorithmically and added to the project.
                   </p>
                   {generateMutation.isError && (
@@ -236,9 +236,9 @@ export function ProjectDetailPage() {
               {project.effective_num_treadles != null &&
                 project.num_treadles != null &&
                 project.effective_num_treadles !== project.num_treadles && (
-                <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm dark:border-stone-700 dark:bg-stone-900/30">
-                  <p className="font-medium text-stone-700 dark:text-stone-300">Treadle metadata mismatch</p>
-                  <p className="mt-0.5 text-stone-600 dark:text-stone-400 text-xs">
+                <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                  <p className="font-medium text-foreground">Treadle metadata mismatch</p>
+                  <p className="mt-0.5 text-subdued text-xs">
                     [WEAVING] declares {project.num_treadles} treadles but the treadling data only uses {project.effective_num_treadles}.
                     {project.metadata_overrides?.num_treadles
                       ? ` (overridden from ${project.metadata_overrides.num_treadles.original})`
@@ -269,9 +269,9 @@ export function ProjectDetailPage() {
               {project.effective_num_shafts != null &&
                 project.num_shafts != null &&
                 project.effective_num_shafts !== project.num_shafts && (
-                <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm dark:border-stone-700 dark:bg-stone-900/30">
-                  <p className="font-medium text-stone-700 dark:text-stone-300">Shaft metadata mismatch</p>
-                  <p className="mt-0.5 text-stone-600 dark:text-stone-400 text-xs">
+                <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                  <p className="font-medium text-foreground">Shaft metadata mismatch</p>
+                  <p className="mt-0.5 text-subdued text-xs">
                     [WEAVING] declares {project.num_shafts} shafts but the lift plan only uses {project.effective_num_shafts}.
                     {project.metadata_overrides?.num_shafts
                       ? ` (overridden from ${project.metadata_overrides.num_shafts.original})`
@@ -317,7 +317,7 @@ export function ProjectDetailPage() {
           <div>
             <h2 className="text-base font-semibold mb-3">Design Preview</h2>
             {project.has_preview ? (
-              <div className="overflow-auto rounded-lg border bg-white p-2">
+              <div className="overflow-auto rounded-lg border bg-card p-2">
                 <AuthedImage
                   src={previewUrl(project.id)}
                   alt={`Draft preview for ${project.name}`}
