@@ -145,6 +145,53 @@ Media column gets `1.4fr` to give the video/screenshot more visual weight.
 
 ---
 
+## Authenticated App Theming (CSS Variables)
+
+The authenticated app shell (sidebar, pages, modals) uses CSS custom properties defined in `frontend/src/index.css` and mapped to Tailwind tokens in `tailwind.config.ts`. This is the single source of truth for both light and dark mode — never use hard-coded palette classes (e.g. `stone-50`, `amber-600`) inside authenticated pages/components.
+
+### Token Reference
+
+| Tailwind class | CSS variable | Light value | Dark value |
+| --- | --- | --- | --- |
+| `bg-background` | `--background` | stone-50 | stone-900 |
+| `text-foreground` | `--foreground` | stone-900 | stone-50 |
+| `bg-card` / `text-card-foreground` | `--card` | white | stone-800 |
+| `bg-popover` / `text-popover-foreground` | `--popover` | white | stone-800 |
+| `bg-primary` / `text-primary-foreground` | `--primary` | zinc-800 | amber-500 |
+| `bg-secondary` / `text-secondary-foreground` | `--secondary` | stone-100 | stone-700 |
+| `bg-muted` / `text-muted-foreground` | `--muted` | stone-100 | stone-700 |
+| `text-accent` / `bg-accent` | `--accent` | amber-600 | amber-500 |
+| `border-border` | `--border` | stone-200 | stone-700 |
+| `bg-input` | `--input` | stone-200 | stone-700 |
+| `ring-ring` | `--ring` | amber-600 | amber-500 |
+| `text-subdued` | `--subdued` | stone-600 | stone-400 |
+| `bg-copper-subtle` | `--copper-subtle` | amber-50 | amber-950 |
+| `text-copper-on-subtle` | `--copper-on-subtle` | amber-700 | amber-300 |
+
+### Semantic Intent
+
+- **`background`** — Page canvas
+- **`card`** — Surface for panels, sidebars, dialogs, cards
+- **`muted`** — Subtle backgrounds (hover states, inactive sections); `muted-foreground` for de-emphasized text
+- **`subdued`** — Text that's secondary but not as faint as `muted-foreground` (e.g. nav link labels when inactive)
+- **`accent`** — Amber highlight: active icons, focus rings, badges
+- **`copper-subtle` / `copper-on-subtle`** — Active nav item background and text (amber-tinted chip)
+
+### Dark Mode
+
+Dark mode is class-based (`darkMode: ["class"]` in `tailwind.config.ts`). The `.dark` class is applied to `<html>` by `AuthContext` from `user.theme` (stored in the backend DB). Unauthenticated pages (landing, login, register) are always light — do not add `dark:` variants there.
+
+All authenticated UI adapts automatically when the CSS variables change under `.dark` — no `dark:` variant classes are needed in component markup.
+
+### Rules
+
+- **Do** use semantic tokens for all authenticated pages and components.
+- **Do** use `bg-card` for panel/modal surfaces, `bg-background` for page canvas.
+- **Don't** use raw palette classes (`stone-*`, `amber-*`, `zinc-*`) inside authenticated components — changes to the palette would then require hunting down every hard-coded class.
+- **Don't** add dark mode overrides to public pages (landing, login, register, about, privacy, terms).
+
+---
+
 ## Palette Exploration Previews
 
 Standalone HTML previews (no build required) are in `docs/assets/preview-*.html`. Each loads Tailwind via CDN and references `hearts-treadle.mp4` from the same directory. Use these to test new palettes before touching the React source.

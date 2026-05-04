@@ -12,8 +12,8 @@ from sqlalchemy.orm import selectinload
 
 from app.deps import get_current_user, get_db
 from app.models.activity import Activity, ActivityPhoto, ActivityStep
+from app.models.draft import Draft
 from app.models.loom import ACTIVITY_SUPPORTED_LOOM_TYPES, Loom, LoomVersion
-from app.models.project import Project
 from app.models.user import User
 from app.services import storage, wif_parser
 from app.services.images import resize_to_jpeg
@@ -44,7 +44,7 @@ class ActivityPhotoSchema(BaseModel):
 
 class ActivitySummary(BaseModel):
     id: uuid.UUID
-    project_id: uuid.UUID
+    draft_id: uuid.UUID
     loom_id: uuid.UUID | None
     loom_version_id: uuid.UUID | None
     name: str
@@ -67,19 +67,19 @@ class ActivityDetail(ActivitySummary):
     warp_waste_allowance: Decimal | None
     completed_at: datetime | None
     notes: str | None
-    project_name: str
-    project_num_shafts: int | None
-    project_num_treadles: int | None
-    project_effective_num_treadles: int | None
-    project_effective_num_shafts: int | None
-    project_metadata_overrides: dict | None
+    draft_name: str
+    draft_num_shafts: int | None
+    draft_num_treadles: int | None
+    draft_effective_num_treadles: int | None
+    draft_effective_num_shafts: int | None
+    draft_metadata_overrides: dict | None
     loom_name: str | None
     photos: list[ActivityPhotoSchema] = []
 
 
 class CreateActivityRequest(BaseModel):
     name: str
-    project_id: uuid.UUID
+    draft_id: uuid.UUID
     activity_type: str  # "treadle" | "lift"
     loom_id: uuid.UUID | None = None
     loom_version_id: uuid.UUID | None = None
@@ -141,7 +141,7 @@ async def _check_loom_conflict(
         raise HTTPException(status_code=409, detail="This loom already has an active activity")
 
 
-def _wif_path_for_activity(project: Project, activity_type: str) -> str:
+def _wif_path_for_activity(draft: Draft, activity_type: str) -> str:
     """Return the correct WIF path for an activity type.
 
     For lift activities, prefer the liftplan-augmented file when available so
@@ -149,9 +149,9 @@ def _wif_path_for_activity(project: Project, activity_type: str) -> str:
     the case where the liftplan was embedded in the original WIF by the user's
     design software).
     """
-    if activity_type == "lift" and project.wif_modified_path and storage.file_exists(project.wif_modified_path):
-        return project.wif_modified_path
-    return project.wif_path
+    if activity_type == "lift" and draft.wif_modified_path and storage.file_exists(draft.wif_modified_path):
+        return draft.wif_modified_path
+    return draft.wif_path
 
 
 async def _get_owned_activity(activity_id: uuid.UUID, user: User, db: AsyncSession) -> Activity:
@@ -168,11 +168,11 @@ async def _get_owned_activity(activity_id: uuid.UUID, user: User, db: AsyncSessi
 
 
 def _to_detail(
-    activity: Activity, project: Project, loom: Loom | None, photos: list[ActivityPhoto] | None = None
+    activity: Activity, draft: Draft, loom: Loom | None, photos: list[ActivityPhoto] | None = None
 ) -> ActivityDetail:
     return ActivityDetail(
         id=activity.id,
-        project_id=activity.project_id,
+        draft_id=activity.draft_id,
         loom_id=activity.loom_id,
         loom_version_id=activity.loom_version_id,
         name=activity.name,
@@ -189,12 +189,12 @@ def _to_detail(
         abandoned_at=activity.abandoned_at,
         notes=activity.notes,
         created_at=activity.created_at,
-        project_name=project.name,
-        project_num_shafts=project.num_shafts,
-        project_num_treadles=project.num_treadles,
-        project_effective_num_treadles=project.effective_num_treadles,
-        project_effective_num_shafts=project.effective_num_shafts,
-        project_metadata_overrides=project.metadata_overrides,
+        draft_name=draft.name,
+        draft_num_shafts=draft.num_shafts,
+        draft_num_treadles=draft.num_treadles,
+        draft_effective_num_treadles=draft.effective_num_treadles,
+        draft_effective_num_shafts=draft.effective_num_shafts,
+        draft_metadata_overrides=draft.metadata_overrides,
         loom_name=f"{loom.manufacturer} {loom.model_name}" if loom else None,
         photos=[ActivityPhotoSchema.model_validate(p) for p in (photos or [])],
     )
@@ -214,24 +214,24 @@ async def create_activity(
     if body.activity_type not in ("treadle", "lift"):
         raise HTTPException(status_code=400, detail="activity_type must be 'treadle' or 'lift'")
 
-    project = await db.scalar(
-        select(Project).where(
-            Project.id == body.project_id,
-            Project.owner_id == current_user.id,
-            Project.deleted_at.is_(None),
+    draft = await db.scalar(
+        select(Draft).where(
+            Draft.id == body.draft_id,
+            Draft.owner_id == current_user.id,
+            Draft.deleted_at.is_(None),
         )
     )
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
 
     # Validate activity type is supported by the WIF
-    if body.activity_type == "treadle" and not project.has_treadling:
+    if body.activity_type == "treadle" and not draft.has_treadling:
         raise HTTPException(status_code=400, detail="WIF file has no [TREADLING] section")
-    if body.activity_type == "lift" and not project.has_liftplan:
+    if body.activity_type == "lift" and not draft.has_liftplan:
         raise HTTPException(status_code=400, detail="WIF file has no [LIFTPLAN] section")
 
     # Parse pick count from WIF
-    wif_bytes = storage.read_file(_wif_path_for_activity(project, body.activity_type))
+    wif_bytes = storage.read_file(_wif_path_for_activity(draft, body.activity_type))
     try:
         pick_data = wif_parser.parse_picks(wif_bytes, body.activity_type)
     except ValueError as exc:
@@ -272,7 +272,7 @@ async def create_activity(
 
     activity = Activity(
         owner_id=current_user.id,
-        project_id=body.project_id,
+        draft_id=body.draft_id,
         loom_id=body.loom_id,
         loom_version_id=body.loom_version_id,
         name=body.name,
@@ -289,19 +289,19 @@ async def create_activity(
     db.add(activity)
     await db.commit()
     await db.refresh(activity)
-    return _to_detail(activity, project, loom)
+    return _to_detail(activity, draft, loom)
 
 
 @router.get("", response_model=list[ActivitySummary])
 async def list_activities(
-    project_id: uuid.UUID | None = Query(None),
+    draft_id: uuid.UUID | None = Query(None),
     loom_id: uuid.UUID | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ActivitySummary]:
     q = select(Activity).where(Activity.owner_id == current_user.id, Activity.deleted_at.is_(None))
-    if project_id is not None:
-        q = q.where(Activity.project_id == project_id)
+    if draft_id is not None:
+        q = q.where(Activity.draft_id == draft_id)
     if loom_id is not None:
         q = q.where(Activity.loom_id == loom_id)
     result = await db.scalars(q.order_by(Activity.created_at.desc()))
@@ -322,9 +322,9 @@ async def get_activity(
     activity = result.first()
     if activity is None:
         raise HTTPException(status_code=404, detail="Activity not found")
-    project = await db.get(Project, activity.project_id)
+    draft = await db.get(Draft, activity.draft_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
-    return _to_detail(activity, project, loom, photos=list(activity.photos))  # type: ignore[arg-type]
+    return _to_detail(activity, draft, loom, photos=list(activity.photos))  # type: ignore[arg-type]
 
 
 @router.patch("/{activity_id}", response_model=ActivityDetail)
@@ -341,9 +341,9 @@ async def rename_activity(
     activity.name = name
     await db.commit()
     await db.refresh(activity)
-    project = await db.get(Project, activity.project_id)
+    draft = await db.get(Draft, activity.draft_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
-    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+    return _to_detail(activity, draft, loom)  # type: ignore[arg-type]
 
 
 @router.post("/{activity_id}/assign-loom", response_model=ActivityDetail)
@@ -391,8 +391,8 @@ async def assign_loom(
     activity.loom_version_id = body.loom_version_id
     await db.commit()
     await db.refresh(activity)
-    project = await db.get(Project, activity.project_id)
-    return _to_detail(activity, project, loom)
+    draft = await db.get(Draft, activity.draft_id)
+    return _to_detail(activity, draft, loom)
 
 
 @router.post("/{activity_id}/step", response_model=ActivityDetail)
@@ -430,9 +430,9 @@ async def step_activity(
     await db.commit()
     await db.refresh(activity)
 
-    project = await db.get(Project, activity.project_id)
+    draft = await db.get(Draft, activity.draft_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
-    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+    return _to_detail(activity, draft, loom)  # type: ignore[arg-type]
 
 
 @router.post("/{activity_id}/jump", response_model=ActivityDetail)
@@ -448,9 +448,9 @@ async def jump_activity(
     activity.current_pick = max(1, min(body.pick, activity.total_picks + 1))
     await db.commit()
     await db.refresh(activity)
-    project = await db.get(Project, activity.project_id)
+    draft = await db.get(Draft, activity.draft_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
-    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+    return _to_detail(activity, draft, loom)  # type: ignore[arg-type]
 
 
 @router.post("/{activity_id}/complete", response_model=ActivityDetail)
@@ -466,9 +466,9 @@ async def complete_activity(
     activity.completed_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(activity)
-    project = await db.get(Project, activity.project_id)
+    draft = await db.get(Draft, activity.draft_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
-    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+    return _to_detail(activity, draft, loom)  # type: ignore[arg-type]
 
 
 @router.post("/{activity_id}/abandon", response_model=ActivityDetail)
@@ -484,9 +484,9 @@ async def abandon_activity(
     activity.abandoned_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(activity)
-    project = await db.get(Project, activity.project_id)
+    draft = await db.get(Draft, activity.draft_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
-    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+    return _to_detail(activity, draft, loom)  # type: ignore[arg-type]
 
 
 @router.post("/{activity_id}/restart", response_model=ActivityDetail)
@@ -503,9 +503,9 @@ async def restart_activity(
     activity.status = "active"
     await db.commit()
     await db.refresh(activity)
-    project = await db.get(Project, activity.project_id)
+    draft = await db.get(Draft, activity.draft_id)
     loom = await db.get(Loom, activity.loom_id) if activity.loom_id else None
-    return _to_detail(activity, project, loom)  # type: ignore[arg-type]
+    return _to_detail(activity, draft, loom)  # type: ignore[arg-type]
 
 
 @router.post("/{activity_id}/clone", response_model=ActivityDetail, status_code=201)
@@ -519,7 +519,7 @@ async def clone_activity(
         await _check_loom_conflict(source.loom_id, None, current_user.id, db)
     clone = Activity(
         owner_id=current_user.id,
-        project_id=source.project_id,
+        draft_id=source.draft_id,
         loom_id=source.loom_id,
         loom_version_id=source.loom_version_id,
         name=source.name,
@@ -536,9 +536,9 @@ async def clone_activity(
     db.add(clone)
     await db.commit()
     await db.refresh(clone)
-    project = await db.get(Project, clone.project_id)
+    draft = await db.get(Draft, clone.draft_id)
     loom = await db.get(Loom, clone.loom_id) if clone.loom_id else None
-    return _to_detail(clone, project, loom)  # type: ignore[arg-type]
+    return _to_detail(clone, draft, loom)  # type: ignore[arg-type]
 
 
 @router.delete("/{activity_id}", status_code=204)
@@ -647,11 +647,11 @@ async def get_picks(
     db: AsyncSession = Depends(get_db),
 ) -> PicksResponse:
     activity = await _get_owned_activity(activity_id, current_user, db)
-    project = await db.get(Project, activity.project_id)
-    if project is None:
-        raise HTTPException(status_code=404, detail="Project not found")
+    draft = await db.get(Draft, activity.draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
 
-    wif_bytes = storage.read_file(_wif_path_for_activity(project, activity.activity_type))
+    wif_bytes = storage.read_file(_wif_path_for_activity(draft, activity.activity_type))
     try:
         pick_data = wif_parser.parse_picks(wif_bytes, activity.activity_type)
     except ValueError as exc:

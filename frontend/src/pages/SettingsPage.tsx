@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
-import { listProjects } from "@/api/projects";
+import { listDrafts } from "@/api/drafts";
 import { Button } from "@/components/ui/button";
 import { EulaContent } from "@/components/EulaContent";
 
@@ -10,13 +11,14 @@ type Section = "appearance" | "preferences" | "privacy" | "terms" | "account";
 
 export function SettingsPage() {
   const { user, refetch } = useAuth();
-  const [activeSection, setActiveSection] = useState<Section>("appearance");
+  const { section } = useParams<{ section: string }>();
+  const activeSection: Section = (section as Section) ?? "appearance";
 
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: listProjects,
+  const { data: drafts = [] } = useQuery({
+    queryKey: ["drafts"],
+    queryFn: listDrafts,
   });
-  const sharedProjectCount = projects.filter((p) => p.is_shared).length;
+  const sharedDraftCount = drafts.filter((d) => d.is_shared).length;
 
   const { data: currentEula } = useQuery({
     queryKey: ["eula", "current"],
@@ -104,40 +106,9 @@ export function SettingsPage() {
     }
   }
 
-  const navItems: { id: Section; label: string }[] = [
-    { id: "appearance", label: "Appearance" },
-    { id: "preferences", label: "Preferences" },
-    { id: "privacy", label: "Privacy & data" },
-    { id: "terms", label: "Terms" },
-    { id: "account", label: "Account" },
-  ];
-
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold">Settings</h1>
-        </div>
-
-        <div className="flex gap-8">
-          {/* Sidebar nav */}
-          <nav className="w-44 shrink-0 space-y-1">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                  activeSection === item.id
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Content */}
-          <div className="flex-1 space-y-6">
+    <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="space-y-6">
             {(saveSuccess || saveError) && (
               <div
                 className={`rounded-md px-4 py-2 text-sm ${
@@ -155,7 +126,7 @@ export function SettingsPage() {
               <Section title="Appearance">
                 <Field label="Theme">
                   <div className="flex gap-2">
-                    {(["light", "dark"] as const).map((t) => (
+                    {(["light", "dark", "system"] as const).map((t) => (
                       <button
                         key={t}
                         onClick={() => {
@@ -287,7 +258,7 @@ export function SettingsPage() {
                     in the Terms of Service.
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    <strong>Note:</strong> Opting out also disables all public sharing links for your projects.
+                    <strong>Note:</strong> Opting out also disables all public sharing links for your drafts.
                   </p>
                 </Field>
 
@@ -308,16 +279,16 @@ export function SettingsPage() {
                         </p>
                         <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
                           <li>
-                            Public sharing links for all your projects
-                            {sharedProjectCount > 0 && (
+                            Public sharing links for all your drafts
+                            {sharedDraftCount > 0 && (
                               <span className="font-medium text-foreground">
-                                {" "}({sharedProjectCount} currently active)
+                                {" "}({sharedDraftCount} currently active)
                               </span>
                             )}
                           </li>
                           <li>Any future sharing features tied to your account</li>
                         </ul>
-                        {sharedProjectCount > 0 && (
+                        {sharedDraftCount > 0 && (
                           <p className="text-xs text-amber-700 dark:text-amber-400 pt-1">
                             Anyone with your current sharing links will immediately lose access.
                           </p>
@@ -326,7 +297,7 @@ export function SettingsPage() {
 
                       <p className="text-xs text-muted-foreground">
                         You can opt back in at any time from this page. Re-opting in restores
-                        sharing access but does not re-enable individual project links — you will
+                        sharing access but does not re-enable individual draft links — you will
                         need to re-share those manually.
                       </p>
 
@@ -407,7 +378,7 @@ export function SettingsPage() {
                   <p className="text-sm font-medium text-destructive">Danger zone</p>
                   <p className="text-sm text-muted-foreground">
                     Permanently delete your account and all data: WIF files, photos, activity
-                    records, looms, yarn, and projects. This cannot be undone.
+                    records, looms, yarn, and drafts. This cannot be undone.
                   </p>
 
                   {!showDeleteConfirm ? (
@@ -460,7 +431,6 @@ export function SettingsPage() {
                 </div>
               </Section>
             )}
-          </div>
         </div>
     </div>
   );

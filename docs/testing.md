@@ -1,6 +1,6 @@
 # Test Coverage and Gaps
 
-**Current overall coverage: 67%** (266 tests, last measured 2026-04-25 v0.5.0)
+**Current overall coverage: 65%** (823 tests, last measured 2026-05-03 v0.76.1)
 
 ---
 
@@ -16,14 +16,14 @@
 | `app/models/base.py` | 87% | `soft_delete()` line covered; `is_deleted` property line 23 |
 | `app/models/invite.py` | 95% | |
 | `app/models/loom.py` | 99% | |
-| `app/models/project.py` | 100% | |
+| `app/models/draft.py` | 100% | |
 | `app/models/user.py` | 100% | Defaults, soft delete, all fields covered |
 | `app/models/yarn.py` | 100% | |
 | `app/routers/activities.py` | 41% | Create, restart, clone covered; detail, update, pick step, photos endpoints not tested |
 | `app/routers/auth.py` | 40% | `/me`, logout, token validation covered; OIDC callback, invite flow not tested |
 | `app/routers/health.py` | 90% | `/health` covered; error branch (DB down) not tested |
 | `app/routers/looms.py` | 58% | Create, list, get covered; versions, photos, documents not tested |
-| `app/routers/projects.py` | 48% | WIF upload, list, detail — gap |
+| `app/routers/drafts.py` | 52% | WIF upload, list, detail — gap |
 | `app/routers/yarn.py` | 64% | |
 | `app/services/email.py` | 100% | |
 | `app/services/rendering.py` | 100% | |
@@ -62,8 +62,8 @@
 | Auth `/auth/me` endpoint | `routers/auth.py` | Authenticated request returns user info |
 | Auth session cookie set/clear | `routers/auth.py` | Login callback sets cookie; logout clears it |
 | Auth invite creation + email | `routers/auth.py` | Admin creates invite; non-admin rejected |
-| Project upload (WIF) | `routers/projects.py` | Upload valid WIF; upload invalid WIF; access control |
-| Project list + detail | `routers/projects.py` | List returns user's projects; detail returns correct data |
+| Draft upload (WIF) | `routers/drafts.py` | Upload valid WIF; upload invalid WIF; access control |
+| Draft list + detail | `routers/drafts.py` | List returns user's drafts; detail returns correct data |
 | Loom CRUD | `routers/looms.py` | Create, read, update, delete loom; access control |
 | Loom version create | `routers/looms.py` | Add version with fields; shaft/treadle validation |
 
@@ -103,7 +103,7 @@ Before implementing any new feature:
 
 Reassess coverage completeness when:
 
-- Overall coverage drops below the CI gate (currently 20%)
+- Overall coverage drops below the CI gate (currently 65%)
 - A new feature area is added (Activities, Yarn, Reports, Sharing, etc.)
 - A router reaches ≥80% coverage (evaluate if remaining gaps matter)
 - Before each Phase 2 feature begins
@@ -119,3 +119,4 @@ Reassess coverage completeness when:
 | 2026-04-25 | v0.2.x | 68% | Added router tests (health) + model tests (User); DB integration test infrastructure in place |
 | 2026-04-25 | v0.5.0 | 67% | 266 tests; activity creation, restart, clone covered; auth `/me` + token validation added; loom CRUD partially covered |
 | 2026-05-03 | v0.74.0 | — | First production deployment smoke test; 63 items tested end-to-end; 11 issues filed (#266–#275); 2 closed (see GitHub issue #277) |
+| 2026-05-03 | v0.76.1 | 65% | 823 tests; full rename of Project→Draft model, router, API, and frontend completed (issues #296/#311) |

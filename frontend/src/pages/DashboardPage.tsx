@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listActivities, ACTIVITY_TYPE_LABELS } from "@/api/activities";
-import { listProjects } from "@/api/projects";
+import { listDrafts } from "@/api/drafts";
 import { listLooms } from "@/api/looms";
 import { AppIcons } from "@/lib/icons";
 
@@ -14,9 +14,9 @@ export function DashboardPage() {
     queryFn: () => listActivities(),
   });
 
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: listProjects,
+  const { data: drafts = [] } = useQuery({
+    queryKey: ["drafts"],
+    queryFn: listDrafts,
   });
 
   const { data: looms = [] } = useQuery({
@@ -83,44 +83,44 @@ export function DashboardPage() {
         )}
       </section>
 
-      {/* Projects */}
+      {/* Drafts */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Projects</h2>
-          <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Drafts</h2>
+          <Link to="/drafts" className="text-xs text-muted-foreground hover:text-foreground">
             View all →
           </Link>
         </div>
-        {projects.length === 0 ? (
+        {drafts.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">No projects uploaded yet.</p>
-            <Link to="/projects" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
+            <p className="text-sm text-muted-foreground">No drafts uploaded yet.</p>
+            <Link to="/drafts" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
               Upload a WIF file →
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {projects.slice(0, 3).map((project) => (
+            {drafts.slice(0, 3).map((draft) => (
               <Link
-                key={project.id}
-                to="/projects"
+                key={draft.id}
+                to="/drafts"
                 className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
               >
                 <div className="shrink-0 mt-0.5">
-                  <AppIcons.project className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                  <AppIcons.draft className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{project.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{project.wif_filename}</p>
+                  <p className="text-sm font-medium truncate">{draft.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{draft.wif_filename}</p>
                 </div>
               </Link>
             ))}
-            {projects.length > 3 && (
+            {drafts.length > 3 && (
               <Link
-                to="/projects"
+                to="/drafts"
                 className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
               >
-                <span className="text-xs text-muted-foreground">+{projects.length - 3} more</span>
+                <span className="text-xs text-muted-foreground">+{drafts.length - 3} more</span>
               </Link>
             )}
           </div>

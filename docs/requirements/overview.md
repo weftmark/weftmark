@@ -2,16 +2,16 @@
 
 ## Vision
 
-A multi-user, invite-only web platform for managing weaving projects. Users can upload weaving draft files, preview designs, track weaving progress at the loom, manage equipment and yarn inventory, and share their work. The platform is primarily a personal project management tool with optional sharing capabilities.
+A multi-user, invite-only web platform for managing weaving drafts. Users can upload weaving draft files, preview designs, track weaving progress at the loom, manage equipment and yarn inventory, and share their work. The platform is primarily a personal draft management tool with optional sharing capabilities.
 
 ## Users
 
-- **End users** — weavers managing their own projects, equipment, and inventory
+- **End users** — weavers managing their own drafts, equipment, and inventory
 - **Administrators** — manage invites, monitor platform health, review WIF compatibility records
 
 ## Core Principles
 
-- All projects are private by default
+- All drafts are private by default
 - The platform respects user data — no social feed, no discovery, no unsolicited visibility
 - The loom-side experience is a first-class concern — the UI must work well on tablets and phones in portrait orientation
 - The WIF file is the source of truth for design data; the platform does not modify or reinterpret it beyond what the file provides
@@ -143,7 +143,7 @@ Portrait orientation is preferred for the activity (loom-side) interface.
 
 ## Data Lifecycle
 
-- Looms, projects, and activities use **soft delete** — records are archived, not permanently destroyed
+- Looms, drafts, and activities use **soft delete** — records are archived, not permanently destroyed
 - Soft-deleted looms retain their full versioned state history and remain accessible from any activity that references them
 
 ---

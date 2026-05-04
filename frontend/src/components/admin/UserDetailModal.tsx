@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { CopyEmail } from "@/components/admin/CopyEmail";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-utils";
@@ -182,9 +183,9 @@ export function UserDetailModal({ target, onClose }: Props) {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold">{s.display_name || s.email}</h2>
-                <Pill label="pending" cls="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" />
+                <Pill label="pending" cls="bg-copper-subtle text-copper-on-subtle" />
               </div>
-              <p className="text-sm text-muted-foreground">{s.email}</p>
+              <p className="text-sm text-muted-foreground overflow-hidden"><CopyEmail email={s.email} /></p>
             </div>
             <button
               onClick={onClose}
@@ -268,7 +269,7 @@ export function UserDetailModal({ target, onClose }: Props) {
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b">
           <div>
             <h2 className="text-base font-semibold">{u.display_name}</h2>
-            <p className="text-sm text-muted-foreground">{u.email}</p>
+            <p className="text-sm text-muted-foreground overflow-hidden"><CopyEmail email={u.email} /></p>
           </div>
           <button
             onClick={onClose}
@@ -305,7 +306,7 @@ export function UserDetailModal({ target, onClose }: Props) {
             <InfoRow label="Joined">{formatDate(u.created_at)}</InfoRow>
             <InfoRow label="Last login">{formatRelative(u.last_active_at)}</InfoRow>
             <InfoRow label="Storage">{formatBytes(u.counts.storage_bytes)}</InfoRow>
-            <InfoRow label="Projects">{u.counts.projects}</InfoRow>
+            <InfoRow label="Drafts">{u.counts.drafts}</InfoRow>
             <InfoRow label="Activities">
               {u.counts.activities_active} active, {u.counts.activities_completed} completed
             </InfoRow>
@@ -370,7 +371,7 @@ export function UserDetailModal({ target, onClose }: Props) {
                         message={`This user has ${[
                           elevateContent.activities && `${elevateContent.activities} activities`,
                           elevateContent.looms && `${elevateContent.looms} looms`,
-                          elevateContent.projects && `${elevateContent.projects} projects`,
+                          elevateContent.drafts && `${elevateContent.drafts} drafts`,
                           elevateContent.yarn && `${elevateContent.yarn} yarn`,
                         ]
                           .filter(Boolean)

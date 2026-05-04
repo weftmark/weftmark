@@ -44,6 +44,7 @@ def _html_body(msg) -> str:
 
 SETTINGS_OVERRIDES = {
     "frontend_url": "http://example.com",
+    "app_name": "Test Site",
     "smtp_from_name": "Test Site",
     "smtp_from_email": "noreply@example.com",
     "smtp_host": "smtp.example.com",
@@ -287,6 +288,7 @@ class TestTemplateRendering:
             "invite",
             invite_url="http://example.com/register?token=abc",
             expires_days=7,
+            admin_name="A weftmark admin",
         )
         assert "http://example.com/register?token=abc" in txt
         assert "http://example.com/register?token=abc" in html

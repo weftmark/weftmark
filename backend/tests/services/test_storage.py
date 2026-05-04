@@ -91,7 +91,7 @@ class TestPreview:
         assert storage.preview_exists(rel) is True
 
     def test_preview_exists_false_for_unknown_path(self):
-        assert storage.preview_exists("projects/nonexistent/preview.png") is False
+        assert storage.preview_exists("drafts/nonexistent/preview.png") is False
 
     def test_preview_exists_false_for_none(self):
         assert storage.preview_exists(None) is False
@@ -294,14 +294,14 @@ class TestGenericReadExists:
         assert isinstance(result, bytes)
         assert result == b"hello"
 
-    def test_isolated_between_projects(self):
+    def test_isolated_between_drafts(self):
         pid1, pid2 = _pid(), _pid()
-        storage.save_wif(pid1, "a.wif", b"project one")
-        storage.save_wif(pid2, "a.wif", b"project two")
-        rel1 = storage.save_wif(pid1, "a.wif", b"project one")
-        rel2 = storage.save_wif(pid2, "a.wif", b"project two")
-        assert storage.read_wif(rel1) == b"project one"
-        assert storage.read_wif(rel2) == b"project two"
+        storage.save_wif(pid1, "a.wif", b"draft one")
+        storage.save_wif(pid2, "a.wif", b"draft two")
+        rel1 = storage.save_wif(pid1, "a.wif", b"draft one")
+        rel2 = storage.save_wif(pid2, "a.wif", b"draft two")
+        assert storage.read_wif(rel1) == b"draft one"
+        assert storage.read_wif(rel2) == b"draft two"
 
 
 # ---------------------------------------------------------------------------
@@ -320,20 +320,20 @@ class TestS3Paths:
         return mock_client
 
     def test_put_calls_s3_put_object(self, _s3_env):
-        _real_put("projects/abc/original.wif", b"data")
-        _s3_env.put_object.assert_called_once_with(Bucket="test-bucket", Key="projects/abc/original.wif", Body=b"data")
+        _real_put("drafts/abc/original.wif", b"data")
+        _s3_env.put_object.assert_called_once_with(Bucket="test-bucket", Key="drafts/abc/original.wif", Body=b"data")
 
     def test_put_returns_key(self, _s3_env):
         assert _real_put("some/key", b"x") == "some/key"
 
     def test_get_calls_s3_get_object(self, _s3_env):
-        result = _real_get("projects/abc/original.wif")
-        _s3_env.get_object.assert_called_once_with(Bucket="test-bucket", Key="projects/abc/original.wif")
+        result = _real_get("drafts/abc/original.wif")
+        _s3_env.get_object.assert_called_once_with(Bucket="test-bucket", Key="drafts/abc/original.wif")
         assert result == b"wif bytes"
 
     def test_delete_calls_s3_delete_object(self, _s3_env):
-        _real_delete("projects/abc/original.wif")
-        _s3_env.delete_object.assert_called_once_with(Bucket="test-bucket", Key="projects/abc/original.wif")
+        _real_delete("drafts/abc/original.wif")
+        _s3_env.delete_object.assert_called_once_with(Bucket="test-bucket", Key="drafts/abc/original.wif")
 
     def test_exists_true_when_head_succeeds(self, _s3_env):
         _s3_env.head_object.return_value = {}

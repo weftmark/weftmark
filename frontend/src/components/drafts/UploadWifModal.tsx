@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { uploadProject } from "@/api/projects";
+import { uploadDraft } from "@/api/drafts";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -21,7 +21,7 @@ export function UploadWifModal({ onSuccess, onClose }: Props) {
     setError(null);
     setLoading(true);
     try {
-      await uploadProject(name, file, description || undefined);
+      await uploadDraft(name, file, description || undefined);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -33,16 +33,16 @@ export function UploadWifModal({ onSuccess, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg">
-        <h2 className="mb-4 text-lg font-semibold">New Project</h2>
+        <h2 className="mb-4 text-lg font-semibold">New Draft</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Project name</label>
+            <label className="mb-1 block text-sm font-medium">Draft name</label>
             <input
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My Weaving Project"
+              placeholder="My Weaving Draft"
               required
             />
           </div>

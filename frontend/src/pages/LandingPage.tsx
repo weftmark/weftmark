@@ -11,12 +11,12 @@ const FEATURES = [
   },
   {
     title: "Record every pick",
-    body: "Advance, reverse, or jump to any row. Mark a project complete when the last pick is woven in.",
+    body: "Advance, reverse, or jump to any row. Mark an activity complete when the last pick is woven in.",
     Icon: AppIcons.pickTracking,
   },
   {
     title: "Manage your tools",
-    body: "Keep a record of your looms and yarn. Assign a loom to a project and track what's on the beam.",
+    body: "Keep a record of your looms and yarn. Assign a loom to a draft and track what's on the beam.",
     Icon: AppIcons.toolManagement,
   },
 ];
@@ -70,7 +70,7 @@ export function LandingPage() {
                 </h1>
                 <p className="mb-8 max-w-lg text-lg leading-relaxed text-stone-600">
                   Upload your WIF draft, follow along pick by pick, and keep a complete record of every
-                  project from first warp to last pick.
+                  draft from first warp to last pick.
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Link

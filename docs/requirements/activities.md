@@ -2,7 +2,7 @@
 
 ## Overview
 
-An activity is a specific instance of weaving a design on a loom. It is the core feature of the platform. A single WIF design project can have multiple simultaneous activities — for example, the same design being woven on two different looms, or the same design tracked once as a lift-tracking activity and once as a treadle-tracking activity.
+An activity is a specific instance of weaving a design on a loom. It is the core feature of the platform. A single WIF draft can have multiple simultaneous activities — for example, the same design being woven on two different looms, or the same design tracked once as a lift-tracking activity and once as a treadle-tracking activity.
 
 ---
 
@@ -21,7 +21,7 @@ Used with floor looms where treadle pedals raise or lower groups of shafts (e.g.
 - The activity type is selected by the user when creating the activity
 - The loom selected from equipment inventory indicates which activity types it supports, guiding the user's selection
 - Once an activity has started (at least one pick recorded), the activity type cannot be changed without resetting all progress
-- A new activity of a different type can always be created for the same project — there is no limit on the number of activities per project
+- A new activity of a different type can always be created for the same draft — there is no limit on the number of activities per draft
 
 ---
 
@@ -32,7 +32,7 @@ When creating an activity, the user provides:
 | Input | Notes |
 | --- | --- |
 | Activity name | User-defined label |
-| WIF project | The design to weave |
+| WIF draft | The design to weave |
 | Activity type | Lift-tracking or treadle-tracking (filtered by WIF availability and loom capability) |
 | Loom | Selected from equipment inventory (optional but recommended) |
 | Loom version | Which state/version of the loom is being used |
@@ -167,7 +167,7 @@ After an activity is completed, the user can enter notes about:
 
 - Actual warp waste observed (to improve future estimates for that loom)
 - Yarn consumption vs estimate
-- General observations about the project, loom behavior, or design
+- General observations about the draft, loom behavior, or design
 
 These notes feed into the platform's learned defaults for the user's loom and weaving habits over time.
 

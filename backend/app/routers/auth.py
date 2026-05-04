@@ -384,7 +384,10 @@ async def create_invite(
     await db.commit()
     await db.refresh(invite)
 
-    await send_invite_email(body.email, token, expires_days)
+    raw_name = (admin.display_name or "").strip()
+    first_name = raw_name.split()[0] if raw_name else ""
+    admin_name = first_name or "A weftmark admin"
+    await send_invite_email(body.email, token, expires_days, admin_name=admin_name)
     return invite
 
 

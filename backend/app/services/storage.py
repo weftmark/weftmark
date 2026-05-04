@@ -5,7 +5,7 @@ Backend is selected by STORAGE_BACKEND env var:
   s3     — files written to S3_BUCKET_NAME via S3-compatible API (production)
 
 The public API is identical for both backends. Keys/paths stored in the
-database are backend-agnostic relative strings (e.g. "projects/{id}/preview.png").
+database are backend-agnostic relative strings (e.g. "drafts/{id}/preview.png").
 """
 
 from __future__ import annotations
@@ -80,16 +80,16 @@ def _exists(key: str | None) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Projects
+# Drafts
 # ---------------------------------------------------------------------------
 
 
-def save_wif(project_id: uuid.UUID, filename: str, data: bytes) -> str:
-    return _put(f"projects/{project_id}/original.wif", data)
+def save_wif(draft_id: uuid.UUID, filename: str, data: bytes) -> str:
+    return _put(f"drafts/{draft_id}/original.wif", data)
 
 
-def save_preview(project_id: uuid.UUID, data: bytes) -> str:
-    return _put(f"projects/{project_id}/preview.png", data)
+def save_preview(draft_id: uuid.UUID, data: bytes) -> str:
+    return _put(f"drafts/{draft_id}/preview.png", data)
 
 
 def read_wif(wif_path: str) -> bytes:

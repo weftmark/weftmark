@@ -35,6 +35,7 @@ import {
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
+import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
 
 type Tab = "users" | "invites" | "stats" | "health" | "services" | "audit" | "superuser";
@@ -116,7 +117,7 @@ export function AdminPage() {
 // ---------------------------------------------------------------------------
 
 type SortKey =
-  | "name" | "status" | "role" | "projects" | "activities"
+  | "name" | "status" | "role" | "drafts" | "activities"
   | "looms" | "storage" | "last_login" | "joined";
 
 interface UserRow {
@@ -125,7 +126,7 @@ interface UserRow {
   email: string;
   status: "active" | "inactive" | "banned" | "pending" | "errored" | "deleting";
   role: "superuser" | "admin" | "user";
-  projects: number;
+  drafts: number;
   activities: number;
   looms: number;
   storage_bytes: number;
@@ -160,9 +161,9 @@ const STATUS_PILL: Record<UserRow["status"], string> = {
   active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   inactive: "bg-muted text-muted-foreground",
   banned: "bg-destructive/10 text-destructive",
-  pending: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  pending: "bg-copper-subtle text-copper-on-subtle",
   errored: "bg-destructive/10 text-destructive",
-  deleting: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  deleting: "bg-copper-subtle text-copper-on-subtle",
 };
 
 function StatusPill({ status }: { status: UserRow["status"] }) {
@@ -227,7 +228,7 @@ function UsersTab() {
       email: u.email,
       status: deriveStatus(u),
       role: deriveRole(u),
-      projects: u.counts.projects,
+      drafts: u.counts.drafts,
       activities: u.counts.activities_active + u.counts.activities_completed,
       looms: u.counts.looms,
       storage_bytes: u.counts.storage_bytes,
@@ -241,7 +242,7 @@ function UsersTab() {
       email: p.email,
       status: "pending" as const,
       role: "user" as const,
-      projects: 0,
+      drafts: 0,
       activities: 0,
       looms: 0,
       storage_bytes: 0,
@@ -267,7 +268,7 @@ function UsersTab() {
       case "name": cmp = a.display_name.localeCompare(b.display_name); break;
       case "status": cmp = a.status.localeCompare(b.status); break;
       case "role": cmp = ROLE_ORDER[a.role] - ROLE_ORDER[b.role]; break;
-      case "projects": cmp = a.projects - b.projects; break;
+      case "drafts": cmp = a.drafts - b.drafts; break;
       case "activities": cmp = a.activities - b.activities; break;
       case "looms": cmp = a.looms - b.looms; break;
       case "storage": cmp = a.storage_bytes - b.storage_bytes; break;
@@ -336,7 +337,7 @@ function UsersTab() {
               <SortTh label="Name" k="name" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Status" k="status" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Role" k="role" sort={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortTh label="Projects" k="projects" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Drafts" k="drafts" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Activities" k="activities" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Looms" k="looms" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Storage" k="storage" sort={sortKey} dir={sortDir} onSort={handleSort} />
@@ -355,8 +356,8 @@ function UsersTab() {
                   <p className="max-w-[180px] truncate font-medium leading-tight">
                     {row.display_name}
                   </p>
-                  <p className="max-w-[180px] truncate text-xs text-muted-foreground">
-                    {row.email}
+                  <p className="max-w-[180px] overflow-hidden text-xs text-muted-foreground">
+                    <CopyEmail email={row.email} />
                   </p>
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap">
@@ -366,7 +367,7 @@ function UsersTab() {
                   {row.role}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums">
-                  {row.projects || "—"}
+                  {row.drafts || "—"}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums">
                   {row.activities || "—"}
@@ -611,7 +612,7 @@ function PendingSignupRow({
     <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{signup.display_name || signup.email}</p>
-        <p className="text-xs text-muted-foreground truncate">{signup.email}</p>
+        <p className="text-xs text-muted-foreground overflow-hidden"><CopyEmail email={signup.email} /></p>
         <p className="text-xs text-muted-foreground">
           Signed up {new Date(signup.created_at).toLocaleDateString()}
         </p>
@@ -664,7 +665,7 @@ function InviteRow({ invite, onRevoke }: { invite: InviteRecord; onRevoke?: () =
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
       <div className="min-w-0">
-        <p className="text-sm font-medium truncate">{invite.email}</p>
+        <p className="text-sm font-medium overflow-hidden"><CopyEmail email={invite.email} /></p>
         <p className="text-xs text-muted-foreground">
           {invite.role} · {status} · expires {new Date(invite.expires_at).toLocaleDateString()}
         </p>
@@ -701,7 +702,7 @@ function StatsTab() {
   ];
 
   const contentRows = [
-    { label: "Projects", value: data.total_projects },
+    { label: "Drafts", value: data.total_drafts },
     { label: "Activities", value: data.total_activities },
     { label: "Looms", value: data.total_looms },
     { label: "Yarn entries", value: data.total_yarn },
@@ -1455,7 +1456,7 @@ function ReconcileTab() {
                   <div key={u.clerk_user_id} className="flex items-center justify-between px-3 py-2 gap-4">
                     <div className="min-w-0">
                       <p className="font-medium truncate">{u.display_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground overflow-hidden"><CopyEmail email={u.email} /></p>
                       <p className="text-xs text-muted-foreground font-mono">{u.clerk_user_id}</p>
                     </div>
                     <div className="flex gap-2 shrink-0">
@@ -1506,7 +1507,7 @@ function ReconcileTab() {
                   <div key={u.user_id} className="flex items-center justify-between px-3 py-2 gap-4">
                     <div className="min-w-0">
                       <p className="font-medium truncate">{u.display_name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      <p className="text-xs text-muted-foreground overflow-hidden"><CopyEmail email={u.email} /></p>
                     </div>
                     {u.clerk_errored && (
                       <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded shrink-0">
@@ -1672,8 +1673,8 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
             {entry.event_type}
           </span>
         </td>
-        <td className="px-3 py-2 text-muted-foreground">{entry.actor_email ?? <span className="italic">system</span>}</td>
-        <td className="px-3 py-2 text-muted-foreground">{entry.target_email ?? "—"}</td>
+        <td className="px-3 py-2 text-muted-foreground">{entry.actor_email ? <CopyEmail email={entry.actor_email} /> : <span className="italic">system</span>}</td>
+        <td className="px-3 py-2 text-muted-foreground">{entry.target_email ? <CopyEmail email={entry.target_email} /> : "—"}</td>
         <td className="px-3 py-2 text-muted-foreground text-xs">
           {hasDetails ? (expanded ? "▲ hide" : "▼ show") : "—"}
         </td>

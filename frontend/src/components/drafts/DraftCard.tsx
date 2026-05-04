@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import type { Project } from "@/api/projects";
+import type { Draft } from "@/api/drafts";
 import { AppIcons } from "@/lib/icons";
 
 interface ActivityCounts {
@@ -10,56 +10,56 @@ interface ActivityCounts {
 }
 
 interface Props {
-  project: Project;
+  draft: Draft;
   activityCounts?: ActivityCounts;
 }
 
-export function ProjectCard({ project, activityCounts }: Props) {
+export function DraftCard({ draft, activityCounts }: Props) {
   const navigate = useNavigate();
 
   const featureBadges = [
-    project.has_threading && "Threading",
-    project.has_tieup && "Tie-up",
+    draft.has_threading && "Threading",
+    draft.has_tieup && "Tie-up",
   ].filter(Boolean) as string[];
 
   return (
     <button
       className="text-left w-full rounded-lg border bg-background p-4 shadow-sm hover:border-ring transition-colors"
-      onClick={() => navigate(`/projects/${project.id}`)}
+      onClick={() => navigate(`/drafts/${draft.id}`)}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate font-medium">{project.name}</h3>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{project.wif_filename}</p>
+          <h3 className="truncate font-medium">{draft.name}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{draft.wif_filename}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {project.has_liftplan && (
+          {draft.has_liftplan && (
             <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
           )}
-          {project.has_treadling && (
+          {draft.has_treadling && (
             <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
           )}
-          {project.lint_errors.length > 0 && (
+          {draft.lint_errors.length > 0 && (
             <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">
-              {project.lint_errors.length} error{project.lint_errors.length > 1 ? "s" : ""}
+              {draft.lint_errors.length} error{draft.lint_errors.length > 1 ? "s" : ""}
             </span>
           )}
         </div>
       </div>
 
-      {project.num_shafts != null && (
+      {draft.num_shafts != null && (
         <p className="mt-2 text-xs text-muted-foreground">
-          {project.num_shafts} shafts · {project.num_treadles} treadles ·{" "}
-          {project.warp_threads} warp · {project.weft_threads} weft
+          {draft.num_shafts} shafts · {draft.num_treadles} treadles ·{" "}
+          {draft.warp_threads} warp · {draft.weft_threads} weft
         </p>
       )}
 
-      {(project.has_liftplan || project.has_treadling) && (
+      {(draft.has_liftplan || draft.has_treadling) && (
         <div className="mt-2 flex flex-wrap gap-2">
-          {project.has_liftplan && (
+          {draft.has_liftplan && (
             <span className="rounded bg-muted px-1.5 py-0.5 text-xs">lift tracking</span>
           )}
-          {project.has_treadling && (
+          {draft.has_treadling && (
             <span className="rounded bg-muted px-1.5 py-0.5 text-xs">treadle tracking</span>
           )}
         </div>
@@ -78,9 +78,9 @@ export function ProjectCard({ project, activityCounts }: Props) {
         </div>
       )}
 
-      {project.lint_warnings.length > 0 && (
+      {draft.lint_warnings.length > 0 && (
         <p className="mt-2 text-xs text-muted-foreground">
-          {project.lint_warnings.length} warning{project.lint_warnings.length > 1 ? "s" : ""}
+          {draft.lint_warnings.length} warning{draft.lint_warnings.length > 1 ? "s" : ""}
         </p>
       )}
 

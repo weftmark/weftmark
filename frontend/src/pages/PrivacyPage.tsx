@@ -153,7 +153,7 @@ export function PrivacyPage() {
                 <span className="leading-relaxed">
                   Account and content data is retained for as long as your account exists. You can
                   request deletion at any time from Settings. All associated data (WIF files,
-                  photos, activity records, looms, yarn, projects) will be permanently purged
+                  photos, activity records, looms, yarn, drafts) will be permanently purged
                   within 72 hours on a best-effort basis.
                 </span>
               </li>

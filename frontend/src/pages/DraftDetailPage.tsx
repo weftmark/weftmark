@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProject, deleteProject, generateLiftplan, overrideProjectMetadata, previewUrl, downloadWif, downloadWifModified } from "@/api/projects";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, previewUrl, downloadWif, downloadWifModified } from "@/api/drafts";
 import { listActivities } from "@/api/activities";
 import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
 import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 
-export function ProjectDetailPage() {
+export function DraftDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -19,40 +19,40 @@ export function ProjectDetailPage() {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const { data: project, isLoading, error } = useQuery({
-    queryKey: ["project", id],
-    queryFn: () => getProject(id!),
+  const { data: draft, isLoading, error } = useQuery({
+    queryKey: ["draft", id],
+    queryFn: () => getDraft(id!),
     enabled: !!id,
   });
 
-  const { data: projectActivities = [] } = useQuery({
-    queryKey: ["activities", { projectId: id }],
-    queryFn: () => listActivities({ projectId: id! }),
+  const { data: draftActivities = [] } = useQuery({
+    queryKey: ["activities", { draftId: id }],
+    queryFn: () => listActivities({ draftId: id! }),
     enabled: !!id,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteProject(id!),
+    mutationFn: () => deleteDraft(id!),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      navigate("/projects", { replace: true });
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      navigate("/drafts", { replace: true });
     },
   });
 
   const generateMutation = useMutation({
     mutationFn: () => generateLiftplan(id!),
     onSuccess: (updated) => {
-      queryClient.setQueryData(["project", id], updated);
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.setQueryData(["draft", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
     },
   });
 
   const overrideMutation = useMutation({
     mutationFn: ({ field, value }: { field: "num_treadles" | "num_shafts"; value: number }) =>
-      overrideProjectMetadata(id!, field, value),
+      overrideDraftMetadata(id!, field, value),
     onSuccess: (updated) => {
-      queryClient.setQueryData(["project", id], updated);
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.setQueryData(["draft", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
     },
   });
 
@@ -64,10 +64,10 @@ export function ProjectDetailPage() {
     );
   }
 
-  if (error || !project) {
+  if (error || !draft) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <span className="text-sm text-destructive">Project not found.</span>
+        <span className="text-sm text-destructive">Draft not found.</span>
       </div>
     );
   }
@@ -75,24 +75,24 @@ export function ProjectDetailPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto w-full space-y-6">
       <div className="flex items-center gap-2 text-sm">
-        <Link to="/projects" className="text-stone-500 hover:text-stone-900">Projects</Link>
-        <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
-        <span className="font-medium text-stone-900">{project.name}</span>
+        <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
+        <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="font-medium text-foreground">{draft.name}</span>
       </div>
 
         {/* Lint status */}
-        {project.lint_errors.length > 0 && (
+        {draft.lint_errors.length > 0 && (
           <div className="rounded-md bg-destructive/10 p-4 space-y-1">
             <p className="text-sm font-medium text-destructive">Errors</p>
-            {project.lint_errors.map((e, i) => (
+            {draft.lint_errors.map((e, i) => (
               <p key={i} className="text-sm text-destructive">{e}</p>
             ))}
           </div>
         )}
-        {project.lint_warnings.length > 0 && (
+        {draft.lint_warnings.length > 0 && (
           <div className="rounded-md bg-muted p-4 space-y-1">
             <p className="text-sm font-medium">Warnings</p>
-            {project.lint_warnings.map((w, i) => (
+            {draft.lint_warnings.map((w, i) => (
               <p key={i} className="text-sm text-muted-foreground">{w}</p>
             ))}
           </div>
@@ -106,7 +106,7 @@ export function ProjectDetailPage() {
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">File</dt>
                 <dd className="flex flex-wrap items-center gap-2">
-                  <span>{project.wif_filename}</span>
+                  <span>{draft.wif_filename}</span>
                   <button
                     type="button"
                     className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
@@ -115,7 +115,7 @@ export function ProjectDetailPage() {
                       setDownloadError(null);
                       setDownloading(true);
                       try {
-                        await downloadWif(project.id, project.wif_filename);
+                        await downloadWif(draft.id, draft.wif_filename);
                       } catch {
                         setDownloadError("Download failed");
                       } finally {
@@ -123,9 +123,9 @@ export function ProjectDetailPage() {
                       }
                     }}
                   >
-                    {downloading ? "Downloading…" : project.has_modified_file ? "Download original" : "Download"}
+                    {downloading ? "Downloading…" : draft.has_modified_file ? "Download original" : "Download"}
                   </button>
-                  {project.has_modified_file && (
+                  {draft.has_modified_file && (
                     <button
                       type="button"
                       className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
@@ -134,7 +134,7 @@ export function ProjectDetailPage() {
                         setDownloadError(null);
                         setDownloading(true);
                         try {
-                          await downloadWifModified(project.id, project.wif_filename);
+                          await downloadWifModified(draft.id, draft.wif_filename);
                         } catch {
                           setDownloadError("Download failed");
                         } finally {
@@ -151,26 +151,26 @@ export function ProjectDetailPage() {
                 )}
                 <dt className="text-muted-foreground">Shafts</dt>
                 <dd className="flex items-center gap-1.5">
-                  {project.num_shafts ?? "—"}
-                  {project.metadata_overrides?.num_shafts && (
+                  {draft.num_shafts ?? "—"}
+                  {draft.metadata_overrides?.num_shafts && (
                     <span className="text-xs text-muted-foreground">(value overwritten)</span>
                   )}
                 </dd>
                 <dt className="text-muted-foreground">Treadles</dt>
                 <dd className="flex items-center gap-1.5">
-                  {project.num_treadles ?? "—"}
-                  {project.metadata_overrides?.num_treadles && (
+                  {draft.num_treadles ?? "—"}
+                  {draft.metadata_overrides?.num_treadles && (
                     <span className="text-xs text-muted-foreground">(value overwritten)</span>
                   )}
                 </dd>
                 <dt className="text-muted-foreground">Warp threads</dt>
-                <dd>{project.warp_threads ?? "—"}</dd>
+                <dd>{draft.warp_threads ?? "—"}</dd>
                 <dt className="text-muted-foreground">Weft threads</dt>
-                <dd>{project.weft_threads ?? "—"}</dd>
-                {project.wif_source_software && (
+                <dd>{draft.weft_threads ?? "—"}</dd>
+                {draft.wif_source_software && (
                   <>
                     <dt className="text-muted-foreground">Source software</dt>
-                    <dd>{project.wif_source_software}{project.wif_source_version ? ` ${project.wif_source_version}` : ""}</dd>
+                    <dd>{draft.wif_source_software}{draft.wif_source_version ? ` ${draft.wif_source_version}` : ""}</dd>
                   </>
                 )}
               </dl>
@@ -181,10 +181,10 @@ export function ProjectDetailPage() {
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {(
                   [
-                    ["Threading diagram", project.has_threading],
-                    ["Tie-up grid", project.has_tieup],
-                    ["Treadle-tracking", project.has_treadling],
-                    ["Color palette", project.has_color_palette],
+                    ["Threading diagram", draft.has_threading],
+                    ["Tie-up grid", draft.has_tieup],
+                    ["Treadle-tracking", draft.has_treadling],
+                    ["Color palette", draft.has_color_palette],
                   ] as [string, boolean][]
                 ).map(([label, available]) => (
                   <>
@@ -196,10 +196,10 @@ export function ProjectDetailPage() {
                 ))}
                 <dt className="text-muted-foreground">Lift-tracking</dt>
                 <dd>
-                  {project.has_liftplan ? (
+                  {draft.has_liftplan ? (
                     <span className="text-foreground">
                       ✓ Available
-                      {project.liftplan_generated && (
+                      {draft.liftplan_generated && (
                         <span className="ml-1.5 text-xs text-muted-foreground">(computed)</span>
                       )}
                     </span>
@@ -209,11 +209,11 @@ export function ProjectDetailPage() {
                 </dd>
               </dl>
 
-              {!project.has_liftplan && project.has_treadling && project.has_tieup && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm dark:border-amber-800 dark:bg-amber-950">
-                  <p className="font-medium text-amber-900 dark:text-amber-100">Lift plan not in file</p>
-                  <p className="mt-0.5 text-amber-800 dark:text-amber-200 text-xs">
-                    This WIF has treadling and tie-up data. A lift plan can be computed algorithmically and added to the project.
+              {!draft.has_liftplan && draft.has_treadling && draft.has_tieup && (
+                <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2.5 text-sm">
+                  <p className="font-medium text-copper-on-subtle">Lift plan not in file</p>
+                  <p className="mt-0.5 text-copper-on-subtle text-xs">
+                    This WIF has treadling and tie-up data. A lift plan can be computed algorithmically and added to the draft.
                   </p>
                   {generateMutation.isError && (
                     <p className="mt-1 text-xs text-destructive">
@@ -233,15 +233,15 @@ export function ProjectDetailPage() {
               )}
 
               {/* Treadle metadata mismatch — offer override */}
-              {project.effective_num_treadles != null &&
-                project.num_treadles != null &&
-                project.effective_num_treadles !== project.num_treadles && (
-                <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm dark:border-stone-700 dark:bg-stone-900/30">
-                  <p className="font-medium text-stone-700 dark:text-stone-300">Treadle metadata mismatch</p>
-                  <p className="mt-0.5 text-stone-600 dark:text-stone-400 text-xs">
-                    [WEAVING] declares {project.num_treadles} treadles but the treadling data only uses {project.effective_num_treadles}.
-                    {project.metadata_overrides?.num_treadles
-                      ? ` (overridden from ${project.metadata_overrides.num_treadles.original})`
+              {draft.effective_num_treadles != null &&
+                draft.num_treadles != null &&
+                draft.effective_num_treadles !== draft.num_treadles && (
+                <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                  <p className="font-medium text-foreground">Treadle metadata mismatch</p>
+                  <p className="mt-0.5 text-subdued text-xs">
+                    [WEAVING] declares {draft.num_treadles} treadles but the treadling data only uses {draft.effective_num_treadles}.
+                    {draft.metadata_overrides?.num_treadles
+                      ? ` (overridden from ${draft.metadata_overrides.num_treadles.original})`
                       : " Override to fix loom compatibility checks and correct the exported file."}
                   </p>
                   {overrideMutation.isError && overrideMutation.variables?.field === "num_treadles" && (
@@ -249,32 +249,32 @@ export function ProjectDetailPage() {
                       {overrideMutation.error instanceof Error ? overrideMutation.error.message : "Override failed"}
                     </p>
                   )}
-                  {!project.metadata_overrides?.num_treadles && (
+                  {!draft.metadata_overrides?.num_treadles && (
                     <Button
                       size="sm"
                       variant="outline"
                       className="mt-2"
-                      onClick={() => overrideMutation.mutate({ field: "num_treadles", value: project.effective_num_treadles! })}
+                      onClick={() => overrideMutation.mutate({ field: "num_treadles", value: draft.effective_num_treadles! })}
                       disabled={overrideMutation.isPending}
                     >
                       {overrideMutation.isPending && overrideMutation.variables?.field === "num_treadles"
                         ? "Overriding…"
-                        : `Set treadles to ${project.effective_num_treadles}`}
+                        : `Set treadles to ${draft.effective_num_treadles}`}
                     </Button>
                   )}
                 </div>
               )}
 
               {/* Shaft metadata mismatch — offer override */}
-              {project.effective_num_shafts != null &&
-                project.num_shafts != null &&
-                project.effective_num_shafts !== project.num_shafts && (
-                <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm dark:border-stone-700 dark:bg-stone-900/30">
-                  <p className="font-medium text-stone-700 dark:text-stone-300">Shaft metadata mismatch</p>
-                  <p className="mt-0.5 text-stone-600 dark:text-stone-400 text-xs">
-                    [WEAVING] declares {project.num_shafts} shafts but the lift plan only uses {project.effective_num_shafts}.
-                    {project.metadata_overrides?.num_shafts
-                      ? ` (overridden from ${project.metadata_overrides.num_shafts.original})`
+              {draft.effective_num_shafts != null &&
+                draft.num_shafts != null &&
+                draft.effective_num_shafts !== draft.num_shafts && (
+                <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                  <p className="font-medium text-foreground">Shaft metadata mismatch</p>
+                  <p className="mt-0.5 text-subdued text-xs">
+                    [WEAVING] declares {draft.num_shafts} shafts but the lift plan only uses {draft.effective_num_shafts}.
+                    {draft.metadata_overrides?.num_shafts
+                      ? ` (overridden from ${draft.metadata_overrides.num_shafts.original})`
                       : " Override to fix loom compatibility checks and correct the exported file."}
                   </p>
                   {overrideMutation.isError && overrideMutation.variables?.field === "num_shafts" && (
@@ -282,17 +282,17 @@ export function ProjectDetailPage() {
                       {overrideMutation.error instanceof Error ? overrideMutation.error.message : "Override failed"}
                     </p>
                   )}
-                  {!project.metadata_overrides?.num_shafts && (
+                  {!draft.metadata_overrides?.num_shafts && (
                     <Button
                       size="sm"
                       variant="outline"
                       className="mt-2"
-                      onClick={() => overrideMutation.mutate({ field: "num_shafts", value: project.effective_num_shafts! })}
+                      onClick={() => overrideMutation.mutate({ field: "num_shafts", value: draft.effective_num_shafts! })}
                       disabled={overrideMutation.isPending}
                     >
                       {overrideMutation.isPending && overrideMutation.variables?.field === "num_shafts"
                         ? "Overriding…"
-                        : `Set shafts to ${project.effective_num_shafts}`}
+                        : `Set shafts to ${draft.effective_num_shafts}`}
                     </Button>
                   )}
                 </div>
@@ -309,18 +309,18 @@ export function ProjectDetailPage() {
                   </Link>
                 </div>
               </div>
-              <ActivitySummaryList activities={projectActivities} />
+              <ActivitySummaryList activities={draftActivities} />
             </div>
           </div>
 
           {/* Right column: Preview */}
           <div>
             <h2 className="text-base font-semibold mb-3">Design Preview</h2>
-            {project.has_preview ? (
-              <div className="overflow-auto rounded-lg border bg-white p-2">
+            {draft.has_preview ? (
+              <div className="overflow-auto rounded-lg border bg-card p-2">
                 <AuthedImage
-                  src={previewUrl(project.id)}
-                  alt={`Draft preview for ${project.name}`}
+                  src={previewUrl(draft.id)}
+                  alt={`Draft preview for ${draft.name}`}
                   className="max-w-full"
                 />
               </div>
@@ -347,8 +347,8 @@ export function ProjectDetailPage() {
           {showDangerZone && (
             <div className="mt-3 rounded-md border border-destructive/30 p-4 flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium">Delete project</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Permanently removes this project and its WIF file. Activities are not deleted.</p>
+                <p className="text-sm font-medium">Delete draft</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Permanently removes this draft and its WIF file. Activities are not deleted.</p>
               </div>
               <div className="flex gap-2 shrink-0">
                 {!confirmDelete ? (
@@ -358,7 +358,7 @@ export function ProjectDetailPage() {
                     className="text-destructive hover:text-destructive"
                     onClick={() => setConfirmDelete(true)}
                   >
-                    Delete project
+                    Delete draft
                   </Button>
                 ) : (
                   <>
@@ -382,10 +382,10 @@ export function ProjectDetailPage() {
 
       {showCreateActivity && (
         <CreateActivityModal
-          defaultProjectId={id}
+          defaultDraftId={id}
           onSuccess={(newId) => {
             setShowCreateActivity(false);
-            queryClient.invalidateQueries({ queryKey: ["activities", { projectId: id }] });
+            queryClient.invalidateQueries({ queryKey: ["activities", { draftId: id }] });
             queryClient.invalidateQueries({ queryKey: ["activities"] });
             navigate(`/activities/${newId}`);
           }}

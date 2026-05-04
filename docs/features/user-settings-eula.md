@@ -200,4 +200,4 @@ All nullable — existing users simply haven't accepted the new EULA yet and wil
 
 - **Data export**: `GET /api/users/me/data-export` should enqueue a Celery task that packages WIF files, preview images, activity photos, and a JSON data dump into a zip, then emails a download link or stores it for 24 hours. Requires Celery worker infrastructure (#48 CD pipeline work).
 - **Apple Sign In**: OIDC infrastructure is already in place. Requires paid Apple Developer account. See #65.
-- **Sharing slug enforcement**: When `ai_training_consent = False`, the project sharing endpoint (`/api/projects/{id}/share`) should return 403. Currently a frontend-only gate — needs server-side enforcement in the projects router.
+- **Sharing slug enforcement**: When `ai_training_consent = False`, the draft sharing endpoint (`/api/drafts/{id}/share`) should return 403. Currently a frontend-only gate — needs server-side enforcement in the drafts router.

@@ -9,7 +9,7 @@ import {
   ApiError, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS,
   type ActivitySummary, type ActivityPhoto, type PickRow,
 } from "@/api/activities";
-import { previewUrl } from "@/api/projects";
+import { previewUrl } from "@/api/drafts";
 import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
@@ -62,7 +62,7 @@ function CollapsibleSection({
 // WIF design preview modal
 // ---------------------------------------------------------------------------
 
-function DesignPreviewModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -76,7 +76,7 @@ function DesignPreviewModal({ projectId, onClose }: { projectId: string; onClose
           Close ✕
         </button>
         <AuthedImage
-          src={previewUrl(projectId)}
+          src={previewUrl(draftId)}
           alt="WIF design preview"
           className="w-full rounded-lg shadow-2xl"
           style={{ imageRendering: "pixelated" }}
@@ -197,13 +197,13 @@ function useAdaptivePatternHeight(): number {
 }
 
 function WeavingPatternView({
-  projectId,
+  draftId,
   currentPickIndex,
   totalPicks,
   picks,
   maxActive,
 }: {
-  projectId: string;
+  draftId: string;
   currentPickIndex: number;
   totalPicks: number;
   picks: PickRow[];
@@ -219,7 +219,7 @@ function WeavingPatternView({
     async function load() {
       const token = await getAuthToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/projects/${projectId}/drawdown`, { credentials: "include", headers });
+      const res = await fetch(`/api/drafts/${draftId}/drawdown`, { credentials: "include", headers });
       const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
       if (!cancelled) setPixelsPerRow(ppr);
       const blob = await res.blob();
@@ -237,7 +237,7 @@ function WeavingPatternView({
         objectUrlRef.current = null;
       }
     };
-  }, [projectId]);
+  }, [draftId]);
 
   if (!imgSrc) return null;
 
@@ -362,11 +362,11 @@ function WeavingPatternView({
 // ---------------------------------------------------------------------------
 
 function AbandonedDrawdownView({
-  projectId,
+  draftId,
   currentPick,
   totalPicks,
 }: {
-  projectId: string;
+  draftId: string;
   currentPick: number;
   totalPicks: number;
 }) {
@@ -378,7 +378,7 @@ function AbandonedDrawdownView({
     async function load() {
       const token = await getAuthToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/projects/${projectId}/drawdown`, { credentials: "include", headers });
+      const res = await fetch(`/api/drafts/${draftId}/drawdown`, { credentials: "include", headers });
       const blob = await res.blob();
       if (cancelled) return;
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
@@ -394,7 +394,7 @@ function AbandonedDrawdownView({
         objectUrlRef.current = null;
       }
     };
-  }, [projectId]);
+  }, [draftId]);
 
   if (!imgSrc) return null;
 
@@ -783,10 +783,10 @@ function CompletedSummary({
       {/* Design preview */}
       <div>
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
-        <div className="overflow-auto rounded-lg border bg-white p-2">
+        <div className="overflow-auto rounded-lg border bg-card p-2">
           <AuthedImage
-            src={previewUrl(activity.project_id)}
-            alt={`Design for ${activity.project_name}`}
+            src={previewUrl(activity.draft_id)}
+            alt={`Design for ${activity.draft_name}`}
             className="max-w-full mx-auto block"
             style={{ imageRendering: "pixelated" }}
           />
@@ -796,11 +796,11 @@ function CompletedSummary({
       {/* Links */}
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
-          to={`/projects/${activity.project_id}`}
+          to={`/drafts/${activity.draft_id}`}
           className="rounded-lg border p-4 hover:border-ring transition-colors block"
         >
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Project</p>
-          <p className="font-medium text-sm">{activity.project_name}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Draft</p>
+          <p className="font-medium text-sm">{activity.draft_name}</p>
         </Link>
         {activity.loom_id && activity.loom_name && (
           <Link
@@ -816,7 +816,7 @@ function CompletedSummary({
       {/* Sibling activities */}
       {siblings.length > 0 && (
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other activities on this project</h2>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other activities on this draft</h2>
           <div className="space-y-1">
             {siblings.map((s) => {
               const isPlanning = s.status === "active" && !s.loom_id;
@@ -900,9 +900,9 @@ export function ActivityDetailPage() {
   });
 
   const { data: siblingActivities = [] } = useQuery({
-    queryKey: ["activities", { projectId: activity?.project_id }],
-    queryFn: () => listActivities({ projectId: activity!.project_id }),
-    enabled: isCompleted && !!activity?.project_id,
+    queryKey: ["activities", { draftId: activity?.draft_id }],
+    queryFn: () => listActivities({ draftId: activity!.draft_id }),
+    enabled: isCompleted && !!activity?.draft_id,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["activity", id] });
@@ -1058,8 +1058,8 @@ export function ActivityDetailPage() {
   const displayPick = isPlanning ? localPick : activity.current_pick;
   const currentPickIndex = displayPick - 1;
   const declaredCount = activity.activity_type === "lift"
-    ? (activity.project_num_shafts ?? 0)
-    : (activity.project_num_treadles ?? 0);
+    ? (activity.draft_num_shafts ?? 0)
+    : (activity.draft_num_treadles ?? 0);
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
   const maxActive = declaredCount > 0 ? declaredCount : maxFromPicks;
 
@@ -1078,20 +1078,20 @@ export function ActivityDetailPage() {
   return (
     <div className="flex flex-col">
       {/* Page header */}
-      <div className="shrink-0 border-b border-stone-200 bg-white px-6 py-3 flex items-center justify-between">
+      <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
           <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
             {activity.loom_id && (
               <>
-                <Link to="/looms" className="text-stone-500 hover:text-stone-900">Equipment</Link>
-                <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
+                <Link to="/looms" className="text-muted-foreground hover:text-foreground">Equipment</Link>
+                <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               </>
             )}
-            <Link to="/projects" className="text-stone-500 hover:text-stone-900">Projects</Link>
-            <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
-            <Link to="/activities" className="text-stone-500 hover:text-stone-900">Activities</Link>
-            <AppIcons.chevronRight className="h-3.5 w-3.5 text-stone-400" />
+            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <Link to="/activities" className="text-muted-foreground hover:text-foreground">Activities</Link>
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           {editingName ? (
             <form
@@ -1136,7 +1136,7 @@ export function ActivityDetailPage() {
               {activity.name}
             </button>
           )}
-          <span className="text-sm text-muted-foreground truncate hidden sm:block">{activity.project_name}</span>
+          <span className="text-sm text-muted-foreground truncate hidden sm:block">{activity.draft_name}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -1189,9 +1189,9 @@ export function ActivityDetailPage() {
         {/* Abandoned banner */}
         {isAbandoned && (
           <div className="mx-auto max-w-2xl px-8 pt-6">
-            <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm">
-              <p className="font-medium text-amber-900 dark:text-amber-200">This activity was not completed</p>
-              <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
+            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm">
+              <p className="font-medium text-copper-on-subtle">This activity was not completed</p>
+              <p className="mt-0.5 text-xs text-copper-on-subtle">
                 Abandoned at pick {activity.current_pick} of {activity.total_picks}
                 {" "}({Math.round((activity.current_pick - 1) / activity.total_picks * 100)}% woven)
                 {activity.abandoned_at && ` · ${new Date(activity.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
@@ -1282,7 +1282,7 @@ export function ActivityDetailPage() {
         {picksData && !isFinished && !isCompleted && !isAbandoned && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <WeavingPatternView
-              projectId={activity.project_id}
+              draftId={activity.draft_id}
               currentPickIndex={currentPickIndex}
               totalPicks={activity.total_picks}
               picks={picksData.picks}
@@ -1295,7 +1295,7 @@ export function ActivityDetailPage() {
         {isAbandoned && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <AbandonedDrawdownView
-              projectId={activity.project_id}
+              draftId={activity.draft_id}
               currentPick={activity.current_pick}
               totalPicks={activity.total_picks}
             />
@@ -1364,18 +1364,18 @@ export function ActivityDetailPage() {
               {activity.loom_name && (
                 <><dt className="text-muted-foreground">Loom</dt><dd>{activity.loom_name}</dd></>
               )}
-              {activity.project_metadata_overrides?.num_treadles && (
+              {activity.draft_metadata_overrides?.num_treadles && (
                 <><dt className="text-muted-foreground">Treadle count</dt>
                 <dd className="flex items-center gap-1.5">
-                  {activity.project_num_treadles}
-                  <span className="text-xs text-muted-foreground">(overridden from {activity.project_metadata_overrides.num_treadles.original})</span>
+                  {activity.draft_num_treadles}
+                  <span className="text-xs text-muted-foreground">(overridden from {activity.draft_metadata_overrides.num_treadles.original})</span>
                 </dd></>
               )}
-              {activity.project_metadata_overrides?.num_shafts && (
+              {activity.draft_metadata_overrides?.num_shafts && (
                 <><dt className="text-muted-foreground">Shaft count</dt>
                 <dd className="flex items-center gap-1.5">
-                  {activity.project_num_shafts}
-                  <span className="text-xs text-muted-foreground">(overridden from {activity.project_metadata_overrides.num_shafts.original})</span>
+                  {activity.draft_num_shafts}
+                  <span className="text-xs text-muted-foreground">(overridden from {activity.draft_metadata_overrides.num_shafts.original})</span>
                 </dd></>
               )}
               {activity.num_items > 1 && (
@@ -1444,11 +1444,11 @@ export function ActivityDetailPage() {
                   </div>
                 )}
                 {restartConflict && (
-                  <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
-                    <p className="font-medium text-amber-900 dark:text-amber-200">
+                  <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+                    <p className="font-medium text-copper-on-subtle">
                       This loom has an active activity: <span className="font-semibold">{restartConflict.name}</span>
                     </p>
-                    <p className="text-amber-800 dark:text-amber-300 text-xs">Resolve it to restart this one.</p>
+                    <p className="text-copper-on-subtle text-xs">Resolve it to restart this one.</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button type="button" size="sm" onClick={() => handleResolveAndRestart("complete")} disabled={actionLoading}>
                         {actionLoading ? "Working…" : "Mark completed & restart"}
@@ -1482,11 +1482,11 @@ export function ActivityDetailPage() {
                 </div>
               )}
               {cloneConflict && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-3 py-3 text-sm space-y-2">
-                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+                  <p className="font-medium text-copper-on-subtle">
                     This loom has an active activity: <span className="font-semibold">{cloneConflict.name}</span>
                   </p>
-                  <p className="text-amber-800 dark:text-amber-300 text-xs">Resolve it to start the clone.</p>
+                  <p className="text-copper-on-subtle text-xs">Resolve it to start the clone.</p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button type="button" size="sm" onClick={() => handleResolveAndClone("complete")} disabled={actionLoading}>
                       {actionLoading ? "Working…" : "Mark completed & clone"}
@@ -1532,7 +1532,7 @@ export function ActivityDetailPage() {
 
       {showDesignPreview && (
         <DesignPreviewModal
-          projectId={activity.project_id}
+          draftId={activity.draft_id}
           onClose={() => setShowDesignPreview(false)}
         />
       )}
@@ -1542,10 +1542,10 @@ export function ActivityDetailPage() {
           activityId={activity.id}
           activeActivities={allActivities.filter((a) => a.status === "active")}
           activityType={activity.activity_type}
-          projectNumTreadles={activity.project_num_treadles}
-          projectNumShafts={activity.project_num_shafts}
-          projectEffectiveNumTreadles={activity.project_effective_num_treadles}
-          projectEffectiveNumShafts={activity.project_effective_num_shafts}
+          draftNumTreadles={activity.draft_num_treadles}
+          draftNumShafts={activity.draft_num_shafts}
+          draftEffectiveNumTreadles={activity.draft_effective_num_treadles}
+          draftEffectiveNumShafts={activity.draft_effective_num_shafts}
           onSuccess={() => {
             setShowAssignLoom(false);
             invalidate();
