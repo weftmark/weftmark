@@ -1,6 +1,6 @@
 {admin_name} has invited you to join {app_name}.
 
-{admin_name} has invited you to create an account on {app_name}. Click the link below
+To create an account on {app_name}, click the link below
 to accept your invitation and set up your account:
 
 {invite_url}
