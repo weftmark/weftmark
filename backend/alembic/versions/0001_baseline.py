@@ -758,7 +758,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_users_email"), table_name="users")
     op.drop_index(op.f("ix_users_clerk_user_id"), table_name="users")
     op.drop_table("users")
-    op.drop_table("seed_runs")
+    op.execute("DROP TABLE IF EXISTS seed_runs")
     op.drop_index(op.f("ix_pending_signups_clerk_user_id"), table_name="pending_signups")
     op.drop_table("pending_signups")
     op.drop_table("eula_versions")

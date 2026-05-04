@@ -159,6 +159,7 @@ async def get_project(
     project = await _get_owned_project(project_id, current_user, db)
     data = {c.key: getattr(project, c.key) for c in project.__table__.columns}
     data["has_preview"] = storage.preview_exists(project.preview_path)
+    data["has_modified_file"] = bool(project.wif_modified_path and storage.file_exists(project.wif_modified_path))
     return ProjectDetail(**data)
 
 
@@ -318,6 +319,7 @@ async def generate_liftplan(
     await db.refresh(project)
     data = {c.key: getattr(project, c.key) for c in project.__table__.columns}
     data["has_preview"] = storage.preview_exists(project.preview_path)
+    data["has_modified_file"] = bool(project.wif_modified_path and storage.file_exists(project.wif_modified_path))
     return ProjectDetail(**data)
 
 
