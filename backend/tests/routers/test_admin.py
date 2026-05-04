@@ -44,7 +44,7 @@ class TestListAdminUsers:
             owner_id=admin_user.id,
             name="Admin Draft",
             wif_filename="test.wif",
-            wif_path="projects/test/original.wif",
+            wif_path="drafts/test/original.wif",
         )
         db_session.add(draft)
         await db_session.commit()
@@ -813,7 +813,7 @@ class TestElevateToSuperuser:
             owner_id=target.id,
             name="Target Draft",
             wif_filename="test.wif",
-            wif_path="projects/test/original.wif",
+            wif_path="drafts/test/original.wif",
         )
         db_session.add(draft)
         await db_session.commit()
@@ -832,7 +832,7 @@ class TestElevateToSuperuser:
             owner_id=target.id,
             name="Target Draft 2",
             wif_filename="test2.wif",
-            wif_path="projects/test2/original.wif",
+            wif_path="drafts/test2/original.wif",
         )
         db_session.add(draft)
         await db_session.commit()

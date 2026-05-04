@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth as useClerkAuth, useClerk, useUser } from "@clerk/clerk-react";
 import { useAuth } from "@/hooks/useAuth";
+import { AuthCard } from "@/components/auth/AuthCard";
 
 const MAX_POLLS = 10;
 const POLL_INTERVAL_MS = 3000;
@@ -30,7 +31,6 @@ export function PendingPage() {
     }
   }, [clerkLoaded, isSignedIn, navigate]);
 
-  // Poll clerkUser.reload() until the webhook fires and sets status
   useEffect(() => {
     if (!clerkLoaded || !isSignedIn || !clerkUser) return;
     if (clerkStatus !== undefined) return;
@@ -48,40 +48,57 @@ export function PendingPage() {
 
   if (!clerkLoaded || isLoading || (clerkStatus === undefined && pollCount < MAX_POLLS)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="w-full max-w-sm space-y-4 px-4 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">WeftMark</h1>
-          <p className="text-sm text-muted-foreground">Setting up your account…</p>
+      <AuthCard>
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-stone-200 border-t-zinc-800" />
+          <h1 className="text-lg font-semibold text-zinc-800">Setting up your account</h1>
+          <p className="mt-2 text-sm text-stone-600">Just a moment…</p>
         </div>
-      </div>
+      </AuthCard>
     );
   }
 
   const isDenied = clerkStatus === "denied" || clerkStatus === "banned";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-sm space-y-4 px-4 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">WeftMark</h1>
+    <AuthCard>
+      <div className="text-center">
         {isDenied ? (
-          <p className="text-sm text-muted-foreground">
-            WeftMark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that changes.
-          </p>
+          <>
+            <h1 className="text-lg font-semibold text-zinc-800">Account not approved</h1>
+            <p className="mt-2 text-sm text-stone-600">
+              WeftMark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that
+              changes.
+            </p>
+          </>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">
-              Your sign-up request has been received. You'll get an email when an admin approves your account.
+            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-amber-50">
+              <svg
+                className="h-5 w-5 text-amber-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+              </svg>
+            </div>
+            <h1 className="text-lg font-semibold text-zinc-800">Request received</h1>
+            <p className="mt-2 text-sm text-stone-600">
+              Your sign-up request has been submitted. You'll receive an email once an admin approves your account.
             </p>
-            <p className="text-xs text-muted-foreground">No action needed — sit tight.</p>
+            <p className="mt-3 text-xs text-stone-500">No action needed — sit tight.</p>
           </>
         )}
         <button
           onClick={() => signOut()}
-          className="text-sm underline underline-offset-2 text-muted-foreground hover:text-foreground"
+          className="mt-6 text-sm text-stone-500 underline underline-offset-2 hover:text-stone-700"
         >
           Sign out
         </button>
       </div>
-    </div>
+    </AuthCard>
   );
 }
