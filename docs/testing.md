@@ -1,6 +1,6 @@
 # Test Coverage and Gaps
 
-**Current overall coverage: 65%** (823 tests, last measured 2026-05-03 v0.76.1)
+**Current overall coverage: ~65.3%** (842 tests projected in CI, last measured 2026-05-05 v0.85.0)
 
 ---
 
@@ -28,7 +28,10 @@
 | `app/services/email.py` | 100% | |
 | `app/services/rendering.py` | 100% | |
 | `app/services/storage.py` | 90% | Project photo helpers (`save_project_photo`, `delete_project_photo`) not tested |
+| `app/routers/logs.py` | 100% | Client log relay — all paths covered |
+| `app/services/storage_quota.py` | 100% | Quota check and exceeded branch covered |
 | `app/services/wif_linter.py` | 100% | |
+| `app/services/wif_modifier.py` | 82% | All branches covered except unused latin-1 in minimal WIF sample |
 | `app/services/wif_parser.py` | 100% | |
 | `app/version.py` | 86% | `__main__` block not tested |
 | `app/worker.py` | 0% | Celery worker — not tested, low priority |
@@ -120,3 +123,4 @@ Reassess coverage completeness when:
 | 2026-04-25 | v0.5.0 | 67% | 266 tests; project creation, restart, clone covered; auth `/me` + token validation added; loom CRUD partially covered |
 | 2026-05-03 | v0.74.0 | — | First production deployment smoke test; 63 items tested end-to-end; 11 issues filed (#266–#275); 2 closed (see GitHub issue #277) |
 | 2026-05-03 | v0.76.1 | 65% | 823 tests; full rename of Project→Draft model, router, API, and frontend completed (issues #296/#311) |
+| 2026-05-05 | v0.85.0 | ~65.3% | 19 new tests added; new modules covered: `logs.py`, `storage_quota.py`, `wif_modifier.py`; 64.78%→65.3% to clear CI gate |
