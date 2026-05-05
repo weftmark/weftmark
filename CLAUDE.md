@@ -60,17 +60,47 @@ Branches: `main` (prod-ready), `dev` (integration), `feature/*`, `fix/*`, `hotfi
 
 Bot actor: `weftmark-bot[bot]`. Post-merge jobs guard with `if: github.actor != 'weftmark-bot[bot]'` — do NOT use `[skip actions]` (that token suppresses PR CI on the target branch).
 
+## Chat shorthand
+
+When the user types one of these aliases, execute the corresponding action immediately without asking for confirmation:
+
+| Alias | Intent | Action |
+| --- | --- | --- |
+| `rbd` | Rebuild and redeploy | Stop frontend + backend + worker → build frontend + backend → start all three → confirm health via `/health` response |
+| `cap` | Commit and push | Stage all changed files → commit with a generated message based on the diff → push to current branch |
+| `reb` | Rebase to dev | `git fetch origin` → `git checkout dev` → `git pull origin dev` — clean base for starting a new branch |
+| `prd` | PR to dev | Check if current branch already has an open PR targeting `dev`; if yes, print the URL; if no, create one with `gh pr create --base dev` |
+| `prm` | PR to main | Check if `dev` already has an open PR targeting `main`; if yes, print the URL; if no, create one with `gh pr create --head dev --base main` |
+| `rrm` | Review run after merge | `gh run list --limit 5` to find runs triggered by the recent merge → watch for completion → report pass/fail and surface any blocking failures with `gh run view --log-failed` |
+| `rtc` | Review and tidy issues | List all open issues → for each one worked in recent branches/PRs add a progress comment → close any that are completed, duplicate, or obsolete |
+| `li` | List and prioritize issues | Fetch up to 20 open issues → sort by priority (security > blocking bugs > infra/CI > feature work > chores) → present ranked list → call out the top 3 with rationale for why each should be worked next |
+| `la` | List aliases | Print the alias table from this section as a quick reference |
+| `eqa` | Execute QA activities | Fetch open issues labelled `qa` or containing QA tasks → identify which can be executed automatically (smoke tests, endpoint checks, data validation, log review) → run them → post results as issue comments → close any that fully pass |
+| `sqa` | Suggest QA activities | Review open issues and QA tickets for tests requiring human verification → present them one step at a time → wait for pass/fail feedback after each step → update the relevant ticket with results → repeat until all suggested steps are worked |
+| `aac` | Active actions check | `gh run list --limit 10` → print current runs in chat → schedule a non-blocking wakeup to recheck until all runs complete → notify with final pass/fail summary when done |
+| `itc [N]` | Increase test coverage | Run pytest with coverage → if N given, write tests until coverage reaches N% → if no N, write tests until the CI gate (65%) is met → prioritize high-impact reliable paths (router happy paths, auth guards, service logic) over low-value noise (CLI entry points, error branches that can't occur) → if N is unreasonable (e.g. 100%), push back with justification → update `docs/testing.md` when done |
+
+**`ussh` — remote execution modifier:** When the user includes `ussh` in a request, read `.remotehost` from the repo root to get connection details and run the requested checks or tests on the remote server via SSH instead of locally. `.remotehost` format: `host`, `user`, `ssh` (full connection string). `.remotehost` is gitignored; `.remotehost.example` shows the structure.
+
+**`ulocal` — local execution modifier:** When the user includes `ulocal` in a request, run checks and tests against the local container stack (`docker exec weaving_site_backend` / `docker exec weaving_site_worker`) rather than the remote host. Default when neither `ussh` nor `ulocal` is specified.
+
+Scripts are also available at `scripts/rbd.ps1` for direct terminal use.
+
+---
+
 ## Development rules
 
 **Pull before starting:** `git pull origin <branch>` — CI bot commits version bumps directly to branches; skip this and pushes will conflict on `VERSION` / `frontend/package.json`.
 
-**Rebuild — always both services together:**
+**Rebuild — always all three services together (frontend, backend, worker):**
 
 ```bash
 docker compose -f docker-compose.build.yml --env-file .env.local stop frontend backend worker
 docker compose -f docker-compose.build.yml --env-file .env.local build frontend backend
 docker compose -f docker-compose.build.yml --env-file .env.local up -d frontend backend worker
 ```
+
+The worker shares the backend image — stopping and restarting all three ensures no version skew between the uvicorn and Celery processes.
 
 The `frontend-1` container is nginx-only — never run `docker compose exec frontend npm ...`.
 
