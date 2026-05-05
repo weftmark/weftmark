@@ -64,10 +64,10 @@ Bot actor: `weftmark-bot[bot]`. Post-merge jobs guard with `if: github.actor != 
 
 When the user types one of these aliases, execute the corresponding action immediately without asking for confirmation:
 
-| Alias | Action |
-| --- | --- |
-| `rbd` | Stop frontend + backend + worker → build frontend + backend → start all three → confirm health via `/health` response |
-| `cap` | Stage all changed files → commit with a generated message based on the diff → push to current branch |
+| Alias | Intent | Action |
+| --- | --- | --- |
+| `rbd` | Rebuild and redeploy | Stop frontend + backend + worker → build frontend + backend → start all three → confirm health via `/health` response |
+| `cap` | Commit and push | Stage all changed files → commit with a generated message based on the diff → push to current branch |
 
 Scripts are also available at `scripts/rbd.ps1` for direct terminal use.
 
