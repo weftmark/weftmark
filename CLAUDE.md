@@ -69,6 +69,7 @@ When the user types one of these aliases, execute the corresponding action immed
 | `rbd` | Rebuild and redeploy | Stop frontend + backend + worker → build frontend + backend → start all three → confirm health via `/health` response |
 | `cap` | Commit and push | Stage all changed files → commit with a generated message based on the diff → push to current branch |
 | `reb` | Rebase to dev | `git fetch origin` → `git checkout dev` → `git pull origin dev` — clean base for starting a new branch |
+| `prd` | PR to dev | Check if current branch already has an open PR targeting `dev`; if yes, print the URL; if no, create one with `gh pr create --base dev` |
 
 Scripts are also available at `scripts/rbd.ps1` for direct terminal use.
 
