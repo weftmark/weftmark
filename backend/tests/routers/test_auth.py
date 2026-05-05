@@ -348,6 +348,72 @@ class TestRevokeInvite:
 # ---------------------------------------------------------------------------
 
 
+class TestGetCurrentUserFullPath:
+    """Covers the DB lookup and user-state checks in get_current_user."""
+
+    FAKE_CLERK_ID = "clerk_full_path_test_001"
+
+    @pytest.fixture(autouse=True)
+    def _mock_clerk(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "clerk_publishable_key", "pk_test_dGVzdA")
+        with patch("app.deps.verify_session_token", return_value=self.FAKE_CLERK_ID):
+            yield
+
+    async def test_user_not_in_db_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/auth/me", headers={"Authorization": "Bearer tok"})
+        assert resp.status_code == 401
+
+    async def test_valid_user_returns_200(self, raw_client: AsyncClient, db_session: AsyncSession):
+        user = User(
+            email="valid_full@example.com",
+            display_name="Valid User",
+            clerk_user_id=self.FAKE_CLERK_ID,
+        )
+        db_session.add(user)
+        await db_session.commit()
+        resp = await raw_client.get("/auth/me", headers={"Authorization": "Bearer tok"})
+        assert resp.status_code == 200
+
+    async def test_deleted_user_returns_401(self, raw_client: AsyncClient, db_session: AsyncSession):
+        from datetime import datetime, timezone
+
+        user = User(
+            email="deleted_full@example.com",
+            display_name="Deleted",
+            clerk_user_id=self.FAKE_CLERK_ID,
+            deleted_at=datetime.now(timezone.utc),
+        )
+        db_session.add(user)
+        await db_session.commit()
+        resp = await raw_client.get("/auth/me", headers={"Authorization": "Bearer tok"})
+        assert resp.status_code == 401
+
+    async def test_inactive_user_returns_401(self, raw_client: AsyncClient, db_session: AsyncSession):
+        user = User(
+            email="inactive_full@example.com",
+            display_name="Inactive",
+            clerk_user_id=self.FAKE_CLERK_ID,
+            is_active=False,
+        )
+        db_session.add(user)
+        await db_session.commit()
+        resp = await raw_client.get("/auth/me", headers={"Authorization": "Bearer tok"})
+        assert resp.status_code == 401
+
+
+class TestMissingClerkKey:
+    """Covers the clerk_publishable_key not configured path."""
+
+    async def test_no_clerk_key_returns_503(self, raw_client: AsyncClient, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "clerk_publishable_key", None)
+        resp = await raw_client.get("/auth/me", headers={"Authorization": "Bearer tok"})
+        assert resp.status_code == 503
+
+
 class TestClerkErroredUser:
     """Users flagged clerk_errored=True must receive 401 on all requests."""
 
