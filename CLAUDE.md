@@ -77,6 +77,7 @@ When the user types one of these aliases, execute the corresponding action immed
 | `la` | List aliases | Print the alias table from this section as a quick reference |
 | `eqa` | Execute QA activities | Fetch open issues labelled `qa` or containing QA tasks → identify which can be executed automatically (smoke tests, endpoint checks, data validation, log review) → run them → post results as issue comments → close any that fully pass |
 | `sqa` | Suggest QA activities | Review open issues and QA tickets for tests requiring human verification → present them one step at a time → wait for pass/fail feedback after each step → update the relevant ticket with results → repeat until all suggested steps are worked |
+| `aac` | Actions check | `gh run list --limit 10` → print current runs in chat → poll until all in-progress runs complete → notify with final pass/fail summary |
 
 **`ussh` — remote execution modifier:** When the user includes `ussh` in a request, read `.remotehost` from the repo root to get connection details and run the requested checks or tests on the remote server via SSH instead of locally. `.remotehost` format: `host`, `user`, `ssh` (full connection string). `.remotehost` is gitignored; `.remotehost.example` shows the structure.
 
