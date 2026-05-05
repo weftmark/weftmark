@@ -510,3 +510,135 @@ class TestHandleUserDeleted:
         from app.routers.auth import _handle_user_deleted
 
         await _handle_user_deleted(db_session, {"id": "clerk_unknown_xyz"})
+
+
+class TestHandleUserCreated:
+    async def test_creates_pending_signup_for_unknown_email(self, db_session: AsyncSession, admin_user: User):
+        from app.routers.auth import _handle_user_created
+
+        with (
+            patch("app.routers.auth.set_user_metadata", new_callable=AsyncMock),
+            patch("app.routers.auth.send_signup_received_email", new_callable=AsyncMock),
+            patch("app.routers.auth.send_pending_signup_notification", new_callable=AsyncMock) as mock_notify,
+        ):
+            await _handle_user_created(
+                db_session,
+                {
+                    "id": "clerk_new_001",
+                    "email_addresses": [{"id": "ea1", "email_address": "unknown@example.com"}],
+                    "primary_email_address_id": "ea1",
+                    "first_name": "Unknown",
+                    "last_name": "User",
+                },
+            )
+
+        pending = await db_session.scalar(select(PendingSignup).where(PendingSignup.clerk_user_id == "clerk_new_001"))
+        assert pending is not None
+        assert pending.email == "unknown@example.com"
+        mock_notify.assert_awaited_once()
+
+    async def test_duplicate_pending_signup_is_noop(self, db_session: AsyncSession):
+        from app.routers.auth import _handle_user_created
+
+        db_session.add(PendingSignup(clerk_user_id="clerk_dup_001", email="dup@example.com", display_name="Dup"))
+        await db_session.commit()
+
+        with (
+            patch("app.routers.auth.set_user_metadata", new_callable=AsyncMock) as mock_meta,
+            patch("app.routers.auth.send_signup_received_email", new_callable=AsyncMock),
+            patch("app.routers.auth.send_pending_signup_notification", new_callable=AsyncMock),
+        ):
+            await _handle_user_created(
+                db_session,
+                {
+                    "id": "clerk_dup_001",
+                    "email_addresses": [{"id": "ea1", "email_address": "dup@example.com"}],
+                    "primary_email_address_id": "ea1",
+                    "first_name": "Dup",
+                    "last_name": "User",
+                },
+            )
+
+        mock_meta.assert_not_awaited()
+
+    async def test_attaches_clerk_id_to_pre_created_user(self, db_session: AsyncSession):
+        from app.routers.auth import _handle_user_created
+
+        user = User(email="precreated@example.com", display_name="Pre Created")
+        db_session.add(user)
+        await db_session.commit()
+
+        with patch("app.routers.auth.set_user_metadata", new_callable=AsyncMock) as mock_meta:
+            await _handle_user_created(
+                db_session,
+                {
+                    "id": "clerk_pre_001",
+                    "email_addresses": [{"id": "ea1", "email_address": "precreated@example.com"}],
+                    "primary_email_address_id": "ea1",
+                    "first_name": "Pre",
+                    "last_name": "Created",
+                },
+            )
+
+        await db_session.refresh(user)
+        assert user.clerk_user_id == "clerk_pre_001"
+        mock_meta.assert_awaited_once()
+
+
+class TestHandleUserUpdated:
+    async def test_updates_email_and_display_name(self, db_session: AsyncSession):
+        from app.routers.auth import _handle_user_updated
+
+        user = User(
+            email="old@example.com",
+            display_name="Old Name",
+            clerk_user_id="clerk_upd_001",
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        await _handle_user_updated(
+            db_session,
+            {
+                "id": "clerk_upd_001",
+                "email_addresses": [{"id": "ea1", "email_address": "new@example.com"}],
+                "primary_email_address_id": "ea1",
+                "first_name": "New",
+                "last_name": "Name",
+            },
+        )
+
+        await db_session.refresh(user)
+        assert user.email == "new@example.com"
+        assert user.display_name == "New Name"
+
+    async def test_unknown_clerk_user_is_noop(self, db_session: AsyncSession):
+        from app.routers.auth import _handle_user_updated
+
+        await _handle_user_updated(db_session, {"id": "clerk_unknown_upd"})
+
+
+class TestConsumeInvite:
+    async def test_accepts_active_invite(self, db_session: AsyncSession, admin_user: User):
+        from app.routers.auth import _consume_invite
+
+        invite = Invite(
+            email="invited@example.com",
+            token="test-token-consume-001",
+            role="user",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+            created_by_id=admin_user.id,
+        )
+        db_session.add(invite)
+        await db_session.commit()
+
+        result = await _consume_invite(db_session, "invited@example.com")
+
+        assert result is not None
+        assert result.accepted_at is not None
+
+    async def test_no_invite_returns_none(self, db_session: AsyncSession):
+        from app.routers.auth import _consume_invite
+
+        result = await _consume_invite(db_session, "noinvite@example.com")
+        assert result is None
