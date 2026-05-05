@@ -184,24 +184,3 @@ Read the listed spec **before** touching any of these feature areas:
 | Test coverage gaps | `docs/testing.md` | `backend/tests/` |
 | Environments / staging | `docs/deployment/environments.md` | `docker-compose.build.yml` |
 | Phase 2 ideas | `docs/requirements/phase2.md` | **Do not implement unless explicitly directed** |
-
-## Allowed bash patterns
-
-```text
-Bash(docker compose *)
-Bash(docker cp *)
-Bash(conda run *)
-Bash(git add *)
-Bash(git commit *)
-Bash(git push *)
-Bash(git pull *)
-Bash(git fetch *)
-Bash(git checkout *)
-Bash(git stash *)
-Bash(npx tsc *)
-Bash(npm run *)
-Bash(gh run *)
-Bash(gh pr *)
-Bash(curl -s http://localhost:*)
-Bash(python -c ' *)
-```

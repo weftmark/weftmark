@@ -1,12 +1,21 @@
+import io
 import uuid
 from datetime import date
 
 from httpx import AsyncClient
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.loom import Loom, LoomVersion, LoomVersionAccessory
 from app.models.user import User
+
+
+def _fake_png(width: int = 40, height: int = 40) -> bytes:
+    img = Image.new("RGB", (width, height), color=(100, 150, 200))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
 
 
 async def _insert_loom_for_user(db_session: AsyncSession, owner: User) -> Loom:
@@ -494,3 +503,222 @@ class TestLoomTrackingFlags:
         body = resp.json()
         assert body["supports_treadle_tracking"] is False
         assert body["supports_lift_tracking"] is False
+
+
+# ---------------------------------------------------------------------------
+# PUT/DELETE/GET /{loom_id}/photo
+# ---------------------------------------------------------------------------
+
+
+class TestLoomPhoto:
+    async def test_upload_returns_204(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.put(
+            f"/api/looms/{loom['id']}/photo",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        assert resp.status_code == 204
+
+    async def test_upload_invalid_content_type_returns_400(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.put(
+            f"/api/looms/{loom['id']}/photo",
+            files={"file": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+        assert resp.status_code == 400
+
+    async def test_get_photo_returns_200_after_upload(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        await auth_client.put(
+            f"/api/looms/{loom['id']}/photo",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        resp = await auth_client.get(f"/api/looms/{loom['id']}/photo")
+        assert resp.status_code == 200
+
+    async def test_get_photo_returns_404_when_no_photo(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.get(f"/api/looms/{loom['id']}/photo")
+        assert resp.status_code == 404
+
+    async def test_delete_photo_returns_204(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        await auth_client.put(
+            f"/api/looms/{loom['id']}/photo",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        resp = await auth_client.delete(f"/api/looms/{loom['id']}/photo")
+        assert resp.status_code == 204
+
+    async def test_delete_photo_clears_it(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        await auth_client.put(
+            f"/api/looms/{loom['id']}/photo",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        await auth_client.delete(f"/api/looms/{loom['id']}/photo")
+        resp = await auth_client.get(f"/api/looms/{loom['id']}/photo")
+        assert resp.status_code == 404
+
+    async def test_upload_unknown_loom_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.put(
+            f"/api/looms/{uuid.uuid4()}/photo",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.put(
+            f"/api/looms/{uuid.uuid4()}/photo",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST/GET/DELETE /{loom_id}/versions/{version_id}/photos
+# ---------------------------------------------------------------------------
+
+
+class TestVersionPhoto:
+    async def _get_ids(self, auth_client: AsyncClient) -> tuple[str, str]:
+        loom = await _create_loom(auth_client)
+        return loom["id"], loom["current_version"]["id"]
+
+    async def test_upload_returns_201(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/photos",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        assert resp.status_code == 201
+
+    async def test_upload_returns_photo_fields(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/photos",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        body = resp.json()
+        assert "id" in body
+        assert body["filename"] == "photo.png"
+        assert body["display_order"] == 0
+
+    async def test_get_photo_returns_200(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        upload = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/photos",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        photo_id = upload.json()["id"]
+        resp = await auth_client.get(f"/api/looms/{loom_id}/versions/{version_id}/photos/{photo_id}")
+        assert resp.status_code == 200
+
+    async def test_get_unknown_photo_returns_404(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.get(f"/api/looms/{loom_id}/versions/{version_id}/photos/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_delete_photo_returns_204(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        upload = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/photos",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        photo_id = upload.json()["id"]
+        resp = await auth_client.delete(f"/api/looms/{loom_id}/versions/{version_id}/photos/{photo_id}")
+        assert resp.status_code == 204
+
+    async def test_delete_unknown_photo_returns_404(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.delete(f"/api/looms/{loom_id}/versions/{version_id}/photos/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_upload_invalid_type_returns_400(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/photos",
+            files={"file": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+        assert resp.status_code == 400
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(
+            f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/photos",
+            files={"file": ("photo.png", _fake_png(), "image/png")},
+        )
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# POST/GET/DELETE /{loom_id}/versions/{version_id}/receipts
+# ---------------------------------------------------------------------------
+
+
+class TestVersionReceipt:
+    async def _get_ids(self, auth_client: AsyncClient) -> tuple[str, str]:
+        loom = await _create_loom(auth_client)
+        return loom["id"], loom["current_version"]["id"]
+
+    async def test_upload_returns_201(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/receipts",
+            files={"file": ("receipt.jpg", _fake_png(), "image/jpeg")},
+        )
+        assert resp.status_code == 201
+
+    async def test_upload_returns_receipt_fields(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/receipts",
+            files={"file": ("receipt.jpg", _fake_png(), "image/jpeg")},
+        )
+        body = resp.json()
+        assert "id" in body
+        assert body["filename"] == "receipt.jpg"
+
+    async def test_get_receipt_returns_200(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        upload = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/receipts",
+            files={"file": ("receipt.jpg", _fake_png(), "image/jpeg")},
+        )
+        receipt_id = upload.json()["id"]
+        resp = await auth_client.get(f"/api/looms/{loom_id}/versions/{version_id}/receipts/{receipt_id}")
+        assert resp.status_code == 200
+
+    async def test_get_unknown_receipt_returns_404(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.get(f"/api/looms/{loom_id}/versions/{version_id}/receipts/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_delete_receipt_returns_204(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        upload = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/receipts",
+            files={"file": ("receipt.jpg", _fake_png(), "image/jpeg")},
+        )
+        receipt_id = upload.json()["id"]
+        resp = await auth_client.delete(f"/api/looms/{loom_id}/versions/{version_id}/receipts/{receipt_id}")
+        assert resp.status_code == 204
+
+    async def test_delete_unknown_receipt_returns_404(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.delete(f"/api/looms/{loom_id}/versions/{version_id}/receipts/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_upload_invalid_type_returns_400(self, auth_client: AsyncClient):
+        loom_id, version_id = await self._get_ids(auth_client)
+        resp = await auth_client.post(
+            f"/api/looms/{loom_id}/versions/{version_id}/receipts",
+            files={"file": ("file.txt", b"hello", "text/plain")},
+        )
+        assert resp.status_code == 400
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(
+            f"/api/looms/{uuid.uuid4()}/versions/{uuid.uuid4()}/receipts",
+            files={"file": ("receipt.jpg", _fake_png(), "image/jpeg")},
+        )
+        assert resp.status_code == 401
