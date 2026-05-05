@@ -2,7 +2,7 @@
 
 ## Overview
 
-Users can document the looms they own in the platform. Loom records are used by the activity system to suggest compatible activity types and provide default values such as warp waste allowance.
+Users can document the looms they own in the platform. Loom records are used by the project system to suggest compatible project types and provide default values such as warp waste allowance.
 
 ---
 
@@ -24,7 +24,7 @@ Each loom record captures:
 - Weaving width (maximum)
 - Number of shafts
 - Number of treadles
-- Supported activity types (lift-tracking, treadle-tracking, or both)
+- Supported project types (lift-tracking, treadle-tracking, or both)
 
 ### Notes
 - General notes and observations about the loom
@@ -33,7 +33,7 @@ Each loom record captures:
 
 ## Versioned Loom State
 
-Looms can be upgraded over time (e.g. a Louet Jane 8 expanded to 16 shafts). Because activities must record the exact state of the loom at the time of weaving, loom records use a **versioned state history**.
+Looms can be upgraded over time (e.g. a Louet Jane 8 expanded to 16 shafts). Because projects must record the exact state of the loom at the time of weaving, loom records use a **versioned state history**.
 
 ### How Versioning Works
 
@@ -41,7 +41,7 @@ Looms can be upgraded over time (e.g. a Louet Jane 8 expanded to 16 shafts). Bec
 - When an upgrade or modification occurs, the user creates a new version with an effective date and a description of the change
 - All previous versions are retained and remain viewable
 - The **current version** is always the latest
-- When creating an activity, the user selects which version of a loom was used — defaulting to the current version
+- When creating a project, the user selects which version of a loom was used — defaulting to the current version
 
 ### Version Record
 
@@ -52,7 +52,7 @@ Each version captures:
 
 ### Impact on Activities
 
-An activity stores a reference to the specific loom version it was created with. This preserves historical accuracy — an activity woven before an upgrade correctly reflects the loom's earlier configuration.
+A project stores a reference to the specific loom version it was created with. This preserves historical accuracy — a project woven before an upgrade correctly reflects the loom's earlier configuration.
 
 ---
 
@@ -71,7 +71,7 @@ Upgrades that change technical specifications (shaft count, treadle count, weavi
 
 ## Compatibility with WIF Files
 
-When a user creates an activity, the platform uses the loom's technical specifications to determine compatibility:
+When a user creates a project, the platform uses the loom's technical specifications to determine compatibility:
 
 - A loom with 8 shafts should not be used with a WIF file requiring more than 8 shafts
-- Incompatible configurations are flagged with a warning; the user can override but the warning is noted in the activity record
+- Incompatible configurations are flagged with a warning; the user can override but the warning is noted in the project record

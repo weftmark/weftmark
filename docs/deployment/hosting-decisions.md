@@ -120,7 +120,7 @@
 - Removing Authentik from the docker-compose stack reduced the minimum VM RAM requirement.
 - Free tier: unlimited MAU on development; 10,000 MAU on production (as of 2026).
 
-**Architectural note:** The local `users` table is the source of truth for app-level data (projects, activities, preferences). Clerk manages identity only; a webhook handler at `POST /webhooks/clerk` keeps the two in sync. Backend validates Bearer tokens in the `Authorization` header — not cookies. Users can self-register via Clerk; new accounts require admin approval before access is granted.
+**Architectural note:** The local `users` table is the source of truth for app-level data (drafts, projects, preferences). Clerk manages identity only; a webhook handler at `POST /webhooks/clerk` keeps the two in sync. Backend validates Bearer tokens in the `Authorization` header — not cookies. Users can self-register via Clerk; new accounts require admin approval before access is granted.
 
 **Estimated cost:** $0/mo on free tier.
 

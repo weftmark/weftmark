@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listActivities, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS, type ActivitySummary } from "@/api/activities";
+import { listProjects, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
 import { AppIcons } from "@/lib/icons";
 import { previewUrl } from "@/api/drafts";
 import { AuthedImage } from "@/components/ui/AuthedImage";
-import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
-import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
+import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
+import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -22,10 +22,10 @@ function fmtDate(iso: string): string {
 }
 
 function groupByYear(
-  items: ActivitySummary[],
-  getDate: (a: ActivitySummary) => string | null,
-): Array<{ year: number; items: ActivitySummary[] }> {
-  const map = new Map<number, ActivitySummary[]>();
+  items: ProjectSummary[],
+  getDate: (p: ProjectSummary) => string | null,
+): Array<{ year: number; items: ProjectSummary[] }> {
+  const map = new Map<number, ProjectSummary[]>();
   for (const item of items) {
     const d = getDate(item);
     const year = d ? new Date(d).getFullYear() : new Date().getFullYear();
@@ -37,39 +37,39 @@ function groupByYear(
     .map(([year, items]) => ({ year, items }));
 }
 
-function ActivityCard({ activity, onAssign }: {
-  activity: ActivitySummary;
+function ProjectCard({ project, onAssign }: {
+  project: ProjectSummary;
   onAssign?: (id: string) => void;
 }) {
   const [showPreview, setShowPreview] = useState(false);
-  const isPlanning = activity.status === "active" && !activity.loom_id;
-  const badgeKey = isPlanning ? "plan" : activity.status;
-  const badgeLabel = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[activity.status];
+  const isPlanning = project.status === "active" && !project.loom_id;
+  const badgeKey = isPlanning ? "plan" : project.status;
+  const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
 
-  const endDate = activity.status === "completed"
-    ? activity.completed_at
-    : activity.status === "abandoned"
-      ? activity.abandoned_at
+  const endDate = project.status === "completed"
+    ? project.completed_at
+    : project.status === "abandoned"
+      ? project.abandoned_at
       : null;
 
-  const pct = activity.total_picks > 0
-    ? Math.round((Math.min(activity.current_pick - 1, activity.total_picks) / activity.total_picks) * 100)
+  const pct = project.total_picks > 0
+    ? Math.round((Math.min(project.current_pick - 1, project.total_picks) / project.total_picks) * 100)
     : 0;
 
   return (
     <div className="relative rounded-lg border hover:border-ring transition-colors">
-      <Link to={`/activities/${activity.id}`} className="block p-4">
+      <Link to={`/projects/${project.id}`} className="block p-4">
         <div className="flex gap-3">
           <div className="shrink-0 mt-0.5">
             {isPlanning
               ? <AppIcons.planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-              : activity.activity_type === "treadle"
+              : project.project_type === "treadle"
                 ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
                 : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <span className="font-medium">{activity.name}</span>
+              <span className="font-medium">{project.name}</span>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
@@ -90,14 +90,14 @@ function ActivityCard({ activity, onAssign }: {
                 </span>
               </div>
             </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">{ACTIVITY_TYPE_LABELS[activity.activity_type]}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{PROJECT_TYPE_LABELS[project.project_type]}</p>
             {endDate && (
               <p className="mt-0.5 text-xs text-muted-foreground">{fmtDate(endDate)}</p>
             )}
-            {!isPlanning && activity.status === "active" && (
+            {!isPlanning && project.status === "active" && (
               <div className="mt-3">
                 <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                  <span>Pick {Math.min(activity.current_pick, activity.total_picks)} of {activity.total_picks}</span>
+                  <span>Pick {Math.min(project.current_pick, project.total_picks)} of {project.total_picks}</span>
                   <span>{pct}%</span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
@@ -112,7 +112,7 @@ function ActivityCard({ activity, onAssign }: {
         <div className="border-t px-3 pb-3 pt-2">
           <button
             type="button"
-            onClick={() => onAssign(activity.id)}
+            onClick={() => onAssign(project.id)}
             className="w-full rounded-md border border-dashed border-input px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-ring hover:bg-muted hover:text-foreground"
           >
             Assign to loom…
@@ -131,9 +131,9 @@ function ActivityCard({ activity, onAssign }: {
             >
               Close ✕
             </button>
-            <p className="absolute -top-9 left-0 text-white/70 text-sm truncate max-w-xs">{activity.name}</p>
+            <p className="absolute -top-9 left-0 text-white/70 text-sm truncate max-w-xs">{project.name}</p>
             <AuthedImage
-              src={previewUrl(activity.draft_id)}
+              src={previewUrl(project.draft_id)}
               alt="Design preview"
               className="w-full rounded-lg shadow-2xl"
               style={{ imageRendering: "pixelated" }}
@@ -152,7 +152,7 @@ function YearGroup({
   onAssign,
 }: {
   year: number;
-  items: ActivitySummary[];
+  items: ProjectSummary[];
   defaultExpanded: boolean;
   onAssign?: (id: string) => void;
 }) {
@@ -169,54 +169,54 @@ function YearGroup({
       </button>
       {open && (
         <div className="grid gap-3 sm:grid-cols-2">
-          {items.map((a) => <ActivityCard key={a.id} activity={a} onAssign={onAssign} />)}
+          {items.map((p) => <ProjectCard key={p.id} project={p} onAssign={onAssign} />)}
         </div>
       )}
     </div>
   );
 }
 
-export function ActivitiesPage() {
+export function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
-  const [assigningActivityId, setAssigningActivityId] = useState<string | null>(null);
+  const [assigningProjectId, setAssigningProjectId] = useState<string | null>(null);
 
-  const { data: activities = [], isLoading, error } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => listActivities(),
+  const { data: projects = [], isLoading, error } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => listProjects(),
   });
 
   const currentYear = new Date().getFullYear();
 
-  const planning = activities.filter((a) => a.status === "active" && !a.loom_id);
-  const active = activities.filter((a) => a.status === "active" && !!a.loom_id);
+  const planning = projects.filter((p) => p.status === "active" && !p.loom_id);
+  const active = projects.filter((p) => p.status === "active" && !!p.loom_id);
 
-  const completed = activities
-    .filter((a) => a.status === "completed")
+  const completed = projects
+    .filter((p) => p.status === "completed")
     .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
 
-  const abandoned = activities
-    .filter((a) => a.status === "abandoned")
+  const abandoned = projects
+    .filter((p) => p.status === "abandoned")
     .sort((a, b) => (b.abandoned_at ?? "").localeCompare(a.abandoned_at ?? ""));
 
-  const completedByYear = groupByYear(completed, (a) => a.completed_at);
-  const abandonedByYear = groupByYear(abandoned, (a) => a.abandoned_at);
+  const completedByYear = groupByYear(completed, (p) => p.completed_at);
+  const abandonedByYear = groupByYear(abandoned, (p) => p.abandoned_at);
 
   return (
     <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Activities</h1>
-        <Button size="sm" onClick={() => setShowCreate(true)}>New activity</Button>
+        <h1 className="text-xl font-semibold">Projects</h1>
+        <Button size="sm" onClick={() => setShowCreate(true)}>New project</Button>
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {error && <p className="text-sm text-destructive">Failed to load activities.</p>}
+      {error && <p className="text-sm text-destructive">Failed to load projects.</p>}
 
-      {!isLoading && activities.length === 0 && (
+      {!isLoading && projects.length === 0 && (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">No activities yet. Start one to begin tracking a weaving session.</p>
-          <Button className="mt-4" onClick={() => setShowCreate(true)}>New activity</Button>
+          <p className="text-sm text-muted-foreground">No projects yet. Start one to begin tracking a weaving session.</p>
+          <Button className="mt-4" onClick={() => setShowCreate(true)}>New project</Button>
         </div>
       )}
 
@@ -224,7 +224,7 @@ export function ActivitiesPage() {
         <section>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            {active.map((a) => <ActivityCard key={a.id} activity={a} />)}
+            {active.map((p) => <ProjectCard key={p.id} project={p} />)}
           </div>
         </section>
       )}
@@ -233,7 +233,7 @@ export function ActivitiesPage() {
         <section>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Planning</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            {planning.map((a) => <ActivityCard key={a.id} activity={a} onAssign={setAssigningActivityId} />)}
+            {planning.map((p) => <ProjectCard key={p.id} project={p} onAssign={setAssigningProjectId} />)}
           </div>
         </section>
       )}
@@ -271,18 +271,18 @@ export function ActivitiesPage() {
       )}
 
       {showCreate && (
-        <CreateActivityModal
-          onSuccess={(id) => { queryClient.invalidateQueries({ queryKey: ["activities"] }); navigate(`/activities/${id}`); }}
+        <CreateProjectModal
+          onSuccess={(id) => { queryClient.invalidateQueries({ queryKey: ["projects"] }); navigate(`/projects/${id}`); }}
           onClose={() => setShowCreate(false)}
         />
       )}
 
-      {assigningActivityId && (
+      {assigningProjectId && (
         <AssignLoomModal
-          activityId={assigningActivityId}
-          activeActivities={activities.filter((a) => a.status === "active")}
-          onSuccess={() => { setAssigningActivityId(null); queryClient.invalidateQueries({ queryKey: ["activities"] }); }}
-          onClose={() => setAssigningActivityId(null)}
+          projectId={assigningProjectId}
+          activeProjects={projects.filter((p) => p.status === "active")}
+          onSuccess={() => { setAssigningProjectId(null); queryClient.invalidateQueries({ queryKey: ["projects"] }); }}
+          onClose={() => setAssigningProjectId(null)}
         />
       )}
     </div>

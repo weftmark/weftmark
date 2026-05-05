@@ -3,15 +3,15 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getActivity, getActivityPicks, stepActivity, jumpActivity, completeActivity, abandonActivity,
-  restartActivity, cloneActivity, listActivities, deleteActivity,
-  renameActivity, uploadActivityPhoto, deleteActivityPhoto, activityPhotoUrl,
-  ApiError, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS,
-  type ActivitySummary, type ActivityPhoto, type PickRow,
-} from "@/api/activities";
+  getProject, getProjectPicks, stepProject, jumpProject, completeProject, abandonProject,
+  restartProject, cloneProject, listProjects, deleteProject,
+  renameProject, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
+  ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
+  type ProjectSummary, type ProjectPhoto, type PickRow,
+} from "@/api/projects";
 import { previewUrl } from "@/api/drafts";
 import { getAuthToken } from "@/api/client";
-import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
+import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button } from "@/components/ui/button";
 
@@ -94,13 +94,13 @@ function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: ()
 function PickDisplay({
   pick,
   totalCount,
-  activityType,
+  projectType,
   colorMode,
   showWeftColor,
 }: {
   pick: PickRow;
   totalCount: number;
-  activityType: string;
+  projectType: string;
   colorMode: ColorMode;
   showWeftColor: boolean;
 }) {
@@ -111,7 +111,7 @@ function PickDisplay({
     <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4">
       {/* Activity type icon — centered vertically */}
       <div className="shrink-0 flex items-center text-primary/50">
-        {activityType === "lift" ? (
+        {projectType === "lift" ? (
           <AppIcons.lift className="h-8 w-8" strokeWidth={1.5} />
         ) : (
           <AppIcons.treadle className="h-8 w-8" strokeWidth={1.5} />
@@ -177,7 +177,7 @@ function PickDisplay({
 // Weaving pattern view — drawdown image windowed to current pick
 // ---------------------------------------------------------------------------
 
-// Overhead accounts for: app header, activity header, progress bar,
+// Overhead accounts for: app header, project header, progress bar,
 // controls bar, pick instruction card, step controls, and padding.
 const PATTERN_OVERHEAD_PX = 560;
 const PATTERN_MIN_H = 200;
@@ -585,14 +585,14 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 // ---------------------------------------------------------------------------
 
 function PhotoGrid({
-  activityId,
+  projectId,
   photos,
   onUploaded,
   onDeleted,
 }: {
-  activityId: string;
-  photos: ActivityPhoto[];
-  onUploaded: (p: ActivityPhoto) => void;
+  projectId: string;
+  photos: ProjectPhoto[];
+  onUploaded: (p: ProjectPhoto) => void;
   onDeleted: (id: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -608,7 +608,7 @@ function PhotoGrid({
     try {
       for (const file of Array.from(files)) {
         if (photos.length >= 10) { setError("Maximum 10 photos reached."); break; }
-        const photo = await uploadActivityPhoto(activityId, file);
+        const photo = await uploadProjectPhoto(projectId, file);
         onUploaded(photo);
       }
     } catch (e) {
@@ -619,7 +619,7 @@ function PhotoGrid({
   };
 
   const handleDelete = async (photoId: string) => {
-    await deleteActivityPhoto(activityId, photoId);
+    await deleteProjectPhoto(projectId, photoId);
     onDeleted(photoId);
     setConfirmDeleteId(null);
   };
@@ -662,7 +662,7 @@ function PhotoGrid({
           {photos.map((p) => (
             <div key={p.id} className="group relative aspect-square">
               <AuthedImage
-                src={activityPhotoUrl(activityId, p.id)}
+                src={projectPhotoUrl(projectId, p.id)}
                 alt={p.filename}
                 className="w-full h-full object-cover rounded-md border cursor-pointer"
                 onClick={() => setLightbox(p.id)}
@@ -695,7 +695,7 @@ function PhotoGrid({
           onClick={() => setLightbox(null)}
         >
           <AuthedImage
-            src={activityPhotoUrl(activityId, lightbox)}
+            src={projectPhotoUrl(projectId, lightbox)}
             alt=""
             className="max-h-full max-w-full rounded-lg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -724,24 +724,24 @@ function PhotoGrid({
 }
 
 function CompletedSummary({
-  activity,
+  project,
   siblings,
   onPhotosChange,
 }: {
-  activity: import("@/api/activities").ActivityDetail;
-  siblings: ActivitySummary[];
-  onPhotosChange: (photos: ActivityPhoto[]) => void;
+  project: import("@/api/projects").ProjectDetail;
+  siblings: ProjectSummary[];
+  onPhotosChange: (photos: ProjectPhoto[]) => void;
 }) {
-  const [photos, setPhotos] = useState<ActivityPhoto[]>(activity.photos);
+  const [photos, setPhotos] = useState<ProjectPhoto[]>(project.photos);
 
-  const pct = activity.total_picks > 0
-    ? Math.round(((activity.current_pick - 1) / activity.total_picks) * 100)
+  const pct = project.total_picks > 0
+    ? Math.round(((project.current_pick - 1) / project.total_picks) * 100)
     : 100;
-  const completedDate = activity.completed_at
-    ? new Date(activity.completed_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+  const completedDate = project.completed_at
+    ? new Date(project.completed_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
     : null;
 
-  const handleUploaded = (p: ActivityPhoto) => {
+  const handleUploaded = (p: ProjectPhoto) => {
     const next = [...photos, p];
     setPhotos(next);
     onPhotosChange(next);
@@ -763,20 +763,20 @@ function CompletedSummary({
             <><dt className="text-muted-foreground">Completed</dt><dd>{completedDate}</dd></>
           )}
           <dt className="text-muted-foreground">Picks woven</dt>
-          <dd>{activity.total_picks} picks ({pct}%)</dd>
-          {activity.num_items > 1 && (
-            <><dt className="text-muted-foreground">Items</dt><dd>{activity.num_items}</dd></>
+          <dd>{project.total_picks} picks ({pct}%)</dd>
+          {project.num_items > 1 && (
+            <><dt className="text-muted-foreground">Items</dt><dd>{project.num_items}</dd></>
           )}
-          {activity.finished_length_per_item && (
+          {project.finished_length_per_item && (
             <><dt className="text-muted-foreground">Length / item</dt>
-            <dd>{activity.finished_length_per_item} {activity.length_unit}</dd></>
+            <dd>{project.finished_length_per_item} {project.length_unit}</dd></>
           )}
-          {activity.warp_waste_allowance && (
+          {project.warp_waste_allowance && (
             <><dt className="text-muted-foreground">Warp waste</dt>
-            <dd>{activity.warp_waste_allowance} {activity.length_unit}</dd></>
+            <dd>{project.warp_waste_allowance} {project.length_unit}</dd></>
           )}
           <dt className="text-muted-foreground">Type</dt>
-          <dd>{ACTIVITY_TYPE_LABELS[activity.activity_type]}</dd>
+          <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
         </dl>
       </div>
 
@@ -785,8 +785,8 @@ function CompletedSummary({
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
         <div className="overflow-auto rounded-lg border bg-card p-2">
           <AuthedImage
-            src={previewUrl(activity.draft_id)}
-            alt={`Design for ${activity.draft_name}`}
+            src={previewUrl(project.draft_id)}
+            alt={`Design for ${project.draft_name}`}
             className="max-w-full mx-auto block"
             style={{ imageRendering: "pixelated" }}
           />
@@ -796,31 +796,31 @@ function CompletedSummary({
       {/* Links */}
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
-          to={`/drafts/${activity.draft_id}`}
+          to={`/drafts/${project.draft_id}`}
           className="rounded-lg border p-4 hover:border-ring transition-colors block"
         >
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Draft</p>
-          <p className="font-medium text-sm">{activity.draft_name}</p>
+          <p className="font-medium text-sm">{project.draft_name}</p>
         </Link>
-        {activity.loom_id && activity.loom_name && (
+        {project.loom_id && project.loom_name && (
           <Link
-            to={`/looms/${activity.loom_id}`}
+            to={`/looms/${project.loom_id}`}
             className="rounded-lg border p-4 hover:border-ring transition-colors block"
           >
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Loom</p>
-            <p className="font-medium text-sm">{activity.loom_name}</p>
+            <p className="font-medium text-sm">{project.loom_name}</p>
           </Link>
         )}
       </div>
 
-      {/* Sibling activities */}
+      {/* Sibling projects */}
       {siblings.length > 0 && (
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other activities on this draft</h2>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other projects on this draft</h2>
           <div className="space-y-1">
             {siblings.map((s) => {
               const isPlanning = s.status === "active" && !s.loom_id;
-              const label = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[s.status];
+              const label = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[s.status];
               const badgeCls = isPlanning
                 ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                 : s.status === "active"
@@ -829,7 +829,7 @@ function CompletedSummary({
               return (
                 <Link
                   key={s.id}
-                  to={`/activities/${s.id}`}
+                  to={`/projects/${s.id}`}
                   className="flex items-center justify-between rounded-md border px-3 py-2 text-sm hover:border-ring transition-colors"
                 >
                   <span>{s.name}</span>
@@ -843,7 +843,7 @@ function CompletedSummary({
 
       {/* Photos */}
       <PhotoGrid
-        activityId={activity.id}
+        projectId={project.id}
         photos={photos}
         onUploaded={handleUploaded}
         onDeleted={handleDeleted}
@@ -856,7 +856,7 @@ function CompletedSummary({
 // Page
 // ---------------------------------------------------------------------------
 
-export function ActivityDetailPage() {
+export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -873,46 +873,46 @@ export function ActivityDetailPage() {
   const [confirmClone, setConfirmClone] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [cloneConflict, setCloneConflict] = useState<ActivitySummary | null>(null);
-  const [restartConflict, setRestartConflict] = useState<ActivitySummary | null>(null);
+  const [cloneConflict, setCloneConflict] = useState<ProjectSummary | null>(null);
+  const [restartConflict, setRestartConflict] = useState<ProjectSummary | null>(null);
   const [localPick, setLocalPick] = useState(1);
 
-  const { data: activity, isLoading, error } = useQuery({
-    queryKey: ["activity", id],
-    queryFn: () => getActivity(id!),
+  const { data: project, isLoading, error } = useQuery({
+    queryKey: ["project", id],
+    queryFn: () => getProject(id!),
     enabled: !!id,
   });
 
   const { data: picksData } = useQuery({
-    queryKey: ["activity-picks", id],
-    queryFn: () => getActivityPicks(id!),
+    queryKey: ["project-picks", id],
+    queryFn: () => getProjectPicks(id!),
     enabled: !!id,
     staleTime: Infinity,
   });
 
-  const isPlanning = activity?.status === "active" && !activity?.loom_id;
-  const isCompleted = activity?.status === "completed";
+  const isPlanning = project?.status === "active" && !project?.loom_id;
+  const isCompleted = project?.status === "completed";
 
-  const { data: allActivities = [] } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => listActivities(),
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => listProjects(),
     enabled: isPlanning || showAssignLoom,
   });
 
-  const { data: siblingActivities = [] } = useQuery({
-    queryKey: ["activities", { draftId: activity?.draft_id }],
-    queryFn: () => listActivities({ draftId: activity!.draft_id }),
-    enabled: isCompleted && !!activity?.draft_id,
+  const { data: siblingProjects = [] } = useQuery({
+    queryKey: ["projects", { draftId: project?.draft_id }],
+    queryFn: () => listProjects({ draftId: project!.draft_id }),
+    enabled: isCompleted && !!project?.draft_id,
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["activity", id] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["project", id] });
 
   const handleJump = useCallback(async (pick: number) => {
     if (!id || stepping) return;
     setStepping(true);
     try {
-      const updated = await jumpActivity(id, pick);
-      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+      const updated = await jumpProject(id, pick);
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
         old ? { ...updated, photos: old.photos } : updated
       );
     } finally {
@@ -924,8 +924,8 @@ export function ActivityDetailPage() {
     if (!id || stepping) return;
     setStepping(true);
     try {
-      const updated = await stepActivity(id, direction);
-      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+      const updated = await stepProject(id, direction);
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
         old ? { ...updated, photos: old.photos } : updated
       );
     } finally {
@@ -935,16 +935,16 @@ export function ActivityDetailPage() {
 
   const handleLocalStep = useCallback((direction: "advance" | "reverse") => {
     setLocalPick((prev) => {
-      const total = activity?.total_picks ?? 1;
+      const total = project?.total_picks ?? 1;
       if (direction === "advance") return Math.min(prev + 1, total + 1);
       return Math.max(1, prev - 1);
     });
-  }, [activity?.total_picks]);
+  }, [project?.total_picks]);
 
   const handleLocalJump = useCallback((pick: number) => {
-    const total = activity?.total_picks ?? 1;
+    const total = project?.total_picks ?? 1;
     setLocalPick(Math.max(1, Math.min(pick, total + 1)));
-  }, [activity?.total_picks]);
+  }, [project?.total_picks]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -964,14 +964,14 @@ export function ActivityDetailPage() {
   const handleComplete = async () => {
     if (!id) return;
     setActionLoading(true);
-    try { await completeActivity(id); invalidate(); setConfirmComplete(false); }
+    try { await completeProject(id); invalidate(); setConfirmComplete(false); }
     finally { setActionLoading(false); }
   };
 
   const handleAbandon = async () => {
     if (!id) return;
     setActionLoading(true);
-    try { await abandonActivity(id); invalidate(); setConfirmAbandon(false); }
+    try { await abandonProject(id); invalidate(); setConfirmAbandon(false); }
     finally { setActionLoading(false); }
   };
 
@@ -979,14 +979,14 @@ export function ActivityDetailPage() {
     if (!id) return;
     setActionLoading(true);
     try {
-      await restartActivity(id);
+      await restartProject(id);
       invalidate();
       setConfirmRestart(false);
       setRestartConflict(null);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409 && activity?.loom_id) {
-        const activities = await listActivities().catch(() => []);
-        setRestartConflict(activities.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
+      if (err instanceof ApiError && err.status === 409 && project?.loom_id) {
+        const allActive = await listProjects().catch(() => []);
+        setRestartConflict(allActive.find((a) => a.loom_id === project.loom_id && a.status === "active") ?? null);
         setConfirmRestart(false);
       }
     } finally { setActionLoading(false); }
@@ -996,9 +996,9 @@ export function ActivityDetailPage() {
     if (!restartConflict || !id) return;
     setActionLoading(true);
     try {
-      if (resolve === "complete") await completeActivity(restartConflict.id);
-      else await abandonActivity(restartConflict.id);
-      await restartActivity(id);
+      if (resolve === "complete") await completeProject(restartConflict.id);
+      else await abandonProject(restartConflict.id);
+      await restartProject(id);
       invalidate();
       setRestartConflict(null);
     } finally { setActionLoading(false); }
@@ -1008,14 +1008,14 @@ export function ActivityDetailPage() {
     if (!id) return;
     setActionLoading(true);
     try {
-      const cloned = await cloneActivity(id);
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
+      const cloned = await cloneProject(id);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setConfirmClone(false);
-      navigate(`/activities/${cloned.id}`);
+      navigate(`/projects/${cloned.id}`);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409 && activity?.loom_id) {
-        const activities = await listActivities().catch(() => []);
-        setCloneConflict(activities.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
+      if (err instanceof ApiError && err.status === 409 && project?.loom_id) {
+        const allActive = await listProjects().catch(() => []);
+        setCloneConflict(allActive.find((a) => a.loom_id === project.loom_id && a.status === "active") ?? null);
         setConfirmClone(false);
       }
     } finally { setActionLoading(false); }
@@ -1025,12 +1025,12 @@ export function ActivityDetailPage() {
     if (!cloneConflict || !id) return;
     setActionLoading(true);
     try {
-      if (resolve === "complete") await completeActivity(cloneConflict.id);
-      else await abandonActivity(cloneConflict.id);
-      const cloned = await cloneActivity(id);
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
+      if (resolve === "complete") await completeProject(cloneConflict.id);
+      else await abandonProject(cloneConflict.id);
+      const cloned = await cloneProject(id);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setCloneConflict(null);
-      navigate(`/activities/${cloned.id}`);
+      navigate(`/projects/${cloned.id}`);
     } finally { setActionLoading(false); }
   };
 
@@ -1038,9 +1038,9 @@ export function ActivityDetailPage() {
     if (!id) return;
     setActionLoading(true);
     try {
-      await deleteActivity(id);
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-      navigate("/activities", { replace: true });
+      await deleteProject(id);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      navigate("/projects", { replace: true });
     } finally { setActionLoading(false); }
   };
 
@@ -1049,31 +1049,31 @@ export function ActivityDetailPage() {
       <p className="text-sm text-muted-foreground">Loading…</p>
     </div>
   );
-  if (error || !activity) return (
+  if (error || !project) return (
     <div className="flex min-h-screen items-center justify-center">
-      <p className="text-sm text-destructive">Activity not found.</p>
+      <p className="text-sm text-destructive">Project not found.</p>
     </div>
   );
 
-  const displayPick = isPlanning ? localPick : activity.current_pick;
+  const displayPick = isPlanning ? localPick : project.current_pick;
   const currentPickIndex = displayPick - 1;
-  const declaredCount = activity.activity_type === "lift"
-    ? (activity.draft_num_shafts ?? 0)
-    : (activity.draft_num_treadles ?? 0);
+  const declaredCount = project.project_type === "lift"
+    ? (project.draft_num_shafts ?? 0)
+    : (project.draft_num_treadles ?? 0);
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
   const maxActive = declaredCount > 0 ? declaredCount : maxFromPicks;
 
-  const isFinished = displayPick > activity.total_picks;
-  const isActiveTracking = activity.status === "active" && !isPlanning;
-  const isAbandoned = activity.status === "abandoned";
+  const isFinished = displayPick > project.total_picks;
+  const isActiveTracking = project.status === "active" && !isPlanning;
+  const isAbandoned = project.status === "abandoned";
 
   // Badge for planning vs active
   const badgeClasses = isPlanning
     ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-    : activity.status === "active"
+    : project.status === "active"
       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
       : "bg-muted text-muted-foreground";
-  const badgeLabel = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[activity.status];
+  const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
 
   return (
     <div className="flex flex-col">
@@ -1082,7 +1082,7 @@ export function ActivityDetailPage() {
         <div className="flex items-center gap-3 min-w-0">
           {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
           <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
-            {activity.loom_id && (
+            {project.loom_id && (
               <>
                 <Link to="/looms" className="text-muted-foreground hover:text-foreground">Equipment</Link>
                 <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1090,7 +1090,7 @@ export function ActivityDetailPage() {
             )}
             <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            <Link to="/activities" className="text-muted-foreground hover:text-foreground">Activities</Link>
+            <Link to="/projects" className="text-muted-foreground hover:text-foreground">Projects</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           {editingName ? (
@@ -1099,11 +1099,11 @@ export function ActivityDetailPage() {
                 e.preventDefault();
                 const trimmed = nameInput.trim();
                 if (!trimmed) { setEditingName(false); return; }
-                const updated = await renameActivity(id!, trimmed);
-                queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                const updated = await renameProject(id!, trimmed);
+                queryClient.setQueryData<typeof project>(["project", id], (old) =>
                   old ? { ...updated, photos: old.photos } : updated
                 );
-                queryClient.invalidateQueries({ queryKey: ["activities"] });
+                queryClient.invalidateQueries({ queryKey: ["projects"] });
                 setEditingName(false);
               }}
               className="flex items-center gap-2 min-w-0"
@@ -1116,12 +1116,12 @@ export function ActivityDetailPage() {
                 onKeyDown={(e) => { if (e.key === "Escape") setEditingName(false); }}
                 onBlur={async () => {
                   const trimmed = nameInput.trim();
-                  if (trimmed && trimmed !== activity.name) {
-                    const updated = await renameActivity(id!, trimmed);
-                    queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                  if (trimmed && trimmed !== project.name) {
+                    const updated = await renameProject(id!, trimmed);
+                    queryClient.setQueryData<typeof project>(["project", id], (old) =>
                       old ? { ...updated, photos: old.photos } : updated
                     );
-                    queryClient.invalidateQueries({ queryKey: ["activities"] });
+                    queryClient.invalidateQueries({ queryKey: ["projects"] });
                   }
                   setEditingName(false);
                 }}
@@ -1129,14 +1129,14 @@ export function ActivityDetailPage() {
             </form>
           ) : (
             <button
-              onClick={() => { setNameInput(activity.name); setEditingName(true); }}
+              onClick={() => { setNameInput(project.name); setEditingName(true); }}
               className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text truncate"
               title="Click to rename"
             >
-              {activity.name}
+              {project.name}
             </button>
           )}
-          <span className="text-sm text-muted-foreground truncate hidden sm:block">{activity.draft_name}</span>
+          <span className="text-sm text-muted-foreground truncate hidden sm:block">{project.draft_name}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -1157,10 +1157,10 @@ export function ActivityDetailPage() {
         {/* Completed summary */}
         {isCompleted && (
           <CompletedSummary
-            activity={activity}
-            siblings={siblingActivities.filter((s) => s.id !== id)}
+            project={project}
+            siblings={siblingProjects.filter((s) => s.id !== id)}
             onPhotosChange={(photos) =>
-              queryClient.setQueryData(["activity", id], { ...activity, photos })
+              queryClient.setQueryData(["project", id], { ...project, photos })
             }
           />
         )}
@@ -1190,11 +1190,11 @@ export function ActivityDetailPage() {
         {isAbandoned && (
           <div className="mx-auto max-w-2xl px-8 pt-6">
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm">
-              <p className="font-medium text-copper-on-subtle">This activity was not completed</p>
+              <p className="font-medium text-copper-on-subtle">This project was not completed</p>
               <p className="mt-0.5 text-xs text-copper-on-subtle">
-                Abandoned at pick {activity.current_pick} of {activity.total_picks}
-                {" "}({Math.round((activity.current_pick - 1) / activity.total_picks * 100)}% woven)
-                {activity.abandoned_at && ` · ${new Date(activity.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
+                Abandoned at pick {project.current_pick} of {project.total_picks}
+                {" "}({Math.round((project.current_pick - 1) / project.total_picks * 100)}% woven)
+                {project.abandoned_at && ` · ${new Date(project.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
               </p>
             </div>
           </div>
@@ -1205,7 +1205,7 @@ export function ActivityDetailPage() {
           <div className="mx-auto max-w-2xl px-8 pt-6 flex items-center gap-4">
             {!isPlanning && !isCompleted && (
               <div className="flex-1">
-                <ProgressBar current={activity.current_pick} total={activity.total_picks} />
+                <ProgressBar current={project.current_pick} total={project.total_picks} />
               </div>
             )}
             {picksData?.has_weft_colors && !isFinished && !isCompleted && (
@@ -1245,9 +1245,9 @@ export function ActivityDetailPage() {
         {!isCompleted && <div className="mx-auto max-w-2xl px-8 pt-4">
           {isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-lg font-medium">All {activity.total_picks} picks complete!</p>
+              <p className="text-lg font-medium">All {project.total_picks} picks complete!</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Mark the activity as completed when you're done.
+                Mark the project as completed when you're done.
               </p>
               {isActiveTracking && (
                 <div className="mt-6">
@@ -1255,7 +1255,7 @@ export function ActivityDetailPage() {
                     <Button onClick={() => setConfirmComplete(true)}>Mark complete</Button>
                   ) : (
                     <div className="flex items-center justify-center gap-2">
-                      <span className="text-sm">Mark this activity as completed?</span>
+                      <span className="text-sm">Mark this project as completed?</span>
                       <Button size="sm" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
                       <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
                     </div>
@@ -1267,7 +1267,7 @@ export function ActivityDetailPage() {
             <PickDisplay
               pick={picksData.picks[currentPickIndex]}
               totalCount={maxActive}
-              activityType={activity.activity_type}
+              projectType={project.project_type}
               colorMode={colorMode}
               showWeftColor={showWeftColor}
             />
@@ -1282,9 +1282,9 @@ export function ActivityDetailPage() {
         {picksData && !isFinished && !isCompleted && !isAbandoned && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <WeavingPatternView
-              draftId={activity.draft_id}
+              draftId={project.draft_id}
               currentPickIndex={currentPickIndex}
-              totalPicks={activity.total_picks}
+              totalPicks={project.total_picks}
               picks={picksData.picks}
               maxActive={maxActive}
             />
@@ -1295,9 +1295,9 @@ export function ActivityDetailPage() {
         {isAbandoned && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <AbandonedDrawdownView
-              draftId={activity.draft_id}
-              currentPick={activity.current_pick}
-              totalPicks={activity.total_picks}
+              draftId={project.draft_id}
+              currentPick={project.current_pick}
+              totalPicks={project.total_picks}
             />
           </div>
         )}
@@ -1309,7 +1309,7 @@ export function ActivityDetailPage() {
               {/* Left 1/3 on desktop, below step buttons on mobile */}
               <div className="order-2 lg:order-1 lg:flex lg:justify-center">
                 <JumpToPick
-                  total={activity.total_picks}
+                  total={project.total_picks}
                   onJump={isPlanning ? handleLocalJump : handleJump}
                   disabled={stepping}
                 />
@@ -1318,7 +1318,7 @@ export function ActivityDetailPage() {
               <div className="order-1 lg:order-2 flex justify-center">
                 <StepControls
                   currentPick={displayPick}
-                  total={activity.total_picks}
+                  total={project.total_picks}
                   onStep={isPlanning ? handleLocalStep : handleStep}
                   onJump={isPlanning ? handleLocalJump : handleJump}
                   stepping={stepping}
@@ -1339,17 +1339,17 @@ export function ActivityDetailPage() {
         {/* Collapsible sections */}
         <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0 border-t">
           {!isCompleted && (
-            <CollapsibleSection title={`Photos (${activity.photos.length}/10)`} defaultOpen={isAbandoned}>
+            <CollapsibleSection title={`Photos (${project.photos.length}/10)`} defaultOpen={isAbandoned}>
               <PhotoGrid
-                activityId={activity.id}
-                photos={activity.photos}
+                projectId={project.id}
+                photos={project.photos}
                 onUploaded={(p) =>
-                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                  queryClient.setQueryData<typeof project>(["project", id], (old) =>
                     old ? { ...old, photos: [...old.photos, p] } : old
                   )
                 }
                 onDeleted={(photoId) =>
-                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                  queryClient.setQueryData<typeof project>(["project", id], (old) =>
                     old ? { ...old, photos: old.photos.filter((ph) => ph.id !== photoId) } : old
                   )
                 }
@@ -1360,38 +1360,38 @@ export function ActivityDetailPage() {
           <CollapsibleSection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <dt className="text-muted-foreground">Type</dt>
-              <dd>{ACTIVITY_TYPE_LABELS[activity.activity_type]}</dd>
-              {activity.loom_name && (
-                <><dt className="text-muted-foreground">Loom</dt><dd>{activity.loom_name}</dd></>
+              <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
+              {project.loom_name && (
+                <><dt className="text-muted-foreground">Loom</dt><dd>{project.loom_name}</dd></>
               )}
-              {activity.draft_metadata_overrides?.num_treadles && (
+              {project.draft_metadata_overrides?.num_treadles && (
                 <><dt className="text-muted-foreground">Treadle count</dt>
                 <dd className="flex items-center gap-1.5">
-                  {activity.draft_num_treadles}
-                  <span className="text-xs text-muted-foreground">(overridden from {activity.draft_metadata_overrides.num_treadles.original})</span>
+                  {project.draft_num_treadles}
+                  <span className="text-xs text-muted-foreground">(overridden from {project.draft_metadata_overrides.num_treadles.original})</span>
                 </dd></>
               )}
-              {activity.draft_metadata_overrides?.num_shafts && (
+              {project.draft_metadata_overrides?.num_shafts && (
                 <><dt className="text-muted-foreground">Shaft count</dt>
                 <dd className="flex items-center gap-1.5">
-                  {activity.draft_num_shafts}
-                  <span className="text-xs text-muted-foreground">(overridden from {activity.draft_metadata_overrides.num_shafts.original})</span>
+                  {project.draft_num_shafts}
+                  <span className="text-xs text-muted-foreground">(overridden from {project.draft_metadata_overrides.num_shafts.original})</span>
                 </dd></>
               )}
-              {activity.num_items > 1 && (
-                <><dt className="text-muted-foreground">Items</dt><dd>{activity.num_items}</dd></>
+              {project.num_items > 1 && (
+                <><dt className="text-muted-foreground">Items</dt><dd>{project.num_items}</dd></>
               )}
-              {activity.finished_length_per_item && (
+              {project.finished_length_per_item && (
                 <><dt className="text-muted-foreground">Length / item</dt>
-                <dd>{activity.finished_length_per_item} {activity.length_unit}</dd></>
+                <dd>{project.finished_length_per_item} {project.length_unit}</dd></>
               )}
-              {activity.warp_waste_allowance && (
+              {project.warp_waste_allowance && (
                 <><dt className="text-muted-foreground">Warp waste</dt>
-                <dd>{activity.warp_waste_allowance} {activity.length_unit}</dd></>
+                <dd>{project.warp_waste_allowance} {project.length_unit}</dd></>
               )}
-              {activity.completed_at && (
+              {project.completed_at && (
                 <><dt className="text-muted-foreground">Completed</dt>
-                <dd>{new Date(activity.completed_at).toLocaleDateString()}</dd></>
+                <dd>{new Date(project.completed_at).toLocaleDateString()}</dd></>
               )}
             </dl>
           </CollapsibleSection>
@@ -1412,14 +1412,14 @@ export function ActivityDetailPage() {
                 )}
                 {confirmComplete && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">Mark this activity as completed?</span>
+                    <span className="text-sm">Mark this project as completed?</span>
                     <Button size="sm" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
                   </div>
                 )}
                 {confirmAbandon && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-destructive">Abandon this activity?</span>
+                    <span className="text-sm text-destructive">Abandon this project?</span>
                     <Button size="sm" onClick={handleAbandon} disabled={actionLoading}>Confirm</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmAbandon(false)} disabled={actionLoading}>Cancel</Button>
                   </div>
@@ -1428,17 +1428,17 @@ export function ActivityDetailPage() {
             </CollapsibleSection>
           )}
 
-          {activity.status === "abandoned" && (
+          {project.status === "abandoned" && (
             <CollapsibleSection title="Actions">
               <div className="space-y-3">
                 {!confirmRestart && !restartConflict && (
                   <Button variant="outline" size="sm" onClick={() => setConfirmRestart(true)}>
-                    Restart activity
+                    Restart project
                   </Button>
                 )}
                 {confirmRestart && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">Resume from pick {activity.current_pick}?</span>
+                    <span className="text-sm">Resume from pick {project.current_pick}?</span>
                     <Button size="sm" onClick={handleRestart} disabled={actionLoading}>Confirm</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>Cancel</Button>
                   </div>
@@ -1446,7 +1446,7 @@ export function ActivityDetailPage() {
                 {restartConflict && (
                   <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
                     <p className="font-medium text-copper-on-subtle">
-                      This loom has an active activity: <span className="font-semibold">{restartConflict.name}</span>
+                      This loom has an active project: <span className="font-semibold">{restartConflict.name}</span>
                     </p>
                     <p className="text-copper-on-subtle text-xs">Resolve it to restart this one.</p>
                     <div className="flex flex-wrap gap-2 pt-1">
@@ -1466,17 +1466,17 @@ export function ActivityDetailPage() {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Clone activity">
+          <CollapsibleSection title="Clone project">
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Create a new activity with the same configuration, starting at pick 1.</p>
+              <p className="text-xs text-muted-foreground">Create a new project with the same configuration, starting at pick 1.</p>
               {!confirmClone && !cloneConflict && (
                 <Button variant="outline" size="sm" onClick={() => setConfirmClone(true)}>
-                  Clone activity
+                  Clone project
                 </Button>
               )}
               {confirmClone && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">Start a new activity with the same settings?</span>
+                  <span className="text-sm">Start a new project with the same settings?</span>
                   <Button size="sm" onClick={handleClone} disabled={actionLoading}>{actionLoading ? "Cloning…" : "Confirm"}</Button>
                   <Button size="sm" variant="outline" onClick={() => setConfirmClone(false)} disabled={actionLoading}>Cancel</Button>
                 </div>
@@ -1484,7 +1484,7 @@ export function ActivityDetailPage() {
               {cloneConflict && (
                 <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
                   <p className="font-medium text-copper-on-subtle">
-                    This loom has an active activity: <span className="font-semibold">{cloneConflict.name}</span>
+                    This loom has an active project: <span className="font-semibold">{cloneConflict.name}</span>
                   </p>
                   <p className="text-copper-on-subtle text-xs">Resolve it to start the clone.</p>
                   <div className="flex flex-wrap gap-2 pt-1">
@@ -1506,12 +1506,12 @@ export function ActivityDetailPage() {
           <CollapsibleSection title="Danger zone">
             {!confirmDelete ? (
               <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>
-                Delete activity
+                Delete project
               </Button>
             ) : (
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-sm text-destructive">
-                  Delete this activity and all step history? This cannot be undone.
+                  Delete this project and all step history? This cannot be undone.
                 </p>
                 <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={actionLoading}>
                   Cancel
@@ -1532,24 +1532,24 @@ export function ActivityDetailPage() {
 
       {showDesignPreview && (
         <DesignPreviewModal
-          draftId={activity.draft_id}
+          draftId={project.draft_id}
           onClose={() => setShowDesignPreview(false)}
         />
       )}
 
       {showAssignLoom && (
         <AssignLoomModal
-          activityId={activity.id}
-          activeActivities={allActivities.filter((a) => a.status === "active")}
-          activityType={activity.activity_type}
-          draftNumTreadles={activity.draft_num_treadles}
-          draftNumShafts={activity.draft_num_shafts}
-          draftEffectiveNumTreadles={activity.draft_effective_num_treadles}
-          draftEffectiveNumShafts={activity.draft_effective_num_shafts}
+          projectId={project.id}
+          activeProjects={allProjects.filter((a) => a.status === "active")}
+          projectType={project.project_type}
+          draftNumTreadles={project.draft_num_treadles}
+          draftNumShafts={project.draft_num_shafts}
+          draftEffectiveNumTreadles={project.draft_effective_num_treadles}
+          draftEffectiveNumShafts={project.draft_effective_num_shafts}
           onSuccess={() => {
             setShowAssignLoom(false);
             invalidate();
-            queryClient.invalidateQueries({ queryKey: ["activities"] });
+            queryClient.invalidateQueries({ queryKey: ["projects"] });
           }}
           onClose={() => setShowAssignLoom(false)}
         />

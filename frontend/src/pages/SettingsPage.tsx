@@ -253,7 +253,7 @@ export function SettingsPage() {
                     <span className="text-sm">{!dataConsent ? "Opted out" : "Participating (default)"}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Your content, settings, and tags — including WIF files, photos, and activity
+                    Your content, settings, and tags — including WIF files, photos, and project
                     data — may be used for AI/ML model training and feature improvements as described
                     in the Terms of Service.
                   </p>
@@ -321,7 +321,7 @@ export function SettingsPage() {
                   <p className="font-medium text-foreground">What we store about you</p>
                   <ul className="list-disc list-inside space-y-0.5">
                     <li>Email address and display name (from your sign-in provider)</li>
-                    <li>WIF files, loom records, activities, photos, and yarn you create</li>
+                    <li>WIF files, loom records, projects, photos, and yarn you create</li>
                     <li>Settings, tags, and metadata you assign to your content</li>
                     <li>Last active timestamp</li>
                   </ul>
@@ -377,7 +377,7 @@ export function SettingsPage() {
                 <div className="rounded-lg border border-destructive/30 p-4 space-y-3">
                   <p className="text-sm font-medium text-destructive">Danger zone</p>
                   <p className="text-sm text-muted-foreground">
-                    Permanently delete your account and all data: WIF files, photos, activity
+                    Permanently delete your account and all data: WIF files, photos, project
                     records, looms, yarn, and drafts. This cannot be undone.
                   </p>
 

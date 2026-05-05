@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { assignLoom, completeActivity, abandonActivity, ApiError, type ActivitySummary } from "@/api/activities";
+import { assignLoom, completeProject, abandonProject, ApiError, type ProjectSummary } from "@/api/projects";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  activityId: string;
-  activeActivities: ActivitySummary[];
-  activityType?: string;
+  projectId: string;
+  activeProjects: ProjectSummary[];
+  projectType?: string;
   draftNumTreadles?: number | null;
   draftNumShafts?: number | null;
   draftEffectiveNumTreadles?: number | null;
@@ -18,12 +18,12 @@ interface Props {
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-export function AssignLoomModal({ activityId, activeActivities, activityType, draftNumTreadles, draftNumShafts, draftEffectiveNumTreadles, draftEffectiveNumShafts, onSuccess, onClose }: Props) {
+export function AssignLoomModal({ projectId, activeProjects, projectType, draftNumTreadles, draftNumShafts, draftEffectiveNumTreadles, draftEffectiveNumShafts, onSuccess, onClose }: Props) {
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conflictActivity, setConflictActivity] = useState<ActivitySummary | null>(null);
+  const [conflictProject, setConflictProject] = useState<ProjectSummary | null>(null);
 
   const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: listLooms });
   const { data: loomDetail } = useQuery({
@@ -44,14 +44,14 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, dr
 
   const treadleMismatch =
     !!selectedLoom &&
-    (activityType === "treadle" || !activityType) &&
+    (projectType === "treadle" || !projectType) &&
     (effectiveTreadles ?? 0) > 0 &&
     (loomTreadles ?? 0) > 0 &&
     (effectiveTreadles ?? 0) > (loomTreadles ?? 0);
 
   const shaftMismatch =
     !!selectedLoom &&
-    (activityType === "lift" || !activityType) &&
+    (projectType === "lift" || !projectType) &&
     (effectiveShafts ?? 0) > 0 &&
     (loomShafts ?? 0) > 0 &&
     (effectiveShafts ?? 0) > (loomShafts ?? 0);
@@ -70,10 +70,10 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, dr
     setLoomId(newLoomId);
     setLoomVersionId("");
     setError(null);
-    setConflictActivity(null);
+    setConflictProject(null);
     if (newLoomId) {
-      const conflict = activeActivities.find((a) => a.loom_id === newLoomId && a.id !== activityId) ?? null;
-      setConflictActivity(conflict);
+      const conflict = activeProjects.find((a) => a.loom_id === newLoomId && a.id !== projectId) ?? null;
+      setConflictProject(conflict);
     }
   };
 
@@ -81,12 +81,12 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, dr
     setError(null);
     setLoading(true);
     try {
-      await assignLoom(activityId, loomId, loomVersionId || undefined);
+      await assignLoom(projectId, loomId, loomVersionId || undefined);
       onSuccess();
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        const conflict = activeActivities.find((a) => a.loom_id === loomId && a.id !== activityId) ?? null;
-        setConflictActivity(conflict);
+        const conflict = activeProjects.find((a) => a.loom_id === loomId && a.id !== projectId) ?? null;
+        setConflictProject(conflict);
       } else {
         setError(err instanceof Error ? err.message : "Failed to assign loom");
       }
@@ -96,20 +96,20 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, dr
   };
 
   const handleResolveAndAssign = async (resolve: "complete" | "abandon") => {
-    if (!conflictActivity) return;
+    if (!conflictProject) return;
     setError(null);
     setLoading(true);
     try {
       if (resolve === "complete") {
-        await completeActivity(conflictActivity.id);
+        await completeProject(conflictProject.id);
       } else {
-        await abandonActivity(conflictActivity.id);
+        await abandonProject(conflictProject.id);
       }
-      await assignLoom(activityId, loomId, loomVersionId || undefined);
+      await assignLoom(projectId, loomId, loomVersionId || undefined);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to assign loom");
-      setConflictActivity(null);
+      setConflictProject(null);
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, dr
               ))}
             </select>
             {looms.some((l) => !SUPPORTED_LOOM_TYPES.has(l.loom_type)) && (
-              <p className="mt-1 text-xs text-muted-foreground">Looms without activity tracking support are not shown.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Looms without project tracking support are not shown.</p>
             )}
           </div>
 
@@ -172,10 +172,10 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, dr
             </div>
           )}
 
-          {conflictActivity && (
+          {conflictProject && (
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
               <p className="font-medium text-copper-on-subtle">
-                This loom has an active activity: <span className="font-semibold">{conflictActivity.name}</span>
+                This loom has an active project: <span className="font-semibold">{conflictProject.name}</span>
               </p>
               <p className="text-copper-on-subtle text-xs">
                 Mark it as completed or abandon it to assign this loom, or choose a different loom.
@@ -199,7 +199,7 @@ export function AssignLoomModal({ activityId, activeActivities, activityType, dr
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button onClick={doAssign} disabled={!loomId || !!conflictActivity || loading}>
+          <Button onClick={doAssign} disabled={!loomId || !!conflictProject || loading}>
             {loading ? "Assigning…" : "Assign loom"}
           </Button>
         </div>

@@ -159,15 +159,15 @@ def delete_yarn_photo(photo_path: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Activity photos
+# Project photos
 # ---------------------------------------------------------------------------
 
 
-def save_activity_photo(activity_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
-    return _put(f"activities/{activity_id}/photos/{photo_id}{ext}", data)
+def save_project_photo(project_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
+    return _put(f"projects/{project_id}/photos/{photo_id}{ext}", data)
 
 
-def delete_activity_photo(path: str) -> None:
+def delete_project_photo(path: str) -> None:
     _delete(path)
 
 

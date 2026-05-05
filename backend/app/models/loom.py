@@ -10,8 +10,8 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 LOOM_TYPES = ("floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby", "other")
 
-# Only these types support activity tracking (treadle or lift).
-ACTIVITY_SUPPORTED_LOOM_TYPES = frozenset({"floor_loom", "table_loom"})
+# Only these types support project tracking (treadle or lift).
+PROJECT_SUPPORTED_LOOM_TYPES = frozenset({"floor_loom", "table_loom"})
 
 
 def loom_tracking_flags(loom_type: str) -> tuple[bool, bool]:
@@ -40,7 +40,7 @@ class Loom(Base, TimestampMixin, SoftDeleteMixin):
     # Profile photo (single, replaced on upload)
     photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    # Supported activity types
+    # Supported project types
     supports_lift_tracking: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     supports_treadle_tracking: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 

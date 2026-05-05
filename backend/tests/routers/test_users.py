@@ -2,9 +2,9 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.activity import Activity, ActivityStep
 from app.models.audit_log import AuditLog
 from app.models.draft import Draft
+from app.models.project import Project, ProjectStep
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
@@ -164,7 +164,7 @@ class TestDeleteAccount:
         result = await db_session.scalar(select(Draft).where(Draft.owner_id == test_user.id))
         assert result is None
 
-    async def test_deletes_activities_and_steps(
+    async def test_deletes_projects_and_steps(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
         draft = Draft(
@@ -176,20 +176,20 @@ class TestDeleteAccount:
         db_session.add(draft)
         await db_session.flush()
 
-        activity = Activity(
+        project = Project(
             owner_id=test_user.id,
             draft_id=draft.id,
-            name="Test Activity",
-            activity_type="treadle",
+            name="Test Project",
+            project_type="treadle",
             status="active",
             current_pick=1,
             total_picks=100,
         )
-        db_session.add(activity)
+        db_session.add(project)
         await db_session.flush()
 
-        step = ActivityStep(
-            activity_id=activity.id,
+        step = ProjectStep(
+            project_id=project.id,
             event_type="advance",
             from_pick=1,
             to_pick=2,
@@ -197,11 +197,11 @@ class TestDeleteAccount:
         db_session.add(step)
         await db_session.commit()
 
-        activity_id = activity.id
+        project_id = project.id
         await auth_client.request("DELETE", "/api/users/me", json={"confirm": "DELETE MY ACCOUNT"})
 
-        assert await db_session.scalar(select(Activity).where(Activity.id == activity_id)) is None
-        assert await db_session.scalar(select(ActivityStep).where(ActivityStep.activity_id == activity_id)) is None
+        assert await db_session.scalar(select(Project).where(Project.id == project_id)) is None
+        assert await db_session.scalar(select(ProjectStep).where(ProjectStep.project_id == project_id)) is None
 
     async def test_deletes_yarn_and_skeins(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         yarn = Yarn(

@@ -35,7 +35,7 @@ These terms apply to all users of WeftMark, including visitors, registered users
 WeftMark is a web application for weavers. It lets you:
 
 - Upload and view WIF weaving draft files
-- Track weaving activities pick by pick
+- Track weaving projects pick by pick
 - Manage your loom inventory and equipment
 - Record yarn and material inventory
 - Upload photos of your work in progress
@@ -50,7 +50,7 @@ Access to WeftMark requires account approval. You may register and your account 
 
 ## 5. Content license
 
-You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and activity records.
+You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and project records.
 
 By uploading content to WeftMark, you grant WeftMark a **worldwide, royalty-free, perpetual, irrevocable, non-exclusive license** to store, process, display, reproduce, and use that content for any purpose related to operating, improving, or developing the platform, including but not limited to AI and machine learning model training, feature development, and quality assurance.
 
@@ -63,7 +63,7 @@ We will not sell your raw content to third parties.
 When you use WeftMark, we collect:
 
 - Your email address and display name (from your identity provider at sign-in)
-- The content you create and upload: WIF files, loom records, activity data, photos, yarn records
+- The content you create and upload: WIF files, loom records, project data, photos, yarn records
 - Settings, tags, labels, and metadata you assign to your content
 - Basic usage information: when you last used the platform, which features you use
 
@@ -85,7 +85,7 @@ We do **not**:
 
 ## 8. AI and machine learning — opt-out
 
-By default, your content, settings, and metadata (including WIF files, photos, activity data, loom configurations, tags, and any other data you create on the platform) **may be used for AI and machine learning model training and feature improvements**.
+By default, your content, settings, and metadata (including WIF files, photos, project data, loom configurations, tags, and any other data you create on the platform) **may be used for AI and machine learning model training and feature improvements**.
 
 You can opt out of this use at any time from your **Settings → Privacy & data** page. Opting out:
 
@@ -109,7 +109,7 @@ You can permanently delete your account and all associated data at any time from
 
 - Your account record
 - All WIF files and previews you uploaded
-- All activity records and photos
+- All project records and photos
 - All loom, yarn, and project records
 
 Some data may remain in database backups for up to 30 days following deletion. As noted in section 5, the content license granted prior to deletion survives for content already incorporated into model training or development artifacts.

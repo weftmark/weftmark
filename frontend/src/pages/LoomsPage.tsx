@@ -3,17 +3,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { listLooms, type Loom } from "@/api/looms";
 import { AppIcons } from "@/lib/icons";
-import { listActivities } from "@/api/activities";
+import { listProjects } from "@/api/projects";
 import { NewLoomModal } from "@/components/looms/NewLoomModal";
 import { Button } from "@/components/ui/button";
 
-interface LoomActivityCounts {
+interface LoomProjectCounts {
   active: number;
   completed: number;
   abandoned: number;
 }
 
-function LoomCard({ loom, activityCounts }: { loom: Loom; activityCounts?: LoomActivityCounts }) {
+function LoomCard({ loom, projectCounts }: { loom: Loom; projectCounts?: LoomProjectCounts }) {
   const v = loom.current_version;
   return (
     <Link
@@ -59,21 +59,21 @@ function LoomCard({ loom, activityCounts }: { loom: Loom; activityCounts?: LoomA
           <span className="rounded bg-muted px-1.5 py-0.5 text-xs">treadle tracking</span>
         )}
       </div>
-      {activityCounts && (activityCounts.active + activityCounts.completed + activityCounts.abandoned) > 0 && (
+      {projectCounts && (projectCounts.active + projectCounts.completed + projectCounts.abandoned) > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-2.5">
-          {activityCounts.active > 0 && (
+          {projectCounts.active > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-              {activityCounts.active} active
+              {projectCounts.active} active
             </span>
           )}
-          {activityCounts.completed > 0 && (
+          {projectCounts.completed > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-              {activityCounts.completed} completed
+              {projectCounts.completed} completed
             </span>
           )}
-          {activityCounts.abandoned > 0 && (
+          {projectCounts.abandoned > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-              {activityCounts.abandoned} abandoned
+              {projectCounts.abandoned} abandoned
             </span>
           )}
         </div>
@@ -91,12 +91,12 @@ export function LoomsPage() {
     queryFn: listLooms,
   });
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => listActivities(),
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => listProjects(),
   });
 
-  const activityCountsByLoom = activities.reduce<Record<string, LoomActivityCounts>>(
+  const projectCountsByLoom = projects.reduce<Record<string, LoomProjectCounts>>(
     (acc, a) => {
       if (!a.loom_id) return acc;
       if (!acc[a.loom_id]) acc[a.loom_id] = { active: 0, completed: 0, abandoned: 0 };
@@ -137,7 +137,7 @@ export function LoomsPage() {
       {looms && looms.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
           {looms.map((l) => (
-            <LoomCard key={l.id} loom={l} activityCounts={activityCountsByLoom[l.id]} />
+            <LoomCard key={l.id} loom={l} projectCounts={projectCountsByLoom[l.id]} />
           ))}
         </div>
       )}

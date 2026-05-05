@@ -38,7 +38,7 @@ The current version is included in the `/auth/me` response as `current_eula_vers
 ### Account deletion
 
 Synchronous hard-delete on the backend endpoint `DELETE /api/users/me`. Steps:
-1. Collect all S3 file paths for the user (activity photos, loom photos, version photos, version receipts, yarn photos, project WIF + preview)
+1. Collect all S3 file paths for the user (project photos, loom photos, version photos, version receipts, yarn photos, draft WIF + preview)
 2. Delete each from S3/local storage (best-effort — storage errors are logged but do not abort)
 3. Delete DB rows in FK-safe order using bulk `DELETE ... WHERE owner_id = :user_id` statements
 4. Hard-delete the user row
@@ -48,7 +48,7 @@ Synchronous hard-delete on the backend endpoint `DELETE /api/users/me`. Steps:
 
 ### Data export (Phase 2)
 
-`GET /api/users/me/data-export` returns `{"status": "not_implemented", "milestone": "2"}`. Building a data archive requires async work (zip WIF files, photos, activity history) that warrants a Celery task. Stub is present so the frontend can show the option with a Phase 2 note.
+`GET /api/users/me/data-export` returns `{"status": "not_implemented", "milestone": "2"}`. Building a data archive requires async work (zip WIF files, photos, project history) that warrants a Celery task. Stub is present so the frontend can show the option with a Phase 2 note.
 
 ### Data sharing / privacy
 
@@ -198,6 +198,6 @@ All nullable — existing users simply haven't accepted the new EULA yet and wil
 
 ## Phase 2 notes
 
-- **Data export**: `GET /api/users/me/data-export` should enqueue a Celery task that packages WIF files, preview images, activity photos, and a JSON data dump into a zip, then emails a download link or stores it for 24 hours. Requires Celery worker infrastructure (#48 CD pipeline work).
+- **Data export**: `GET /api/users/me/data-export` should enqueue a Celery task that packages WIF files, preview images, project photos, and a JSON data dump into a zip, then emails a download link or stores it for 24 hours. Requires Celery worker infrastructure (#48 CD pipeline work).
 - **Apple Sign In**: OIDC infrastructure is already in place. Requires paid Apple Developer account. See #65.
 - **Sharing slug enforcement**: When `ai_training_consent = False`, the draft sharing endpoint (`/api/drafts/{id}/share`) should return 403. Currently a frontend-only gate — needs server-side enforcement in the drafts router.

@@ -8,27 +8,27 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
-ACTIVITY_TYPES = ("treadle", "lift")
-ACTIVITY_STATUSES = ("active", "completed", "abandoned")
+PROJECT_TYPES = ("treadle", "lift")
+PROJECT_STATUSES = ("active", "completed", "abandoned")
 
 
-class ActivityPhoto(Base, TimestampMixin):
-    __tablename__ = "activity_photos"
+class ProjectPhoto(Base, TimestampMixin):
+    __tablename__ = "project_photos"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    activity_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("activities.id"), nullable=False, index=True
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True
     )
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    activity: Mapped["Activity"] = relationship("Activity", back_populates="photos")
+    project: Mapped["Project"] = relationship("Project", back_populates="photos")
 
 
-class Activity(Base, TimestampMixin, SoftDeleteMixin):
-    __tablename__ = "activities"
+class Project(Base, TimestampMixin, SoftDeleteMixin):
+    __tablename__ = "projects"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
@@ -39,7 +39,7 @@ class Activity(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    activity_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "treadle" | "lift"
+    project_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "treadle" | "lift"
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
 
     # Step tracking
@@ -57,23 +57,23 @@ class Activity(Base, TimestampMixin, SoftDeleteMixin):
     abandoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    steps: Mapped[list["ActivityStep"]] = relationship(
-        "ActivityStep", back_populates="activity", order_by="ActivityStep.created_at"
+    steps: Mapped[list["ProjectStep"]] = relationship(
+        "ProjectStep", back_populates="project", order_by="ProjectStep.created_at"
     )
-    photos: Mapped[list["ActivityPhoto"]] = relationship(
-        "ActivityPhoto", back_populates="activity", order_by="ActivityPhoto.display_order"
+    photos: Mapped[list["ProjectPhoto"]] = relationship(
+        "ProjectPhoto", back_populates="project", order_by="ProjectPhoto.display_order"
     )
 
 
-class ActivityStep(Base, TimestampMixin):
-    __tablename__ = "activity_steps"
+class ProjectStep(Base, TimestampMixin):
+    __tablename__ = "project_steps"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    activity_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("activities.id"), nullable=False, index=True
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True
     )
     event_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "advance" | "reverse"
     from_pick: Mapped[int] = mapped_column(Integer, nullable=False)
     to_pick: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    activity: Mapped["Activity"] = relationship("Activity", back_populates="steps")
+    project: Mapped["Project"] = relationship("Project", back_populates="steps")

@@ -2,7 +2,7 @@
 """Compare S3 objects against all Postgres file references to find orphaned objects.
 
 File columns checked:
-  activity_photos.file_path
+  project_photos.file_path
   loom_version_photos.path
   loom_version_receipts.path
   projects.wif_path
@@ -39,7 +39,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 _QUERIES = [
-    ("activity_photos",      "SELECT file_path    FROM activity_photos WHERE file_path IS NOT NULL"),
+    ("project_photos",       "SELECT file_path    FROM project_photos WHERE file_path IS NOT NULL"),
     ("loom_version_photos",  "SELECT path         FROM loom_version_photos WHERE path IS NOT NULL"),
     ("loom_version_receipts","SELECT path         FROM loom_version_receipts WHERE path IS NOT NULL"),
     ("projects.wif_path",    "SELECT wif_path     FROM projects WHERE wif_path IS NOT NULL"),

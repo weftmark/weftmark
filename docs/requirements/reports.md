@@ -1,21 +1,21 @@
 # Reports
 
-## Activity Report
+## Project Report
 
-Each activity can generate a comprehensive report. The report is available as an on-screen view and as an exported PDF.
+Each project can generate a comprehensive report. The report is available as an on-screen view and as an exported PDF.
 
 ### Contents
 
 | Section | Description |
 |---|---|
-| Draft information | Design name, WIF source, creation date, activity type |
+| Draft information | Design name, WIF source, creation date, project type |
 | Loom information | Loom name, model, version used |
 | Design rendering | Full drawdown preview image |
 | Warping plan | Calculated warp length, thread counts per color, threading color order |
 | Tie-up sheet | Standard shaft-to-treadle grid |
 | Session log | Chronological list of weaving sessions with dates, picks worked, duration |
-| Progress photos | Photos attached during the activity with captions and metadata |
-| Post-activity notes | User notes recorded after completion |
+| Progress photos | Photos attached during the project with captions and metadata |
+| Post-project notes | User notes recorded after completion |
 | Metrics summary | Total picks, total time, average time per pick, completion date |
 
 ### Output Formats
@@ -27,7 +27,7 @@ Each activity can generate a comprehensive report. The report is available as an
 
 ## Session Log
 
-The session log is also accessible independently within the activity view (not only in the report). It displays:
+The session log is also accessible independently within the project view (not only in the report). It displays:
 
 - Session date and time
 - Duration
@@ -35,4 +35,4 @@ The session log is also accessible independently within the activity view (not o
 - Corrections made
 - Photos uploaded during the session
 
-This gives the user a running record of their weaving history for the activity.
+This gives the user a running record of their weaving history for the project.
