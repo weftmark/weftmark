@@ -60,17 +60,31 @@ Branches: `main` (prod-ready), `dev` (integration), `feature/*`, `fix/*`, `hotfi
 
 Bot actor: `weftmark-bot[bot]`. Post-merge jobs guard with `if: github.actor != 'weftmark-bot[bot]'` — do NOT use `[skip actions]` (that token suppresses PR CI on the target branch).
 
+## Chat shorthand
+
+When the user types one of these aliases, execute the corresponding action immediately without asking for confirmation:
+
+| Alias | Action |
+| --- | --- |
+| `rbd` | Stop frontend + backend + worker → build frontend + backend → start all three → confirm health via `/health` response |
+
+Scripts are also available at `scripts/rbd.ps1` for direct terminal use.
+
+---
+
 ## Development rules
 
 **Pull before starting:** `git pull origin <branch>` — CI bot commits version bumps directly to branches; skip this and pushes will conflict on `VERSION` / `frontend/package.json`.
 
-**Rebuild — always both services together:**
+**Rebuild — always all three services together (frontend, backend, worker):**
 
 ```bash
 docker compose -f docker-compose.build.yml --env-file .env.local stop frontend backend worker
 docker compose -f docker-compose.build.yml --env-file .env.local build frontend backend
 docker compose -f docker-compose.build.yml --env-file .env.local up -d frontend backend worker
 ```
+
+The worker shares the backend image — stopping and restarting all three ensures no version skew between the uvicorn and Celery processes.
 
 The `frontend-1` container is nginx-only — never run `docker compose exec frontend npm ...`.
 
