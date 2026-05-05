@@ -15,6 +15,8 @@
 .env.komodo
 .env.*.local
 # .env.example and .env.*.example are intentionally tracked
+.remotehost
+# .remotehost.example is intentionally tracked
 
 # Seed config (contains credentials — seed.example.json is tracked)
 backend/seed.json
