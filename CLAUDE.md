@@ -71,6 +71,7 @@ When the user types one of these aliases, execute the corresponding action immed
 | `reb` | Rebase to dev | `git fetch origin` → `git checkout dev` → `git pull origin dev` — clean base for starting a new branch |
 | `prd` | PR to dev | Check if current branch already has an open PR targeting `dev`; if yes, print the URL; if no, create one with `gh pr create --base dev` |
 | `prm` | PR to main | Check if `dev` already has an open PR targeting `main`; if yes, print the URL; if no, create one with `gh pr create --head dev --base main` |
+| `rrm` | Review run after merge | `gh run list --limit 5` to find runs triggered by the recent merge → watch for completion → report pass/fail and surface any blocking failures with `gh run view --log-failed` |
 
 Scripts are also available at `scripts/rbd.ps1` for direct terminal use.
 
