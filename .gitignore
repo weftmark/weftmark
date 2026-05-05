@@ -204,8 +204,10 @@ celerybeat.pid
 # ------------------------------------------------------------
 # AI Agents & Coding Assistants
 # ------------------------------------------------------------
-# Claude Code — entire directory excluded (settings, memory, session state)
-.claude/
+# Claude Code — exclude session state and personal overrides; track settings.json
+.claude/*
+!.claude/settings.json
+.claude/settings.local.json
 
 # Cursor
 .cursor/
