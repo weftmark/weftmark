@@ -1,6 +1,8 @@
 # Test Coverage and Gaps
 
-**Current overall coverage: ~65.3%** (842 tests projected in CI, last measured 2026-05-05 v0.85.0)
+**Current overall coverage: ~86%** (908 tests, last measured 2026-05-05 v0.85.0)
+
+> **Note:** Prior measurements (~65%) were significantly undercounted. SQLAlchemy async sessions use greenlets internally; coverage.py lost `sys.settrace` after every `await db.scalar()/commit()` call, causing all post-await lines in every router to appear uncovered. Fixed in commit `47311ca` by adding `[coverage:run] concurrency = greenlet` in `backend/setup.cfg`.
 
 ---
 
@@ -19,22 +21,25 @@
 | `app/models/draft.py` | 100% | |
 | `app/models/user.py` | 100% | Defaults, soft delete, all fields covered |
 | `app/models/yarn.py` | 100% | |
-| `app/routers/projects.py` | 41% | Create, restart, clone covered; detail, update, pick step, photos endpoints not tested |
-| `app/routers/auth.py` | 40% | `/me`, logout, token validation covered; OIDC callback, invite flow not tested |
-| `app/routers/health.py` | 90% | `/health` covered; error branch (DB down) not tested |
-| `app/routers/looms.py` | 58% | Create, list, get covered; versions, photos, documents not tested |
-| `app/routers/drafts.py` | 52% | WIF upload, list, detail — gap |
-| `app/routers/yarn.py` | 64% | |
-| `app/services/email.py` | 100% | |
-| `app/services/rendering.py` | 100% | |
-| `app/services/storage.py` | 90% | Project photo helpers (`save_project_photo`, `delete_project_photo`) not tested |
+| `app/routers/projects.py` | 97% | 9 missing: error branches (treadle/lift validation, loom version), picks endpoint edge case |
+| `app/routers/auth.py` | 81% | `/me`, logout, token validation, invite flow, webhook handlers covered; OIDC callback not tested |
+| `app/routers/health.py` | 78% | `/health` covered; DB-down error branches not tested |
+| `app/routers/admin.py` | 72% | Most admin CRUD covered; Clerk API integration paths missing |
+| `app/routers/looms.py` | 97% | 9 missing: photo replace + file-size error branches |
+| `app/routers/drafts.py` | 93% | 14 missing: `file_too_large`, preview happy path, liftplan edge case |
+| `app/routers/yarn.py` | 99% | 3 missing: file-size error branches |
+| `app/routers/users.py` | 98% | 3 missing: edge cases in account deletion |
+| `app/services/email.py` | 84% | |
+| `app/services/rendering.py` | 98% | |
+| `app/services/storage.py` | 89% | |
 | `app/routers/logs.py` | 100% | Client log relay — all paths covered |
 | `app/services/storage_quota.py` | 100% | Quota check and exceeded branch covered |
-| `app/services/wif_linter.py` | 100% | |
-| `app/services/wif_modifier.py` | 82% | All branches covered except unused latin-1 in minimal WIF sample |
+| `app/services/wif_linter.py` | 96% | |
+| `app/services/wif_modifier.py` | 100% | |
 | `app/services/wif_parser.py` | 100% | |
 | `app/version.py` | 86% | `__main__` block not tested |
-| `app/worker.py` | 0% | Celery worker — not tested, low priority |
+| `app/cli.py` | 63% | Seeding CLI paths not tested |
+| `app/services/clerk.py` | 23% | Clerk API calls not tested (no Clerk mock) |
 
 ---
 
@@ -57,36 +62,25 @@
 
 ## Coverage Gaps by Priority
 
-### High priority — core application paths
+All core router paths are now covered. Remaining gaps are edge cases and third-party integration paths.
 
-| Gap | Module | Tests needed |
-| --- | --- | --- |
-| Auth `get_current_user` / `require_admin` | `deps.py` | Request with valid session cookie, expired token, missing token, inactive user |
-| Auth `/auth/me` endpoint | `routers/auth.py` | Authenticated request returns user info |
-| Auth session cookie set/clear | `routers/auth.py` | Login callback sets cookie; logout clears it |
-| Auth invite creation + email | `routers/auth.py` | Admin creates invite; non-admin rejected |
-| Draft upload (WIF) | `routers/drafts.py` | Upload valid WIF; upload invalid WIF; access control |
-| Draft list + detail | `routers/drafts.py` | List returns user's drafts; detail returns correct data |
-| Loom CRUD | `routers/looms.py` | Create, read, update, delete loom; access control |
-| Loom version create | `routers/looms.py` | Add version with fields; shaft/treadle validation |
+### Medium priority — error branches
 
-### Medium priority — secondary flows
-
-| Gap | Module | Tests needed |
-| --- | --- | --- |
-| Project detail, update, pick step | `routers/projects.py` | Create/restart/clone covered; remaining endpoints need tests |
-| Project photo endpoints | `routers/projects.py` | Upload, list, delete photos — no tests yet |
-| Yarn CRUD | `routers/yarn.py` | Basic CRUD coverage |
-| Health endpoint — DB error | `routers/health.py` | Simulate DB unavailable → 500 |
-| `deps.py` full coverage | `deps.py` | Invalid JWT, user not found, soft-deleted user |
+| Gap | Module | Lines | Notes |
+| --- | --- | --- | --- |
+| Clerk API integration | `services/clerk.py` | 77% missing | Would need Clerk mock; not worth the complexity |
+| Admin OIDC callback + user sync | `routers/admin.py` | 28% missing | Requires Clerk webhook mock |
+| Health endpoint DB-down branch | `routers/health.py` | `158-176`, `188-221` | Simulate DB unavailable → 500 |
+| Draft file-too-large (25MB check) | `routers/drafts.py` | `85` | Monkeypatch MAX_WIF_SIZE |
+| Loom photo replace path | `routers/looms.py` | `402`, `405-408` | Upload photo when one already exists |
 
 ### Low priority / deferred
 
 | Gap | Notes |
 | --- | --- |
-| `app/worker.py` | Celery setup; not worth unit testing |
+| `app/cli.py` | Seeding CLI — not practical to unit test |
 | `app/version.py` `__main__` block | Only runs via `python -m app.version` |
-| OIDC full flow | Requires mocking httpx calls to Authentik; deferrable |
+| `app/services/clerk_auth.py` | Clerk auth wrapper — would need Clerk mock |
 
 ---
 
@@ -124,3 +118,4 @@ Reassess coverage completeness when:
 | 2026-05-03 | v0.74.0 | — | First production deployment smoke test; 63 items tested end-to-end; 11 issues filed (#266–#275); 2 closed (see GitHub issue #277) |
 | 2026-05-03 | v0.76.1 | 65% | 823 tests; full rename of Project→Draft model, router, API, and frontend completed (issues #296/#311) |
 | 2026-05-05 | v0.85.0 | ~65.3% | 19 new tests added; new modules covered: `logs.py`, `storage_quota.py`, `wif_modifier.py`; 64.78%→65.3% to clear CI gate |
+| 2026-05-05 | v0.85.0 | 85.93% | Fixed greenlet coverage tracking (`setup.cfg` `concurrency=greenlet`); prior ~65% numbers were systematic undercounts. 908 tests; 7 new auth webhook unit tests added. |
