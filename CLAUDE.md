@@ -76,6 +76,7 @@ When the user types one of these aliases, execute the corresponding action immed
 | `li` | List and prioritize issues | Fetch up to 20 open issues → sort by priority (security > blocking bugs > infra/CI > feature work > chores) → present ranked list → call out the top 3 with rationale for why each should be worked next |
 | `la` | List aliases | Print the alias table from this section as a quick reference |
 | `eqa` | Execute QA activities | Fetch open issues labelled `qa` or containing QA tasks → identify which can be executed automatically (smoke tests, endpoint checks, data validation, log review) → run them → post results as issue comments → close any that fully pass |
+| `sqa` | Suggest QA activities | Review open issues and QA tickets for tests requiring human verification → present them one step at a time → wait for pass/fail feedback after each step → update the relevant ticket with results → repeat until all suggested steps are worked |
 
 Scripts are also available at `scripts/rbd.ps1` for direct terminal use.
 
