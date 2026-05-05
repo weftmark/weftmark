@@ -55,6 +55,7 @@ export interface AdminVersions {
   python: string;
   redis_server: string;
   celery: string;
+  worker: string | null;
   postgres: string;
   postgres_source: string;
   fastapi: string;

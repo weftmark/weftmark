@@ -1,6 +1,10 @@
 from celery import Celery
+from celery.signals import worker_ready
 
 from app.config import get_settings
+from app.version import VERSION
+
+WORKER_VERSION_KEY = "weftmark:worker_version"
 
 
 def _make_celery() -> Celery:
@@ -25,3 +29,17 @@ def _make_celery() -> Celery:
 
 
 celery_app = _make_celery()
+
+
+@worker_ready.connect
+def _publish_worker_version(**kwargs):
+    """Write VERSION to Redis when the worker process finishes startup."""
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        client.set(WORKER_VERSION_KEY, VERSION)
+        client.close()
+    except Exception:
+        pass  # version badge degrades gracefully if Redis is unavailable

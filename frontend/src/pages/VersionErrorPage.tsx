@@ -1,9 +1,10 @@
 interface Props {
   frontendVersion: string;
   backendVersion: string;
+  workerVersion?: string;
 }
 
-export function VersionErrorPage({ frontendVersion, backendVersion }: Props) {
+export function VersionErrorPage({ frontendVersion, backendVersion, workerVersion }: Props) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 px-4 text-center">
@@ -17,6 +18,7 @@ export function VersionErrorPage({ frontendVersion, backendVersion }: Props) {
         <div className="rounded-md bg-muted px-4 py-3 text-left font-mono text-xs text-muted-foreground space-y-1">
           <div>Frontend: {frontendVersion}</div>
           <div>Backend:&nbsp; {backendVersion || "unreachable"}</div>
+          {workerVersion && <div>Worker:&nbsp;&nbsp; {workerVersion}</div>}
         </div>
       </div>
     </div>

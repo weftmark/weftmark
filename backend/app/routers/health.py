@@ -9,6 +9,8 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.celery_app import WORKER_VERSION_KEY
+from app.config import get_settings
 from app.version import VERSION
 
 router = APIRouter(tags=["health"])
@@ -41,9 +43,23 @@ def set_readiness(result: ReadinessResponse) -> None:
     _readiness_cache = result
 
 
+async def _get_worker_version() -> str | None:
+    try:
+        import redis.asyncio as aioredis
+
+        settings = get_settings()
+        client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        value = await client.get(WORKER_VERSION_KEY)
+        await client.aclose()
+        return value.decode() if value else None
+    except Exception:
+        return None
+
+
 @router.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "version": VERSION}
+    worker_version = await _get_worker_version()
+    return {"status": "ok", "version": VERSION, "worker_version": worker_version}
 
 
 @router.get("/health/ready")
