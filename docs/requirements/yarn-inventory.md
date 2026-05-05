@@ -2,7 +2,7 @@
 
 ## Overview
 
-Users can maintain an inventory of their yarn and thread stock. Inventory can be attached to weaving activities, with consumption estimated automatically from WIF data and warping plan inputs. Users retain full control to adjust or override all estimates.
+Users can maintain an inventory of their yarn and thread stock. Inventory can be attached to weaving projects, with consumption estimated automatically from WIF data and warping plan inputs. Users retain full control to adjust or override all estimates.
 
 The design is inspired by the Spoolman project (used in 3D printing filament tracking) — specifically the concept of tracking individual physical units (skeins, cones, tubes) with unique IDs.
 
@@ -36,7 +36,7 @@ A yarn record describes a type of yarn. Multiple physical units (skeins) of the 
 
 ## Skein / Unit Record (Physical Level)
 
-Each physical unit of yarn (a cone, tube, skein, or ball) gets its own record with a unique ID. This allows tracking which specific physical units were used in which activities.
+Each physical unit of yarn (a cone, tube, skein, or ball) gets its own record with a unique ID. This allows tracking which specific physical units were used in which projects.
 
 ### Fields
 
@@ -63,9 +63,9 @@ Users can manually adjust inventory at any time — for example, to record yarn 
 
 ---
 
-## Attaching Yarn to an Activity
+## Attaching Yarn to a Project
 
-When yarn is attached to a weaving activity:
+When yarn is attached to a weaving project:
 
 1. **Estimated consumption is calculated** from:
    - WIF thread count and sett data
@@ -74,23 +74,23 @@ When yarn is attached to a weaving activity:
 
 2. **The user can adjust or override** any estimated value before confirming
 
-3. **Specific skein IDs can be assigned** to the activity, recording exactly which physical units were used
+3. **Specific skein IDs can be assigned** to the project, recording exactly which physical units were used
 
-4. **Deductions are applied** as warping takes place — either automatically as the user progresses through the activity, or manually entered by the user
+4. **Deductions are applied** as warping takes place — either automatically as the user progresses through the project, or manually entered by the user
 
-5. **Post-activity notes** can record actual consumption vs estimate, helping improve future estimates
+5. **Post-project notes** can record actual consumption vs estimate, helping improve future estimates
 
 ---
 
 ## Yarn Consumption Estimation
 
-The platform estimates yarn needed using data from the WIF file and activity parameters:
+The platform estimates yarn needed using data from the WIF file and project parameters:
 
 **Warp yarn:** Number of warp ends × total warp length (+ take-up allowance)
 
 **Weft yarn:** Picks per inch × weaving width × woven length (+ take-up and shrinkage allowance)
 
-Take-up and shrinkage percentages are configurable defaults that the user can adjust per activity.
+Take-up and shrinkage percentages are configurable defaults that the user can adjust per project.
 
 ---
 

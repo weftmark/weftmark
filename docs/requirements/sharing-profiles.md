@@ -5,7 +5,7 @@
 Every user has a profile visible to themselves. Profiles include:
 
 - Display name
-- Personal metrics (drafts created, activities completed, total picks woven, total weaving time, etc.)
+- Personal metrics (drafts created, projects completed, total picks woven, total weaving time, etc.)
 - Draft list
 - Equipment inventory (summary)
 - Yarn inventory (summary)
@@ -27,7 +27,7 @@ There is no social feed, no user discovery, and no ability to browse other users
 A user can generate a **shareable link** for any draft. The link:
 
 - Is a unique slug URL (e.g. `/share/abc123xyz`)
-- Displays a read-only view of the draft including design preview, activity summary, and any information the user has chosen to include
+- Displays a read-only view of the draft including design preview, project summary, and any information the user has chosen to include
 - Does not require the viewer to have an account
 - Can be **revoked** by the user at any time — after revocation the link returns a not-found response
 - A new link can be generated after revocation
@@ -38,7 +38,7 @@ The user controls what is included in the shared view. Options include:
 
 - Design preview / rendering
 - Draft description and metadata
-- Activity progress and metrics
+- Project progress and metrics
 - Progress photos
 - Warping plan and tie-up sheet
 

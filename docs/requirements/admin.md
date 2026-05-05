@@ -10,7 +10,7 @@ Administrators manage platform access, monitor health, and maintain records of W
 
 - **Invite management** — create, send, and revoke user invitations via email
 - **User list** — view all registered users and their account status
-- **User detail** — view a user's profile, activity count, and account metadata
+- **User detail** — view a user's profile, project count, and account metadata
 - **Account suspension** — ability to disable a user account
 
 ### Invite Flow
@@ -27,7 +27,7 @@ Email delivery is handled via SMTP2Go. SMTP credentials are configured via envir
 
 ## Platform Monitoring
 
-- **Platform-wide activity** — overview of recent uploads, activities created, active WIPs
+- **Platform-wide activity** — overview of recent uploads, projects created, active WIPs
 - **System health** — service status for backend, worker, database, and Redis
 - **Background job status** — monitor Celery job queue (rendering jobs, PDF exports)
 - **Storage usage** — uploaded WIF files, rendered images, photos, PDF reports
@@ -38,8 +38,8 @@ Email delivery is handled via SMTP2Go. SMTP credentials are configured via envir
 
 - Total users (active, inactive, invited)
 - New registrations over time
-- Activity creation rate
-- Most active users (by picks woven, activities completed, etc.)
+- Project creation rate
+- Most active users (by picks woven, projects completed, etc.)
 
 ---
 

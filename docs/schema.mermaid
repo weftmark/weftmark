@@ -1,12 +1,12 @@
 erDiagram
-    activities {
+    projects {
         uuid id "PK"
         uuid owner_id "FK"
         uuid draft_id "FK"
         uuid loom_id "FK"
         uuid loom_version_id "FK"
         varchar name
-        varchar activity_type
+        varchar project_type
         varchar status
         int current_pick
         int total_picks
@@ -22,9 +22,9 @@ erDiagram
         timestamptz updated_at
         timestamptz deleted_at
     }
-    activity_photos {
+    project_photos {
         uuid id "PK"
-        uuid activity_id "FK"
+        uuid project_id "FK"
         varchar file_path
         varchar filename
         int file_size_bytes
@@ -32,9 +32,9 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
-    activity_steps {
+    project_steps {
         uuid id "PK"
-        uuid activity_id "FK"
+        uuid project_id "FK"
         varchar event_type
         int from_pick
         int to_pick
@@ -247,12 +247,12 @@ erDiagram
         timestamptz deleted_at
     }
 
-    looms ||--o{ activities : "loom_id"
-    loom_versions ||--o{ activities : "loom_version_id"
-    users ||--o{ activities : "owner_id"
-    drafts ||--o{ activities : "draft_id"
-    activities ||--o{ activity_photos : "activity_id"
-    activities ||--o{ activity_steps : "activity_id"
+    looms ||--o{ projects : "loom_id"
+    loom_versions ||--o{ projects : "loom_version_id"
+    users ||--o{ projects : "owner_id"
+    drafts ||--o{ projects : "draft_id"
+    projects ||--o{ project_photos : "project_id"
+    projects ||--o{ project_steps : "project_id"
     users ||--o{ invites : "created_by_id"
     users ||--o{ invites : "user_id"
     loom_versions ||--o{ loom_version_accessories : "loom_version_id"

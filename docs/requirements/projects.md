@@ -1,39 +1,39 @@
-# Weaving Activities
+# Weaving Projects
 
 ## Overview
 
-An activity is a specific instance of weaving a design on a loom. It is the core feature of the platform. A single WIF draft can have multiple simultaneous activities — for example, the same design being woven on two different looms, or the same design tracked once as a lift-tracking activity and once as a treadle-tracking activity.
+A project is a specific instance of weaving a design on a loom. It is the core feature of the platform. A single WIF draft can have multiple simultaneous projects — for example, the same design being woven on two different looms, or the same design tracked once as a lift-tracking project and once as a treadle-tracking project.
 
 ---
 
-## Activity Types
+## Project Types
 
-### Lift-Tracking Activity
+### Lift-Tracking Project
 
 Used with direct-tie looms where individual shafts are raised or lowered using levers (e.g. Louet Jane). For each pick, the platform displays which levers (shafts) should be up and which should be down. Data source: `[LIFTPLAN]` section of the WIF file.
 
-### Treadle-Tracking Activity
+### Treadle-Tracking Project
 
 Used with floor looms where treadle pedals raise or lower groups of shafts (e.g. Louet Spring II). For each pick, the platform displays which treadles to press. Data source: `[TREADLING]` section of the WIF file.
 
-### Activity Type Rules
+### Project Type Rules
 
-- The activity type is selected by the user when creating the activity
-- The loom selected from equipment inventory indicates which activity types it supports, guiding the user's selection
-- Once an activity has started (at least one pick recorded), the activity type cannot be changed without resetting all progress
-- A new activity of a different type can always be created for the same draft — there is no limit on the number of activities per draft
+- The project type is selected by the user when creating the project
+- The loom selected from equipment inventory indicates which project types it supports, guiding the user's selection
+- Once a project has started (at least one pick recorded), the project type cannot be changed without resetting all progress
+- A new project of a different type can always be created for the same draft — there is no limit on the number of projects per draft
 
 ---
 
-## Creating an Activity
+## Creating a Project
 
-When creating an activity, the user provides:
+When creating a project, the user provides:
 
 | Input | Notes |
 | --- | --- |
-| Activity name | User-defined label |
+| Project name | User-defined label |
 | WIF draft | The design to weave |
-| Activity type | Lift-tracking or treadle-tracking (filtered by WIF availability and loom capability) |
+| Project type | Lift-tracking or treadle-tracking (filtered by WIF availability and loom capability) |
 | Loom | Selected from equipment inventory (optional but recommended) |
 | Loom version | Which state/version of the loom is being used |
 | Finished length per item | Used to calculate warp length |
@@ -71,8 +71,8 @@ A user may step forward or backward quickly to preview upcoming or past steps wi
 - Every step change is logged with a timestamp
 - Steps where the user dwells past the threshold before advancing are classified as **worked picks**
 - Steps where the dwell time is below the threshold are classified as **review navigation**
-- The threshold is learned per activity based on the user's observed weaving rhythm
-- Lift-tracking activities default to a longer threshold than treadle-tracking activities, as they require more physical setup time per pick
+- The threshold is learned per project based on the user's observed weaving rhythm
+- Lift-tracking projects default to a longer threshold than treadle-tracking projects, as they require more physical setup time per pick
 - Complex designs may naturally result in longer dwell times regardless of loom type
 - No explicit "confirm pick" button is required — the system learns the user's natural pace
 
@@ -84,7 +84,7 @@ The **working position** is a separate concept from the navigation cursor. It re
 
 ## Loom-Side Interface
 
-The activity screen is optimized for use at the loom:
+The project screen is optimized for use at the loom:
 
 - **Portrait orientation** preferred
 - **Large tap targets** for step navigation buttons
@@ -99,7 +99,7 @@ The activity screen is optimized for use at the loom:
 | --- | --- |
 | Current step | Pick number and total picks |
 | Percentage complete | Based on working position |
-| Cumulative session time | Total time in this activity across all sessions |
+| Cumulative session time | Total time in this project across all sessions |
 | Elapsed time this session | Time since this session started |
 | Estimated time remaining | Based on average time per worked pick |
 
@@ -109,8 +109,8 @@ The activity screen is optimized for use at the loom:
 
 Sessions are **auto-detected** — no explicit start/stop action is required from the user.
 
-- Opening an activity starts a session automatically
-- Closing the activity or remaining idle past a configurable threshold ends the session
+- Opening a project starts a session automatically
+- Closing the project or remaining idle past a configurable threshold ends the session
 - The idle timeout threshold is **user-configurable** per their preferences
 
 Each session records:
@@ -120,13 +120,13 @@ Each session records:
 - Corrections made
 - Photos uploaded
 
-The full session log is available to the user as a history of their weaving activity.
+The full session log is available to the user as a history of their weaving project.
 
 ---
 
 ## Progress Photos
 
-At any point during an activity, the user can attach a photo:
+At any point during a project, the user can attach a photo:
 
 - **Camera capture** — if the device has a camera (uses browser native camera API)
 - **File picker** — fallback for devices without a camera or user preference
@@ -138,9 +138,9 @@ At any point during an activity, the user can attach a photo:
 
 ## Warping Plan
 
-Generated per activity based on WIF data and user inputs. Provides the weaver with everything needed to prepare the warp.
+Generated per project based on WIF data and user inputs. Provides the weaver with everything needed to prepare the warp.
 
-### Inputs (from user at activity creation)
+### Inputs (from user at project creation)
 
 - Finished length per item
 - Number of items
@@ -161,9 +161,9 @@ A standard shaft-to-treadle reference grid derived directly from the WIF `[TIEUP
 
 ---
 
-## Post-Activity Notes
+## Post-Project Notes
 
-After an activity is completed, the user can enter notes about:
+After a project is completed, the user can enter notes about:
 
 - Actual warp waste observed (to improve future estimates for that loom)
 - Yarn consumption vs estimate
@@ -175,10 +175,10 @@ These notes feed into the platform's learned defaults for the user's loom and we
 
 ## Works in Progress (WIPs)
 
-Activities that have been started but not completed are referred to as **WIPs** (works in progress). A user can have multiple simultaneous WIPs.
+Projects that have been started but not completed are referred to as **WIPs** (works in progress). A user can have multiple simultaneous WIPs.
 
 ---
 
-## Multi-Product Activities
+## Multi-Product Projects
 
-A single activity can produce multiple end products on one warp (e.g. five hand towels). The warping plan accounts for waste between products. All products in the activity are tracked together under a single step sequence.
+A single project can produce multiple end products on one warp (e.g. five hand towels). The warping plan accounts for waste between products. All products in the project are tracked together under a single step sequence.

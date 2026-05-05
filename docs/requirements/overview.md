@@ -107,7 +107,7 @@ The platform must function well across:
 - Tablet (primary loom-side device)
 - Mobile phone
 
-Portrait orientation is preferred for the activity (loom-side) interface.
+Portrait orientation is preferred for the project (loom-side) interface.
 
 ---
 
@@ -137,14 +137,14 @@ Portrait orientation is preferred for the activity (loom-side) interface.
 
 - Loom specifications are tracked as an append-only version history (`LoomVersion`)
 - Each version captures a dated spec snapshot: shafts, treadles, heddles, weaving width, warp waste allowance
-- Activities reference a specific loom version, so historical accuracy is preserved after equipment upgrades
+- Projects reference a specific loom version, so historical accuracy is preserved after equipment upgrades
 
 ---
 
 ## Data Lifecycle
 
-- Looms, drafts, and activities use **soft delete** — records are archived, not permanently destroyed
-- Soft-deleted looms retain their full versioned state history and remain accessible from any activity that references them
+- Looms, drafts, and projects use **soft delete** — records are archived, not permanently destroyed
+- Soft-deleted looms retain their full versioned state history and remain accessible from any project that references them
 
 ---
 

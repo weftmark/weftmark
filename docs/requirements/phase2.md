@@ -37,14 +37,14 @@ Features deferred from the initial build. Noted here to ensure architectural dec
 
 1. **Add a loom** — loom type selector + name; minimal required fields only
 2. **Upload a WIF draft** — file picker; shows lint summary and preview after upload
-3. **Create first activity** — links the draft and loom just created; sets a name; lands on the activity detail page ready to weave
+3. **Create first project** — links the draft and loom just created; sets a name; lands on the project detail page ready to weave
 
 The wizard is skippable at any step. A "skip setup" link is visible throughout. After skipping or completing, a flag is set on the user record so the wizard never re-appears (`onboarding_complete: bool`, default `false`).
 
 **Architectural notes:**
 
 - Add `onboarding_complete` boolean to the `User` model (nullable, defaults to `false`); flip to `true` on wizard completion or explicit skip
-- The wizard is purely frontend state — no new backend routes needed beyond what already exists (loom create, WIF upload, activity create)
+- The wizard is purely frontend state — no new backend routes needed beyond what already exists (loom create, WIF upload, project create)
 - Wizard state lives in a React context or a small Zustand slice; each step calls the existing API endpoints
 - The check (`user.onboarding_complete == false && looms.length == 0 && drafts.length == 0`) can be done client-side after initial data load on the Dashboard
 
@@ -89,9 +89,9 @@ If a public third-party app ecosystem develops (someone else building a commerci
 
 ## Offline Session Caching
 
-**Description:** Allow the activity step tracker to continue functioning when the user loses internet connectivity at the loom. Unsynced picks are queued locally and replayed to the server when connectivity is restored.
+**Description:** Allow the project step tracker to continue functioning when the user loses internet connectivity at the loom. Unsynced picks are queued locally and replayed to the server when connectivity is restored.
 
-**Architectural note:** The activity step log should be designed as an append-only event log (not mutable state) in Phase 1. This makes adding a sync queue in Phase 2 straightforward.
+**Architectural note:** The project step log should be designed as an append-only event log (not mutable state) in Phase 1. This makes adding a sync queue in Phase 2 straightforward.
 
 **UI requirement:** A persistent sync status indicator showing online/offline state, unsynced pick count, and last successful sync timestamp.
 
@@ -107,7 +107,7 @@ If a public third-party app ecosystem develops (someone else building a commerci
 
 - Invitation accepted / account created
 - Shared link viewed (optional — user may not want this)
-- Activity milestone reached (e.g. 50% complete)
+- Project milestone reached (e.g. 50% complete)
 - Admin alerts for platform health events
 
 **Delivery channels to evaluate:** In-app, email.
@@ -116,7 +116,7 @@ If a public third-party app ecosystem develops (someone else building a commerci
 
 ## Draft Picker — Preview and Summary
 
-**Description:** When selecting a WIF draft in the Create Activity modal, show a preview image and basic summary (shaft count, treadle count, warp/weft thread counts, available activity types) alongside the draft name dropdown. Helps the weaver confirm they've selected the right design before starting.
+**Description:** When selecting a WIF draft in the Create Project modal, show a preview image and basic summary (shaft count, treadle count, warp/weft thread counts, available project types) alongside the draft name dropdown. Helps the weaver confirm they've selected the right design before starting.
 
 **Scope:** Read from data already stored on the `Draft` record at upload time — no additional parsing required. Preview image served from the existing `/api/drafts/{id}/preview` endpoint.
 
@@ -150,12 +150,12 @@ If a public third-party app ecosystem develops (someone else building a commerci
 
 ## AI Training Data Disclosure and Opt-Out
 
-**Description:** Disclose to users that uploaded files (WIF files, draft data, activity data) may be used for AI/ML training and development purposes. Provide a meaningful opt-out that is enforced at the data pipeline level.
+**Description:** Disclose to users that uploaded files (WIF files, draft data, project data) may be used for AI/ML training and development purposes. Provide a meaningful opt-out that is enforced at the data pipeline level.
 
 **User-facing requirements:**
 
 - Disclosure shown during registration and in account settings
-- Per-user opt-out toggle: "Do not use my drafts or activities for AI/ML training"
+- Per-user opt-out toggle: "Do not use my drafts or projects for AI/ML training"
 - Opt-out is retroactive — previously uploaded data is excluded if the user later opts out
 - Opted-out users receive a confirmation and can opt back in at any time
 

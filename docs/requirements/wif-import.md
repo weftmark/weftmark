@@ -31,8 +31,8 @@ The linter validates the uploaded file against the WIF 1.1 spec, checking:
 
 | Feature | Required WIF Data |
 |---|---|
-| Treadle-tracking activity | `[TREADLING]` section present |
-| Lift-tracking activity | `[LIFTPLAN]` section present |
+| Treadle-tracking project | `[TREADLING]` section present |
+| Lift-tracking project | `[LIFTPLAN]` section present |
 | Tie-up sheet | `[TIEUP]` section present |
 | Color preview | `[COLOR TABLE]` and `[COLOR PALETTE]` present |
 | Threading diagram | `[THREADING]` section present |
