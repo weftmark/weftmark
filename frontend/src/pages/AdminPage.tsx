@@ -877,6 +877,7 @@ function VersionsTable() {
     { label: "PostgreSQL", value: `${data.postgres} · ${data.postgres_source}` },
     { label: "Redis", value: data.redis_server },
     { label: "Celery", value: data.celery },
+    { label: "Worker", value: data.worker ?? "not reported" },
   ];
 
   const deps = [
