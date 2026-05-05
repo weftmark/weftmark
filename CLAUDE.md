@@ -54,7 +54,7 @@ Three tiers: `main` (production-ready), `dev` (integration), working branches (`
 
 **Merge gate — feature/fix → dev:** unit tests written, pytest passes, tsc clean, golden path verified in browser, no regressions.
 
-**Merge gate — dev → main:** all feature gates plus full smoke-test (auth login, core CRUD, activities), pytest passes, no known open bugs.
+**Merge gate — dev → main:** all feature gates plus full smoke-test (auth login, core CRUD, projects), pytest passes, no known open bugs.
 
 **When to suggest a commit:** After each feature passes end-to-end testing and pytest. Don't commit speculatively mid-feature.
 

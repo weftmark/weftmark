@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listDrafts } from "@/api/drafts";
-import { listActivities } from "@/api/activities";
+import { listProjects } from "@/api/projects";
 import { DraftCard } from "@/components/drafts/DraftCard";
 import { UploadWifModal } from "@/components/drafts/UploadWifModal";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,12 @@ export function DraftsPage() {
     queryFn: listDrafts,
   });
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => listActivities(),
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => listProjects(),
   });
 
-  const activityCountsByDraft = activities.reduce<Record<string, { active: number; planning: number; completed: number; abandoned: number }>>(
+  const projectCountsByDraft = projects.reduce<Record<string, { active: number; planning: number; completed: number; abandoned: number }>>(
     (acc, a) => {
       const did = a.draft_id;
       if (!acc[did]) acc[did] = { active: 0, planning: 0, completed: 0, abandoned: 0 };
@@ -61,7 +61,7 @@ export function DraftsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {drafts.map((d) => (
-          <DraftCard key={d.id} draft={d} activityCounts={activityCountsByDraft[d.id]} />
+          <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} />
         ))}
       </div>
 

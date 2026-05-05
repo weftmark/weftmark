@@ -11,7 +11,7 @@ const FEATURES = [
   },
   {
     title: "Record every pick",
-    body: "Advance, reverse, or jump to any row. Mark an activity complete when the last pick is woven in.",
+    body: "Advance, reverse, or jump to any row. Mark a project complete when the last pick is woven in.",
     Icon: AppIcons.pickTracking,
   },
   {

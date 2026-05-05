@@ -51,7 +51,7 @@ class TestParsePicksTreadle:
     def test_returns_pick_data(self):
         data = parse_picks(wif(), "treadle")
         assert isinstance(data, PickData)
-        assert data.activity_type == "treadle"
+        assert data.project_type == "treadle"
 
     def test_total_picks(self):
         data = parse_picks(wif(), "treadle")
@@ -183,9 +183,9 @@ Version=1.1
 {extra}
 """.strip().encode()
 
-    def test_activity_type(self):
+    def test_project_type(self):
         data = parse_picks(self._liftplan_wif(), "lift")
-        assert data.activity_type == "lift"
+        assert data.project_type == "lift"
 
     def test_total_picks(self):
         data = parse_picks(self._liftplan_wif(), "lift")

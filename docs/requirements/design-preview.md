@@ -54,14 +54,14 @@ Each view is accessible individually or as a combined full draft view.
 
 ---
 
-## Activity Integration
+## Project Integration
 
-When viewing a design within an active weaving activity:
+When viewing a design within an active weaving project:
 
 - Current pick is highlighted in the treadling or liftplan reference panel
 - Completed picks are visually distinguished from remaining picks
 
-*Note: The treadling sequence and liftplan are activity/runtime features, not standalone preview views. They appear in context within the activity interface.*
+*Note: The treadling sequence and liftplan are project/runtime features, not standalone preview views. They appear in context within the project interface.*
 
 ---
 

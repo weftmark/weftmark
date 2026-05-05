@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import type { Draft } from "@/api/drafts";
 import { AppIcons } from "@/lib/icons";
 
-interface ActivityCounts {
+interface ProjectCounts {
   active: number;
   planning: number;
   completed: number;
@@ -11,10 +11,10 @@ interface ActivityCounts {
 
 interface Props {
   draft: Draft;
-  activityCounts?: ActivityCounts;
+  projectCounts?: ProjectCounts;
 }
 
-export function DraftCard({ draft, activityCounts }: Props) {
+export function DraftCard({ draft, projectCounts }: Props) {
   const navigate = useNavigate();
 
   const featureBadges = [
@@ -84,26 +84,26 @@ export function DraftCard({ draft, activityCounts }: Props) {
         </p>
       )}
 
-      {activityCounts && (activityCounts.active + activityCounts.planning + activityCounts.completed + activityCounts.abandoned) > 0 && (
+      {projectCounts && (projectCounts.active + projectCounts.planning + projectCounts.completed + projectCounts.abandoned) > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-2.5">
-          {activityCounts.active > 0 && (
+          {projectCounts.active > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-              {activityCounts.active} active
+              {projectCounts.active} active
             </span>
           )}
-          {activityCounts.planning > 0 && (
+          {projectCounts.planning > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-              {activityCounts.planning} plan
+              {projectCounts.planning} plan
             </span>
           )}
-          {activityCounts.completed > 0 && (
+          {projectCounts.completed > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-              {activityCounts.completed} completed
+              {projectCounts.completed} completed
             </span>
           )}
-          {activityCounts.abandoned > 0 && (
+          {projectCounts.abandoned > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-              {activityCounts.abandoned} abandoned
+              {projectCounts.abandoned} abandoned
             </span>
           )}
         </div>

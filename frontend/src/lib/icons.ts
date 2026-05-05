@@ -26,18 +26,18 @@ import {
 export type { LucideIcon } from "lucide-react";
 
 export const AppIcons = {
-  // ── Weaving — activity types ──────────────────────────────────────────────
+  // ── Weaving — project types ───────────────────────────────────────────────
   treadle: Footprints,
   lift: ChevronsUp,
   planning: CircleHelp,
-  activityActive: Zap,
-  activityCompleted: CircleCheck,
+  projectActive: Zap,
+  projectCompleted: CircleCheck,
 
   // ── Navigation ────────────────────────────────────────────────────────────
   dashboard: LayoutDashboard,
   drafts: FolderOpen,
   draft: Scroll,
-  activities: Activity,
+  projects: Activity,
   equipment: Wrench,
   settings: Settings,
   admin: ShieldCheck,

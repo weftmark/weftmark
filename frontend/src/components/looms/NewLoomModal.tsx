@@ -106,10 +106,10 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
           {/* Unsupported type warning + acknowledgement */}
           {isUnsupported && (
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
-              <p className="font-medium text-copper-on-subtle">Activity tracking not supported</p>
+              <p className="font-medium text-copper-on-subtle">Project tracking not supported</p>
               <p className="text-xs text-copper-on-subtle">
-                This loom type is not currently supported for activity tracking. You can save it for documentation
-                and it will be available if support is added later, but activities cannot be created using it.
+                This loom type is not currently supported for project tracking. You can save it for documentation
+                and it will be available if support is added later, but projects cannot be created using it.
               </p>
               <label className="flex items-center gap-2 text-xs text-copper-on-subtle cursor-pointer">
                 <input
@@ -117,7 +117,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   checked={acknowledged}
                   onChange={(e) => setAcknowledged(e.target.checked)}
                 />
-                I understand this loom cannot be used for activity tracking
+                I understand this loom cannot be used for project tracking
               </label>
             </div>
           )}

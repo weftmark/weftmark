@@ -9,7 +9,7 @@ This directory contains the formal requirements for the WeftMark platform.
 | [overview.md](overview.md) | Platform vision, architecture, tech stack, deployment |
 | [wif-import.md](wif-import.md) | WIF file upload, linting, compatibility tracking |
 | [design-preview.md](design-preview.md) | Design preview views and rendering features |
-| [activities.md](activities.md) | Weaving activity tracking — the core feature |
+| [projects.md](projects.md) | Weaving project tracking — the core feature |
 | [equipment-inventory.md](equipment-inventory.md) | Loom inventory with versioned state history |
 | [yarn-inventory.md](yarn-inventory.md) | Yarn and thread inventory with skein-level tracking |
 | [reports.md](reports.md) | Activity report generation (screen and PDF) |

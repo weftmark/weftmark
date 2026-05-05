@@ -12,14 +12,14 @@
 | `app/database.py` | 100% | |
 | `app/deps.py` | 79% | `get_db`, `get_current_user`, `require_admin` covered; soft-deleted user path missing |
 | `app/main.py` | 90% | Lifespan OIDC call mocked |
-| `app/models/activity.py` | 100% | Includes `ActivityPhoto` model |
+| `app/models/project.py` | 100% | Includes `ProjectPhoto` model |
 | `app/models/base.py` | 87% | `soft_delete()` line covered; `is_deleted` property line 23 |
 | `app/models/invite.py` | 95% | |
 | `app/models/loom.py` | 99% | |
 | `app/models/draft.py` | 100% | |
 | `app/models/user.py` | 100% | Defaults, soft delete, all fields covered |
 | `app/models/yarn.py` | 100% | |
-| `app/routers/activities.py` | 41% | Create, restart, clone covered; detail, update, pick step, photos endpoints not tested |
+| `app/routers/projects.py` | 41% | Create, restart, clone covered; detail, update, pick step, photos endpoints not tested |
 | `app/routers/auth.py` | 40% | `/me`, logout, token validation covered; OIDC callback, invite flow not tested |
 | `app/routers/health.py` | 90% | `/health` covered; error branch (DB down) not tested |
 | `app/routers/looms.py` | 58% | Create, list, get covered; versions, photos, documents not tested |
@@ -27,7 +27,7 @@
 | `app/routers/yarn.py` | 64% | |
 | `app/services/email.py` | 100% | |
 | `app/services/rendering.py` | 100% | |
-| `app/services/storage.py` | 90% | Activity photo helpers (`save_activity_photo`, `delete_activity_photo`) not tested |
+| `app/services/storage.py` | 90% | Project photo helpers (`save_project_photo`, `delete_project_photo`) not tested |
 | `app/services/wif_linter.py` | 100% | |
 | `app/services/wif_parser.py` | 100% | |
 | `app/version.py` | 86% | `__main__` block not tested |
@@ -71,8 +71,8 @@
 
 | Gap | Module | Tests needed |
 | --- | --- | --- |
-| Activity detail, update, pick step | `routers/activities.py` | Create/restart/clone covered; remaining endpoints need tests |
-| Activity photo endpoints | `routers/activities.py` | Upload, list, delete photos — no tests yet |
+| Project detail, update, pick step | `routers/projects.py` | Create/restart/clone covered; remaining endpoints need tests |
+| Project photo endpoints | `routers/projects.py` | Upload, list, delete photos — no tests yet |
 | Yarn CRUD | `routers/yarn.py` | Basic CRUD coverage |
 | Health endpoint — DB error | `routers/health.py` | Simulate DB unavailable → 500 |
 | `deps.py` full coverage | `deps.py` | Invalid JWT, user not found, soft-deleted user |
@@ -104,7 +104,7 @@ Before implementing any new feature:
 Reassess coverage completeness when:
 
 - Overall coverage drops below the CI gate (currently 65%)
-- A new feature area is added (Activities, Yarn, Reports, Sharing, etc.)
+- A new feature area is added (Projects, Yarn, Reports, Sharing, etc.)
 - A router reaches ≥80% coverage (evaluate if remaining gaps matter)
 - Before each Phase 2 feature begins
 - After any significant refactor
@@ -117,6 +117,6 @@ Reassess coverage completeness when:
 | --- | --- | --- | --- |
 | 2026-04-25 | v0.2.x | 55% | Model imports provide baseline via `app.main` import in conftest |
 | 2026-04-25 | v0.2.x | 68% | Added router tests (health) + model tests (User); DB integration test infrastructure in place |
-| 2026-04-25 | v0.5.0 | 67% | 266 tests; activity creation, restart, clone covered; auth `/me` + token validation added; loom CRUD partially covered |
+| 2026-04-25 | v0.5.0 | 67% | 266 tests; project creation, restart, clone covered; auth `/me` + token validation added; loom CRUD partially covered |
 | 2026-05-03 | v0.74.0 | — | First production deployment smoke test; 63 items tested end-to-end; 11 issues filed (#266–#275); 2 closed (see GitHub issue #277) |
 | 2026-05-03 | v0.76.1 | 65% | 823 tests; full rename of Project→Draft model, router, API, and frontend completed (issues #296/#311) |

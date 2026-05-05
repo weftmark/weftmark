@@ -66,7 +66,7 @@ export function PrivacyPage() {
                     <td className="py-2 align-top">Performance of contract (Art. 6(1)(b))</td>
                   </tr>
                   <tr>
-                    <td className="py-2 pr-4 align-top">WIF files, photos, activity data, looms, yarn records</td>
+                    <td className="py-2 pr-4 align-top">WIF files, photos, project data, looms, yarn records</td>
                     <td className="py-2 pr-4 align-top">Core service — storing your weaving work</td>
                     <td className="py-2 align-top">Performance of contract (Art. 6(1)(b))</td>
                   </tr>
@@ -121,7 +121,7 @@ export function PrivacyPage() {
                 <span className="mt-1 shrink-0 text-amber-700">&#8212;</span>
                 <span className="leading-relaxed">
                   <strong>Neon</strong> — managed PostgreSQL database. Relational data (account
-                  records, activity history) is stored on Neon servers in the US.
+                  records, project history) is stored on Neon servers in the US.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -153,7 +153,7 @@ export function PrivacyPage() {
                 <span className="leading-relaxed">
                   Account and content data is retained for as long as your account exists. You can
                   request deletion at any time from Settings. All associated data (WIF files,
-                  photos, activity records, looms, yarn, drafts) will be permanently purged
+                  photos, project records, looms, yarn, drafts) will be permanently purged
                   within 72 hours on a best-effort basis.
                 </span>
               </li>

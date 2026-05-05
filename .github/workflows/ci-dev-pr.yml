@@ -83,6 +83,7 @@ jobs:
           POSTGRES_PORT: 5432
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
+      - run: cd backend && python -m coverage report --fail-under=65
 
   migration-smoke-test:
     name: Alembic migration smoke test

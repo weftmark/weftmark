@@ -3,7 +3,7 @@ User Deletion Queued
 User:    {display_name} ({email})
 Status:  Pending -- data cascade in progress
 
-All user data (projects, activities, looms, and uploads) will be
+All user data (drafts, projects, looms, and uploads) will be
 permanently deleted by the background worker. The user's account is
 already blocked.
 

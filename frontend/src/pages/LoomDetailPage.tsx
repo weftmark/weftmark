@@ -2,8 +2,8 @@ import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listActivities } from "@/api/activities";
-import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
+import { listProjects } from "@/api/projects";
+import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import {
   getLoom, deleteLoom, uploadLoomPhoto, deleteLoomPhoto, loomPhotoUrl,
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
@@ -612,12 +612,12 @@ export function LoomDetailPage() {
     enabled: !!id,
   });
 
-  const { data: loomActivities = [] } = useQuery({
-    queryKey: ["activities", { loomId: id }],
-    queryFn: () => listActivities({ loomId: id! }),
+  const { data: loomProjects = [] } = useQuery({
+    queryKey: ["projects", { loomId: id }],
+    queryFn: () => listProjects({ loomId: id! }),
     enabled: !!id,
   });
-  const activeActivity = loomActivities.find((a) => a.status === "active");
+  const activeProject = loomProjects.find((a) => a.status === "active");
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["loom", id] });
@@ -667,8 +667,8 @@ export function LoomDetailPage() {
       </div>
         {!SUPPORTED_LOOM_TYPES.has(loom.loom_type) && (
           <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm text-copper-on-subtle">
-            <span className="font-medium">Activity tracking not supported</span> — this loom type is not currently
-            supported for activity tracking. It has been saved for documentation and will be available if support
+            <span className="font-medium">Project tracking not supported</span> — this loom type is not currently
+            supported for project tracking. It has been saved for documentation and will be available if support
             is added later.
           </div>
         )}
@@ -687,14 +687,14 @@ export function LoomDetailPage() {
             </div>
           )}
           {loom.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>}
-          {activeActivity && (
+          {activeProject && (
             <div className="rounded-md border border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-700 px-3 py-2.5 text-sm flex items-center justify-between gap-4">
               <div>
-                <span className="font-medium text-green-900 dark:text-green-200">Active activity: </span>
-                <span className="text-green-800 dark:text-green-300">{activeActivity.name}</span>
+                <span className="font-medium text-green-900 dark:text-green-200">Active project: </span>
+                <span className="text-green-800 dark:text-green-300">{activeProject.name}</span>
               </div>
               <Link
-                to={`/activities/${activeActivity.id}`}
+                to={`/projects/${activeProject.id}`}
                 className="shrink-0 text-xs text-green-700 dark:text-green-400 hover:underline"
               >
                 View →
@@ -721,12 +721,12 @@ export function LoomDetailPage() {
 
         <section className="border-t pt-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold">Activities</h2>
-            <Link to="/activities" className="text-xs text-muted-foreground hover:text-foreground">
-              All activities →
+            <h2 className="text-base font-semibold">Projects</h2>
+            <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
+              All projects →
             </Link>
           </div>
-          <ActivitySummaryList activities={loomActivities} />
+          <ProjectSummaryList projects={loomProjects} />
         </section>
 
         <section className="border-t pt-6">

@@ -16,13 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
-from app.models.activity import Activity, ActivityPhoto
 from app.models.audit_log import AuditLog
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
 from app.models.pending_signup import PendingSignup
+from app.models.project import Project, ProjectPhoto
 from app.models.user import User
 from app.models.yarn import Yarn
 from app.services.audit import write_audit_log
@@ -46,8 +46,8 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 class AdminUserCounts(BaseModel):
     drafts: int
-    activities_active: int
-    activities_completed: int
+    projects_active: int
+    projects_completed: int
     looms: int
     storage_bytes: int
 
@@ -85,7 +85,7 @@ class AdminStatsResponse(BaseModel):
     active_30d: int
     active_90d: int
     total_drafts: int
-    total_activities: int
+    total_projects: int
     total_looms: int
     total_yarn: int
     pending_invites: int
@@ -414,21 +414,21 @@ async def list_users(
     ).all()
     draft_counts = {row.owner_id: row.cnt for row in draft_rows}
 
-    # Per-user activity counts by status
-    activity_rows = (
+    # Per-user project counts by status
+    project_rows = (
         await db.execute(
-            select(Activity.owner_id, Activity.status, func.count().label("cnt"))
-            .where(Activity.owner_id.in_(user_ids), Activity.deleted_at.is_(None))
-            .group_by(Activity.owner_id, Activity.status)
+            select(Project.owner_id, Project.status, func.count().label("cnt"))
+            .where(Project.owner_id.in_(user_ids), Project.deleted_at.is_(None))
+            .group_by(Project.owner_id, Project.status)
         )
     ).all()
-    activity_active: dict[uuid.UUID, int] = {}
-    activity_completed: dict[uuid.UUID, int] = {}
-    for row in activity_rows:
+    project_active: dict[uuid.UUID, int] = {}
+    project_completed: dict[uuid.UUID, int] = {}
+    for row in project_rows:
         if row.status == "active":
-            activity_active[row.owner_id] = row.cnt
+            project_active[row.owner_id] = row.cnt
         elif row.status == "completed":
-            activity_completed[row.owner_id] = row.cnt
+            project_completed[row.owner_id] = row.cnt
 
     # Per-user loom counts
     loom_rows = (
@@ -440,16 +440,16 @@ async def list_users(
     ).all()
     loom_counts = {row.owner_id: row.cnt for row in loom_rows}
 
-    # Per-user storage: activity photos
-    activity_storage_rows = (
+    # Per-user storage: project photos
+    project_storage_rows = (
         await db.execute(
-            select(Activity.owner_id, func.coalesce(func.sum(ActivityPhoto.file_size_bytes), 0).label("bytes"))
-            .join(ActivityPhoto, ActivityPhoto.activity_id == Activity.id)
-            .where(Activity.owner_id.in_(user_ids))
-            .group_by(Activity.owner_id)
+            select(Project.owner_id, func.coalesce(func.sum(ProjectPhoto.file_size_bytes), 0).label("bytes"))
+            .join(ProjectPhoto, ProjectPhoto.project_id == Project.id)
+            .where(Project.owner_id.in_(user_ids))
+            .group_by(Project.owner_id)
         )
     ).all()
-    storage_bytes: dict[uuid.UUID, int] = {row.owner_id: int(row.bytes) for row in activity_storage_rows}
+    storage_bytes: dict[uuid.UUID, int] = {row.owner_id: int(row.bytes) for row in project_storage_rows}
 
     # Per-user storage: loom version photos
     loom_storage_rows = (
@@ -482,8 +482,8 @@ async def list_users(
             clerk_errored=u.clerk_errored,
             counts=AdminUserCounts(
                 drafts=draft_counts.get(u.id, 0),
-                activities_active=activity_active.get(u.id, 0),
-                activities_completed=activity_completed.get(u.id, 0),
+                projects_active=project_active.get(u.id, 0),
+                projects_completed=project_completed.get(u.id, 0),
                 looms=loom_counts.get(u.id, 0),
                 storage_bytes=storage_bytes.get(u.id, 0),
             ),
@@ -536,19 +536,19 @@ async def patch_user(
         )
         or 0
     )
-    act_active = (
+    proj_active = (
         await db.scalar(
             select(func.count())
-            .select_from(Activity)
-            .where(Activity.owner_id == user.id, Activity.status == "active", Activity.deleted_at.is_(None))
+            .select_from(Project)
+            .where(Project.owner_id == user.id, Project.status == "active", Project.deleted_at.is_(None))
         )
         or 0
     )
-    act_completed = (
+    proj_completed = (
         await db.scalar(
             select(func.count())
-            .select_from(Activity)
-            .where(Activity.owner_id == user.id, Activity.status == "completed", Activity.deleted_at.is_(None))
+            .select_from(Project)
+            .where(Project.owner_id == user.id, Project.status == "completed", Project.deleted_at.is_(None))
         )
         or 0
     )
@@ -558,11 +558,11 @@ async def patch_user(
         )
         or 0
     )
-    activity_storage = (
+    project_storage = (
         await db.scalar(
-            select(func.coalesce(func.sum(ActivityPhoto.file_size_bytes), 0))
-            .join(Activity, ActivityPhoto.activity_id == Activity.id)
-            .where(Activity.owner_id == user.id)
+            select(func.coalesce(func.sum(ProjectPhoto.file_size_bytes), 0))
+            .join(Project, ProjectPhoto.project_id == Project.id)
+            .where(Project.owner_id == user.id)
         )
         or 0
     )
@@ -593,10 +593,10 @@ async def patch_user(
         clerk_errored=user.clerk_errored,
         counts=AdminUserCounts(
             drafts=drafts,
-            activities_active=act_active,
-            activities_completed=act_completed,
+            projects_active=proj_active,
+            projects_completed=proj_completed,
             looms=looms,
-            storage_bytes=int(activity_storage) + int(loom_storage),
+            storage_bytes=int(project_storage) + int(loom_storage),
         ),
     )
 
@@ -645,7 +645,7 @@ async def ban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
-        counts=AdminUserCounts(drafts=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
+        counts=AdminUserCounts(drafts=0, projects_active=0, projects_completed=0, looms=0, storage_bytes=0),
     )
 
 
@@ -684,7 +684,7 @@ async def unban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
-        counts=AdminUserCounts(drafts=0, activities_active=0, activities_completed=0, looms=0, storage_bytes=0),
+        counts=AdminUserCounts(drafts=0, projects_active=0, projects_completed=0, looms=0, storage_bytes=0),
     )
 
 
@@ -765,7 +765,7 @@ async def get_stats(
         .where(User.deleted_at.is_(None), User.last_active_at >= now - timedelta(days=90))
     )
     total_drafts = await count(select(func.count()).select_from(Draft).where(Draft.deleted_at.is_(None)))
-    total_activities = await count(select(func.count()).select_from(Activity).where(Activity.deleted_at.is_(None)))
+    total_projects = await count(select(func.count()).select_from(Project).where(Project.deleted_at.is_(None)))
     total_looms = await count(select(func.count()).select_from(Loom).where(Loom.deleted_at.is_(None)))
     total_yarn = await count(select(func.count()).select_from(Yarn).where(Yarn.deleted_at.is_(None)))
     pending_invites = await count(
@@ -773,7 +773,7 @@ async def get_stats(
         .select_from(Invite)
         .where(Invite.accepted_at.is_(None), Invite.revoked_at.is_(None), Invite.expires_at > now)
     )
-    activity_storage = await db.scalar(select(func.coalesce(func.sum(ActivityPhoto.file_size_bytes), 0))) or 0
+    project_storage = await db.scalar(select(func.coalesce(func.sum(ProjectPhoto.file_size_bytes), 0))) or 0
     loom_storage = await db.scalar(select(func.coalesce(func.sum(LoomVersionPhoto.file_size_bytes), 0))) or 0
 
     return AdminStatsResponse(
@@ -783,11 +783,11 @@ async def get_stats(
         active_30d=active_30d,
         active_90d=active_90d,
         total_drafts=total_drafts,
-        total_activities=total_activities,
+        total_projects=total_projects,
         total_looms=total_looms,
         total_yarn=total_yarn,
         pending_invites=pending_invites,
-        total_storage_bytes=int(activity_storage) + int(loom_storage),
+        total_storage_bytes=int(project_storage) + int(loom_storage),
     )
 
 
@@ -1063,7 +1063,7 @@ async def send_test_email_endpoint(
 
 
 class ElevateContentSummary(BaseModel):
-    activities: int
+    projects: int
     looms: int
     drafts: int
     yarn: int
@@ -1090,11 +1090,9 @@ async def elevate_to_superuser(
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="Cannot elevate yourself")
 
-    activities = (
+    projects = (
         await db.scalar(
-            select(func.count())
-            .select_from(Activity)
-            .where(Activity.owner_id == user_id, Activity.deleted_at.is_(None))
+            select(func.count()).select_from(Project).where(Project.owner_id == user_id, Project.deleted_at.is_(None))
         )
         or 0
     )
@@ -1117,19 +1115,19 @@ async def elevate_to_superuser(
         or 0
     )
 
-    has_content = any([activities, looms, drafts, yarn])
+    has_content = any([projects, looms, drafts, yarn])
 
     if has_content and not body.confirm_delete_content:
         raise HTTPException(
             status_code=409,
             detail={
                 "code": "has_content",
-                "summary": {"activities": activities, "looms": looms, "drafts": drafts, "yarn": yarn},
+                "summary": {"projects": projects, "looms": looms, "drafts": drafts, "yarn": yarn},
             },
         )
 
     if has_content:
-        await db.execute(Activity.__table__.delete().where(Activity.owner_id == user_id))
+        await db.execute(Project.__table__.delete().where(Project.owner_id == user_id))
         await db.execute(Loom.__table__.delete().where(Loom.owner_id == user_id))
         await db.execute(Draft.__table__.delete().where(Draft.owner_id == user_id))
         await db.execute(Yarn.__table__.delete().where(Yarn.owner_id == user_id))
