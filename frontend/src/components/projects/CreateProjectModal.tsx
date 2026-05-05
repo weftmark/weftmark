@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createActivity, completeActivity, abandonActivity, listActivities, ApiError, ACTIVITY_TYPE_LABELS, type ActivityType, type ActivitySummary } from "@/api/activities";
+import { createProject, completeProject, abandonProject, listProjects, ApiError, PROJECT_TYPE_LABELS, type ProjectType, type ProjectSummary } from "@/api/projects";
 import { listDrafts } from "@/api/drafts";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,10 @@ function convertLen(value: string, toUnit: "cm" | "in"): string {
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Props) {
+export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props) {
   const [name, setName] = useState("");
   const [draftId, setDraftId] = useState(defaultDraftId ?? "");
-  const [activityType, setActivityType] = useState<ActivityType | "">("");
+  const [projectType, setProjectType] = useState<ProjectType | "">("");
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
   const [finishedLength, setFinishedLength] = useState("");
@@ -42,7 +42,7 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
   };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conflictActivity, setConflictActivity] = useState<ActivitySummary | null>(null);
+  const [conflictProject, setConflictProject] = useState<ProjectSummary | null>(null);
 
   const { data: drafts = [] } = useQuery({ queryKey: ["drafts"], queryFn: listDrafts });
   const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: listLooms });
@@ -55,8 +55,8 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
   const selectedDraft = drafts.find((d) => d.id === draftId);
   const selectedLoom = looms.find((l) => l.id === loomId);
 
-  // Filter activity types by what the WIF supports and loom supports
-  const availableTypes: ActivityType[] = [];
+  // Filter project types by what the WIF supports and loom supports
+  const availableTypes: ProjectType[] = [];
   if (selectedDraft) {
     if (selectedDraft.has_treadling) availableTypes.push("treadle");
     if (selectedDraft.has_liftplan) availableTypes.push("lift");
@@ -72,8 +72,8 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
     : availableTypes;
 
   // Auto-select type when only one option
-  const effectiveType: ActivityType | "" =
-    activityType ||
+  const effectiveType: ProjectType | "" =
+    projectType ||
     (filteredTypes.length === 1 ? filteredTypes[0] : "");
 
   const loomVersions = loomDetail?.versions ?? [];
@@ -119,16 +119,16 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
   const handleLoomChange = (newLoomId: string) => {
     setLoomId(newLoomId);
     setLoomVersionId("");
-    setActivityType("");
+    setProjectType("");
     setWarpWaste("");
-    setConflictActivity(null);
+    setConflictProject(null);
     setError(null);
   };
 
   const _buildPayload = () => ({
     name: name.trim(),
     draft_id: draftId,
-    activity_type: effectiveType as ActivityType,
+    project_type: effectiveType as ProjectType,
     loom_id: loomId || undefined,
     loom_version_id: loomVersionId || undefined,
     finished_length_per_item: finishedLength ? parseFloat(finishedLength) : undefined,
@@ -142,18 +142,18 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
     e.preventDefault();
     if (!effectiveType) return;
     setError(null);
-    setConflictActivity(null);
+    setConflictProject(null);
     setLoading(true);
     try {
-      const created = await createActivity(_buildPayload());
+      const created = await createProject(_buildPayload());
       onSuccess(created.id);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && loomId) {
-        const activities = await listActivities().catch(() => []);
-        const conflict = activities.find((a) => a.loom_id === loomId && a.status === "active") ?? null;
-        setConflictActivity(conflict);
+        const projects = await listProjects().catch(() => []);
+        const conflict = projects.find((p) => p.loom_id === loomId && p.status === "active") ?? null;
+        setConflictProject(conflict);
       } else {
-        setError(err instanceof Error ? err.message : "Failed to create activity");
+        setError(err instanceof Error ? err.message : "Failed to create project");
       }
     } finally {
       setLoading(false);
@@ -161,20 +161,20 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
   };
 
   const handleResolveAndCreate = async (resolve: "complete" | "abandon") => {
-    if (!conflictActivity || !effectiveType) return;
+    if (!conflictProject || !effectiveType) return;
     setError(null);
     setLoading(true);
     try {
       if (resolve === "complete") {
-        await completeActivity(conflictActivity.id);
+        await completeProject(conflictProject.id);
       } else {
-        await abandonActivity(conflictActivity.id);
+        await abandonProject(conflictProject.id);
       }
-      const created = await createActivity(_buildPayload());
+      const created = await createProject(_buildPayload());
       onSuccess(created.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create activity");
-      setConflictActivity(null);
+      setError(err instanceof Error ? err.message : "Failed to create project");
+      setConflictProject(null);
     } finally {
       setLoading(false);
     }
@@ -186,12 +186,12 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-lg border bg-background shadow-lg flex flex-col max-h-[90vh]">
         <div className="px-6 pt-6 pb-4 border-b">
-          <h2 className="text-lg font-semibold">New activity</h2>
+          <h2 className="text-lg font-semibold">New project</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
           <div>
-            <label className="mb-1 block text-sm font-medium">Activity name <span className="text-destructive">*</span></label>
+            <label className="mb-1 block text-sm font-medium">Project name <span className="text-destructive">*</span></label>
             <input className={f} value={name} onChange={(e) => setName(e.target.value)} placeholder="Spring towels — warp 1" required />
           </div>
 
@@ -200,7 +200,7 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
             {defaultDraftId ? (
               <p className="py-2 text-sm">{selectedDraft?.name ?? "—"}</p>
             ) : (
-              <select className={f} value={draftId} onChange={(e) => { setDraftId(e.target.value); setActivityType(""); }} required>
+              <select className={f} value={draftId} onChange={(e) => { setDraftId(e.target.value); setProjectType(""); }} required>
                 <option value="">Select a draft…</option>
                 {drafts.map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
@@ -218,7 +218,7 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
               ))}
             </select>
             {looms.some((l) => !SUPPORTED_LOOM_TYPES.has(l.loom_type)) && (
-              <p className="mt-1 text-xs text-muted-foreground">Looms without activity tracking support are not shown.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Looms without project tracking support are not shown.</p>
             )}
           </div>
 
@@ -264,14 +264,14 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
 
           {selectedDraft && (
             <div>
-              <label className="mb-1 block text-sm font-medium">Activity type <span className="text-destructive">*</span></label>
+              <label className="mb-1 block text-sm font-medium">Project type <span className="text-destructive">*</span></label>
               {filteredTypes.length === 0 ? (
                 <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-sm">
                   {selectedLoom && availableTypes.length > 0 ? (
                     <>
                       <p className="font-medium text-destructive">Loom and draft are incompatible</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        This WIF supports {availableTypes.map(t => ACTIVITY_TYPE_LABELS[t]).join(" and ")}, but the selected loom does not.
+                        This WIF supports {availableTypes.map(t => PROJECT_TYPE_LABELS[t]).join(" and ")}, but the selected loom does not.
                         {availableTypes.includes("lift") && !selectedLoom.supports_lift_tracking && " The loom does not support lift tracking."}
                         {availableTypes.includes("treadle") && !selectedLoom.supports_treadle_tracking && " The loom does not support treadle tracking."}
                         {" "}Try a different loom or go to the draft page to generate a lift plan.
@@ -279,7 +279,7 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
                     </>
                   ) : (
                     <>
-                      <p className="font-medium text-destructive">No activity types available</p>
+                      <p className="font-medium text-destructive">No project types available</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         This WIF has no treadling or lift plan data. Go to the draft page to generate a lift plan if the file has tieup and treadling sections.
                       </p>
@@ -287,12 +287,12 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
                   )}
                 </div>
               ) : filteredTypes.length === 1 ? (
-                <p className="text-sm py-2">{ACTIVITY_TYPE_LABELS[filteredTypes[0]]}</p>
+                <p className="text-sm py-2">{PROJECT_TYPE_LABELS[filteredTypes[0]]}</p>
               ) : (
-                <select className={f} value={effectiveType} onChange={(e) => setActivityType(e.target.value as ActivityType)} required>
+                <select className={f} value={effectiveType} onChange={(e) => setProjectType(e.target.value as ProjectType)} required>
                   <option value="">Select type…</option>
                   {filteredTypes.map((t) => (
-                    <option key={t} value={t}>{ACTIVITY_TYPE_LABELS[t]}</option>
+                    <option key={t} value={t}>{PROJECT_TYPE_LABELS[t]}</option>
                   ))}
                 </select>
               )}
@@ -337,13 +337,13 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
             </div>
           </div>
 
-          {conflictActivity && (
+          {conflictProject && (
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
               <p className="font-medium text-copper-on-subtle">
-                This loom has an active activity: <span className="font-semibold">{conflictActivity.name}</span>
+                This loom has an active project: <span className="font-semibold">{conflictProject.name}</span>
               </p>
               <p className="text-copper-on-subtle text-xs">
-                Mark it as completed or abandon it to start this new activity, or choose a different loom.
+                Mark it as completed or abandon it to start this new project, or choose a different loom.
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Button type="button" size="sm" onClick={() => handleResolveAndCreate("complete")} disabled={loading}>
@@ -364,7 +364,7 @@ export function CreateActivityModal({ onSuccess, onClose, defaultDraftId }: Prop
         <div className="flex justify-end gap-2 px-6 py-4 border-t">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {loading ? "Creating…" : "Start activity"}
+            {loading ? "Creating…" : "Start project"}
           </Button>
         </div>
       </div>

@@ -3,9 +3,9 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, previewUrl, downloadWif, downloadWifModified } from "@/api/drafts";
-import { listActivities } from "@/api/activities";
-import { ActivitySummaryList } from "@/components/activities/ActivitySummaryList";
-import { CreateActivityModal } from "@/components/activities/CreateActivityModal";
+import { listProjects } from "@/api/projects";
+import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
+import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 
@@ -15,7 +15,7 @@ export function DraftDetailPage() {
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showDangerZone, setShowDangerZone] = useState(false);
-  const [showCreateActivity, setShowCreateActivity] = useState(false);
+  const [showCreateProject, setShowCreateProject] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -25,9 +25,9 @@ export function DraftDetailPage() {
     enabled: !!id,
   });
 
-  const { data: draftActivities = [] } = useQuery({
-    queryKey: ["activities", { draftId: id }],
-    queryFn: () => listActivities({ draftId: id! }),
+  const { data: draftProjects = [] } = useQuery({
+    queryKey: ["projects", { draftId: id }],
+    queryFn: () => listProjects({ draftId: id! }),
     enabled: !!id,
   });
 
@@ -301,15 +301,15 @@ export function DraftDetailPage() {
 
             <div className="border-t pt-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold">Activities</h2>
+                <h2 className="text-base font-semibold">Projects</h2>
                 <div className="flex items-center gap-3">
-                  <Button size="sm" onClick={() => setShowCreateActivity(true)}>New activity</Button>
-                  <Link to="/activities" className="text-xs text-muted-foreground hover:text-foreground">
-                    All activities →
+                  <Button size="sm" onClick={() => setShowCreateProject(true)}>New project</Button>
+                  <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
+                    All projects →
                   </Link>
                 </div>
               </div>
-              <ActivitySummaryList activities={draftActivities} />
+              <ProjectSummaryList projects={draftProjects} />
             </div>
           </div>
 
@@ -348,7 +348,7 @@ export function DraftDetailPage() {
             <div className="mt-3 rounded-md border border-destructive/30 p-4 flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium">Delete draft</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Permanently removes this draft and its WIF file. Activities are not deleted.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Permanently removes this draft and its WIF file. Projects are not deleted.</p>
               </div>
               <div className="flex gap-2 shrink-0">
                 {!confirmDelete ? (
@@ -380,16 +380,16 @@ export function DraftDetailPage() {
           )}
         </div>
 
-      {showCreateActivity && (
-        <CreateActivityModal
+      {showCreateProject && (
+        <CreateProjectModal
           defaultDraftId={id}
           onSuccess={(newId) => {
-            setShowCreateActivity(false);
-            queryClient.invalidateQueries({ queryKey: ["activities", { draftId: id }] });
-            queryClient.invalidateQueries({ queryKey: ["activities"] });
-            navigate(`/activities/${newId}`);
+            setShowCreateProject(false);
+            queryClient.invalidateQueries({ queryKey: ["projects", { draftId: id }] });
+            queryClient.invalidateQueries({ queryKey: ["projects"] });
+            navigate(`/projects/${newId}`);
           }}
-          onClose={() => setShowCreateActivity(false)}
+          onClose={() => setShowCreateProject(false)}
         />
       )}
     </div>

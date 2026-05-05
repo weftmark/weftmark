@@ -307,8 +307,8 @@ export function UserDetailModal({ target, onClose }: Props) {
             <InfoRow label="Last login">{formatRelative(u.last_active_at)}</InfoRow>
             <InfoRow label="Storage">{formatBytes(u.counts.storage_bytes)}</InfoRow>
             <InfoRow label="Drafts">{u.counts.drafts}</InfoRow>
-            <InfoRow label="Activities">
-              {u.counts.activities_active} active, {u.counts.activities_completed} completed
+            <InfoRow label="Projects">
+              {u.counts.projects_active} active, {u.counts.projects_completed} completed
             </InfoRow>
             <InfoRow label="Looms">{u.counts.looms}</InfoRow>
             {u.approved_by_name && (
@@ -369,7 +369,7 @@ export function UserDetailModal({ target, onClose }: Props) {
                     ) : confirming === "elevate-force" && elevateContent ? (
                       <ConfirmInline
                         message={`This user has ${[
-                          elevateContent.activities && `${elevateContent.activities} activities`,
+                          elevateContent.projects && `${elevateContent.projects} projects`,
                           elevateContent.looms && `${elevateContent.looms} looms`,
                           elevateContent.drafts && `${elevateContent.drafts} drafts`,
                           elevateContent.yarn && `${elevateContent.yarn} yarn`,

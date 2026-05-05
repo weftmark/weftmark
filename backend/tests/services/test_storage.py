@@ -227,41 +227,41 @@ class TestYarnPhoto:
 
 
 # ---------------------------------------------------------------------------
-# Activity photos
+# Project photos
 # ---------------------------------------------------------------------------
 
 
-class TestActivityPhoto:
+class TestProjectPhoto:
     def test_save_returns_relative_path(self):
         aid, phid = _pid(), _pid()
-        rel = storage.save_activity_photo(aid, phid, ".jpg", b"JPEG")
+        rel = storage.save_project_photo(aid, phid, ".jpg", b"JPEG")
         assert not rel.startswith("/")
 
     def test_round_trip_via_read_file(self):
         aid, phid = _pid(), _pid()
         data = b"JPEG DATA"
-        rel = storage.save_activity_photo(aid, phid, ".jpg", data)
+        rel = storage.save_project_photo(aid, phid, ".jpg", data)
         assert storage.read_file(rel) == data
 
     def test_extension_preserved(self):
         aid, phid = _pid(), _pid()
-        rel = storage.save_activity_photo(aid, phid, ".jpg", b"data")
+        rel = storage.save_project_photo(aid, phid, ".jpg", b"data")
         assert rel.endswith(".jpg")
 
     def test_delete_removes_file(self):
         aid, phid = _pid(), _pid()
-        rel = storage.save_activity_photo(aid, phid, ".jpg", b"data")
-        storage.delete_activity_photo(rel)
+        rel = storage.save_project_photo(aid, phid, ".jpg", b"data")
+        storage.delete_project_photo(rel)
         assert storage.file_exists(rel) is False
 
     def test_delete_nonexistent_is_silent(self):
-        storage.delete_activity_photo("activities/nonexistent/photos/x.jpg")
+        storage.delete_project_photo("projects/nonexistent/photos/x.jpg")
 
-    def test_multiple_photos_same_activity(self):
+    def test_multiple_photos_same_project(self):
         aid = _pid()
         ph1, ph2 = _pid(), _pid()
-        rel1 = storage.save_activity_photo(aid, ph1, ".jpg", b"a")
-        rel2 = storage.save_activity_photo(aid, ph2, ".jpg", b"b")
+        rel1 = storage.save_project_photo(aid, ph1, ".jpg", b"a")
+        rel2 = storage.save_project_photo(aid, ph2, ".jpg", b"b")
         assert rel1 != rel2
         assert storage.read_file(rel1) == b"a"
         assert storage.read_file(rel2) == b"b"

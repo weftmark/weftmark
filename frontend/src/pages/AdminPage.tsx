@@ -233,7 +233,7 @@ function UsersTab() {
       status: deriveStatus(u),
       role: deriveRole(u),
       drafts: u.counts.drafts,
-      activities: u.counts.activities_active + u.counts.activities_completed,
+      activities: u.counts.projects_active + u.counts.projects_completed,
       looms: u.counts.looms,
       storage_bytes: u.counts.storage_bytes,
       last_active_at: u.last_active_at,
@@ -342,7 +342,7 @@ function UsersTab() {
               <SortTh label="Status" k="status" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Role" k="role" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Drafts" k="drafts" sort={sortKey} dir={sortDir} onSort={handleSort} />
-              <SortTh label="Activities" k="activities" sort={sortKey} dir={sortDir} onSort={handleSort} />
+              <SortTh label="Projects" k="activities" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Looms" k="looms" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Storage" k="storage" sort={sortKey} dir={sortDir} onSort={handleSort} />
               <SortTh label="Last login" k="last_login" sort={sortKey} dir={sortDir} onSort={handleSort} />
@@ -707,7 +707,7 @@ function StatsTab() {
 
   const contentRows = [
     { label: "Drafts", value: data.total_drafts },
-    { label: "Activities", value: data.total_activities },
+    { label: "Projects", value: data.total_projects },
     { label: "Looms", value: data.total_looms },
     { label: "Yarn entries", value: data.total_yarn },
     { label: "Total storage (photos)", value: formatBytes(data.total_storage_bytes) },

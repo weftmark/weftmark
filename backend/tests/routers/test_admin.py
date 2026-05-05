@@ -7,10 +7,10 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.activity import Activity, ActivityPhoto
 from app.models.draft import Draft
 from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
+from app.models.project import Project, ProjectPhoto
 from app.models.user import User
 from tests.conftest import SEEDED_EULA_VERSION
 
@@ -70,19 +70,19 @@ class TestListAdminUsers:
         )
         db_session.add(draft)
         await db_session.flush()
-        activity = Activity(
+        project = Project(
             owner_id=admin_user.id,
             draft_id=draft.id,
-            name="Storage Test Activity",
-            activity_type="treadle",
+            name="Storage Test Project",
+            project_type="treadle",
             status="active",
             total_picks=100,
         )
-        db_session.add(activity)
+        db_session.add(project)
         await db_session.flush()
-        photo = ActivityPhoto(
-            activity_id=activity.id,
-            file_path="activities/test/photo.jpg",
+        photo = ProjectPhoto(
+            project_id=project.id,
+            file_path="projects/test/photo.jpg",
             filename="photo.jpg",
             file_size_bytes=512_000,
             display_order=1,
@@ -221,7 +221,7 @@ class TestAdminStats:
         assert "active_30d" in data
         assert "active_90d" in data
         assert "total_drafts" in data
-        assert "total_activities" in data
+        assert "total_projects" in data
         assert "total_looms" in data
         assert "total_yarn" in data
         assert "pending_invites" in data
@@ -239,20 +239,20 @@ class TestAdminStats:
         )
         db_session.add(draft)
         await db_session.flush()
-        activity = Activity(
+        project = Project(
             owner_id=admin_user.id,
             draft_id=draft.id,
-            name="Stats Storage Activity",
-            activity_type="treadle",
+            name="Stats Storage Project",
+            project_type="treadle",
             status="active",
             total_picks=100,
         )
-        db_session.add(activity)
+        db_session.add(project)
         await db_session.flush()
         db_session.add(
-            ActivityPhoto(
-                activity_id=activity.id,
-                file_path="activities/stats/photo.jpg",
+            ProjectPhoto(
+                project_id=project.id,
+                file_path="projects/stats/photo.jpg",
                 filename="photo.jpg",
                 file_size_bytes=1_048_576,
                 display_order=1,

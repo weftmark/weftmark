@@ -4,17 +4,17 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.activity import Activity, ActivityPhoto
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
+from app.models.project import Project, ProjectPhoto
 
 MAX_USER_STORAGE_BYTES = 500 * 1024 * 1024  # 500 MB
 
 
 async def get_user_storage_used(user_id: uuid.UUID, db: AsyncSession) -> int:
-    activity_bytes = await db.scalar(
-        select(func.coalesce(func.sum(ActivityPhoto.file_size_bytes), 0))
-        .join(Activity, ActivityPhoto.activity_id == Activity.id)
-        .where(Activity.owner_id == user_id)
+    project_bytes = await db.scalar(
+        select(func.coalesce(func.sum(ProjectPhoto.file_size_bytes), 0))
+        .join(Project, ProjectPhoto.project_id == Project.id)
+        .where(Project.owner_id == user_id)
     )
     loom_version_bytes = await db.scalar(
         select(func.coalesce(func.sum(LoomVersionPhoto.file_size_bytes), 0))
@@ -22,7 +22,7 @@ async def get_user_storage_used(user_id: uuid.UUID, db: AsyncSession) -> int:
         .join(Loom, LoomVersion.loom_id == Loom.id)
         .where(Loom.owner_id == user_id)
     )
-    return int(activity_bytes or 0) + int(loom_version_bytes or 0)
+    return int(project_bytes or 0) + int(loom_version_bytes or 0)
 
 
 async def check_storage_quota(user_id: uuid.UUID, db: AsyncSession, incoming_bytes: int = 0) -> None:

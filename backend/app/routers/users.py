@@ -19,11 +19,11 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
-from app.models.activity import Activity, ActivityPhoto, ActivityStep
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionAccessory, LoomVersionPhoto, LoomVersionReceipt
+from app.models.project import Project, ProjectPhoto, ProjectStep
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
@@ -261,11 +261,9 @@ async def data_export(_: User = Depends(get_current_user)) -> dict:
 async def _purge_user_storage(db: AsyncSession, user_id: uuid.UUID) -> None:
     """Delete all S3/local files belonging to the user. Storage errors are logged but not fatal."""
 
-    # Activity photos
+    # Project photos
     photos = await db.scalars(
-        select(ActivityPhoto)
-        .join(Activity, ActivityPhoto.activity_id == Activity.id)
-        .where(Activity.owner_id == user_id)
+        select(ProjectPhoto).join(Project, ProjectPhoto.project_id == Project.id).where(Project.owner_id == user_id)
     )
     for p in photos.all():
         _safe_delete(p.file_path)
@@ -317,10 +315,10 @@ def _safe_delete(path: str) -> None:
 
 async def _purge_user_db(db: AsyncSession, user_id: uuid.UUID, user: User) -> None:
     """Hard-delete all DB rows belonging to the user in FK-safe order."""
-    activity_ids_subq = select(Activity.id).where(Activity.owner_id == user_id)
-    await db.execute(delete(ActivityStep).where(ActivityStep.activity_id.in_(activity_ids_subq)))
-    await db.execute(delete(ActivityPhoto).where(ActivityPhoto.activity_id.in_(activity_ids_subq)))
-    await db.execute(delete(Activity).where(Activity.owner_id == user_id))
+    project_ids_subq = select(Project.id).where(Project.owner_id == user_id)
+    await db.execute(delete(ProjectStep).where(ProjectStep.project_id.in_(project_ids_subq)))
+    await db.execute(delete(ProjectPhoto).where(ProjectPhoto.project_id.in_(project_ids_subq)))
+    await db.execute(delete(Project).where(Project.owner_id == user_id))
 
     yarn_ids_subq = select(Yarn.id).where(Yarn.owner_id == user_id)
     await db.execute(delete(Skein).where(Skein.yarn_id.in_(yarn_ids_subq)))

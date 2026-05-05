@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { listActivities, ACTIVITY_TYPE_LABELS } from "@/api/activities";
+import { listProjects, PROJECT_TYPE_LABELS } from "@/api/projects";
 import { listDrafts } from "@/api/drafts";
 import { listLooms } from "@/api/looms";
 import { AppIcons } from "@/lib/icons";
@@ -9,9 +9,9 @@ import { AppIcons } from "@/lib/icons";
 export function DashboardPage() {
   const { user } = useAuth();
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => listActivities(),
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => listProjects(),
   });
 
   const { data: drafts = [] } = useQuery({
@@ -24,9 +24,9 @@ export function DashboardPage() {
     queryFn: listLooms,
   });
 
-  const activeActivities = activities.filter((a) => a.status === "active" && !!a.loom_id);
-  const planningActivities = activities.filter((a) => a.status === "active" && !a.loom_id);
-  const completedCount = activities.filter((a) => a.status === "completed").length;
+  const activeProjects = projects.filter((a) => a.status === "active" && !!a.loom_id);
+  const planningProjects = projects.filter((a) => a.status === "active" && !a.loom_id);
+  const completedCount = projects.filter((a) => a.status === "completed").length;
 
   return (
     <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
@@ -127,18 +127,18 @@ export function DashboardPage() {
         )}
       </section>
 
-      {/* Activities */}
+      {/* Projects */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Activities</h2>
-          <Link to="/activities" className="text-xs text-muted-foreground hover:text-foreground">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Projects</h2>
+          <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
             View all →
           </Link>
         </div>
 
-        {activeActivities.length > 0 && (
+        {activeProjects.length > 0 && (
           <div className="space-y-3 mb-3">
-            {activeActivities.map((a) => {
+            {activeProjects.map((a) => {
               const pct =
                 a.total_picks > 0
                   ? Math.round((Math.min(a.current_pick - 1, a.total_picks) / a.total_picks) * 100)
@@ -146,18 +146,18 @@ export function DashboardPage() {
               return (
                 <Link
                   key={a.id}
-                  to={`/activities/${a.id}`}
+                  to={`/projects/${a.id}`}
                   className="flex items-center gap-4 rounded-lg border p-4 hover:border-ring transition-colors"
                 >
                   <div className="shrink-0">
-                    {a.activity_type === "treadle"
+                    {a.project_type === "treadle"
                       ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
                       : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{a.name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {ACTIVITY_TYPE_LABELS[a.activity_type]}
+                      {PROJECT_TYPE_LABELS[a.project_type]}
                     </p>
                     <div className="mt-2">
                       <div className="mb-1 flex justify-between text-xs text-muted-foreground">
@@ -181,12 +181,12 @@ export function DashboardPage() {
           </div>
         )}
 
-        {planningActivities.length > 0 && (
+        {planningProjects.length > 0 && (
           <div className="space-y-2 mb-3">
-            {planningActivities.map((a) => (
+            {planningProjects.map((a) => (
               <Link
                 key={a.id}
-                to={`/activities/${a.id}`}
+                to={`/projects/${a.id}`}
                 className="flex items-center gap-4 rounded-lg border px-4 py-3 hover:border-ring transition-colors"
               >
                 <AppIcons.planning className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
@@ -202,14 +202,14 @@ export function DashboardPage() {
           </div>
         )}
 
-        {activeActivities.length === 0 && planningActivities.length === 0 && (
+        {activeProjects.length === 0 && planningProjects.length === 0 && (
           <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">No active activities.</p>
+            <p className="text-sm text-muted-foreground">No active projects.</p>
             <Link
-              to="/activities"
+              to="/projects"
               className="mt-2 inline-block text-sm text-foreground underline underline-offset-2"
             >
-              Start or plan an activity →
+              Start or plan a project →
             </Link>
           </div>
         )}
@@ -225,7 +225,7 @@ export function DashboardPage() {
           <div className="rounded-lg border p-4 flex items-center gap-3">
             <AppIcons.activityActive className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div>
-              <p className="text-2xl font-bold tabular-nums">{activeActivities.length + planningActivities.length}</p>
+              <p className="text-2xl font-bold tabular-nums">{activeProjects.length + planningProjects.length}</p>
               <p className="text-xs text-muted-foreground">Active</p>
             </div>
           </div>

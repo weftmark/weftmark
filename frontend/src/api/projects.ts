@@ -1,25 +1,25 @@
-export type ActivityType = "treadle" | "lift";
-export type ActivityStatus = "active" | "completed" | "abandoned";
+export type ProjectType = "treadle" | "lift";
+export type ProjectStatus = "active" | "completed" | "abandoned";
 
-export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
+export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
   treadle: "Treadle tracking",
   lift: "Lift tracking",
 };
 
-export const ACTIVITY_STATUS_LABELS: Record<ActivityStatus, string> = {
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   active: "Active",
   completed: "Completed",
   abandoned: "Abandoned",
 };
 
-export interface ActivitySummary {
+export interface ProjectSummary {
   id: string;
   draft_id: string;
   loom_id: string | null;
   loom_version_id: string | null;
   name: string;
-  activity_type: ActivityType;
-  status: ActivityStatus;
+  project_type: ProjectType;
+  status: ProjectStatus;
   current_pick: number;
   total_picks: number;
   num_items: number;
@@ -29,14 +29,14 @@ export interface ActivitySummary {
   created_at: string;
 }
 
-export interface ActivityPhoto {
+export interface ProjectPhoto {
   id: string;
   filename: string;
   display_order: number;
   created_at: string;
 }
 
-export interface ActivityDetail extends ActivitySummary {
+export interface ProjectDetail extends ProjectSummary {
   finished_length_per_item: string | null;
   waste_between_items: string | null;
   warp_waste_allowance: string | null;
@@ -49,13 +49,13 @@ export interface ActivityDetail extends ActivitySummary {
   draft_effective_num_shafts: number | null;
   draft_metadata_overrides: Record<string, { original: number | null; override: number }> | null;
   loom_name: string | null;
-  photos: ActivityPhoto[];
+  photos: ProjectPhoto[];
 }
 
-export interface CreateActivityPayload {
+export interface CreateProjectPayload {
   name: string;
   draft_id: string;
-  activity_type: ActivityType;
+  project_type: ProjectType;
   loom_id?: string;
   loom_version_id?: string;
   finished_length_per_item?: number;
@@ -72,7 +72,7 @@ export interface PickRow {
 }
 
 export interface PicksResponse {
-  activity_type: ActivityType;
+  project_type: ProjectType;
   total_picks: number;
   picks: PickRow[];
   has_weft_colors: boolean;
@@ -104,92 +104,92 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function listActivities(params?: { draftId?: string; loomId?: string }): Promise<ActivitySummary[]> {
+export function listProjects(params?: { draftId?: string; loomId?: string }): Promise<ProjectSummary[]> {
   const qs = new URLSearchParams();
   if (params?.draftId) qs.set("draft_id", params.draftId);
   if (params?.loomId) qs.set("loom_id", params.loomId);
   const query = qs.size ? `?${qs}` : "";
-  return req(`/api/activities${query}`);
+  return req(`/api/projects${query}`);
 }
 
-export function getActivity(id: string): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}`);
+export function getProject(id: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}`);
 }
 
-export function createActivity(payload: CreateActivityPayload): Promise<ActivityDetail> {
-  return req("/api/activities", {
+export function createProject(payload: CreateProjectPayload): Promise<ProjectDetail> {
+  return req("/api/projects", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
-export function stepActivity(id: string, direction: "advance" | "reverse"): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}/step`, {
+export function stepProject(id: string, direction: "advance" | "reverse"): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/step`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ direction }),
   });
 }
 
-export function completeActivity(id: string): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}/complete`, { method: "POST" });
+export function completeProject(id: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/complete`, { method: "POST" });
 }
 
-export function abandonActivity(id: string): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}/abandon`, { method: "POST" });
+export function abandonProject(id: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/abandon`, { method: "POST" });
 }
 
-export function renameActivity(id: string, name: string): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}`, {
+export function renameProject(id: string, name: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
   });
 }
 
-export function restartActivity(id: string): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}/restart`, { method: "POST" });
+export function restartProject(id: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/restart`, { method: "POST" });
 }
 
-export function cloneActivity(id: string): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}/clone`, { method: "POST" });
+export function cloneProject(id: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/clone`, { method: "POST" });
 }
 
-export function jumpActivity(id: string, pick: number): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}/jump`, {
+export function jumpProject(id: string, pick: number): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/jump`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ pick }),
   });
 }
 
-export function assignLoom(id: string, loomId: string, loomVersionId?: string): Promise<ActivityDetail> {
-  return req(`/api/activities/${id}/assign-loom`, {
+export function assignLoom(id: string, loomId: string, loomVersionId?: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/assign-loom`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ loom_id: loomId, loom_version_id: loomVersionId ?? null }),
   });
 }
 
-export function deleteActivity(id: string): Promise<void> {
-  return req(`/api/activities/${id}`, { method: "DELETE" });
+export function deleteProject(id: string): Promise<void> {
+  return req(`/api/projects/${id}`, { method: "DELETE" });
 }
 
-export function getActivityPicks(id: string): Promise<PicksResponse> {
-  return req(`/api/activities/${id}/picks`);
+export function getProjectPicks(id: string): Promise<PicksResponse> {
+  return req(`/api/projects/${id}/picks`);
 }
 
-export function activityPhotoUrl(activityId: string, photoId: string): string {
-  return `/api/activities/${activityId}/photos/${photoId}`;
+export function projectPhotoUrl(projectId: string, photoId: string): string {
+  return `/api/projects/${projectId}/photos/${photoId}`;
 }
 
-export function uploadActivityPhoto(activityId: string, file: File): Promise<ActivityPhoto> {
+export function uploadProjectPhoto(projectId: string, file: File): Promise<ProjectPhoto> {
   const body = new FormData();
   body.append("file", file);
-  return req(`/api/activities/${activityId}/photos`, { method: "POST", body });
+  return req(`/api/projects/${projectId}/photos`, { method: "POST", body });
 }
 
-export function deleteActivityPhoto(activityId: string, photoId: string): Promise<void> {
-  return req(`/api/activities/${activityId}/photos/${photoId}`, { method: "DELETE" });
+export function deleteProjectPhoto(projectId: string, photoId: string): Promise<void> {
+  return req(`/api/projects/${projectId}/photos/${photoId}`, { method: "DELETE" });
 }

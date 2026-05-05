@@ -37,7 +37,7 @@ export const AppIcons = {
   dashboard: LayoutDashboard,
   drafts: FolderOpen,
   draft: Scroll,
-  activities: Activity,
+  projects: Activity,
   equipment: Wrench,
   settings: Settings,
   admin: ShieldCheck,

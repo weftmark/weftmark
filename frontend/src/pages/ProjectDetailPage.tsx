@@ -3,15 +3,15 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getActivity, getActivityPicks, stepActivity, jumpActivity, completeActivity, abandonActivity,
-  restartActivity, cloneActivity, listActivities, deleteActivity,
-  renameActivity, uploadActivityPhoto, deleteActivityPhoto, activityPhotoUrl,
-  ApiError, ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS,
-  type ActivitySummary, type ActivityPhoto, type PickRow,
-} from "@/api/activities";
+  getProject, getProjectPicks, stepProject, jumpProject, completeProject, abandonProject,
+  restartProject, cloneProject, listProjects, deleteProject,
+  renameProject, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
+  ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
+  type ProjectSummary, type ProjectPhoto, type PickRow,
+} from "@/api/projects";
 import { previewUrl } from "@/api/drafts";
 import { getAuthToken } from "@/api/client";
-import { AssignLoomModal } from "@/components/activities/AssignLoomModal";
+import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button } from "@/components/ui/button";
 
@@ -94,13 +94,13 @@ function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: ()
 function PickDisplay({
   pick,
   totalCount,
-  activityType,
+  projectType,
   colorMode,
   showWeftColor,
 }: {
   pick: PickRow;
   totalCount: number;
-  activityType: string;
+  projectType: string;
   colorMode: ColorMode;
   showWeftColor: boolean;
 }) {
@@ -111,7 +111,7 @@ function PickDisplay({
     <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4">
       {/* Activity type icon — centered vertically */}
       <div className="shrink-0 flex items-center text-primary/50">
-        {activityType === "lift" ? (
+        {projectType === "lift" ? (
           <AppIcons.lift className="h-8 w-8" strokeWidth={1.5} />
         ) : (
           <AppIcons.treadle className="h-8 w-8" strokeWidth={1.5} />
@@ -585,14 +585,14 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 // ---------------------------------------------------------------------------
 
 function PhotoGrid({
-  activityId,
+  projectId,
   photos,
   onUploaded,
   onDeleted,
 }: {
-  activityId: string;
-  photos: ActivityPhoto[];
-  onUploaded: (p: ActivityPhoto) => void;
+  projectId: string;
+  photos: ProjectPhoto[];
+  onUploaded: (p: ProjectPhoto) => void;
   onDeleted: (id: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -608,7 +608,7 @@ function PhotoGrid({
     try {
       for (const file of Array.from(files)) {
         if (photos.length >= 10) { setError("Maximum 10 photos reached."); break; }
-        const photo = await uploadActivityPhoto(activityId, file);
+        const photo = await uploadProjectPhoto(projectId, file);
         onUploaded(photo);
       }
     } catch (e) {
@@ -619,7 +619,7 @@ function PhotoGrid({
   };
 
   const handleDelete = async (photoId: string) => {
-    await deleteActivityPhoto(activityId, photoId);
+    await deleteProjectPhoto(projectId, photoId);
     onDeleted(photoId);
     setConfirmDeleteId(null);
   };
@@ -662,7 +662,7 @@ function PhotoGrid({
           {photos.map((p) => (
             <div key={p.id} className="group relative aspect-square">
               <AuthedImage
-                src={activityPhotoUrl(activityId, p.id)}
+                src={projectPhotoUrl(projectId, p.id)}
                 alt={p.filename}
                 className="w-full h-full object-cover rounded-md border cursor-pointer"
                 onClick={() => setLightbox(p.id)}
@@ -695,7 +695,7 @@ function PhotoGrid({
           onClick={() => setLightbox(null)}
         >
           <AuthedImage
-            src={activityPhotoUrl(activityId, lightbox)}
+            src={projectPhotoUrl(projectId, lightbox)}
             alt=""
             className="max-h-full max-w-full rounded-lg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -728,11 +728,11 @@ function CompletedSummary({
   siblings,
   onPhotosChange,
 }: {
-  activity: import("@/api/activities").ActivityDetail;
-  siblings: ActivitySummary[];
-  onPhotosChange: (photos: ActivityPhoto[]) => void;
+  activity: import("@/api/projects").ProjectDetail;
+  siblings: ProjectSummary[];
+  onPhotosChange: (photos: ProjectPhoto[]) => void;
 }) {
-  const [photos, setPhotos] = useState<ActivityPhoto[]>(activity.photos);
+  const [photos, setPhotos] = useState<ProjectPhoto[]>(activity.photos);
 
   const pct = activity.total_picks > 0
     ? Math.round(((activity.current_pick - 1) / activity.total_picks) * 100)
@@ -741,7 +741,7 @@ function CompletedSummary({
     ? new Date(activity.completed_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
     : null;
 
-  const handleUploaded = (p: ActivityPhoto) => {
+  const handleUploaded = (p: ProjectPhoto) => {
     const next = [...photos, p];
     setPhotos(next);
     onPhotosChange(next);
@@ -776,7 +776,7 @@ function CompletedSummary({
             <dd>{activity.warp_waste_allowance} {activity.length_unit}</dd></>
           )}
           <dt className="text-muted-foreground">Type</dt>
-          <dd>{ACTIVITY_TYPE_LABELS[activity.activity_type]}</dd>
+          <dd>{PROJECT_TYPE_LABELS[activity.project_type]}</dd>
         </dl>
       </div>
 
@@ -816,11 +816,11 @@ function CompletedSummary({
       {/* Sibling activities */}
       {siblings.length > 0 && (
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other activities on this draft</h2>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other projects on this draft</h2>
           <div className="space-y-1">
             {siblings.map((s) => {
               const isPlanning = s.status === "active" && !s.loom_id;
-              const label = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[s.status];
+              const label = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[s.status];
               const badgeCls = isPlanning
                 ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                 : s.status === "active"
@@ -829,7 +829,7 @@ function CompletedSummary({
               return (
                 <Link
                   key={s.id}
-                  to={`/activities/${s.id}`}
+                  to={`/projects/${s.id}`}
                   className="flex items-center justify-between rounded-md border px-3 py-2 text-sm hover:border-ring transition-colors"
                 >
                   <span>{s.name}</span>
@@ -843,7 +843,7 @@ function CompletedSummary({
 
       {/* Photos */}
       <PhotoGrid
-        activityId={activity.id}
+        projectId={activity.id}
         photos={photos}
         onUploaded={handleUploaded}
         onDeleted={handleDeleted}
@@ -856,7 +856,7 @@ function CompletedSummary({
 // Page
 // ---------------------------------------------------------------------------
 
-export function ActivityDetailPage() {
+export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -873,19 +873,19 @@ export function ActivityDetailPage() {
   const [confirmClone, setConfirmClone] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [cloneConflict, setCloneConflict] = useState<ActivitySummary | null>(null);
-  const [restartConflict, setRestartConflict] = useState<ActivitySummary | null>(null);
+  const [cloneConflict, setCloneConflict] = useState<ProjectSummary | null>(null);
+  const [restartConflict, setRestartConflict] = useState<ProjectSummary | null>(null);
   const [localPick, setLocalPick] = useState(1);
 
   const { data: activity, isLoading, error } = useQuery({
-    queryKey: ["activity", id],
-    queryFn: () => getActivity(id!),
+    queryKey: ["project", id],
+    queryFn: () => getProject(id!),
     enabled: !!id,
   });
 
   const { data: picksData } = useQuery({
-    queryKey: ["activity-picks", id],
-    queryFn: () => getActivityPicks(id!),
+    queryKey: ["project-picks", id],
+    queryFn: () => getProjectPicks(id!),
     enabled: !!id,
     staleTime: Infinity,
   });
@@ -894,25 +894,25 @@ export function ActivityDetailPage() {
   const isCompleted = activity?.status === "completed";
 
   const { data: allActivities = [] } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => listActivities(),
+    queryKey: ["projects"],
+    queryFn: () => listProjects(),
     enabled: isPlanning || showAssignLoom,
   });
 
   const { data: siblingActivities = [] } = useQuery({
-    queryKey: ["activities", { draftId: activity?.draft_id }],
-    queryFn: () => listActivities({ draftId: activity!.draft_id }),
+    queryKey: ["projects", { draftId: activity?.draft_id }],
+    queryFn: () => listProjects({ draftId: activity!.draft_id }),
     enabled: isCompleted && !!activity?.draft_id,
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["activity", id] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["project", id] });
 
   const handleJump = useCallback(async (pick: number) => {
     if (!id || stepping) return;
     setStepping(true);
     try {
-      const updated = await jumpActivity(id, pick);
-      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+      const updated = await jumpProject(id, pick);
+      queryClient.setQueryData<typeof activity>(["project", id], (old) =>
         old ? { ...updated, photos: old.photos } : updated
       );
     } finally {
@@ -924,8 +924,8 @@ export function ActivityDetailPage() {
     if (!id || stepping) return;
     setStepping(true);
     try {
-      const updated = await stepActivity(id, direction);
-      queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+      const updated = await stepProject(id, direction);
+      queryClient.setQueryData<typeof activity>(["project", id], (old) =>
         old ? { ...updated, photos: old.photos } : updated
       );
     } finally {
@@ -964,14 +964,14 @@ export function ActivityDetailPage() {
   const handleComplete = async () => {
     if (!id) return;
     setActionLoading(true);
-    try { await completeActivity(id); invalidate(); setConfirmComplete(false); }
+    try { await completeProject(id); invalidate(); setConfirmComplete(false); }
     finally { setActionLoading(false); }
   };
 
   const handleAbandon = async () => {
     if (!id) return;
     setActionLoading(true);
-    try { await abandonActivity(id); invalidate(); setConfirmAbandon(false); }
+    try { await abandonProject(id); invalidate(); setConfirmAbandon(false); }
     finally { setActionLoading(false); }
   };
 
@@ -979,14 +979,14 @@ export function ActivityDetailPage() {
     if (!id) return;
     setActionLoading(true);
     try {
-      await restartActivity(id);
+      await restartProject(id);
       invalidate();
       setConfirmRestart(false);
       setRestartConflict(null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && activity?.loom_id) {
-        const activities = await listActivities().catch(() => []);
-        setRestartConflict(activities.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
+        const projects = await listProjects().catch(() => []);
+        setRestartConflict(projects.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
         setConfirmRestart(false);
       }
     } finally { setActionLoading(false); }
@@ -996,9 +996,9 @@ export function ActivityDetailPage() {
     if (!restartConflict || !id) return;
     setActionLoading(true);
     try {
-      if (resolve === "complete") await completeActivity(restartConflict.id);
-      else await abandonActivity(restartConflict.id);
-      await restartActivity(id);
+      if (resolve === "complete") await completeProject(restartConflict.id);
+      else await abandonProject(restartConflict.id);
+      await restartProject(id);
       invalidate();
       setRestartConflict(null);
     } finally { setActionLoading(false); }
@@ -1008,14 +1008,14 @@ export function ActivityDetailPage() {
     if (!id) return;
     setActionLoading(true);
     try {
-      const cloned = await cloneActivity(id);
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
+      const cloned = await cloneProject(id);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setConfirmClone(false);
-      navigate(`/activities/${cloned.id}`);
+      navigate(`/projects/${cloned.id}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && activity?.loom_id) {
-        const activities = await listActivities().catch(() => []);
-        setCloneConflict(activities.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
+        const projects = await listProjects().catch(() => []);
+        setCloneConflict(projects.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
         setConfirmClone(false);
       }
     } finally { setActionLoading(false); }
@@ -1025,12 +1025,12 @@ export function ActivityDetailPage() {
     if (!cloneConflict || !id) return;
     setActionLoading(true);
     try {
-      if (resolve === "complete") await completeActivity(cloneConflict.id);
-      else await abandonActivity(cloneConflict.id);
-      const cloned = await cloneActivity(id);
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
+      if (resolve === "complete") await completeProject(cloneConflict.id);
+      else await abandonProject(cloneConflict.id);
+      const cloned = await cloneProject(id);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setCloneConflict(null);
-      navigate(`/activities/${cloned.id}`);
+      navigate(`/projects/${cloned.id}`);
     } finally { setActionLoading(false); }
   };
 
@@ -1038,9 +1038,9 @@ export function ActivityDetailPage() {
     if (!id) return;
     setActionLoading(true);
     try {
-      await deleteActivity(id);
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-      navigate("/activities", { replace: true });
+      await deleteProject(id);
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      navigate("/projects", { replace: true });
     } finally { setActionLoading(false); }
   };
 
@@ -1051,13 +1051,13 @@ export function ActivityDetailPage() {
   );
   if (error || !activity) return (
     <div className="flex min-h-screen items-center justify-center">
-      <p className="text-sm text-destructive">Activity not found.</p>
+      <p className="text-sm text-destructive">Project not found.</p>
     </div>
   );
 
   const displayPick = isPlanning ? localPick : activity.current_pick;
   const currentPickIndex = displayPick - 1;
-  const declaredCount = activity.activity_type === "lift"
+  const declaredCount = activity.project_type === "lift"
     ? (activity.draft_num_shafts ?? 0)
     : (activity.draft_num_treadles ?? 0);
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
@@ -1073,7 +1073,7 @@ export function ActivityDetailPage() {
     : activity.status === "active"
       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
       : "bg-muted text-muted-foreground";
-  const badgeLabel = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[activity.status];
+  const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[activity.status];
 
   return (
     <div className="flex flex-col">
@@ -1090,7 +1090,7 @@ export function ActivityDetailPage() {
             )}
             <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            <Link to="/activities" className="text-muted-foreground hover:text-foreground">Activities</Link>
+            <Link to="/projects" className="text-muted-foreground hover:text-foreground">Projects</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           {editingName ? (
@@ -1099,11 +1099,11 @@ export function ActivityDetailPage() {
                 e.preventDefault();
                 const trimmed = nameInput.trim();
                 if (!trimmed) { setEditingName(false); return; }
-                const updated = await renameActivity(id!, trimmed);
-                queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                const updated = await renameProject(id!, trimmed);
+                queryClient.setQueryData<typeof activity>(["project", id], (old) =>
                   old ? { ...updated, photos: old.photos } : updated
                 );
-                queryClient.invalidateQueries({ queryKey: ["activities"] });
+                queryClient.invalidateQueries({ queryKey: ["projects"] });
                 setEditingName(false);
               }}
               className="flex items-center gap-2 min-w-0"
@@ -1117,11 +1117,11 @@ export function ActivityDetailPage() {
                 onBlur={async () => {
                   const trimmed = nameInput.trim();
                   if (trimmed && trimmed !== activity.name) {
-                    const updated = await renameActivity(id!, trimmed);
-                    queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                    const updated = await renameProject(id!, trimmed);
+                    queryClient.setQueryData<typeof activity>(["project", id], (old) =>
                       old ? { ...updated, photos: old.photos } : updated
                     );
-                    queryClient.invalidateQueries({ queryKey: ["activities"] });
+                    queryClient.invalidateQueries({ queryKey: ["projects"] });
                   }
                   setEditingName(false);
                 }}
@@ -1160,7 +1160,7 @@ export function ActivityDetailPage() {
             activity={activity}
             siblings={siblingActivities.filter((s) => s.id !== id)}
             onPhotosChange={(photos) =>
-              queryClient.setQueryData(["activity", id], { ...activity, photos })
+              queryClient.setQueryData(["project", id], { ...activity, photos })
             }
           />
         )}
@@ -1190,7 +1190,7 @@ export function ActivityDetailPage() {
         {isAbandoned && (
           <div className="mx-auto max-w-2xl px-8 pt-6">
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm">
-              <p className="font-medium text-copper-on-subtle">This activity was not completed</p>
+              <p className="font-medium text-copper-on-subtle">This project was not completed</p>
               <p className="mt-0.5 text-xs text-copper-on-subtle">
                 Abandoned at pick {activity.current_pick} of {activity.total_picks}
                 {" "}({Math.round((activity.current_pick - 1) / activity.total_picks * 100)}% woven)
@@ -1247,7 +1247,7 @@ export function ActivityDetailPage() {
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-lg font-medium">All {activity.total_picks} picks complete!</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Mark the activity as completed when you're done.
+                Mark the project as completed when you're done.
               </p>
               {isActiveTracking && (
                 <div className="mt-6">
@@ -1255,7 +1255,7 @@ export function ActivityDetailPage() {
                     <Button onClick={() => setConfirmComplete(true)}>Mark complete</Button>
                   ) : (
                     <div className="flex items-center justify-center gap-2">
-                      <span className="text-sm">Mark this activity as completed?</span>
+                      <span className="text-sm">Mark this project as completed?</span>
                       <Button size="sm" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
                       <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
                     </div>
@@ -1267,7 +1267,7 @@ export function ActivityDetailPage() {
             <PickDisplay
               pick={picksData.picks[currentPickIndex]}
               totalCount={maxActive}
-              activityType={activity.activity_type}
+              projectType={activity.project_type}
               colorMode={colorMode}
               showWeftColor={showWeftColor}
             />
@@ -1341,15 +1341,15 @@ export function ActivityDetailPage() {
           {!isCompleted && (
             <CollapsibleSection title={`Photos (${activity.photos.length}/10)`} defaultOpen={isAbandoned}>
               <PhotoGrid
-                activityId={activity.id}
+                projectId={activity.id}
                 photos={activity.photos}
                 onUploaded={(p) =>
-                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                  queryClient.setQueryData<typeof activity>(["project", id], (old) =>
                     old ? { ...old, photos: [...old.photos, p] } : old
                   )
                 }
                 onDeleted={(photoId) =>
-                  queryClient.setQueryData<typeof activity>(["activity", id], (old) =>
+                  queryClient.setQueryData<typeof activity>(["project", id], (old) =>
                     old ? { ...old, photos: old.photos.filter((ph) => ph.id !== photoId) } : old
                   )
                 }
@@ -1360,7 +1360,7 @@ export function ActivityDetailPage() {
           <CollapsibleSection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <dt className="text-muted-foreground">Type</dt>
-              <dd>{ACTIVITY_TYPE_LABELS[activity.activity_type]}</dd>
+              <dd>{PROJECT_TYPE_LABELS[activity.project_type]}</dd>
               {activity.loom_name && (
                 <><dt className="text-muted-foreground">Loom</dt><dd>{activity.loom_name}</dd></>
               )}
@@ -1412,14 +1412,14 @@ export function ActivityDetailPage() {
                 )}
                 {confirmComplete && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">Mark this activity as completed?</span>
+                    <span className="text-sm">Mark this project as completed?</span>
                     <Button size="sm" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
                   </div>
                 )}
                 {confirmAbandon && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-destructive">Abandon this activity?</span>
+                    <span className="text-sm text-destructive">Abandon this project?</span>
                     <Button size="sm" onClick={handleAbandon} disabled={actionLoading}>Confirm</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmAbandon(false)} disabled={actionLoading}>Cancel</Button>
                   </div>
@@ -1433,7 +1433,7 @@ export function ActivityDetailPage() {
               <div className="space-y-3">
                 {!confirmRestart && !restartConflict && (
                   <Button variant="outline" size="sm" onClick={() => setConfirmRestart(true)}>
-                    Restart activity
+                    Restart project
                   </Button>
                 )}
                 {confirmRestart && (
@@ -1446,7 +1446,7 @@ export function ActivityDetailPage() {
                 {restartConflict && (
                   <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
                     <p className="font-medium text-copper-on-subtle">
-                      This loom has an active activity: <span className="font-semibold">{restartConflict.name}</span>
+                      This loom has an active project: <span className="font-semibold">{restartConflict.name}</span>
                     </p>
                     <p className="text-copper-on-subtle text-xs">Resolve it to restart this one.</p>
                     <div className="flex flex-wrap gap-2 pt-1">
@@ -1466,17 +1466,17 @@ export function ActivityDetailPage() {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Clone activity">
+          <CollapsibleSection title="Clone project">
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Create a new activity with the same configuration, starting at pick 1.</p>
+              <p className="text-xs text-muted-foreground">Create a new project with the same configuration, starting at pick 1.</p>
               {!confirmClone && !cloneConflict && (
                 <Button variant="outline" size="sm" onClick={() => setConfirmClone(true)}>
-                  Clone activity
+                  Clone project
                 </Button>
               )}
               {confirmClone && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">Start a new activity with the same settings?</span>
+                  <span className="text-sm">Start a new project with the same settings?</span>
                   <Button size="sm" onClick={handleClone} disabled={actionLoading}>{actionLoading ? "Cloning…" : "Confirm"}</Button>
                   <Button size="sm" variant="outline" onClick={() => setConfirmClone(false)} disabled={actionLoading}>Cancel</Button>
                 </div>
@@ -1484,7 +1484,7 @@ export function ActivityDetailPage() {
               {cloneConflict && (
                 <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
                   <p className="font-medium text-copper-on-subtle">
-                    This loom has an active activity: <span className="font-semibold">{cloneConflict.name}</span>
+                    This loom has an active project: <span className="font-semibold">{cloneConflict.name}</span>
                   </p>
                   <p className="text-copper-on-subtle text-xs">Resolve it to start the clone.</p>
                   <div className="flex flex-wrap gap-2 pt-1">
@@ -1506,12 +1506,12 @@ export function ActivityDetailPage() {
           <CollapsibleSection title="Danger zone">
             {!confirmDelete ? (
               <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>
-                Delete activity
+                Delete project
               </Button>
             ) : (
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-sm text-destructive">
-                  Delete this activity and all step history? This cannot be undone.
+                  Delete this project and all step history? This cannot be undone.
                 </p>
                 <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={actionLoading}>
                   Cancel
@@ -1539,9 +1539,9 @@ export function ActivityDetailPage() {
 
       {showAssignLoom && (
         <AssignLoomModal
-          activityId={activity.id}
-          activeActivities={allActivities.filter((a) => a.status === "active")}
-          activityType={activity.activity_type}
+          projectId={activity.id}
+          activeProjects={allActivities.filter((a) => a.status === "active")}
+          projectType={activity.project_type}
           draftNumTreadles={activity.draft_num_treadles}
           draftNumShafts={activity.draft_num_shafts}
           draftEffectiveNumTreadles={activity.draft_effective_num_treadles}
@@ -1549,7 +1549,7 @@ export function ActivityDetailPage() {
           onSuccess={() => {
             setShowAssignLoom(false);
             invalidate();
-            queryClient.invalidateQueries({ queryKey: ["activities"] });
+            queryClient.invalidateQueries({ queryKey: ["projects"] });
           }}
           onClose={() => setShowAssignLoom(false)}
         />

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 @dataclass
 class PickData:
-    activity_type: str  # "treadle" | "lift"
+    project_type: str  # "treadle" | "lift"
     total_picks: int
     picks: list[list[int]]  # index 0 = pick 1; each inner list = active treadles/shafts
     weft_colors: list[str | None]  # hex color per pick (e.g. "#ff0000"), None if undefined
@@ -52,7 +52,7 @@ def _color_table(config: RawConfigParser, scale: int) -> dict[int, str]:
     return table
 
 
-def parse_picks(wif_bytes: bytes, activity_type: str) -> PickData:
+def parse_picks(wif_bytes: bytes, project_type: str) -> PickData:
     try:
         text = wif_bytes.decode("utf-8")
     except UnicodeDecodeError:
@@ -62,7 +62,7 @@ def parse_picks(wif_bytes: bytes, activity_type: str) -> PickData:
     config.optionxform = str
     config.read_string(text)
 
-    section = "TREADLING" if activity_type == "treadle" else "LIFTPLAN"
+    section = "TREADLING" if project_type == "treadle" else "LIFTPLAN"
 
     if not config.has_section(section):
         raise ValueError(f"WIF file has no [{section}] section")
@@ -93,7 +93,7 @@ def parse_picks(wif_bytes: bytes, activity_type: str) -> PickData:
         colors.get(weft_color_map[i]) if i in weft_color_map else None for i in range(1, max_pick + 1)
     ]
 
-    return PickData(activity_type=activity_type, total_picks=max_pick, picks=picks, weft_colors=weft_colors)
+    return PickData(project_type=project_type, total_picks=max_pick, picks=picks, weft_colors=weft_colors)
 
 
 def compute_liftplan(wif_bytes: bytes) -> bytes:

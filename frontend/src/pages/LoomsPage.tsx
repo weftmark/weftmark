@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { listLooms, type Loom } from "@/api/looms";
 import { AppIcons } from "@/lib/icons";
-import { listActivities } from "@/api/activities";
+import { listProjects } from "@/api/projects";
 import { NewLoomModal } from "@/components/looms/NewLoomModal";
 import { Button } from "@/components/ui/button";
 
@@ -91,12 +91,12 @@ export function LoomsPage() {
     queryFn: listLooms,
   });
 
-  const { data: activities = [] } = useQuery({
-    queryKey: ["activities"],
-    queryFn: () => listActivities(),
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => listProjects(),
   });
 
-  const activityCountsByLoom = activities.reduce<Record<string, LoomActivityCounts>>(
+  const activityCountsByLoom = projects.reduce<Record<string, LoomActivityCounts>>(
     (acc, a) => {
       if (!a.loom_id) return acc;
       if (!acc[a.loom_id]) acc[a.loom_id] = { active: 0, completed: 0, abandoned: 0 };

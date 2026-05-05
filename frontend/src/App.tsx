@@ -20,8 +20,8 @@ import { LoomsPage } from "@/pages/LoomsPage";
 import { LoomDetailPage } from "@/pages/LoomDetailPage";
 import { YarnPage } from "@/pages/YarnPage";
 import { YarnDetailPage } from "@/pages/YarnDetailPage";
-import { ActivitiesPage } from "@/pages/ActivitiesPage";
-import { ActivityDetailPage } from "@/pages/ActivityDetailPage";
+import { ProjectsPage } from "@/pages/ProjectsPage";
+import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SignOutPage } from "@/pages/SignOutPage";
@@ -101,8 +101,8 @@ export default function App() {
                   <Route path="/looms/:id" element={<AuthRoute><LoomDetailPage /></AuthRoute>} />
                   <Route path="/yarn" element={<AuthRoute><YarnPage /></AuthRoute>} />
                   <Route path="/yarn/:id" element={<AuthRoute><YarnDetailPage /></AuthRoute>} />
-                  <Route path="/activities" element={<AuthRoute><ActivitiesPage /></AuthRoute>} />
-                  <Route path="/activities/:id" element={<AuthRoute><ActivityDetailPage /></AuthRoute>} />
+                  <Route path="/projects" element={<AuthRoute><ProjectsPage /></AuthRoute>} />
+                  <Route path="/projects/:id" element={<AuthRoute><ProjectDetailPage /></AuthRoute>} />
                   <Route path="/admin" element={<AuthRoute requireAdmin><AdminPage /></AuthRoute>} />
                   <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />
                   <Route path="/settings/:section" element={<AuthRoute><SettingsPage /></AuthRoute>} />

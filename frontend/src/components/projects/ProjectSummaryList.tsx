@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ACTIVITY_TYPE_LABELS, ACTIVITY_STATUS_LABELS, type ActivitySummary } from "@/api/activities";
+import { PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -13,24 +13,24 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function ActivityRow({ activity }: { activity: ActivitySummary }) {
-  const isPlanning = activity.status === "active" && !activity.loom_id;
-  const badgeKey = isPlanning ? "plan" : activity.status;
-  const badgeLabel = isPlanning ? "Plan" : ACTIVITY_STATUS_LABELS[activity.status];
-  const endDate = activity.status === "completed"
-    ? activity.completed_at
-    : activity.status === "abandoned"
-      ? activity.abandoned_at
+function ProjectRow({ project }: { project: ProjectSummary }) {
+  const isPlanning = project.status === "active" && !project.loom_id;
+  const badgeKey = isPlanning ? "plan" : project.status;
+  const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
+  const endDate = project.status === "completed"
+    ? project.completed_at
+    : project.status === "abandoned"
+      ? project.abandoned_at
       : null;
 
   return (
     <Link
-      to={`/activities/${activity.id}`}
+      to={`/projects/${project.id}`}
       className="flex items-center justify-between gap-3 rounded-md px-3 py-2 hover:bg-muted transition-colors"
     >
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{activity.name}</p>
-        <p className="text-xs text-muted-foreground">{ACTIVITY_TYPE_LABELS[activity.activity_type]}{endDate ? ` · ${fmtDate(endDate)}` : ""}</p>
+        <p className="truncate text-sm font-medium">{project.name}</p>
+        <p className="text-xs text-muted-foreground">{PROJECT_TYPE_LABELS[project.project_type]}{endDate ? ` · ${fmtDate(endDate)}` : ""}</p>
       </div>
       <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_COLORS[badgeKey]}`}>
         {badgeLabel}
@@ -39,7 +39,7 @@ function ActivityRow({ activity }: { activity: ActivitySummary }) {
   );
 }
 
-function YearGroup({ year, items, defaultOpen }: { year: number; items: ActivitySummary[]; defaultOpen: boolean }) {
+function YearGroup({ year, items, defaultOpen }: { year: number; items: ProjectSummary[]; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
@@ -52,15 +52,15 @@ function YearGroup({ year, items, defaultOpen }: { year: number; items: Activity
       </button>
       {open && (
         <div className="space-y-0.5">
-          {items.map((a) => <ActivityRow key={a.id} activity={a} />)}
+          {items.map((p) => <ProjectRow key={p.id} project={p} />)}
         </div>
       )}
     </div>
   );
 }
 
-function groupByYear(items: ActivitySummary[], getDate: (a: ActivitySummary) => string | null) {
-  const map = new Map<number, ActivitySummary[]>();
+function groupByYear(items: ProjectSummary[], getDate: (p: ProjectSummary) => string | null) {
+  const map = new Map<number, ProjectSummary[]>();
   for (const item of items) {
     const d = getDate(item);
     const year = d ? new Date(d).getFullYear() : new Date().getFullYear();
@@ -72,23 +72,23 @@ function groupByYear(items: ActivitySummary[], getDate: (a: ActivitySummary) => 
     .map(([year, items]) => ({ year, items }));
 }
 
-export function ActivitySummaryList({ activities }: { activities: ActivitySummary[] }) {
+export function ProjectSummaryList({ projects }: { projects: ProjectSummary[] }) {
   const currentYear = new Date().getFullYear();
 
-  const active = activities.filter((a) => a.status === "active" && !!a.loom_id);
-  const planning = activities.filter((a) => a.status === "active" && !a.loom_id);
-  const completed = activities
-    .filter((a) => a.status === "completed")
+  const active = projects.filter((p) => p.status === "active" && !!p.loom_id);
+  const planning = projects.filter((p) => p.status === "active" && !p.loom_id);
+  const completed = projects
+    .filter((p) => p.status === "completed")
     .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
-  const abandoned = activities
-    .filter((a) => a.status === "abandoned")
+  const abandoned = projects
+    .filter((p) => p.status === "abandoned")
     .sort((a, b) => (b.abandoned_at ?? "").localeCompare(a.abandoned_at ?? ""));
 
-  const completedByYear = groupByYear(completed, (a) => a.completed_at);
-  const abandonedByYear = groupByYear(abandoned, (a) => a.abandoned_at);
+  const completedByYear = groupByYear(completed, (p) => p.completed_at);
+  const abandonedByYear = groupByYear(abandoned, (p) => p.abandoned_at);
 
-  if (activities.length === 0) {
-    return <p className="text-sm text-muted-foreground">No activities yet.</p>;
+  if (projects.length === 0) {
+    return <p className="text-sm text-muted-foreground">No projects yet.</p>;
   }
 
   return (
@@ -97,7 +97,7 @@ export function ActivitySummaryList({ activities }: { activities: ActivitySummar
         <div>
           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Active</p>
           <div className="space-y-0.5">
-            {active.map((a) => <ActivityRow key={a.id} activity={a} />)}
+            {active.map((p) => <ProjectRow key={p.id} project={p} />)}
           </div>
         </div>
       )}
@@ -105,7 +105,7 @@ export function ActivitySummaryList({ activities }: { activities: ActivitySummar
         <div>
           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Planning</p>
           <div className="space-y-0.5">
-            {planning.map((a) => <ActivityRow key={a.id} activity={a} />)}
+            {planning.map((p) => <ProjectRow key={p.id} project={p} />)}
           </div>
         </div>
       )}
