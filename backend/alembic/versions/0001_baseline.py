@@ -1,16 +1,18 @@
-"""Schema baseline — squash of migrations 0001-0007 (through project→draft rename).
+"""Schema baseline — squash of migrations 0001-0003 (through activities→projects rename).
 
-Revision ID: e5f6a7b8c9d0
+Revision ID: b3c4d5e6f7a8
 Revises:
 Create Date: 2026-05-04
 
-Squashes the full migration history up to and including the project→draft rename
-(issues #311, #312). Previous head was b2c3d4e5f6a7.
+Squashes the full migration history up to and including the activities→projects rename
+(issues #296, #311, #312). Previous head was a1b2c3d4e5f6.
 
 Existing databases that already ran the prior chain are stamped to this revision
 by entrypoint.sh before running `alembic upgrade head`.
 
-Includes eula_versions seed data (v0.3, v0.5, v0.9).
+Includes:
+- alembic_meta tracking table (from 0002)
+- EULA seed data: v0.3, v0.5, v0.9 (from prior baseline)
 """
 
 # ruff: noqa: E501
@@ -50,7 +52,7 @@ _EULA_V03 = """\
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">3. What WeftMark is</h3>
-  <p>WeftMark is a web application for weavers that lets you upload and view WIF weaving draft files, track weaving activities pick by pick, manage your loom inventory and equipment, record yarn and material inventory, and upload photos of your work in progress.</p>
+  <p>WeftMark is a web application for weavers that lets you upload and view WIF weaving draft files, track weaving projects pick by pick, manage your loom inventory and equipment, record yarn and material inventory, and upload photos of your work in progress.</p>
 </section>
 
 <section style="margin-bottom:1rem">
@@ -60,7 +62,7 @@ _EULA_V03 = """\
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">5. Content license</h3>
-  <p>You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and activity records.</p>
+  <p>You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and project records.</p>
   <p>By uploading content to WeftMark, you grant WeftMark a <strong>worldwide, royalty-free, perpetual, irrevocable, non-exclusive license</strong> to store, process, display, reproduce, and use that content for any purpose related to operating, improving, or developing the platform, including but not limited to AI and machine learning model training, feature development, and quality assurance.</p>
   <p>This license survives account deletion. We will not sell your raw content to third parties.</p>
 </section>
@@ -77,7 +79,7 @@ _EULA_V03 = """\
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">8. AI and machine learning — opt-out</h3>
-  <p>By default, your content, settings, and metadata — including WIF files, photos, activity data, loom configurations, tags, and any other data you create on the platform — <strong>may be used for AI and machine learning model training and feature improvements</strong>.</p>
+  <p>By default, your content, settings, and metadata — including WIF files, photos, project data, loom configurations, tags, and any other data you create on the platform — <strong>may be used for AI and machine learning model training and feature improvements</strong>.</p>
   <p>You can opt out at any time from <strong>Settings → Privacy &amp; data</strong>. Opting out stops future use of your data for AI/ML training and disables public sharing links on your account. It does not retroactively remove data already used in model training. You can opt back in at any time.</p>
 </section>
 
@@ -149,7 +151,7 @@ _EULA_V05 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">3. What WeftMark is</h3>
-  <p>WeftMark is a web application for weavers that lets you upload and view WIF weaving draft files, track weaving activities pick by pick, manage your loom inventory and equipment, record yarn and material inventory, and upload photos of your work in progress.</p>
+  <p>WeftMark is a web application for weavers that lets you upload and view WIF weaving draft files, track weaving projects pick by pick, manage your loom inventory and equipment, record yarn and material inventory, and upload photos of your work in progress.</p>
 </section>
 
 <section style="margin-bottom:1rem">
@@ -159,7 +161,7 @@ _EULA_V05 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">5. Content license</h3>
-  <p>You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and activity records.</p>
+  <p>You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and project records.</p>
   <p>By uploading content to WeftMark, you grant WeftMark a <strong>worldwide, royalty-free, perpetual, irrevocable, non-exclusive license</strong> to store, process, display, reproduce, and use that content for any purpose related to operating, improving, or developing the platform, including but not limited to AI and machine learning model training, feature development, and quality assurance.</p>
   <p>This license survives account deletion. We will not sell your raw content to third parties.</p>
 </section>
@@ -176,7 +178,7 @@ _EULA_V05 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">8. AI and machine learning — opt-out</h3>
-  <p>By default, your content, settings, and metadata — including WIF files, photos, activity data, loom configurations, tags, and any other data you create on the platform — <strong>may be used for AI and machine learning model training and feature improvements</strong>.</p>
+  <p>By default, your content, settings, and metadata — including WIF files, photos, project data, loom configurations, tags, and any other data you create on the platform — <strong>may be used for AI and machine learning model training and feature improvements</strong>.</p>
   <p>You can opt out at any time from <strong>Settings → Privacy &amp; data</strong>. Opting out stops future use of your data for AI/ML training and disables public sharing links on your account. It does not retroactively remove data already used in model training. You can opt back in at any time.</p>
 </section>
 
@@ -262,7 +264,7 @@ _EULA_V09 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">3. What WeftMark is</h3>
-  <p>WeftMark is a web application for weavers that lets you upload and view WIF weaving draft files, track weaving activities pick by pick, manage your loom inventory and equipment, record yarn and material inventory, and upload photos of your work in progress.</p>
+  <p>WeftMark is a web application for weavers that lets you upload and view WIF weaving draft files, track weaving projects pick by pick, manage your loom inventory and equipment, record yarn and material inventory, and upload photos of your work in progress.</p>
 </section>
 
 <section style="margin-bottom:1rem">
@@ -272,7 +274,7 @@ _EULA_V09 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">5. Content license</h3>
-  <p>You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and activity records.</p>
+  <p>You retain ownership of the content you upload to WeftMark, including WIF files, designs, photos, and project records.</p>
   <p>By uploading content to WeftMark, you grant WeftMark a <strong>worldwide, royalty-free, perpetual, irrevocable, non-exclusive license</strong> to store, process, display, reproduce, and use that content for any purpose related to operating, improving, or developing the platform, including but not limited to AI and machine learning model training, feature development, and quality assurance.</p>
   <p>This license survives account deletion. We will not sell your raw content to third parties.</p>
 </section>
@@ -289,7 +291,7 @@ _EULA_V09 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 
 <section style="margin-bottom:1rem">
   <h3 style="font-weight:600;margin-bottom:0.25rem">8. AI and machine learning - opt-out</h3>
-  <p>By default, your content, settings, and metadata - including WIF files, photos, activity data, loom configurations, tags, and any other data you create on the platform - <strong>may be used for AI and machine learning model training and feature improvements</strong>.</p>
+  <p>By default, your content, settings, and metadata - including WIF files, photos, project data, loom configurations, tags, and any other data you create on the platform - <strong>may be used for AI and machine learning model training and feature improvements</strong>.</p>
   <p>You can opt out at any time from <strong>Settings → Privacy &amp; data</strong>. Opting out stops future use of your data for AI/ML training and disables public sharing links on your account. It does not retroactively remove data already used in model training. You can opt back in at any time.</p>
 </section>
 
@@ -333,7 +335,7 @@ _EULA_V09 = """<p style="color:#888;font-style:italic;margin-bottom:1rem">Versio
 </p>
 """
 
-revision: str = "e5f6a7b8c9d0"
+revision: str = "b3c4d5e6f7a8"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -571,14 +573,14 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_skeins_yarn_id"), "skeins", ["yarn_id"], unique=False)
     op.create_table(
-        "activities",
+        "projects",
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("owner_id", sa.UUID(), nullable=False),
         sa.Column("draft_id", sa.UUID(), nullable=False),
         sa.Column("loom_id", sa.UUID(), nullable=True),
         sa.Column("loom_version_id", sa.UUID(), nullable=True),
         sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column("activity_type", sa.String(length=10), nullable=False),
+        sa.Column("project_type", sa.String(length=10), nullable=False),
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("current_pick", sa.Integer(), nullable=False),
         sa.Column("total_picks", sa.Integer(), nullable=False),
@@ -599,8 +601,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["owner_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_activities_owner_id"), "activities", ["owner_id"], unique=False)
-    op.create_index("ix_activities_draft_id", "activities", ["draft_id"], unique=False)
+    op.create_index(op.f("ix_projects_owner_id"), "projects", ["owner_id"], unique=False)
+    op.create_index("ix_projects_draft_id", "projects", ["draft_id"], unique=False)
     op.create_table(
         "loom_version_accessories",
         sa.Column("id", sa.UUID(), nullable=False),
@@ -640,32 +642,44 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_loom_version_receipts_loom_version_id"), "loom_version_receipts", ["loom_version_id"], unique=False)
     op.create_table(
-        "activity_photos",
+        "project_photos",
         sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("activity_id", sa.UUID(), nullable=False),
+        sa.Column("project_id", sa.UUID(), nullable=False),
         sa.Column("file_path", sa.String(length=500), nullable=False),
         sa.Column("filename", sa.String(length=255), nullable=False),
         sa.Column("file_size_bytes", sa.Integer(), nullable=False),
         sa.Column("display_order", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["activity_id"], ["activities.id"]),
+        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_activity_photos_activity_id"), "activity_photos", ["activity_id"], unique=False)
+    op.create_index(op.f("ix_project_photos_project_id"), "project_photos", ["project_id"], unique=False)
     op.create_table(
-        "activity_steps",
+        "project_steps",
         sa.Column("id", sa.UUID(), nullable=False),
-        sa.Column("activity_id", sa.UUID(), nullable=False),
+        sa.Column("project_id", sa.UUID(), nullable=False),
         sa.Column("event_type", sa.String(length=10), nullable=False),
         sa.Column("from_pick", sa.Integer(), nullable=False),
         sa.Column("to_pick", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.ForeignKeyConstraint(["activity_id"], ["activities.id"]),
+        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_activity_steps_activity_id"), "activity_steps", ["activity_id"], unique=False)
+    op.create_index(op.f("ix_project_steps_project_id"), "project_steps", ["project_id"], unique=False)
+
+    # alembic_meta tracking table (from 0002)
+    op.create_table(
+        "alembic_meta",
+        sa.Column("key", sa.Text(), nullable=False),
+        sa.Column("value", sa.Text(), nullable=True),
+        sa.PrimaryKeyConstraint("key", name="alembic_meta_pkey"),
+    )
+    op.execute(
+        "INSERT INTO alembic_meta (key, value) VALUES ('last_squash_at', '2026-05-04') "
+        "ON CONFLICT (key) DO NOTHING"
+    )
 
     # Seed required EULA versions — consolidated from migrations 0025, 0027, 0028
     _eula_sql = sa.text(
@@ -679,19 +693,19 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f("ix_activity_steps_activity_id"), table_name="activity_steps")
-    op.drop_table("activity_steps")
-    op.drop_index(op.f("ix_activity_photos_activity_id"), table_name="activity_photos")
-    op.drop_table("activity_photos")
+    op.drop_index(op.f("ix_project_steps_project_id"), table_name="project_steps")
+    op.drop_table("project_steps")
+    op.drop_index(op.f("ix_project_photos_project_id"), table_name="project_photos")
+    op.drop_table("project_photos")
     op.drop_index(op.f("ix_loom_version_receipts_loom_version_id"), table_name="loom_version_receipts")
     op.drop_table("loom_version_receipts")
     op.drop_index(op.f("ix_loom_version_photos_loom_version_id"), table_name="loom_version_photos")
     op.drop_table("loom_version_photos")
     op.drop_index(op.f("ix_loom_version_accessories_loom_version_id"), table_name="loom_version_accessories")
     op.drop_table("loom_version_accessories")
-    op.drop_index("ix_activities_draft_id", table_name="activities")
-    op.drop_index(op.f("ix_activities_owner_id"), table_name="activities")
-    op.drop_table("activities")
+    op.drop_index("ix_projects_draft_id", table_name="projects")
+    op.drop_index(op.f("ix_projects_owner_id"), table_name="projects")
+    op.drop_table("projects")
     op.drop_index(op.f("ix_skeins_yarn_id"), table_name="skeins")
     op.drop_table("skeins")
     op.drop_index(op.f("ix_loom_versions_loom_id"), table_name="loom_versions")
@@ -719,3 +733,4 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_audit_logs_created_at"), table_name="audit_logs")
     op.drop_index("ix_audit_logs_actor_email", table_name="audit_logs")
     op.drop_table("audit_logs")
+    op.drop_table("alembic_meta")
