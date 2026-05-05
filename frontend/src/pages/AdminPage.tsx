@@ -874,10 +874,10 @@ function VersionsTable() {
   const versions = [
     { label: "Frontend", value: __APP_VERSION__ },
     { label: "API", value: data.app },
+    { label: "Worker", value: data.worker ?? "not reported" },
     { label: "PostgreSQL", value: `${data.postgres} · ${data.postgres_source}` },
     { label: "Redis", value: data.redis_server },
     { label: "Celery", value: data.celery },
-    { label: "Worker", value: data.worker ?? "not reported" },
   ];
 
   const deps = [
