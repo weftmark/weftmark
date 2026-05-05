@@ -80,6 +80,8 @@ When the user types one of these aliases, execute the corresponding action immed
 
 **`ussh` — remote execution modifier:** When the user includes `ussh` in a request, read `.remotehost` from the repo root to get connection details and run the requested checks or tests on the remote server via SSH instead of locally. `.remotehost` format: `host`, `user`, `ssh` (full connection string). `.remotehost` is gitignored; `.remotehost.example` shows the structure.
 
+**`ulocal` — local execution modifier:** When the user includes `ulocal` in a request, run checks and tests against the local container stack (`docker exec weaving_site_backend` / `docker exec weaving_site_worker`) rather than the remote host. Default when neither `ussh` nor `ulocal` is specified.
+
 Scripts are also available at `scripts/rbd.ps1` for direct terminal use.
 
 ---
