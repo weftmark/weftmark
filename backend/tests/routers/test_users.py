@@ -164,7 +164,7 @@ class TestDeleteAccount:
         result = await db_session.scalar(select(Draft).where(Draft.owner_id == test_user.id))
         assert result is None
 
-    async def test_deletes_activities_and_steps(
+    async def test_deletes_projects_and_steps(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
         draft = Draft(

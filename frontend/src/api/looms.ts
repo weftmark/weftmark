@@ -9,7 +9,7 @@ export const LOOM_TYPE_LABELS: Record<LoomType, string> = {
   other: "Other",
 };
 
-/** Loom types that support activity tracking (treadle or lift). */
+/** Loom types that support project tracking (treadle or lift). */
 export const SUPPORTED_LOOM_TYPES = new Set<LoomType>(["floor_loom", "table_loom"]);
 
 export interface LoomVersionPhoto {

@@ -248,7 +248,7 @@ async def data_export(_: User = Depends(get_current_user)) -> dict:
         "milestone": "2",
         "message": (
             "Data export is planned for Milestone 2. "
-            "It will package your WIF files, photos, and activity history into a downloadable archive."
+            "It will package your WIF files, photos, and project history into a downloadable archive."
         ),
     }
 

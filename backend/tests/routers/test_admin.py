@@ -59,7 +59,7 @@ class TestListAdminUsers:
         assert "storage_bytes" in user_data["counts"]
         assert isinstance(user_data["counts"]["storage_bytes"], int)
 
-    async def test_storage_bytes_reflects_activity_photos(
+    async def test_storage_bytes_reflects_project_photos(
         self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
         draft = Draft(

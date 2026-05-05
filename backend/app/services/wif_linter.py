@@ -128,17 +128,13 @@ def lint(wif_bytes: bytes) -> LintResult:
     if not result.has_threading:
         result.warnings.append("No [THREADING] section — threading diagram unavailable")
     if not result.has_tieup and not result.has_liftplan:
-        result.warnings.append("No [TIEUP] or [LIFTPLAN] section — tie-up grid and activity tracking unavailable")
+        result.warnings.append("No [TIEUP] or [LIFTPLAN] section — tie-up grid and project tracking unavailable")
     if not result.has_treadling and not result.has_liftplan:
-        result.warnings.append(
-            "No [TREADLING] or [LIFTPLAN] section — step tracking unavailable for all activity types"
-        )
+        result.warnings.append("No [TREADLING] or [LIFTPLAN] section — step tracking unavailable for all project types")
     if not result.has_color_palette:
         result.warnings.append("No [COLOR PALETTE] or [COLOR TABLE] section — preview will render in default colors")
     if result.has_treadling and result.has_liftplan:
-        result.warnings.append(
-            "File contains both [TREADLING] and [LIFTPLAN] — only one will be used per activity type"
-        )
+        result.warnings.append("File contains both [TREADLING] and [LIFTPLAN] — only one will be used per project type")
 
     return result
 

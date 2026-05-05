@@ -72,7 +72,7 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
           {/* Unsupported type info banner */}
           {isUnsupported && (
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs text-copper-on-subtle">
-              This loom type is not currently supported for activity tracking. Activities cannot be created using this loom.
+              This loom type is not currently supported for project tracking. Projects cannot be created using this loom.
             </div>
           )}
 

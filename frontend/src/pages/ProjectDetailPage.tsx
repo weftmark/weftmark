@@ -177,7 +177,7 @@ function PickDisplay({
 // Weaving pattern view — drawdown image windowed to current pick
 // ---------------------------------------------------------------------------
 
-// Overhead accounts for: app header, activity header, progress bar,
+// Overhead accounts for: app header, project header, progress bar,
 // controls bar, pick instruction card, step controls, and padding.
 const PATTERN_OVERHEAD_PX = 560;
 const PATTERN_MIN_H = 200;
@@ -724,21 +724,21 @@ function PhotoGrid({
 }
 
 function CompletedSummary({
-  activity,
+  project,
   siblings,
   onPhotosChange,
 }: {
-  activity: import("@/api/projects").ProjectDetail;
+  project: import("@/api/projects").ProjectDetail;
   siblings: ProjectSummary[];
   onPhotosChange: (photos: ProjectPhoto[]) => void;
 }) {
-  const [photos, setPhotos] = useState<ProjectPhoto[]>(activity.photos);
+  const [photos, setPhotos] = useState<ProjectPhoto[]>(project.photos);
 
-  const pct = activity.total_picks > 0
-    ? Math.round(((activity.current_pick - 1) / activity.total_picks) * 100)
+  const pct = project.total_picks > 0
+    ? Math.round(((project.current_pick - 1) / project.total_picks) * 100)
     : 100;
-  const completedDate = activity.completed_at
-    ? new Date(activity.completed_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+  const completedDate = project.completed_at
+    ? new Date(project.completed_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
     : null;
 
   const handleUploaded = (p: ProjectPhoto) => {
@@ -763,20 +763,20 @@ function CompletedSummary({
             <><dt className="text-muted-foreground">Completed</dt><dd>{completedDate}</dd></>
           )}
           <dt className="text-muted-foreground">Picks woven</dt>
-          <dd>{activity.total_picks} picks ({pct}%)</dd>
-          {activity.num_items > 1 && (
-            <><dt className="text-muted-foreground">Items</dt><dd>{activity.num_items}</dd></>
+          <dd>{project.total_picks} picks ({pct}%)</dd>
+          {project.num_items > 1 && (
+            <><dt className="text-muted-foreground">Items</dt><dd>{project.num_items}</dd></>
           )}
-          {activity.finished_length_per_item && (
+          {project.finished_length_per_item && (
             <><dt className="text-muted-foreground">Length / item</dt>
-            <dd>{activity.finished_length_per_item} {activity.length_unit}</dd></>
+            <dd>{project.finished_length_per_item} {project.length_unit}</dd></>
           )}
-          {activity.warp_waste_allowance && (
+          {project.warp_waste_allowance && (
             <><dt className="text-muted-foreground">Warp waste</dt>
-            <dd>{activity.warp_waste_allowance} {activity.length_unit}</dd></>
+            <dd>{project.warp_waste_allowance} {project.length_unit}</dd></>
           )}
           <dt className="text-muted-foreground">Type</dt>
-          <dd>{PROJECT_TYPE_LABELS[activity.project_type]}</dd>
+          <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
         </dl>
       </div>
 
@@ -785,8 +785,8 @@ function CompletedSummary({
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
         <div className="overflow-auto rounded-lg border bg-card p-2">
           <AuthedImage
-            src={previewUrl(activity.draft_id)}
-            alt={`Design for ${activity.draft_name}`}
+            src={previewUrl(project.draft_id)}
+            alt={`Design for ${project.draft_name}`}
             className="max-w-full mx-auto block"
             style={{ imageRendering: "pixelated" }}
           />
@@ -796,24 +796,24 @@ function CompletedSummary({
       {/* Links */}
       <div className="grid gap-3 sm:grid-cols-2">
         <Link
-          to={`/drafts/${activity.draft_id}`}
+          to={`/drafts/${project.draft_id}`}
           className="rounded-lg border p-4 hover:border-ring transition-colors block"
         >
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Draft</p>
-          <p className="font-medium text-sm">{activity.draft_name}</p>
+          <p className="font-medium text-sm">{project.draft_name}</p>
         </Link>
-        {activity.loom_id && activity.loom_name && (
+        {project.loom_id && project.loom_name && (
           <Link
-            to={`/looms/${activity.loom_id}`}
+            to={`/looms/${project.loom_id}`}
             className="rounded-lg border p-4 hover:border-ring transition-colors block"
           >
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Loom</p>
-            <p className="font-medium text-sm">{activity.loom_name}</p>
+            <p className="font-medium text-sm">{project.loom_name}</p>
           </Link>
         )}
       </div>
 
-      {/* Sibling activities */}
+      {/* Sibling projects */}
       {siblings.length > 0 && (
         <div>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other projects on this draft</h2>
@@ -843,7 +843,7 @@ function CompletedSummary({
 
       {/* Photos */}
       <PhotoGrid
-        projectId={activity.id}
+        projectId={project.id}
         photos={photos}
         onUploaded={handleUploaded}
         onDeleted={handleDeleted}
@@ -877,7 +877,7 @@ export function ProjectDetailPage() {
   const [restartConflict, setRestartConflict] = useState<ProjectSummary | null>(null);
   const [localPick, setLocalPick] = useState(1);
 
-  const { data: activity, isLoading, error } = useQuery({
+  const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
     queryFn: () => getProject(id!),
     enabled: !!id,
@@ -890,19 +890,19 @@ export function ProjectDetailPage() {
     staleTime: Infinity,
   });
 
-  const isPlanning = activity?.status === "active" && !activity?.loom_id;
-  const isCompleted = activity?.status === "completed";
+  const isPlanning = project?.status === "active" && !project?.loom_id;
+  const isCompleted = project?.status === "completed";
 
-  const { data: allActivities = [] } = useQuery({
+  const { data: allProjects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: () => listProjects(),
     enabled: isPlanning || showAssignLoom,
   });
 
-  const { data: siblingActivities = [] } = useQuery({
-    queryKey: ["projects", { draftId: activity?.draft_id }],
-    queryFn: () => listProjects({ draftId: activity!.draft_id }),
-    enabled: isCompleted && !!activity?.draft_id,
+  const { data: siblingProjects = [] } = useQuery({
+    queryKey: ["projects", { draftId: project?.draft_id }],
+    queryFn: () => listProjects({ draftId: project!.draft_id }),
+    enabled: isCompleted && !!project?.draft_id,
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["project", id] });
@@ -912,7 +912,7 @@ export function ProjectDetailPage() {
     setStepping(true);
     try {
       const updated = await jumpProject(id, pick);
-      queryClient.setQueryData<typeof activity>(["project", id], (old) =>
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
         old ? { ...updated, photos: old.photos } : updated
       );
     } finally {
@@ -925,7 +925,7 @@ export function ProjectDetailPage() {
     setStepping(true);
     try {
       const updated = await stepProject(id, direction);
-      queryClient.setQueryData<typeof activity>(["project", id], (old) =>
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
         old ? { ...updated, photos: old.photos } : updated
       );
     } finally {
@@ -935,16 +935,16 @@ export function ProjectDetailPage() {
 
   const handleLocalStep = useCallback((direction: "advance" | "reverse") => {
     setLocalPick((prev) => {
-      const total = activity?.total_picks ?? 1;
+      const total = project?.total_picks ?? 1;
       if (direction === "advance") return Math.min(prev + 1, total + 1);
       return Math.max(1, prev - 1);
     });
-  }, [activity?.total_picks]);
+  }, [project?.total_picks]);
 
   const handleLocalJump = useCallback((pick: number) => {
-    const total = activity?.total_picks ?? 1;
+    const total = project?.total_picks ?? 1;
     setLocalPick(Math.max(1, Math.min(pick, total + 1)));
-  }, [activity?.total_picks]);
+  }, [project?.total_picks]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -984,9 +984,9 @@ export function ProjectDetailPage() {
       setConfirmRestart(false);
       setRestartConflict(null);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409 && activity?.loom_id) {
-        const projects = await listProjects().catch(() => []);
-        setRestartConflict(projects.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
+      if (err instanceof ApiError && err.status === 409 && project?.loom_id) {
+        const allActive = await listProjects().catch(() => []);
+        setRestartConflict(allActive.find((a) => a.loom_id === project.loom_id && a.status === "active") ?? null);
         setConfirmRestart(false);
       }
     } finally { setActionLoading(false); }
@@ -1013,9 +1013,9 @@ export function ProjectDetailPage() {
       setConfirmClone(false);
       navigate(`/projects/${cloned.id}`);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409 && activity?.loom_id) {
-        const projects = await listProjects().catch(() => []);
-        setCloneConflict(projects.find((a) => a.loom_id === activity.loom_id && a.status === "active") ?? null);
+      if (err instanceof ApiError && err.status === 409 && project?.loom_id) {
+        const allActive = await listProjects().catch(() => []);
+        setCloneConflict(allActive.find((a) => a.loom_id === project.loom_id && a.status === "active") ?? null);
         setConfirmClone(false);
       }
     } finally { setActionLoading(false); }
@@ -1049,31 +1049,31 @@ export function ProjectDetailPage() {
       <p className="text-sm text-muted-foreground">Loading…</p>
     </div>
   );
-  if (error || !activity) return (
+  if (error || !project) return (
     <div className="flex min-h-screen items-center justify-center">
       <p className="text-sm text-destructive">Project not found.</p>
     </div>
   );
 
-  const displayPick = isPlanning ? localPick : activity.current_pick;
+  const displayPick = isPlanning ? localPick : project.current_pick;
   const currentPickIndex = displayPick - 1;
-  const declaredCount = activity.project_type === "lift"
-    ? (activity.draft_num_shafts ?? 0)
-    : (activity.draft_num_treadles ?? 0);
+  const declaredCount = project.project_type === "lift"
+    ? (project.draft_num_shafts ?? 0)
+    : (project.draft_num_treadles ?? 0);
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
   const maxActive = declaredCount > 0 ? declaredCount : maxFromPicks;
 
-  const isFinished = displayPick > activity.total_picks;
-  const isActiveTracking = activity.status === "active" && !isPlanning;
-  const isAbandoned = activity.status === "abandoned";
+  const isFinished = displayPick > project.total_picks;
+  const isActiveTracking = project.status === "active" && !isPlanning;
+  const isAbandoned = project.status === "abandoned";
 
   // Badge for planning vs active
   const badgeClasses = isPlanning
     ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-    : activity.status === "active"
+    : project.status === "active"
       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
       : "bg-muted text-muted-foreground";
-  const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[activity.status];
+  const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
 
   return (
     <div className="flex flex-col">
@@ -1082,7 +1082,7 @@ export function ProjectDetailPage() {
         <div className="flex items-center gap-3 min-w-0">
           {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
           <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
-            {activity.loom_id && (
+            {project.loom_id && (
               <>
                 <Link to="/looms" className="text-muted-foreground hover:text-foreground">Equipment</Link>
                 <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1100,7 +1100,7 @@ export function ProjectDetailPage() {
                 const trimmed = nameInput.trim();
                 if (!trimmed) { setEditingName(false); return; }
                 const updated = await renameProject(id!, trimmed);
-                queryClient.setQueryData<typeof activity>(["project", id], (old) =>
+                queryClient.setQueryData<typeof project>(["project", id], (old) =>
                   old ? { ...updated, photos: old.photos } : updated
                 );
                 queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -1116,9 +1116,9 @@ export function ProjectDetailPage() {
                 onKeyDown={(e) => { if (e.key === "Escape") setEditingName(false); }}
                 onBlur={async () => {
                   const trimmed = nameInput.trim();
-                  if (trimmed && trimmed !== activity.name) {
+                  if (trimmed && trimmed !== project.name) {
                     const updated = await renameProject(id!, trimmed);
-                    queryClient.setQueryData<typeof activity>(["project", id], (old) =>
+                    queryClient.setQueryData<typeof project>(["project", id], (old) =>
                       old ? { ...updated, photos: old.photos } : updated
                     );
                     queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -1129,14 +1129,14 @@ export function ProjectDetailPage() {
             </form>
           ) : (
             <button
-              onClick={() => { setNameInput(activity.name); setEditingName(true); }}
+              onClick={() => { setNameInput(project.name); setEditingName(true); }}
               className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text truncate"
               title="Click to rename"
             >
-              {activity.name}
+              {project.name}
             </button>
           )}
-          <span className="text-sm text-muted-foreground truncate hidden sm:block">{activity.draft_name}</span>
+          <span className="text-sm text-muted-foreground truncate hidden sm:block">{project.draft_name}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -1157,10 +1157,10 @@ export function ProjectDetailPage() {
         {/* Completed summary */}
         {isCompleted && (
           <CompletedSummary
-            activity={activity}
-            siblings={siblingActivities.filter((s) => s.id !== id)}
+            project={project}
+            siblings={siblingProjects.filter((s) => s.id !== id)}
             onPhotosChange={(photos) =>
-              queryClient.setQueryData(["project", id], { ...activity, photos })
+              queryClient.setQueryData(["project", id], { ...project, photos })
             }
           />
         )}
@@ -1192,9 +1192,9 @@ export function ProjectDetailPage() {
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm">
               <p className="font-medium text-copper-on-subtle">This project was not completed</p>
               <p className="mt-0.5 text-xs text-copper-on-subtle">
-                Abandoned at pick {activity.current_pick} of {activity.total_picks}
-                {" "}({Math.round((activity.current_pick - 1) / activity.total_picks * 100)}% woven)
-                {activity.abandoned_at && ` · ${new Date(activity.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
+                Abandoned at pick {project.current_pick} of {project.total_picks}
+                {" "}({Math.round((project.current_pick - 1) / project.total_picks * 100)}% woven)
+                {project.abandoned_at && ` · ${new Date(project.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
               </p>
             </div>
           </div>
@@ -1205,7 +1205,7 @@ export function ProjectDetailPage() {
           <div className="mx-auto max-w-2xl px-8 pt-6 flex items-center gap-4">
             {!isPlanning && !isCompleted && (
               <div className="flex-1">
-                <ProgressBar current={activity.current_pick} total={activity.total_picks} />
+                <ProgressBar current={project.current_pick} total={project.total_picks} />
               </div>
             )}
             {picksData?.has_weft_colors && !isFinished && !isCompleted && (
@@ -1245,7 +1245,7 @@ export function ProjectDetailPage() {
         {!isCompleted && <div className="mx-auto max-w-2xl px-8 pt-4">
           {isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-lg font-medium">All {activity.total_picks} picks complete!</p>
+              <p className="text-lg font-medium">All {project.total_picks} picks complete!</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Mark the project as completed when you're done.
               </p>
@@ -1267,7 +1267,7 @@ export function ProjectDetailPage() {
             <PickDisplay
               pick={picksData.picks[currentPickIndex]}
               totalCount={maxActive}
-              projectType={activity.project_type}
+              projectType={project.project_type}
               colorMode={colorMode}
               showWeftColor={showWeftColor}
             />
@@ -1282,9 +1282,9 @@ export function ProjectDetailPage() {
         {picksData && !isFinished && !isCompleted && !isAbandoned && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <WeavingPatternView
-              draftId={activity.draft_id}
+              draftId={project.draft_id}
               currentPickIndex={currentPickIndex}
-              totalPicks={activity.total_picks}
+              totalPicks={project.total_picks}
               picks={picksData.picks}
               maxActive={maxActive}
             />
@@ -1295,9 +1295,9 @@ export function ProjectDetailPage() {
         {isAbandoned && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <AbandonedDrawdownView
-              draftId={activity.draft_id}
-              currentPick={activity.current_pick}
-              totalPicks={activity.total_picks}
+              draftId={project.draft_id}
+              currentPick={project.current_pick}
+              totalPicks={project.total_picks}
             />
           </div>
         )}
@@ -1309,7 +1309,7 @@ export function ProjectDetailPage() {
               {/* Left 1/3 on desktop, below step buttons on mobile */}
               <div className="order-2 lg:order-1 lg:flex lg:justify-center">
                 <JumpToPick
-                  total={activity.total_picks}
+                  total={project.total_picks}
                   onJump={isPlanning ? handleLocalJump : handleJump}
                   disabled={stepping}
                 />
@@ -1318,7 +1318,7 @@ export function ProjectDetailPage() {
               <div className="order-1 lg:order-2 flex justify-center">
                 <StepControls
                   currentPick={displayPick}
-                  total={activity.total_picks}
+                  total={project.total_picks}
                   onStep={isPlanning ? handleLocalStep : handleStep}
                   onJump={isPlanning ? handleLocalJump : handleJump}
                   stepping={stepping}
@@ -1339,17 +1339,17 @@ export function ProjectDetailPage() {
         {/* Collapsible sections */}
         <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0 border-t">
           {!isCompleted && (
-            <CollapsibleSection title={`Photos (${activity.photos.length}/10)`} defaultOpen={isAbandoned}>
+            <CollapsibleSection title={`Photos (${project.photos.length}/10)`} defaultOpen={isAbandoned}>
               <PhotoGrid
-                projectId={activity.id}
-                photos={activity.photos}
+                projectId={project.id}
+                photos={project.photos}
                 onUploaded={(p) =>
-                  queryClient.setQueryData<typeof activity>(["project", id], (old) =>
+                  queryClient.setQueryData<typeof project>(["project", id], (old) =>
                     old ? { ...old, photos: [...old.photos, p] } : old
                   )
                 }
                 onDeleted={(photoId) =>
-                  queryClient.setQueryData<typeof activity>(["project", id], (old) =>
+                  queryClient.setQueryData<typeof project>(["project", id], (old) =>
                     old ? { ...old, photos: old.photos.filter((ph) => ph.id !== photoId) } : old
                   )
                 }
@@ -1360,38 +1360,38 @@ export function ProjectDetailPage() {
           <CollapsibleSection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <dt className="text-muted-foreground">Type</dt>
-              <dd>{PROJECT_TYPE_LABELS[activity.project_type]}</dd>
-              {activity.loom_name && (
-                <><dt className="text-muted-foreground">Loom</dt><dd>{activity.loom_name}</dd></>
+              <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
+              {project.loom_name && (
+                <><dt className="text-muted-foreground">Loom</dt><dd>{project.loom_name}</dd></>
               )}
-              {activity.draft_metadata_overrides?.num_treadles && (
+              {project.draft_metadata_overrides?.num_treadles && (
                 <><dt className="text-muted-foreground">Treadle count</dt>
                 <dd className="flex items-center gap-1.5">
-                  {activity.draft_num_treadles}
-                  <span className="text-xs text-muted-foreground">(overridden from {activity.draft_metadata_overrides.num_treadles.original})</span>
+                  {project.draft_num_treadles}
+                  <span className="text-xs text-muted-foreground">(overridden from {project.draft_metadata_overrides.num_treadles.original})</span>
                 </dd></>
               )}
-              {activity.draft_metadata_overrides?.num_shafts && (
+              {project.draft_metadata_overrides?.num_shafts && (
                 <><dt className="text-muted-foreground">Shaft count</dt>
                 <dd className="flex items-center gap-1.5">
-                  {activity.draft_num_shafts}
-                  <span className="text-xs text-muted-foreground">(overridden from {activity.draft_metadata_overrides.num_shafts.original})</span>
+                  {project.draft_num_shafts}
+                  <span className="text-xs text-muted-foreground">(overridden from {project.draft_metadata_overrides.num_shafts.original})</span>
                 </dd></>
               )}
-              {activity.num_items > 1 && (
-                <><dt className="text-muted-foreground">Items</dt><dd>{activity.num_items}</dd></>
+              {project.num_items > 1 && (
+                <><dt className="text-muted-foreground">Items</dt><dd>{project.num_items}</dd></>
               )}
-              {activity.finished_length_per_item && (
+              {project.finished_length_per_item && (
                 <><dt className="text-muted-foreground">Length / item</dt>
-                <dd>{activity.finished_length_per_item} {activity.length_unit}</dd></>
+                <dd>{project.finished_length_per_item} {project.length_unit}</dd></>
               )}
-              {activity.warp_waste_allowance && (
+              {project.warp_waste_allowance && (
                 <><dt className="text-muted-foreground">Warp waste</dt>
-                <dd>{activity.warp_waste_allowance} {activity.length_unit}</dd></>
+                <dd>{project.warp_waste_allowance} {project.length_unit}</dd></>
               )}
-              {activity.completed_at && (
+              {project.completed_at && (
                 <><dt className="text-muted-foreground">Completed</dt>
-                <dd>{new Date(activity.completed_at).toLocaleDateString()}</dd></>
+                <dd>{new Date(project.completed_at).toLocaleDateString()}</dd></>
               )}
             </dl>
           </CollapsibleSection>
@@ -1428,7 +1428,7 @@ export function ProjectDetailPage() {
             </CollapsibleSection>
           )}
 
-          {activity.status === "abandoned" && (
+          {project.status === "abandoned" && (
             <CollapsibleSection title="Actions">
               <div className="space-y-3">
                 {!confirmRestart && !restartConflict && (
@@ -1438,7 +1438,7 @@ export function ProjectDetailPage() {
                 )}
                 {confirmRestart && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">Resume from pick {activity.current_pick}?</span>
+                    <span className="text-sm">Resume from pick {project.current_pick}?</span>
                     <Button size="sm" onClick={handleRestart} disabled={actionLoading}>Confirm</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>Cancel</Button>
                   </div>
@@ -1532,20 +1532,20 @@ export function ProjectDetailPage() {
 
       {showDesignPreview && (
         <DesignPreviewModal
-          draftId={activity.draft_id}
+          draftId={project.draft_id}
           onClose={() => setShowDesignPreview(false)}
         />
       )}
 
       {showAssignLoom && (
         <AssignLoomModal
-          projectId={activity.id}
-          activeProjects={allActivities.filter((a) => a.status === "active")}
-          projectType={activity.project_type}
-          draftNumTreadles={activity.draft_num_treadles}
-          draftNumShafts={activity.draft_num_shafts}
-          draftEffectiveNumTreadles={activity.draft_effective_num_treadles}
-          draftEffectiveNumShafts={activity.draft_effective_num_shafts}
+          projectId={project.id}
+          activeProjects={allProjects.filter((a) => a.status === "active")}
+          projectType={project.project_type}
+          draftNumTreadles={project.draft_num_treadles}
+          draftNumShafts={project.draft_num_shafts}
+          draftEffectiveNumTreadles={project.draft_effective_num_treadles}
+          draftEffectiveNumShafts={project.draft_effective_num_shafts}
           onSuccess={() => {
             setShowAssignLoom(false);
             invalidate();
