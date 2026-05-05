@@ -67,6 +67,7 @@ When the user types one of these aliases, execute the corresponding action immed
 | Alias | Action |
 | --- | --- |
 | `rbd` | Stop frontend + backend + worker → build frontend + backend → start all three → confirm health via `/health` response |
+| `cap` | Stage all changed files → commit with a generated message based on the diff → push to current branch |
 
 Scripts are also available at `scripts/rbd.ps1` for direct terminal use.
 
