@@ -103,7 +103,8 @@ export default function App() {
                   <Route path="/yarn/:id" element={<AuthRoute><YarnDetailPage /></AuthRoute>} />
                   <Route path="/projects" element={<AuthRoute><ProjectsPage /></AuthRoute>} />
                   <Route path="/projects/:id" element={<AuthRoute><ProjectDetailPage /></AuthRoute>} />
-                  <Route path="/admin" element={<AuthRoute requireAdmin><AdminPage /></AuthRoute>} />
+                  <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+                  <Route path="/admin/:section" element={<AuthRoute requireAdmin><AdminPage /></AuthRoute>} />
                   <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />
                   <Route path="/settings/:section" element={<AuthRoute><SettingsPage /></AuthRoute>} />
                   <Route path="*" element={<Navigate to="/" replace />} />

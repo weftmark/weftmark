@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
 import { UserDetailModal, type UserDetailTarget } from "@/components/admin/UserDetailModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -70,8 +71,9 @@ function formatUptime(seconds: number): string {
 }
 
 export function AdminPage() {
-  const [tab, setTab] = useState<Tab>("users");
+  const { section = "users" } = useParams<{ section: string }>();
   const { user: currentUser } = useAuth();
+  const tab = section as Tab;
 
   return (
     <div className="p-6 max-w-4xl mx-auto w-full space-y-6">
@@ -81,33 +83,6 @@ export function AdminPage() {
           <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
         )}
       </div>
-        <div className="flex gap-2 border-b pb-2 flex-wrap">
-          {(["users", "invites", "stats", "health", "services", "audit"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-sm rounded capitalize ${
-                tab === t
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-          {currentUser?.is_superuser && (
-            <button
-              onClick={() => setTab("superuser")}
-              className={`px-3 py-1.5 text-sm rounded capitalize ${
-                tab === "superuser"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              superuser
-            </button>
-          )}
-        </div>
 
         {tab === "users" && <UsersTab />}
         {tab === "invites" && <InvitesTab />}
@@ -882,29 +857,64 @@ function VersionsTable() {
     { label: "PostgreSQL", value: `${data.postgres} · ${data.postgres_source}` },
     { label: "Redis", value: data.redis_server },
     { label: "Celery", value: data.celery },
+    { label: "Python", value: data.python },
   ];
 
-  const deps = [
-    { label: "Python", value: data.python },
-    { label: "FastAPI", value: data.fastapi },
-    { label: "SQLAlchemy", value: data.sqlalchemy },
-    { label: "Alembic", value: data.alembic },
-    { label: "PyWeaving", value: data.pyweaving },
-    { label: "Pillow", value: data.pillow },
-    { label: "boto3", value: data.boto3 },
-    { label: "psutil", value: data.psutil },
-  ];
+  const backendRows = Object.entries(data.backend_packages).map(([k, v]) => ({ label: k, value: v }));
+  const frontendRows = Object.entries(__FRONTEND_DEPS__).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => ({ label: k, value: v }));
+  const devRows = Object.entries(__FRONTEND_DEV_DEPS__).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => ({ label: k, value: v }));
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Versions</h2>
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Runtime</h2>
         <InfoTable rows={versions} />
       </div>
       <div>
-        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Dependencies</h2>
-        <InfoTable rows={deps} />
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Backend packages</h2>
+        <div className="rounded-md border overflow-auto max-h-72">
+          <table className="w-full text-xs">
+            <tbody>
+              {backendRows.map(({ label, value }) => (
+                <tr key={label} className="border-t first:border-t-0">
+                  <td className="px-3 py-1.5 font-mono text-muted-foreground w-1/2">{label}</td>
+                  <td className="px-3 py-1.5 tabular-nums">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+      <div>
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Frontend dependencies</h2>
+        <div className="rounded-md border overflow-auto max-h-72">
+          <table className="w-full text-xs">
+            <tbody>
+              {frontendRows.map(({ label, value }) => (
+                <tr key={label} className="border-t first:border-t-0">
+                  <td className="px-3 py-1.5 font-mono text-muted-foreground w-1/2">{label}</td>
+                  <td className="px-3 py-1.5 tabular-nums">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <details className="text-xs">
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground py-1">Dev dependencies ({devRows.length})</summary>
+        <div className="rounded-md border overflow-auto max-h-60 mt-2">
+          <table className="w-full text-xs">
+            <tbody>
+              {devRows.map(({ label, value }) => (
+                <tr key={label} className="border-t first:border-t-0">
+                  <td className="px-3 py-1.5 font-mono text-muted-foreground w-1/2">{label}</td>
+                  <td className="px-3 py-1.5 tabular-nums">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </div>
   );
 }
