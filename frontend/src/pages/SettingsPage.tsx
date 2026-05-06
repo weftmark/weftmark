@@ -108,18 +108,18 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+        {(saveSuccess || saveError) && (
+          <div
+            className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md px-4 py-2 text-sm shadow-lg ${
+              saveSuccess
+                ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                : "bg-destructive/10 text-destructive"
+            }`}
+          >
+            {saveSuccess ? "Saved" : saveError}
+          </div>
+        )}
         <div className="space-y-6">
-            {(saveSuccess || saveError) && (
-              <div
-                className={`rounded-md px-4 py-2 text-sm ${
-                  saveSuccess
-                    ? "bg-green-500/10 text-green-700 dark:text-green-400"
-                    : "bg-destructive/10 text-destructive"
-                }`}
-              >
-                {saveSuccess ? "Saved" : saveError}
-              </div>
-            )}
 
             {/* ── Appearance ── */}
             {activeSection === "appearance" && (

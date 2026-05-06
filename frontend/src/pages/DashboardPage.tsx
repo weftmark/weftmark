@@ -216,17 +216,17 @@ export function DashboardPage() {
 
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-lg border p-4 flex items-center gap-3">
-            <AppIcons.projectCompleted className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
-            <div>
-              <p className="text-2xl font-bold tabular-nums">{completedCount}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
-            </div>
-          </div>
-          <div className="rounded-lg border p-4 flex items-center gap-3">
             <AppIcons.projectActive className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div>
               <p className="text-2xl font-bold tabular-nums">{activeProjects.length + planningProjects.length}</p>
               <p className="text-xs text-muted-foreground">Active</p>
+            </div>
+          </div>
+          <div className="rounded-lg border p-4 flex items-center gap-3">
+            <AppIcons.projectCompleted className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+            <div>
+              <p className="text-2xl font-bold tabular-nums">{completedCount}</p>
+              <p className="text-xs text-muted-foreground">Completed</p>
             </div>
           </div>
         </div>
