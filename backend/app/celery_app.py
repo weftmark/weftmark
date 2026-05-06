@@ -13,7 +13,13 @@ def _make_celery() -> Celery:
         "weftmark",
         broker=settings.redis_url,
         backend=settings.redis_url,
-        include=["app.tasks.deletion", "app.tasks.preview", "app.tasks.s3_audit", "app.tasks.cve_scan"],
+        include=[
+            "app.tasks.deletion",
+            "app.tasks.preview",
+            "app.tasks.s3_audit",
+            "app.tasks.cve_scan",
+            "app.tasks.debug",
+        ],
     )
     app.conf.update(
         task_serializer="json",

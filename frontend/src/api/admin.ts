@@ -317,3 +317,6 @@ export interface WorkerStatus {
 
 export const getWorkerStatus = () =>
   api.get<WorkerStatus>("/api/admin/worker-status");
+
+export const startDebugSleep = (seconds: number = 30) =>
+  api.post<{ task_id: string; seconds: number }>("/api/admin/debug-sleep", { seconds });

@@ -1897,3 +1897,18 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
             )
 
     return WorkerStatus(workers=workers, queues=queues, checked_at=checked_at)
+
+
+class DebugSleepRequest(BaseModel):
+    seconds: int = 30
+
+
+@router.post("/debug-sleep", status_code=202)
+async def start_debug_sleep(
+    body: DebugSleepRequest,
+    _: User = Depends(require_superuser),
+) -> dict:
+    from app.tasks.debug import debug_sleep
+
+    task = debug_sleep.delay(body.seconds)
+    return {"task_id": task.id, "seconds": body.seconds}

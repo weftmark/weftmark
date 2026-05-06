@@ -32,6 +32,7 @@ import {
   getCveScanTask,
   getCveScanSummary,
   getWorkerStatus,
+  startDebugSleep,
   type AdminUser,
   type AdminHealth,
   type AdminDbInfo,
@@ -1836,6 +1837,17 @@ function WorkerCard({ worker }: { worker: WorkerInfo }) {
       <div className="flex items-center gap-3 px-4 py-3 bg-muted/20">
         <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
         <span className="text-sm font-mono font-medium flex-1 truncate">{worker.name}</span>
+        {isOnline && worker.concurrency !== null && (
+          <span className={`text-xs px-2 py-0.5 rounded border tabular-nums ${
+            worker.active_tasks.length >= worker.concurrency
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              : worker.active_tasks.length > 0
+              ? "border-blue-500/30 text-blue-600 dark:text-blue-400"
+              : "border-border text-muted-foreground"
+          }`}>
+            {worker.active_tasks.length}/{worker.concurrency} slots
+          </span>
+        )}
         <span className={`text-xs px-2 py-0.5 rounded border ${isOnline ? "border-green-500/30 text-green-600 dark:text-green-400" : "border-destructive/30 text-destructive"}`}>
           {worker.status}
         </span>
@@ -1895,6 +1907,7 @@ function WorkerCard({ worker }: { worker: WorkerInfo }) {
 function WorkersTab() {
   const [data, setData] = useState<WorkerStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sleeping, setSleeping] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -1907,15 +1920,27 @@ function WorkersTab() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
+  function triggerSleep() {
+    setSleeping(true);
+    startDebugSleep(30)
+      .then(() => setTimeout(() => setSleeping(false), 32_000))
+      .catch(() => setSleeping(false));
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-xs text-muted-foreground">
-          {data
-            ? `Updated ${new Date(data.checked_at).toLocaleTimeString()} · auto-refreshes every 10s`
-            : "Loading…"}
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs text-muted-foreground">
+            {data
+              ? `Updated ${new Date(data.checked_at).toLocaleTimeString()} · auto-refreshes every 10s`
+              : "Loading…"}
+          </span>
+        </div>
+        <Button size="sm" variant="outline" disabled={sleeping} onClick={triggerSleep}>
+          {sleeping ? "Sleeping 30s…" : "Run test task"}
+        </Button>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
