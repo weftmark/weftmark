@@ -384,6 +384,23 @@ class TestCreateDraft:
         )
         assert resp.status_code == 401
 
+    async def test_wif_extension_but_non_wif_content_returns_400(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("fake.wif", b"not a wif file at all", "application/octet-stream")},
+            data={"name": "Bad Draft"},
+        )
+        assert resp.status_code == 400
+
+    async def test_wif_extension_with_jpeg_content_returns_400(self, auth_client: AsyncClient):
+        jpeg_magic = b"\xff\xd8\xff\xe0" + b"\x00" * 100
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("photo.wif", jpeg_magic, "application/octet-stream")},
+            data={"name": "Bad Draft"},
+        )
+        assert resp.status_code == 400
+
 
 # ---------------------------------------------------------------------------
 # GET /api/drafts/{draft_id}/preview
@@ -518,6 +535,18 @@ class TestDownloadWif:
     async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
         resp = await raw_client.get(f"/api/drafts/{uuid.uuid4()}/wif")
         assert resp.status_code == 401
+
+    async def test_content_disposition_uses_rfc5987_encoding(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        mock_storage["drafts/x/original.wif"] = _WIF
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/x/original.wif")
+        draft.wif_filename = 'my "draft".wif'
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/wif")
+        cd = resp.headers.get("content-disposition", "")
+        assert "filename*=UTF-8''" in cd
+        assert "my%20%22draft%22" in cd or "my%22" in cd  # URL-encoded form in filename*
 
 
 # ---------------------------------------------------------------------------

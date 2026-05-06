@@ -565,7 +565,7 @@ async def upload_version_receipt(
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 20 MB)")
+        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
     receipt_id = uuid.uuid4()
     ext = _ext(file.content_type or "")
     path = storage.save_version_receipt(loom_id, version_id, receipt_id, ext, data)
