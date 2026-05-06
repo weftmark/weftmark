@@ -1986,3 +1986,16 @@ async def get_task_history(
         page_size=page_size,
         pages=max(1, math.ceil(total / page_size)),
     )
+
+
+@router.post("/tasks/{task_id}/revoke")
+async def revoke_task(
+    task_id: str,
+    _: User = Depends(require_superuser),
+) -> dict:
+    from app.celery_app import celery_app
+    from app.services.task_history import record_completed
+
+    celery_app.control.revoke(task_id, terminate=True)
+    record_completed(get_settings(), task_id, "revoked")
+    return {"status": "revoked", "task_id": task_id}

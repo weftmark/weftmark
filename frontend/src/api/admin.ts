@@ -344,3 +344,6 @@ export interface TaskHistoryResponse {
 
 export const getTaskHistory = (page: number = 1, pageSize: number = 25) =>
   api.get<TaskHistoryResponse>(`/api/admin/task-history?page=${page}&page_size=${pageSize}`);
+
+export const revokeTask = (taskId: string) =>
+  api.post<{ status: string; task_id: string }>(`/api/admin/tasks/${taskId}/revoke`, {});

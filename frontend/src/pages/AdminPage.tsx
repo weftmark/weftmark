@@ -34,6 +34,7 @@ import {
   getWorkerStatus,
   startDebugSleep,
   getTaskHistory,
+  revokeTask,
   type TaskHistoryItem,
   type AdminUser,
   type AdminHealth,
@@ -1988,6 +1989,7 @@ const STATE_CLS: Record<string, string> = {
   running: "text-blue-600 dark:text-blue-400",
   success: "text-green-600 dark:text-green-400",
   failed: "text-destructive",
+  revoked: "text-amber-600 dark:text-amber-400",
 };
 
 function fmtSec(s: number | null): string {
@@ -2006,8 +2008,9 @@ function shortName(name: string): string {
   return parts.length >= 2 ? parts.slice(-2).join(".") : name;
 }
 
-function TaskHistoryRow({ item }: { item: TaskHistoryItem }) {
+function TaskHistoryRow({ item, onRevoke }: { item: TaskHistoryItem; onRevoke: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
+  const cancellable = item.state === "queued" || item.state === "running";
   return (
     <>
       <tr
@@ -2022,10 +2025,20 @@ function TaskHistoryRow({ item }: { item: TaskHistoryItem }) {
         <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.run_seconds)}</td>
         <td className="px-3 py-2 tabular-nums text-right whitespace-nowrap">{fmtTime(item.completed_at)}</td>
         <td className="px-3 py-2 text-muted-foreground">{item.error ? (expanded ? "▲" : "▼ error") : "—"}</td>
+        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+          {cancellable && (
+            <button
+              className="text-xs text-destructive hover:underline"
+              onClick={() => onRevoke(item.task_id)}
+            >
+              Cancel
+            </button>
+          )}
+        </td>
       </tr>
       {expanded && item.error && (
         <tr className="border-t bg-destructive/5">
-          <td colSpan={8} className="px-3 py-2">
+          <td colSpan={9} className="px-3 py-2">
             <pre className="text-xs font-mono text-destructive whitespace-pre-wrap">{item.error}</pre>
           </td>
         </tr>
@@ -2037,11 +2050,17 @@ function TaskHistoryRow({ item }: { item: TaskHistoryItem }) {
 function TaskHistoryTable() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 25;
+  const queryClient = useQueryClient();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin", "task-history", page],
     queryFn: () => getTaskHistory(page, PAGE_SIZE),
     refetchInterval: 5_000,
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: revokeTask,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin", "task-history"] }),
   });
 
   return (
@@ -2078,11 +2097,12 @@ function TaskHistoryTable() {
                   <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Run</th>
                   <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Completed at</th>
                   <th className="px-3 py-2 text-left font-medium">Error</th>
+                  <th className="px-3 py-2 text-left font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {data.items.map((item) => (
-                  <TaskHistoryRow key={item.task_id} item={item} />
+                  <TaskHistoryRow key={item.task_id} item={item} onRevoke={(id) => revokeMutation.mutate(id)} />
                 ))}
               </tbody>
             </table>
