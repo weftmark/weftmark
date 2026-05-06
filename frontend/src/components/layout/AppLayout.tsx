@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { VersionBadge } from "@/components/layout/VersionFooter";
 import type { ReactNode } from "react";
 
-const DETAIL_PATTERN = /^\/(projects|looms|drafts)\/[^/]+/;
+const DETAIL_PATTERN = /^\/projects\/[^/]+/;
 
 interface Props {
   children: ReactNode;
