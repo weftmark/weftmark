@@ -1,3 +1,4 @@
+import urllib.parse
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -16,6 +17,14 @@ from app.services import rendering, storage, wif_linter, wif_modifier, wif_parse
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 settings = get_settings()
+
+_WIF_MAGIC = b"[WIF]"
+
+
+def _content_disposition(filename: str) -> str:
+    ascii_fallback = "".join(c if c.isascii() and c not in '"\\\r\n' else "_" for c in filename)
+    encoded = urllib.parse.quote(filename, safe="")
+    return f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +92,8 @@ async def create_draft(
     wif_bytes = await wif_file.read()
     if len(wif_bytes) > settings.max_upload_size:
         raise HTTPException(status_code=413, detail="File too large")
+    if not wif_bytes.lstrip()[:5].upper() == _WIF_MAGIC:
+        raise HTTPException(status_code=400, detail="File does not appear to be a valid WIF file")
 
     lint = wif_linter.lint(wif_bytes)
 
@@ -236,7 +247,7 @@ async def download_wif(
     return Response(
         content=wif_bytes,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _content_disposition(filename)},
     )
 
 
@@ -260,7 +271,7 @@ async def download_wif_modified(
     return Response(
         content=wif_bytes,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _content_disposition(filename)},
     )
 
 
