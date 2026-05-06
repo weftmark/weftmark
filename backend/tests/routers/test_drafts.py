@@ -659,3 +659,41 @@ class TestOverrideMetadata:
             json={"field": "num_shafts", "value": 8},
         )
         assert resp.status_code == 401
+
+
+class TestUploadRateLimit:
+    """Verify the rate limit dependency is actually wired into POST /api/drafts."""
+
+    @pytest.fixture(autouse=True)
+    def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+
+    async def test_429_after_limit_exceeded(self, auth_client: AsyncClient):
+        from unittest.mock import patch
+
+        import fakeredis.aioredis
+
+        from app.main import app
+        from app.routers.drafts import _upload_rate_limit
+
+        fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
+        app.dependency_overrides.pop(_upload_rate_limit, None)
+        try:
+            with patch("app.services.rate_limiter.aioredis.from_url", return_value=fake):
+                for i in range(30):
+                    await auth_client.post(
+                        "/api/drafts",
+                        files={"wif_file": (f"draft{i}.wif", _WIF, "application/octet-stream")},
+                        data={"name": f"Draft {i}"},
+                    )
+                resp = await auth_client.post(
+                    "/api/drafts",
+                    files={"wif_file": ("overflow.wif", _WIF, "application/octet-stream")},
+                    data={"name": "Overflow"},
+                )
+            assert resp.status_code == 429
+            assert "retry-after" in resp.headers
+        finally:
+            app.dependency_overrides[_upload_rate_limit] = lambda: None
