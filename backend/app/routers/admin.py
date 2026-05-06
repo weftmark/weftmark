@@ -2009,3 +2009,15 @@ async def revoke_task(
     celery_app.control.revoke(task_id, terminate=True)
     record_completed(get_settings(), task_id, "revoked")
     return {"status": "revoked", "task_id": task_id}
+
+
+@router.post("/purge-soft-deleted")
+async def run_purge_soft_deleted(
+    _: User = Depends(require_superuser),
+) -> dict:
+    from app.services.task_history import record_queued
+    from app.tasks.purge import purge_soft_deleted_records
+
+    task = purge_soft_deleted_records.delay()
+    record_queued(get_settings(), task.id, "app.tasks.purge.purge_soft_deleted_records", "maintenance")
+    return {"status": "queued", "task_id": task.id}

@@ -349,3 +349,6 @@ export const getTaskHistory = (page: number = 1, pageSize: number = 25) =>
 
 export const revokeTask = (taskId: string) =>
   api.post<{ status: string; task_id: string }>(`/api/admin/tasks/${taskId}/revoke`, {});
+
+export const runPurgeSoftDeleted = () =>
+  api.post<{ status: string; task_id: string }>("/api/admin/purge-soft-deleted", {});
