@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
+import { usePresentMode } from "@/hooks/usePresentMode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getProject, getProjectPicks, stepProject, jumpProject, completeProject, abandonProject,
@@ -877,6 +878,8 @@ export function ProjectDetailPage() {
   const [restartConflict, setRestartConflict] = useState<ProjectSummary | null>(null);
   const [localPick, setLocalPick] = useState(1);
 
+  const { isPresent, isSupported: presentModeSupported, toggle: togglePresentMode } = usePresentMode();
+
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
     queryFn: () => getProject(id!),
@@ -1146,6 +1149,18 @@ export function ProjectDetailPage() {
           >
             View design
           </button>
+          {presentModeSupported && (
+            <button
+              onClick={togglePresentMode}
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title={isPresent ? "Exit present mode" : "Present mode — fullscreen + keep screen on"}
+              aria-label={isPresent ? "Exit present mode" : "Enter present mode"}
+            >
+              {isPresent
+                ? <AppIcons.exitPresentMode className="h-4 w-4" />
+                : <AppIcons.presentMode className="h-4 w-4" />}
+            </button>
+          )}
           <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
             {badgeLabel}
           </span>
