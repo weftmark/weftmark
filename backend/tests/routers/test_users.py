@@ -1,10 +1,13 @@
+from datetime import date
+
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
 from app.models.draft import Draft
-from app.models.project import Project, ProjectStep
+from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt
+from app.models.project import Project, ProjectPhoto, ProjectStep
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
@@ -111,6 +114,24 @@ class TestUpdateSettings:
         await auth_client.patch("/api/users/me", json={"theme": "dark"})
         await db_session.refresh(test_user)
         assert test_user.theme == "dark"
+
+    async def test_revokes_shared_drafts_when_consent_revoked(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = Draft(
+            owner_id=test_user.id,
+            name="Shared Draft",
+            wif_filename="s.wif",
+            wif_path="drafts/s/original.wif",
+            is_shared=True,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        resp = await auth_client.patch("/api/users/me", json={"ai_training_consent": False})
+        assert resp.status_code == 200
+        await db_session.refresh(draft)
+        assert draft.is_shared is False
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +242,109 @@ class TestDeleteAccount:
 
         assert await db_session.scalar(select(Yarn).where(Yarn.id == yarn_id)) is None
         assert await db_session.scalar(select(Skein).where(Skein.yarn_id == yarn_id)) is None
+
+    async def test_purges_project_photos(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = Draft(
+            owner_id=test_user.id,
+            name="D",
+            wif_filename="d.wif",
+            wif_path="drafts/d/original.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="P",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        photo_path = f"projects/{project.id}/photo1.jpg"
+        mock_storage[photo_path] = b"fake-image"
+        photo = ProjectPhoto(project_id=project.id, file_path=photo_path, filename="photo1.jpg")
+        db_session.add(photo)
+        await db_session.commit()
+
+        await auth_client.request("DELETE", "/api/users/me", json={"confirm": "DELETE MY ACCOUNT"})
+        assert photo_path not in mock_storage
+
+    async def test_purges_yarn_photo(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        photo_path = f"yarns/{test_user.id}/photo.jpg"
+        mock_storage[photo_path] = b"fake-image"
+        yarn = Yarn(owner_id=test_user.id, brand="Brand", name="Yarn", photo_path=photo_path)
+        db_session.add(yarn)
+        await db_session.commit()
+
+        await auth_client.request("DELETE", "/api/users/me", json={"confirm": "DELETE MY ACCOUNT"})
+        assert photo_path not in mock_storage
+
+    async def test_purges_loom_photo_and_version_assets(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        loom_photo = f"looms/{test_user.id}/cover.jpg"
+        mock_storage[loom_photo] = b"loom-img"
+        loom = Loom(
+            owner_id=test_user.id,
+            manufacturer="Ashford",
+            model_name="Rigid Heddle",
+            loom_type="rigid_heddle",
+            photo_path=loom_photo,
+        )
+        db_session.add(loom)
+        await db_session.flush()
+
+        version = LoomVersion(
+            loom_id=loom.id,
+            version_number=1,
+            effective_date=date(2024, 1, 1),
+        )
+        db_session.add(version)
+        await db_session.flush()
+
+        vp_path = f"looms/{loom.id}/v1/photo.jpg"
+        vr_path = f"looms/{loom.id}/v1/receipt.pdf"
+        mock_storage[vp_path] = b"vp"
+        mock_storage[vr_path] = b"vr"
+        vp = LoomVersionPhoto(loom_version_id=version.id, filename="photo.jpg", path=vp_path)
+        vr = LoomVersionReceipt(loom_version_id=version.id, filename="receipt.pdf", path=vr_path)
+        db_session.add_all([vp, vr])
+        await db_session.commit()
+
+        await auth_client.request("DELETE", "/api/users/me", json={"confirm": "DELETE MY ACCOUNT"})
+        assert loom_photo not in mock_storage
+        assert vp_path not in mock_storage
+        assert vr_path not in mock_storage
+
+    async def test_purges_draft_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        wif_path = "drafts/d2/original.wif"
+        preview_path = "drafts/d2/preview.png"
+        mock_storage[wif_path] = b"wif-data"
+        mock_storage[preview_path] = b"png-data"
+        draft = Draft(
+            owner_id=test_user.id,
+            name="D2",
+            wif_filename="d2.wif",
+            wif_path=wif_path,
+            preview_path=preview_path,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        await auth_client.request("DELETE", "/api/users/me", json={"confirm": "DELETE MY ACCOUNT"})
+        assert wif_path not in mock_storage
+        assert preview_path not in mock_storage
 
 
 # ---------------------------------------------------------------------------

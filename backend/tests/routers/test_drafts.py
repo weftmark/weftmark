@@ -479,3 +479,154 @@ class TestGenerateLiftplan:
         draft = await self._create_draft_with_wif(db_session, test_user)
         resp = await raw_client.post(f"/api/drafts/{draft.id}/generate-liftplan")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /{draft_id}/wif
+# ---------------------------------------------------------------------------
+
+
+class TestDownloadWif:
+    async def test_returns_wif_bytes(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        mock_storage["drafts/x/original.wif"] = _WIF
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/x/original.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/wif")
+        assert resp.status_code == 200
+        assert resp.content == _WIF
+
+    async def test_returns_attachment_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        mock_storage["drafts/x/original.wif"] = _WIF
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/x/original.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/wif")
+        assert "attachment" in resp.headers.get("content-disposition", "")
+
+    async def test_returns_404_when_no_wif_path(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/wif")
+        assert resp.status_code == 404
+
+    async def test_nonexistent_draft_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/drafts/{uuid.uuid4()}/wif")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get(f"/api/drafts/{uuid.uuid4()}/wif")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /{draft_id}/wif-modified
+# ---------------------------------------------------------------------------
+
+
+class TestDownloadWifModified:
+    async def test_returns_modified_wif_bytes(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        mock_storage["drafts/x/modified.wif"] = _WIF
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/x/original.wif")
+        draft.wif_modified_path = "drafts/x/modified.wif"
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/wif-modified")
+        assert resp.status_code == 200
+        assert resp.content == _WIF
+
+    async def test_returns_404_when_no_modified_wif(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/x/original.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/wif-modified")
+        assert resp.status_code == 404
+
+    async def test_filename_has_modified_suffix(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        mock_storage["drafts/x/modified.wif"] = _WIF
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/x/original.wif")
+        draft.wif_modified_path = "drafts/x/modified.wif"
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/wif-modified")
+        assert "modified" in resp.headers.get("content-disposition", "")
+
+
+# ---------------------------------------------------------------------------
+# POST /{draft_id}/override-metadata
+# ---------------------------------------------------------------------------
+
+
+class TestOverrideMetadata:
+    async def _draft_with_wif(self, db_session: AsyncSession, user: User, mock_storage: dict) -> "Draft":
+        mock_storage["drafts/x/original.wif"] = _WIF
+        draft = await _insert_draft(db_session, user, wif_path="drafts/x/original.wif")
+        return draft
+
+    async def test_returns_200(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await self._draft_with_wif(db_session, test_user, mock_storage)
+        resp = await auth_client.post(
+            f"/api/drafts/{draft.id}/override-metadata",
+            json={"field": "num_shafts", "value": 8},
+        )
+        assert resp.status_code == 200
+
+    async def test_updates_field_in_response(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await self._draft_with_wif(db_session, test_user, mock_storage)
+        resp = await auth_client.post(
+            f"/api/drafts/{draft.id}/override-metadata",
+            json={"field": "num_shafts", "value": 8},
+        )
+        assert resp.json()["num_shafts"] == 8
+
+    async def test_records_override_in_metadata(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await self._draft_with_wif(db_session, test_user, mock_storage)
+        resp = await auth_client.post(
+            f"/api/drafts/{draft.id}/override-metadata",
+            json={"field": "num_treadles", "value": 6},
+        )
+        overrides = resp.json().get("metadata_overrides", {})
+        assert "num_treadles" in overrides
+
+    async def test_unsupported_field_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await self._draft_with_wif(db_session, test_user, mock_storage)
+        resp = await auth_client.post(
+            f"/api/drafts/{draft.id}/override-metadata",
+            json={"field": "wif_filename", "value": 1},
+        )
+        assert resp.status_code == 400
+
+    async def test_value_zero_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await self._draft_with_wif(db_session, test_user, mock_storage)
+        resp = await auth_client.post(
+            f"/api/drafts/{draft.id}/override-metadata",
+            json={"field": "num_shafts", "value": 0},
+        )
+        assert resp.status_code == 400
+
+    async def test_nonexistent_draft_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            f"/api/drafts/{uuid.uuid4()}/override-metadata",
+            json={"field": "num_shafts", "value": 8},
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.post(
+            f"/api/drafts/{uuid.uuid4()}/override-metadata",
+            json={"field": "num_shafts", "value": 8},
+        )
+        assert resp.status_code == 401

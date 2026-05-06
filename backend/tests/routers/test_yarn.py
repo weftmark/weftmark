@@ -1,12 +1,22 @@
+import io
 import uuid
 from decimal import Decimal
 
 from httpx import AsyncClient
+from PIL import Image as PILImage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.yarn import Skein, Yarn
+
+
+def _make_jpeg(width: int = 20, height: int = 20) -> bytes:
+    img = PILImage.new("RGB", (width, height), color=(100, 150, 200))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -466,4 +476,92 @@ class TestYarnPhotoAuth:
 
     async def test_delete_photo_unauthenticated_returns_401(self, raw_client: AsyncClient):
         resp = await raw_client.delete(f"/api/yarn/{uuid.uuid4()}/photo")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Photo upload / get / delete — full flow with real image data
+# ---------------------------------------------------------------------------
+
+
+class TestYarnPhoto:
+    async def test_upload_returns_204(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        resp = await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 204
+
+    async def test_get_photo_after_upload_returns_200(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        resp = await auth_client.get(f"/api/yarn/{yarn['id']}/photo")
+        assert resp.status_code == 200
+
+    async def test_get_photo_returns_image_bytes(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        resp = await auth_client.get(f"/api/yarn/{yarn['id']}/photo")
+        assert len(resp.content) > 0
+
+    async def test_upload_invalid_content_type_returns_400(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        resp = await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("doc.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+        assert resp.status_code == 400
+
+    async def test_upload_too_large_returns_400(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        big = b"X" * (6 * 1024 * 1024)
+        resp = await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("photo.jpg", big, "image/jpeg")},
+        )
+        assert resp.status_code == 400
+
+    async def test_upload_replaces_existing_photo(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("first.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        resp = await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("second.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 204
+
+    async def test_delete_photo_after_upload_returns_204(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        resp = await auth_client.delete(f"/api/yarn/{yarn['id']}/photo")
+        assert resp.status_code == 204
+
+    async def test_photo_gone_after_delete(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        await auth_client.delete(f"/api/yarn/{yarn['id']}/photo")
+        resp = await auth_client.get(f"/api/yarn/{yarn['id']}/photo")
+        assert resp.status_code == 404
+
+    async def test_upload_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.put(
+            f"/api/yarn/{uuid.uuid4()}/photo",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
         assert resp.status_code == 401

@@ -349,14 +349,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rollup/rollup-linux-x64-musl",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rollup/rollup-linux-x64-musl/README.md"
   },
-  "@tanstack/query-core@5.99.2": {
+  "@tanstack/query-core@5.100.9": {
     "licenses": "MIT",
     "repository": "https://github.com/TanStack/query",
     "publisher": "tannerlinsley",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/query-core",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/query-core/LICENSE"
   },
-  "@tanstack/react-query@5.99.2": {
+  "@tanstack/react-query@5.100.9": {
     "licenses": "MIT",
     "repository": "https://github.com/TanStack/query",
     "publisher": "tannerlinsley",
@@ -429,61 +429,61 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react/LICENSE"
   },
-  "@typescript-eslint/eslint-plugin@8.59.0": {
+  "@typescript-eslint/eslint-plugin@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/eslint-plugin",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/eslint-plugin/LICENSE"
   },
-  "@typescript-eslint/parser@8.59.0": {
+  "@typescript-eslint/parser@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/parser/LICENSE"
   },
-  "@typescript-eslint/project-service@8.59.0": {
+  "@typescript-eslint/project-service@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/project-service",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/project-service/LICENSE"
   },
-  "@typescript-eslint/scope-manager@8.59.0": {
+  "@typescript-eslint/scope-manager@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/scope-manager",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/scope-manager/LICENSE"
   },
-  "@typescript-eslint/tsconfig-utils@8.59.0": {
+  "@typescript-eslint/tsconfig-utils@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/tsconfig-utils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/tsconfig-utils/LICENSE"
   },
-  "@typescript-eslint/type-utils@8.59.0": {
+  "@typescript-eslint/type-utils@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/type-utils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/type-utils/LICENSE"
   },
-  "@typescript-eslint/types@8.59.0": {
+  "@typescript-eslint/types@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/types",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/types/LICENSE"
   },
-  "@typescript-eslint/typescript-estree@8.59.0": {
+  "@typescript-eslint/typescript-estree@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/typescript-estree",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/typescript-estree/LICENSE"
   },
-  "@typescript-eslint/utils@8.59.0": {
+  "@typescript-eslint/utils@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/utils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/utils/LICENSE"
   },
-  "@typescript-eslint/visitor-keys@8.59.0": {
+  "@typescript-eslint/visitor-keys@8.59.2": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys",
@@ -792,7 +792,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys/node_modules/eslint-visitor-keys",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys/node_modules/eslint-visitor-keys/LICENSE"
   },
-  "eslint@10.2.1": {
+  "eslint@10.3.0": {
     "licenses": "MIT",
     "repository": "https://github.com/eslint/eslint",
     "publisher": "Nicholas C. Zakas",
@@ -1417,7 +1417,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/postcss-value-parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/postcss-value-parser/LICENSE"
   },
-  "postcss@8.5.10": {
+  "postcss@8.5.14": {
     "licenses": "MIT",
     "repository": "https://github.com/postcss/postcss",
     "publisher": "Andrey Sitnik",
@@ -1735,7 +1735,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.74.4": {
+  "weaving-site@0.83.5": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend"

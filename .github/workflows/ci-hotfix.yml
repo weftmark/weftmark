@@ -55,7 +55,7 @@ jobs:
     needs: [backend-lint]
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
@@ -88,7 +88,7 @@ jobs:
     needs: [backend-lint]
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user

@@ -107,6 +107,7 @@ class AdminVersionsResponse(BaseModel):
     python: str
     redis_server: str
     celery: str
+    worker: str | None
     postgres: str
     postgres_source: str
     fastapi: str
@@ -1383,6 +1384,21 @@ async def _redis_server_version() -> str:
         return "unavailable"
 
 
+async def _worker_version() -> str | None:
+    try:
+        import redis.asyncio as aioredis
+
+        from app.celery_app import WORKER_VERSION_KEY
+
+        settings = get_settings()
+        client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        value = await client.get(WORKER_VERSION_KEY)
+        await client.aclose()
+        return value.decode() if value else None
+    except Exception:
+        return None
+
+
 @router.get("/versions", response_model=AdminVersionsResponse)
 async def get_versions(
     _: User = Depends(require_admin),
@@ -1400,6 +1416,7 @@ async def get_versions(
         python=platform.python_version(),
         redis_server=await _redis_server_version(),
         celery=_pkg("celery"),
+        worker=await _worker_version(),
         postgres=pg_version,
         postgres_source=pg_source,
         fastapi=_pkg("fastapi"),

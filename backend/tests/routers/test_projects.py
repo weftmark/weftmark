@@ -1193,6 +1193,28 @@ class TestGetPicks:
         resp = await client.get(f"/api/projects/{project.id}/picks")
         assert resp.status_code == 401
 
+    async def test_lift_project_uses_modified_wif(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        modified_key = f"drafts/{draft.id}/modified.wif"
+        mock_storage[modified_key] = _WIF
+        draft.wif_modified_path = modified_key
+        await db_session.commit()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Lift project",
+            project_type="lift",
+            status="active",
+            current_pick=1,
+            total_picks=2,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/picks")
+        assert resp.status_code == 200
+
 
 # ---------------------------------------------------------------------------
 # Unsupported loom type — project creation and assignment

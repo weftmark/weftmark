@@ -38,7 +38,7 @@
     },
     {
       "bom-ref": "requirements-L4",
-      "description": "requirements line 4: alembic==1.14.0",
+      "description": "requirements line 4: alembic==1.18.4",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -47,13 +47,13 @@
         }
       ],
       "name": "alembic",
-      "purl": "pkg:pypi/alembic@1.14.0",
+      "purl": "pkg:pypi/alembic@1.18.4",
       "type": "library",
-      "version": "1.14.0"
+      "version": "1.18.4"
     },
     {
       "bom-ref": "requirements-L5",
-      "description": "requirements line 5: asyncpg==0.30.0",
+      "description": "requirements line 5: asyncpg==0.31.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -62,9 +62,9 @@
         }
       ],
       "name": "asyncpg",
-      "purl": "pkg:pypi/asyncpg@0.30.0",
+      "purl": "pkg:pypi/asyncpg@0.31.0",
       "type": "library",
-      "version": "0.30.0"
+      "version": "0.31.0"
     },
     {
       "bom-ref": "requirements-L21",
@@ -83,7 +83,7 @@
     },
     {
       "bom-ref": "requirements-L9",
-      "description": "requirements line 9: celery[redis]==5.4.0",
+      "description": "requirements line 9: celery[redis]==5.6.3",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -98,13 +98,13 @@
           "value": "redis"
         }
       ],
-      "purl": "pkg:pypi/celery@5.4.0",
+      "purl": "pkg:pypi/celery@5.6.3",
       "type": "library",
-      "version": "5.4.0"
+      "version": "5.6.3"
     },
     {
       "bom-ref": "requirements-L18",
-      "description": "requirements line 18: cryptography==46.0.7",
+      "description": "requirements line 18: cryptography==48.0.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -113,13 +113,13 @@
         }
       ],
       "name": "cryptography",
-      "purl": "pkg:pypi/cryptography@46.0.7",
+      "purl": "pkg:pypi/cryptography@48.0.0",
       "type": "library",
-      "version": "46.0.7"
+      "version": "48.0.0"
     },
     {
       "bom-ref": "requirements-L16",
-      "description": "requirements line 16: email-validator==2.2.0",
+      "description": "requirements line 16: email-validator==2.3.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -128,9 +128,9 @@
         }
       ],
       "name": "email-validator",
-      "purl": "pkg:pypi/email-validator@2.2.0",
+      "purl": "pkg:pypi/email-validator@2.3.0",
       "type": "library",
-      "version": "2.2.0"
+      "version": "2.3.0"
     },
     {
       "bom-ref": "requirements-L1",
@@ -149,7 +149,7 @@
     },
     {
       "bom-ref": "requirements-L11",
-      "description": "requirements line 11: httpx==0.27.2",
+      "description": "requirements line 11: httpx==0.28.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -158,9 +158,9 @@
         }
       ],
       "name": "httpx",
-      "purl": "pkg:pypi/httpx@0.27.2",
+      "purl": "pkg:pypi/httpx@0.28.1",
       "type": "library",
-      "version": "0.27.2"
+      "version": "0.28.1"
     },
     {
       "bom-ref": "requirements-L19",
@@ -209,7 +209,7 @@
     },
     {
       "bom-ref": "requirements-L6",
-      "description": "requirements line 6: psycopg2-binary==2.9.10",
+      "description": "requirements line 6: psycopg2-binary==2.9.12",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -218,9 +218,9 @@
         }
       ],
       "name": "psycopg2-binary",
-      "purl": "pkg:pypi/psycopg2-binary@2.9.10",
+      "purl": "pkg:pypi/psycopg2-binary@2.9.12",
       "type": "library",
-      "version": "2.9.10"
+      "version": "2.9.12"
     },
     {
       "bom-ref": "requirements-L7",
@@ -239,7 +239,7 @@
     },
     {
       "bom-ref": "requirements-L8",
-      "description": "requirements line 8: pydantic-settings==2.6.1",
+      "description": "requirements line 8: pydantic-settings==2.14.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -248,9 +248,9 @@
         }
       ],
       "name": "pydantic-settings",
-      "purl": "pkg:pypi/pydantic-settings@2.6.1",
+      "purl": "pkg:pypi/pydantic-settings@2.14.0",
       "type": "library",
-      "version": "2.6.1"
+      "version": "2.14.0"
     },
     {
       "bom-ref": "requirements-L12",
@@ -299,7 +299,7 @@
     },
     {
       "bom-ref": "requirements-L3",
-      "description": "requirements line 3: sqlalchemy[asyncio]==2.0.36",
+      "description": "requirements line 3: sqlalchemy[asyncio]==2.0.49",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -314,9 +314,9 @@
           "value": "asyncio"
         }
       ],
-      "purl": "pkg:pypi/sqlalchemy@2.0.36",
+      "purl": "pkg:pypi/sqlalchemy@2.0.49",
       "type": "library",
-      "version": "2.0.36"
+      "version": "2.0.49"
     },
     {
       "bom-ref": "requirements-L20",
@@ -335,7 +335,7 @@
     },
     {
       "bom-ref": "requirements-L2",
-      "description": "requirements line 2: uvicorn[standard]==0.32.1",
+      "description": "requirements line 2: uvicorn[standard]==0.46.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -350,9 +350,9 @@
           "value": "standard"
         }
       ],
-      "purl": "pkg:pypi/uvicorn@0.32.1",
+      "purl": "pkg:pypi/uvicorn@0.46.0",
       "type": "library",
-      "version": "0.32.1"
+      "version": "0.46.0"
     }
   ],
   "dependencies": [
@@ -424,7 +424,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-04-28T21:55:37.680334+00:00",
+    "timestamp": "2026-05-05T12:12:07.678151+00:00",
     "tools": {
       "components": [
         {
@@ -528,7 +528,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:1ac962df-61ed-4b24-9c7c-13ccd474dcfc",
+  "serialNumber": "urn:uuid:6a02e839-adc5-4322-b429-4fa99d8ae4d1",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
