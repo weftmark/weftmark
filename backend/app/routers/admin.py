@@ -1,6 +1,7 @@
 import asyncio
 import importlib.metadata
 import logging
+import math
 import platform
 import time
 import uuid
@@ -1654,9 +1655,11 @@ class S3CleanupResponse(BaseModel):
 async def start_s3_audit_scan(
     _: User = Depends(require_superuser),
 ) -> S3ScanResponse:
+    from app.services.task_history import record_queued
     from app.tasks.s3_audit import run_s3_orphan_scan
 
     task = run_s3_orphan_scan.delay()
+    record_queued(get_settings(), task.id, "app.tasks.s3_audit.run_s3_orphan_scan", "s3_audit")
     log.info("s3_audit_scan_queued task_id=%s", task.id)
     return S3ScanResponse(task_id=task.id)
 
@@ -1752,9 +1755,11 @@ async def start_cve_scan(
     body: CveScanStartRequest,
     _: User = Depends(require_superuser),
 ) -> CveScanStartResponse:
+    from app.services.task_history import record_queued
     from app.tasks.cve_scan import run_cve_scan
 
     task = run_cve_scan.delay(body.frontend_deps)
+    record_queued(get_settings(), task.id, "app.tasks.cve_scan.run_cve_scan", "cve_scan")
     log.info("cve_scan_queued task_id=%s", task.id)
     return CveScanStartResponse(task_id=task.id)
 
@@ -1800,3 +1805,184 @@ async def get_cve_scan_summary(
     except Exception as exc:
         log.warning("cve_scan_summary_error: %s", exc)
     return CveScanSummary()
+
+
+# ---------------------------------------------------------------------------
+# Worker status
+# ---------------------------------------------------------------------------
+
+
+class WorkerActiveTask(BaseModel):
+    id: str
+    name: str
+    args_repr: str
+    time_start: float | None = None
+
+
+class WorkerInfo(BaseModel):
+    name: str
+    status: Literal["online", "offline"]
+    concurrency: int | None = None
+    completed_tasks: int | None = None
+    active_tasks: list[WorkerActiveTask] = []
+    reserved_tasks: list[WorkerActiveTask] = []
+
+
+class QueueInfo(BaseModel):
+    name: str
+    depth: int
+
+
+class WorkerStatus(BaseModel):
+    workers: list[WorkerInfo]
+    queues: list[QueueInfo]
+    checked_at: str
+
+
+@router.get("/worker-status", response_model=WorkerStatus)
+async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatus:
+    from app.celery_app import celery_app
+
+    checked_at = datetime.now(timezone.utc).isoformat()
+
+    def _inspect() -> tuple[dict, dict, dict]:
+        try:
+            inspector = celery_app.control.inspect(timeout=1.5)
+            return (
+                inspector.active() or {},
+                inspector.reserved() or {},
+                inspector.stats() or {},
+            )
+        except Exception as exc:
+            log.warning("worker_inspect_error: %s", exc)
+            return {}, {}, {}
+
+    active, reserved, stats = await asyncio.get_event_loop().run_in_executor(None, _inspect)
+
+    queues: list[QueueInfo] = []
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        for q in ["celery"]:
+            queues.append(QueueInfo(name=q, depth=client.llen(q)))
+        client.close()
+    except Exception as exc:
+        log.warning("worker_status_redis_error: %s", exc)
+
+    all_names = set(active) | set(reserved) | set(stats)
+    workers: list[WorkerInfo] = []
+
+    if not all_names:
+        workers.append(WorkerInfo(name="(no workers responding)", status="offline"))
+    else:
+        for name in sorted(all_names):
+            ws = stats.get(name, {})
+            pool = ws.get("pool", {})
+            total_dict = ws.get("total") or {}
+
+            def _task(t: dict, include_time: bool = True) -> WorkerActiveTask:
+                return WorkerActiveTask(
+                    id=t.get("id", ""),
+                    name=t.get("name", ""),
+                    args_repr=str(t.get("args", []))[:120],
+                    time_start=t.get("time_start") if include_time else None,
+                )
+
+            workers.append(
+                WorkerInfo(
+                    name=name,
+                    status="online",
+                    concurrency=pool.get("max-concurrency"),
+                    completed_tasks=sum(total_dict.values()) if total_dict else None,
+                    active_tasks=[_task(t) for t in (active.get(name) or [])],
+                    reserved_tasks=[_task(t, include_time=False) for t in (reserved.get(name) or [])],
+                )
+            )
+
+    return WorkerStatus(workers=workers, queues=queues, checked_at=checked_at)
+
+
+class DebugSleepRequest(BaseModel):
+    seconds: int = 45
+
+
+@router.post("/debug-sleep", status_code=202)
+async def start_debug_sleep(
+    body: DebugSleepRequest,
+    _: User = Depends(require_superuser),
+) -> dict:
+    from app.services.task_history import record_queued
+    from app.tasks.debug import debug_sleep
+
+    task = debug_sleep.delay(body.seconds)
+    record_queued(get_settings(), task.id, "app.tasks.debug.debug_sleep", "debug_sleep")
+    return {"task_id": task.id, "seconds": body.seconds}
+
+
+# ---------------------------------------------------------------------------
+# Task history
+# ---------------------------------------------------------------------------
+
+
+class TaskHistoryItem(BaseModel):
+    task_id: str
+    name: str
+    caller: str
+    state: str
+    queued_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    wait_seconds: float | None = None
+    run_seconds: float | None = None
+    error: str | None = None
+
+
+class TaskHistoryResponse(BaseModel):
+    items: list[TaskHistoryItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("/task-history", response_model=TaskHistoryResponse)
+async def get_task_history(
+    page: int = 1,
+    page_size: int = 25,
+    _: User = Depends(require_superuser),
+) -> TaskHistoryResponse:
+    from app.services.task_history import _iso, get_history
+
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+    items_raw, total = get_history(get_settings(), page=page, page_size=page_size)
+
+    items = []
+    for raw in items_raw:
+        q = raw.get("queued_at")
+        s = raw.get("started_at")
+        c = raw.get("completed_at")
+        items.append(
+            TaskHistoryItem(
+                task_id=raw["task_id"],
+                name=raw.get("name", ""),
+                caller=raw.get("caller", "—"),
+                state=raw.get("state", ""),
+                queued_at=_iso(q) or "",
+                started_at=_iso(s),
+                completed_at=_iso(c),
+                wait_seconds=round(s - q, 2) if s and q else None,
+                run_seconds=round(c - s, 2) if c and s else None,
+                error=raw.get("error"),
+            )
+        )
+
+    return TaskHistoryResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=max(1, math.ceil(total / page_size)),
+    )

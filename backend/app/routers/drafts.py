@@ -164,7 +164,11 @@ async def create_draft(
     await db.commit()
     await db.refresh(draft)
     if draft.wif_path:
-        generate_drawdown_preview.delay(str(draft.id))
+        task = generate_drawdown_preview.delay(str(draft.id))
+        from app.config import get_settings
+        from app.services.task_history import record_queued
+
+        record_queued(get_settings(), task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
     return DraftSummary.from_draft(draft)
 
 
@@ -373,7 +377,11 @@ async def generate_liftplan(
 
     await db.commit()
     await db.refresh(draft)
-    generate_drawdown_preview.delay(str(draft.id))
+    _prev_task = generate_drawdown_preview.delay(str(draft.id))
+    from app.config import get_settings
+    from app.services.task_history import record_queued
+
+    record_queued(get_settings(), _prev_task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -441,7 +449,11 @@ async def override_metadata(
 
     await db.commit()
     await db.refresh(draft)
-    generate_drawdown_preview.delay(str(draft.id))
+    _prev_task2 = generate_drawdown_preview.delay(str(draft.id))
+    from app.config import get_settings
+    from app.services.task_history import record_queued
+
+    record_queued(get_settings(), _prev_task2.id, "app.tasks.preview.generate_drawdown_preview", "preview")
     return DraftDetail(**_draft_detail_data(draft))
 
 

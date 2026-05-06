@@ -1,5 +1,5 @@
 from celery import Celery
-from celery.signals import worker_ready
+from celery.signals import task_failure, task_postrun, task_prerun, worker_ready
 
 from app.config import get_settings
 from app.version import VERSION
@@ -13,7 +13,13 @@ def _make_celery() -> Celery:
         "weftmark",
         broker=settings.redis_url,
         backend=settings.redis_url,
-        include=["app.tasks.deletion", "app.tasks.preview", "app.tasks.s3_audit", "app.tasks.cve_scan"],
+        include=[
+            "app.tasks.deletion",
+            "app.tasks.preview",
+            "app.tasks.s3_audit",
+            "app.tasks.cve_scan",
+            "app.tasks.debug",
+        ],
     )
     app.conf.update(
         task_serializer="json",
@@ -29,6 +35,37 @@ def _make_celery() -> Celery:
 
 
 celery_app = _make_celery()
+
+
+@task_prerun.connect
+def _on_task_prerun(task_id=None, **kwargs):
+    try:
+        from app.services.task_history import record_started
+
+        record_started(get_settings(), task_id)
+    except Exception:
+        pass
+
+
+@task_postrun.connect
+def _on_task_postrun(task_id=None, state=None, **kwargs):
+    if state == "SUCCESS":
+        try:
+            from app.services.task_history import record_completed
+
+            record_completed(get_settings(), task_id, "success")
+        except Exception:
+            pass
+
+
+@task_failure.connect
+def _on_task_failure(task_id=None, exception=None, **kwargs):
+    try:
+        from app.services.task_history import record_completed
+
+        record_completed(get_settings(), task_id, "failed", error=str(exception))
+    except Exception:
+        pass
 
 
 @worker_ready.connect
