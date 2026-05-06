@@ -20,3 +20,4 @@ itsdangerous==2.2.0
 svix==1.92.2
 boto3==1.38.0
 psutil==6.1.1
+pip-audit

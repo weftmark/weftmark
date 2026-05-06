@@ -247,3 +247,43 @@ export const getS3AuditTask = (taskId: string) =>
 
 export const cleanupS3Orphans = (keys: string[]) =>
   api.post<{ deleted: number }>("/api/admin/s3-audit/cleanup", { keys });
+
+export interface CveVuln {
+  id: string;
+  aliases: string[];
+  fix_versions: string[];
+  description: string;
+}
+
+export interface CveFinding {
+  name: string;
+  version: string;
+  vulns: CveVuln[];
+}
+
+export interface CveScanResult {
+  backend_findings: CveFinding[];
+  frontend_findings: CveFinding[];
+  scanned_at: string;
+  total_findings: number;
+}
+
+export interface CveScanTaskStatus {
+  status: "pending" | "running" | "complete" | "failed";
+  result?: CveScanResult;
+  error?: string;
+}
+
+export interface CveScanSummary {
+  finding_count: number;
+  scanned_at: string | null;
+}
+
+export const startCveScan = (frontendDeps: Record<string, string>) =>
+  api.post<{ task_id: string }>("/api/admin/cve-scan/start", { frontend_deps: frontendDeps });
+
+export const getCveScanTask = (taskId: string) =>
+  api.get<CveScanTaskStatus>(`/api/admin/cve-scan/task/${taskId}`);
+
+export const getCveScanSummary = () =>
+  api.get<CveScanSummary>("/api/admin/cve-scan/summary");
