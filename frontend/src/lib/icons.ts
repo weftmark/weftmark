@@ -6,6 +6,7 @@ import {
   Activity,
   CheckSquare,
   ChevronRight,
+  ChevronsRight,
   ChevronsUp,
   CircleCheck,
   CircleHelp,
@@ -49,6 +50,7 @@ export const AppIcons = {
   mobileMenu: Menu,
   close: X,
   chevronRight: ChevronRight,
+  chevronDoubleRight: ChevronsRight,
   presentMode: Maximize2,
   exitPresentMode: Minimize2,
 

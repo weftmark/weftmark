@@ -1149,10 +1149,13 @@ export function ProjectDetailPage() {
           >
             View design
           </button>
+          <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
+            {badgeLabel}
+          </span>
           {presentModeSupported && (
             <button
               onClick={togglePresentMode}
-              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="ml-3 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title={isPresent ? "Exit present mode" : "Present mode — fullscreen + keep screen on"}
               aria-label={isPresent ? "Exit present mode" : "Enter present mode"}
             >
@@ -1161,9 +1164,6 @@ export function ProjectDetailPage() {
                 : <AppIcons.presentMode className="h-4 w-4" />}
             </button>
           )}
-          <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
-            {badgeLabel}
-          </span>
         </div>
       </div>
 

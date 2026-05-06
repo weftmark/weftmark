@@ -75,14 +75,16 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
         } ${desktopCollapsed ? "lg:w-14" : "lg:w-60"}`}
       >
         {/* Logo */}
-        <div className={`flex h-16 shrink-0 items-center justify-between border-b border-border ${desktopCollapsed ? "lg:px-2 px-4" : "px-4"}`}>
+        <div className={`shrink-0 border-b border-border flex h-16 items-center justify-between px-4 ${
+          desktopCollapsed ? "lg:flex-col lg:items-center lg:justify-center lg:h-auto lg:px-2 lg:py-3 lg:gap-2" : ""
+        }`}>
           <Link
             to="/home"
-            className="flex items-center gap-2.5"
+            className={`flex items-center gap-2.5 ${desktopCollapsed ? "lg:w-full lg:justify-center" : ""}`}
             onClick={onClose}
             title={desktopCollapsed ? "Dashboard" : undefined}
           >
-            <WeftmarkLogo className="h-6 w-auto text-primary" />
+            <WeftmarkLogo className={`h-6 text-primary ${desktopCollapsed ? "lg:h-auto lg:w-full" : "w-auto"}`} />
             <span className={`text-sm font-semibold tracking-tight text-foreground ${desktopCollapsed ? "lg:hidden" : ""}`} style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
           </Link>
           {/* Mobile close button */}
@@ -93,14 +95,14 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           >
             <AppIcons.close className="h-4 w-4" />
           </button>
-          {/* Desktop expand button — only shown when collapsed */}
+          {/* Desktop expand button — stacks below logo when collapsed */}
           <button
             onClick={onDesktopExpand}
             className={`rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "hidden lg:flex" : "hidden"}`}
             aria-label="Expand navigation"
             title="Expand navigation"
           >
-            <AppIcons.chevronRight className="h-4 w-4" />
+            <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
           </button>
         </div>
 
