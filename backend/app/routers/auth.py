@@ -43,10 +43,13 @@ from app.models.user import User
 from app.services.audit import write_audit_log
 from app.services.clerk import set_user_metadata
 from app.services.email import send_invite_email, send_pending_signup_notification, send_signup_received_email
+from app.services.rate_limiter import rate_limit
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
+
+_invite_rate_limit = rate_limit("invite", max_requests=20, window_seconds=3600)
 
 
 # ---------------------------------------------------------------------------
@@ -323,6 +326,7 @@ async def create_invite(
     body: InviteRequest,
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
+    _rl: None = Depends(_invite_rate_limit),
 ) -> Invite:
     from app.models.invite import INVITE_ROLES
 
