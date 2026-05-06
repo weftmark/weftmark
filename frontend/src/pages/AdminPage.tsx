@@ -1511,6 +1511,8 @@ function StorageAuditTab() {
 
   async function handleCleanup() {
     if (!selected.size || !result) return;
+    const noun = selected.size === 1 ? "file" : "files";
+    if (!window.confirm(`Permanently delete ${selected.size} ${noun} from S3? This cannot be undone.`)) return;
     setCleaning(true);
     setError(null);
     try {
