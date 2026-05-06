@@ -262,7 +262,7 @@ async def get_drawdown(
     wif_bytes = storage.read_file(draft.wif_path)
     try:
         wif_draft = rendering.load_draft(wif_bytes)
-        png, total_rows = rendering.render_drawdown_only(wif_draft)
+        png, total_rows, actual_scale = rendering.render_drawdown_only(wif_draft)
     except HTTPException:
         raise
     except Exception as exc:
@@ -272,7 +272,7 @@ async def get_drawdown(
         content=png,
         media_type="image/png",
         headers={
-            "X-Pixels-Per-Row": str(rendering.DRAWDOWN_SCALE),
+            "X-Pixels-Per-Row": str(actual_scale),
             "X-Total-Rows": str(total_rows),
             "Cache-Control": "public, max-age=31536000, immutable",
             "ETag": f'"{draft_id}"',
