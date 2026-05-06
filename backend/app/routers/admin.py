@@ -1800,3 +1800,100 @@ async def get_cve_scan_summary(
     except Exception as exc:
         log.warning("cve_scan_summary_error: %s", exc)
     return CveScanSummary()
+
+
+# ---------------------------------------------------------------------------
+# Worker status
+# ---------------------------------------------------------------------------
+
+
+class WorkerActiveTask(BaseModel):
+    id: str
+    name: str
+    args_repr: str
+    time_start: float | None = None
+
+
+class WorkerInfo(BaseModel):
+    name: str
+    status: Literal["online", "offline"]
+    concurrency: int | None = None
+    completed_tasks: int | None = None
+    active_tasks: list[WorkerActiveTask] = []
+    reserved_tasks: list[WorkerActiveTask] = []
+
+
+class QueueInfo(BaseModel):
+    name: str
+    depth: int
+
+
+class WorkerStatus(BaseModel):
+    workers: list[WorkerInfo]
+    queues: list[QueueInfo]
+    checked_at: str
+
+
+@router.get("/worker-status", response_model=WorkerStatus)
+async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatus:
+    from app.celery_app import celery_app
+
+    checked_at = datetime.now(timezone.utc).isoformat()
+
+    def _inspect() -> tuple[dict, dict, dict]:
+        try:
+            inspector = celery_app.control.inspect(timeout=3)
+            return (
+                inspector.active() or {},
+                inspector.reserved() or {},
+                inspector.stats() or {},
+            )
+        except Exception as exc:
+            log.warning("worker_inspect_error: %s", exc)
+            return {}, {}, {}
+
+    active, reserved, stats = await asyncio.get_event_loop().run_in_executor(None, _inspect)
+
+    queues: list[QueueInfo] = []
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        for q in ["celery"]:
+            queues.append(QueueInfo(name=q, depth=client.llen(q)))
+        client.close()
+    except Exception as exc:
+        log.warning("worker_status_redis_error: %s", exc)
+
+    all_names = set(active) | set(reserved) | set(stats)
+    workers: list[WorkerInfo] = []
+
+    if not all_names:
+        workers.append(WorkerInfo(name="(no workers responding)", status="offline"))
+    else:
+        for name in sorted(all_names):
+            ws = stats.get(name, {})
+            pool = ws.get("pool", {})
+            total_dict = ws.get("total") or {}
+
+            def _task(t: dict, include_time: bool = True) -> WorkerActiveTask:
+                return WorkerActiveTask(
+                    id=t.get("id", ""),
+                    name=t.get("name", ""),
+                    args_repr=str(t.get("args", []))[:120],
+                    time_start=t.get("time_start") if include_time else None,
+                )
+
+            workers.append(
+                WorkerInfo(
+                    name=name,
+                    status="online",
+                    concurrency=pool.get("max-concurrency"),
+                    completed_tasks=sum(total_dict.values()) if total_dict else None,
+                    active_tasks=[_task(t) for t in (active.get(name) or [])],
+                    reserved_tasks=[_task(t, include_time=False) for t in (reserved.get(name) or [])],
+                )
+            )
+
+    return WorkerStatus(workers=workers, queues=queues, checked_at=checked_at)

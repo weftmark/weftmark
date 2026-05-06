@@ -287,3 +287,33 @@ export const getCveScanTask = (taskId: string) =>
 
 export const getCveScanSummary = () =>
   api.get<CveScanSummary>("/api/admin/cve-scan/summary");
+
+export interface WorkerActiveTask {
+  id: string;
+  name: string;
+  args_repr: string;
+  time_start: number | null;
+}
+
+export interface WorkerInfo {
+  name: string;
+  status: "online" | "offline";
+  concurrency: number | null;
+  completed_tasks: number | null;
+  active_tasks: WorkerActiveTask[];
+  reserved_tasks: WorkerActiveTask[];
+}
+
+export interface QueueInfo {
+  name: string;
+  depth: number;
+}
+
+export interface WorkerStatus {
+  workers: WorkerInfo[];
+  queues: QueueInfo[];
+  checked_at: string;
+}
+
+export const getWorkerStatus = () =>
+  api.get<WorkerStatus>("/api/admin/worker-status");
