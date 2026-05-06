@@ -10,9 +10,10 @@ export function usePresentMode(): PresentModeResult {
   const [isPresent, setIsPresent] = useState(false);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
+  // Show button if either API is available — each is attempted independently
   const isSupported =
-    "wakeLock" in navigator &&
-    "requestFullscreen" in document.documentElement;
+    "requestFullscreen" in document.documentElement ||
+    "wakeLock" in navigator;
 
   const enter = useCallback(async () => {
     try {
