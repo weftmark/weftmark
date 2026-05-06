@@ -35,6 +35,9 @@ DRAWDOWN_SCALE = 20
 
 def load_draft(wif_bytes: bytes) -> Draft:
     """Parse WIF bytes and return a PyWeaving Draft."""
+    from app.services.wif_modifier import zero_treadles_for_liftplan
+
+    wif_bytes = zero_treadles_for_liftplan(wif_bytes)
     with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as tmp:
         tmp.write(wif_bytes)
         tmp_path = tmp.name
