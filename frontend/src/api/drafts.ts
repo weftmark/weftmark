@@ -18,6 +18,7 @@ export interface Draft {
   lint_warnings: string[];
   lint_errors: string[];
   has_preview: boolean;
+  has_drawdown_preview: boolean;
   has_modified_file: boolean;
   metadata_overrides: Record<string, { original: number | null; override: number }> | null;
   is_shared: boolean;

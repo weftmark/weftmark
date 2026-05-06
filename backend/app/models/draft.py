@@ -54,6 +54,10 @@ class Draft(Base, TimestampMixin, SoftDeleteMixin):
     # Rendered preview image path
     preview_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
+    # Pre-generated reduced-size drawdown for fast serving
+    drawdown_preview_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    drawdown_preview_scale: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # Sharing
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     share_slug: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)

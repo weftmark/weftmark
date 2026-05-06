@@ -12,6 +12,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_APP_ENV: ${APP_ENV:-dev}
+        VITE_DEV_BANNER_COLOR: ${VITE_DEV_BANNER_COLOR:-}
         VITE_CLERK_SIGN_IN_URL: /login
         VITE_CLERK_SIGN_UP_URL: /register
         VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /home

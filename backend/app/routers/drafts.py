@@ -15,6 +15,7 @@ from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering, storage, wif_linter, wif_modifier, wif_parser
 from app.services.rate_limiter import rate_limit
+from app.tasks.preview import generate_drawdown_preview
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 settings = get_settings()
@@ -55,6 +56,7 @@ class DraftSummary(BaseModel):
     lint_warnings: list[str]
     lint_errors: list[str]
     has_preview: bool
+    has_drawdown_preview: bool
     has_modified_file: bool
     metadata_overrides: dict | None
     is_shared: bool
@@ -67,6 +69,7 @@ class DraftSummary(BaseModel):
     def from_draft(cls, d: Draft) -> "DraftSummary":
         data = {c.key: getattr(d, c.key) for c in d.__table__.columns}
         data["has_preview"] = storage.preview_exists(d.preview_path)
+        data["has_drawdown_preview"] = storage.drawdown_preview_exists(d.drawdown_preview_path)
         data["has_modified_file"] = bool(d.wif_modified_path and storage.file_exists(d.wif_modified_path))
         return cls(**data)
 
@@ -139,6 +142,8 @@ async def create_draft(
 
     await db.commit()
     await db.refresh(draft)
+    if draft.wif_path:
+        generate_drawdown_preview.delay(str(draft.id))
     return DraftSummary.from_draft(draft)
 
 
@@ -205,6 +210,24 @@ async def get_drawdown(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db)
+
+    # Serve pre-generated cached preview if available
+    if draft.drawdown_preview_path and storage.file_exists(draft.drawdown_preview_path):
+        png = storage.read_drawdown_preview(draft.drawdown_preview_path)
+        scale = draft.drawdown_preview_scale or rendering.DRAWDOWN_SCALE
+        total_rows = draft.weft_threads or 0
+        return Response(
+            content=png,
+            media_type="image/png",
+            headers={
+                "X-Pixels-Per-Row": str(scale),
+                "X-Total-Rows": str(total_rows),
+                "Cache-Control": "public, max-age=31536000, immutable",
+                "ETag": f'"{draft_id}"',
+            },
+        )
+
+    # Fall back to live render
     if not draft.wif_path:
         raise HTTPException(status_code=404, detail="No WIF file for this draft")
 
@@ -329,6 +352,7 @@ async def generate_liftplan(
 
     await db.commit()
     await db.refresh(draft)
+    generate_drawdown_preview.delay(str(draft.id))
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -396,6 +420,7 @@ async def override_metadata(
 
     await db.commit()
     await db.refresh(draft)
+    generate_drawdown_preview.delay(str(draft.id))
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -409,6 +434,7 @@ def _draft_detail_data(draft: Draft) -> dict:
     that are already covered by a metadata override so stale DB entries don't show."""
     data = {c.key: getattr(draft, c.key) for c in draft.__table__.columns}
     data["has_preview"] = storage.preview_exists(draft.preview_path)
+    data["has_drawdown_preview"] = storage.drawdown_preview_exists(draft.drawdown_preview_path)
     data["has_modified_file"] = bool(draft.wif_modified_path and storage.file_exists(draft.wif_modified_path))
     overrides = draft.metadata_overrides or {}
     warnings = list(data.get("lint_warnings") or [])
