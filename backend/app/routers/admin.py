@@ -1,6 +1,7 @@
 import asyncio
 import importlib.metadata
 import logging
+import math
 import platform
 import time
 import uuid
@@ -1654,9 +1655,11 @@ class S3CleanupResponse(BaseModel):
 async def start_s3_audit_scan(
     _: User = Depends(require_superuser),
 ) -> S3ScanResponse:
+    from app.services.task_history import record_queued
     from app.tasks.s3_audit import run_s3_orphan_scan
 
     task = run_s3_orphan_scan.delay()
+    record_queued(get_settings(), task.id, "app.tasks.s3_audit.run_s3_orphan_scan", "s3_audit")
     log.info("s3_audit_scan_queued task_id=%s", task.id)
     return S3ScanResponse(task_id=task.id)
 
@@ -1752,9 +1755,11 @@ async def start_cve_scan(
     body: CveScanStartRequest,
     _: User = Depends(require_superuser),
 ) -> CveScanStartResponse:
+    from app.services.task_history import record_queued
     from app.tasks.cve_scan import run_cve_scan
 
     task = run_cve_scan.delay(body.frontend_deps)
+    record_queued(get_settings(), task.id, "app.tasks.cve_scan.run_cve_scan", "cve_scan")
     log.info("cve_scan_queued task_id=%s", task.id)
     return CveScanStartResponse(task_id=task.id)
 
@@ -1900,7 +1905,7 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
 
 
 class DebugSleepRequest(BaseModel):
-    seconds: int = 30
+    seconds: int = 45
 
 
 @router.post("/debug-sleep", status_code=202)
@@ -1908,7 +1913,76 @@ async def start_debug_sleep(
     body: DebugSleepRequest,
     _: User = Depends(require_superuser),
 ) -> dict:
+    from app.services.task_history import record_queued
     from app.tasks.debug import debug_sleep
 
     task = debug_sleep.delay(body.seconds)
+    record_queued(get_settings(), task.id, "app.tasks.debug.debug_sleep", "debug_sleep")
     return {"task_id": task.id, "seconds": body.seconds}
+
+
+# ---------------------------------------------------------------------------
+# Task history
+# ---------------------------------------------------------------------------
+
+
+class TaskHistoryItem(BaseModel):
+    task_id: str
+    name: str
+    caller: str
+    state: str
+    queued_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    wait_seconds: float | None = None
+    run_seconds: float | None = None
+    error: str | None = None
+
+
+class TaskHistoryResponse(BaseModel):
+    items: list[TaskHistoryItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("/task-history", response_model=TaskHistoryResponse)
+async def get_task_history(
+    page: int = 1,
+    page_size: int = 25,
+    _: User = Depends(require_superuser),
+) -> TaskHistoryResponse:
+    from app.services.task_history import _iso, get_history
+
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+    items_raw, total = get_history(get_settings(), page=page, page_size=page_size)
+
+    items = []
+    for raw in items_raw:
+        q = raw.get("queued_at")
+        s = raw.get("started_at")
+        c = raw.get("completed_at")
+        items.append(
+            TaskHistoryItem(
+                task_id=raw["task_id"],
+                name=raw.get("name", ""),
+                caller=raw.get("caller", "—"),
+                state=raw.get("state", ""),
+                queued_at=_iso(q) or "",
+                started_at=_iso(s),
+                completed_at=_iso(c),
+                wait_seconds=round(s - q, 2) if s and q else None,
+                run_seconds=round(c - s, 2) if c and s else None,
+                error=raw.get("error"),
+            )
+        )
+
+    return TaskHistoryResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=max(1, math.ceil(total / page_size)),
+    )

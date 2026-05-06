@@ -33,6 +33,8 @@ import {
   getCveScanSummary,
   getWorkerStatus,
   startDebugSleep,
+  getTaskHistory,
+  type TaskHistoryItem,
   type AdminUser,
   type AdminHealth,
   type AdminDbInfo,
@@ -1923,7 +1925,7 @@ function WorkersTab() {
   function triggerSleep() {
     setSleeping(true);
     startDebugSleep(45)
-      .then(() => setTimeout(() => setSleeping(false), 47_000))
+      .then(() => setSleeping(false))
       .catch(() => setSleeping(false));
   }
 
@@ -1939,7 +1941,7 @@ function WorkersTab() {
           </span>
         </div>
         <Button size="sm" variant="outline" disabled={sleeping} onClick={triggerSleep}>
-          {sleeping ? "Sleeping 45s…" : "Run test task"}
+          {sleeping ? "Dispatching…" : "Run test task"}
         </Button>
       </div>
 
@@ -1973,6 +1975,138 @@ function WorkersTab() {
               ))}
             </div>
           </div>
+        </>
+      )}
+
+      <TaskHistoryTable />
+    </div>
+  );
+}
+
+const STATE_CLS: Record<string, string> = {
+  queued: "text-muted-foreground",
+  running: "text-blue-600 dark:text-blue-400",
+  success: "text-green-600 dark:text-green-400",
+  failed: "text-destructive",
+};
+
+function fmtSec(s: number | null): string {
+  if (s === null) return "—";
+  if (s < 1) return `${Math.round(s * 1000)}ms`;
+  return `${s.toFixed(1)}s`;
+}
+
+function fmtTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function shortName(name: string): string {
+  const parts = name.split(".");
+  return parts.length >= 2 ? parts.slice(-2).join(".") : name;
+}
+
+function TaskHistoryRow({ item }: { item: TaskHistoryItem }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <>
+      <tr
+        className={`border-t hover:bg-muted/30 text-xs ${item.error ? "cursor-pointer" : ""}`}
+        onClick={() => item.error && setExpanded((v) => !v)}
+      >
+        <td className="px-3 py-2 font-mono text-muted-foreground whitespace-nowrap">{fmtTime(item.queued_at)}</td>
+        <td className="px-3 py-2 font-mono" title={item.name}>{shortName(item.name)}</td>
+        <td className="px-3 py-2 text-muted-foreground">{item.caller}</td>
+        <td className={`px-3 py-2 font-medium ${STATE_CLS[item.state] ?? ""}`}>{item.state}</td>
+        <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.wait_seconds)}</td>
+        <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.run_seconds)}</td>
+        <td className="px-3 py-2 tabular-nums text-right whitespace-nowrap">{fmtTime(item.completed_at)}</td>
+        <td className="px-3 py-2 text-muted-foreground">{item.error ? (expanded ? "▲" : "▼ error") : "—"}</td>
+      </tr>
+      {expanded && item.error && (
+        <tr className="border-t bg-destructive/5">
+          <td colSpan={8} className="px-3 py-2">
+            <pre className="text-xs font-mono text-destructive whitespace-pre-wrap">{item.error}</pre>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function TaskHistoryTable() {
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin", "task-history", page],
+    queryFn: () => getTaskHistory(page, PAGE_SIZE),
+    refetchInterval: 5_000,
+  });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Task History {data ? `(${data.total})` : ""}
+        </h3>
+        <button
+          className="text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => refetch()}
+        >
+          Refresh
+        </button>
+      </div>
+
+      {isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
+
+      {data && data.items.length === 0 && (
+        <p className="text-xs text-muted-foreground">No task history yet. Dispatch a task to see it here.</p>
+      )}
+
+      {data && data.items.length > 0 && (
+        <>
+          <div className="rounded-md border overflow-auto max-h-[480px]">
+            <table className="w-full text-xs min-w-[640px]">
+              <thead className="bg-muted sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium whitespace-nowrap">Queued at</th>
+                  <th className="px-3 py-2 text-left font-medium">Task</th>
+                  <th className="px-3 py-2 text-left font-medium">Caller</th>
+                  <th className="px-3 py-2 text-left font-medium">State</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Wait</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Run</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Completed at</th>
+                  <th className="px-3 py-2 text-left font-medium">Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.items.map((item) => (
+                  <TaskHistoryRow key={item.task_id} item={item} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {data.pages > 1 && (
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="px-2 py-1 border rounded disabled:opacity-40 hover:bg-muted/40"
+              >
+                ← Prev
+              </button>
+              <span>Page {data.page} of {data.pages}</span>
+              <button
+                disabled={page >= data.pages}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-2 py-1 border rounded disabled:opacity-40 hover:bg-muted/40"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>

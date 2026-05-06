@@ -318,5 +318,29 @@ export interface WorkerStatus {
 export const getWorkerStatus = () =>
   api.get<WorkerStatus>("/api/admin/worker-status");
 
-export const startDebugSleep = (seconds: number = 30) =>
+export const startDebugSleep = (seconds: number = 45) =>
   api.post<{ task_id: string; seconds: number }>("/api/admin/debug-sleep", { seconds });
+
+export interface TaskHistoryItem {
+  task_id: string;
+  name: string;
+  caller: string;
+  state: string;
+  queued_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  wait_seconds: number | null;
+  run_seconds: number | null;
+  error: string | null;
+}
+
+export interface TaskHistoryResponse {
+  items: TaskHistoryItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+export const getTaskHistory = (page: number = 1, pageSize: number = 25) =>
+  api.get<TaskHistoryResponse>(`/api/admin/task-history?page=${page}&page_size=${pageSize}`);
