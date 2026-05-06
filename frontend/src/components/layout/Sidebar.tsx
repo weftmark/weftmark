@@ -29,9 +29,11 @@ const SETTINGS_SECTIONS = [
 interface Props {
   open: boolean;
   onClose: () => void;
+  desktopCollapsed?: boolean;
+  onDesktopExpand?: () => void;
 }
 
-export function Sidebar({ open, onClose }: Props) {
+export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand }: Props) {
   const location = useLocation();
   const { user } = useAuth();
   const { signOut } = useClerk();
@@ -47,7 +49,7 @@ export function Sidebar({ open, onClose }: Props) {
       active
         ? "bg-accent text-accent-foreground"
         : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-    }`;
+    } ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`;
   }
 
   function iconCls(href: string, exact?: boolean) {
@@ -68,22 +70,37 @@ export function Sidebar({ open, onClose }: Props) {
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-card border-r border-border transition-transform duration-200 ease-in-out lg:static lg:z-auto lg:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 flex flex-col bg-card border-r border-border transition-all duration-200 ease-in-out lg:static lg:z-auto lg:translate-x-0 ${
+          open ? "translate-x-0 w-60" : "-translate-x-full w-60"
+        } ${desktopCollapsed ? "lg:w-14" : "lg:w-60"}`}
       >
         {/* Logo */}
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4">
-          <Link to="/home" className="flex items-center gap-2.5" onClick={onClose}>
+        <div className={`flex h-16 shrink-0 items-center justify-between border-b border-border ${desktopCollapsed ? "lg:px-2 px-4" : "px-4"}`}>
+          <Link
+            to="/home"
+            className="flex items-center gap-2.5"
+            onClick={onClose}
+            title={desktopCollapsed ? "Dashboard" : undefined}
+          >
             <WeftmarkLogo className="h-6 w-auto text-primary" />
-            <span className="text-sm font-semibold tracking-tight text-foreground" style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
+            <span className={`text-sm font-semibold tracking-tight text-foreground ${desktopCollapsed ? "lg:hidden" : ""}`} style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
           </Link>
+          {/* Mobile close button */}
           <button
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground hover:text-subdued lg:hidden"
             aria-label="Close menu"
           >
             <AppIcons.close className="h-4 w-4" />
+          </button>
+          {/* Desktop expand button — only shown when collapsed */}
+          <button
+            onClick={onDesktopExpand}
+            className={`rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "hidden lg:flex" : "hidden"}`}
+            aria-label="Expand navigation"
+            title="Expand navigation"
+          >
+            <AppIcons.chevronRight className="h-4 w-4" />
           </button>
         </div>
 
@@ -96,9 +113,10 @@ export function Sidebar({ open, onClose }: Props) {
                 to={href}
                 onClick={onClose}
                 className={navCls(href, exact)}
+                title={desktopCollapsed ? label : undefined}
               >
                 <Icon className={iconCls(href, exact)} strokeWidth={1.75} />
-                {label}
+                <span className={desktopCollapsed ? "lg:hidden" : ""}>{label}</span>
               </Link>
             ))}
           </nav>
@@ -108,13 +126,18 @@ export function Sidebar({ open, onClose }: Props) {
         {user?.is_superuser && <div className="flex-1" />}
 
         {/* Bottom nav */}
-        <div className="shrink-0 border-t border-border px-3 py-3 space-y-0.5">
-          <Link to="/settings/appearance" onClick={onClose} className={navCls("/settings")}>
+        <div className={`shrink-0 border-t border-border px-3 py-3 space-y-0.5 ${desktopCollapsed ? "lg:px-2" : ""}`}>
+          <Link
+            to="/settings/appearance"
+            onClick={onClose}
+            className={navCls("/settings")}
+            title={desktopCollapsed ? "Settings" : undefined}
+          >
             <AppIcons.settings className={iconCls("/settings")} strokeWidth={1.75} />
-            Settings
+            <span className={desktopCollapsed ? "lg:hidden" : ""}>Settings</span>
           </Link>
 
-          {isActive("/settings") && (
+          {isActive("/settings") && !desktopCollapsed && (
             <div className="ml-3 border-l border-border pl-2 space-y-0.5">
               {SETTINGS_SECTIONS.map(({ id, label }) => {
                 const href = `/settings/${id}`;
@@ -138,24 +161,30 @@ export function Sidebar({ open, onClose }: Props) {
           )}
 
           {user?.is_admin && (
-            <Link to="/admin" onClick={onClose} className={navCls("/admin")}>
+            <Link
+              to="/admin"
+              onClick={onClose}
+              className={navCls("/admin")}
+              title={desktopCollapsed ? "Admin" : undefined}
+            >
               <AppIcons.admin className={iconCls("/admin")} strokeWidth={1.75} />
-              Admin
+              <span className={desktopCollapsed ? "lg:hidden" : ""}>Admin</span>
             </Link>
           )}
 
           <button
             onClick={() => signOut()}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-subdued transition-colors hover:bg-muted hover:text-foreground"
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-subdued transition-colors hover:bg-muted hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
+            title={desktopCollapsed ? "Sign out" : undefined}
           >
             <AppIcons.logout className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-            Sign out
+            <span className={desktopCollapsed ? "lg:hidden" : ""}>Sign out</span>
           </button>
         </div>
 
-        {/* User identity */}
+        {/* User identity — hidden on desktop in rail mode */}
         {user && (
-          <div className="shrink-0 border-t border-border bg-muted px-4 py-3">
+          <div className={`shrink-0 border-t border-border bg-muted px-4 py-3 ${desktopCollapsed ? "lg:hidden" : ""}`}>
             <p className="truncate text-xs font-medium text-foreground">{user.display_name}</p>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
