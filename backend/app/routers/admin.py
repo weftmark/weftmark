@@ -1822,6 +1822,7 @@ class WorkerActiveTask(BaseModel):
 class WorkerInfo(BaseModel):
     name: str
     status: Literal["online", "offline"]
+    version: str | None = None
     concurrency: int | None = None
     completed_tasks: int | None = None
     active_tasks: list[WorkerActiveTask] = []
@@ -1836,6 +1837,7 @@ class QueueInfo(BaseModel):
 class WorkerStatus(BaseModel):
     workers: list[WorkerInfo]
     queues: list[QueueInfo]
+    api_version: str
     checked_at: str
 
 
@@ -1860,13 +1862,20 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
     active, reserved, stats = await asyncio.get_event_loop().run_in_executor(None, _inspect)
 
     queues: list[QueueInfo] = []
+    node_versions: dict[str, str] = {}
     try:
         import redis as _redis
+
+        from app.celery_app import WORKER_VERSION_NODE_PREFIX
 
         settings = get_settings()
         client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
         for q in ["celery"]:
             queues.append(QueueInfo(name=q, depth=client.llen(q)))
+        for name in set(active) | set(reserved) | set(stats):
+            raw = client.get(f"{WORKER_VERSION_NODE_PREFIX}{name}")
+            if raw:
+                node_versions[name] = raw.decode() if isinstance(raw, bytes) else raw
         client.close()
     except Exception as exc:
         log.warning("worker_status_redis_error: %s", exc)
@@ -1894,6 +1903,7 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
                 WorkerInfo(
                     name=name,
                     status="online",
+                    version=node_versions.get(name),
                     concurrency=pool.get("max-concurrency"),
                     completed_tasks=sum(total_dict.values()) if total_dict else None,
                     active_tasks=[_task(t) for t in (active.get(name) or [])],
@@ -1901,7 +1911,7 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
                 )
             )
 
-    return WorkerStatus(workers=workers, queues=queues, checked_at=checked_at)
+    return WorkerStatus(workers=workers, queues=queues, api_version=VERSION, checked_at=checked_at)
 
 
 class DebugSleepRequest(BaseModel):

@@ -298,6 +298,7 @@ export interface WorkerActiveTask {
 export interface WorkerInfo {
   name: string;
   status: "online" | "offline";
+  version: string | null;
   concurrency: number | null;
   completed_tasks: number | null;
   active_tasks: WorkerActiveTask[];
@@ -312,6 +313,7 @@ export interface QueueInfo {
 export interface WorkerStatus {
   workers: WorkerInfo[];
   queues: QueueInfo[];
+  api_version: string;
   checked_at: string;
 }
 
