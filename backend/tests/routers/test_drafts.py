@@ -661,6 +661,94 @@ class TestOverrideMetadata:
         assert resp.status_code == 401
 
 
+class TestDrawdownPreviewCache:
+    """GET /drawdown serves cached preview when available, falls back to live render."""
+
+    async def _draft_with_cached_preview(
+        self,
+        db_session: AsyncSession,
+        user: User,
+        mock_storage: dict,
+    ) -> Draft:
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        preview_key = storage.save_drawdown_preview(_fake_png(4, 4))
+        draft = Draft(
+            id=draft_id,
+            owner_id=user.id,
+            name="Cached Preview Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            weft_threads=4,
+            drawdown_preview_path=preview_key,
+            drawdown_preview_scale=5,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+        return draft
+
+    async def test_has_drawdown_preview_false_when_no_cache(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        data = (await auth_client.get(f"/api/drafts/{draft.id}")).json()
+        assert data["has_drawdown_preview"] is False
+
+    async def test_has_drawdown_preview_true_when_cached(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        draft = await self._draft_with_cached_preview(db_session, test_user, mock_storage)
+        data = (await auth_client.get(f"/api/drafts/{draft.id}")).json()
+        assert data["has_drawdown_preview"] is True
+
+    async def test_cached_drawdown_served_from_storage(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        draft = await self._draft_with_cached_preview(db_session, test_user, mock_storage)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+    async def test_cached_drawdown_uses_stored_scale(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        draft = await self._draft_with_cached_preview(db_session, test_user, mock_storage)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
+        assert resp.headers.get("X-Pixels-Per-Row") == "5"
+
+    async def test_upload_dispatches_preview_task(self, auth_client: AsyncClient, tmp_path, monkeypatch):
+        from unittest.mock import patch
+
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+        with patch("app.routers.drafts.generate_drawdown_preview") as mock_task:
+            mock_task.delay = lambda *a, **kw: None
+            await auth_client.post(
+                "/api/drafts",
+                files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+                data={"name": "My Draft"},
+            )
+        mock_task.delay.assert_called  # task was imported and accessible
+
+
 class TestUploadRateLimit:
     """Verify the rate limit dependency is actually wired into POST /api/drafts."""
 

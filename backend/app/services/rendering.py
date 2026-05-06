@@ -63,6 +63,34 @@ def render_full_draft_liftplan(draft: Draft, scale: int = 10) -> bytes:
     return out.getvalue()
 
 
+def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int]:
+    """Render a reduced-size drawdown for caching.
+
+    Scales down so the image width fits within max_px. Returns (png_bytes, scale_used).
+    Does not apply render_max_* limits — the reduced scale prevents oversized output.
+    """
+    warp_count = len(draft.warp)
+    weft_count = len(draft.weft)
+    if warp_count <= 0 or weft_count <= 0:
+        raise ValueError("Draft has no drawdown data to render")
+
+    scale = max(1, min(DRAWDOWN_SCALE, max_px // warp_count))
+    margin = 20
+    drawdown_w = warp_count * scale
+    drawdown_h = weft_count * scale
+
+    renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
+    full_im = renderer.make_pil_image()
+
+    offsetx = margin
+    offsety = margin + (6 + len(draft.shafts)) * scale
+    cropped = full_im.crop((offsetx, offsety, offsetx + drawdown_w, offsety + drawdown_h))
+    cropped = cropped.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
+    out = io.BytesIO()
+    cropped.save(out, format="PNG")
+    return out.getvalue(), scale
+
+
 def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[bytes, int]:
     """Render just the drawdown strip, cropped from the full draft image.
 

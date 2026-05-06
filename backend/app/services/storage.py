@@ -5,7 +5,10 @@ Backend is selected by STORAGE_BACKEND env var:
   s3     — files written to S3_BUCKET_NAME via S3-compatible API (production)
 
 The public API is identical for both backends. Keys/paths stored in the
-database are backend-agnostic relative strings (e.g. "drafts/{id}/preview.png").
+database are backend-agnostic relative strings (e.g. "drafts/{uuid}.wif").
+All save_* functions generate a fresh UUID for the storage key so each upload
+gets a unique, collision-free path. Original filenames are stored in DB columns
+and returned via Content-Disposition headers — not embedded in storage keys.
 """
 
 from __future__ import annotations
@@ -85,11 +88,16 @@ def _exists(key: str | None) -> bool:
 
 
 def save_wif(draft_id: uuid.UUID, filename: str, data: bytes) -> str:
-    return _put(f"drafts/{draft_id}/original.wif", data)
+    ext = Path(filename).suffix or ".wif"
+    return _put(f"drafts/{uuid.uuid4()}{ext}", data)
 
 
 def save_preview(draft_id: uuid.UUID, data: bytes) -> str:
-    return _put(f"drafts/{draft_id}/preview.png", data)
+    return _put(f"drafts/{uuid.uuid4()}.png", data)
+
+
+def save_drawdown_preview(data: bytes) -> str:
+    return _put(f"drafts/{uuid.uuid4()}.png", data)
 
 
 def read_wif(wif_path: str) -> bytes:
@@ -100,8 +108,16 @@ def read_preview(preview_path: str) -> bytes:
     return _get(preview_path)
 
 
+def read_drawdown_preview(path: str) -> bytes:
+    return _get(path)
+
+
 def preview_exists(preview_path: str | None) -> bool:
     return _exists(preview_path)
+
+
+def drawdown_preview_exists(path: str | None) -> bool:
+    return _exists(path)
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +126,7 @@ def preview_exists(preview_path: str | None) -> bool:
 
 
 def save_loom_photo(loom_id: uuid.UUID, ext: str, data: bytes) -> str:
-    return _put(f"looms/{loom_id}/profile{ext}", data)
+    return _put(f"looms/{uuid.uuid4()}{ext}", data)
 
 
 def delete_loom_photo(photo_path: str) -> None:
@@ -123,7 +139,7 @@ def delete_loom_photo(photo_path: str) -> None:
 
 
 def save_version_photo(loom_id: uuid.UUID, version_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
-    return _put(f"looms/{loom_id}/versions/{version_id}/photos/{photo_id}{ext}", data)
+    return _put(f"looms/{photo_id}{ext}", data)
 
 
 def delete_version_photo(path: str) -> None:
@@ -138,7 +154,7 @@ def delete_version_photo(path: str) -> None:
 def save_version_receipt(
     loom_id: uuid.UUID, version_id: uuid.UUID, receipt_id: uuid.UUID, ext: str, data: bytes
 ) -> str:
-    return _put(f"looms/{loom_id}/versions/{version_id}/receipts/{receipt_id}{ext}", data)
+    return _put(f"looms/{receipt_id}{ext}", data)
 
 
 def delete_version_receipt(path: str) -> None:
@@ -151,7 +167,7 @@ def delete_version_receipt(path: str) -> None:
 
 
 def save_yarn_photo(yarn_id: uuid.UUID, ext: str, data: bytes) -> str:
-    return _put(f"yarn/{yarn_id}/profile{ext}", data)
+    return _put(f"yarn/{uuid.uuid4()}{ext}", data)
 
 
 def delete_yarn_photo(photo_path: str) -> None:
@@ -164,7 +180,7 @@ def delete_yarn_photo(photo_path: str) -> None:
 
 
 def save_project_photo(project_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
-    return _put(f"projects/{project_id}/photos/{photo_id}{ext}", data)
+    return _put(f"projects/{photo_id}{ext}", data)
 
 
 def delete_project_photo(path: str) -> None:
@@ -172,7 +188,7 @@ def delete_project_photo(path: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Generic read / exists
+# Generic read / exists / copy
 # ---------------------------------------------------------------------------
 
 
@@ -182,3 +198,9 @@ def read_file(path: str) -> bytes:
 
 def file_exists(path: str | None) -> bool:
     return _exists(path)
+
+
+def copy_file(old_key: str, new_key: str) -> str:
+    """Copy a stored file to a new key. Used by migrations."""
+    data = _get(old_key)
+    return _put(new_key, data)

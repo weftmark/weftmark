@@ -57,16 +57,28 @@ class TestSaveReadWif:
         rel = storage.save_wif(pid, "test.wif", data)
         assert storage.read_wif(rel) == data
 
-    def test_overwrite(self):
+    def test_round_trip_second_save(self):
         pid = _pid()
-        storage.save_wif(pid, "test.wif", b"v1")
         rel = storage.save_wif(pid, "test.wif", b"v2")
         assert storage.read_wif(rel) == b"v2"
 
-    def test_saved_as_original_wif(self):
+    def test_uuid_key_format(self):
+        rel = storage.save_wif(_pid(), "anything.wif", b"data")
+        parts = rel.split("/")
+        assert len(parts) == 2
+        assert parts[0] == "drafts"
+        stem = parts[1].rsplit(".", 1)[0]
+        import uuid as _uuid
+
+        _uuid.UUID(stem)  # raises if not a valid UUID
+
+    def test_multiple_saves_produce_unique_paths(self):
         pid = _pid()
-        rel = storage.save_wif(pid, "anything.wif", b"data")
-        assert rel.endswith("original.wif")
+        rel1 = storage.save_wif(pid, "test.wif", b"v1")
+        rel2 = storage.save_wif(pid, "test.wif", b"v2")
+        assert rel1 != rel2
+        assert storage.read_wif(rel1) == b"v1"
+        assert storage.read_wif(rel2) == b"v2"
 
 
 # ---------------------------------------------------------------------------
@@ -265,6 +277,44 @@ class TestProjectPhoto:
         assert rel1 != rel2
         assert storage.read_file(rel1) == b"a"
         assert storage.read_file(rel2) == b"b"
+
+
+# ---------------------------------------------------------------------------
+# Drawdown preview
+# ---------------------------------------------------------------------------
+
+
+class TestDrawdownPreview:
+    def test_save_returns_relative_path(self):
+        rel = storage.save_drawdown_preview(b"\x89PNG")
+        assert not rel.startswith("/")
+
+    def test_uuid_key_format(self):
+        rel = storage.save_drawdown_preview(b"\x89PNG")
+        parts = rel.split("/")
+        assert len(parts) == 2
+        assert parts[0] == "drafts"
+        stem = parts[1].rsplit(".", 1)[0]
+        import uuid as _uuid
+
+        _uuid.UUID(stem)
+
+    def test_round_trip(self):
+        data = b"\x89PNG\r\n\x1a\n"
+        rel = storage.save_drawdown_preview(data)
+        assert storage.read_drawdown_preview(rel) == data
+
+    def test_drawdown_preview_exists_true(self):
+        rel = storage.save_drawdown_preview(b"img")
+        assert storage.drawdown_preview_exists(rel) is True
+
+    def test_drawdown_preview_exists_false_for_none(self):
+        assert storage.drawdown_preview_exists(None) is False
+
+    def test_multiple_saves_unique_paths(self):
+        rel1 = storage.save_drawdown_preview(b"a")
+        rel2 = storage.save_drawdown_preview(b"b")
+        assert rel1 != rel2
 
 
 # ---------------------------------------------------------------------------
