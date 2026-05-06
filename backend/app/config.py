@@ -111,6 +111,9 @@ class Settings(BaseSettings):
     # Redis / Celery
     redis_url: str = "redis://redis:6379/0"
 
+    # Data retention
+    soft_delete_retention_days: int = 365
+
     # Rendering
     render_max_width: int = 4000
     render_max_height: int = 4000

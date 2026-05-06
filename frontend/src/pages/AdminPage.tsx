@@ -35,6 +35,7 @@ import {
   startDebugSleep,
   getTaskHistory,
   revokeTask,
+  runPurgeSoftDeleted,
   type TaskHistoryItem,
   type AdminUser,
   type AdminHealth,
@@ -1483,7 +1484,7 @@ function EulaTab() {
 // Superuser tab
 // ---------------------------------------------------------------------------
 
-type SuperuserSubTab = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile";
+type SuperuserSubTab = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance";
 
 const SUPERUSER_TAB_LABELS: Record<SuperuserSubTab, string> = {
   eula: "EULA",
@@ -1492,6 +1493,7 @@ const SUPERUSER_TAB_LABELS: Record<SuperuserSubTab, string> = {
   workers: "Workers",
   deletion: "Deletion",
   reconcile: "Reconcile",
+  maintenance: "Maintenance",
 };
 
 function SuperuserTab() {
@@ -1500,7 +1502,7 @@ function SuperuserTab() {
   return (
     <div className="space-y-4">
       <div className="flex gap-2 border-b pb-2 flex-wrap">
-        {(["eula", "storage", "cve", "workers", "deletion", "reconcile"] as SuperuserSubTab[]).map((t) => (
+        {(["eula", "storage", "cve", "workers", "deletion", "reconcile", "maintenance"] as SuperuserSubTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setSub(t)}
@@ -1521,6 +1523,7 @@ function SuperuserTab() {
       {sub === "workers" && <WorkersTab />}
       {sub === "deletion" && <DeletionTab />}
       {sub === "reconcile" && <ReconcileTab />}
+      {sub === "maintenance" && <MaintenanceTab />}
     </div>
   );
 }
@@ -2148,6 +2151,48 @@ function DeletionTab() {
     <div className="rounded-lg border border-dashed p-8 text-center">
       <p className="text-sm font-medium text-muted-foreground">Deletion Queue</p>
       <p className="text-xs text-muted-foreground mt-1">Coming soon — in-progress and pending user deletion states.</p>
+    </div>
+  );
+}
+
+function MaintenanceTab() {
+  const queryClient = useQueryClient();
+  const [purging, setPurging] = useState(false);
+
+  function triggerPurge() {
+    setPurging(true);
+    runPurgeSoftDeleted()
+      .then(() => {
+        setPurging(false);
+        queryClient.invalidateQueries({ queryKey: ["admin", "task-history"] });
+      })
+      .catch(() => setPurging(false));
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border p-5 space-y-3">
+        <div>
+          <p className="text-sm font-medium">Purge Soft-Deleted Records</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Hard-deletes drafts, looms, projects, and yarn that have been soft-deleted for longer than the
+            configured retention period (<code className="font-mono">SOFT_DELETE_RETENTION_DAYS</code>, default 365 days).
+            Associated storage files are removed at the same time. User deletion is handled separately by the
+            deletion cascade task.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={purging}
+            onClick={triggerPurge}
+          >
+            {purging ? "Queuing…" : "Run Purge Now"}
+          </Button>
+          <p className="text-xs text-muted-foreground">Results appear in the Workers → Task History table.</p>
+        </div>
+      </div>
     </div>
   );
 }
