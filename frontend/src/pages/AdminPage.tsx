@@ -1542,17 +1542,23 @@ function StorageAuditTab() {
         {scanStatus === "running" && (
           <span className="text-xs text-muted-foreground animate-pulse">Running in background…</span>
         )}
+        {selected.size > 0 && (
+          <>
+            <span className="text-xs text-destructive">
+              {selected.size} file{selected.size !== 1 ? "s" : ""} selected — permanent delete, cannot be undone.
+            </span>
+            <Button variant="destructive" size="sm" onClick={handleCleanup} disabled={cleaning}>
+              {cleaning ? "Deleting…" : "Delete Selected"}
+            </Button>
+          </>
+        )}
+        {cleanupCount !== null && (
+          <span className="text-sm text-green-600 dark:text-green-400">
+            Deleted {cleanupCount} file{cleanupCount !== 1 ? "s" : ""} from S3.
+          </span>
+        )}
+        {error && <span className="text-sm text-destructive">{error}</span>}
       </div>
-
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
-
-      {cleanupCount !== null && (
-        <p className="text-sm text-green-600 dark:text-green-400">
-          Deleted {cleanupCount} file{cleanupCount !== 1 ? "s" : ""} from S3.
-        </p>
-      )}
 
       {result && (
         <div className="space-y-3">
@@ -1571,62 +1577,44 @@ function StorageAuditTab() {
               {result.orphaned_files.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No orphaned files found.</p>
               ) : (
-                <>
-                  <div className="rounded-md border overflow-auto max-h-96">
-                    <table className="w-full text-xs">
-                      <thead className="bg-muted sticky top-0">
-                        <tr>
-                          <th className="p-2 text-left w-8">
+                <div className="rounded-md border overflow-auto max-h-96">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left w-8">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={toggleAll}
+                            className="cursor-pointer"
+                          />
+                        </th>
+                        <th className="p-2 text-left font-medium">Key</th>
+                        <th className="p-2 text-right font-medium">Size</th>
+                        <th className="p-2 text-right font-medium">Last Modified</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.orphaned_files.map((f) => (
+                        <tr key={f.key} className="border-t hover:bg-muted/50">
+                          <td className="p-2">
                             <input
                               type="checkbox"
-                              checked={allSelected}
-                              onChange={toggleAll}
+                              checked={selected.has(f.key)}
+                              onChange={() => toggleSelect(f.key)}
                               className="cursor-pointer"
                             />
-                          </th>
-                          <th className="p-2 text-left font-medium">Key</th>
-                          <th className="p-2 text-right font-medium">Size</th>
-                          <th className="p-2 text-right font-medium">Last Modified</th>
+                          </td>
+                          <td className="p-2 font-mono break-all">{f.key}</td>
+                          <td className="p-2 text-right whitespace-nowrap">{formatBytes(f.size)}</td>
+                          <td className="p-2 text-right whitespace-nowrap text-muted-foreground">
+                            {new Date(f.last_modified).toLocaleDateString()}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {result.orphaned_files.map((f) => (
-                          <tr key={f.key} className="border-t hover:bg-muted/50">
-                            <td className="p-2">
-                              <input
-                                type="checkbox"
-                                checked={selected.has(f.key)}
-                                onChange={() => toggleSelect(f.key)}
-                                className="cursor-pointer"
-                              />
-                            </td>
-                            <td className="p-2 font-mono break-all">{f.key}</td>
-                            <td className="p-2 text-right whitespace-nowrap">{formatBytes(f.size)}</td>
-                            <td className="p-2 text-right whitespace-nowrap text-muted-foreground">
-                              {new Date(f.last_modified).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {selected.size > 0 && (
-                    <div className="flex items-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
-                      <p className="text-sm flex-1 text-destructive">
-                        Permanently delete {selected.size} selected file{selected.size !== 1 ? "s" : ""} from S3? This cannot be undone.
-                      </p>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={handleCleanup}
-                        disabled={cleaning}
-                      >
-                        {cleaning ? "Deleting…" : "Delete Selected"}
-                      </Button>
-                    </div>
-                  )}
-                </>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </>
           )}
