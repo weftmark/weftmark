@@ -345,10 +345,11 @@ class TestAdminVersions:
         data = (await admin_client.get("/api/admin/versions")).json()
         assert "app" in data
         assert "python" in data
-        assert "fastapi" in data
-        assert "sqlalchemy" in data
-        assert "alembic" in data
-        assert "boto3" in data
+        assert "redis_server" in data
+        assert "celery" in data
+        assert "postgres" in data
+        assert "backend_packages" in data
+        assert isinstance(data["backend_packages"], dict)
 
     async def test_app_version_is_string(self, admin_client: AsyncClient):
         data = (await admin_client.get("/api/admin/versions")).json()

@@ -110,13 +110,7 @@ class AdminVersionsResponse(BaseModel):
     worker: str | None
     postgres: str
     postgres_source: str
-    fastapi: str
-    sqlalchemy: str
-    alembic: str
-    pyweaving: str
-    pillow: str
-    boto3: str
-    psutil: str
+    backend_packages: dict[str, str]
 
 
 class AdminDbInfoResponse(BaseModel):
@@ -1371,6 +1365,28 @@ def _pkg(name: str) -> str:
         return "unknown"
 
 
+def _all_packages() -> dict[str, str]:
+    """Return all packages listed in requirements.txt with their installed versions."""
+    import re
+
+    req_path = "/app/requirements.txt"
+    try:
+        with open(req_path) as f:
+            lines = f.readlines()
+    except OSError:
+        return {}
+
+    packages: dict[str, str] = {}
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        name = re.split(r"[=<>!~;\s\[]", line)[0].strip()
+        if name:
+            packages[name] = _pkg(name)
+    return dict(sorted(packages.items(), key=lambda kv: kv[0].lower()))
+
+
 async def _redis_server_version() -> str:
     try:
         import redis.asyncio as aioredis
@@ -1419,13 +1435,7 @@ async def get_versions(
         worker=await _worker_version(),
         postgres=pg_version,
         postgres_source=pg_source,
-        fastapi=_pkg("fastapi"),
-        sqlalchemy=_pkg("sqlalchemy"),
-        alembic=_pkg("alembic"),
-        pyweaving=_pkg("pyweaving"),
-        pillow=_pkg("pillow"),
-        boto3=_pkg("boto3"),
-        psutil=_pkg("psutil"),
+        backend_packages=_all_packages(),
     )
 
 

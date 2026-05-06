@@ -58,13 +58,7 @@ export interface AdminVersions {
   worker: string | null;
   postgres: string;
   postgres_source: string;
-  fastapi: string;
-  sqlalchemy: string;
-  alembic: string;
-  pyweaving: string;
-  pillow: string;
-  boto3: string;
-  psutil: string;
+  backend_packages: Record<string, string>;
 }
 
 export interface AdminDbInfo {

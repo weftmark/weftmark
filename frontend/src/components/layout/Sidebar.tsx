@@ -26,6 +26,16 @@ const SETTINGS_SECTIONS = [
   { id: "account", label: "Account" },
 ];
 
+const ADMIN_SECTIONS = [
+  { id: "users", label: "Users" },
+  { id: "invites", label: "Invites" },
+  { id: "stats", label: "Stats" },
+  { id: "health", label: "Health" },
+  { id: "services", label: "Services" },
+  { id: "audit", label: "Audit log" },
+  { id: "superuser", label: "Superuser", superuserOnly: true },
+];
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -164,7 +174,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
 
           {user?.is_admin && (
             <Link
-              to="/admin"
+              to="/admin/users"
               onClick={onClose}
               className={navCls("/admin")}
               title={desktopCollapsed ? "Admin" : undefined}
@@ -172,6 +182,29 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
               <AppIcons.admin className={iconCls("/admin")} strokeWidth={1.75} />
               <span className={desktopCollapsed ? "lg:hidden" : ""}>Admin</span>
             </Link>
+          )}
+
+          {user?.is_admin && isActive("/admin") && !desktopCollapsed && (
+            <div className="ml-3 border-l border-border pl-2 space-y-0.5">
+              {ADMIN_SECTIONS.filter((s) => !s.superuserOnly || user?.is_superuser).map(({ id, label }) => {
+                const href = `/admin/${id}`;
+                const active = location.pathname === href;
+                return (
+                  <Link
+                    key={id}
+                    to={href}
+                    onClick={onClose}
+                    className={`block rounded-md px-2 py-1.5 text-xs transition-colors ${
+                      active
+                        ? "bg-accent/20 text-accent font-medium"
+                        : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
           )}
 
           <button
