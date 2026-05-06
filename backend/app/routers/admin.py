@@ -1701,3 +1701,102 @@ async def cleanup_s3_orphans(
 
     log.info("s3_cleanup_complete admin_id=%s deleted=%d", admin.id, deleted)
     return S3CleanupResponse(deleted=deleted)
+
+
+# ---------------------------------------------------------------------------
+# CVE / vulnerability scan (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class CveVuln(BaseModel):
+    id: str
+    aliases: list[str]
+    fix_versions: list[str]
+    description: str
+
+
+class CveFinding(BaseModel):
+    name: str
+    version: str
+    vulns: list[CveVuln]
+
+
+class CveScanResult(BaseModel):
+    backend_findings: list[CveFinding]
+    frontend_findings: list[CveFinding]
+    scanned_at: str
+    total_findings: int
+
+
+class CveScanTaskStatus(BaseModel):
+    status: str  # pending | running | complete | failed
+    result: CveScanResult | None = None
+    error: str | None = None
+
+
+class CveScanStartRequest(BaseModel):
+    frontend_deps: dict[str, str]
+
+
+class CveScanStartResponse(BaseModel):
+    task_id: str
+
+
+class CveScanSummary(BaseModel):
+    finding_count: int | None = None
+    scanned_at: str | None = None
+
+
+@router.post("/cve-scan/start", response_model=CveScanStartResponse, status_code=202)
+async def start_cve_scan(
+    body: CveScanStartRequest,
+    _: User = Depends(require_superuser),
+) -> CveScanStartResponse:
+    from app.tasks.cve_scan import run_cve_scan
+
+    task = run_cve_scan.delay(body.frontend_deps)
+    log.info("cve_scan_queued task_id=%s", task.id)
+    return CveScanStartResponse(task_id=task.id)
+
+
+@router.get("/cve-scan/task/{task_id}", response_model=CveScanTaskStatus)
+async def get_cve_scan_task(
+    task_id: str,
+    _: User = Depends(require_superuser),
+) -> CveScanTaskStatus:
+    from celery.result import AsyncResult
+
+    result = AsyncResult(task_id)
+    state = result.state
+    if state in ("PENDING", "RECEIVED"):
+        return CveScanTaskStatus(status="pending")
+    if state in ("STARTED", "RETRY"):
+        return CveScanTaskStatus(status="running")
+    if state == "SUCCESS":
+        return CveScanTaskStatus(status="complete", result=CveScanResult(**result.result))
+    if state == "FAILURE":
+        return CveScanTaskStatus(status="failed", error=str(result.result))
+    return CveScanTaskStatus(status="pending")
+
+
+@router.get("/cve-scan/summary", response_model=CveScanSummary)
+async def get_cve_scan_summary(
+    _: User = Depends(require_superuser),
+) -> CveScanSummary:
+    import json as _json
+
+    from app.tasks.cve_scan import CVE_SUMMARY_KEY
+
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        raw = client.get(CVE_SUMMARY_KEY)
+        client.close()
+        if raw:
+            data = _json.loads(raw)
+            return CveScanSummary(finding_count=data["finding_count"], scanned_at=data["scanned_at"])
+    except Exception as exc:
+        log.warning("cve_scan_summary_error: %s", exc)
+    return CveScanSummary()

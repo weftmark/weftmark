@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { UserDetailModal, type UserDetailTarget } from "@/components/admin/UserDetailModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,9 @@ import {
   startS3AuditScan,
   getS3AuditTask,
   cleanupS3Orphans,
+  startCveScan,
+  getCveScanTask,
+  getCveScanSummary,
   type AdminUser,
   type AdminHealth,
   type AdminDbInfo,
@@ -39,13 +42,15 @@ import {
   type ReconcileReport,
   type WebhookProbeResult,
   type S3AuditResult,
+  type CveScanResult,
+  type CveFinding,
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
 
-type Tab = "users" | "invites" | "stats" | "health" | "services" | "audit" | "superuser";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "superuser";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -70,6 +75,45 @@ function formatUptime(seconds: number): string {
   return parts.join(", ");
 }
 
+function CveBanner() {
+  const navigate = useNavigate();
+  const [dismissed, setDismissed] = useState(false);
+  const { data } = useQuery({
+    queryKey: ["admin", "cve-summary"],
+    queryFn: getCveScanSummary,
+    staleTime: 5 * 60_000,
+  });
+
+  if (dismissed || !data || data.finding_count === 0) return null;
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+      <span className="text-amber-700 dark:text-amber-300 font-medium">
+        {data.finding_count} CVE {data.finding_count === 1 ? "vulnerability" : "vulnerabilities"} found
+        {data.scanned_at && (
+          <span className="font-normal text-amber-600 dark:text-amber-400 ml-2">
+            · last scanned {new Date(data.scanned_at).toLocaleString()}
+          </span>
+        )}
+      </span>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          className="text-xs text-amber-700 dark:text-amber-300 underline hover:no-underline"
+          onClick={() => navigate("/admin/superuser")}
+        >
+          View report
+        </button>
+        <button
+          className="text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setDismissed(true)}
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const { section = "users" } = useParams<{ section: string }>();
   const { user: currentUser } = useAuth();
@@ -84,13 +128,16 @@ export function AdminPage() {
         )}
       </div>
 
-        {tab === "users" && <UsersTab />}
-        {tab === "invites" && <InvitesTab />}
-        {tab === "stats" && <StatsTab />}
-        {tab === "health" && <HealthTab />}
-        {tab === "services" && <ServicesTab />}
-        {tab === "audit" && <AuditLogTab />}
-        {tab === "superuser" && <SuperuserTab />}
+      {currentUser?.is_superuser && <CveBanner />}
+
+      {tab === "users" && <UsersTab />}
+      {tab === "invites" && <InvitesTab />}
+      {tab === "stats" && <StatsTab />}
+      {tab === "health" && <HealthTab />}
+      {tab === "services" && <ServicesTab />}
+      {tab === "deps" && <DepsTab />}
+      {tab === "audit" && <AuditLogTab />}
+      {tab === "superuser" && <SuperuserTab />}
     </div>
   );
 }
@@ -821,7 +868,6 @@ function HealthTab() {
         color="rgb(245,158,11)"
       />
 
-      <VersionsTable />
     </div>
   );
 }
@@ -915,6 +961,14 @@ function VersionsTable() {
           </table>
         </div>
       </details>
+    </div>
+  );
+}
+
+function DepsTab() {
+  return (
+    <div className="space-y-4">
+      <VersionsTable />
     </div>
   );
 }
@@ -1422,31 +1476,40 @@ function EulaTab() {
 // Superuser tab
 // ---------------------------------------------------------------------------
 
-type SuperuserSubTab = "eula" | "storage" | "deletion" | "reconcile";
+type SuperuserSubTab = "eula" | "storage" | "cve" | "deletion" | "reconcile";
+
+const SUPERUSER_TAB_LABELS: Record<SuperuserSubTab, string> = {
+  eula: "EULA",
+  storage: "Storage",
+  cve: "CVE Scan",
+  deletion: "Deletion",
+  reconcile: "Reconcile",
+};
 
 function SuperuserTab() {
   const [sub, setSub] = useState<SuperuserSubTab>("eula");
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 border-b pb-2">
-        {(["eula", "storage", "deletion", "reconcile"] as SuperuserSubTab[]).map((t) => (
+      <div className="flex gap-2 border-b pb-2 flex-wrap">
+        {(["eula", "storage", "cve", "deletion", "reconcile"] as SuperuserSubTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setSub(t)}
-            className={`px-3 py-1.5 text-sm rounded capitalize ${
+            className={`px-3 py-1.5 text-sm rounded ${
               sub === t
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t === "eula" ? "EULA" : t}
+            {SUPERUSER_TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
       {sub === "eula" && <EulaTab />}
       {sub === "storage" && <StorageAuditTab />}
+      {sub === "cve" && <CveScanTab />}
       {sub === "deletion" && <DeletionTab />}
       {sub === "reconcile" && <ReconcileTab />}
     </div>
@@ -1628,6 +1691,130 @@ function StorageAuditTab() {
               )}
             </>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CveFindingsTable({ title, findings }: { title: string; findings: CveFinding[] }) {
+  if (findings.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</h3>
+      <div className="rounded-md border overflow-auto max-h-96">
+        <table className="w-full text-xs">
+          <thead className="bg-muted sticky top-0">
+            <tr>
+              <th className="p-2 text-left font-medium">Package</th>
+              <th className="p-2 text-left font-medium">Version</th>
+              <th className="p-2 text-left font-medium">CVE ID</th>
+              <th className="p-2 text-left font-medium">Fix</th>
+              <th className="p-2 text-left font-medium">Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            {findings.flatMap((pkg) =>
+              pkg.vulns.map((v, i) => (
+                <tr key={`${pkg.name}-${v.id}-${i}`} className="border-t hover:bg-muted/50">
+                  <td className="p-2 font-mono">{i === 0 ? pkg.name : ""}</td>
+                  <td className="p-2 font-mono tabular-nums">{i === 0 ? pkg.version : ""}</td>
+                  <td className="p-2 font-mono text-destructive">{v.id}</td>
+                  <td className="p-2 font-mono">{v.fix_versions.length > 0 ? v.fix_versions.join(", ") : "—"}</td>
+                  <td className="p-2 text-muted-foreground max-w-xs truncate" title={v.description}>
+                    {v.description || "—"}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CveScanTab() {
+  const qc = useQueryClient();
+  const [scanStatus, setScanStatus] = useState<"idle" | "running" | "complete" | "failed">("idle");
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [result, setResult] = useState<CveScanResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!taskId || scanStatus !== "running") return;
+    pollRef.current = setInterval(async () => {
+      try {
+        const data = await getCveScanTask(taskId);
+        if (data.status === "complete" && data.result) {
+          setResult(data.result);
+          setScanStatus("complete");
+          qc.invalidateQueries({ queryKey: ["admin", "cve-summary"] });
+          clearInterval(pollRef.current!);
+        } else if (data.status === "failed") {
+          setError(data.error ?? "Scan failed");
+          setScanStatus("failed");
+          clearInterval(pollRef.current!);
+        }
+      } catch {
+        setError("Failed to poll scan status");
+        setScanStatus("failed");
+        clearInterval(pollRef.current!);
+      }
+    }, 3000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [taskId, scanStatus, qc]);
+
+  async function startScan() {
+    setScanStatus("running");
+    setResult(null);
+    setError(null);
+    try {
+      const { task_id } = await startCveScan(__FRONTEND_DEPS__);
+      setTaskId(task_id);
+    } catch {
+      setScanStatus("failed");
+      setError("Failed to start scan");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">
+          Scans Python dependencies via pip-audit and npm packages via OSV.dev.
+          Results are stored and shown in the warning banner on all admin pages.
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <Button onClick={startScan} disabled={scanStatus === "running"} size="sm">
+          {scanStatus === "running" ? "Scanning…" : "Run CVE Scan"}
+        </Button>
+        {scanStatus === "running" && (
+          <span className="text-xs text-muted-foreground animate-pulse">Running in background…</span>
+        )}
+        {error && <span className="text-sm text-destructive">{error}</span>}
+      </div>
+
+      {result && (
+        <div className="space-y-4">
+          <div className="flex gap-6 text-sm">
+            <span>
+              <span className={`font-medium ${result.total_findings > 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
+                {result.total_findings}
+              </span>
+              {" "}total {result.total_findings === 1 ? "vulnerability" : "vulnerabilities"}
+            </span>
+            <span className="text-xs text-muted-foreground self-center">
+              scanned {new Date(result.scanned_at).toLocaleString()}
+            </span>
+          </div>
+          {result.total_findings === 0 && (
+            <p className="text-sm text-green-600 dark:text-green-400">No vulnerabilities found.</p>
+          )}
+          <CveFindingsTable title="Backend (Python)" findings={result.backend_findings} />
+          <CveFindingsTable title="Frontend (npm)" findings={result.frontend_findings} />
         </div>
       )}
     </div>
