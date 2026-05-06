@@ -11,6 +11,7 @@ A full PyWeaving-compatible WIF requires: [WIF] with Date, [CONTENTS],
 """
 
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -21,6 +22,10 @@ from app.services.rendering import (
     render_full_draft,
     render_full_draft_liftplan,
 )
+
+# Real-world liftplan WIF that declares Treadles=8 as metadata (TempoWeave Designer output).
+_SAMPLES_DIR = Path(__file__).parents[3] / "docs" / "samples"
+_SHADOW_FLOWERS_WIF = _SAMPLES_DIR / "Shadow_flowers~assembly-LP.wif"
 
 # ---------------------------------------------------------------------------
 # Minimal valid WIF fixture
@@ -361,3 +366,28 @@ class TestRenderDrawdownOnly:
         draft.warp = []
         with pytest.raises(ValueError, match="no drawdown data"):
             render_drawdown_only(draft)
+
+
+# ---------------------------------------------------------------------------
+# Real-world liftplan WIF with stale Treadles= metadata (#266)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    not _SHADOW_FLOWERS_WIF.exists(),
+    reason="Sample file not present in repo",
+)
+class TestLiftplanTreadles:
+    def test_shadow_flowers_loads_without_assertion_error(self):
+        wif_bytes = _SHADOW_FLOWERS_WIF.read_bytes()
+        draft = load_draft(wif_bytes)
+        assert len(draft.warp) > 0
+        assert len(draft.weft) > 0
+
+    def test_shadow_flowers_drawdown_renders(self):
+        wif_bytes = _SHADOW_FLOWERS_WIF.read_bytes()
+        draft = load_draft(wif_bytes)
+        png, total_rows, scale_used = render_drawdown_only(draft)
+        assert png[:4] == b"\x89PNG"
+        assert total_rows == len(draft.weft)
+        assert scale_used >= 1

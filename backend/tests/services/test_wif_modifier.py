@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.wif_modifier import set_weaving_int
+from app.services.wif_modifier import set_weaving_int, zero_treadles_for_liftplan
 
 _MINIMAL_WIF = b"""[WIF]
 Version=1.1
@@ -67,3 +67,76 @@ class TestSetWeavingInt:
         weaving_idx = text.index("[WEAVING]")
         units_idx = text.index("Units=2")
         assert units_idx > weaving_idx
+
+
+_LIFTPLAN_WIF_WITH_TREADLES = b"""[WIF]
+Version=1.1
+Date=June 2025
+Source Program=TempoWeave Designer
+
+[WEAVING]
+Shafts=8
+Treadles=8
+Rising Shed=true
+
+[LIFTPLAN]
+1=1,2,3
+2=4,5,6
+"""
+
+_LIFTPLAN_WIF_NO_TREADLES = b"""[WIF]
+Version=1.1
+Date=June 2025
+Source Program=TempoWeave Designer
+
+[WEAVING]
+Shafts=8
+Treadles=0
+Rising Shed=true
+
+[LIFTPLAN]
+1=1,2,3
+"""
+
+_TREADLE_WIF = b"""[WIF]
+Version=1.1
+Date=June 2025
+Source Program=TestSuite
+
+[WEAVING]
+Shafts=4
+Treadles=4
+Rising Shed=true
+
+[TREADLING]
+1=1
+2=2
+"""
+
+
+class TestZeroTreadlesForLiftplan:
+    def test_zeros_treadles_when_liftplan_without_treadling(self):
+        result = zero_treadles_for_liftplan(_LIFTPLAN_WIF_WITH_TREADLES)
+        assert b"Treadles=0" in result
+        assert b"Treadles=8" not in result
+
+    def test_noop_when_treadles_already_zero(self):
+        result = zero_treadles_for_liftplan(_LIFTPLAN_WIF_NO_TREADLES)
+        assert b"Treadles=0" in result
+
+    def test_noop_when_no_liftplan_section(self):
+        result = zero_treadles_for_liftplan(_TREADLE_WIF)
+        assert result == _TREADLE_WIF
+
+    def test_noop_when_both_liftplan_and_treadling_present(self):
+        both = _LIFTPLAN_WIF_WITH_TREADLES + b"\n[TREADLING]\n1=1\n"
+        result = zero_treadles_for_liftplan(both)
+        assert result == both
+
+    def test_returns_bytes(self):
+        result = zero_treadles_for_liftplan(_LIFTPLAN_WIF_WITH_TREADLES)
+        assert isinstance(result, bytes)
+
+    def test_liftplan_section_preserved(self):
+        result = zero_treadles_for_liftplan(_LIFTPLAN_WIF_WITH_TREADLES)
+        assert b"[LIFTPLAN]" in result
