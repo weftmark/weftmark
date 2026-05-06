@@ -63,7 +63,8 @@ def _on_task_failure(task_id=None, exception=None, **kwargs):
     try:
         from app.services.task_history import record_completed
 
-        record_completed(get_settings(), task_id, "failed", error=str(exception))
+        state = "revoked" if type(exception).__name__ == "Revoked" else "failed"
+        record_completed(get_settings(), task_id, state, error=None if state == "revoked" else str(exception))
     except Exception:
         pass
 
