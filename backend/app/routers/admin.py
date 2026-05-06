@@ -1837,6 +1837,7 @@ class QueueInfo(BaseModel):
 class WorkerStatus(BaseModel):
     workers: list[WorkerInfo]
     queues: list[QueueInfo]
+    api_version: str
     checked_at: str
 
 
@@ -1910,7 +1911,7 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
                 )
             )
 
-    return WorkerStatus(workers=workers, queues=queues, checked_at=checked_at)
+    return WorkerStatus(workers=workers, queues=queues, api_version=VERSION, checked_at=checked_at)
 
 
 class DebugSleepRequest(BaseModel):

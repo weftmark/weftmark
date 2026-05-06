@@ -1830,19 +1830,24 @@ function CveScanTab() {
   );
 }
 
-function WorkerCard({ worker }: { worker: WorkerInfo }) {
+function WorkerCard({ worker, apiVersion }: { worker: WorkerInfo; apiVersion: string }) {
   const isOnline = worker.status === "online";
   const hasActive = worker.active_tasks.length > 0;
   const hasReserved = worker.reserved_tasks.length > 0;
+  const versionMismatch = isOnline && worker.version != null && worker.version !== apiVersion;
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 bg-muted/20">
+    <div className={`border rounded-lg overflow-hidden ${versionMismatch ? "border-amber-500/50" : ""}`}>
+      <div className={`flex items-center gap-3 px-4 py-3 ${versionMismatch ? "bg-amber-500/10" : "bg-muted/20"}`}>
         <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
         <span className="text-sm font-mono font-medium flex-1 truncate">{worker.name}</span>
         {isOnline && worker.version && (
-          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground font-mono">
-            {worker.version}
+          <span className={`text-xs px-2 py-0.5 rounded border font-mono ${
+            versionMismatch
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              : "border-border text-muted-foreground"
+          }`} title={versionMismatch ? `Expected ${apiVersion}` : undefined}>
+            {worker.version}{versionMismatch ? " ⚠" : ""}
           </span>
         )}
         {isOnline && worker.concurrency !== null && (
@@ -1977,7 +1982,7 @@ function WorkersTab() {
             </h3>
             <div className="space-y-3">
               {data.workers.map((w) => (
-                <WorkerCard key={w.name} worker={w} />
+                <WorkerCard key={w.name} worker={w} apiVersion={data.api_version} />
               ))}
             </div>
           </div>

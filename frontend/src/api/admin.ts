@@ -313,6 +313,7 @@ export interface QueueInfo {
 export interface WorkerStatus {
   workers: WorkerInfo[];
   queues: QueueInfo[];
+  api_version: string;
   checked_at: string;
 }
 
