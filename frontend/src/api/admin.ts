@@ -224,3 +224,32 @@ export interface ReconcileReport {
 export const getReconcileReport = () => api.get<ReconcileReport>("/api/admin/reconcile");
 export const backfillClerkUser = (clerkUserId: string, role: "user" | "admin" = "user") =>
   api.post<{ status: string; user_id: string; email: string }>(`/api/admin/reconcile/backfill/${clerkUserId}`, { role });
+
+export interface S3OrphanFile {
+  key: string;
+  size: number;
+  last_modified: string;
+}
+
+export interface S3AuditResult {
+  total_s3_keys: number;
+  total_db_paths: number;
+  orphaned_count: number;
+  orphaned_files: S3OrphanFile[];
+  not_applicable: boolean;
+}
+
+export interface S3AuditTaskStatus {
+  status: "pending" | "running" | "complete" | "failed";
+  result?: S3AuditResult;
+  error?: string;
+}
+
+export const startS3AuditScan = () =>
+  api.post<{ task_id: string }>("/api/admin/s3-audit/scan", {});
+
+export const getS3AuditTask = (taskId: string) =>
+  api.get<S3AuditTaskStatus>(`/api/admin/s3-audit/task/${taskId}`);
+
+export const cleanupS3Orphans = (keys: string[]) =>
+  api.post<{ deleted: number }>("/api/admin/s3-audit/cleanup", { keys });

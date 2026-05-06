@@ -24,6 +24,9 @@ import {
   getAuditLog,
   getReconcileReport,
   backfillClerkUser,
+  startS3AuditScan,
+  getS3AuditTask,
+  cleanupS3Orphans,
   type AdminUser,
   type AdminHealth,
   type AdminDbInfo,
@@ -34,6 +37,7 @@ import {
   type ServicePermCheck,
   type ReconcileReport,
   type WebhookProbeResult,
+  type S3AuditResult,
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
@@ -1440,10 +1444,182 @@ function SuperuserTab() {
 }
 
 function StorageAuditTab() {
+  const [scanStatus, setScanStatus] = useState<"idle" | "running" | "complete" | "failed">("idle");
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [result, setResult] = useState<S3AuditResult | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupCount, setCleanupCount] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!taskId || scanStatus !== "running") return;
+    pollRef.current = setInterval(async () => {
+      try {
+        const data = await getS3AuditTask(taskId);
+        if (data.status === "complete" && data.result) {
+          setResult(data.result);
+          setScanStatus("complete");
+          clearInterval(pollRef.current!);
+        } else if (data.status === "failed") {
+          setError(data.error ?? "Scan failed");
+          setScanStatus("failed");
+          clearInterval(pollRef.current!);
+        }
+      } catch {
+        setError("Failed to poll scan status");
+        setScanStatus("failed");
+        clearInterval(pollRef.current!);
+      }
+    }, 2000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [taskId, scanStatus]);
+
+  async function startScan() {
+    setScanStatus("running");
+    setResult(null);
+    setSelected(new Set());
+    setCleanupCount(null);
+    setError(null);
+    try {
+      const { task_id } = await startS3AuditScan();
+      setTaskId(task_id);
+    } catch {
+      setScanStatus("failed");
+      setError("Failed to start scan");
+    }
+  }
+
+  function toggleSelect(key: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (!result) return;
+    setSelected((prev) =>
+      prev.size === result.orphaned_files.length
+        ? new Set()
+        : new Set(result.orphaned_files.map((f) => f.key))
+    );
+  }
+
+  async function handleCleanup() {
+    if (!selected.size || !result) return;
+    const noun = selected.size === 1 ? "file" : "files";
+    if (!window.confirm(`Permanently delete ${selected.size} ${noun} from S3? This cannot be undone.`)) return;
+    setCleaning(true);
+    setError(null);
+    try {
+      const { deleted } = await cleanupS3Orphans(Array.from(selected));
+      setCleanupCount(deleted);
+      setResult({
+        ...result,
+        orphaned_files: result.orphaned_files.filter((f) => !selected.has(f.key)),
+        orphaned_count: result.orphaned_count - deleted,
+      });
+      setSelected(new Set());
+    } catch {
+      setError("Cleanup failed — check logs");
+    } finally {
+      setCleaning(false);
+    }
+  }
+
+  const allSelected = !!result && selected.size === result.orphaned_files.length && result.orphaned_files.length > 0;
+
   return (
-    <div className="rounded-lg border border-dashed p-8 text-center">
-      <p className="text-sm font-medium text-muted-foreground">Storage Audit</p>
-      <p className="text-xs text-muted-foreground mt-1">Coming soon — per-user S3 storage breakdown.</p>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Button onClick={startScan} disabled={scanStatus === "running"} size="sm">
+          {scanStatus === "running" ? "Scanning…" : "Scan S3 for Orphaned Files"}
+        </Button>
+        {scanStatus === "running" && (
+          <span className="text-xs text-muted-foreground animate-pulse">Running in background…</span>
+        )}
+        {selected.size > 0 && (
+          <>
+            <span className="text-xs text-destructive">
+              {selected.size} file{selected.size !== 1 ? "s" : ""} selected — permanent delete, cannot be undone.
+            </span>
+            <Button variant="destructive" size="sm" onClick={handleCleanup} disabled={cleaning}>
+              {cleaning ? "Deleting…" : "Delete Selected"}
+            </Button>
+          </>
+        )}
+        {cleanupCount !== null && (
+          <span className="text-sm text-green-600 dark:text-green-400">
+            Deleted {cleanupCount} file{cleanupCount !== 1 ? "s" : ""} from S3.
+          </span>
+        )}
+        {error && <span className="text-sm text-destructive">{error}</span>}
+      </div>
+
+      {result && (
+        <div className="space-y-3">
+          {result.not_applicable ? (
+            <p className="text-sm text-muted-foreground">
+              Storage backend is not S3 — audit not applicable in this environment.
+            </p>
+          ) : (
+            <>
+              <div className="flex gap-6 text-sm">
+                <span><span className="font-medium">{result.total_s3_keys}</span> S3 keys</span>
+                <span><span className="font-medium">{result.total_db_paths}</span> DB-referenced paths</span>
+                <span><span className="font-medium text-amber-600 dark:text-amber-400">{result.orphaned_count}</span> orphaned</span>
+              </div>
+
+              {result.orphaned_files.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No orphaned files found.</p>
+              ) : (
+                <div className="rounded-md border overflow-auto max-h-96">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left w-8">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={toggleAll}
+                            className="cursor-pointer"
+                          />
+                        </th>
+                        <th className="p-2 text-left font-medium">Key</th>
+                        <th className="p-2 text-right font-medium">Size</th>
+                        <th className="p-2 text-right font-medium">Last Modified</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.orphaned_files.map((f) => (
+                        <tr key={f.key} className="border-t hover:bg-muted/50">
+                          <td className="p-2">
+                            <input
+                              type="checkbox"
+                              checked={selected.has(f.key)}
+                              onChange={() => toggleSelect(f.key)}
+                              className="cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-2 font-mono break-all">{f.key}</td>
+                          <td className="p-2 text-right whitespace-nowrap">{formatBytes(f.size)}</td>
+                          <td className="p-2 text-right whitespace-nowrap text-muted-foreground">
+                            {new Date(f.last_modified).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
