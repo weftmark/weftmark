@@ -175,7 +175,7 @@ services:
       dockerfile: backend/Dockerfile
     image: weaving_site_backend:${APP_VERSION:-dev}
     container_name: weaving_site_worker2
-    profiles: [multi-worker]
+    profiles: [worker02]
     entrypoint: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=${CELERY_CONCURRENCY:-2}"]
     networks:
       - internal
