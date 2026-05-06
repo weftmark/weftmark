@@ -193,6 +193,20 @@
       "version": "12.2.0"
     },
     {
+      "bom-ref": "requirements-L23",
+      "description": "requirements line 23: pip-audit",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/pip-audit/"
+        }
+      ],
+      "name": "pip-audit",
+      "purl": "pkg:pypi/pip-audit",
+      "type": "library"
+    },
+    {
       "bom-ref": "requirements-L22",
       "description": "requirements line 22: psutil==6.1.1",
       "externalReferences": [
@@ -402,6 +416,9 @@
       "ref": "requirements-L22"
     },
     {
+      "ref": "requirements-L23"
+    },
+    {
       "ref": "requirements-L3"
     },
     {
@@ -424,7 +441,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-06T02:24:54.443197+00:00",
+    "timestamp": "2026-05-06T14:24:19.447653+00:00",
     "tools": {
       "components": [
         {
@@ -528,7 +545,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:8db76482-abc2-4956-ac4d-db7f9c0cc893",
+  "serialNumber": "urn:uuid:5175a507-5ebb-43dd-bf25-2bac0b45c946",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
