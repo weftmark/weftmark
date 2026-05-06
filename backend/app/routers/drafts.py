@@ -22,7 +22,20 @@ settings = get_settings()
 
 _upload_rate_limit = rate_limit("wif_upload", max_requests=30, window_seconds=3600)
 
-_WIF_MAGIC = b"[WIF]"
+
+def _has_wif_header(data: bytes) -> bool:
+    """Return True if data contains a [WIF] section header within the first 20 lines.
+
+    Skips leading INI comment lines (starting with ';') per the WIF spec.
+    Stops at the first non-comment, non-empty line if it isn't [WIF].
+    """
+    for line in data.splitlines()[:20]:
+        stripped = line.strip()
+        if stripped.upper() == b"[WIF]":
+            return True
+        if stripped and not stripped.startswith(b";"):
+            return False
+    return False
 
 
 def _content_disposition(filename: str) -> str:
@@ -99,8 +112,16 @@ async def create_draft(
     wif_bytes = await wif_file.read()
     if len(wif_bytes) > settings.max_upload_size:
         raise HTTPException(status_code=413, detail="File too large")
-    if not wif_bytes.lstrip()[:5].upper() == _WIF_MAGIC:
-        raise HTTPException(status_code=400, detail="File does not appear to be a valid WIF file")
+    if not _has_wif_header(wif_bytes):
+        first_line = wif_bytes.splitlines()[0].decode(errors="replace")[:60] if wif_bytes else ""
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"File does not appear to be a valid WIF file. "
+                f"Expected a [WIF] section header (comment lines starting with ';' are allowed). "
+                f"First line of uploaded file: {first_line!r}"
+            ),
+        )
 
     lint = wif_linter.lint(wif_bytes)
 

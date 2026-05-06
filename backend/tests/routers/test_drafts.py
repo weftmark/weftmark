@@ -23,6 +23,48 @@ def _mock_preview_task(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Unit tests for _has_wif_header
+# ---------------------------------------------------------------------------
+
+
+class TestHasWifHeader:
+    def setup_method(self):
+        from app.routers.drafts import _has_wif_header
+
+        self.check = _has_wif_header
+
+    def test_plain_wif_header(self):
+        assert self.check(b"[WIF]\nVersion=1.1\n") is True
+
+    def test_wif_header_case_insensitive(self):
+        assert self.check(b"[wif]\nVersion=1.1\n") is True
+
+    def test_single_comment_then_wif(self):
+        assert self.check(b"; exported by Tempo Weave\r\n[WIF]\r\nVersion=1.1\r\n") is True
+
+    def test_multiple_comments_then_wif(self):
+        assert self.check(b"; line 1\r\n; line 2\r\n[WIF]\r\n") is True
+
+    def test_non_wif_content(self):
+        assert self.check(b"not a wif file") is False
+
+    def test_jpeg_magic(self):
+        assert self.check(b"\xff\xd8\xff\xe0" + b"\x00" * 100) is False
+
+    def test_empty_bytes(self):
+        assert self.check(b"") is False
+
+    def test_only_comments_no_wif(self):
+        assert self.check(b"; just a comment\n; another\n") is False
+
+    def test_wif_after_non_comment_line_rejected(self):
+        assert self.check(b"random line\n[WIF]\n") is False
+
+    def test_whitespace_before_wif(self):
+        assert self.check(b"\r\n\n[WIF]\n") is True
+
+
+# ---------------------------------------------------------------------------
 # WIF fixture — 4-shaft, 4-treadle, coloured warp/weft; renders correctly
 # ---------------------------------------------------------------------------
 
@@ -410,6 +452,27 @@ class TestCreateDraft:
             data={"name": "Bad Draft"},
         )
         assert resp.status_code == 400
+
+    async def test_wif_with_leading_comment_lines_accepted(self, auth_client: AsyncClient, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+        tempo_weave_wif = b"; exported by Tempo Weave\r\n" + _WIF
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("tempo.wif", tempo_weave_wif, "application/octet-stream")},
+            data={"name": "Tempo Draft"},
+        )
+        assert resp.status_code == 201
+
+    async def test_invalid_wif_error_includes_first_line(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("bad.wif", b"CLEARLY_NOT_WIF\nmore content", "application/octet-stream")},
+            data={"name": "Bad Draft"},
+        )
+        assert resp.status_code == 400
+        assert "CLEARLY_NOT_WIF" in resp.json()["detail"]
 
 
 # ---------------------------------------------------------------------------
