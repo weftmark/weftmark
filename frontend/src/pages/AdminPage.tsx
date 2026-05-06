@@ -1840,6 +1840,11 @@ function WorkerCard({ worker }: { worker: WorkerInfo }) {
       <div className="flex items-center gap-3 px-4 py-3 bg-muted/20">
         <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
         <span className="text-sm font-mono font-medium flex-1 truncate">{worker.name}</span>
+        {isOnline && worker.version && (
+          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground font-mono">
+            {worker.version}
+          </span>
+        )}
         {isOnline && worker.concurrency !== null && (
           <span className={`text-xs px-2 py-0.5 rounded border tabular-nums ${
             worker.active_tasks.length >= worker.concurrency

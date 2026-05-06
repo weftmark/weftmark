@@ -5,6 +5,7 @@ from app.config import get_settings
 from app.version import VERSION
 
 WORKER_VERSION_KEY = "weftmark:worker_version"
+WORKER_VERSION_NODE_PREFIX = "weftmark:worker_version:node:"
 
 
 def _make_celery() -> Celery:
@@ -70,7 +71,7 @@ def _on_task_failure(task_id=None, exception=None, **kwargs):
 
 
 @worker_ready.connect
-def _publish_worker_version(**kwargs):
+def _publish_worker_version(sender=None, **kwargs):
     """Write VERSION to Redis when the worker process finishes startup."""
     try:
         import redis as _redis
@@ -78,6 +79,8 @@ def _publish_worker_version(**kwargs):
         settings = get_settings()
         client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
         client.set(WORKER_VERSION_KEY, VERSION)
+        if sender is not None:
+            client.set(f"{WORKER_VERSION_NODE_PREFIX}{sender.hostname}", VERSION)
         client.close()
     except Exception:
         pass  # version badge degrades gracefully if Redis is unavailable

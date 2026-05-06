@@ -298,6 +298,7 @@ export interface WorkerActiveTask {
 export interface WorkerInfo {
   name: string;
   status: "online" | "offline";
+  version: string | null;
   concurrency: number | null;
   completed_tasks: number | null;
   active_tasks: WorkerActiveTask[];
