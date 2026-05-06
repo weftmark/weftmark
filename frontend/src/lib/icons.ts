@@ -14,7 +14,9 @@ import {
   LayoutDashboard,
   Layers,
   LogOut,
+  Maximize2,
   Menu,
+  Minimize2,
   Scroll,
   Settings,
   ShieldCheck,
@@ -47,6 +49,8 @@ export const AppIcons = {
   mobileMenu: Menu,
   close: X,
   chevronRight: ChevronRight,
+  presentMode: Maximize2,
+  exitPresentMode: Minimize2,
 
   // ── Landing page features ─────────────────────────────────────────────────
   designLibrary: Layers,
