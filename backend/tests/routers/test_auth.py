@@ -647,6 +647,11 @@ class TestConsumeInvite:
 class TestInviteRateLimit:
     """Verify the rate limit dependency is actually wired into POST /auth/invite."""
 
+    @pytest.fixture(autouse=True)
+    def mock_email(self):
+        with patch("app.routers.auth.send_invite_email", new_callable=AsyncMock):
+            yield
+
     async def test_429_after_limit_exceeded(self, admin_client: AsyncClient, db_session: AsyncSession):
         from unittest.mock import patch
 
