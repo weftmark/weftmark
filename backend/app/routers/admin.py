@@ -1842,7 +1842,7 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
 
     def _inspect() -> tuple[dict, dict, dict]:
         try:
-            inspector = celery_app.control.inspect(timeout=3)
+            inspector = celery_app.control.inspect(timeout=1.5)
             return (
                 inspector.active() or {},
                 inspector.reserved() or {},

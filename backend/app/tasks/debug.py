@@ -14,7 +14,7 @@ from app.celery_app import celery_app
     time_limit=130,
     name="app.tasks.debug.debug_sleep",
 )
-def debug_sleep(self: Task, seconds: int = 30) -> dict:
+def debug_sleep(self: Task, seconds: int = 45) -> dict:
     """Sleep for `seconds` seconds so the worker dashboard shows an active task."""
     seconds = max(1, min(seconds, 120))
     time.sleep(seconds)

@@ -1916,14 +1916,14 @@ function WorkersTab() {
         .then((d) => { setData(d); setError(null); })
         .catch(() => setError("Failed to fetch worker status"));
     fetch();
-    intervalRef.current = setInterval(fetch, 10_000);
+    intervalRef.current = setInterval(fetch, 3_000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
   function triggerSleep() {
     setSleeping(true);
-    startDebugSleep(30)
-      .then(() => setTimeout(() => setSleeping(false), 32_000))
+    startDebugSleep(45)
+      .then(() => setTimeout(() => setSleeping(false), 47_000))
       .catch(() => setSleeping(false));
   }
 
@@ -1934,12 +1934,12 @@ function WorkersTab() {
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
           <span className="text-xs text-muted-foreground">
             {data
-              ? `Updated ${new Date(data.checked_at).toLocaleTimeString()} · auto-refreshes every 10s`
+              ? `Updated ${new Date(data.checked_at).toLocaleTimeString()} · auto-refreshes every 3s`
               : "Loading…"}
           </span>
         </div>
         <Button size="sm" variant="outline" disabled={sleeping} onClick={triggerSleep}>
-          {sleeping ? "Sleeping 30s…" : "Run test task"}
+          {sleeping ? "Sleeping 45s…" : "Run test task"}
         </Button>
       </div>
 
