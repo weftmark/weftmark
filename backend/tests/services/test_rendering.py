@@ -302,17 +302,22 @@ class TestRenderDrawdownOnly:
     def test_returns_tuple(self):
         draft = load_draft(MINIMAL_WIF)
         result = render_drawdown_only(draft)
-        assert isinstance(result, tuple) and len(result) == 2
+        assert isinstance(result, tuple) and len(result) == 3
 
     def test_first_element_is_png(self):
         draft = load_draft(MINIMAL_WIF)
-        png, _ = render_drawdown_only(draft)
+        png, _, _ = render_drawdown_only(draft)
         assert png[:4] == b"\x89PNG"
 
     def test_second_element_is_weft_count(self):
         draft = load_draft(MINIMAL_WIF)
-        _, total_rows = render_drawdown_only(draft)
+        _, total_rows, _ = render_drawdown_only(draft)
         assert total_rows == len(draft.weft)
+
+    def test_third_element_is_scale_used(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, scale_used = render_drawdown_only(draft, scale=10)
+        assert isinstance(scale_used, int) and scale_used == 10
 
     def test_drawdown_scale_constant_is_20(self):
         assert DRAWDOWN_SCALE == 20
@@ -324,15 +329,30 @@ class TestRenderDrawdownOnly:
 
         draft = load_draft(MINIMAL_WIF)
         scale = 10
-        png, total_rows = render_drawdown_only(draft, scale=scale)
+        png, total_rows, scale_used = render_drawdown_only(draft, scale=scale)
         img = Image.open(io.BytesIO(png))
-        assert img.width == len(draft.warp) * scale
-        assert img.height == len(draft.weft) * scale
+        assert img.width == len(draft.warp) * scale_used
+        assert img.height == len(draft.weft) * scale_used
         assert total_rows == len(draft.weft)
+
+    def test_adaptive_scale_reduces_for_large_draft(self, monkeypatch):
+        """Scale is reduced automatically when draft exceeds render limits."""
+        from app.config import Settings
+
+        draft = load_draft(MINIMAL_WIF)
+        # Force a very small render limit so the default scale=20 would exceed it.
+        tiny_settings = Settings(render_max_width=40, render_max_height=40)
+        monkeypatch.setattr("app.services.rendering.get_settings", lambda: tiny_settings)
+        _, _, scale_used = render_drawdown_only(draft)
+        warp = len(draft.warp)
+        weft = len(draft.weft)
+        assert scale_used * warp <= 40
+        assert scale_used * weft <= 40
+        assert scale_used >= 1
 
     def test_eight_shaft_renders(self):
         draft = load_draft(EIGHT_SHAFT_WIF)
-        png, total_rows = render_drawdown_only(draft, scale=4)
+        png, total_rows, _ = render_drawdown_only(draft, scale=4)
         assert png[:4] == b"\x89PNG"
         assert total_rows == len(draft.weft)
 

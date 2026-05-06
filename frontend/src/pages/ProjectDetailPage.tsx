@@ -213,6 +213,7 @@ function WeavingPatternView({
   const containerH = useAdaptivePatternHeight();
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
+  const [loadError, setLoadError] = useState(false);
   const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -221,6 +222,10 @@ function WeavingPatternView({
       const token = await getAuthToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`/api/drafts/${draftId}/drawdown`, { credentials: "include", headers });
+      if (!res.ok) {
+        if (!cancelled) setLoadError(true);
+        return;
+      }
       const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
       if (!cancelled) setPixelsPerRow(ppr);
       const blob = await res.blob();
@@ -230,7 +235,7 @@ function WeavingPatternView({
       objectUrlRef.current = url;
       setImgSrc(url);
     }
-    load().catch(() => {});
+    load().catch(() => { if (!cancelled) setLoadError(true); });
     return () => {
       cancelled = true;
       if (objectUrlRef.current) {
@@ -240,6 +245,14 @@ function WeavingPatternView({
     };
   }, [draftId]);
 
+  if (loadError) return (
+    <div
+      className="flex items-center justify-center rounded-lg border bg-muted text-muted-foreground text-sm"
+      style={{ height: containerH }}
+    >
+      Pattern preview unavailable for this design.
+    </div>
+  );
   if (!imgSrc) return null;
 
   // Image is flipped: last pick at y=0 (top), pick 1 at bottom.
@@ -372,6 +385,7 @@ function AbandonedDrawdownView({
   totalPicks: number;
 }) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -380,6 +394,10 @@ function AbandonedDrawdownView({
       const token = await getAuthToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`/api/drafts/${draftId}/drawdown`, { credentials: "include", headers });
+      if (!res.ok) {
+        if (!cancelled) setLoadError(true);
+        return;
+      }
       const blob = await res.blob();
       if (cancelled) return;
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
@@ -387,7 +405,7 @@ function AbandonedDrawdownView({
       objectUrlRef.current = url;
       setImgSrc(url);
     }
-    load().catch(() => {});
+    load().catch(() => { if (!cancelled) setLoadError(true); });
     return () => {
       cancelled = true;
       if (objectUrlRef.current) {
@@ -397,6 +415,11 @@ function AbandonedDrawdownView({
     };
   }, [draftId]);
 
+  if (loadError) return (
+    <div className="flex items-center justify-center rounded-lg border bg-muted text-muted-foreground text-sm p-6">
+      Pattern preview unavailable for this design.
+    </div>
+  );
   if (!imgSrc) return null;
 
   // Image is flipped: row 0 (top) = last pick, row N-1 (bottom) = pick 1.
