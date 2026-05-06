@@ -14,9 +14,12 @@ from app.deps import get_current_user, get_db
 from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering, storage, wif_linter, wif_modifier, wif_parser
+from app.services.rate_limiter import rate_limit
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 settings = get_settings()
+
+_upload_rate_limit = rate_limit("wif_upload", max_requests=30, window_seconds=3600)
 
 _WIF_MAGIC = b"[WIF]"
 
@@ -85,6 +88,7 @@ async def create_draft(
     description: Annotated[str | None, Form()] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _rl: None = Depends(_upload_rate_limit),
 ) -> DraftSummary:
     if not wif_file.filename or not wif_file.filename.lower().endswith(".wif"):
         raise HTTPException(status_code=400, detail="File must have a .wif extension")

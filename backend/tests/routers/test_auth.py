@@ -642,3 +642,32 @@ class TestConsumeInvite:
 
         result = await _consume_invite(db_session, "noinvite@example.com")
         assert result is None
+
+
+class TestInviteRateLimit:
+    """Verify the rate limit dependency is actually wired into POST /auth/invite."""
+
+    @pytest.fixture(autouse=True)
+    def mock_email(self):
+        with patch("app.routers.auth.send_invite_email", new_callable=AsyncMock):
+            yield
+
+    async def test_429_after_limit_exceeded(self, admin_client: AsyncClient, db_session: AsyncSession):
+        from unittest.mock import patch
+
+        import fakeredis.aioredis
+
+        from app.main import app
+        from app.routers.auth import _invite_rate_limit
+
+        fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
+        app.dependency_overrides.pop(_invite_rate_limit, None)
+        try:
+            with patch("app.services.rate_limiter.aioredis.from_url", return_value=fake):
+                for i in range(20):
+                    await admin_client.post("/auth/invite", json={"email": f"rl{i}@example.com", "role": "user"})
+                resp = await admin_client.post("/auth/invite", json={"email": "overflow@example.com", "role": "user"})
+            assert resp.status_code == 429
+            assert "retry-after" in resp.headers
+        finally:
+            app.dependency_overrides[_invite_rate_limit] = lambda: None
