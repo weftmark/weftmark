@@ -268,7 +268,7 @@
     },
     {
       "bom-ref": "requirements-L12",
-      "description": "requirements line 12: python-multipart==0.0.26",
+      "description": "requirements line 12: python-multipart==0.0.27",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -277,9 +277,9 @@
         }
       ],
       "name": "python-multipart",
-      "purl": "pkg:pypi/python-multipart@0.0.26",
+      "purl": "pkg:pypi/python-multipart@0.0.27",
       "type": "library",
-      "version": "0.0.26"
+      "version": "0.0.27"
     },
     {
       "bom-ref": "requirements-L13",
@@ -441,7 +441,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-06T14:24:19.447653+00:00",
+    "timestamp": "2026-05-06T22:40:52.363281+00:00",
     "tools": {
       "components": [
         {
@@ -545,7 +545,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:5175a507-5ebb-43dd-bf25-2bac0b45c946",
+  "serialNumber": "urn:uuid:d8a54738-5988-4a60-8a79-3ff0e1e79ffb",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
