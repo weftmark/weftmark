@@ -2,6 +2,7 @@
 
 import io
 import uuid
+from unittest.mock import MagicMock
 
 import pytest
 from httpx import AsyncClient
@@ -11,6 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering
+
+
+@pytest.fixture(autouse=True)
+def _mock_preview_task(monkeypatch):
+    """Prevent generate_drawdown_preview.delay() from connecting to Celery in tests."""
+    mock = MagicMock()
+    monkeypatch.setattr("app.routers.drafts.generate_drawdown_preview", mock)
+    return mock
+
 
 # ---------------------------------------------------------------------------
 # WIF fixture — 4-shaft, 4-treadle, coloured warp/weft; renders correctly
@@ -733,20 +743,18 @@ class TestDrawdownPreviewCache:
         resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
         assert resp.headers.get("X-Pixels-Per-Row") == "5"
 
-    async def test_upload_dispatches_preview_task(self, auth_client: AsyncClient, tmp_path, monkeypatch):
-        from unittest.mock import patch
-
+    async def test_upload_dispatches_preview_task(
+        self, auth_client: AsyncClient, tmp_path, monkeypatch, _mock_preview_task: MagicMock
+    ):
         import app.services.storage as _storage
 
         monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
-        with patch("app.routers.drafts.generate_drawdown_preview") as mock_task:
-            mock_task.delay = lambda *a, **kw: None
-            await auth_client.post(
-                "/api/drafts",
-                files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
-                data={"name": "My Draft"},
-            )
-        mock_task.delay.assert_called  # task was imported and accessible
+        await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "My Draft"},
+        )
+        _mock_preview_task.delay.assert_called_once()
 
 
 class TestUploadRateLimit:

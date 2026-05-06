@@ -117,12 +117,12 @@ def _migrate_all(conn) -> None:
             )
 
     # Yarn — profile photo (generate new UUID)
-    rows = conn.execute(sa.text("SELECT id, photo_path FROM yarn WHERE photo_path IS NOT NULL")).fetchall()
+    rows = conn.execute(sa.text("SELECT id, photo_path FROM yarns WHERE photo_path IS NOT NULL")).fetchall()
     for row in rows:
         new_path = _migrate_path(row.photo_path, "yarn")
         if new_path != row.photo_path:
             conn.execute(
-                sa.text("UPDATE yarn SET photo_path=:p WHERE id=:id"),
+                sa.text("UPDATE yarns SET photo_path=:p WHERE id=:id"),
                 {"p": new_path, "id": str(row.id)},
             )
 
