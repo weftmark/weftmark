@@ -1601,3 +1601,93 @@ async def backfill_clerk_user(
 
     log.info("backfill clerk_user_id=%s user_id=%s status=%s", clerk_user_id, user.id, result_status)
     return BackfillResponse(status=result_status, user_id=str(user.id), email=email)
+
+
+# ---------------------------------------------------------------------------
+# S3 orphan file audit (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class S3OrphanFile(BaseModel):
+    key: str
+    size: int
+    last_modified: str
+
+
+class S3AuditResult(BaseModel):
+    total_s3_keys: int
+    total_db_paths: int
+    orphaned_count: int
+    orphaned_files: list[S3OrphanFile]
+    not_applicable: bool
+
+
+class S3AuditTaskStatus(BaseModel):
+    status: str  # pending | running | complete | failed
+    result: S3AuditResult | None = None
+    error: str | None = None
+
+
+class S3ScanResponse(BaseModel):
+    task_id: str
+
+
+class S3CleanupRequest(BaseModel):
+    keys: list[str]
+
+
+class S3CleanupResponse(BaseModel):
+    deleted: int
+
+
+@router.post("/s3-audit/scan", response_model=S3ScanResponse, status_code=202)
+async def start_s3_audit_scan(
+    _: User = Depends(require_superuser),
+) -> S3ScanResponse:
+    from app.tasks.s3_audit import run_s3_orphan_scan
+
+    task = run_s3_orphan_scan.delay()
+    log.info("s3_audit_scan_queued task_id=%s", task.id)
+    return S3ScanResponse(task_id=task.id)
+
+
+@router.get("/s3-audit/task/{task_id}", response_model=S3AuditTaskStatus)
+async def get_s3_audit_task(
+    task_id: str,
+    _: User = Depends(require_superuser),
+) -> S3AuditTaskStatus:
+    from celery.result import AsyncResult
+
+    result = AsyncResult(task_id)
+    state = result.state
+    if state in ("PENDING", "RECEIVED"):
+        return S3AuditTaskStatus(status="pending")
+    if state in ("STARTED", "RETRY"):
+        return S3AuditTaskStatus(status="running")
+    if state == "SUCCESS":
+        return S3AuditTaskStatus(status="complete", result=S3AuditResult(**result.result))
+    if state == "FAILURE":
+        return S3AuditTaskStatus(status="failed", error=str(result.result))
+    return S3AuditTaskStatus(status="pending")
+
+
+@router.post("/s3-audit/cleanup", response_model=S3CleanupResponse)
+async def cleanup_s3_orphans(
+    body: S3CleanupRequest,
+    admin: User = Depends(require_superuser),
+) -> S3CleanupResponse:
+    from app.services import storage
+
+    if not body.keys:
+        return S3CleanupResponse(deleted=0)
+
+    deleted = 0
+    for key in body.keys:
+        try:
+            storage._delete(key)
+            deleted += 1
+        except Exception as exc:
+            log.warning("s3_cleanup_error key=%s error=%s", key, exc)
+
+    log.info("s3_cleanup_complete admin_id=%s deleted=%d", admin.id, deleted)
+    return S3CleanupResponse(deleted=deleted)
