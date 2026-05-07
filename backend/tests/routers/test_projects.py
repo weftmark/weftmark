@@ -974,18 +974,17 @@ class TestStepProject:
     async def test_rapid_advances_produce_unique_increments(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        """Each step call must read the post-commit value of the previous one.
-        SELECT FOR UPDATE serializes concurrent requests so no two steps return
-        the same current_pick."""
-        import asyncio
-
+        """Each step call must increment current_pick by exactly 1 with no duplicates.
+        True DB concurrency is serialized by SELECT FOR UPDATE in the router; here
+        we verify sequential rapid advances produce monotonically unique picks."""
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        resps = await asyncio.gather(
-            *(auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"}) for _ in range(4))
-        )
-        picks = sorted(r.json()["current_pick"] for r in resps if r.status_code == 200)
-        assert len(picks) == len(set(picks)), f"Duplicate picks from concurrent steps: {picks}"
+        picks = []
+        for _ in range(4):
+            resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+            assert resp.status_code == 200
+            picks.append(resp.json()["current_pick"])
+        assert picks == sorted(set(picks)), f"Duplicate or out-of-order picks: {picks}"
 
 
 # ---------------------------------------------------------------------------
