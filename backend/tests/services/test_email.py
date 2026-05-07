@@ -17,6 +17,8 @@ from app.services.email import (
     send_invite_email,
     send_pending_signup_notification,
     send_signup_received_email,
+    send_stack_shutdown_alert,
+    send_stack_startup_alert,
     send_test_email,
 )
 
@@ -504,3 +506,254 @@ class TestSendApprovalConfirmationToAdmins:
         msg, *_ = mock.call_args.args
         combined = _decoded_body(msg)
         assert "Super Admin" in combined
+
+
+# ---------------------------------------------------------------------------
+# send_stack_startup_alert
+# ---------------------------------------------------------------------------
+
+_STARTUP_PROBE_ROWS = [
+    ("PostgreSQL", True, ""),
+    ("S3", True, ""),
+    ("Clerk", True, ""),
+    ("SMTP", False, "connection refused"),
+]
+
+
+class TestSendStackStartupAlert:
+    async def _call(
+        self,
+        emails=None,
+        env="dev",
+        app_base_url="http://localhost:3000",
+        version="1.2.3",
+        worker_version="1.2.3",
+        probe_status="ok",
+        probe_rows=None,
+        timestamp="2026-01-01T00:00:00Z",
+    ):
+        if emails is None:
+            emails = ["su@test.com"]
+        if probe_rows is None:
+            probe_rows = [("PostgreSQL", True, ""), ("Redis", True, "")]
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_stack_startup_alert(
+                superuser_emails=emails,
+                env=env,
+                app_base_url=app_base_url,
+                version=version,
+                worker_version=worker_version,
+                probe_status=probe_status,
+                probe_rows=probe_rows,
+                timestamp=timestamp,
+            )
+        return mock_send
+
+    async def test_send_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipients_include_all_superusers(self):
+        mock = await self._call(emails=["a@test.com", "b@test.com"])
+        msg, *_ = mock.call_args.args
+        assert "a@test.com" in msg["To"]
+        assert "b@test.com" in msg["To"]
+
+    async def test_subject_contains_env(self):
+        mock = await self._call(env="prod")
+        msg, *_ = mock.call_args.args
+        assert "prod" in msg["Subject"].lower()
+
+    async def test_subject_contains_started_on_success(self):
+        mock = await self._call(probe_status="ok")
+        msg, *_ = mock.call_args.args
+        assert "start" in msg["Subject"].lower()
+
+    async def test_subject_contains_warnings_on_probe_failure(self):
+        mock = await self._call(probe_status="degraded")
+        msg, *_ = mock.call_args.args
+        subj = msg["Subject"].lower()
+        assert "warn" in subj or "degrad" in subj or "fail" in subj
+
+    async def test_subject_contains_timestamp(self):
+        mock = await self._call(timestamp="2026-05-07T12:00:00Z")
+        msg, *_ = mock.call_args.args
+        assert "2026-05-07" in msg["Subject"] or "12:00" in msg["Subject"]
+
+    async def test_body_contains_version(self):
+        mock = await self._call(version="9.8.7")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "9.8.7" in combined
+
+    async def test_body_contains_worker_version(self):
+        mock = await self._call(worker_version="9.8.7-w")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "9.8.7-w" in combined
+
+    async def test_body_contains_admin_url(self):
+        mock = await self._call(app_base_url="http://weftmark.example.com")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "weftmark.example.com" in combined
+
+    async def test_body_contains_probe_service_name(self):
+        mock = await self._call(probe_rows=[("PostgreSQL", True, ""), ("SMTP", False, "timeout")])
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "PostgreSQL" in combined
+
+    async def test_body_contains_probe_failure_detail(self):
+        mock = await self._call(probe_rows=[("SMTP", False, "connection refused")])
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "connection refused" in combined
+
+    async def test_no_send_when_smtp_unconfigured(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "smtp_user", "")
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_stack_startup_alert(
+                superuser_emails=["su@test.com"],
+                env="dev",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                worker_version=None,
+                probe_status="ok",
+                probe_rows=[],
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_send.assert_not_called()
+
+    async def test_no_send_when_no_recipients(self):
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_stack_startup_alert(
+                superuser_emails=[],
+                env="dev",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                worker_version=None,
+                probe_status="ok",
+                probe_rows=[],
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_send.assert_not_called()
+
+    async def test_worker_version_none_renders_cleanly(self):
+        mock = await self._call(worker_version=None)
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "{" not in combined
+
+
+# ---------------------------------------------------------------------------
+# send_stack_shutdown_alert
+# ---------------------------------------------------------------------------
+
+
+class TestSendStackShutdownAlert:
+    async def _call(
+        self,
+        emails=None,
+        env="dev",
+        app_base_url="http://localhost:3000",
+        version="1.0.0",
+        uptime_seconds=3661.0,
+        timestamp="2026-01-01T01:01:01Z",
+    ):
+        if emails is None:
+            emails = ["su@test.com"]
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_stack_shutdown_alert(
+                superuser_emails=emails,
+                env=env,
+                app_base_url=app_base_url,
+                version=version,
+                uptime_seconds=uptime_seconds,
+                timestamp=timestamp,
+            )
+        return mock_send
+
+    async def test_send_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipients_include_all_superusers(self):
+        mock = await self._call(emails=["x@test.com", "y@test.com"])
+        msg, *_ = mock.call_args.args
+        assert "x@test.com" in msg["To"]
+        assert "y@test.com" in msg["To"]
+
+    async def test_subject_contains_env(self):
+        mock = await self._call(env="prod")
+        msg, *_ = mock.call_args.args
+        assert "prod" in msg["Subject"].lower()
+
+    async def test_subject_contains_stopped(self):
+        mock = await self._call()
+        msg, *_ = mock.call_args.args
+        assert "stop" in msg["Subject"].lower() or "shut" in msg["Subject"].lower()
+
+    async def test_subject_contains_timestamp(self):
+        mock = await self._call(timestamp="2026-05-07T23:59:00Z")
+        msg, *_ = mock.call_args.args
+        assert "2026-05-07" in msg["Subject"] or "23:59" in msg["Subject"]
+
+    async def test_body_contains_version(self):
+        mock = await self._call(version="5.4.3")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "5.4.3" in combined
+
+    async def test_body_contains_uptime(self):
+        mock = await self._call(uptime_seconds=3661.0)
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "1h" in combined or "3661" in combined or "1:01" in combined
+
+    async def test_body_contains_admin_url(self):
+        mock = await self._call(app_base_url="http://weftmark.example.com")
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "weftmark.example.com" in combined
+
+    async def test_no_send_when_smtp_unconfigured(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "smtp_user", "")
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_stack_shutdown_alert(
+                superuser_emails=["su@test.com"],
+                env="dev",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                uptime_seconds=100.0,
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_send.assert_not_called()
+
+    async def test_no_send_when_no_recipients(self):
+        mock_send = AsyncMock()
+        with patch("app.services.email.aiosmtplib.send", mock_send):
+            await send_stack_shutdown_alert(
+                superuser_emails=[],
+                env="dev",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                uptime_seconds=100.0,
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_send.assert_not_called()
+
+    async def test_body_has_no_unfilled_placeholders(self):
+        mock = await self._call()
+        msg, *_ = mock.call_args.args
+        combined = _decoded_body(msg)
+        assert "{" not in combined
