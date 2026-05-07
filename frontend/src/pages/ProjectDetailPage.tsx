@@ -213,12 +213,17 @@ function WeavingPatternView({
 }) {
   const containerH = useAdaptivePatternHeight();
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
-  const [loadError, setLoadError] = useState(false);
   // tilesRef: synchronous mirror used in effects for deduplication and eviction.
   // tiles state: snapshot used during render (updated only on tile add, not eviction).
   const tilesRef = useRef<Record<number, string>>({});
   const [tiles, setTiles] = useState<Record<number, string>>({});
   const fetchingRef = useRef<Set<number>>(new Set());
+  // tileErrorsRef: per-tile error messages (Map<startRow, message>). Ref so fetchTile
+  // can check it without adding to effect deps. State mirror for render.
+  const tileErrorsRef = useRef<Map<number, string>>(new Map());
+  const [tileErrors, setTileErrors] = useState<Map<number, string>>(new Map());
+  // Incrementing retryCount forces the fetch effect to rerun on explicit retry.
+  const [retryCount, setRetryCount] = useState(0);
 
   // 2× visible rows, so time-to-exhaust is consistent across scale values.
   const tileSize = Math.max(10, Math.ceil(containerH / pixelsPerRow * 2));
@@ -238,7 +243,9 @@ function WeavingPatternView({
     if (lookaheadStart >= 0) needed.add(lookaheadStart);
     if (lookbehindStart < totalPicks) needed.add(lookbehindStart);
 
-    // Evict tiles outside the needed set.
+    // Evict tiles and errors outside the needed set (errors auto-clear on eviction so
+    // re-entering the same position retries fresh without an explicit user action).
+    let errorsChanged = false;
     for (const k of Object.keys(tilesRef.current)) {
       const n = parseInt(k);
       if (!needed.has(n)) {
@@ -246,27 +253,50 @@ function WeavingPatternView({
         delete tilesRef.current[n];
       }
     }
+    for (const n of tileErrorsRef.current.keys()) {
+      if (!needed.has(n)) {
+        tileErrorsRef.current.delete(n);
+        errorsChanged = true;
+      }
+    }
+    if (errorsChanged) setTileErrors(new Map(tileErrorsRef.current));
 
     const fetchTile = async (startRow: number) => {
       if (fetchingRef.current.has(startRow)) return;
       if (tilesRef.current[startRow] !== undefined) return;
+      if (tileErrorsRef.current.has(startRow)) return;
       fetchingRef.current.add(startRow);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       try {
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await fetch(
           `/api/drafts/${draftId}/drawdown?start_row=${startRow}&row_count=${tileSize}`,
-          { credentials: "include", headers }
+          { credentials: "include", headers, signal: controller.signal }
         );
-        if (!res.ok || cancelled) return;
+        clearTimeout(timeoutId);
+        if (cancelled) return;
+        if (!res.ok) {
+          tileErrorsRef.current.set(startRow, "Pattern tile failed to load.");
+          setTileErrors(new Map(tileErrorsRef.current));
+          return;
+        }
         const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
         if (!cancelled) setPixelsPerRow(ppr);
         const blob = await res.blob();
         if (cancelled) return;
         tilesRef.current[startRow] = URL.createObjectURL(blob);
         setTiles({ ...tilesRef.current });
-      } catch {
-        if (!cancelled) setLoadError(true);
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (!cancelled) {
+          const msg = err instanceof Error && err.name === "AbortError"
+            ? "Pattern tile timed out."
+            : "Pattern tile failed to load.";
+          tileErrorsRef.current.set(startRow, msg);
+          setTileErrors(new Map(tileErrorsRef.current));
+        }
       } finally {
         fetchingRef.current.delete(startRow);
       }
@@ -275,7 +305,7 @@ function WeavingPatternView({
     needed.forEach(s => { fetchTile(s); });
 
     return () => { cancelled = true; };
-  }, [draftId, currentPickIndex, totalPicks, tileSize]);
+  }, [draftId, currentPickIndex, totalPicks, tileSize, retryCount]);
 
   // Revoke all object URLs on unmount.
   useEffect(() => {
@@ -285,21 +315,33 @@ function WeavingPatternView({
     };
   }, []);
 
-  if (loadError) return (
-    <div
-      className="flex items-center justify-center rounded-lg border bg-muted text-muted-foreground text-sm"
-      style={{ height: containerH }}
-    >
-      Pattern preview unavailable for this design.
-    </div>
-  );
-  // Show a pre-sized skeleton while the first tile is in flight — prevents layout shift.
-  // Mirror the 3-panel flex structure of the loaded state so dimensions don't change on hydration.
+  // Compute current tile position for overlay decisions (needed before early returns).
+  const imageRowForTile = totalPicks - 1 - currentPickIndex;
+  const currentTileStart = Math.floor(imageRowForTile / tileSize) * tileSize;
+  const currentTileReady = tiles[currentTileStart] !== undefined;
+  const currentTileError = tileErrors.get(currentTileStart);
+
+  const retryCurrentTile = () => {
+    tileErrorsRef.current.delete(currentTileStart);
+    setTileErrors(new Map(tileErrorsRef.current));
+    setRetryCount(c => c + 1);
+  };
+
+  // Full skeleton while no tiles are loaded yet.
   if (Object.keys(tiles).length === 0) return (
     <div className="relative flex gap-2" style={{ height: containerH }}>
       <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted flex flex-col items-center justify-center gap-2">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Loading pattern…</span>
+        {currentTileError ? (
+          <>
+            <span className="text-sm text-muted-foreground">{currentTileError}</span>
+            <button className="text-xs underline text-accent" onClick={retryCurrentTile}>Tap to retry</button>
+          </>
+        ) : (
+          <>
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Loading pattern…</span>
+          </>
+        )}
       </div>
       <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: STEP_PANEL_W }} />
       <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: COLOR_COL_W }} />
@@ -368,6 +410,20 @@ function WeavingPatternView({
           ))}
         </div>
         {washoutOverlay}
+        {/* Loading overlay — shown whenever the current tile hasn't arrived yet */}
+        {!currentTileReady && !currentTileError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none z-10">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Loading pattern…</span>
+          </div>
+        )}
+        {/* Error overlay — shown on tile fetch failure or timeout */}
+        {currentTileError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 z-10">
+            <span className="text-sm text-muted-foreground">{currentTileError}</span>
+            <button className="text-xs underline text-accent" onClick={retryCurrentTile}>Tap to retry</button>
+          </div>
+        )}
       </div>
 
       {/* Lift/treadle step panel */}
