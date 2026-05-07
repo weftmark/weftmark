@@ -22,6 +22,9 @@
           <!-- Dev environment banner (injected by _send in dev; stripped in production) -->
           <tr><td><!-- DEV_BANNER --></td></tr>
 
+          <!-- Staleness banner (injected by email_task if message was queued > threshold) -->
+          <tr><td><!-- STALENESS_BANNER --></td></tr>
+
           <!-- Body -->
           <tr>
             <td style="background:#ffffff;padding:32px;color:#111827;font-size:15px;line-height:1.7;font-family:Arial,Helvetica,sans-serif;">

@@ -46,6 +46,8 @@ async def _get_worker_version_for_alert() -> str | None:
 
 
 async def _send_startup_alert(readiness) -> None:
+    if not settings.stack_alert_emails_enabled:
+        return
     try:
         from app.services.email import send_stack_startup_alert
 
@@ -71,6 +73,8 @@ async def _send_startup_alert(readiness) -> None:
 
 
 async def _send_shutdown_alert() -> None:
+    if not settings.stack_alert_emails_enabled:
+        return
     try:
         from app.services.email import send_stack_shutdown_alert
 
