@@ -835,6 +835,25 @@ class TestRenameProject:
         resp = await client.patch(f"/api/projects/{project.id}", json={"name": "x"})
         assert resp.status_code == 401
 
+    async def test_updates_notes(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.patch(f"/api/projects/{project.id}", json={"notes": "my notes"})).json()
+        assert body["notes"] == "my notes"
+
+    async def test_notes_only_preserves_name(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        original_name = project.name
+        body = (await auth_client.patch(f"/api/projects/{project.id}", json={"notes": "n"})).json()
+        assert body["name"] == original_name
+
+    async def test_no_fields_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}", json={})
+        assert resp.status_code == 400
+
 
 # ---------------------------------------------------------------------------
 # TestDeleteProject
