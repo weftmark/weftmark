@@ -978,7 +978,17 @@ class TestStepProject:
         True DB concurrency is serialized by SELECT FOR UPDATE in the router; here
         we verify sequential rapid advances produce monotonically unique picks."""
         draft = await _insert_draft(db_session, test_user)
-        project = await _insert_active_project(db_session, test_user, draft, None)
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Rapid tap project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
         picks = []
         for _ in range(4):
             resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
