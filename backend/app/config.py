@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     frontend_url: str = "http://localhost:3000"
     api_url: str = "http://localhost:8000"
+    app_base_url: str = ""  # public-facing URL for alert email links; falls back to frontend_url when empty
 
     # Database
     # For local dev: set POSTGRES_* vars and leave POSTGRES_DSN blank.

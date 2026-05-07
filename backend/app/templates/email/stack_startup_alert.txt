@@ -1,0 +1,16 @@
+STACK {event_label} — {app_name} ({env})
+
+Event:       {event_label}
+Time (UTC):  {timestamp}
+Environment: {env}
+URL:         {app_base_url}
+
+VERSIONS
+Backend:  {version}
+Worker:   {worker_version}
+
+STARTUP PROBE RESULTS
+{probe_table_txt}
+
+{failure_note}
+View admin dashboard: {admin_url}

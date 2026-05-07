@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -13,8 +15,81 @@ from app.version import VERSION
 
 settings = get_settings()
 configure_logging(settings.log_level)
+log = logging.getLogger(__name__)
 
 start_time: datetime = datetime.now(timezone.utc)
+
+
+async def _get_superuser_emails() -> list[str]:
+    from sqlalchemy import select
+
+    from app.database import AsyncSessionLocal
+    from app.models.user import User
+
+    async with AsyncSessionLocal() as db:
+        rows = await db.scalars(select(User).where(User.is_superuser.is_(True), User.deleted_at.is_(None)))
+        return [u.email for u in rows.all()]
+
+
+async def _get_worker_version_for_alert() -> str | None:
+    try:
+        import redis.asyncio as aioredis
+
+        from app.celery_app import WORKER_VERSION_KEY
+
+        client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
+        val = await client.get(WORKER_VERSION_KEY)
+        await client.aclose()
+        return val.decode() if val else None
+    except Exception:
+        return None
+
+
+async def _send_startup_alert(readiness) -> None:
+    try:
+        from app.services.email import send_stack_startup_alert
+
+        emails = await _get_superuser_emails()
+        if not emails:
+            return
+        worker_version = await _get_worker_version_for_alert()
+        probe_rows = [(s.name, s.ok, s.detail) for s in readiness.services]
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        base_url = settings.app_base_url or settings.frontend_url
+        await send_stack_startup_alert(
+            superuser_emails=emails,
+            env=settings.app_env,
+            app_base_url=base_url,
+            version=VERSION,
+            worker_version=worker_version,
+            probe_status=readiness.status,
+            probe_rows=probe_rows,
+            timestamp=ts,
+        )
+    except Exception:
+        log.exception("Failed to send startup alert email")
+
+
+async def _send_shutdown_alert() -> None:
+    try:
+        from app.services.email import send_stack_shutdown_alert
+
+        emails = await _get_superuser_emails()
+        if not emails:
+            return
+        uptime = (datetime.now(timezone.utc) - start_time).total_seconds()
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        base_url = settings.app_base_url or settings.frontend_url
+        await send_stack_shutdown_alert(
+            superuser_emails=emails,
+            env=settings.app_env,
+            app_base_url=base_url,
+            version=VERSION,
+            uptime_seconds=uptime,
+            timestamp=ts,
+        )
+    except Exception:
+        log.exception("Failed to send shutdown alert email")
 
 
 @asynccontextmanager
@@ -27,10 +102,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     readiness = await run_startup_probes()
     set_readiness(readiness)
     start_detailed_refresh()
+    asyncio.create_task(_send_startup_alert(readiness))
 
     yield
 
     stop_detailed_refresh()
+    try:
+        await asyncio.wait_for(_send_shutdown_alert(), timeout=5.0)
+    except Exception:
+        pass
 
 
 app = FastAPI(
