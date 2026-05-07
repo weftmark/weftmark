@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -231,12 +231,42 @@ async def get_preview(
 @router.get("/{draft_id}/drawdown")
 async def get_drawdown(
     draft_id: uuid.UUID,
+    start_row: int | None = Query(None, ge=0),
+    row_count: int | None = Query(None, ge=1),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db)
 
-    # Serve pre-generated cached preview if available
+    # Tiled request: bypass cached preview, render fresh from WIF
+    if start_row is not None or row_count is not None:
+        if not draft.wif_path:
+            raise HTTPException(status_code=404, detail="No WIF file for this draft")
+        if not storage.file_exists(draft.wif_path):
+            raise HTTPException(status_code=404, detail="WIF file not found in storage")
+        wif_bytes = storage.read_file(draft.wif_path)
+        try:
+            wif_draft = rendering.load_draft(wif_bytes)
+            png, total_rows, actual_start, actual_row_count, actual_scale = rendering.render_drawdown_tile(
+                wif_draft, start_row=start_row or 0, row_count=row_count
+            )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
+        return Response(
+            content=png,
+            media_type="image/png",
+            headers={
+                "X-Pixels-Per-Row": str(actual_scale),
+                "X-Total-Rows": str(total_rows),
+                "X-Start-Row": str(actual_start),
+                "X-Row-Count": str(actual_row_count),
+                "Cache-Control": "no-store",
+            },
+        )
+
+    # Non-tiled: serve pre-generated cached preview if available
     if draft.drawdown_preview_path and storage.file_exists(draft.drawdown_preview_path):
         png = storage.read_drawdown_preview(draft.drawdown_preview_path)
         scale = draft.drawdown_preview_scale or rendering.DRAWDOWN_SCALE

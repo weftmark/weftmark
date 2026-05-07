@@ -94,6 +94,66 @@ def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int
     return out.getvalue(), scale
 
 
+def render_drawdown_tile(
+    draft: Draft,
+    start_row: int = 0,
+    row_count: int | None = None,
+    scale: int = DRAWDOWN_SCALE,
+) -> tuple[bytes, int, int, int, int]:
+    """Render a horizontal strip (tile) of the drawdown.
+
+    ``start_row`` and ``row_count`` are in image-row terms:
+    row 0 = top of the image = last pick (completed picks accumulate downward).
+
+    Only the width cap from settings is applied — height is determined by ``row_count``.
+
+    Returns (png_bytes, total_rows, actual_start_row, actual_row_count, scale_used).
+    """
+    margin = 20
+    warp_count = len(draft.warp)
+    weft_count = len(draft.weft)
+
+    if warp_count <= 0 or weft_count <= 0:
+        raise ValueError("Draft has no drawdown data to render")
+
+    _s = get_settings()
+    max_scale = min(_s.render_max_width // warp_count, scale)
+    if max_scale < 1:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Draft width ({warp_count} threads) exceeds the rendering limit "
+                f"even at scale=1 ({_s.render_max_width}px max width)."
+            ),
+        )
+    scale = max_scale
+
+    actual_start = max(0, min(start_row, weft_count - 1))
+    if row_count is None or row_count <= 0:
+        row_count = weft_count
+    actual_row_count = min(row_count, weft_count - actual_start)
+
+    drawdown_w = warp_count * scale
+    drawdown_h = weft_count * scale
+
+    renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
+    full_im = renderer.make_pil_image()
+
+    offsetx = margin
+    offsety = margin + (6 + len(draft.shafts)) * scale
+
+    full_drawdown = full_im.crop((offsetx, offsety, offsetx + drawdown_w, offsety + drawdown_h))
+    full_drawdown = full_drawdown.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
+
+    tile_top = actual_start * scale
+    tile_bottom = tile_top + actual_row_count * scale
+    tile = full_drawdown.crop((0, tile_top, drawdown_w, tile_bottom))
+
+    out = io.BytesIO()
+    tile.save(out, format="PNG")
+    return out.getvalue(), weft_count, actual_start, actual_row_count, scale
+
+
 def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[bytes, int, int]:
     """Render just the drawdown strip, cropped from the full draft image.
 

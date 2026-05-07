@@ -160,14 +160,21 @@ def _wif_path_for_project(draft: Draft, project_type: str) -> str:
     return draft.wif_path
 
 
-async def _get_owned_project(project_id: uuid.UUID, user: User, db: AsyncSession) -> Project:
-    project = await db.scalar(
-        select(Project).where(
-            Project.id == project_id,
-            Project.owner_id == user.id,
-            Project.deleted_at.is_(None),
-        )
+async def _get_owned_project(
+    project_id: uuid.UUID,
+    user: User,
+    db: AsyncSession,
+    *,
+    with_for_update: bool = False,
+) -> Project:
+    stmt = select(Project).where(
+        Project.id == project_id,
+        Project.owner_id == user.id,
+        Project.deleted_at.is_(None),
     )
+    if with_for_update:
+        stmt = stmt.with_for_update()
+    project = await db.scalar(stmt)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
@@ -416,7 +423,10 @@ async def step_project(
     if body.direction not in ("advance", "reverse"):
         raise HTTPException(status_code=400, detail="direction must be 'advance' or 'reverse'")
 
-    project = await _get_owned_project(project_id, current_user, db)
+    # FOR UPDATE serializes concurrent step requests at the DB level, preventing
+    # two simultaneous taps from reading the same current_pick and producing a
+    # duplicate increment.
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status != "active":
         raise HTTPException(status_code=400, detail="Project is not active")
 
