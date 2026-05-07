@@ -21,7 +21,7 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    theme: Mapped[str] = mapped_column(String(20), default="light", nullable=False)
+    theme: Mapped[str] = mapped_column(String(20), default="system", nullable=False)
     activity_theme: Mapped[str | None] = mapped_column(String(50), nullable=True)
     idle_timeout_minutes: Mapped[int] = mapped_column(Integer, default=30, nullable=False)
     measurement_system: Mapped[str] = mapped_column(String(10), default="metric", nullable=False)
