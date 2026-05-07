@@ -27,12 +27,12 @@ class TestUserDefaults:
         await db_session.refresh(user)
         assert user.is_active is True
 
-    async def test_theme_defaults_light(self, db_session: AsyncSession):
+    async def test_theme_defaults_system(self, db_session: AsyncSession):
         user = User(email="u@example.com", display_name="U", oidc_sub="sub-001")
         db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
-        assert user.theme == "light"
+        assert user.theme == "system"
 
     async def test_measurement_system_defaults_metric(self, db_session: AsyncSession):
         user = User(email="u@example.com", display_name="U", oidc_sub="sub-001")

@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Apply theme class to document root
   useEffect(() => {
-    const theme = user?.theme ?? "light";
+    const theme = user?.theme ?? "system";
     if (theme === "system") {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       const apply = () => document.documentElement.classList.toggle("dark", mq.matches);
