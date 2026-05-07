@@ -92,7 +92,7 @@ function CveBanner() {
     staleTime: 5 * 60_000,
   });
 
-  if (dismissed || !data || data.finding_count === 0) return null;
+  if (dismissed || !data || data.finding_count == null || data.finding_count === 0) return null;
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
