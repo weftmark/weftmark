@@ -1,8 +1,5 @@
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from datetime import datetime, timezone
 from pathlib import Path
-
-import aiosmtplib
 
 from app.config import get_settings
 
@@ -23,6 +20,8 @@ def _render(name: str, **kwargs) -> tuple[str, str]:
 
 
 async def _send(to: list[str], subject: str, txt: str, html: str) -> None:
+    from app.tasks.email_task import send_email
+
     settings = get_settings()
     if settings.app_env == "dev":
         subject = f"[DEV] {subject}"
@@ -36,20 +35,8 @@ async def _send(to: list[str], subject: str, txt: str, html: str) -> None:
         )
     else:
         html = html.replace("<!-- DEV_BANNER -->", "")
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
-    msg["To"] = ", ".join(to)
-    msg.attach(MIMEText(txt, "plain"))
-    msg.attach(MIMEText(html, "html"))
-    await aiosmtplib.send(
-        msg,
-        hostname=settings.smtp_host,
-        port=settings.smtp_port,
-        username=settings.smtp_user,
-        password=settings.smtp_password,
-        start_tls=True,
-    )
+    queued_at = datetime.now(timezone.utc).isoformat()
+    send_email.delay(to=to, subject=subject, txt=txt, html=html, queued_at=queued_at)
 
 
 async def send_pending_signup_notification(admin_emails: list[str], display_name: str, email: str) -> None:

@@ -16,6 +16,7 @@ def _make_celery() -> Celery:
         backend=settings.redis_url,
         include=[
             "app.tasks.deletion",
+            "app.tasks.email_task",
             "app.tasks.preview",
             "app.tasks.purge",
             "app.tasks.s3_audit",
