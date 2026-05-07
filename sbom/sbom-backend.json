@@ -103,6 +103,21 @@
       "version": "5.6.3"
     },
     {
+      "bom-ref": "requirements-L24",
+      "description": "requirements line 24: croniter==3.0.4",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/croniter/"
+        }
+      ],
+      "name": "croniter",
+      "purl": "pkg:pypi/croniter@3.0.4",
+      "type": "library",
+      "version": "3.0.4"
+    },
+    {
       "bom-ref": "requirements-L18",
       "description": "requirements line 18: cryptography==48.0.0",
       "externalReferences": [
@@ -419,6 +434,9 @@
       "ref": "requirements-L23"
     },
     {
+      "ref": "requirements-L24"
+    },
+    {
       "ref": "requirements-L3"
     },
     {
@@ -441,7 +459,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-06T22:40:52.363281+00:00",
+    "timestamp": "2026-05-07T18:08:57.527084+00:00",
     "tools": {
       "components": [
         {
@@ -545,7 +563,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:d8a54738-5988-4a60-8a79-3ff0e1e79ffb",
+  "serialNumber": "urn:uuid:ecbdbf1e-b155-452d-baf2-d0b70fd63b6e",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
