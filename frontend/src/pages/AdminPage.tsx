@@ -36,6 +36,9 @@ import {
   getTaskHistory,
   revokeTask,
   runPurgeSoftDeleted,
+  listScheduledTasks,
+  patchScheduledTask,
+  type ScheduledTask,
   type TaskHistoryItem,
   type AdminUser,
   type AdminHealth,
@@ -1484,7 +1487,7 @@ function EulaTab() {
 // Superuser tab
 // ---------------------------------------------------------------------------
 
-type SuperuserSubTab = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance";
+type SuperuserSubTab = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule";
 
 const SUPERUSER_TAB_LABELS: Record<SuperuserSubTab, string> = {
   eula: "EULA",
@@ -1494,6 +1497,7 @@ const SUPERUSER_TAB_LABELS: Record<SuperuserSubTab, string> = {
   deletion: "Deletion",
   reconcile: "Reconcile",
   maintenance: "Maintenance",
+  schedule: "Scheduled Tasks",
 };
 
 function SuperuserTab() {
@@ -1502,7 +1506,7 @@ function SuperuserTab() {
   return (
     <div className="space-y-4">
       <div className="flex gap-2 border-b pb-2 flex-wrap">
-        {(["eula", "storage", "cve", "workers", "deletion", "reconcile", "maintenance"] as SuperuserSubTab[]).map((t) => (
+        {(["eula", "storage", "cve", "workers", "deletion", "reconcile", "maintenance", "schedule"] as SuperuserSubTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setSub(t)}
@@ -1524,6 +1528,7 @@ function SuperuserTab() {
       {sub === "deletion" && <DeletionTab />}
       {sub === "reconcile" && <ReconcileTab />}
       {sub === "maintenance" && <MaintenanceTab />}
+      {sub === "schedule" && <ScheduledTasksTab />}
     </div>
   );
 }
@@ -2503,5 +2508,149 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
         </tr>
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Scheduled Tasks tab
+// ---------------------------------------------------------------------------
+
+const CRON_PRESETS = [
+  { label: "Hourly", value: "0 * * * *" },
+  { label: "Daily (2 AM UTC)", value: "0 2 * * *" },
+  { label: "Weekly (Sun 2 AM)", value: "0 2 * * 0" },
+  { label: "Monthly (1st 2 AM)", value: "0 2 1 * *" },
+  { label: "Custom", value: "custom" },
+];
+
+function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: () => void }) {
+  const [enabled, setEnabled] = useState(task.enabled);
+  const [preset, setPreset] = useState<string>(() => {
+    const match = CRON_PRESETS.find((p) => p.value === task.cron && p.value !== "custom");
+    return match ? match.value : "custom";
+  });
+  const [customCron, setCustomCron] = useState(task.cron);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const effectiveCron = preset === "custom" ? customCron : preset;
+  const isDirty = enabled !== task.enabled || effectiveCron !== task.cron;
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      await patchScheduledTask(task.name, { enabled, cron: effectiveCron });
+      onSaved();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to save";
+      setError(msg.includes("422") ? "Invalid cron expression" : msg);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="border rounded-lg p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-medium text-sm">{task.display_name}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer shrink-0">
+          <span className="text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"}</span>
+          <button
+            role="switch"
+            aria-checked={enabled}
+            onClick={() => setEnabled((v) => !v)}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              enabled ? "bg-primary" : "bg-muted"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                enabled ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </label>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground">Schedule:</span>
+          <select
+            value={preset}
+            onChange={(e) => {
+              setPreset(e.target.value);
+              if (e.target.value !== "custom") setCustomCron(e.target.value);
+            }}
+            className="text-xs border rounded px-2 py-1 bg-background"
+          >
+            {CRON_PRESETS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          {preset === "custom" && (
+            <input
+              type="text"
+              value={customCron}
+              onChange={(e) => setCustomCron(e.target.value)}
+              placeholder="0 2 * * *"
+              className="text-xs border rounded px-2 py-1 bg-background font-mono w-36"
+            />
+          )}
+        </div>
+
+        {task.next_runs.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Next: {task.next_runs.slice(0, 3).map((r) => new Date(r).toLocaleString()).join(" · ")}
+          </p>
+        )}
+        {task.last_fired_at && (
+          <p className="text-xs text-muted-foreground">
+            Last fired: {new Date(task.last_fired_at).toLocaleString()}
+          </p>
+        )}
+      </div>
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+
+      <Button size="sm" disabled={!isDirty || saving} onClick={save}>
+        {saving ? "Saving…" : "Save"}
+      </Button>
+    </div>
+  );
+}
+
+function ScheduledTasksTab() {
+  const qc = useQueryClient();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin", "scheduled-tasks"],
+    queryFn: listScheduledTasks,
+  });
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (error) return <p className="text-sm text-destructive">Failed to load scheduled tasks.</p>;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Configure recurring background tasks. Settings are stored in Postgres and survive restarts.
+        The scheduler tick runs every 60 seconds via Celery Beat.
+      </p>
+      {data && data.length === 0 && (
+        <p className="text-sm text-muted-foreground">No scheduled tasks configured.</p>
+      )}
+      {data?.map((task) => (
+        <ScheduledTaskCard
+          key={task.name}
+          task={task}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["admin", "scheduled-tasks"] })}
+        />
+      ))}
+    </div>
   );
 }
