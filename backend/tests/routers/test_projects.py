@@ -951,6 +951,26 @@ class TestStepProject:
         resp = await client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
         assert resp.status_code == 401
 
+    async def test_response_is_lightweight(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})).json()
+        assert set(body.keys()) == {"current_pick", "total_picks"}
+
+    async def test_logs_step_to_database(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        from sqlalchemy import select
+
+        from app.models.project import ProjectStep
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        step = await db_session.scalar(select(ProjectStep).where(ProjectStep.project_id == project.id))
+        assert step is not None
+        assert step.event_type == "advance"
+        assert step.from_pick == 1
+        assert step.to_pick == 2
+
 
 # ---------------------------------------------------------------------------
 # TestJumpProject

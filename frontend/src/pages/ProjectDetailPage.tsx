@@ -949,17 +949,35 @@ export function ProjectDetailPage() {
   }, [id, stepping, queryClient]);
 
   const handleStep = useCallback(async (direction: "advance" | "reverse") => {
-    if (!id || stepping) return;
-    setStepping(true);
+    if (!id) return;
+    // Read latest cached value so rapid taps each see the up-to-date pick
+    const cached = queryClient.getQueryData<NonNullable<typeof project>>(["project", id]);
+    if (!cached) return;
+    if (direction === "advance" && cached.current_pick > cached.total_picks) return;
+    if (direction === "reverse" && cached.current_pick <= 1) return;
+
+    const prevPick = cached.current_pick;
+    const newPick = direction === "advance" ? prevPick + 1 : prevPick - 1;
+
+    // Instant optimistic update — UI responds before the server replies
+    queryClient.setQueryData<typeof project>(["project", id], (old) =>
+      old ? { ...old, current_pick: newPick } : old
+    );
+
     try {
-      const updated = await stepProject(id, direction);
+      const result = await stepProject(id, direction);
+      // Sync authoritative pick from server
       queryClient.setQueryData<typeof project>(["project", id], (old) =>
-        old ? { ...updated, photos: old.photos } : updated
+        old ? { ...old, current_pick: result.current_pick, total_picks: result.total_picks } : old
       );
-    } finally {
-      setStepping(false);
+    } catch {
+      // Roll back and force a fresh fetch to recover true server state
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
+        old ? { ...old, current_pick: prevPick } : old
+      );
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
     }
-  }, [id, stepping, queryClient]);
+  }, [id, queryClient]);
 
   const handleLocalStep = useCallback((direction: "advance" | "reverse") => {
     setLocalPick((prev) => {
