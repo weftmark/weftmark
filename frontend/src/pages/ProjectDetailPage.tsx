@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getProject, getProjectPicks, stepProject, jumpProject, completeProject, abandonProject,
   restartProject, cloneProject, listProjects, deleteProject,
-  renameProject, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
+  renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow,
 } from "@/api/projects";
@@ -890,6 +890,8 @@ export function ProjectDetailPage() {
   const [showDesignPreview, setShowDesignPreview] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesInput, setNotesInput] = useState("");
   const [showAssignLoom, setShowAssignLoom] = useState(false);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
@@ -1394,6 +1396,42 @@ export function ProjectDetailPage() {
               />
             </CollapsibleSection>
           )}
+
+          <CollapsibleSection title="Notes" defaultOpen={!!project.notes}>
+            {editingNotes ? (
+              <textarea
+                autoFocus
+                className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                rows={4}
+                value={notesInput}
+                onChange={(e) => setNotesInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") setEditingNotes(false); }}
+                onBlur={async () => {
+                  const trimmed = notesInput.trim();
+                  const current = project.notes ?? "";
+                  if (trimmed !== current) {
+                    const updated = await updateProjectNotes(id!, trimmed || null);
+                    queryClient.setQueryData<typeof project>(["project", id], (old) =>
+                      old ? { ...updated, photos: old.photos } : updated
+                    );
+                  }
+                  setEditingNotes(false);
+                }}
+              />
+            ) : (
+              <button
+                onClick={() => { setNotesInput(project.notes ?? ""); setEditingNotes(true); }}
+                className="w-full text-left text-sm"
+                title="Click to edit notes"
+              >
+                {project.notes ? (
+                  <p className="whitespace-pre-wrap text-muted-foreground">{project.notes}</p>
+                ) : (
+                  <p className="text-muted-foreground/60 italic">Add notes...</p>
+                )}
+              </button>
+            )}
+          </CollapsibleSection>
 
           <CollapsibleSection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">

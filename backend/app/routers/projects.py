@@ -91,7 +91,8 @@ class CreateProjectRequest(BaseModel):
 
 
 class RenameProjectRequest(BaseModel):
-    name: str
+    name: str | None = None
+    notes: str | None = None
 
 
 class AssignLoomRequest(BaseModel):
@@ -334,11 +335,16 @@ async def rename_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    name = body.name.strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    if body.name is None and body.notes is None:
+        raise HTTPException(status_code=400, detail="At least one field (name or notes) must be provided")
     project = await _get_owned_project(project_id, current_user, db)
-    project.name = name
+    if body.name is not None:
+        name = body.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+        project.name = name
+    if body.notes is not None:
+        project.notes = body.notes
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)

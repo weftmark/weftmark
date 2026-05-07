@@ -148,6 +148,14 @@ export function renameProject(id: string, name: string): Promise<ProjectDetail> 
   });
 }
 
+export function updateProjectNotes(id: string, notes: string | null): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ notes }),
+  });
+}
+
 export function restartProject(id: string): Promise<ProjectDetail> {
   return req(`/api/projects/${id}/restart`, { method: "POST" });
 }
