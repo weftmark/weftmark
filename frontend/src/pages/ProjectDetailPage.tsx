@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
 import { usePresentMode } from "@/hooks/usePresentMode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -296,7 +297,10 @@ function WeavingPatternView({
   // Mirror the 3-panel flex structure of the loaded state so dimensions don't change on hydration.
   if (Object.keys(tiles).length === 0) return (
     <div className="relative flex gap-2" style={{ height: containerH }}>
-      <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted animate-pulse" />
+      <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted flex flex-col items-center justify-center gap-2">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Loading pattern…</span>
+      </div>
       <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: STEP_PANEL_W }} />
       <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: COLOR_COL_W }} />
     </div>
