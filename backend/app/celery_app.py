@@ -21,6 +21,7 @@ def _make_celery() -> Celery:
             "app.tasks.s3_audit",
             "app.tasks.cve_scan",
             "app.tasks.debug",
+            "app.tasks.scheduler",
         ],
     )
     app.conf.update(
@@ -32,6 +33,12 @@ def _make_celery() -> Celery:
         task_track_started=True,
         worker_prefetch_multiplier=1,
         broker_connection_retry_on_startup=True,
+        beat_schedule={
+            "run-scheduled-tasks": {
+                "task": "app.tasks.scheduler.run_scheduled_tasks",
+                "schedule": 60.0,
+            }
+        },
     )
     return app
 

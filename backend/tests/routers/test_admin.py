@@ -1286,3 +1286,115 @@ class TestDeleteUser:
         target = await self._create_target(db_session)
         await superuser_client.post(f"/api/admin/users/{target.id}/delete", json={"confirm": "DELETE USER"})
         mock_deletion_service.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/scheduled-tasks
+# ---------------------------------------------------------------------------
+
+
+class TestListScheduledTasks:
+    async def test_returns_200(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/scheduled-tasks")
+        assert resp.status_code == 200
+
+    async def test_returns_list(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/scheduled-tasks")
+        data = resp.json()
+        assert isinstance(data, list)
+
+    async def test_includes_cve_scan(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/scheduled-tasks")
+        names = [t["name"] for t in resp.json()]
+        assert "cve_scan" in names
+
+    async def test_task_has_required_fields(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/scheduled-tasks")
+        task = next(t for t in resp.json() if t["name"] == "cve_scan")
+        assert "name" in task
+        assert "display_name" in task
+        assert "description" in task
+        assert "enabled" in task
+        assert "cron" in task
+        assert "next_runs" in task
+
+    async def test_next_runs_has_three_entries(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/scheduled-tasks")
+        task = next(t for t in resp.json() if t["name"] == "cve_scan")
+        assert len(task["next_runs"]) == 3
+
+    async def test_cve_scan_disabled_by_default(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/scheduled-tasks")
+        task = next(t for t in resp.json() if t["name"] == "cve_scan")
+        assert task["enabled"] is False
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/scheduled-tasks")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get("/api/admin/scheduled-tasks")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/admin/scheduled-tasks/{name}
+# ---------------------------------------------------------------------------
+
+
+class TestPatchScheduledTask:
+    async def test_enable_task(self, superuser_client: AsyncClient):
+        resp = await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"enabled": True})
+        assert resp.status_code == 200
+        assert resp.json()["enabled"] is True
+
+    async def test_disable_task(self, superuser_client: AsyncClient):
+        await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"enabled": True})
+        resp = await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"enabled": False})
+        assert resp.status_code == 200
+        assert resp.json()["enabled"] is False
+
+    async def test_update_cron(self, superuser_client: AsyncClient):
+        resp = await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"cron": "0 6 * * *"})
+        assert resp.status_code == 200
+        assert resp.json()["cron"] == "0 6 * * *"
+
+    async def test_update_persists(self, superuser_client: AsyncClient, db_session: AsyncSession):
+        await superuser_client.patch(
+            "/api/admin/scheduled-tasks/cve_scan",
+            json={"enabled": True, "cron": "0 12 * * 1"},
+        )
+        from sqlalchemy import select
+
+        from app.models.scheduled_task import ScheduledTask
+
+        row = await db_session.scalar(select(ScheduledTask).where(ScheduledTask.name == "cve_scan"))
+        assert row is not None
+        assert row.enabled is True
+        assert row.cron == "0 12 * * 1"
+
+    async def test_invalid_cron_returns_422(self, superuser_client: AsyncClient):
+        resp = await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"cron": "not a cron"})
+        assert resp.status_code == 422
+
+    async def test_unknown_task_returns_404(self, superuser_client: AsyncClient):
+        resp = await superuser_client.patch("/api/admin/scheduled-tasks/nonexistent_task", json={"enabled": True})
+        assert resp.status_code == 404
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"enabled": True})
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.patch("/api/admin/scheduled-tasks/cve_scan", json={"enabled": True})
+        assert resp.status_code == 401
+
+    async def test_response_includes_next_runs(self, superuser_client: AsyncClient):
+        resp = await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"cron": "0 2 * * *"})
+        assert len(resp.json()["next_runs"]) == 3
+
+    async def test_partial_update_preserves_other_fields(self, superuser_client: AsyncClient):
+        await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"cron": "0 3 * * *"})
+        resp = await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"enabled": True})
+        assert resp.json()["cron"] == "0 3 * * *"
+        assert resp.json()["enabled"] is True
