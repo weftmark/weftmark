@@ -371,6 +371,87 @@ class TestGetDrawdown:
 
 
 # ---------------------------------------------------------------------------
+# GET /{draft_id}/drawdown?start_row=&row_count=  (tiled)
+# ---------------------------------------------------------------------------
+
+
+class TestGetDrawdownTile:
+    async def _draft_with_wif(self, db_session: AsyncSession, user: User) -> Draft:
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=user.id,
+            name="Test Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            weft_threads=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+        return draft
+
+    async def test_returns_png(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.status_code == 200
+        assert resp.content[:4] == b"\x89PNG"
+
+    async def test_includes_pixels_per_row_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.headers.get("X-Pixels-Per-Row") is not None
+
+    async def test_includes_total_rows_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.headers.get("X-Total-Rows") == "4"
+
+    async def test_includes_start_row_header(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=1&row_count=2")
+        assert resp.headers.get("X-Start-Row") == "1"
+
+    async def test_includes_row_count_header(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.headers.get("X-Row-Count") == "2"
+
+    async def test_no_cache_header_for_tiled_request(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.headers.get("Cache-Control") == "no-store"
+
+    async def test_start_row_only_works(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0")
+        assert resp.status_code == 200
+
+    async def test_row_count_only_works(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?row_count=2")
+        assert resp.status_code == 200
+
+    async def test_returns_401_when_unauthenticated(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
 # POST /api/drafts  (WIF upload)
 # ---------------------------------------------------------------------------
 

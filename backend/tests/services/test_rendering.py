@@ -19,6 +19,7 @@ from app.services.rendering import (
     DRAWDOWN_SCALE,
     load_draft,
     render_drawdown_only,
+    render_drawdown_tile,
     render_full_draft,
     render_full_draft_liftplan,
 )
@@ -366,6 +367,109 @@ class TestRenderDrawdownOnly:
         draft.warp = []
         with pytest.raises(ValueError, match="no drawdown data"):
             render_drawdown_only(draft)
+
+
+# ---------------------------------------------------------------------------
+# Real-world liftplan WIF with stale Treadles= metadata (#266)
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# render_drawdown_tile
+# ---------------------------------------------------------------------------
+
+
+class TestRenderDrawdownTile:
+    def test_returns_tuple_of_five(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert isinstance(result, tuple) and len(result) == 5
+
+    def test_first_element_is_png(self):
+        draft = load_draft(MINIMAL_WIF)
+        png, *_ = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert png[:4] == b"\x89PNG"
+
+    def test_second_element_is_total_rows(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, total_rows, *_ = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert total_rows == len(draft.weft)
+
+    def test_third_element_is_actual_start_row(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, actual_start, *_ = render_drawdown_tile(draft, start_row=1, row_count=2)
+        assert actual_start == 1
+
+    def test_fourth_element_is_actual_row_count(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, _, actual_row_count, _ = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert actual_row_count == 2
+
+    def test_fifth_element_is_scale_used(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, _, _, scale_used = render_drawdown_tile(draft, start_row=0, row_count=2, scale=10)
+        assert scale_used == 10
+
+    def test_tile_height_equals_row_count_times_scale(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, _, _, actual_row_count, scale_used = render_drawdown_tile(draft, start_row=0, row_count=2, scale=scale)
+        img = Image.open(_io.BytesIO(png))
+        assert img.height == actual_row_count * scale_used
+
+    def test_tile_width_equals_warp_count_times_scale(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, _, _, _, scale_used = render_drawdown_tile(draft, start_row=0, row_count=2, scale=scale)
+        img = Image.open(_io.BytesIO(png))
+        assert img.width == len(draft.warp) * scale_used
+
+    def test_row_count_clamped_at_draft_end(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, total_rows, actual_start, actual_row_count, _ = render_drawdown_tile(draft, start_row=2, row_count=100)
+        assert actual_start + actual_row_count <= total_rows
+
+    def test_start_row_clamped_to_valid_range(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, total_rows, actual_start, actual_row_count, _ = render_drawdown_tile(draft, start_row=999, row_count=2)
+        assert actual_start <= total_rows - 1
+
+    def test_default_row_count_renders_full_draft(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, total_rows, _, actual_row_count, scale_used = render_drawdown_tile(draft, start_row=0, scale=scale)
+        img = Image.open(_io.BytesIO(png))
+        assert actual_row_count == total_rows
+        assert img.height == total_rows * scale_used
+
+    def test_empty_draft_raises_value_error(self):
+        draft = load_draft(MINIMAL_WIF)
+        draft.warp = []
+        with pytest.raises(ValueError, match="no drawdown data"):
+            render_drawdown_tile(draft)
+
+    def test_tile_from_middle_has_correct_dimensions(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, _, _, actual_row_count, scale_used = render_drawdown_tile(draft, start_row=1, row_count=2, scale=scale)
+        img = Image.open(_io.BytesIO(png))
+        assert img.height == actual_row_count * scale_used
 
 
 # ---------------------------------------------------------------------------

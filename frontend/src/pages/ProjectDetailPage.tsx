@@ -211,39 +211,78 @@ function WeavingPatternView({
   maxActive: number;
 }) {
   const containerH = useAdaptivePatternHeight();
-  const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
   const [loadError, setLoadError] = useState(false);
-  const objectUrlRef = useRef<string | null>(null);
+  // tilesRef: synchronous mirror used in effects for deduplication and eviction.
+  // tiles state: snapshot used during render (updated only on tile add, not eviction).
+  const tilesRef = useRef<Record<number, string>>({});
+  const [tiles, setTiles] = useState<Record<number, string>>({});
+  const fetchingRef = useRef<Set<number>>(new Set());
+
+  // 2× visible rows, so time-to-exhaust is consistent across scale values.
+  const tileSize = Math.max(10, Math.ceil(containerH / pixelsPerRow * 2));
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      const token = await getAuthToken();
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/drafts/${draftId}/drawdown`, { credentials: "include", headers });
-      if (!res.ok) {
-        if (!cancelled) setLoadError(true);
-        return;
+
+    // Image row 0 = top = last pick. Advancing decreases imageRow toward 0.
+    // Past work is at higher image row numbers (below current in the container).
+    const imageRow = totalPicks - 1 - currentPickIndex;
+    const currentTileStart = Math.floor(imageRow / tileSize) * tileSize;
+    // 1 tile toward row 0 (future picks, above current line).
+    const lookaheadStart = currentTileStart - tileSize;
+    // 1 tile away from row 0 (past picks, below current line = work done).
+    const lookbehindStart = currentTileStart + tileSize;
+    const needed = new Set<number>([currentTileStart]);
+    if (lookaheadStart >= 0) needed.add(lookaheadStart);
+    if (lookbehindStart < totalPicks) needed.add(lookbehindStart);
+
+    // Evict tiles outside the needed set.
+    for (const k of Object.keys(tilesRef.current)) {
+      const n = parseInt(k);
+      if (!needed.has(n)) {
+        URL.revokeObjectURL(tilesRef.current[n]);
+        delete tilesRef.current[n];
       }
-      const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
-      if (!cancelled) setPixelsPerRow(ppr);
-      const blob = await res.blob();
-      if (cancelled) return;
-      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-      const url = URL.createObjectURL(blob);
-      objectUrlRef.current = url;
-      setImgSrc(url);
     }
-    load().catch(() => { if (!cancelled) setLoadError(true); });
-    return () => {
-      cancelled = true;
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
+
+    const fetchTile = async (startRow: number) => {
+      if (fetchingRef.current.has(startRow)) return;
+      if (tilesRef.current[startRow] !== undefined) return;
+      fetchingRef.current.add(startRow);
+      try {
+        const token = await getAuthToken();
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(
+          `/api/drafts/${draftId}/drawdown?start_row=${startRow}&row_count=${tileSize}`,
+          { credentials: "include", headers }
+        );
+        if (!res.ok || cancelled) return;
+        const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
+        if (!cancelled) setPixelsPerRow(ppr);
+        const blob = await res.blob();
+        if (cancelled) return;
+        tilesRef.current[startRow] = URL.createObjectURL(blob);
+        setTiles({ ...tilesRef.current });
+      } catch {
+        if (!cancelled) setLoadError(true);
+      } finally {
+        fetchingRef.current.delete(startRow);
       }
     };
-  }, [draftId]);
+
+    needed.forEach(s => { fetchTile(s); });
+
+    return () => { cancelled = true; };
+  }, [draftId, currentPickIndex, totalPicks, tileSize]);
+
+  // Revoke all object URLs on unmount.
+  useEffect(() => {
+    return () => {
+      Object.values(tilesRef.current).forEach(url => URL.revokeObjectURL(url));
+      tilesRef.current = {};
+    };
+  }, []);
 
   if (loadError) return (
     <div
@@ -253,7 +292,8 @@ function WeavingPatternView({
       Pattern preview unavailable for this design.
     </div>
   );
-  if (!imgSrc) return null;
+  // Render nothing until at least one tile is available.
+  if (Object.keys(tiles).length === 0) return null;
 
   // Image is flipped: last pick at y=0 (top), pick 1 at bottom.
   const flippedIndex = totalPicks - 1 - currentPickIndex;
@@ -284,23 +324,38 @@ function WeavingPatternView({
     </>
   );
 
+  const totalImgH = totalPicks * pixelsPerRow;
+
   return (
     // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
     <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown image — horizontally scrollable to view wide designs */}
+      {/* Drawdown tiles — horizontally scrollable to view wide designs */}
       <div className="flex-1 rounded-lg border overflow-x-auto overflow-y-hidden relative bg-white dark:bg-zinc-900">
-        <img
-          src={imgSrc}
-          alt="Woven pattern"
-          className="block"
+        <div
           style={{
+            position: "relative",
+            height: totalImgH,
             transform: `translateY(${translateY}px)`,
-            imageRendering: "pixelated",
             transition: "transform 0.15s ease",
-            maxWidth: "none",
           }}
-        />
+        >
+          {Object.entries(tiles).map(([k, url]) => (
+            <img
+              key={k}
+              src={url}
+              alt=""
+              style={{
+                position: "absolute",
+                top: parseInt(k) * pixelsPerRow,
+                left: 0,
+                display: "block",
+                imageRendering: "pixelated",
+                maxWidth: "none",
+              }}
+            />
+          ))}
+        </div>
         {washoutOverlay}
       </div>
 
@@ -948,6 +1003,10 @@ export function ProjectDetailPage() {
     }
   }, [id, stepping, queryClient]);
 
+  // Counts in-flight step requests. Used to suppress intermediate server responses
+  // during rapid tapping — only the last response in a burst settles the cache.
+  const pendingStepsRef = useRef(0);
+
   const handleStep = useCallback(async (direction: "advance" | "reverse") => {
     if (!id) return;
     // Read latest cached value so rapid taps each see the up-to-date pick
@@ -956,25 +1015,32 @@ export function ProjectDetailPage() {
     if (direction === "advance" && cached.current_pick > cached.total_picks) return;
     if (direction === "reverse" && cached.current_pick <= 1) return;
 
-    const prevPick = cached.current_pick;
-    const newPick = direction === "advance" ? prevPick + 1 : prevPick - 1;
+    const newPick = direction === "advance" ? cached.current_pick + 1 : cached.current_pick - 1;
 
     // Instant optimistic update — UI responds before the server replies
     queryClient.setQueryData<typeof project>(["project", id], (old) =>
       old ? { ...old, current_pick: newPick } : old
     );
 
+    pendingStepsRef.current += 1;
     try {
       const result = await stepProject(id, direction);
-      // Sync authoritative pick from server
-      queryClient.setQueryData<typeof project>(["project", id], (old) =>
-        old ? { ...old, current_pick: result.current_pick, total_picks: result.total_picks } : old
-      );
+      pendingStepsRef.current -= 1;
+      // Only settle once all in-flight steps have resolved. Earlier responses
+      // are stale relative to the optimistic state (server serializes via FOR UPDATE,
+      // but responses can arrive out of order over the network).
+      if (pendingStepsRef.current === 0) {
+        queryClient.setQueryData<typeof project>(["project", id], (old) => {
+          if (!old) return old;
+          // Never revert below the current optimistic pick — guards against the rare
+          // case where a lower-pick response arrives last due to network reordering.
+          const safePick = Math.max(old.current_pick, result.current_pick);
+          return { ...old, current_pick: safePick, total_picks: result.total_picks };
+        });
+      }
     } catch {
-      // Roll back and force a fresh fetch to recover true server state
-      queryClient.setQueryData<typeof project>(["project", id], (old) =>
-        old ? { ...old, current_pick: prevPick } : old
-      );
+      pendingStepsRef.current -= 1;
+      // On error, invalidate to let the server state win
       queryClient.invalidateQueries({ queryKey: ["project", id] });
     }
   }, [id, queryClient]);
