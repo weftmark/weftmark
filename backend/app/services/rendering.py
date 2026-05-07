@@ -35,6 +35,9 @@ DRAWDOWN_SCALE = 20
 
 def load_draft(wif_bytes: bytes) -> Draft:
     """Parse WIF bytes and return a PyWeaving Draft."""
+    from app.services.wif_modifier import zero_treadles_for_liftplan
+
+    wif_bytes = zero_treadles_for_liftplan(wif_bytes)
     with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as tmp:
         tmp.write(wif_bytes)
         tmp_path = tmp.name
@@ -63,30 +66,129 @@ def render_full_draft_liftplan(draft: Draft, scale: int = 10) -> bytes:
     return out.getvalue()
 
 
-def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[bytes, int]:
-    """Render just the drawdown strip, cropped from the full draft image.
+def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int]:
+    """Render a reduced-size drawdown for caching.
 
-    Returns (png_bytes, total_rows). Pick 1 is at the top of the image (y=0),
-    last pick is at the bottom. Each row is ``scale`` pixels tall.
+    Scales down so the image width fits within max_px. Returns (png_bytes, scale_used).
+    Does not apply render_max_* limits — the reduced scale prevents oversized output.
+    """
+    warp_count = len(draft.warp)
+    weft_count = len(draft.weft)
+    if warp_count <= 0 or weft_count <= 0:
+        raise ValueError("Draft has no drawdown data to render")
+
+    scale = max(1, min(DRAWDOWN_SCALE, max_px // warp_count))
+    margin = 20
+    drawdown_w = warp_count * scale
+    drawdown_h = weft_count * scale
+
+    renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
+    full_im = renderer.make_pil_image()
+
+    offsetx = margin
+    offsety = margin + (6 + len(draft.shafts)) * scale
+    cropped = full_im.crop((offsetx, offsety, offsetx + drawdown_w, offsety + drawdown_h))
+    cropped = cropped.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
+    out = io.BytesIO()
+    cropped.save(out, format="PNG")
+    return out.getvalue(), scale
+
+
+def render_drawdown_tile(
+    draft: Draft,
+    start_row: int = 0,
+    row_count: int | None = None,
+    scale: int = DRAWDOWN_SCALE,
+) -> tuple[bytes, int, int, int, int]:
+    """Render a horizontal strip (tile) of the drawdown.
+
+    ``start_row`` and ``row_count`` are in image-row terms:
+    row 0 = top of the image = last pick (completed picks accumulate downward).
+
+    Only the width cap from settings is applied — height is determined by ``row_count``.
+
+    Returns (png_bytes, total_rows, actual_start_row, actual_row_count, scale_used).
     """
     margin = 20
     warp_count = len(draft.warp)
     weft_count = len(draft.weft)
-    drawdown_w = warp_count * scale
-    drawdown_h = weft_count * scale
 
-    if drawdown_w <= 0 or drawdown_h <= 0:
+    if warp_count <= 0 or weft_count <= 0:
         raise ValueError("Draft has no drawdown data to render")
 
     _s = get_settings()
-    if drawdown_w > _s.render_max_width or drawdown_h > _s.render_max_height:
+    max_scale = min(_s.render_max_width // warp_count, scale)
+    if max_scale < 1:
         raise HTTPException(
             status_code=413,
             detail=(
-                f"Draft dimensions ({drawdown_w}x{drawdown_h}px) exceed the rendering limit "
-                f"({_s.render_max_width}x{_s.render_max_height}px)."
+                f"Draft width ({warp_count} threads) exceeds the rendering limit "
+                f"even at scale=1 ({_s.render_max_width}px max width)."
             ),
         )
+    scale = max_scale
+
+    actual_start = max(0, min(start_row, weft_count - 1))
+    if row_count is None or row_count <= 0:
+        row_count = weft_count
+    actual_row_count = min(row_count, weft_count - actual_start)
+
+    drawdown_w = warp_count * scale
+    drawdown_h = weft_count * scale
+
+    renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
+    full_im = renderer.make_pil_image()
+
+    offsetx = margin
+    offsety = margin + (6 + len(draft.shafts)) * scale
+
+    full_drawdown = full_im.crop((offsetx, offsety, offsetx + drawdown_w, offsety + drawdown_h))
+    full_drawdown = full_drawdown.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
+
+    tile_top = actual_start * scale
+    tile_bottom = tile_top + actual_row_count * scale
+    tile = full_drawdown.crop((0, tile_top, drawdown_w, tile_bottom))
+
+    out = io.BytesIO()
+    tile.save(out, format="PNG")
+    return out.getvalue(), weft_count, actual_start, actual_row_count, scale
+
+
+def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[bytes, int, int]:
+    """Render just the drawdown strip, cropped from the full draft image.
+
+    Returns (png_bytes, total_rows, scale_used). Pick 1 is at the top of the image (y=0),
+    last pick is at the bottom. Each row is ``scale_used`` pixels tall.
+
+    Scale is reduced automatically so the output fits within RENDER_MAX_WIDTH/HEIGHT.
+    A 413 is raised only if scale=1 would still exceed the limits.
+    """
+    margin = 20
+    warp_count = len(draft.warp)
+    weft_count = len(draft.weft)
+
+    if warp_count <= 0 or weft_count <= 0:
+        raise ValueError("Draft has no drawdown data to render")
+
+    _s = get_settings()
+    # Reduce scale to the largest integer that fits within the configured pixel limits.
+    max_scale = min(
+        _s.render_max_width // warp_count,
+        _s.render_max_height // weft_count,
+        scale,
+    )
+    if max_scale < 1:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Draft dimensions ({warp_count}×{weft_count} threads) exceed the rendering limit "
+                f"even at scale=1 ({_s.render_max_width}×{_s.render_max_height}px max)."
+            ),
+        )
+    scale = max_scale
+
+    drawdown_w = warp_count * scale
+    drawdown_h = weft_count * scale
 
     renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
     full_im = renderer.make_pil_image()
@@ -102,4 +204,4 @@ def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[byt
     cropped = cropped.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
     out = io.BytesIO()
     cropped.save(out, format="PNG")
-    return out.getvalue(), weft_count
+    return out.getvalue(), weft_count, scale

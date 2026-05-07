@@ -193,6 +193,20 @@
       "version": "12.2.0"
     },
     {
+      "bom-ref": "requirements-L23",
+      "description": "requirements line 23: pip-audit",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/pip-audit/"
+        }
+      ],
+      "name": "pip-audit",
+      "purl": "pkg:pypi/pip-audit",
+      "type": "library"
+    },
+    {
       "bom-ref": "requirements-L22",
       "description": "requirements line 22: psutil==6.1.1",
       "externalReferences": [
@@ -254,7 +268,7 @@
     },
     {
       "bom-ref": "requirements-L12",
-      "description": "requirements line 12: python-multipart==0.0.26",
+      "description": "requirements line 12: python-multipart==0.0.27",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -263,9 +277,9 @@
         }
       ],
       "name": "python-multipart",
-      "purl": "pkg:pypi/python-multipart@0.0.26",
+      "purl": "pkg:pypi/python-multipart@0.0.27",
       "type": "library",
-      "version": "0.0.26"
+      "version": "0.0.27"
     },
     {
       "bom-ref": "requirements-L13",
@@ -402,6 +416,9 @@
       "ref": "requirements-L22"
     },
     {
+      "ref": "requirements-L23"
+    },
+    {
       "ref": "requirements-L3"
     },
     {
@@ -424,7 +441,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-05T12:12:07.678151+00:00",
+    "timestamp": "2026-05-06T22:40:52.363281+00:00",
     "tools": {
       "components": [
         {
@@ -528,7 +545,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:6a02e839-adc5-4322-b429-4fa99d8ae4d1",
+  "serialNumber": "urn:uuid:d8a54738-5988-4a60-8a79-3ff0e1e79ffb",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",

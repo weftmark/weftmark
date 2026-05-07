@@ -174,7 +174,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared/LICENSE"
   },
-  "@esbuild/linux-x64@0.21.5": {
+  "@esbuild/linux-x64@0.25.12": {
     "licenses": "MIT",
     "repository": "https://github.com/evanw/esbuild",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@esbuild/linux-x64",
@@ -740,7 +740,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/es-errors",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/es-errors/LICENSE"
   },
-  "esbuild@0.21.5": {
+  "esbuild@0.25.12": {
     "licenses": "MIT",
     "repository": "https://github.com/evanw/esbuild",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/esbuild",
@@ -1728,14 +1728,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/util-deprecate",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/util-deprecate/LICENSE"
   },
-  "vite@5.4.21": {
+  "vite@6.4.2": {
     "licenses": "MIT",
     "repository": "https://github.com/vitejs/vite",
     "publisher": "Evan You",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.83.5": {
+  "weaving-site@0.96.1": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend"

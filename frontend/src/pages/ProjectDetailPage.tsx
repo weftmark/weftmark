@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
+import { usePresentMode } from "@/hooks/usePresentMode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getProject, getProjectPicks, stepProject, jumpProject, completeProject, abandonProject,
   restartProject, cloneProject, listProjects, deleteProject,
-  renameProject, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
+  renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow,
 } from "@/api/projects";
@@ -210,36 +212,141 @@ function WeavingPatternView({
   maxActive: number;
 }) {
   const containerH = useAdaptivePatternHeight();
-  const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
-  const objectUrlRef = useRef<string | null>(null);
+  // tilesRef: synchronous mirror used in effects for deduplication and eviction.
+  // tiles state: snapshot used during render (updated only on tile add, not eviction).
+  const tilesRef = useRef<Record<number, string>>({});
+  const [tiles, setTiles] = useState<Record<number, string>>({});
+  const fetchingRef = useRef<Set<number>>(new Set());
+  // tileErrorsRef: per-tile error messages (Map<startRow, message>). Ref so fetchTile
+  // can check it without adding to effect deps. State mirror for render.
+  const tileErrorsRef = useRef<Map<number, string>>(new Map());
+  const [tileErrors, setTileErrors] = useState<Map<number, string>>(new Map());
+  // Incrementing retryCount forces the fetch effect to rerun on explicit retry.
+  const [retryCount, setRetryCount] = useState(0);
+
+  // 2× visible rows, so time-to-exhaust is consistent across scale values.
+  const tileSize = Math.max(10, Math.ceil(containerH / pixelsPerRow * 2));
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      const token = await getAuthToken();
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/drafts/${draftId}/drawdown`, { credentials: "include", headers });
-      const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
-      if (!cancelled) setPixelsPerRow(ppr);
-      const blob = await res.blob();
-      if (cancelled) return;
-      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-      const url = URL.createObjectURL(blob);
-      objectUrlRef.current = url;
-      setImgSrc(url);
+
+    // Image row 0 = top = last pick. Advancing decreases imageRow toward 0.
+    // Past work is at higher image row numbers (below current in the container).
+    const imageRow = totalPicks - 1 - currentPickIndex;
+    const currentTileStart = Math.floor(imageRow / tileSize) * tileSize;
+    // 1 tile toward row 0 (future picks, above current line).
+    const lookaheadStart = currentTileStart - tileSize;
+    // 1 tile away from row 0 (past picks, below current line = work done).
+    const lookbehindStart = currentTileStart + tileSize;
+    const needed = new Set<number>([currentTileStart]);
+    if (lookaheadStart >= 0) needed.add(lookaheadStart);
+    if (lookbehindStart < totalPicks) needed.add(lookbehindStart);
+
+    // Evict tiles and errors outside the needed set (errors auto-clear on eviction so
+    // re-entering the same position retries fresh without an explicit user action).
+    let errorsChanged = false;
+    for (const k of Object.keys(tilesRef.current)) {
+      const n = parseInt(k);
+      if (!needed.has(n)) {
+        URL.revokeObjectURL(tilesRef.current[n]);
+        delete tilesRef.current[n];
+      }
     }
-    load().catch(() => {});
-    return () => {
-      cancelled = true;
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
+    for (const n of tileErrorsRef.current.keys()) {
+      if (!needed.has(n)) {
+        tileErrorsRef.current.delete(n);
+        errorsChanged = true;
+      }
+    }
+    if (errorsChanged) setTileErrors(new Map(tileErrorsRef.current));
+
+    const fetchTile = async (startRow: number) => {
+      if (fetchingRef.current.has(startRow)) return;
+      if (tilesRef.current[startRow] !== undefined) return;
+      if (tileErrorsRef.current.has(startRow)) return;
+      fetchingRef.current.add(startRow);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        const token = await getAuthToken();
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(
+          `/api/drafts/${draftId}/drawdown?start_row=${startRow}&row_count=${tileSize}`,
+          { credentials: "include", headers, signal: controller.signal }
+        );
+        clearTimeout(timeoutId);
+        if (cancelled) return;
+        if (!res.ok) {
+          tileErrorsRef.current.set(startRow, "Pattern tile failed to load.");
+          setTileErrors(new Map(tileErrorsRef.current));
+          return;
+        }
+        const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
+        if (!cancelled) setPixelsPerRow(ppr);
+        const blob = await res.blob();
+        if (cancelled) return;
+        tilesRef.current[startRow] = URL.createObjectURL(blob);
+        setTiles({ ...tilesRef.current });
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (!cancelled) {
+          const msg = err instanceof Error && err.name === "AbortError"
+            ? "Pattern tile timed out."
+            : "Pattern tile failed to load.";
+          tileErrorsRef.current.set(startRow, msg);
+          setTileErrors(new Map(tileErrorsRef.current));
+        }
+      } finally {
+        fetchingRef.current.delete(startRow);
       }
     };
-  }, [draftId]);
 
-  if (!imgSrc) return null;
+    needed.forEach(s => { fetchTile(s); });
+
+    return () => { cancelled = true; };
+  }, [draftId, currentPickIndex, totalPicks, tileSize, retryCount]);
+
+  // Revoke all object URLs on unmount.
+  useEffect(() => {
+    return () => {
+      Object.values(tilesRef.current).forEach(url => URL.revokeObjectURL(url));
+      tilesRef.current = {};
+    };
+  }, []);
+
+  // Compute current tile position for overlay decisions (needed before early returns).
+  const imageRowForTile = totalPicks - 1 - currentPickIndex;
+  const currentTileStart = Math.floor(imageRowForTile / tileSize) * tileSize;
+  const currentTileReady = tiles[currentTileStart] !== undefined;
+  const currentTileError = tileErrors.get(currentTileStart);
+
+  const retryCurrentTile = () => {
+    tileErrorsRef.current.delete(currentTileStart);
+    setTileErrors(new Map(tileErrorsRef.current));
+    setRetryCount(c => c + 1);
+  };
+
+  // Full skeleton while no tiles are loaded yet.
+  if (Object.keys(tiles).length === 0) return (
+    <div className="relative flex gap-2" style={{ height: containerH }}>
+      <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted flex flex-col items-center justify-center gap-2">
+        {currentTileError ? (
+          <>
+            <span className="text-sm text-muted-foreground">{currentTileError}</span>
+            <button className="text-xs underline text-accent" onClick={retryCurrentTile}>Tap to retry</button>
+          </>
+        ) : (
+          <>
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Loading pattern…</span>
+          </>
+        )}
+      </div>
+      <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: STEP_PANEL_W }} />
+      <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: COLOR_COL_W }} />
+    </div>
+  );
 
   // Image is flipped: last pick at y=0 (top), pick 1 at bottom.
   const flippedIndex = totalPicks - 1 - currentPickIndex;
@@ -270,24 +377,53 @@ function WeavingPatternView({
     </>
   );
 
+  const totalImgH = totalPicks * pixelsPerRow;
+
   return (
     // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
     <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown image — horizontally scrollable to view wide designs */}
+      {/* Drawdown tiles — horizontally scrollable to view wide designs */}
       <div className="flex-1 rounded-lg border overflow-x-auto overflow-y-hidden relative bg-white dark:bg-zinc-900">
-        <img
-          src={imgSrc}
-          alt="Woven pattern"
-          className="block"
+        <div
           style={{
+            position: "relative",
+            height: totalImgH,
             transform: `translateY(${translateY}px)`,
-            imageRendering: "pixelated",
             transition: "transform 0.15s ease",
-            maxWidth: "none",
           }}
-        />
+        >
+          {Object.entries(tiles).map(([k, url]) => (
+            <img
+              key={k}
+              src={url}
+              alt=""
+              style={{
+                position: "absolute",
+                top: parseInt(k) * pixelsPerRow,
+                left: 0,
+                display: "block",
+                imageRendering: "pixelated",
+                maxWidth: "none",
+              }}
+            />
+          ))}
+        </div>
         {washoutOverlay}
+        {/* Loading overlay — shown whenever the current tile hasn't arrived yet */}
+        {!currentTileReady && !currentTileError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none z-10">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Loading pattern…</span>
+          </div>
+        )}
+        {/* Error overlay — shown on tile fetch failure or timeout */}
+        {currentTileError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 z-10">
+            <span className="text-sm text-muted-foreground">{currentTileError}</span>
+            <button className="text-xs underline text-accent" onClick={retryCurrentTile}>Tap to retry</button>
+          </div>
+        )}
       </div>
 
       {/* Lift/treadle step panel */}
@@ -371,6 +507,7 @@ function AbandonedDrawdownView({
   totalPicks: number;
 }) {
   const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const objectUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -379,6 +516,10 @@ function AbandonedDrawdownView({
       const token = await getAuthToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(`/api/drafts/${draftId}/drawdown`, { credentials: "include", headers });
+      if (!res.ok) {
+        if (!cancelled) setLoadError(true);
+        return;
+      }
       const blob = await res.blob();
       if (cancelled) return;
       if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
@@ -386,7 +527,7 @@ function AbandonedDrawdownView({
       objectUrlRef.current = url;
       setImgSrc(url);
     }
-    load().catch(() => {});
+    load().catch(() => { if (!cancelled) setLoadError(true); });
     return () => {
       cancelled = true;
       if (objectUrlRef.current) {
@@ -396,6 +537,11 @@ function AbandonedDrawdownView({
     };
   }, [draftId]);
 
+  if (loadError) return (
+    <div className="flex items-center justify-center rounded-lg border bg-muted text-muted-foreground text-sm p-6">
+      Pattern preview unavailable for this design.
+    </div>
+  );
   if (!imgSrc) return null;
 
   // Image is flipped: row 0 (top) = last pick, row N-1 (bottom) = pick 1.
@@ -866,6 +1012,8 @@ export function ProjectDetailPage() {
   const [showDesignPreview, setShowDesignPreview] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesInput, setNotesInput] = useState("");
   const [showAssignLoom, setShowAssignLoom] = useState(false);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
@@ -876,6 +1024,8 @@ export function ProjectDetailPage() {
   const [cloneConflict, setCloneConflict] = useState<ProjectSummary | null>(null);
   const [restartConflict, setRestartConflict] = useState<ProjectSummary | null>(null);
   const [localPick, setLocalPick] = useState(1);
+
+  const { isPresent, isSupported: presentModeSupported, toggle: togglePresentMode } = usePresentMode();
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -920,18 +1070,47 @@ export function ProjectDetailPage() {
     }
   }, [id, stepping, queryClient]);
 
+  // Counts in-flight step requests. Used to suppress intermediate server responses
+  // during rapid tapping — only the last response in a burst settles the cache.
+  const pendingStepsRef = useRef(0);
+
   const handleStep = useCallback(async (direction: "advance" | "reverse") => {
-    if (!id || stepping) return;
-    setStepping(true);
+    if (!id) return;
+    // Read latest cached value so rapid taps each see the up-to-date pick
+    const cached = queryClient.getQueryData<NonNullable<typeof project>>(["project", id]);
+    if (!cached) return;
+    if (direction === "advance" && cached.current_pick > cached.total_picks) return;
+    if (direction === "reverse" && cached.current_pick <= 1) return;
+
+    const newPick = direction === "advance" ? cached.current_pick + 1 : cached.current_pick - 1;
+
+    // Instant optimistic update — UI responds before the server replies
+    queryClient.setQueryData<typeof project>(["project", id], (old) =>
+      old ? { ...old, current_pick: newPick } : old
+    );
+
+    pendingStepsRef.current += 1;
     try {
-      const updated = await stepProject(id, direction);
-      queryClient.setQueryData<typeof project>(["project", id], (old) =>
-        old ? { ...updated, photos: old.photos } : updated
-      );
-    } finally {
-      setStepping(false);
+      const result = await stepProject(id, direction);
+      pendingStepsRef.current -= 1;
+      // Only settle once all in-flight steps have resolved. Earlier responses
+      // are stale relative to the optimistic state (server serializes via FOR UPDATE,
+      // but responses can arrive out of order over the network).
+      if (pendingStepsRef.current === 0) {
+        queryClient.setQueryData<typeof project>(["project", id], (old) => {
+          if (!old) return old;
+          // Never revert below the current optimistic pick — guards against the rare
+          // case where a lower-pick response arrives last due to network reordering.
+          const safePick = Math.max(old.current_pick, result.current_pick);
+          return { ...old, current_pick: safePick, total_picks: result.total_picks };
+        });
+      }
+    } catch {
+      pendingStepsRef.current -= 1;
+      // On error, invalidate to let the server state win
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
     }
-  }, [id, stepping, queryClient]);
+  }, [id, queryClient]);
 
   const handleLocalStep = useCallback((direction: "advance" | "reverse") => {
     setLocalPick((prev) => {
@@ -1149,6 +1328,18 @@ export function ProjectDetailPage() {
           <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
             {badgeLabel}
           </span>
+          {presentModeSupported && (
+            <button
+              onClick={togglePresentMode}
+              className="ml-3 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title={isPresent ? "Exit present mode" : "Present mode — fullscreen + keep screen on"}
+              aria-label={isPresent ? "Exit present mode" : "Enter present mode"}
+            >
+              {isPresent
+                ? <AppIcons.exitPresentMode className="h-4 w-4" />
+                : <AppIcons.presentMode className="h-4 w-4" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1356,6 +1547,42 @@ export function ProjectDetailPage() {
               />
             </CollapsibleSection>
           )}
+
+          <CollapsibleSection title="Notes" defaultOpen={!!project.notes}>
+            {editingNotes ? (
+              <textarea
+                autoFocus
+                className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                rows={4}
+                value={notesInput}
+                onChange={(e) => setNotesInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") setEditingNotes(false); }}
+                onBlur={async () => {
+                  const trimmed = notesInput.trim();
+                  const current = project.notes ?? "";
+                  if (trimmed !== current) {
+                    const updated = await updateProjectNotes(id!, trimmed || null);
+                    queryClient.setQueryData<typeof project>(["project", id], (old) =>
+                      old ? { ...updated, photos: old.photos } : updated
+                    );
+                  }
+                  setEditingNotes(false);
+                }}
+              />
+            ) : (
+              <button
+                onClick={() => { setNotesInput(project.notes ?? ""); setEditingNotes(true); }}
+                className="w-full text-left text-sm"
+                title="Click to edit notes"
+              >
+                {project.notes ? (
+                  <p className="whitespace-pre-wrap text-muted-foreground">{project.notes}</p>
+                ) : (
+                  <p className="text-muted-foreground/60 italic">Add notes...</p>
+                )}
+              </button>
+            )}
+          </CollapsibleSection>
 
           <CollapsibleSection title="Details">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">

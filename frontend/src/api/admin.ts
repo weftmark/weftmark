@@ -58,13 +58,7 @@ export interface AdminVersions {
   worker: string | null;
   postgres: string;
   postgres_source: string;
-  fastapi: string;
-  sqlalchemy: string;
-  alembic: string;
-  pyweaving: string;
-  pillow: string;
-  boto3: string;
-  psutil: string;
+  backend_packages: Record<string, string>;
 }
 
 export interface AdminDbInfo {
@@ -224,3 +218,137 @@ export interface ReconcileReport {
 export const getReconcileReport = () => api.get<ReconcileReport>("/api/admin/reconcile");
 export const backfillClerkUser = (clerkUserId: string, role: "user" | "admin" = "user") =>
   api.post<{ status: string; user_id: string; email: string }>(`/api/admin/reconcile/backfill/${clerkUserId}`, { role });
+
+export interface S3OrphanFile {
+  key: string;
+  size: number;
+  last_modified: string;
+}
+
+export interface S3AuditResult {
+  total_s3_keys: number;
+  total_db_paths: number;
+  orphaned_count: number;
+  orphaned_files: S3OrphanFile[];
+  not_applicable: boolean;
+}
+
+export interface S3AuditTaskStatus {
+  status: "pending" | "running" | "complete" | "failed";
+  result?: S3AuditResult;
+  error?: string;
+}
+
+export const startS3AuditScan = () =>
+  api.post<{ task_id: string }>("/api/admin/s3-audit/scan", {});
+
+export const getS3AuditTask = (taskId: string) =>
+  api.get<S3AuditTaskStatus>(`/api/admin/s3-audit/task/${taskId}`);
+
+export const cleanupS3Orphans = (keys: string[]) =>
+  api.post<{ deleted: number }>("/api/admin/s3-audit/cleanup", { keys });
+
+export interface CveVuln {
+  id: string;
+  aliases: string[];
+  fix_versions: string[];
+  description: string;
+}
+
+export interface CveFinding {
+  name: string;
+  version: string;
+  vulns: CveVuln[];
+}
+
+export interface CveScanResult {
+  backend_findings: CveFinding[];
+  frontend_findings: CveFinding[];
+  scanned_at: string;
+  total_findings: number;
+}
+
+export interface CveScanTaskStatus {
+  status: "pending" | "running" | "complete" | "failed";
+  result?: CveScanResult;
+  error?: string;
+}
+
+export interface CveScanSummary {
+  finding_count: number;
+  scanned_at: string | null;
+}
+
+export const startCveScan = (frontendDeps: Record<string, string>) =>
+  api.post<{ task_id: string }>("/api/admin/cve-scan/start", { frontend_deps: frontendDeps });
+
+export const getCveScanTask = (taskId: string) =>
+  api.get<CveScanTaskStatus>(`/api/admin/cve-scan/task/${taskId}`);
+
+export const getCveScanSummary = () =>
+  api.get<CveScanSummary>("/api/admin/cve-scan/summary");
+
+export interface WorkerActiveTask {
+  id: string;
+  name: string;
+  args_repr: string;
+  time_start: number | null;
+}
+
+export interface WorkerInfo {
+  name: string;
+  status: "online" | "offline";
+  version: string | null;
+  concurrency: number | null;
+  completed_tasks: number | null;
+  active_tasks: WorkerActiveTask[];
+  reserved_tasks: WorkerActiveTask[];
+}
+
+export interface QueueInfo {
+  name: string;
+  depth: number;
+}
+
+export interface WorkerStatus {
+  workers: WorkerInfo[];
+  queues: QueueInfo[];
+  api_version: string;
+  checked_at: string;
+}
+
+export const getWorkerStatus = () =>
+  api.get<WorkerStatus>("/api/admin/worker-status");
+
+export const startDebugSleep = (seconds: number = 45) =>
+  api.post<{ task_id: string; seconds: number }>("/api/admin/debug-sleep", { seconds });
+
+export interface TaskHistoryItem {
+  task_id: string;
+  name: string;
+  caller: string;
+  state: string;
+  queued_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  wait_seconds: number | null;
+  run_seconds: number | null;
+  error: string | null;
+}
+
+export interface TaskHistoryResponse {
+  items: TaskHistoryItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+export const getTaskHistory = (page: number = 1, pageSize: number = 25) =>
+  api.get<TaskHistoryResponse>(`/api/admin/task-history?page=${page}&page_size=${pageSize}`);
+
+export const revokeTask = (taskId: string) =>
+  api.post<{ status: string; task_id: string }>(`/api/admin/tasks/${taskId}/revoke`, {});
+
+export const runPurgeSoftDeleted = () =>
+  api.post<{ status: string; task_id: string }>("/api/admin/purge-soft-deleted", {});

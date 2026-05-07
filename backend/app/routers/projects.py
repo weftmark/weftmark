@@ -91,7 +91,8 @@ class CreateProjectRequest(BaseModel):
 
 
 class RenameProjectRequest(BaseModel):
-    name: str
+    name: str | None = None
+    notes: str | None = None
 
 
 class AssignLoomRequest(BaseModel):
@@ -105,6 +106,11 @@ class JumpRequest(BaseModel):
 
 class StepRequest(BaseModel):
     direction: str  # "advance" | "reverse"
+
+
+class StepResponse(BaseModel):
+    current_pick: int
+    total_picks: int
 
 
 class PickRow(BaseModel):
@@ -154,14 +160,21 @@ def _wif_path_for_project(draft: Draft, project_type: str) -> str:
     return draft.wif_path
 
 
-async def _get_owned_project(project_id: uuid.UUID, user: User, db: AsyncSession) -> Project:
-    project = await db.scalar(
-        select(Project).where(
-            Project.id == project_id,
-            Project.owner_id == user.id,
-            Project.deleted_at.is_(None),
-        )
+async def _get_owned_project(
+    project_id: uuid.UUID,
+    user: User,
+    db: AsyncSession,
+    *,
+    with_for_update: bool = False,
+) -> Project:
+    stmt = select(Project).where(
+        Project.id == project_id,
+        Project.owner_id == user.id,
+        Project.deleted_at.is_(None),
     )
+    if with_for_update:
+        stmt = stmt.with_for_update()
+    project = await db.scalar(stmt)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
@@ -334,11 +347,16 @@ async def rename_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    name = body.name.strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    if body.name is None and body.notes is None:
+        raise HTTPException(status_code=400, detail="At least one field (name or notes) must be provided")
     project = await _get_owned_project(project_id, current_user, db)
-    project.name = name
+    if body.name is not None:
+        name = body.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+        project.name = name
+    if body.notes is not None:
+        project.notes = body.notes
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
@@ -395,17 +413,20 @@ async def assign_loom(
     return _to_detail(project, draft, loom)
 
 
-@router.post("/{project_id}/step", response_model=ProjectDetail)
+@router.post("/{project_id}/step", response_model=StepResponse)
 async def step_project(
     project_id: uuid.UUID,
     body: StepRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> ProjectDetail:
+) -> StepResponse:
     if body.direction not in ("advance", "reverse"):
         raise HTTPException(status_code=400, detail="direction must be 'advance' or 'reverse'")
 
-    project = await _get_owned_project(project_id, current_user, db)
+    # FOR UPDATE serializes concurrent step requests at the DB level, preventing
+    # two simultaneous taps from reading the same current_pick and producing a
+    # duplicate increment.
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status != "active":
         raise HTTPException(status_code=400, detail="Project is not active")
 
@@ -428,11 +449,8 @@ async def step_project(
     )
     db.add(step)
     await db.commit()
-    await db.refresh(project)
-
-    draft = await db.get(Draft, project.draft_id)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+    # current_pick is already updated in-memory; no need to re-fetch draft/loom
+    return StepResponse(current_pick=project.current_pick, total_picks=project.total_picks)
 
 
 @router.post("/{project_id}/jump", response_model=ProjectDetail)

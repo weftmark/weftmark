@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { VersionBadge } from "@/components/layout/VersionFooter";
 import type { ReactNode } from "react";
+
+const DETAIL_PATTERN = /^\/projects\/[^/]+/;
 
 interface Props {
   children: ReactNode;
@@ -10,10 +13,22 @@ interface Props {
 
 export function AppLayout({ children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Track which detail path the user manually expanded the sidebar on.
+  // Collapse whenever on a detail page unless this matches the current path.
+  const [expandedOnPath, setExpandedOnPath] = useState<string | null>(null);
+  const location = useLocation();
+
+  const isDetailPage = DETAIL_PATTERN.test(location.pathname);
+  const desktopCollapsed = isDetailPage && expandedOnPath !== location.pathname;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        desktopCollapsed={desktopCollapsed}
+        onDesktopExpand={() => setExpandedOnPath(location.pathname)}
+      />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar — hidden on lg+ where sidebar is always visible */}

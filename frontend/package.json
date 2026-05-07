@@ -1,7 +1,7 @@
 {
   "name": "weaving-site",
   "private": true,
-  "version": "0.85.2",
+  "version": "0.98.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -34,6 +34,6 @@
     "postcss": "^8.5.14",
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.3",
-    "vite": "^5.3.4"
+    "vite": "^6.4.2"
   }
 }

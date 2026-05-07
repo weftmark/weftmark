@@ -43,10 +43,13 @@ from app.models.user import User
 from app.services.audit import write_audit_log
 from app.services.clerk import set_user_metadata
 from app.services.email import send_invite_email, send_pending_signup_notification, send_signup_received_email
+from app.services.rate_limiter import rate_limit
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
+
+_invite_rate_limit = rate_limit("invite", max_requests=20, window_seconds=3600)
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +74,7 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
         event = wh.verify(payload, headers)
     except WebhookVerificationError:
         log.info("webhook_rejected reason=invalid_signature")
+        await write_audit_log(db, event_type="webhook.signature_failed")
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     event_type = event.get("type")
@@ -229,6 +233,7 @@ async def _consume_invite(db: AsyncSession, email: str) -> Invite | None:
         return None
     invite.accepted_at = datetime.now(timezone.utc)
     await db.commit()
+    await write_audit_log(db, event_type="invite.accepted", target_email=email)
     return invite
 
 
@@ -323,6 +328,7 @@ async def create_invite(
     body: InviteRequest,
     admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
+    _rl: None = Depends(_invite_rate_limit),
 ) -> Invite:
     from app.models.invite import INVITE_ROLES
 

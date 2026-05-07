@@ -34,7 +34,11 @@ async def initiate_user_deletion(db: AsyncSession, user: User) -> None:
         user.email,
     )
 
-    run_user_deletion.delay(str(user.id))
+    _del_task = run_user_deletion.delay(str(user.id))
+    from app.config import get_settings
+    from app.services.task_history import record_queued
+
+    record_queued(get_settings(), _del_task.id, "app.tasks.deletion.run_user_deletion", "user_deletion")
 
     # Notify admins that deletion has been queued
     from sqlalchemy import select

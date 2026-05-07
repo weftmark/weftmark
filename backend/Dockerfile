@@ -19,4 +19,10 @@ COPY VERSION .
 
 RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
+# Drop to non-root — suppresses Celery SecurityWarning and follows least-privilege.
+# chown covers /app/uploads so the named volume initialises with correct ownership.
+RUN addgroup --system appuser && adduser --system --ingroup appuser appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 ENTRYPOINT ["./entrypoint.sh"]

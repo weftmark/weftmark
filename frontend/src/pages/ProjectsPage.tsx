@@ -73,10 +73,10 @@ function ProjectCard({ project, onAssign }: {
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
-                  aria-label="Preview design"
+                  aria-label="Preview drawdown"
                   onClick={(e) => { e.preventDefault(); setShowPreview(true); }}
                   className="text-muted-foreground hover:text-foreground transition-colors"
-                  title="Preview design"
+                  title="Preview drawdown"
                 >
                   <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
                     <rect x="0" y="0" width="5" height="5" rx="1" />

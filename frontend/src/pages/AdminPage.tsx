@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { UserDetailModal, type UserDetailTarget } from "@/components/admin/UserDetailModal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,18 @@ import {
   getAuditLog,
   getReconcileReport,
   backfillClerkUser,
+  startS3AuditScan,
+  getS3AuditTask,
+  cleanupS3Orphans,
+  startCveScan,
+  getCveScanTask,
+  getCveScanSummary,
+  getWorkerStatus,
+  startDebugSleep,
+  getTaskHistory,
+  revokeTask,
+  runPurgeSoftDeleted,
+  type TaskHistoryItem,
   type AdminUser,
   type AdminHealth,
   type AdminDbInfo,
@@ -34,13 +47,18 @@ import {
   type ServicePermCheck,
   type ReconcileReport,
   type WebhookProbeResult,
+  type S3AuditResult,
+  type CveScanResult,
+  type CveFinding,
+  type WorkerStatus,
+  type WorkerInfo,
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
 
-type Tab = "users" | "invites" | "stats" | "health" | "services" | "audit" | "superuser";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "superuser";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -65,9 +83,49 @@ function formatUptime(seconds: number): string {
   return parts.join(", ");
 }
 
+function CveBanner() {
+  const navigate = useNavigate();
+  const [dismissed, setDismissed] = useState(false);
+  const { data } = useQuery({
+    queryKey: ["admin", "cve-summary"],
+    queryFn: getCveScanSummary,
+    staleTime: 5 * 60_000,
+  });
+
+  if (dismissed || !data || data.finding_count == null || data.finding_count === 0) return null;
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+      <span className="text-amber-700 dark:text-amber-300 font-medium">
+        {data.finding_count} CVE {data.finding_count === 1 ? "vulnerability" : "vulnerabilities"} found
+        {data.scanned_at && (
+          <span className="font-normal text-amber-600 dark:text-amber-400 ml-2">
+            · last scanned {new Date(data.scanned_at).toLocaleString()}
+          </span>
+        )}
+      </span>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          className="text-xs text-amber-700 dark:text-amber-300 underline hover:no-underline"
+          onClick={() => navigate("/admin/superuser")}
+        >
+          View report
+        </button>
+        <button
+          className="text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => setDismissed(true)}
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage() {
-  const [tab, setTab] = useState<Tab>("users");
+  const { section = "users" } = useParams<{ section: string }>();
   const { user: currentUser } = useAuth();
+  const tab = section as Tab;
 
   return (
     <div className="p-6 max-w-4xl mx-auto w-full space-y-6">
@@ -77,41 +135,17 @@ export function AdminPage() {
           <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
         )}
       </div>
-        <div className="flex gap-2 border-b pb-2 flex-wrap">
-          {(["users", "invites", "stats", "health", "services", "audit"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-sm rounded capitalize ${
-                tab === t
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-          {currentUser?.is_superuser && (
-            <button
-              onClick={() => setTab("superuser")}
-              className={`px-3 py-1.5 text-sm rounded capitalize ${
-                tab === "superuser"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              superuser
-            </button>
-          )}
-        </div>
 
-        {tab === "users" && <UsersTab />}
-        {tab === "invites" && <InvitesTab />}
-        {tab === "stats" && <StatsTab />}
-        {tab === "health" && <HealthTab />}
-        {tab === "services" && <ServicesTab />}
-        {tab === "audit" && <AuditLogTab />}
-        {tab === "superuser" && <SuperuserTab />}
+      {currentUser?.is_superuser && <CveBanner />}
+
+      {tab === "users" && <UsersTab />}
+      {tab === "invites" && <InvitesTab />}
+      {tab === "stats" && <StatsTab />}
+      {tab === "health" && <HealthTab />}
+      {tab === "services" && <ServicesTab />}
+      {tab === "deps" && <DepsTab />}
+      {tab === "audit" && <AuditLogTab />}
+      {tab === "superuser" && <SuperuserTab />}
     </div>
   );
 }
@@ -842,7 +876,6 @@ function HealthTab() {
         color="rgb(245,158,11)"
       />
 
-      <VersionsTable />
     </div>
   );
 }
@@ -878,29 +911,72 @@ function VersionsTable() {
     { label: "PostgreSQL", value: `${data.postgres} · ${data.postgres_source}` },
     { label: "Redis", value: data.redis_server },
     { label: "Celery", value: data.celery },
+    { label: "Python", value: data.python },
   ];
 
-  const deps = [
-    { label: "Python", value: data.python },
-    { label: "FastAPI", value: data.fastapi },
-    { label: "SQLAlchemy", value: data.sqlalchemy },
-    { label: "Alembic", value: data.alembic },
-    { label: "PyWeaving", value: data.pyweaving },
-    { label: "Pillow", value: data.pillow },
-    { label: "boto3", value: data.boto3 },
-    { label: "psutil", value: data.psutil },
-  ];
+  const backendRows = Object.entries(data.backend_packages).map(([k, v]) => ({ label: k, value: v }));
+  const frontendRows = Object.entries(__FRONTEND_DEPS__).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => ({ label: k, value: v }));
+  const devRows = Object.entries(__FRONTEND_DEV_DEPS__).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => ({ label: k, value: v }));
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Versions</h2>
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Runtime</h2>
         <InfoTable rows={versions} />
       </div>
       <div>
-        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Dependencies</h2>
-        <InfoTable rows={deps} />
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Backend packages</h2>
+        <div className="rounded-md border overflow-auto max-h-72">
+          <table className="w-full text-xs">
+            <tbody>
+              {backendRows.map(({ label, value }) => (
+                <tr key={label} className="border-t first:border-t-0">
+                  <td className="px-3 py-1.5 font-mono text-muted-foreground w-1/2">{label}</td>
+                  <td className="px-3 py-1.5 tabular-nums">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+      <div>
+        <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Frontend dependencies</h2>
+        <div className="rounded-md border overflow-auto max-h-72">
+          <table className="w-full text-xs">
+            <tbody>
+              {frontendRows.map(({ label, value }) => (
+                <tr key={label} className="border-t first:border-t-0">
+                  <td className="px-3 py-1.5 font-mono text-muted-foreground w-1/2">{label}</td>
+                  <td className="px-3 py-1.5 tabular-nums">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <details className="text-xs">
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground py-1">Dev dependencies ({devRows.length})</summary>
+        <div className="rounded-md border overflow-auto max-h-60 mt-2">
+          <table className="w-full text-xs">
+            <tbody>
+              {devRows.map(({ label, value }) => (
+                <tr key={label} className="border-t first:border-t-0">
+                  <td className="px-3 py-1.5 font-mono text-muted-foreground w-1/2">{label}</td>
+                  <td className="px-3 py-1.5 tabular-nums">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function DepsTab() {
+  return (
+    <div className="space-y-4">
+      <VersionsTable />
     </div>
   );
 }
@@ -1408,42 +1484,664 @@ function EulaTab() {
 // Superuser tab
 // ---------------------------------------------------------------------------
 
-type SuperuserSubTab = "eula" | "storage" | "deletion" | "reconcile";
+type SuperuserSubTab = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance";
+
+const SUPERUSER_TAB_LABELS: Record<SuperuserSubTab, string> = {
+  eula: "EULA",
+  storage: "Storage",
+  cve: "CVE Scan",
+  workers: "Workers",
+  deletion: "Deletion",
+  reconcile: "Reconcile",
+  maintenance: "Maintenance",
+};
 
 function SuperuserTab() {
   const [sub, setSub] = useState<SuperuserSubTab>("eula");
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 border-b pb-2">
-        {(["eula", "storage", "deletion", "reconcile"] as SuperuserSubTab[]).map((t) => (
+      <div className="flex gap-2 border-b pb-2 flex-wrap">
+        {(["eula", "storage", "cve", "workers", "deletion", "reconcile", "maintenance"] as SuperuserSubTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setSub(t)}
-            className={`px-3 py-1.5 text-sm rounded capitalize ${
+            className={`px-3 py-1.5 text-sm rounded ${
               sub === t
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t === "eula" ? "EULA" : t}
+            {SUPERUSER_TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
       {sub === "eula" && <EulaTab />}
       {sub === "storage" && <StorageAuditTab />}
+      {sub === "cve" && <CveScanTab />}
+      {sub === "workers" && <WorkersTab />}
       {sub === "deletion" && <DeletionTab />}
       {sub === "reconcile" && <ReconcileTab />}
+      {sub === "maintenance" && <MaintenanceTab />}
     </div>
   );
 }
 
 function StorageAuditTab() {
+  const [scanStatus, setScanStatus] = useState<"idle" | "running" | "complete" | "failed">("idle");
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [result, setResult] = useState<S3AuditResult | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupCount, setCleanupCount] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!taskId || scanStatus !== "running") return;
+    pollRef.current = setInterval(async () => {
+      try {
+        const data = await getS3AuditTask(taskId);
+        if (data.status === "complete" && data.result) {
+          setResult(data.result);
+          setScanStatus("complete");
+          clearInterval(pollRef.current!);
+        } else if (data.status === "failed") {
+          setError(data.error ?? "Scan failed");
+          setScanStatus("failed");
+          clearInterval(pollRef.current!);
+        }
+      } catch {
+        setError("Failed to poll scan status");
+        setScanStatus("failed");
+        clearInterval(pollRef.current!);
+      }
+    }, 2000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [taskId, scanStatus]);
+
+  async function startScan() {
+    setScanStatus("running");
+    setResult(null);
+    setSelected(new Set());
+    setCleanupCount(null);
+    setError(null);
+    try {
+      const { task_id } = await startS3AuditScan();
+      setTaskId(task_id);
+    } catch {
+      setScanStatus("failed");
+      setError("Failed to start scan");
+    }
+  }
+
+  function toggleSelect(key: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (!result) return;
+    setSelected((prev) =>
+      prev.size === result.orphaned_files.length
+        ? new Set()
+        : new Set(result.orphaned_files.map((f) => f.key))
+    );
+  }
+
+  async function handleCleanup() {
+    if (!selected.size || !result) return;
+    const noun = selected.size === 1 ? "file" : "files";
+    if (!window.confirm(`Permanently delete ${selected.size} ${noun} from S3? This cannot be undone.`)) return;
+    setCleaning(true);
+    setError(null);
+    try {
+      const { deleted } = await cleanupS3Orphans(Array.from(selected));
+      setCleanupCount(deleted);
+      setResult({
+        ...result,
+        orphaned_files: result.orphaned_files.filter((f) => !selected.has(f.key)),
+        orphaned_count: result.orphaned_count - deleted,
+      });
+      setSelected(new Set());
+    } catch {
+      setError("Cleanup failed — check logs");
+    } finally {
+      setCleaning(false);
+    }
+  }
+
+  const allSelected = !!result && selected.size === result.orphaned_files.length && result.orphaned_files.length > 0;
+
   return (
-    <div className="rounded-lg border border-dashed p-8 text-center">
-      <p className="text-sm font-medium text-muted-foreground">Storage Audit</p>
-      <p className="text-xs text-muted-foreground mt-1">Coming soon — per-user S3 storage breakdown.</p>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Button onClick={startScan} disabled={scanStatus === "running"} size="sm">
+          {scanStatus === "running" ? "Scanning…" : "Scan S3 for Orphaned Files"}
+        </Button>
+        {scanStatus === "running" && (
+          <span className="text-xs text-muted-foreground animate-pulse">Running in background…</span>
+        )}
+        {selected.size > 0 && (
+          <>
+            <span className="text-xs text-destructive">
+              {selected.size} file{selected.size !== 1 ? "s" : ""} selected — permanent delete, cannot be undone.
+            </span>
+            <Button variant="destructive" size="sm" onClick={handleCleanup} disabled={cleaning}>
+              {cleaning ? "Deleting…" : "Delete Selected"}
+            </Button>
+          </>
+        )}
+        {cleanupCount !== null && (
+          <span className="text-sm text-green-600 dark:text-green-400">
+            Deleted {cleanupCount} file{cleanupCount !== 1 ? "s" : ""} from S3.
+          </span>
+        )}
+        {error && <span className="text-sm text-destructive">{error}</span>}
+      </div>
+
+      {result && (
+        <div className="space-y-3">
+          {result.not_applicable ? (
+            <p className="text-sm text-muted-foreground">
+              Storage backend is not S3 — audit not applicable in this environment.
+            </p>
+          ) : (
+            <>
+              <div className="flex gap-6 text-sm">
+                <span><span className="font-medium">{result.total_s3_keys}</span> S3 keys</span>
+                <span><span className="font-medium">{result.total_db_paths}</span> DB-referenced paths</span>
+                <span><span className="font-medium text-amber-600 dark:text-amber-400">{result.orphaned_count}</span> orphaned</span>
+              </div>
+
+              {result.orphaned_files.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No orphaned files found.</p>
+              ) : (
+                <div className="rounded-md border overflow-auto max-h-96">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left w-8">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={toggleAll}
+                            className="cursor-pointer"
+                          />
+                        </th>
+                        <th className="p-2 text-left font-medium">Key</th>
+                        <th className="p-2 text-right font-medium">Size</th>
+                        <th className="p-2 text-right font-medium">Last Modified</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.orphaned_files.map((f) => (
+                        <tr key={f.key} className="border-t hover:bg-muted/50">
+                          <td className="p-2">
+                            <input
+                              type="checkbox"
+                              checked={selected.has(f.key)}
+                              onChange={() => toggleSelect(f.key)}
+                              className="cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-2 font-mono break-all">{f.key}</td>
+                          <td className="p-2 text-right whitespace-nowrap">{formatBytes(f.size)}</td>
+                          <td className="p-2 text-right whitespace-nowrap text-muted-foreground">
+                            {new Date(f.last_modified).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CveFindingsTable({ title, findings }: { title: string; findings: CveFinding[] }) {
+  if (findings.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</h3>
+      <div className="rounded-md border overflow-auto max-h-96">
+        <table className="w-full text-xs">
+          <thead className="bg-muted sticky top-0">
+            <tr>
+              <th className="p-2 text-left font-medium">Package</th>
+              <th className="p-2 text-left font-medium">Version</th>
+              <th className="p-2 text-left font-medium">CVE ID</th>
+              <th className="p-2 text-left font-medium">Fix</th>
+              <th className="p-2 text-left font-medium">Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            {findings.flatMap((pkg) =>
+              pkg.vulns.map((v, i) => (
+                <tr key={`${pkg.name}-${v.id}-${i}`} className="border-t hover:bg-muted/50">
+                  <td className="p-2 font-mono">{i === 0 ? pkg.name : ""}</td>
+                  <td className="p-2 font-mono tabular-nums">{i === 0 ? pkg.version : ""}</td>
+                  <td className="p-2 font-mono text-destructive">{v.id}</td>
+                  <td className="p-2 font-mono">{v.fix_versions.length > 0 ? v.fix_versions.join(", ") : "—"}</td>
+                  <td className="p-2 text-muted-foreground max-w-xs truncate" title={v.description}>
+                    {v.description || "—"}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CveScanTab() {
+  const qc = useQueryClient();
+  const [scanStatus, setScanStatus] = useState<"idle" | "running" | "complete" | "failed">("idle");
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const [result, setResult] = useState<CveScanResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!taskId || scanStatus !== "running") return;
+    pollRef.current = setInterval(async () => {
+      try {
+        const data = await getCveScanTask(taskId);
+        if (data.status === "complete" && data.result) {
+          setResult(data.result);
+          setScanStatus("complete");
+          qc.invalidateQueries({ queryKey: ["admin", "cve-summary"] });
+          clearInterval(pollRef.current!);
+        } else if (data.status === "failed") {
+          setError(data.error ?? "Scan failed");
+          setScanStatus("failed");
+          clearInterval(pollRef.current!);
+        }
+      } catch {
+        setError("Failed to poll scan status");
+        setScanStatus("failed");
+        clearInterval(pollRef.current!);
+      }
+    }, 3000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [taskId, scanStatus, qc]);
+
+  async function startScan() {
+    setScanStatus("running");
+    setResult(null);
+    setError(null);
+    try {
+      const { task_id } = await startCveScan(__FRONTEND_DEPS__);
+      setTaskId(task_id);
+    } catch {
+      setScanStatus("failed");
+      setError("Failed to start scan");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">
+          Scans Python dependencies via pip-audit and npm packages via OSV.dev.
+          Results are stored and shown in the warning banner on all admin pages.
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <Button onClick={startScan} disabled={scanStatus === "running"} size="sm">
+          {scanStatus === "running" ? "Scanning…" : "Run CVE Scan"}
+        </Button>
+        {scanStatus === "running" && (
+          <span className="text-xs text-muted-foreground animate-pulse">Running in background…</span>
+        )}
+        {error && <span className="text-sm text-destructive">{error}</span>}
+      </div>
+
+      {result && (
+        <div className="space-y-4">
+          <div className="flex gap-6 text-sm">
+            <span>
+              <span className={`font-medium ${result.total_findings > 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
+                {result.total_findings}
+              </span>
+              {" "}total {result.total_findings === 1 ? "vulnerability" : "vulnerabilities"}
+            </span>
+            <span className="text-xs text-muted-foreground self-center">
+              scanned {new Date(result.scanned_at).toLocaleString()}
+            </span>
+          </div>
+          {result.total_findings === 0 && (
+            <p className="text-sm text-green-600 dark:text-green-400">No vulnerabilities found.</p>
+          )}
+          <CveFindingsTable title="Backend (Python)" findings={result.backend_findings} />
+          <CveFindingsTable title="Frontend (npm)" findings={result.frontend_findings} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkerCard({ worker, apiVersion }: { worker: WorkerInfo; apiVersion: string }) {
+  const isOnline = worker.status === "online";
+  const hasActive = worker.active_tasks.length > 0;
+  const hasReserved = worker.reserved_tasks.length > 0;
+  const versionMismatch = isOnline && worker.version != null && worker.version !== apiVersion;
+
+  return (
+    <div className={`border rounded-lg overflow-hidden ${versionMismatch ? "border-amber-500/50" : ""}`}>
+      <div className={`flex items-center gap-3 px-4 py-3 ${versionMismatch ? "bg-amber-500/10" : "bg-muted/20"}`}>
+        <span className={`w-2 h-2 rounded-full shrink-0 ${isOnline ? "bg-green-500" : "bg-red-500"}`} />
+        <span className="text-sm font-mono font-medium flex-1 truncate">{worker.name}</span>
+        {isOnline && worker.version && (
+          <span className={`text-xs px-2 py-0.5 rounded border font-mono ${
+            versionMismatch
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              : "border-border text-muted-foreground"
+          }`} title={versionMismatch ? `Expected ${apiVersion}` : undefined}>
+            {worker.version}{versionMismatch ? " ⚠" : ""}
+          </span>
+        )}
+        {isOnline && worker.concurrency !== null && (
+          <span className={`text-xs px-2 py-0.5 rounded border tabular-nums ${
+            worker.active_tasks.length >= worker.concurrency
+              ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              : worker.active_tasks.length > 0
+              ? "border-blue-500/30 text-blue-600 dark:text-blue-400"
+              : "border-border text-muted-foreground"
+          }`}>
+            {worker.active_tasks.length}/{worker.concurrency} slots
+          </span>
+        )}
+        <span className={`text-xs px-2 py-0.5 rounded border ${isOnline ? "border-green-500/30 text-green-600 dark:text-green-400" : "border-destructive/30 text-destructive"}`}>
+          {worker.status}
+        </span>
+      </div>
+      {isOnline && (
+        <div className="divide-y">
+          <div className="grid grid-cols-2 gap-x-4 px-4 py-2.5 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-xs">Concurrency</span>
+              <span className="font-medium tabular-nums">{worker.concurrency ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-xs">Completed</span>
+              <span className="font-medium tabular-nums">{worker.completed_tasks?.toLocaleString() ?? "—"}</span>
+            </div>
+          </div>
+          {hasActive && (
+            <div className="px-4 py-2.5 space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Active ({worker.active_tasks.length})
+              </p>
+              {worker.active_tasks.map((t) => (
+                <div key={t.id} className="text-xs space-y-0.5">
+                  <p className="font-mono text-foreground">{t.name}</p>
+                  <p className="text-muted-foreground truncate">{t.args_repr}</p>
+                  {t.time_start && (
+                    <p className="text-muted-foreground">
+                      started {new Date(t.time_start * 1000).toLocaleTimeString()}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {hasReserved && (
+            <div className="px-4 py-2.5 space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Reserved ({worker.reserved_tasks.length})
+              </p>
+              {worker.reserved_tasks.map((t) => (
+                <div key={t.id} className="text-xs">
+                  <p className="font-mono text-foreground">{t.name}</p>
+                  <p className="text-muted-foreground truncate">{t.args_repr}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {!hasActive && !hasReserved && (
+            <p className="px-4 py-2.5 text-xs text-muted-foreground">No active or reserved tasks.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkersTab() {
+  const [data, setData] = useState<WorkerStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [sleeping, setSleeping] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const fetch = () =>
+      getWorkerStatus()
+        .then((d) => { setData(d); setError(null); })
+        .catch(() => setError("Failed to fetch worker status"));
+    fetch();
+    intervalRef.current = setInterval(fetch, 3_000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, []);
+
+  function triggerSleep() {
+    setSleeping(true);
+    startDebugSleep(45)
+      .then(() => setSleeping(false))
+      .catch(() => setSleeping(false));
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-xs text-muted-foreground">
+            {data
+              ? `Updated ${new Date(data.checked_at).toLocaleTimeString()} · auto-refreshes every 3s`
+              : "Loading…"}
+          </span>
+        </div>
+        <Button size="sm" variant="outline" disabled={sleeping} onClick={triggerSleep}>
+          {sleeping ? "Dispatching…" : "Run test task"}
+        </Button>
+      </div>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {data && (
+        <>
+          {data.queues.length > 0 && (
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Queues</h3>
+              <div className="border rounded-lg divide-y overflow-hidden">
+                {data.queues.map((q) => (
+                  <div key={q.name} className="flex items-center justify-between px-4 py-2.5 bg-background">
+                    <span className="text-sm font-mono">{q.name}</span>
+                    <span className={`text-sm font-medium tabular-nums ${q.depth > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                      {q.depth} pending
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Workers ({data.workers.length})
+            </h3>
+            <div className="space-y-3">
+              {data.workers.map((w) => (
+                <WorkerCard key={w.name} worker={w} apiVersion={data.api_version} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      <TaskHistoryTable />
+    </div>
+  );
+}
+
+const STATE_CLS: Record<string, string> = {
+  queued: "text-muted-foreground",
+  running: "text-blue-600 dark:text-blue-400",
+  success: "text-green-600 dark:text-green-400",
+  failed: "text-destructive",
+  revoked: "text-amber-600 dark:text-amber-400",
+};
+
+function fmtSec(s: number | null): string {
+  if (s === null) return "—";
+  if (s < 1) return `${Math.round(s * 1000)}ms`;
+  return `${s.toFixed(1)}s`;
+}
+
+function fmtTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function shortName(name: string): string {
+  const parts = name.split(".");
+  return parts.length >= 2 ? parts.slice(-2).join(".") : name;
+}
+
+function TaskHistoryRow({ item, onRevoke }: { item: TaskHistoryItem; onRevoke: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const cancellable = item.state === "queued" || item.state === "running";
+  return (
+    <>
+      <tr
+        className={`border-t hover:bg-muted/30 text-xs ${item.error ? "cursor-pointer" : ""}`}
+        onClick={() => item.error && setExpanded((v) => !v)}
+      >
+        <td className="px-3 py-2 font-mono text-muted-foreground whitespace-nowrap">{fmtTime(item.queued_at)}</td>
+        <td className="px-3 py-2 font-mono" title={item.name}>{shortName(item.name)}</td>
+        <td className="px-3 py-2 text-muted-foreground">{item.caller}</td>
+        <td className={`px-3 py-2 font-medium ${STATE_CLS[item.state] ?? ""}`}>{item.state}</td>
+        <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.wait_seconds)}</td>
+        <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.run_seconds)}</td>
+        <td className="px-3 py-2 tabular-nums text-right whitespace-nowrap">{fmtTime(item.completed_at)}</td>
+        <td className="px-3 py-2 text-muted-foreground">{item.error ? (expanded ? "▲" : "▼ error") : "—"}</td>
+        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+          {cancellable && (
+            <button
+              className="text-xs text-destructive hover:underline"
+              onClick={() => onRevoke(item.task_id)}
+            >
+              Cancel
+            </button>
+          )}
+        </td>
+      </tr>
+      {expanded && item.error && (
+        <tr className="border-t bg-destructive/5">
+          <td colSpan={9} className="px-3 py-2">
+            <pre className="text-xs font-mono text-destructive whitespace-pre-wrap">{item.error}</pre>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function TaskHistoryTable() {
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 25;
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["admin", "task-history", page],
+    queryFn: () => getTaskHistory(page, PAGE_SIZE),
+    refetchInterval: 5_000,
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: revokeTask,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin", "task-history"] }),
+  });
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Task History {data ? `(${data.total})` : ""}
+        </h3>
+        <button
+          className="text-xs text-muted-foreground hover:text-foreground"
+          onClick={() => refetch()}
+        >
+          Refresh
+        </button>
+      </div>
+
+      {isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
+
+      {data && data.items.length === 0 && (
+        <p className="text-xs text-muted-foreground">No task history yet. Dispatch a task to see it here.</p>
+      )}
+
+      {data && data.items.length > 0 && (
+        <>
+          <div className="rounded-md border overflow-auto max-h-[480px]">
+            <table className="w-full text-xs min-w-[640px]">
+              <thead className="bg-muted sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium whitespace-nowrap">Queued at</th>
+                  <th className="px-3 py-2 text-left font-medium">Task</th>
+                  <th className="px-3 py-2 text-left font-medium">Caller</th>
+                  <th className="px-3 py-2 text-left font-medium">State</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Wait</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Run</th>
+                  <th className="px-3 py-2 text-right font-medium whitespace-nowrap">Completed at</th>
+                  <th className="px-3 py-2 text-left font-medium">Error</th>
+                  <th className="px-3 py-2 text-left font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.items.map((item) => (
+                  <TaskHistoryRow key={item.task_id} item={item} onRevoke={(id) => revokeMutation.mutate(id)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {data.pages > 1 && (
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="px-2 py-1 border rounded disabled:opacity-40 hover:bg-muted/40"
+              >
+                ← Prev
+              </button>
+              <span>Page {data.page} of {data.pages}</span>
+              <button
+                disabled={page >= data.pages}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-2 py-1 border rounded disabled:opacity-40 hover:bg-muted/40"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -1453,6 +2151,48 @@ function DeletionTab() {
     <div className="rounded-lg border border-dashed p-8 text-center">
       <p className="text-sm font-medium text-muted-foreground">Deletion Queue</p>
       <p className="text-xs text-muted-foreground mt-1">Coming soon — in-progress and pending user deletion states.</p>
+    </div>
+  );
+}
+
+function MaintenanceTab() {
+  const queryClient = useQueryClient();
+  const [purging, setPurging] = useState(false);
+
+  function triggerPurge() {
+    setPurging(true);
+    runPurgeSoftDeleted()
+      .then(() => {
+        setPurging(false);
+        queryClient.invalidateQueries({ queryKey: ["admin", "task-history"] });
+      })
+      .catch(() => setPurging(false));
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border p-5 space-y-3">
+        <div>
+          <p className="text-sm font-medium">Purge Soft-Deleted Records</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Hard-deletes drafts, looms, projects, and yarn that have been soft-deleted for longer than the
+            configured retention period (<code className="font-mono">SOFT_DELETE_RETENTION_DAYS</code>, default 365 days).
+            Associated storage files are removed at the same time. User deletion is handled separately by the
+            deletion cascade task.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={purging}
+            onClick={triggerPurge}
+          >
+            {purging ? "Queuing…" : "Run Purge Now"}
+          </Button>
+          <p className="text-xs text-muted-foreground">Results appear in the Workers → Task History table.</p>
+        </div>
+      </div>
     </div>
   );
 }

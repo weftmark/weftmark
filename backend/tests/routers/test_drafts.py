@@ -2,6 +2,7 @@
 
 import io
 import uuid
+from unittest.mock import MagicMock
 
 import pytest
 from httpx import AsyncClient
@@ -11,6 +12,57 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering
+
+
+@pytest.fixture(autouse=True)
+def _mock_preview_task(monkeypatch):
+    """Prevent generate_drawdown_preview.delay() from connecting to Celery in tests."""
+    mock = MagicMock()
+    monkeypatch.setattr("app.routers.drafts.generate_drawdown_preview", mock)
+    return mock
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for _has_wif_header
+# ---------------------------------------------------------------------------
+
+
+class TestHasWifHeader:
+    def setup_method(self):
+        from app.routers.drafts import _has_wif_header
+
+        self.check = _has_wif_header
+
+    def test_plain_wif_header(self):
+        assert self.check(b"[WIF]\nVersion=1.1\n") is True
+
+    def test_wif_header_case_insensitive(self):
+        assert self.check(b"[wif]\nVersion=1.1\n") is True
+
+    def test_single_comment_then_wif(self):
+        assert self.check(b"; exported by Tempo Weave\r\n[WIF]\r\nVersion=1.1\r\n") is True
+
+    def test_multiple_comments_then_wif(self):
+        assert self.check(b"; line 1\r\n; line 2\r\n[WIF]\r\n") is True
+
+    def test_non_wif_content(self):
+        assert self.check(b"not a wif file") is False
+
+    def test_jpeg_magic(self):
+        assert self.check(b"\xff\xd8\xff\xe0" + b"\x00" * 100) is False
+
+    def test_empty_bytes(self):
+        assert self.check(b"") is False
+
+    def test_only_comments_no_wif(self):
+        assert self.check(b"; just a comment\n; another\n") is False
+
+    def test_wif_after_non_comment_line_rejected(self):
+        assert self.check(b"random line\n[WIF]\n") is False
+
+    def test_whitespace_before_wif(self):
+        assert self.check(b"\r\n\n[WIF]\n") is True
+
 
 # ---------------------------------------------------------------------------
 # WIF fixture — 4-shaft, 4-treadle, coloured warp/weft; renders correctly
@@ -319,6 +371,87 @@ class TestGetDrawdown:
 
 
 # ---------------------------------------------------------------------------
+# GET /{draft_id}/drawdown?start_row=&row_count=  (tiled)
+# ---------------------------------------------------------------------------
+
+
+class TestGetDrawdownTile:
+    async def _draft_with_wif(self, db_session: AsyncSession, user: User) -> Draft:
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=user.id,
+            name="Test Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            weft_threads=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+        return draft
+
+    async def test_returns_png(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.status_code == 200
+        assert resp.content[:4] == b"\x89PNG"
+
+    async def test_includes_pixels_per_row_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.headers.get("X-Pixels-Per-Row") is not None
+
+    async def test_includes_total_rows_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.headers.get("X-Total-Rows") == "4"
+
+    async def test_includes_start_row_header(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=1&row_count=2")
+        assert resp.headers.get("X-Start-Row") == "1"
+
+    async def test_includes_row_count_header(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.headers.get("X-Row-Count") == "2"
+
+    async def test_no_cache_header_for_tiled_request(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.headers.get("Cache-Control") == "no-store"
+
+    async def test_start_row_only_works(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0")
+        assert resp.status_code == 200
+
+    async def test_row_count_only_works(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?row_count=2")
+        assert resp.status_code == 200
+
+    async def test_returns_401_when_unauthenticated(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
 # POST /api/drafts  (WIF upload)
 # ---------------------------------------------------------------------------
 
@@ -383,6 +516,44 @@ class TestCreateDraft:
             data={"name": "My Draft"},
         )
         assert resp.status_code == 401
+
+    async def test_wif_extension_but_non_wif_content_returns_400(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("fake.wif", b"not a wif file at all", "application/octet-stream")},
+            data={"name": "Bad Draft"},
+        )
+        assert resp.status_code == 400
+
+    async def test_wif_extension_with_jpeg_content_returns_400(self, auth_client: AsyncClient):
+        jpeg_magic = b"\xff\xd8\xff\xe0" + b"\x00" * 100
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("photo.wif", jpeg_magic, "application/octet-stream")},
+            data={"name": "Bad Draft"},
+        )
+        assert resp.status_code == 400
+
+    async def test_wif_with_leading_comment_lines_accepted(self, auth_client: AsyncClient, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+        tempo_weave_wif = b"; exported by Tempo Weave\r\n" + _WIF
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("tempo.wif", tempo_weave_wif, "application/octet-stream")},
+            data={"name": "Tempo Draft"},
+        )
+        assert resp.status_code == 201
+
+    async def test_invalid_wif_error_includes_first_line(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("bad.wif", b"CLEARLY_NOT_WIF\nmore content", "application/octet-stream")},
+            data={"name": "Bad Draft"},
+        )
+        assert resp.status_code == 400
+        assert "CLEARLY_NOT_WIF" in resp.json()["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -519,6 +690,18 @@ class TestDownloadWif:
         resp = await raw_client.get(f"/api/drafts/{uuid.uuid4()}/wif")
         assert resp.status_code == 401
 
+    async def test_content_disposition_uses_rfc5987_encoding(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        mock_storage["drafts/x/original.wif"] = _WIF
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/x/original.wif")
+        draft.wif_filename = 'my "draft".wif'
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/wif")
+        cd = resp.headers.get("content-disposition", "")
+        assert "filename*=UTF-8''" in cd
+        assert "my%20%22draft%22" in cd or "my%22" in cd  # URL-encoded form in filename*
+
 
 # ---------------------------------------------------------------------------
 # GET /{draft_id}/wif-modified
@@ -630,3 +813,127 @@ class TestOverrideMetadata:
             json={"field": "num_shafts", "value": 8},
         )
         assert resp.status_code == 401
+
+
+class TestDrawdownPreviewCache:
+    """GET /drawdown serves cached preview when available, falls back to live render."""
+
+    async def _draft_with_cached_preview(
+        self,
+        db_session: AsyncSession,
+        user: User,
+        mock_storage: dict,
+    ) -> Draft:
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        preview_key = storage.save_drawdown_preview(_fake_png(4, 4))
+        draft = Draft(
+            id=draft_id,
+            owner_id=user.id,
+            name="Cached Preview Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            weft_threads=4,
+            drawdown_preview_path=preview_key,
+            drawdown_preview_scale=5,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+        return draft
+
+    async def test_has_drawdown_preview_false_when_no_cache(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        data = (await auth_client.get(f"/api/drafts/{draft.id}")).json()
+        assert data["has_drawdown_preview"] is False
+
+    async def test_has_drawdown_preview_true_when_cached(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        draft = await self._draft_with_cached_preview(db_session, test_user, mock_storage)
+        data = (await auth_client.get(f"/api/drafts/{draft.id}")).json()
+        assert data["has_drawdown_preview"] is True
+
+    async def test_cached_drawdown_served_from_storage(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        draft = await self._draft_with_cached_preview(db_session, test_user, mock_storage)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+    async def test_cached_drawdown_uses_stored_scale(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        draft = await self._draft_with_cached_preview(db_session, test_user, mock_storage)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
+        assert resp.headers.get("X-Pixels-Per-Row") == "5"
+
+    async def test_upload_dispatches_preview_task(
+        self, auth_client: AsyncClient, tmp_path, monkeypatch, _mock_preview_task: MagicMock
+    ):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+        await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "My Draft"},
+        )
+        _mock_preview_task.delay.assert_called_once()
+
+
+class TestUploadRateLimit:
+    """Verify the rate limit dependency is actually wired into POST /api/drafts."""
+
+    @pytest.fixture(autouse=True)
+    def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+
+    async def test_429_after_limit_exceeded(self, auth_client: AsyncClient):
+        from unittest.mock import patch
+
+        import fakeredis.aioredis
+
+        from app.main import app
+        from app.routers.drafts import _upload_rate_limit
+
+        fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
+        app.dependency_overrides.pop(_upload_rate_limit, None)
+        try:
+            with patch("app.services.rate_limiter.aioredis.from_url", return_value=fake):
+                for i in range(30):
+                    await auth_client.post(
+                        "/api/drafts",
+                        files={"wif_file": (f"draft{i}.wif", _WIF, "application/octet-stream")},
+                        data={"name": f"Draft {i}"},
+                    )
+                resp = await auth_client.post(
+                    "/api/drafts",
+                    files={"wif_file": ("overflow.wif", _WIF, "application/octet-stream")},
+                    data={"name": "Overflow"},
+                )
+            assert resp.status_code == 429
+            assert "retry-after" in resp.headers
+        finally:
+            app.dependency_overrides[_upload_rate_limit] = lambda: None

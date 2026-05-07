@@ -1,6 +1,7 @@
 import asyncio
 import importlib.metadata
 import logging
+import math
 import platform
 import time
 import uuid
@@ -110,13 +111,7 @@ class AdminVersionsResponse(BaseModel):
     worker: str | None
     postgres: str
     postgres_source: str
-    fastapi: str
-    sqlalchemy: str
-    alembic: str
-    pyweaving: str
-    pillow: str
-    boto3: str
-    psutil: str
+    backend_packages: dict[str, str]
 
 
 class AdminDbInfoResponse(BaseModel):
@@ -1371,6 +1366,28 @@ def _pkg(name: str) -> str:
         return "unknown"
 
 
+def _all_packages() -> dict[str, str]:
+    """Return all packages listed in requirements.txt with their installed versions."""
+    import re
+
+    req_path = "/app/requirements.txt"
+    try:
+        with open(req_path) as f:
+            lines = f.readlines()
+    except OSError:
+        return {}
+
+    packages: dict[str, str] = {}
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        name = re.split(r"[=<>!~;\s\[]", line)[0].strip()
+        if name:
+            packages[name] = _pkg(name)
+    return dict(sorted(packages.items(), key=lambda kv: kv[0].lower()))
+
+
 async def _redis_server_version() -> str:
     try:
         import redis.asyncio as aioredis
@@ -1419,13 +1436,7 @@ async def get_versions(
         worker=await _worker_version(),
         postgres=pg_version,
         postgres_source=pg_source,
-        fastapi=_pkg("fastapi"),
-        sqlalchemy=_pkg("sqlalchemy"),
-        alembic=_pkg("alembic"),
-        pyweaving=_pkg("pyweaving"),
-        pillow=_pkg("pillow"),
-        boto3=_pkg("boto3"),
-        psutil=_pkg("psutil"),
+        backend_packages=_all_packages(),
     )
 
 
@@ -1601,3 +1612,412 @@ async def backfill_clerk_user(
 
     log.info("backfill clerk_user_id=%s user_id=%s status=%s", clerk_user_id, user.id, result_status)
     return BackfillResponse(status=result_status, user_id=str(user.id), email=email)
+
+
+# ---------------------------------------------------------------------------
+# S3 orphan file audit (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class S3OrphanFile(BaseModel):
+    key: str
+    size: int
+    last_modified: str
+
+
+class S3AuditResult(BaseModel):
+    total_s3_keys: int
+    total_db_paths: int
+    orphaned_count: int
+    orphaned_files: list[S3OrphanFile]
+    not_applicable: bool
+
+
+class S3AuditTaskStatus(BaseModel):
+    status: str  # pending | running | complete | failed
+    result: S3AuditResult | None = None
+    error: str | None = None
+
+
+class S3ScanResponse(BaseModel):
+    task_id: str
+
+
+class S3CleanupRequest(BaseModel):
+    keys: list[str]
+
+
+class S3CleanupResponse(BaseModel):
+    deleted: int
+
+
+@router.post("/s3-audit/scan", response_model=S3ScanResponse, status_code=202)
+async def start_s3_audit_scan(
+    _: User = Depends(require_superuser),
+) -> S3ScanResponse:
+    from app.services.task_history import record_queued
+    from app.tasks.s3_audit import run_s3_orphan_scan
+
+    task = run_s3_orphan_scan.delay()
+    record_queued(get_settings(), task.id, "app.tasks.s3_audit.run_s3_orphan_scan", "s3_audit")
+    log.info("s3_audit_scan_queued task_id=%s", task.id)
+    return S3ScanResponse(task_id=task.id)
+
+
+@router.get("/s3-audit/task/{task_id}", response_model=S3AuditTaskStatus)
+async def get_s3_audit_task(
+    task_id: str,
+    _: User = Depends(require_superuser),
+) -> S3AuditTaskStatus:
+    from celery.result import AsyncResult
+
+    result = AsyncResult(task_id)
+    state = result.state
+    if state in ("PENDING", "RECEIVED"):
+        return S3AuditTaskStatus(status="pending")
+    if state in ("STARTED", "RETRY"):
+        return S3AuditTaskStatus(status="running")
+    if state == "SUCCESS":
+        return S3AuditTaskStatus(status="complete", result=S3AuditResult(**result.result))
+    if state == "FAILURE":
+        return S3AuditTaskStatus(status="failed", error=str(result.result))
+    return S3AuditTaskStatus(status="pending")
+
+
+@router.post("/s3-audit/cleanup", response_model=S3CleanupResponse)
+async def cleanup_s3_orphans(
+    body: S3CleanupRequest,
+    admin: User = Depends(require_superuser),
+) -> S3CleanupResponse:
+    from app.services import storage
+
+    if not body.keys:
+        return S3CleanupResponse(deleted=0)
+
+    deleted = 0
+    for key in body.keys:
+        try:
+            storage._delete(key)
+            deleted += 1
+        except Exception as exc:
+            log.warning("s3_cleanup_error key=%s error=%s", key, exc)
+
+    log.info("s3_cleanup_complete admin_id=%s deleted=%d", admin.id, deleted)
+    return S3CleanupResponse(deleted=deleted)
+
+
+# ---------------------------------------------------------------------------
+# CVE / vulnerability scan (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class CveVuln(BaseModel):
+    id: str
+    aliases: list[str]
+    fix_versions: list[str]
+    description: str
+
+
+class CveFinding(BaseModel):
+    name: str
+    version: str
+    vulns: list[CveVuln]
+
+
+class CveScanResult(BaseModel):
+    backend_findings: list[CveFinding]
+    frontend_findings: list[CveFinding]
+    scanned_at: str
+    total_findings: int
+
+
+class CveScanTaskStatus(BaseModel):
+    status: str  # pending | running | complete | failed
+    result: CveScanResult | None = None
+    error: str | None = None
+
+
+class CveScanStartRequest(BaseModel):
+    frontend_deps: dict[str, str]
+
+
+class CveScanStartResponse(BaseModel):
+    task_id: str
+
+
+class CveScanSummary(BaseModel):
+    finding_count: int | None = None
+    scanned_at: str | None = None
+
+
+@router.post("/cve-scan/start", response_model=CveScanStartResponse, status_code=202)
+async def start_cve_scan(
+    body: CveScanStartRequest,
+    _: User = Depends(require_superuser),
+) -> CveScanStartResponse:
+    from app.services.task_history import record_queued
+    from app.tasks.cve_scan import run_cve_scan
+
+    task = run_cve_scan.delay(body.frontend_deps)
+    record_queued(get_settings(), task.id, "app.tasks.cve_scan.run_cve_scan", "cve_scan")
+    log.info("cve_scan_queued task_id=%s", task.id)
+    return CveScanStartResponse(task_id=task.id)
+
+
+@router.get("/cve-scan/task/{task_id}", response_model=CveScanTaskStatus)
+async def get_cve_scan_task(
+    task_id: str,
+    _: User = Depends(require_superuser),
+) -> CveScanTaskStatus:
+    from celery.result import AsyncResult
+
+    result = AsyncResult(task_id)
+    state = result.state
+    if state in ("PENDING", "RECEIVED"):
+        return CveScanTaskStatus(status="pending")
+    if state in ("STARTED", "RETRY"):
+        return CveScanTaskStatus(status="running")
+    if state == "SUCCESS":
+        return CveScanTaskStatus(status="complete", result=CveScanResult(**result.result))
+    if state == "FAILURE":
+        return CveScanTaskStatus(status="failed", error=str(result.result))
+    return CveScanTaskStatus(status="pending")
+
+
+@router.get("/cve-scan/summary", response_model=CveScanSummary)
+async def get_cve_scan_summary(
+    _: User = Depends(require_superuser),
+) -> CveScanSummary:
+    import json as _json
+
+    from app.tasks.cve_scan import CVE_SUMMARY_KEY
+
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        raw = client.get(CVE_SUMMARY_KEY)
+        client.close()
+        if raw:
+            data = _json.loads(raw)
+            return CveScanSummary(finding_count=data["finding_count"], scanned_at=data["scanned_at"])
+    except Exception as exc:
+        log.warning("cve_scan_summary_error: %s", exc)
+    return CveScanSummary()
+
+
+# ---------------------------------------------------------------------------
+# Worker status
+# ---------------------------------------------------------------------------
+
+
+class WorkerActiveTask(BaseModel):
+    id: str
+    name: str
+    args_repr: str
+    time_start: float | None = None
+
+
+class WorkerInfo(BaseModel):
+    name: str
+    status: Literal["online", "offline"]
+    version: str | None = None
+    concurrency: int | None = None
+    completed_tasks: int | None = None
+    active_tasks: list[WorkerActiveTask] = []
+    reserved_tasks: list[WorkerActiveTask] = []
+
+
+class QueueInfo(BaseModel):
+    name: str
+    depth: int
+
+
+class WorkerStatus(BaseModel):
+    workers: list[WorkerInfo]
+    queues: list[QueueInfo]
+    api_version: str
+    checked_at: str
+
+
+@router.get("/worker-status", response_model=WorkerStatus)
+async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatus:
+    from app.celery_app import celery_app
+
+    checked_at = datetime.now(timezone.utc).isoformat()
+
+    def _inspect() -> tuple[dict, dict, dict]:
+        try:
+            inspector = celery_app.control.inspect(timeout=1.5)
+            return (
+                inspector.active() or {},
+                inspector.reserved() or {},
+                inspector.stats() or {},
+            )
+        except Exception as exc:
+            log.warning("worker_inspect_error: %s", exc)
+            return {}, {}, {}
+
+    active, reserved, stats = await asyncio.get_event_loop().run_in_executor(None, _inspect)
+
+    queues: list[QueueInfo] = []
+    node_versions: dict[str, str] = {}
+    try:
+        import redis as _redis
+
+        from app.celery_app import WORKER_VERSION_NODE_PREFIX
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        for q in ["celery"]:
+            queues.append(QueueInfo(name=q, depth=client.llen(q)))
+        for name in set(active) | set(reserved) | set(stats):
+            raw = client.get(f"{WORKER_VERSION_NODE_PREFIX}{name}")
+            if raw:
+                node_versions[name] = raw.decode() if isinstance(raw, bytes) else raw
+        client.close()
+    except Exception as exc:
+        log.warning("worker_status_redis_error: %s", exc)
+
+    all_names = set(active) | set(reserved) | set(stats)
+    workers: list[WorkerInfo] = []
+
+    if not all_names:
+        workers.append(WorkerInfo(name="(no workers responding)", status="offline"))
+    else:
+        for name in sorted(all_names):
+            ws = stats.get(name, {})
+            pool = ws.get("pool", {})
+            total_dict = ws.get("total") or {}
+
+            def _task(t: dict, include_time: bool = True) -> WorkerActiveTask:
+                return WorkerActiveTask(
+                    id=t.get("id", ""),
+                    name=t.get("name", ""),
+                    args_repr=str(t.get("args", []))[:120],
+                    time_start=t.get("time_start") if include_time else None,
+                )
+
+            workers.append(
+                WorkerInfo(
+                    name=name,
+                    status="online",
+                    version=node_versions.get(name),
+                    concurrency=pool.get("max-concurrency"),
+                    completed_tasks=sum(total_dict.values()) if total_dict else None,
+                    active_tasks=[_task(t) for t in (active.get(name) or [])],
+                    reserved_tasks=[_task(t, include_time=False) for t in (reserved.get(name) or [])],
+                )
+            )
+
+    return WorkerStatus(workers=workers, queues=queues, api_version=VERSION, checked_at=checked_at)
+
+
+class DebugSleepRequest(BaseModel):
+    seconds: int = 45
+
+
+@router.post("/debug-sleep", status_code=202)
+async def start_debug_sleep(
+    body: DebugSleepRequest,
+    _: User = Depends(require_superuser),
+) -> dict:
+    from app.services.task_history import record_queued
+    from app.tasks.debug import debug_sleep
+
+    task = debug_sleep.delay(body.seconds)
+    record_queued(get_settings(), task.id, "app.tasks.debug.debug_sleep", "debug_sleep")
+    return {"task_id": task.id, "seconds": body.seconds}
+
+
+# ---------------------------------------------------------------------------
+# Task history
+# ---------------------------------------------------------------------------
+
+
+class TaskHistoryItem(BaseModel):
+    task_id: str
+    name: str
+    caller: str
+    state: str
+    queued_at: str
+    started_at: str | None = None
+    completed_at: str | None = None
+    wait_seconds: float | None = None
+    run_seconds: float | None = None
+    error: str | None = None
+
+
+class TaskHistoryResponse(BaseModel):
+    items: list[TaskHistoryItem]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("/task-history", response_model=TaskHistoryResponse)
+async def get_task_history(
+    page: int = 1,
+    page_size: int = 25,
+    _: User = Depends(require_superuser),
+) -> TaskHistoryResponse:
+    from app.services.task_history import _iso, get_history
+
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+    items_raw, total = get_history(get_settings(), page=page, page_size=page_size)
+
+    items = []
+    for raw in items_raw:
+        q = raw.get("queued_at")
+        s = raw.get("started_at")
+        c = raw.get("completed_at")
+        items.append(
+            TaskHistoryItem(
+                task_id=raw["task_id"],
+                name=raw.get("name", ""),
+                caller=raw.get("caller", "—"),
+                state=raw.get("state", ""),
+                queued_at=_iso(q) or "",
+                started_at=_iso(s),
+                completed_at=_iso(c),
+                wait_seconds=round(s - q, 2) if s and q else None,
+                run_seconds=round(c - s, 2) if c and s else None,
+                error=raw.get("error"),
+            )
+        )
+
+    return TaskHistoryResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=max(1, math.ceil(total / page_size)),
+    )
+
+
+@router.post("/tasks/{task_id}/revoke")
+async def revoke_task(
+    task_id: str,
+    _: User = Depends(require_superuser),
+) -> dict:
+    from app.celery_app import celery_app
+    from app.services.task_history import record_completed
+
+    celery_app.control.revoke(task_id, terminate=True)
+    record_completed(get_settings(), task_id, "revoked")
+    return {"status": "revoked", "task_id": task_id}
+
+
+@router.post("/purge-soft-deleted")
+async def run_purge_soft_deleted(
+    _: User = Depends(require_superuser),
+) -> dict:
+    from app.services.task_history import record_queued
+    from app.tasks.purge import purge_soft_deleted_records
+
+    task = purge_soft_deleted_records.delay()
+    record_queued(get_settings(), task.id, "app.tasks.purge.purge_soft_deleted_records", "maintenance")
+    return {"status": "queued", "task_id": task.id}

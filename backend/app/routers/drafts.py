@@ -1,8 +1,9 @@
+import urllib.parse
 import uuid
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -13,9 +14,34 @@ from app.deps import get_current_user, get_db
 from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering, storage, wif_linter, wif_modifier, wif_parser
+from app.services.rate_limiter import rate_limit
+from app.tasks.preview import generate_drawdown_preview
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 settings = get_settings()
+
+_upload_rate_limit = rate_limit("wif_upload", max_requests=30, window_seconds=3600)
+
+
+def _has_wif_header(data: bytes) -> bool:
+    """Return True if data contains a [WIF] section header within the first 20 lines.
+
+    Skips leading INI comment lines (starting with ';') per the WIF spec.
+    Stops at the first non-comment, non-empty line if it isn't [WIF].
+    """
+    for line in data.splitlines()[:20]:
+        stripped = line.strip()
+        if stripped.upper() == b"[WIF]":
+            return True
+        if stripped and not stripped.startswith(b";"):
+            return False
+    return False
+
+
+def _content_disposition(filename: str) -> str:
+    ascii_fallback = "".join(c if c.isascii() and c not in '"\\\r\n' else "_" for c in filename)
+    encoded = urllib.parse.quote(filename, safe="")
+    return f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +69,7 @@ class DraftSummary(BaseModel):
     lint_warnings: list[str]
     lint_errors: list[str]
     has_preview: bool
+    has_drawdown_preview: bool
     has_modified_file: bool
     metadata_overrides: dict | None
     is_shared: bool
@@ -55,6 +82,7 @@ class DraftSummary(BaseModel):
     def from_draft(cls, d: Draft) -> "DraftSummary":
         data = {c.key: getattr(d, c.key) for c in d.__table__.columns}
         data["has_preview"] = storage.preview_exists(d.preview_path)
+        data["has_drawdown_preview"] = storage.drawdown_preview_exists(d.drawdown_preview_path)
         data["has_modified_file"] = bool(d.wif_modified_path and storage.file_exists(d.wif_modified_path))
         return cls(**data)
 
@@ -76,6 +104,7 @@ async def create_draft(
     description: Annotated[str | None, Form()] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _rl: None = Depends(_upload_rate_limit),
 ) -> DraftSummary:
     if not wif_file.filename or not wif_file.filename.lower().endswith(".wif"):
         raise HTTPException(status_code=400, detail="File must have a .wif extension")
@@ -83,6 +112,16 @@ async def create_draft(
     wif_bytes = await wif_file.read()
     if len(wif_bytes) > settings.max_upload_size:
         raise HTTPException(status_code=413, detail="File too large")
+    if not _has_wif_header(wif_bytes):
+        first_line = wif_bytes.splitlines()[0].decode(errors="replace")[:60] if wif_bytes else ""
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"File does not appear to be a valid WIF file. "
+                f"Expected a [WIF] section header (comment lines starting with ';' are allowed). "
+                f"First line of uploaded file: {first_line!r}"
+            ),
+        )
 
     lint = wif_linter.lint(wif_bytes)
 
@@ -124,6 +163,12 @@ async def create_draft(
 
     await db.commit()
     await db.refresh(draft)
+    if draft.wif_path:
+        task = generate_drawdown_preview.delay(str(draft.id))
+        from app.config import get_settings
+        from app.services.task_history import record_queued
+
+        record_queued(get_settings(), task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
     return DraftSummary.from_draft(draft)
 
 
@@ -186,10 +231,58 @@ async def get_preview(
 @router.get("/{draft_id}/drawdown")
 async def get_drawdown(
     draft_id: uuid.UUID,
+    start_row: int | None = Query(None, ge=0),
+    row_count: int | None = Query(None, ge=1),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db)
+
+    # Tiled request: bypass cached preview, render fresh from WIF
+    if start_row is not None or row_count is not None:
+        if not draft.wif_path:
+            raise HTTPException(status_code=404, detail="No WIF file for this draft")
+        if not storage.file_exists(draft.wif_path):
+            raise HTTPException(status_code=404, detail="WIF file not found in storage")
+        wif_bytes = storage.read_file(draft.wif_path)
+        try:
+            wif_draft = rendering.load_draft(wif_bytes)
+            png, total_rows, actual_start, actual_row_count, actual_scale = rendering.render_drawdown_tile(
+                wif_draft, start_row=start_row or 0, row_count=row_count
+            )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
+        return Response(
+            content=png,
+            media_type="image/png",
+            headers={
+                "X-Pixels-Per-Row": str(actual_scale),
+                "X-Total-Rows": str(total_rows),
+                "X-Start-Row": str(actual_start),
+                "X-Row-Count": str(actual_row_count),
+                "Cache-Control": "no-store",
+            },
+        )
+
+    # Non-tiled: serve pre-generated cached preview if available
+    if draft.drawdown_preview_path and storage.file_exists(draft.drawdown_preview_path):
+        png = storage.read_drawdown_preview(draft.drawdown_preview_path)
+        scale = draft.drawdown_preview_scale or rendering.DRAWDOWN_SCALE
+        total_rows = draft.weft_threads or 0
+        return Response(
+            content=png,
+            media_type="image/png",
+            headers={
+                "X-Pixels-Per-Row": str(scale),
+                "X-Total-Rows": str(total_rows),
+                "Cache-Control": "public, max-age=31536000, immutable",
+                "ETag": f'"{draft_id}"',
+            },
+        )
+
+    # Fall back to live render
     if not draft.wif_path:
         raise HTTPException(status_code=404, detail="No WIF file for this draft")
 
@@ -199,7 +292,7 @@ async def get_drawdown(
     wif_bytes = storage.read_file(draft.wif_path)
     try:
         wif_draft = rendering.load_draft(wif_bytes)
-        png, total_rows = rendering.render_drawdown_only(wif_draft)
+        png, total_rows, actual_scale = rendering.render_drawdown_only(wif_draft)
     except HTTPException:
         raise
     except Exception as exc:
@@ -209,7 +302,7 @@ async def get_drawdown(
         content=png,
         media_type="image/png",
         headers={
-            "X-Pixels-Per-Row": str(rendering.DRAWDOWN_SCALE),
+            "X-Pixels-Per-Row": str(actual_scale),
             "X-Total-Rows": str(total_rows),
             "Cache-Control": "public, max-age=31536000, immutable",
             "ETag": f'"{draft_id}"',
@@ -236,7 +329,7 @@ async def download_wif(
     return Response(
         content=wif_bytes,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _content_disposition(filename)},
     )
 
 
@@ -260,7 +353,7 @@ async def download_wif_modified(
     return Response(
         content=wif_bytes,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _content_disposition(filename)},
     )
 
 
@@ -314,6 +407,11 @@ async def generate_liftplan(
 
     await db.commit()
     await db.refresh(draft)
+    _prev_task = generate_drawdown_preview.delay(str(draft.id))
+    from app.config import get_settings
+    from app.services.task_history import record_queued
+
+    record_queued(get_settings(), _prev_task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -381,6 +479,11 @@ async def override_metadata(
 
     await db.commit()
     await db.refresh(draft)
+    _prev_task2 = generate_drawdown_preview.delay(str(draft.id))
+    from app.config import get_settings
+    from app.services.task_history import record_queued
+
+    record_queued(get_settings(), _prev_task2.id, "app.tasks.preview.generate_drawdown_preview", "preview")
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -394,6 +497,7 @@ def _draft_detail_data(draft: Draft) -> dict:
     that are already covered by a metadata override so stale DB entries don't show."""
     data = {c.key: getattr(draft, c.key) for c in draft.__table__.columns}
     data["has_preview"] = storage.preview_exists(draft.preview_path)
+    data["has_drawdown_preview"] = storage.drawdown_preview_exists(draft.drawdown_preview_path)
     data["has_modified_file"] = bool(draft.wif_modified_path and storage.file_exists(draft.wif_modified_path))
     overrides = draft.metadata_overrides or {}
     warnings = list(data.get("lint_warnings") or [])

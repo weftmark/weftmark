@@ -835,6 +835,25 @@ class TestRenameProject:
         resp = await client.patch(f"/api/projects/{project.id}", json={"name": "x"})
         assert resp.status_code == 401
 
+    async def test_updates_notes(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.patch(f"/api/projects/{project.id}", json={"notes": "my notes"})).json()
+        assert body["notes"] == "my notes"
+
+    async def test_notes_only_preserves_name(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        original_name = project.name
+        body = (await auth_client.patch(f"/api/projects/{project.id}", json={"notes": "n"})).json()
+        assert body["name"] == original_name
+
+    async def test_no_fields_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}", json={})
+        assert resp.status_code == 400
+
 
 # ---------------------------------------------------------------------------
 # TestDeleteProject
@@ -931,6 +950,51 @@ class TestStepProject:
         project = await _insert_active_project(db_session, test_user, draft, None)
         resp = await client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
         assert resp.status_code == 401
+
+    async def test_response_is_lightweight(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})).json()
+        assert set(body.keys()) == {"current_pick", "total_picks"}
+
+    async def test_logs_step_to_database(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        from sqlalchemy import select
+
+        from app.models.project import ProjectStep
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        step = await db_session.scalar(select(ProjectStep).where(ProjectStep.project_id == project.id))
+        assert step is not None
+        assert step.event_type == "advance"
+        assert step.from_pick == 1
+        assert step.to_pick == 2
+
+    async def test_rapid_advances_produce_unique_increments(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        """Each step call must increment current_pick by exactly 1 with no duplicates.
+        True DB concurrency is serialized by SELECT FOR UPDATE in the router; here
+        we verify sequential rapid advances produce monotonically unique picks."""
+        draft = await _insert_draft(db_session, test_user)
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Rapid tap project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        picks = []
+        for _ in range(4):
+            resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+            assert resp.status_code == 200
+            picks.append(resp.json()["current_pick"])
+        assert picks == sorted(set(picks)), f"Duplicate or out-of-order picks: {picks}"
 
 
 # ---------------------------------------------------------------------------

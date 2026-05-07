@@ -1,12 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import pkg from "./package.json";
 
 export default defineConfig({
   plugins: [react()],
   define: {
     // npm sets npm_package_version from package.json at build time
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? "0.0.0"),
+    __FRONTEND_DEPS__: JSON.stringify(pkg.dependencies ?? {}),
+    __FRONTEND_DEV_DEPS__: JSON.stringify(pkg.devDependencies ?? {}),
   },
   resolve: {
     alias: {

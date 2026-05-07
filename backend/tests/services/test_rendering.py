@@ -11,6 +11,7 @@ A full PyWeaving-compatible WIF requires: [WIF] with Date, [CONTENTS],
 """
 
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -18,9 +19,14 @@ from app.services.rendering import (
     DRAWDOWN_SCALE,
     load_draft,
     render_drawdown_only,
+    render_drawdown_tile,
     render_full_draft,
     render_full_draft_liftplan,
 )
+
+# Real-world liftplan WIF that declares Treadles=8 as metadata (TempoWeave Designer output).
+_SAMPLES_DIR = Path(__file__).parents[3] / "docs" / "samples"
+_SHADOW_FLOWERS_WIF = _SAMPLES_DIR / "Shadow_flowers~assembly-LP.wif"
 
 # ---------------------------------------------------------------------------
 # Minimal valid WIF fixture
@@ -302,17 +308,22 @@ class TestRenderDrawdownOnly:
     def test_returns_tuple(self):
         draft = load_draft(MINIMAL_WIF)
         result = render_drawdown_only(draft)
-        assert isinstance(result, tuple) and len(result) == 2
+        assert isinstance(result, tuple) and len(result) == 3
 
     def test_first_element_is_png(self):
         draft = load_draft(MINIMAL_WIF)
-        png, _ = render_drawdown_only(draft)
+        png, _, _ = render_drawdown_only(draft)
         assert png[:4] == b"\x89PNG"
 
     def test_second_element_is_weft_count(self):
         draft = load_draft(MINIMAL_WIF)
-        _, total_rows = render_drawdown_only(draft)
+        _, total_rows, _ = render_drawdown_only(draft)
         assert total_rows == len(draft.weft)
+
+    def test_third_element_is_scale_used(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, scale_used = render_drawdown_only(draft, scale=10)
+        assert isinstance(scale_used, int) and scale_used == 10
 
     def test_drawdown_scale_constant_is_20(self):
         assert DRAWDOWN_SCALE == 20
@@ -324,15 +335,30 @@ class TestRenderDrawdownOnly:
 
         draft = load_draft(MINIMAL_WIF)
         scale = 10
-        png, total_rows = render_drawdown_only(draft, scale=scale)
+        png, total_rows, scale_used = render_drawdown_only(draft, scale=scale)
         img = Image.open(io.BytesIO(png))
-        assert img.width == len(draft.warp) * scale
-        assert img.height == len(draft.weft) * scale
+        assert img.width == len(draft.warp) * scale_used
+        assert img.height == len(draft.weft) * scale_used
         assert total_rows == len(draft.weft)
+
+    def test_adaptive_scale_reduces_for_large_draft(self, monkeypatch):
+        """Scale is reduced automatically when draft exceeds render limits."""
+        from app.config import Settings
+
+        draft = load_draft(MINIMAL_WIF)
+        # Force a very small render limit so the default scale=20 would exceed it.
+        tiny_settings = Settings(render_max_width=40, render_max_height=40)
+        monkeypatch.setattr("app.services.rendering.get_settings", lambda: tiny_settings)
+        _, _, scale_used = render_drawdown_only(draft)
+        warp = len(draft.warp)
+        weft = len(draft.weft)
+        assert scale_used * warp <= 40
+        assert scale_used * weft <= 40
+        assert scale_used >= 1
 
     def test_eight_shaft_renders(self):
         draft = load_draft(EIGHT_SHAFT_WIF)
-        png, total_rows = render_drawdown_only(draft, scale=4)
+        png, total_rows, _ = render_drawdown_only(draft, scale=4)
         assert png[:4] == b"\x89PNG"
         assert total_rows == len(draft.weft)
 
@@ -341,3 +367,131 @@ class TestRenderDrawdownOnly:
         draft.warp = []
         with pytest.raises(ValueError, match="no drawdown data"):
             render_drawdown_only(draft)
+
+
+# ---------------------------------------------------------------------------
+# Real-world liftplan WIF with stale Treadles= metadata (#266)
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# render_drawdown_tile
+# ---------------------------------------------------------------------------
+
+
+class TestRenderDrawdownTile:
+    def test_returns_tuple_of_five(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert isinstance(result, tuple) and len(result) == 5
+
+    def test_first_element_is_png(self):
+        draft = load_draft(MINIMAL_WIF)
+        png, *_ = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert png[:4] == b"\x89PNG"
+
+    def test_second_element_is_total_rows(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, total_rows, *_ = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert total_rows == len(draft.weft)
+
+    def test_third_element_is_actual_start_row(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, actual_start, *_ = render_drawdown_tile(draft, start_row=1, row_count=2)
+        assert actual_start == 1
+
+    def test_fourth_element_is_actual_row_count(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, _, actual_row_count, _ = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert actual_row_count == 2
+
+    def test_fifth_element_is_scale_used(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, _, _, scale_used = render_drawdown_tile(draft, start_row=0, row_count=2, scale=10)
+        assert scale_used == 10
+
+    def test_tile_height_equals_row_count_times_scale(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, _, _, actual_row_count, scale_used = render_drawdown_tile(draft, start_row=0, row_count=2, scale=scale)
+        img = Image.open(_io.BytesIO(png))
+        assert img.height == actual_row_count * scale_used
+
+    def test_tile_width_equals_warp_count_times_scale(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, _, _, _, scale_used = render_drawdown_tile(draft, start_row=0, row_count=2, scale=scale)
+        img = Image.open(_io.BytesIO(png))
+        assert img.width == len(draft.warp) * scale_used
+
+    def test_row_count_clamped_at_draft_end(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, total_rows, actual_start, actual_row_count, _ = render_drawdown_tile(draft, start_row=2, row_count=100)
+        assert actual_start + actual_row_count <= total_rows
+
+    def test_start_row_clamped_to_valid_range(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, total_rows, actual_start, actual_row_count, _ = render_drawdown_tile(draft, start_row=999, row_count=2)
+        assert actual_start <= total_rows - 1
+
+    def test_default_row_count_renders_full_draft(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, total_rows, _, actual_row_count, scale_used = render_drawdown_tile(draft, start_row=0, scale=scale)
+        img = Image.open(_io.BytesIO(png))
+        assert actual_row_count == total_rows
+        assert img.height == total_rows * scale_used
+
+    def test_empty_draft_raises_value_error(self):
+        draft = load_draft(MINIMAL_WIF)
+        draft.warp = []
+        with pytest.raises(ValueError, match="no drawdown data"):
+            render_drawdown_tile(draft)
+
+    def test_tile_from_middle_has_correct_dimensions(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, _, _, actual_row_count, scale_used = render_drawdown_tile(draft, start_row=1, row_count=2, scale=scale)
+        img = Image.open(_io.BytesIO(png))
+        assert img.height == actual_row_count * scale_used
+
+
+# ---------------------------------------------------------------------------
+# Real-world liftplan WIF with stale Treadles= metadata (#266)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(
+    not _SHADOW_FLOWERS_WIF.exists(),
+    reason="Sample file not present in repo",
+)
+class TestLiftplanTreadles:
+    def test_shadow_flowers_loads_without_assertion_error(self):
+        wif_bytes = _SHADOW_FLOWERS_WIF.read_bytes()
+        draft = load_draft(wif_bytes)
+        assert len(draft.warp) > 0
+        assert len(draft.weft) > 0
+
+    def test_shadow_flowers_drawdown_renders(self):
+        wif_bytes = _SHADOW_FLOWERS_WIF.read_bytes()
+        draft = load_draft(wif_bytes)
+        png, total_rows, scale_used = render_drawdown_only(draft)
+        assert png[:4] == b"\x89PNG"
+        assert total_rows == len(draft.weft)
+        assert scale_used >= 1

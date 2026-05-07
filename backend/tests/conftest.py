@@ -331,3 +331,27 @@ def mock_storage(monkeypatch):
     monkeypatch.setattr(_storage, "_exists", lambda key: bool(key) and key in _store)
 
     return _store
+
+
+@pytest.fixture(autouse=True)
+def bypass_rate_limits():
+    """Disable Redis-backed rate limiting for all tests.
+
+    Rate limit tests that need real enforcement use fakeredis directly and
+    do NOT go through the HTTP client fixtures.
+    """
+    from app.main import app
+    from app.routers.auth import _invite_rate_limit
+    from app.routers.drafts import _upload_rate_limit
+
+    async def _noop() -> None:
+        pass
+
+    app.dependency_overrides[_invite_rate_limit] = _noop
+    app.dependency_overrides[_upload_rate_limit] = _noop
+    yield
+    # Client fixtures call dependency_overrides.clear() after each test,
+    # so these are cleaned up automatically when a client fixture is used.
+    # For tests without a client fixture, clean up here.
+    app.dependency_overrides.pop(_invite_rate_limit, None)
+    app.dependency_overrides.pop(_upload_rate_limit, None)
