@@ -292,8 +292,15 @@ function WeavingPatternView({
       Pattern preview unavailable for this design.
     </div>
   );
-  // Render nothing until at least one tile is available.
-  if (Object.keys(tiles).length === 0) return null;
+  // Show a pre-sized skeleton while the first tile is in flight — prevents layout shift.
+  // Mirror the 3-panel flex structure of the loaded state so dimensions don't change on hydration.
+  if (Object.keys(tiles).length === 0) return (
+    <div className="relative flex gap-2" style={{ height: containerH }}>
+      <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted animate-pulse" />
+      <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: STEP_PANEL_W }} />
+      <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: COLOR_COL_W }} />
+    </div>
+  );
 
   // Image is flipped: last pick at y=0 (top), pick 1 at bottom.
   const flippedIndex = totalPicks - 1 - currentPickIndex;
