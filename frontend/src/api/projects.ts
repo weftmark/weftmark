@@ -65,6 +65,11 @@ export interface CreateProjectPayload {
   length_unit?: string;
 }
 
+export interface StepResponse {
+  current_pick: number;
+  total_picks: number;
+}
+
 export interface PickRow {
   pick: number;
   active: number[];
@@ -124,7 +129,7 @@ export function createProject(payload: CreateProjectPayload): Promise<ProjectDet
   });
 }
 
-export function stepProject(id: string, direction: "advance" | "reverse"): Promise<ProjectDetail> {
+export function stepProject(id: string, direction: "advance" | "reverse"): Promise<StepResponse> {
   return req(`/api/projects/${id}/step`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

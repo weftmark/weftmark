@@ -108,6 +108,11 @@ class StepRequest(BaseModel):
     direction: str  # "advance" | "reverse"
 
 
+class StepResponse(BaseModel):
+    current_pick: int
+    total_picks: int
+
+
 class PickRow(BaseModel):
     pick: int
     active: list[int]
@@ -401,13 +406,13 @@ async def assign_loom(
     return _to_detail(project, draft, loom)
 
 
-@router.post("/{project_id}/step", response_model=ProjectDetail)
+@router.post("/{project_id}/step", response_model=StepResponse)
 async def step_project(
     project_id: uuid.UUID,
     body: StepRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> ProjectDetail:
+) -> StepResponse:
     if body.direction not in ("advance", "reverse"):
         raise HTTPException(status_code=400, detail="direction must be 'advance' or 'reverse'")
 
@@ -434,11 +439,8 @@ async def step_project(
     )
     db.add(step)
     await db.commit()
-    await db.refresh(project)
-
-    draft = await db.get(Draft, project.draft_id)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+    # current_pick is already updated in-memory; no need to re-fetch draft/loom
+    return StepResponse(current_pick=project.current_pick, total_picks=project.total_picks)
 
 
 @router.post("/{project_id}/jump", response_model=ProjectDetail)
