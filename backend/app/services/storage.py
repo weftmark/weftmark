@@ -13,6 +13,7 @@ and returned via Content-Disposition headers — not embedded in storage keys.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from pathlib import Path
 
@@ -204,3 +205,78 @@ def copy_file(old_key: str, new_key: str) -> str:
     """Copy a stored file to a new key. Used by migrations."""
     data = _get(old_key)
     return _put(new_key, data)
+
+
+# ---------------------------------------------------------------------------
+# Async wrappers for use in FastAPI async handlers
+# All storage primitives (boto3, pathlib) are synchronous blocking I/O.
+# These wrappers offload to a thread pool so the event loop is not blocked.
+# ---------------------------------------------------------------------------
+
+
+async def aread_file(path: str) -> bytes:
+    return await asyncio.to_thread(_get, path)
+
+
+async def afile_exists(path: str | None) -> bool:
+    return await asyncio.to_thread(_exists, path)
+
+
+async def asave_wif(draft_id: uuid.UUID, filename: str, data: bytes) -> str:
+    return await asyncio.to_thread(save_wif, draft_id, filename, data)
+
+
+async def asave_preview(draft_id: uuid.UUID, data: bytes) -> str:
+    return await asyncio.to_thread(save_preview, draft_id, data)
+
+
+async def asave_drawdown_preview(data: bytes) -> str:
+    return await asyncio.to_thread(save_drawdown_preview, data)
+
+
+async def aread_drawdown_preview(path: str) -> bytes:
+    return await asyncio.to_thread(read_drawdown_preview, path)
+
+
+async def asave_project_photo(project_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes) -> str:
+    return await asyncio.to_thread(save_project_photo, project_id, photo_id, ext, data)
+
+
+async def adelete_project_photo(path: str) -> None:
+    await asyncio.to_thread(delete_project_photo, path)
+
+
+async def asave_loom_photo(loom_id: uuid.UUID, ext: str, data: bytes) -> str:
+    return await asyncio.to_thread(save_loom_photo, loom_id, ext, data)
+
+
+async def adelete_loom_photo(photo_path: str) -> None:
+    await asyncio.to_thread(delete_loom_photo, photo_path)
+
+
+async def asave_version_photo(
+    loom_id: uuid.UUID, version_id: uuid.UUID, photo_id: uuid.UUID, ext: str, data: bytes
+) -> str:
+    return await asyncio.to_thread(save_version_photo, loom_id, version_id, photo_id, ext, data)
+
+
+async def adelete_version_photo(path: str) -> None:
+    await asyncio.to_thread(delete_version_photo, path)
+
+
+async def asave_version_receipt(
+    loom_id: uuid.UUID, version_id: uuid.UUID, receipt_id: uuid.UUID, ext: str, data: bytes
+) -> str:
+    return await asyncio.to_thread(save_version_receipt, loom_id, version_id, receipt_id, ext, data)
+
+
+async def adelete_version_receipt(path: str) -> None:
+    await asyncio.to_thread(delete_version_receipt, path)
+
+
+async def asave_yarn_photo(yarn_id: uuid.UUID, ext: str, data: bytes) -> str:
+    return await asyncio.to_thread(save_yarn_photo, yarn_id, ext, data)
+
+
+async def adelete_yarn_photo(photo_path: str) -> None:
+    await asyncio.to_thread(delete_yarn_photo, photo_path)
