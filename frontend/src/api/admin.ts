@@ -24,6 +24,8 @@ export interface AdminUser {
   last_active_at: string | null;
   approved_by_name: string | null;
   approved_by_email: string | null;
+  eula_accepted_version: string | null;
+  eula_accepted_at: string | null;
   counts: AdminUserCounts;
 }
 

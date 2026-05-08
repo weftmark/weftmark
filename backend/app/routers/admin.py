@@ -71,6 +71,8 @@ class AdminUserResponse(BaseModel):
     deletion_state: str | None
     deletion_initiated_at: datetime | None
     clerk_errored: bool
+    eula_accepted_version: str | None
+    eula_accepted_at: datetime | None
     counts: AdminUserCounts
 
     model_config = {"from_attributes": False}
@@ -479,6 +481,8 @@ async def list_users(
             deletion_state=u.deletion_state,
             deletion_initiated_at=u.deletion_initiated_at,
             clerk_errored=u.clerk_errored,
+            eula_accepted_version=u.eula_accepted_version,
+            eula_accepted_at=u.eula_accepted_at,
             counts=AdminUserCounts(
                 drafts=draft_counts.get(u.id, 0),
                 projects_active=project_active.get(u.id, 0),
@@ -591,6 +595,8 @@ async def patch_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
+        eula_accepted_version=user.eula_accepted_version,
+        eula_accepted_at=user.eula_accepted_at,
         counts=AdminUserCounts(
             drafts=drafts,
             projects_active=proj_active,
@@ -646,6 +652,8 @@ async def ban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
+        eula_accepted_version=user.eula_accepted_version,
+        eula_accepted_at=user.eula_accepted_at,
         counts=AdminUserCounts(
             drafts=0,
             projects_active=0,
@@ -692,6 +700,8 @@ async def unban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
+        eula_accepted_version=user.eula_accepted_version,
+        eula_accepted_at=user.eula_accepted_at,
         counts=AdminUserCounts(
             drafts=0,
             projects_active=0,
