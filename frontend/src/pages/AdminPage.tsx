@@ -1309,7 +1309,7 @@ function ServerEventsPanel() {
       )}
 
       {data && data.items.length > 0 && (
-        <div className="rounded-lg border overflow-hidden">
+        <div className="rounded-lg border overflow-hidden overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
