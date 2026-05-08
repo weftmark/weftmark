@@ -32,6 +32,8 @@ import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
 
+from packaging.version import Version
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -237,9 +239,22 @@ def main() -> None:
         print(f"Found {len(db_versions)} EULA version(s) in database.")
 
     seeded = _seeded_versions()
-    print(f"Already seeded in migrations: {sorted(seeded) or '(none)'}")
+    seeded_sorted = sorted(seeded, key=lambda v: Version(v))
+    print(f"Already seeded in migrations: {seeded_sorted or '(none)'}")
 
     pending = [v for v in db_versions if v["version"] not in seeded]
+
+    if not pending and args.api_url and seeded:
+        max_seeded = max(seeded, key=lambda v: Version(v))
+        returned = db_versions[0]["version"] if db_versions else None
+        if returned and Version(returned) <= Version(max_seeded):
+            print(
+                f"WARNING: API returned version {returned!r} which is not newer than "
+                f"the latest seeded version {max_seeded!r}.\n"
+                f"This may mean a newer EULA exists in the database with an earlier\n"
+                f"effective_date. Re-run with --db-url to export all versions directly."
+            )
+
     if not pending:
         print("Nothing to do — all database versions are already in migration files.")
         return

@@ -1320,9 +1320,7 @@ async def get_eula_admin(
     _: User = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> EulaCurrentAdminResponse:
-    row = await db.scalar(
-        select(EulaVersion).order_by(EulaVersion.effective_date.desc(), EulaVersion.id.desc()).limit(1)
-    )
+    row = await db.scalar(select(EulaVersion).order_by(EulaVersion.id.desc()).limit(1))
     if not row:
         raise HTTPException(status_code=404, detail="No EULA version found")
     return EulaCurrentAdminResponse(
