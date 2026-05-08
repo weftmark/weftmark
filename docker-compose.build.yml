@@ -177,6 +177,17 @@ services:
     entrypoint: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=${CELERY_CONCURRENCY:-2}", "--hostname=worker2@%h"]
 
   # ----------------------------------------------------------
+  # Celery Beat — cron scheduler
+  # Fires run_scheduled_tasks every 60 seconds. Only one Beat
+  # instance should run at a time. --pidfile= disables the pid
+  # file so container restarts don't leave a stale lock.
+  # ----------------------------------------------------------
+  beat:
+    <<: *worker-base
+    container_name: weaving_site_beat
+    entrypoint: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info", "--pidfile="]
+
+  # ----------------------------------------------------------
   # Redis — Celery broker and result backend
   # ----------------------------------------------------------
   redis:
