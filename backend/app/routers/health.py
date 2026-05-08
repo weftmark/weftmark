@@ -42,6 +42,9 @@ _last_alert_status: str | None = None
 _last_alert_at: datetime | None = None
 _HEALTH_ALERT_COOLDOWN_S = 3600  # re-alert at most once per hour if status stays bad
 
+# Superuser email cache — refreshed when DB is healthy; used as fallback when DB is down
+_superuser_email_cache: list[str] = []
+
 
 def set_readiness(result: ReadinessResponse) -> None:
     global _readiness_cache
@@ -216,20 +219,30 @@ async def _run_detailed_probes() -> ReadinessResponse:
     return _build_readiness_from_results(results, webhook_result, checked_at=datetime.now(timezone.utc).isoformat())
 
 
-async def _dispatch_health_alert(result: ReadinessResponse, is_recovery: bool) -> None:
-    settings = get_settings()
-    if not settings.stack_alert_emails_enabled:
-        return
+async def _refresh_superuser_email_cache() -> None:
+    """Refresh the in-memory superuser email list from the DB. Silent on failure."""
+    global _superuser_email_cache
     try:
         from sqlalchemy import select
 
         from app.database import AsyncSessionLocal
         from app.models.user import User
-        from app.services.email import send_health_degraded_alert, send_health_recovered_alert
 
         async with AsyncSessionLocal() as db:
             rows = await db.scalars(select(User).where(User.is_superuser.is_(True), User.deleted_at.is_(None)))
-            emails = [u.email for u in rows.all()]
+            _superuser_email_cache = [u.email for u in rows.all()]
+    except Exception:
+        pass  # keep stale cache; logged by caller if needed
+
+
+async def _dispatch_health_alert(result: ReadinessResponse, is_recovery: bool) -> None:
+    settings = get_settings()
+    if not settings.stack_alert_emails_enabled:
+        return
+    try:
+        from app.services.email import send_health_degraded_alert, send_health_recovered_alert
+
+        emails = _superuser_email_cache
         if not emails:
             return
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -262,6 +275,10 @@ async def _detailed_refresh_loop() -> None:
     while True:
         try:
             result = await _run_detailed_probes()
+            # Keep superuser email cache fresh while DB is reachable
+            postgres_ok = any(s.name == "PostgreSQL" and s.ok for s in result.services)
+            if postgres_ok:
+                await _refresh_superuser_email_cache()
             new_status = result.status
             now = datetime.now(timezone.utc)
             prev_status = _last_alert_status
