@@ -86,9 +86,7 @@ class UserSettingsResponse(BaseModel):
 
 
 async def get_current_eula_version(db: AsyncSession) -> str:
-    row = await db.scalar(
-        select(EulaVersion).order_by(EulaVersion.effective_date.desc(), EulaVersion.id.desc()).limit(1)
-    )
+    row = await db.scalar(select(EulaVersion).order_by(EulaVersion.id.desc()).limit(1))
     return row.version if row else "0.3"
 
 
@@ -121,9 +119,7 @@ class EulaCurrentResponse(BaseModel):
 
 @eula_router.get("/current", response_model=EulaCurrentResponse)
 async def get_current_eula(db: AsyncSession = Depends(get_db)) -> EulaCurrentResponse:
-    row = await db.scalar(
-        select(EulaVersion).order_by(EulaVersion.effective_date.desc(), EulaVersion.id.desc()).limit(1)
-    )
+    row = await db.scalar(select(EulaVersion).order_by(EulaVersion.id.desc()).limit(1))
     if not row:
         raise HTTPException(status_code=404, detail="No EULA version found")
     return EulaCurrentResponse(version=row.version, body_html=row.body_html, effective_date=row.effective_date)
