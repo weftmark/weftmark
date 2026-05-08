@@ -23,7 +23,7 @@
     },
     {
       "bom-ref": "requirements-L15",
-      "description": "requirements line 15: aiosmtplib==3.0.2",
+      "description": "requirements line 15: aiosmtplib==5.1.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -32,9 +32,9 @@
         }
       ],
       "name": "aiosmtplib",
-      "purl": "pkg:pypi/aiosmtplib@3.0.2",
+      "purl": "pkg:pypi/aiosmtplib@5.1.0",
       "type": "library",
-      "version": "3.0.2"
+      "version": "5.1.0"
     },
     {
       "bom-ref": "requirements-L4",
@@ -459,7 +459,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-07T18:08:57.527084+00:00",
+    "timestamp": "2026-05-08T00:19:32.564406+00:00",
     "tools": {
       "components": [
         {
@@ -563,7 +563,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:ecbdbf1e-b155-452d-baf2-d0b70fd63b6e",
+  "serialNumber": "urn:uuid:736f62c1-f875-4d78-9305-68f59150e143",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
