@@ -301,6 +301,8 @@ export interface WorkerInfo {
   version: string | null;
   concurrency: number | null;
   completed_tasks: number | null;
+  uptime: number | null;
+  memory_mb: number | null;
   active_tasks: WorkerActiveTask[];
   reserved_tasks: WorkerActiveTask[];
 }
