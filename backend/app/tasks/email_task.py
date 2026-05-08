@@ -52,7 +52,6 @@ async def _do_smtp(to: list[str], subject: str, txt: str, html: str) -> None:
     bind=True,
     name="app.tasks.email_task.send_email",
     max_retries=5,
-    ignore_result=True,
 )
 def send_email(
     self,

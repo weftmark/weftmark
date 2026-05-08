@@ -36,7 +36,10 @@ async def _send(to: list[str], subject: str, txt: str, html: str) -> None:
     else:
         html = html.replace("<!-- DEV_BANNER -->", "")
     queued_at = datetime.now(timezone.utc).isoformat()
-    send_email.delay(to=to, subject=subject, txt=txt, html=html, queued_at=queued_at)
+    task = send_email.delay(to=to, subject=subject, txt=txt, html=html, queued_at=queued_at)
+    from app.services.task_history import record_queued
+
+    record_queued(settings, task.id, "app.tasks.email_task.send_email", "email")
 
 
 async def send_pending_signup_notification(admin_emails: list[str], display_name: str, email: str) -> None:
