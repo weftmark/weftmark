@@ -831,7 +831,7 @@ def _smtp_conn_meta(settings: "Settings") -> dict[str, str]:
 
 
 async def _probe_smtp() -> ServiceCheckResult:
-    import aiosmtplib
+    from app.services import smtp_health
 
     settings = get_settings()
     checks: list[ServicePermCheck] = []
@@ -859,33 +859,8 @@ async def _probe_smtp() -> ServiceCheckResult:
         ServicePermCheck(name="config", status="ok", message=f"{settings.smtp_host}:{settings.smtp_port} configured")
     )
 
-    # start_tls=True mirrors aiosmtplib.send() — connect() handles STARTTLS automatically
-    smtp = aiosmtplib.SMTP(hostname=settings.smtp_host, port=settings.smtp_port, start_tls=True, timeout=5)
-
-    try:
-        await asyncio.wait_for(smtp.connect(), timeout=5.0)
-        checks.append(
-            ServicePermCheck(
-                name="connect", status="ok", message=f"TCP connected to {settings.smtp_host}:{settings.smtp_port}"
-            )
-        )
-        checks.append(ServicePermCheck(name="starttls", status="ok", message="STARTTLS negotiated"))
-    except (asyncio.TimeoutError, Exception) as exc:
-        msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
-        checks.append(ServicePermCheck(name="connect", status="error", message=msg))
-        return _make_result("SMTP", checks, meta=meta)
-
-    try:
-        await asyncio.wait_for(smtp.login(settings.smtp_user, settings.smtp_password), timeout=5.0)
-        checks.append(ServicePermCheck(name="auth", status="ok", message=f"Authenticated as {settings.smtp_user}"))
-    except (asyncio.TimeoutError, Exception) as exc:
-        msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
-        checks.append(ServicePermCheck(name="auth", status="error", message=msg))
-    finally:
-        try:
-            await smtp.quit()
-        except Exception:
-            pass
+    ok, msg = await smtp_health.check(settings.smtp_host, settings.smtp_port)
+    checks.append(ServicePermCheck(name="tcp", status="ok" if ok else "error", message=msg))
 
     return _make_result("SMTP", checks, meta=meta)
 
