@@ -17,6 +17,7 @@ def _make_celery() -> Celery:
         include=[
             "app.tasks.deletion",
             "app.tasks.email_task",
+            "app.tasks.maintenance",
             "app.tasks.preview",
             "app.tasks.purge",
             "app.tasks.s3_audit",

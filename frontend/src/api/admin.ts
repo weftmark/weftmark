@@ -359,6 +359,7 @@ export interface ScheduledTask {
   description: string;
   enabled: boolean;
   cron: string;
+  config: Record<string, unknown>;
   next_runs: string[];
   last_fired_at: string | null;
   updated_at: string;
@@ -367,5 +368,7 @@ export interface ScheduledTask {
 export const listScheduledTasks = () =>
   api.get<ScheduledTask[]>("/api/admin/scheduled-tasks");
 
-export const patchScheduledTask = (name: string, body: { enabled?: boolean; cron?: string }) =>
-  api.patch<ScheduledTask>(`/api/admin/scheduled-tasks/${name}`, body);
+export const patchScheduledTask = (
+  name: string,
+  body: { enabled?: boolean; cron?: string; config?: Record<string, unknown> },
+) => api.patch<ScheduledTask>(`/api/admin/scheduled-tasks/${name}`, body);

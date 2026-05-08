@@ -1808,6 +1808,44 @@ async def get_cve_scan_summary(
 
 
 # ---------------------------------------------------------------------------
+# S3 audit summary (for admin banner)
+# ---------------------------------------------------------------------------
+
+
+class S3AuditSummary(BaseModel):
+    orphaned_count: int | None = None
+    scanned_at: str | None = None
+    not_applicable: bool = False
+
+
+@router.get("/s3-audit/summary", response_model=S3AuditSummary)
+async def get_s3_audit_summary(
+    _: User = Depends(require_superuser),
+) -> S3AuditSummary:
+    import json as _json
+
+    from app.tasks.s3_audit import S3_AUDIT_SUMMARY_KEY
+
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        raw = client.get(S3_AUDIT_SUMMARY_KEY)
+        client.close()
+        if raw:
+            data = _json.loads(raw)
+            return S3AuditSummary(
+                orphaned_count=data["orphaned_count"],
+                scanned_at=data["scanned_at"],
+                not_applicable=data.get("not_applicable", False),
+            )
+    except Exception as exc:
+        log.warning("s3_audit_summary_error: %s", exc)
+    return S3AuditSummary()
+
+
+# ---------------------------------------------------------------------------
 # Worker status
 # ---------------------------------------------------------------------------
 
@@ -2034,6 +2072,7 @@ class ScheduledTaskResponse(BaseModel):
     description: str
     enabled: bool
     cron: str
+    config: dict
     next_runs: list[str]
     last_fired_at: datetime | None
     updated_at: datetime
@@ -2042,6 +2081,7 @@ class ScheduledTaskResponse(BaseModel):
 class PatchScheduledTaskBody(BaseModel):
     enabled: bool | None = None
     cron: str | None = None
+    config: dict | None = None
 
 
 def _next_runs(cron: str, n: int = 3) -> list[str]:
@@ -2075,6 +2115,7 @@ async def _get_or_seed_scheduled_task(name: str, db: AsyncSession):
             description=entry["description"],
             enabled=False,
             cron=entry["default_cron"],
+            config=entry.get("default_config", {}),
         )
         db.add(row)
         await db.flush()
@@ -2088,6 +2129,7 @@ def _task_to_response(task) -> ScheduledTaskResponse:
         description=task.description,
         enabled=task.enabled,
         cron=task.cron,
+        config=task.config or {},
         next_runs=_next_runs(task.cron),
         last_fired_at=task.last_fired_at,
         updated_at=task.updated_at,
@@ -2112,6 +2154,7 @@ async def list_scheduled_tasks(
                 description=entry["description"],
                 enabled=False,
                 cron=entry["default_cron"],
+                config=entry.get("default_config", {}),
             )
             db.add(row)
             await db.flush()
@@ -2146,6 +2189,7 @@ async def patch_scheduled_task(
             description=entry["description"],
             enabled=False,
             cron=entry["default_cron"],
+            config=entry.get("default_config", {}),
         )
         db.add(row)
         await db.flush()
@@ -2156,6 +2200,8 @@ async def patch_scheduled_task(
         row.cron = body.cron
     if body.enabled is not None:
         row.enabled = body.enabled
+    if body.config is not None:
+        row.config = body.config
 
     await db.commit()
     await db.refresh(row)
