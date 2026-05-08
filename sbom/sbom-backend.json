@@ -23,7 +23,7 @@
     },
     {
       "bom-ref": "requirements-L15",
-      "description": "requirements line 15: aiosmtplib==3.0.2",
+      "description": "requirements line 15: aiosmtplib==5.1.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -32,9 +32,9 @@
         }
       ],
       "name": "aiosmtplib",
-      "purl": "pkg:pypi/aiosmtplib@3.0.2",
+      "purl": "pkg:pypi/aiosmtplib@5.1.0",
       "type": "library",
-      "version": "3.0.2"
+      "version": "5.1.0"
     },
     {
       "bom-ref": "requirements-L4",
@@ -101,6 +101,21 @@
       "purl": "pkg:pypi/celery@5.6.3",
       "type": "library",
       "version": "5.6.3"
+    },
+    {
+      "bom-ref": "requirements-L24",
+      "description": "requirements line 24: croniter==3.0.4",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/croniter/"
+        }
+      ],
+      "name": "croniter",
+      "purl": "pkg:pypi/croniter@3.0.4",
+      "type": "library",
+      "version": "3.0.4"
     },
     {
       "bom-ref": "requirements-L18",
@@ -419,6 +434,9 @@
       "ref": "requirements-L23"
     },
     {
+      "ref": "requirements-L24"
+    },
+    {
       "ref": "requirements-L3"
     },
     {
@@ -441,7 +459,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-06T22:40:52.363281+00:00",
+    "timestamp": "2026-05-08T00:19:32.564406+00:00",
     "tools": {
       "components": [
         {
@@ -545,7 +563,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:d8a54738-5988-4a60-8a79-3ff0e1e79ffb",
+  "serialNumber": "urn:uuid:736f62c1-f875-4d78-9305-68f59150e143",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",

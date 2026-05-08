@@ -1,8 +1,5 @@
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from datetime import datetime, timezone
 from pathlib import Path
-
-import aiosmtplib
 
 from app.config import get_settings
 
@@ -23,6 +20,8 @@ def _render(name: str, **kwargs) -> tuple[str, str]:
 
 
 async def _send(to: list[str], subject: str, txt: str, html: str) -> None:
+    from app.tasks.email_task import send_email
+
     settings = get_settings()
     if settings.app_env == "dev":
         subject = f"[DEV] {subject}"
@@ -36,20 +35,11 @@ async def _send(to: list[str], subject: str, txt: str, html: str) -> None:
         )
     else:
         html = html.replace("<!-- DEV_BANNER -->", "")
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
-    msg["To"] = ", ".join(to)
-    msg.attach(MIMEText(txt, "plain"))
-    msg.attach(MIMEText(html, "html"))
-    await aiosmtplib.send(
-        msg,
-        hostname=settings.smtp_host,
-        port=settings.smtp_port,
-        username=settings.smtp_user,
-        password=settings.smtp_password,
-        start_tls=True,
-    )
+    queued_at = datetime.now(timezone.utc).isoformat()
+    task = send_email.delay(to=to, subject=subject, txt=txt, html=html, queued_at=queued_at)
+    from app.services.task_history import record_queued
+
+    record_queued(settings, task.id, "app.tasks.email_task.send_email", "email")
 
 
 async def send_pending_signup_notification(admin_emails: list[str], display_name: str, email: str) -> None:
@@ -125,6 +115,125 @@ async def send_deletion_stalled_superuser(
         admin_url=f"{settings.frontend_url}/admin",
     )
     await _send(superuser_emails, f"User deletion stalled — {display_name} ({email})", txt, html)
+
+
+def _format_uptime(seconds: float) -> str:
+    total = int(seconds)
+    h, rem = divmod(total, 3600)
+    m, s = divmod(rem, 60)
+    if h:
+        return f"{h}h {m:02d}m {s:02d}s"
+    if m:
+        return f"{m}m {s:02d}s"
+    return f"{s}s"
+
+
+def _probe_table_txt(probe_rows: list[tuple[str, bool, str]]) -> str:
+    lines = []
+    for name, ok, detail in probe_rows:
+        status = "OK  " if ok else "FAIL"
+        line = f"  {status}  {name}"
+        if detail:
+            line += f" — {detail}"
+        lines.append(line)
+    return "\n".join(lines) if lines else "  (no probes)"
+
+
+def _probe_table_html(probe_rows: list[tuple[str, bool, str]]) -> str:
+    rows = []
+    for i, (name, ok, detail) in enumerate(probe_rows):
+        bg = "#f9fafb" if i % 2 == 0 else "#f3f4f6"
+        status_color = "#16a34a" if ok else "#dc2626"
+        status_label = "OK" if ok else "FAIL"
+        detail_cell = f" &mdash; <span style='color:#6b7280'>{detail}</span>" if detail else ""
+        td1 = (
+            f'<td style="padding:8px 16px;font-size:13px;font-family:monospace;'
+            f'color:{status_color};white-space:nowrap;">{status_label}</td>'
+        )
+        td2 = f'<td style="padding:8px 16px;font-size:13px;white-space:nowrap;">{name}{detail_cell}</td>'
+        rows.append(f'<tr style="background:{bg};">{td1}{td2}</tr>')
+    fallback = '<tr><td colspan="2" style="padding:8px 16px;font-size:13px;color:#6b7280;">(no probes)</td></tr>'
+    inner = "".join(rows) or fallback
+    return (
+        '<table width="100%" cellpadding="0" cellspacing="0" '
+        'style="border-collapse:collapse;margin:0 0 20px;background:#f9fafb;border-radius:6px;overflow:hidden;">'
+        + inner
+        + "</table>"
+    )
+
+
+async def send_stack_startup_alert(
+    superuser_emails: list[str],
+    env: str,
+    app_base_url: str,
+    version: str,
+    worker_version: str | None,
+    probe_status: str,
+    probe_rows: list[tuple[str, bool, str]],
+    timestamp: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not superuser_emails:
+        return
+    has_failures = probe_status in ("degraded", "error")
+    event_label = "Started with warnings" if has_failures else "Started"
+    admin_url = f"{app_base_url}/admin" if app_base_url else f"{settings.frontend_url}/admin"
+    worker_ver_str = worker_version or "unknown"
+    if has_failures:
+        banner_bg, banner_border, banner_text = "#fef2f2", "#dc2626", "#b91c1c"
+        failure_note = "One or more startup probes reported a failure. See the table above for details."
+        failure_note_html = (
+            '<p style="margin:0 0 16px;font-size:14px;color:#b91c1c;font-weight:bold;">'
+            "One or more startup probes reported a failure. See the table above for details.</p>"
+        )
+    else:
+        banner_bg, banner_border, banner_text = "#f0fdf4", "#16a34a", "#15803d"
+        failure_note = ""
+        failure_note_html = ""
+    txt, html = _render(
+        "stack_startup_alert",
+        env=env,
+        app_base_url=app_base_url,
+        version=version,
+        worker_version=worker_ver_str,
+        event_label=event_label,
+        timestamp=timestamp,
+        admin_url=admin_url,
+        probe_table_txt=_probe_table_txt(probe_rows),
+        probe_table_html=_probe_table_html(probe_rows),
+        failure_note=failure_note,
+        failure_note_html=failure_note_html,
+        banner_bg=banner_bg,
+        banner_border=banner_border,
+        banner_text=banner_text,
+    )
+    subject = f"[{settings.app_name} {env}] Stack {event_label} — {timestamp}"
+    await _send(superuser_emails, subject, txt, html)
+
+
+async def send_stack_shutdown_alert(
+    superuser_emails: list[str],
+    env: str,
+    app_base_url: str,
+    version: str,
+    uptime_seconds: float,
+    timestamp: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not superuser_emails:
+        return
+    admin_url = f"{app_base_url}/admin" if app_base_url else f"{settings.frontend_url}/admin"
+    txt, html = _render(
+        "stack_shutdown_alert",
+        env=env,
+        app_base_url=app_base_url,
+        version=version,
+        uptime_str=_format_uptime(uptime_seconds),
+        timestamp=timestamp,
+        admin_url=admin_url,
+    )
+    subject = f"[{settings.app_name} {env}] Stack Stopped — {timestamp}"
+    await _send(superuser_emails, subject, txt, html)
 
 
 async def send_test_email(to_email: str) -> None:

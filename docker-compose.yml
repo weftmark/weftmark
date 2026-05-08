@@ -1,3 +1,44 @@
+x-worker: &worker-base
+  image: ghcr.io/weftmark/weftmark-backend:${IMAGE_TAG:-latest}
+  environment:
+    APP_ENV: ${APP_ENV}
+    APP_SECRET_KEY: ${APP_SECRET_KEY}
+    DEBUG: ${DEBUG}
+    LOG_LEVEL: ${LOG_LEVEL}
+    POSTGRES_DSN: ${POSTGRES_DSN}
+    POSTGRES_DSN_DIRECT: ${POSTGRES_DSN_DIRECT}
+    CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+    STORAGE_BACKEND: ${STORAGE_BACKEND}
+    UPLOAD_DIR: ${UPLOAD_DIR}
+    MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE}
+    S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
+    S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+    S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+    S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+    S3_REGION: ${S3_REGION}
+    SMTP_HOST: ${SMTP_HOST}
+    SMTP_PORT: ${SMTP_PORT}
+    SMTP_USER: ${SMTP_USER}
+    SMTP_PASSWORD: ${SMTP_PASSWORD}
+    SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+    SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+    INVITE_EXPIRY_DAYS_DEFAULT: ${INVITE_EXPIRY_DAYS_DEFAULT}
+    REDIS_URL: ${REDIS_URL}
+    RENDER_MAX_WIDTH: ${RENDER_MAX_WIDTH}
+    RENDER_MAX_HEIGHT: ${RENDER_MAX_HEIGHT}
+    RENDER_DEFAULT_ZOOM: ${RENDER_DEFAULT_ZOOM}
+  networks:
+    - internal
+  volumes:
+    - uploads:/app/uploads
+  depends_on:
+    redis:
+      condition: service_healthy
+    db:
+      condition: service_healthy
+      required: false
+  restart: unless-stopped
+
 services:
 
   # ----------------------------------------------------------
@@ -90,52 +131,33 @@ services:
     restart: unless-stopped
 
   # ----------------------------------------------------------
-  # Celery worker — background task processor
-  # Uses the same backend image; runs the Celery worker instead
-  # of uvicorn.  Shares the uploads volume with the backend.
+  # Celery workers — background task processors
+  # Use the same backend image; run the Celery worker instead
+  # of uvicorn.  Share the uploads volume with the backend.
+  # worker2 is identical but gated behind the worker02 profile.
+  # CELERY_CONCURRENCY defaults to 2 if unset.
   # ----------------------------------------------------------
   worker:
-    image: ghcr.io/weftmark/weftmark-backend:${IMAGE_TAG:-latest}
+    <<: *worker-base
     container_name: ${STACK_NAME:-weftmark}_worker
-    entrypoint: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
-    environment:
-      APP_ENV: ${APP_ENV}
-      APP_SECRET_KEY: ${APP_SECRET_KEY}
-      DEBUG: ${DEBUG}
-      LOG_LEVEL: ${LOG_LEVEL}
-      POSTGRES_DSN: ${POSTGRES_DSN}
-      POSTGRES_DSN_DIRECT: ${POSTGRES_DSN_DIRECT}
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
-      STORAGE_BACKEND: ${STORAGE_BACKEND}
-      UPLOAD_DIR: ${UPLOAD_DIR}
-      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE}
-      S3_ENDPOINT_URL: ${S3_ENDPOINT_URL}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
-      S3_REGION: ${S3_REGION}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
-      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
-      INVITE_EXPIRY_DAYS_DEFAULT: ${INVITE_EXPIRY_DAYS_DEFAULT}
-      REDIS_URL: ${REDIS_URL}
-      RENDER_MAX_WIDTH: ${RENDER_MAX_WIDTH}
-      RENDER_MAX_HEIGHT: ${RENDER_MAX_HEIGHT}
-      RENDER_DEFAULT_ZOOM: ${RENDER_DEFAULT_ZOOM}
-    networks:
-      - internal
-    volumes:
-      - uploads:/app/uploads
-    depends_on:
-      redis:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-        required: false
-    restart: unless-stopped
+    entrypoint: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=${CELERY_CONCURRENCY:-2}", "--hostname=worker1@%h"]
+
+  worker2:
+    <<: *worker-base
+    container_name: ${STACK_NAME:-weftmark}_worker2
+    profiles: [worker02]
+    entrypoint: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=${CELERY_CONCURRENCY:-2}", "--hostname=worker2@%h"]
+
+  # ----------------------------------------------------------
+  # Celery Beat — cron scheduler
+  # Fires run_scheduled_tasks every 60 seconds. Only one Beat
+  # instance should run at a time. --pidfile= disables the pid
+  # file so container restarts don't leave a stale lock.
+  # ----------------------------------------------------------
+  beat:
+    <<: *worker-base
+    container_name: ${STACK_NAME:-weftmark}_beat
+    entrypoint: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info", "--pidfile="]
 
   # ----------------------------------------------------------
   # Redis — Celery broker and result backend

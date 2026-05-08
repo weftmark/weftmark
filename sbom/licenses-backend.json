@@ -42,7 +42,7 @@
   {
     "License": "MIT",
     "Name": "aiosmtplib",
-    "Version": "3.0.2"
+    "Version": "5.1.0"
   },
   {
     "License": "MIT",
@@ -148,6 +148,11 @@
     "License": "MIT",
     "Name": "click-repl",
     "Version": "0.3.0"
+  },
+  {
+    "License": "MIT License",
+    "Name": "croniter",
+    "Version": "3.0.4"
   },
   {
     "License": "Apache-2.0 OR BSD-3-Clause",
@@ -277,7 +282,7 @@
   {
     "License": "MIT License",
     "Name": "markdown-it-py",
-    "Version": "4.1.0"
+    "Version": "4.2.0"
   },
   {
     "License": "MIT License",
@@ -383,6 +388,11 @@
     "License": "Apache-2.0",
     "Name": "python-multipart",
     "Version": "0.0.27"
+  },
+  {
+    "License": "MIT License",
+    "Name": "pytz",
+    "Version": "2026.2"
   },
   {
     "License": "MIT License",
@@ -507,7 +517,7 @@
   {
     "License": "MIT",
     "Name": "urllib3",
-    "Version": "2.6.3"
+    "Version": "2.7.0"
   },
   {
     "License": "BSD-3-Clause",

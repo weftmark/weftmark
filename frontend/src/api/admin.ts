@@ -301,6 +301,8 @@ export interface WorkerInfo {
   version: string | null;
   concurrency: number | null;
   completed_tasks: number | null;
+  uptime: number | null;
+  memory_mb: number | null;
   active_tasks: WorkerActiveTask[];
   reserved_tasks: WorkerActiveTask[];
 }
@@ -352,3 +354,23 @@ export const revokeTask = (taskId: string) =>
 
 export const runPurgeSoftDeleted = () =>
   api.post<{ status: string; task_id: string }>("/api/admin/purge-soft-deleted", {});
+
+export interface ScheduledTask {
+  name: string;
+  display_name: string;
+  description: string;
+  enabled: boolean;
+  cron: string;
+  config: Record<string, unknown>;
+  next_runs: string[];
+  last_fired_at: string | null;
+  updated_at: string;
+}
+
+export const listScheduledTasks = () =>
+  api.get<ScheduledTask[]>("/api/admin/scheduled-tasks");
+
+export const patchScheduledTask = (
+  name: string,
+  body: { enabled?: boolean; cron?: string; config?: Record<string, unknown> },
+) => api.patch<ScheduledTask>(`/api/admin/scheduled-tasks/${name}`, body);

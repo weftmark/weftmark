@@ -1,12 +1,13 @@
 """
 Tests for app.services.email.
 
-aiosmtplib.send is mocked with AsyncMock so no real SMTP connection is made.
-Settings are patched per-test via monkeypatch to keep tests independent of
-the local .env file.
+send_email.delay is mocked so no real Celery worker or SMTP connection is needed.
+Settings are patched per-test via monkeypatch.
+
+SMTP transport and MIME construction are tested in tests/tasks/test_email_task.py.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -17,26 +18,10 @@ from app.services.email import (
     send_invite_email,
     send_pending_signup_notification,
     send_signup_received_email,
+    send_stack_shutdown_alert,
+    send_stack_startup_alert,
     send_test_email,
 )
-
-
-def _decoded_body(msg) -> str:
-    """Return all MIME body parts as a single decoded string."""
-    return " ".join(p.get_payload(decode=True).decode("utf-8") for p in msg.get_payload())
-
-
-def _plain_body(msg) -> str:
-    """Return the plain-text MIME part decoded as a string."""
-    part = next(p for p in msg.get_payload() if p.get_content_type() == "text/plain")
-    return part.get_payload(decode=True).decode("utf-8")
-
-
-def _html_body(msg) -> str:
-    """Return the HTML MIME part decoded as a string."""
-    part = next(p for p in msg.get_payload() if p.get_content_type() == "text/html")
-    return part.get_payload(decode=True).decode("utf-8")
-
 
 # ---------------------------------------------------------------------------
 # Fixture: deterministic settings
@@ -65,91 +50,51 @@ def _patch_settings(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Helper: call send_invite_email with a mock SMTP sender
+# Helper: enqueue an invite and return the delay mock
 # ---------------------------------------------------------------------------
 
 
 async def _send_invite(to="user@test.com", token="tok123", days=7):
-    mock_send = AsyncMock()
-    with patch("app.services.email.aiosmtplib.send", mock_send):
+    mock_delay = MagicMock()
+    with patch("app.tasks.email_task.send_email.delay", mock_delay):
         await send_invite_email(to, token, days)
-    return mock_send
+    return mock_delay
+
+
+def _kwargs(mock_delay: MagicMock) -> dict:
+    """Return the keyword arguments passed to send_email.delay."""
+    return mock_delay.call_args.kwargs
 
 
 # ---------------------------------------------------------------------------
-# SMTP transport
+# Enqueue behaviour
 # ---------------------------------------------------------------------------
 
 
-class TestSmtpTransport:
-    async def test_send_called_once(self):
+class TestEnqueueBehaviour:
+    async def test_delay_called_once(self):
         mock = await _send_invite()
         mock.assert_called_once()
 
-    async def test_smtp_hostname(self):
+    async def test_delay_called_with_to(self):
+        mock = await _send_invite(to="recipient@test.com")
+        assert "recipient@test.com" in _kwargs(mock)["to"]
+
+    async def test_delay_called_with_subject(self):
         mock = await _send_invite()
-        _, kwargs = mock.call_args
-        assert kwargs["hostname"] == "smtp.example.com"
+        assert _kwargs(mock)["subject"]
 
-    async def test_smtp_port(self):
+    async def test_delay_called_with_txt(self):
         mock = await _send_invite()
-        _, kwargs = mock.call_args
-        assert kwargs["port"] == 587
+        assert _kwargs(mock)["txt"]
 
-    async def test_smtp_username(self):
+    async def test_delay_called_with_html(self):
         mock = await _send_invite()
-        _, kwargs = mock.call_args
-        assert kwargs["username"] == "smtpuser"
+        assert _kwargs(mock)["html"]
 
-    async def test_smtp_password(self):
+    async def test_delay_called_with_queued_at(self):
         mock = await _send_invite()
-        _, kwargs = mock.call_args
-        assert kwargs["password"] == "smtppass"
-
-    async def test_start_tls_enabled(self):
-        mock = await _send_invite()
-        _, kwargs = mock.call_args
-        assert kwargs["start_tls"] is True
-
-
-# ---------------------------------------------------------------------------
-# Message headers
-# ---------------------------------------------------------------------------
-
-
-class TestMessageHeaders:
-    async def _message(self, **kwargs):
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
-            await send_invite_email(**{"to_email": "u@t.com", "invite_token": "t", "expires_days": 7, **kwargs})
-        msg, *_ = mock_send.call_args.args
-        return msg
-
-    async def test_to_header(self):
-        msg = await self._message(to_email="recipient@test.com")
-        assert msg["To"] == "recipient@test.com"
-
-    async def test_from_header_includes_name(self):
-        msg = await self._message()
-        assert "Test Site" in msg["From"]
-
-    async def test_from_header_includes_email(self):
-        msg = await self._message()
-        assert "noreply@example.com" in msg["From"]
-
-    async def test_subject_includes_site_name(self):
-        msg = await self._message()
-        assert "Test Site" in msg["Subject"]
-
-    async def test_message_is_multipart(self):
-        msg = await self._message()
-        assert msg.get_content_type() == "multipart/alternative"
-
-    async def test_has_plain_and_html_parts(self):
-        msg = await self._message()
-        content_types = [part.get_content_type() for part in msg.get_payload()]
-        assert "text/plain" in content_types
-        assert "text/html" in content_types
+        assert _kwargs(mock)["queued_at"]
 
 
 # ---------------------------------------------------------------------------
@@ -159,11 +104,10 @@ class TestMessageHeaders:
 
 class TestPlainTextBody:
     async def _plain(self, token="abc", days=7, to="u@t.com"):
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_invite_email(to, token, days)
-        msg, *_ = mock_send.call_args.args
-        return _plain_body(msg)
+        return _kwargs(mock_delay)["txt"]
 
     async def test_contains_invite_url(self):
         body = await self._plain(token="mytoken")
@@ -193,11 +137,10 @@ class TestPlainTextBody:
 
 class TestHtmlBody:
     async def _html(self, token="abc", days=7):
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_invite_email("u@t.com", token, days)
-        msg, *_ = mock_send.call_args.args
-        return _html_body(msg)
+        return _kwargs(mock_delay)["html"]
 
     async def test_contains_invite_url(self):
         html = await self._html(token="htmltoken")
@@ -223,14 +166,13 @@ class TestHtmlBody:
 
 class TestInviteUrl:
     async def _url_in_plain(self, token, frontend_url="http://example.com"):
-        mock_send = AsyncMock()
         from app.config import get_settings
 
         get_settings().frontend_url = frontend_url
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_invite_email("u@t.com", token, 7)
-        msg, *_ = mock_send.call_args.args
-        return _plain_body(msg)
+        return _kwargs(mock_delay)["txt"]
 
     async def test_token_appended_as_query_param(self):
         body = await self._url_in_plain("secrettoken")
@@ -309,34 +251,30 @@ class TestTemplateRendering:
 
 class TestSendTestEmail:
     async def _call(self, to="admin@test.com"):
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_test_email(to)
-        return mock_send
+        return mock_delay
 
-    async def test_send_called_once(self):
+    async def test_delay_called_once(self):
         mock = await self._call()
         mock.assert_called_once()
 
     async def test_recipient_is_to_email(self):
         mock = await self._call(to="specific@test.com")
-        msg, *_ = mock.call_args.args
-        assert "specific@test.com" in msg["To"]
+        assert "specific@test.com" in _kwargs(mock)["to"]
 
     async def test_subject_mentions_site_name(self):
         mock = await self._call()
-        msg, *_ = mock.call_args.args
-        assert "Test Site" in msg["Subject"]
+        assert "Test Site" in _kwargs(mock)["subject"]
 
     async def test_subject_mentions_smtp(self):
         mock = await self._call()
-        msg, *_ = mock.call_args.args
-        assert "SMTP" in msg["Subject"] or "Test" in msg["Subject"]
+        assert "SMTP" in _kwargs(mock)["subject"] or "Test" in _kwargs(mock)["subject"]
 
     async def test_body_confirms_delivery(self):
         mock = await self._call()
-        msg, *_ = mock.call_args.args
-        combined = _decoded_body(msg)
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
         assert "test" in combined.lower()
         assert "Test Site" in combined
 
@@ -350,30 +288,29 @@ class TestSendPendingSignupNotification:
     async def _call(self, admin_emails=None, display_name="Alice", email="alice@test.com"):
         if admin_emails is None:
             admin_emails = ["admin@example.com"]
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_pending_signup_notification(admin_emails, display_name, email)
-        return mock_send
+        return mock_delay
 
-    async def test_send_called_once(self):
+    async def test_delay_called_once(self):
         mock = await self._call()
         mock.assert_called_once()
 
     async def test_recipients_include_admin(self):
         mock = await self._call(admin_emails=["a@test.com", "b@test.com"])
-        msg, *_ = mock.call_args.args
-        assert "a@test.com" in msg["To"]
-        assert "b@test.com" in msg["To"]
+        to = _kwargs(mock)["to"]
+        assert "a@test.com" in to
+        assert "b@test.com" in to
 
     async def test_subject_mentions_signup(self):
         mock = await self._call()
-        msg, *_ = mock.call_args.args
-        assert "sign" in msg["Subject"].lower() or "approval" in msg["Subject"].lower()
+        subj = _kwargs(mock)["subject"].lower()
+        assert "sign" in subj or "approval" in subj
 
     async def test_body_contains_display_name(self):
         mock = await self._call(display_name="Weaver Jane")
-        msg, *_ = mock.call_args.args
-        combined = _decoded_body(msg)
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
         assert "Weaver Jane" in combined
 
 
@@ -384,24 +321,22 @@ class TestSendPendingSignupNotification:
 
 class TestSendSignupReceivedEmail:
     async def _call(self, to="user@test.com", display_name="Bob"):
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_signup_received_email(to, display_name)
-        return mock_send
+        return mock_delay
 
-    async def test_send_called_once(self):
+    async def test_delay_called_once(self):
         mock = await self._call()
         mock.assert_called_once()
 
     async def test_recipient_is_user(self):
         mock = await self._call(to="specific@test.com")
-        msg, *_ = mock.call_args.args
-        assert "specific@test.com" in msg["To"]
+        assert "specific@test.com" in _kwargs(mock)["to"]
 
     async def test_body_contains_display_name(self):
         mock = await self._call(display_name="Carol Weaver")
-        msg, *_ = mock.call_args.args
-        combined = _decoded_body(msg)
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
         assert "Carol Weaver" in combined
 
 
@@ -412,33 +347,27 @@ class TestSendSignupReceivedEmail:
 
 class TestSendAccountApprovedEmail:
     async def _call(self, to="user@test.com", display_name="Dave"):
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_account_approved_email(to, display_name)
-        return mock_send
+        return mock_delay
 
-    async def test_send_called_once(self):
+    async def test_delay_called_once(self):
         mock = await self._call()
         mock.assert_called_once()
 
     async def test_recipient_is_user(self):
         mock = await self._call(to="dave@test.com")
-        msg, *_ = mock.call_args.args
-        assert "dave@test.com" in msg["To"]
+        assert "dave@test.com" in _kwargs(mock)["to"]
 
     async def test_subject_mentions_account(self):
         mock = await self._call()
-        msg, *_ = mock.call_args.args
-        assert (
-            "account" in msg["Subject"].lower()
-            or "approved" in msg["Subject"].lower()
-            or "ready" in msg["Subject"].lower()
-        )
+        subj = _kwargs(mock)["subject"].lower()
+        assert "account" in subj or "approved" in subj or "ready" in subj
 
     async def test_body_contains_login_url(self):
         mock = await self._call()
-        msg, *_ = mock.call_args.args
-        combined = _decoded_body(msg)
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
         assert "login" in combined.lower() or "sign" in combined.lower()
 
 
@@ -449,24 +378,22 @@ class TestSendAccountApprovedEmail:
 
 class TestSendAccountDeniedEmail:
     async def _call(self, to="user@test.com", display_name="Eve"):
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_account_denied_email(to, display_name)
-        return mock_send
+        return mock_delay
 
-    async def test_send_called_once(self):
+    async def test_delay_called_once(self):
         mock = await self._call()
         mock.assert_called_once()
 
     async def test_recipient_is_user(self):
         mock = await self._call(to="eve@test.com")
-        msg, *_ = mock.call_args.args
-        assert "eve@test.com" in msg["To"]
+        assert "eve@test.com" in _kwargs(mock)["to"]
 
     async def test_body_contains_display_name(self):
         mock = await self._call(display_name="Eve Woven")
-        msg, *_ = mock.call_args.args
-        combined = _decoded_body(msg)
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
         assert "Eve Woven" in combined
 
 
@@ -479,28 +406,263 @@ class TestSendApprovalConfirmationToAdmins:
     async def _call(self, admin_emails=None, display_name="Frank", email="frank@test.com", approved_by="Admin A"):
         if admin_emails is None:
             admin_emails = ["admin@example.com"]
-        mock_send = AsyncMock()
-        with patch("app.services.email.aiosmtplib.send", mock_send):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
             await send_approval_confirmation_to_admins(admin_emails, display_name, email, approved_by)
-        return mock_send
+        return mock_delay
 
-    async def test_send_called_once(self):
+    async def test_delay_called_once(self):
         mock = await self._call()
         mock.assert_called_once()
 
     async def test_recipients_include_all_admins(self):
         mock = await self._call(admin_emails=["x@test.com", "y@test.com"])
-        msg, *_ = mock.call_args.args
-        assert "x@test.com" in msg["To"]
-        assert "y@test.com" in msg["To"]
+        to = _kwargs(mock)["to"]
+        assert "x@test.com" in to
+        assert "y@test.com" in to
 
     async def test_subject_contains_user_name(self):
         mock = await self._call(display_name="Frank Loom")
-        msg, *_ = mock.call_args.args
-        assert "Frank Loom" in msg["Subject"]
+        assert "Frank Loom" in _kwargs(mock)["subject"]
 
     async def test_body_contains_approved_by(self):
         mock = await self._call(approved_by="Super Admin")
-        msg, *_ = mock.call_args.args
-        combined = _decoded_body(msg)
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
         assert "Super Admin" in combined
+
+
+# ---------------------------------------------------------------------------
+# send_stack_startup_alert
+# ---------------------------------------------------------------------------
+
+_STARTUP_PROBE_ROWS = [
+    ("PostgreSQL", True, ""),
+    ("S3", True, ""),
+    ("Clerk", True, ""),
+    ("SMTP", False, "connection refused"),
+]
+
+
+class TestSendStackStartupAlert:
+    async def _call(
+        self,
+        emails=None,
+        env="dev",
+        app_base_url="http://localhost:3000",
+        version="1.2.3",
+        worker_version="1.2.3",
+        probe_status="ok",
+        probe_rows=None,
+        timestamp="2026-01-01T00:00:00Z",
+    ):
+        if emails is None:
+            emails = ["su@test.com"]
+        if probe_rows is None:
+            probe_rows = [("PostgreSQL", True, ""), ("Redis", True, "")]
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_stack_startup_alert(
+                superuser_emails=emails,
+                env=env,
+                app_base_url=app_base_url,
+                version=version,
+                worker_version=worker_version,
+                probe_status=probe_status,
+                probe_rows=probe_rows,
+                timestamp=timestamp,
+            )
+        return mock_delay
+
+    async def test_delay_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipients_include_all_superusers(self):
+        mock = await self._call(emails=["a@test.com", "b@test.com"])
+        to = _kwargs(mock)["to"]
+        assert "a@test.com" in to
+        assert "b@test.com" in to
+
+    async def test_subject_contains_env(self):
+        mock = await self._call(env="prod")
+        assert "prod" in _kwargs(mock)["subject"].lower()
+
+    async def test_subject_contains_started_on_success(self):
+        mock = await self._call(probe_status="ok")
+        assert "start" in _kwargs(mock)["subject"].lower()
+
+    async def test_subject_contains_warnings_on_probe_failure(self):
+        mock = await self._call(probe_status="degraded")
+        subj = _kwargs(mock)["subject"].lower()
+        assert "warn" in subj or "degrad" in subj or "fail" in subj
+
+    async def test_subject_contains_timestamp(self):
+        mock = await self._call(timestamp="2026-05-07T12:00:00Z")
+        subj = _kwargs(mock)["subject"]
+        assert "2026-05-07" in subj or "12:00" in subj
+
+    async def test_body_contains_version(self):
+        mock = await self._call(version="9.8.7")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "9.8.7" in combined
+
+    async def test_body_contains_worker_version(self):
+        mock = await self._call(worker_version="9.8.7-w")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "9.8.7-w" in combined
+
+    async def test_body_contains_admin_url(self):
+        mock = await self._call(app_base_url="http://weftmark.example.com")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "weftmark.example.com" in combined
+
+    async def test_body_contains_probe_service_name(self):
+        mock = await self._call(probe_rows=[("PostgreSQL", True, ""), ("SMTP", False, "timeout")])
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "PostgreSQL" in combined
+
+    async def test_body_contains_probe_failure_detail(self):
+        mock = await self._call(probe_rows=[("SMTP", False, "connection refused")])
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "connection refused" in combined
+
+    async def test_no_delay_when_smtp_unconfigured(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "smtp_user", "")
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_stack_startup_alert(
+                superuser_emails=["su@test.com"],
+                env="dev",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                worker_version=None,
+                probe_status="ok",
+                probe_rows=[],
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_delay.assert_not_called()
+
+    async def test_no_delay_when_no_recipients(self):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_stack_startup_alert(
+                superuser_emails=[],
+                env="dev",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                worker_version=None,
+                probe_status="ok",
+                probe_rows=[],
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_delay.assert_not_called()
+
+    async def test_worker_version_none_renders_cleanly(self):
+        mock = await self._call(worker_version=None)
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "{" not in combined
+
+
+# ---------------------------------------------------------------------------
+# send_stack_shutdown_alert
+# ---------------------------------------------------------------------------
+
+
+class TestSendStackShutdownAlert:
+    async def _call(
+        self,
+        emails=None,
+        env="dev",
+        app_base_url="http://localhost:3000",
+        version="1.0.0",
+        uptime_seconds=3661.0,
+        timestamp="2026-01-01T01:01:01Z",
+    ):
+        if emails is None:
+            emails = ["su@test.com"]
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_stack_shutdown_alert(
+                superuser_emails=emails,
+                env=env,
+                app_base_url=app_base_url,
+                version=version,
+                uptime_seconds=uptime_seconds,
+                timestamp=timestamp,
+            )
+        return mock_delay
+
+    async def test_delay_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipients_include_all_superusers(self):
+        mock = await self._call(emails=["x@test.com", "y@test.com"])
+        to = _kwargs(mock)["to"]
+        assert "x@test.com" in to
+        assert "y@test.com" in to
+
+    async def test_subject_contains_env(self):
+        mock = await self._call(env="prod")
+        assert "prod" in _kwargs(mock)["subject"].lower()
+
+    async def test_subject_contains_stopped(self):
+        mock = await self._call()
+        subj = _kwargs(mock)["subject"].lower()
+        assert "stop" in subj or "shut" in subj
+
+    async def test_subject_contains_timestamp(self):
+        mock = await self._call(timestamp="2026-05-07T23:59:00Z")
+        subj = _kwargs(mock)["subject"]
+        assert "2026-05-07" in subj or "23:59" in subj
+
+    async def test_body_contains_version(self):
+        mock = await self._call(version="5.4.3")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "5.4.3" in combined
+
+    async def test_body_contains_uptime(self):
+        mock = await self._call(uptime_seconds=3661.0)
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "1h" in combined or "3661" in combined or "1:01" in combined
+
+    async def test_body_contains_admin_url(self):
+        mock = await self._call(app_base_url="http://weftmark.example.com")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "weftmark.example.com" in combined
+
+    async def test_no_delay_when_smtp_unconfigured(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "smtp_user", "")
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_stack_shutdown_alert(
+                superuser_emails=["su@test.com"],
+                env="dev",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                uptime_seconds=100.0,
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_delay.assert_not_called()
+
+    async def test_no_delay_when_no_recipients(self):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_stack_shutdown_alert(
+                superuser_emails=[],
+                env="dev",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                uptime_seconds=100.0,
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_delay.assert_not_called()
+
+    async def test_body_has_no_unfilled_placeholders(self):
+        mock = await self._call()
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "{" not in combined

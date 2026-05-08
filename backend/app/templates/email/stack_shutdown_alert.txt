@@ -1,0 +1,12 @@
+STACK STOPPED — {app_name} ({env})
+
+Event:       Clean shutdown
+Time (UTC):  {timestamp}
+Environment: {env}
+URL:         {app_base_url}
+
+VERSIONS
+Backend:  {version}
+Uptime:   {uptime_str}
+
+View admin dashboard: {admin_url}

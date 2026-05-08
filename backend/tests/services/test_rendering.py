@@ -19,6 +19,7 @@ from app.services.rendering import (
     DRAWDOWN_SCALE,
     load_draft,
     render_drawdown_only,
+    render_drawdown_preview,
     render_drawdown_tile,
     render_full_draft,
     render_full_draft_liftplan,
@@ -241,11 +242,21 @@ class TestRenderFullDraft:
         assert len(result) > 100
 
     def test_scale_affects_output_size(self):
-        # scale=2 causes PyWeaving fill-marker math to go negative; min is ~4
         draft = load_draft(MINIMAL_WIF)
         small = render_full_draft(draft, scale=4)
         large = render_full_draft(draft, scale=10)
         assert len(large) > len(small)
+
+    def test_scale_1_does_not_raise(self):
+        """paint_fill_marker patch: scale < 4 must not raise 'x1 >= x0'."""
+        draft = load_draft(MINIMAL_WIF)
+        result = render_full_draft(draft, scale=1)
+        assert result[:4] == b"\x89PNG"
+
+    def test_scale_2_does_not_raise(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_full_draft(draft, scale=2)
+        assert result[:4] == b"\x89PNG"
 
     def test_eight_shaft_renders(self):
         draft = load_draft(EIGHT_SHAFT_WIF)
@@ -287,7 +298,6 @@ class TestRenderFullDraftLiftplan:
         assert standard != liftplan
 
     def test_scale_affects_output_size(self):
-        # scale=2 causes PyWeaving fill-marker math to go negative; min is ~4
         draft = load_draft(MINIMAL_WIF)
         small = render_full_draft_liftplan(draft, scale=4)
         large = render_full_draft_liftplan(draft, scale=10)
@@ -470,6 +480,99 @@ class TestRenderDrawdownTile:
         png, _, _, actual_row_count, scale_used = render_drawdown_tile(draft, start_row=1, row_count=2, scale=scale)
         img = Image.open(_io.BytesIO(png))
         assert img.height == actual_row_count * scale_used
+
+
+# ---------------------------------------------------------------------------
+# render_drawdown_preview
+# ---------------------------------------------------------------------------
+
+
+def _make_wide_wif(warp_threads: int) -> bytes:
+    threading = "\n".join(f"{i + 1}={((i % 4) + 1)}" for i in range(warp_threads))
+    treadling = "\n".join(f"{i + 1}={((i % 4) + 1)}" for i in range(warp_threads))
+    return f"""[WIF]
+Version=1.1
+Date=April 2024
+Source Program=TestSuite
+
+[CONTENTS]
+THREADING=true
+TIEUP=true
+TREADLING=true
+COLOR TABLE=true
+COLOR PALETTE=true
+
+[WEAVING]
+Shafts=4
+Treadles=4
+Rising Shed=true
+
+[WARP]
+Threads={warp_threads}
+Units=Inches
+Color=1
+
+[WEFT]
+Threads={warp_threads}
+Units=Inches
+Color=2
+
+[COLOR PALETTE]
+Range=0,255
+Form=Decimal
+
+[COLOR TABLE]
+1=200,50,50
+2=50,50,200
+
+[THREADING]
+{threading}
+
+[TIEUP]
+1=1
+2=2
+3=3
+4=4
+
+[TREADLING]
+{treadling}
+""".encode()
+
+
+class TestRenderDrawdownPreview:
+    def test_returns_tuple(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_preview(draft)
+        assert isinstance(result, tuple) and len(result) == 2
+
+    def test_first_element_is_png(self):
+        draft = load_draft(MINIMAL_WIF)
+        png, _ = render_drawdown_preview(draft)
+        assert png[:4] == b"\x89PNG"
+
+    def test_second_element_is_scale(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, scale = render_drawdown_preview(draft)
+        assert isinstance(scale, int) and scale >= 1
+
+    def test_wide_draft_scale_1_does_not_raise(self):
+        """Regression: >200 warp threads forces scale<4; fill-marker patch must prevent crash."""
+        draft = load_draft(_make_wide_wif(300))
+        png, scale = render_drawdown_preview(draft, max_px=800)
+        assert png[:4] == b"\x89PNG"
+        assert scale < 4
+
+    def test_very_wide_draft_scale_1(self):
+        draft = load_draft(_make_wide_wif(900))
+        png, scale = render_drawdown_preview(draft, max_px=800)
+        assert png[:4] == b"\x89PNG"
+        assert scale == 1
+
+    def test_empty_draft_raises_value_error(self):
+        draft = load_draft(MINIMAL_WIF)
+        draft.warp = []
+        with pytest.raises(ValueError, match="no drawdown data"):
+            render_drawdown_preview(draft)
 
 
 # ---------------------------------------------------------------------------

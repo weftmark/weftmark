@@ -1808,6 +1808,44 @@ async def get_cve_scan_summary(
 
 
 # ---------------------------------------------------------------------------
+# S3 audit summary (for admin banner)
+# ---------------------------------------------------------------------------
+
+
+class S3AuditSummary(BaseModel):
+    orphaned_count: int | None = None
+    scanned_at: str | None = None
+    not_applicable: bool = False
+
+
+@router.get("/s3-audit/summary", response_model=S3AuditSummary)
+async def get_s3_audit_summary(
+    _: User = Depends(require_superuser),
+) -> S3AuditSummary:
+    import json as _json
+
+    from app.tasks.s3_audit import S3_AUDIT_SUMMARY_KEY
+
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        raw = client.get(S3_AUDIT_SUMMARY_KEY)
+        client.close()
+        if raw:
+            data = _json.loads(raw)
+            return S3AuditSummary(
+                orphaned_count=data["orphaned_count"],
+                scanned_at=data["scanned_at"],
+                not_applicable=data.get("not_applicable", False),
+            )
+    except Exception as exc:
+        log.warning("s3_audit_summary_error: %s", exc)
+    return S3AuditSummary()
+
+
+# ---------------------------------------------------------------------------
 # Worker status
 # ---------------------------------------------------------------------------
 
@@ -1825,6 +1863,8 @@ class WorkerInfo(BaseModel):
     version: str | None = None
     concurrency: int | None = None
     completed_tasks: int | None = None
+    uptime: float | None = None
+    memory_mb: float | None = None
     active_tasks: list[WorkerActiveTask] = []
     reserved_tasks: list[WorkerActiveTask] = []
 
@@ -1899,6 +1939,8 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
                     time_start=t.get("time_start") if include_time else None,
                 )
 
+            rusage = ws.get("rusage") or {}
+            maxrss_kb = rusage.get("maxrss")
             workers.append(
                 WorkerInfo(
                     name=name,
@@ -1906,6 +1948,8 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
                     version=node_versions.get(name),
                     concurrency=pool.get("max-concurrency"),
                     completed_tasks=sum(total_dict.values()) if total_dict else None,
+                    uptime=ws.get("uptime"),
+                    memory_mb=round(maxrss_kb / 1024, 1) if maxrss_kb else None,
                     active_tasks=[_task(t) for t in (active.get(name) or [])],
                     reserved_tasks=[_task(t, include_time=False) for t in (reserved.get(name) or [])],
                 )
@@ -2021,3 +2065,150 @@ async def run_purge_soft_deleted(
     task = purge_soft_deleted_records.delay()
     record_queued(get_settings(), task.id, "app.tasks.purge.purge_soft_deleted_records", "maintenance")
     return {"status": "queued", "task_id": task.id}
+
+
+# ---------------------------------------------------------------------------
+# Scheduled tasks (superuser only)
+# ---------------------------------------------------------------------------
+
+
+class ScheduledTaskResponse(BaseModel):
+    name: str
+    display_name: str
+    description: str
+    enabled: bool
+    cron: str
+    config: dict
+    next_runs: list[str]
+    last_fired_at: datetime | None
+    updated_at: datetime
+
+
+class PatchScheduledTaskBody(BaseModel):
+    enabled: bool | None = None
+    cron: str | None = None
+    config: dict | None = None
+
+
+def _next_runs(cron: str, n: int = 3) -> list[str]:
+    from croniter import croniter
+
+    base = datetime.now(timezone.utc)
+    cron_iter = croniter(cron, base)
+    return [cron_iter.get_next(datetime).isoformat() for _ in range(n)]
+
+
+def _validate_cron(cron: str) -> bool:
+    try:
+        from croniter import croniter
+
+        croniter(cron, datetime.now(timezone.utc)).get_next()
+        return True
+    except Exception:
+        return False
+
+
+async def _get_or_seed_scheduled_task(name: str, db: AsyncSession):
+    from app.models.scheduled_task import ScheduledTask
+    from app.tasks.scheduler import REGISTRY
+
+    row = await db.scalar(select(ScheduledTask).where(ScheduledTask.name == name))
+    if row is None and name in REGISTRY:
+        entry = REGISTRY[name]
+        row = ScheduledTask(
+            name=name,
+            display_name=entry["display_name"],
+            description=entry["description"],
+            enabled=False,
+            cron=entry["default_cron"],
+            config=entry.get("default_config", {}),
+        )
+        db.add(row)
+        await db.flush()
+    return row
+
+
+def _task_to_response(task) -> ScheduledTaskResponse:
+    return ScheduledTaskResponse(
+        name=task.name,
+        display_name=task.display_name,
+        description=task.description,
+        enabled=task.enabled,
+        cron=task.cron,
+        config=task.config or {},
+        next_runs=_next_runs(task.cron),
+        last_fired_at=task.last_fired_at,
+        updated_at=task.updated_at,
+    )
+
+
+@router.get("/scheduled-tasks")
+async def list_scheduled_tasks(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_superuser),
+) -> list[ScheduledTaskResponse]:
+    from app.models.scheduled_task import ScheduledTask
+    from app.tasks.scheduler import REGISTRY
+
+    rows = {r.name: r for r in (await db.scalars(select(ScheduledTask))).all()}
+    result = []
+    for name, entry in REGISTRY.items():
+        if name not in rows:
+            row = ScheduledTask(
+                name=name,
+                display_name=entry["display_name"],
+                description=entry["description"],
+                enabled=False,
+                cron=entry["default_cron"],
+                config=entry.get("default_config", {}),
+            )
+            db.add(row)
+            await db.flush()
+            rows[name] = row
+    await db.commit()
+    for name in REGISTRY:
+        if name in rows:
+            await db.refresh(rows[name])
+            result.append(_task_to_response(rows[name]))
+    return result
+
+
+@router.patch("/scheduled-tasks/{name}")
+async def patch_scheduled_task(
+    name: str,
+    body: PatchScheduledTaskBody,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_superuser),
+) -> ScheduledTaskResponse:
+    from app.models.scheduled_task import ScheduledTask
+    from app.tasks.scheduler import REGISTRY
+
+    if name not in REGISTRY:
+        raise HTTPException(status_code=404, detail="Scheduled task not found")
+
+    row = await db.scalar(select(ScheduledTask).where(ScheduledTask.name == name))
+    if row is None:
+        entry = REGISTRY[name]
+        row = ScheduledTask(
+            name=name,
+            display_name=entry["display_name"],
+            description=entry["description"],
+            enabled=False,
+            cron=entry["default_cron"],
+            config=entry.get("default_config", {}),
+        )
+        db.add(row)
+        await db.flush()
+
+    if body.cron is not None:
+        if not _validate_cron(body.cron):
+            raise HTTPException(status_code=422, detail="Invalid cron expression")
+        row.cron = body.cron
+    if body.enabled is not None:
+        row.enabled = body.enabled
+    if body.config is not None:
+        row.config = body.config
+
+    await db.commit()
+    await db.refresh(row)
+    return _task_to_response(row)

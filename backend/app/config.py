@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     frontend_url: str = "http://localhost:3000"
     api_url: str = "http://localhost:8000"
+    app_base_url: str = ""  # public-facing URL for alert email links; falls back to frontend_url when empty
+    stack_alert_emails_enabled: bool = True  # set false in dev to suppress startup/shutdown alert emails
+    email_ttl_hours: int = 6  # discard queued emails older than this
+    email_staleness_warning_minutes: int = 60  # inject staleness banner after this many minutes in queue
 
     # Database
     # For local dev: set POSTGRES_* vars and leave POSTGRES_DSN blank.

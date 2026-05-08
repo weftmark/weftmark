@@ -218,6 +218,7 @@ function WeavingPatternView({
   const tilesRef = useRef<Record<number, string>>({});
   const [tiles, setTiles] = useState<Record<number, string>>({});
   const fetchingRef = useRef<Set<number>>(new Set());
+  const fetchControllersRef = useRef<Map<number, AbortController>>(new Map());
   // tileErrorsRef: per-tile error messages (Map<startRow, message>). Ref so fetchTile
   // can check it without adding to effect deps. State mirror for render.
   const tileErrorsRef = useRef<Map<number, string>>(new Map());
@@ -245,12 +246,22 @@ function WeavingPatternView({
 
     // Evict tiles and errors outside the needed set (errors auto-clear on eviction so
     // re-entering the same position retries fresh without an explicit user action).
+    // Also abort any in-flight fetches for evicted tiles — if we re-enter that range
+    // before the old fetch completes, fetchingRef would block a new fetch and the
+    // cancelled result would be discarded, leaving the tile permanently unloaded.
     let errorsChanged = false;
     for (const k of Object.keys(tilesRef.current)) {
       const n = parseInt(k);
       if (!needed.has(n)) {
         URL.revokeObjectURL(tilesRef.current[n]);
         delete tilesRef.current[n];
+      }
+    }
+    for (const n of fetchingRef.current) {
+      if (!needed.has(n)) {
+        fetchControllersRef.current.get(n)?.abort();
+        fetchControllersRef.current.delete(n);
+        fetchingRef.current.delete(n);
       }
     }
     for (const n of tileErrorsRef.current.keys()) {
@@ -267,6 +278,7 @@ function WeavingPatternView({
       if (tileErrorsRef.current.has(startRow)) return;
       fetchingRef.current.add(startRow);
       const controller = new AbortController();
+      fetchControllersRef.current.set(startRow, controller);
       const timeoutId = setTimeout(() => controller.abort(), 15000);
       try {
         const token = await getAuthToken();
@@ -299,6 +311,7 @@ function WeavingPatternView({
         }
       } finally {
         fetchingRef.current.delete(startRow);
+        fetchControllersRef.current.delete(startRow);
       }
     };
 
@@ -1127,6 +1140,7 @@ export function ProjectDetailPage() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (isPlanning) {
         if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); handleLocalStep("advance"); }
