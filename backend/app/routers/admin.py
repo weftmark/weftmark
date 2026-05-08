@@ -35,6 +35,7 @@ from app.services.email import (
     send_approval_confirmation_to_admins,
     send_test_email,
 )
+from app.services.storage_quota import MAX_USER_STORAGE_BYTES
 from app.version import VERSION
 
 log = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ class AdminUserCounts(BaseModel):
     projects_completed: int
     looms: int
     storage_bytes: int
+    storage_quota_bytes: int
 
 
 class AdminUserResponse(BaseModel):
@@ -483,6 +485,7 @@ async def list_users(
                 projects_completed=project_completed.get(u.id, 0),
                 looms=loom_counts.get(u.id, 0),
                 storage_bytes=storage_bytes.get(u.id, 0),
+                storage_quota_bytes=MAX_USER_STORAGE_BYTES,
             ),
         )
         for u in users
@@ -594,6 +597,7 @@ async def patch_user(
             projects_completed=proj_completed,
             looms=looms,
             storage_bytes=int(project_storage) + int(loom_storage),
+            storage_quota_bytes=MAX_USER_STORAGE_BYTES,
         ),
     )
 
@@ -642,7 +646,14 @@ async def ban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
-        counts=AdminUserCounts(drafts=0, projects_active=0, projects_completed=0, looms=0, storage_bytes=0),
+        counts=AdminUserCounts(
+            drafts=0,
+            projects_active=0,
+            projects_completed=0,
+            looms=0,
+            storage_bytes=0,
+            storage_quota_bytes=MAX_USER_STORAGE_BYTES,
+        ),
     )
 
 
@@ -681,7 +692,14 @@ async def unban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
-        counts=AdminUserCounts(drafts=0, projects_active=0, projects_completed=0, looms=0, storage_bytes=0),
+        counts=AdminUserCounts(
+            drafts=0,
+            projects_active=0,
+            projects_completed=0,
+            looms=0,
+            storage_bytes=0,
+            storage_quota_bytes=MAX_USER_STORAGE_BYTES,
+        ),
     )
 
 

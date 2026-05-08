@@ -305,7 +305,29 @@ export function UserDetailModal({ target, onClose }: Props) {
           <div className="space-y-1.5">
             <InfoRow label="Joined">{formatDate(u.created_at)}</InfoRow>
             <InfoRow label="Last login">{formatRelative(u.last_active_at)}</InfoRow>
-            <InfoRow label="Storage">{formatBytes(u.counts.storage_bytes)}</InfoRow>
+            {/* Storage quota */}
+            <div className="flex gap-4 text-sm">
+              <span className="w-28 shrink-0 text-muted-foreground">Storage</span>
+              <div className="flex-1">
+                {(() => {
+                  const used = u.counts.storage_bytes;
+                  const quota = u.counts.storage_quota_bytes;
+                  const pct = Math.min(Math.round((used / quota) * 100), 100);
+                  const barColor = pct >= 90 ? "bg-red-500" : pct >= 75 ? "bg-amber-500" : "bg-primary";
+                  return (
+                    <>
+                      <div className="flex justify-between mb-1">
+                        <span>{formatBytes(used)}</span>
+                        <span className="text-muted-foreground">{formatBytes(quota)} · {pct}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
             <InfoRow label="Drafts">{u.counts.drafts}</InfoRow>
             <InfoRow label="Projects">
               {u.counts.projects_active} active, {u.counts.projects_completed} completed
