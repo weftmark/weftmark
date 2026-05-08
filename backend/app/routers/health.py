@@ -327,6 +327,7 @@ async def _record_health_transition(prev_status: str | None, result: ReadinessRe
 
 async def _detailed_refresh_loop() -> None:
     global _detailed_cache, _last_alert_status, _last_alert_at
+    await asyncio.sleep(DETAILED_REFRESH_INTERVAL_S)  # skip transient startup failures
     while True:
         try:
             result = await _run_detailed_probes()
@@ -374,9 +375,11 @@ async def _detailed_refresh_loop() -> None:
         await asyncio.sleep(DETAILED_REFRESH_INTERVAL_S)
 
 
-def start_detailed_refresh() -> None:
+def start_detailed_refresh(initial_status: str | None = None) -> None:
     """Create the background refresh task. Call from lifespan after startup."""
-    global _detailed_task
+    global _detailed_task, _last_alert_status
+    if initial_status is not None:
+        _last_alert_status = initial_status
     _detailed_task = asyncio.create_task(_detailed_refresh_loop())
 
 

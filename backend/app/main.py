@@ -162,7 +162,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     readiness = await run_startup_probes()
     set_readiness(readiness)
-    start_detailed_refresh()
+    start_detailed_refresh(initial_status=readiness.status)
     asyncio.create_task(_send_startup_alert(readiness))
     asyncio.create_task(_write_startup_server_event(readiness, start_time))
 
