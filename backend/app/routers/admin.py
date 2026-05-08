@@ -1863,6 +1863,8 @@ class WorkerInfo(BaseModel):
     version: str | None = None
     concurrency: int | None = None
     completed_tasks: int | None = None
+    uptime: float | None = None
+    memory_mb: float | None = None
     active_tasks: list[WorkerActiveTask] = []
     reserved_tasks: list[WorkerActiveTask] = []
 
@@ -1937,6 +1939,8 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
                     time_start=t.get("time_start") if include_time else None,
                 )
 
+            rusage = ws.get("rusage") or {}
+            maxrss_kb = rusage.get("maxrss")
             workers.append(
                 WorkerInfo(
                     name=name,
@@ -1944,6 +1948,8 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
                     version=node_versions.get(name),
                     concurrency=pool.get("max-concurrency"),
                     completed_tasks=sum(total_dict.values()) if total_dict else None,
+                    uptime=ws.get("uptime"),
+                    memory_mb=round(maxrss_kb / 1024, 1) if maxrss_kb else None,
                     active_tasks=[_task(t) for t in (active.get(name) or [])],
                     reserved_tasks=[_task(t, include_time=False) for t in (reserved.get(name) or [])],
                 )

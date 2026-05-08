@@ -1875,14 +1875,22 @@ function WorkerCard({ worker, apiVersion }: { worker: WorkerInfo; apiVersion: st
       </div>
       {isOnline && (
         <div className="divide-y">
-          <div className="grid grid-cols-2 gap-x-4 px-4 py-2.5 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs">Concurrency</span>
+          <div className="grid grid-cols-4 divide-x px-4 py-2.5 text-sm">
+            <div className="flex flex-col gap-0.5 pr-4">
+              <span className="text-xs text-muted-foreground">Concurrency</span>
               <span className="font-medium tabular-nums">{worker.concurrency ?? "—"}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground text-xs">Completed</span>
+            <div className="flex flex-col gap-0.5 px-4">
+              <span className="text-xs text-muted-foreground">Completed</span>
               <span className="font-medium tabular-nums">{worker.completed_tasks?.toLocaleString() ?? "—"}</span>
+            </div>
+            <div className="flex flex-col gap-0.5 px-4">
+              <span className="text-xs text-muted-foreground">Uptime</span>
+              <span className="font-medium tabular-nums">{worker.uptime != null ? formatUptime(worker.uptime) : "—"}</span>
+            </div>
+            <div className="flex flex-col gap-0.5 pl-4">
+              <span className="text-xs text-muted-foreground">Memory</span>
+              <span className="font-medium tabular-nums">{worker.memory_mb != null ? `${worker.memory_mb} MB` : "—"}</span>
             </div>
           </div>
           {hasActive && (
@@ -2387,11 +2395,9 @@ function AuditLogTab() {
   const [debouncedQ, setDebouncedQ] = useState<string>("");
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q), 300);
+    const t = setTimeout(() => { setDebouncedQ(q); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [q]);
-
-  useEffect(() => { setPage(1); }, [eventType, debouncedQ]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["audit-log", page, eventType, debouncedQ],
@@ -2405,7 +2411,7 @@ function AuditLogTab() {
       <div className="flex gap-2 flex-wrap">
         <select
           value={eventType}
-          onChange={(e) => setEventType(e.target.value)}
+          onChange={(e) => { setEventType(e.target.value); setPage(1); }}
           className="text-sm border rounded px-2 py-1.5 bg-background"
         >
           <option value="">All events</option>
