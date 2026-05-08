@@ -32,14 +32,15 @@ jobs:
 
       - name: Probe API URL
         run: |
-          echo "HTTP status: $(curl -o /dev/null -sS -w '%{http_code}' --max-time 10 '${{ secrets.EULA_API_URL }}')"
-          curl -fsS --max-time 10 "${{ secrets.EULA_API_URL }}" \
+          echo "API URL: ${{ vars.EULA_API_URL }}"
+          echo "HTTP status: $(curl -o /dev/null -sS -w '%{http_code}' --max-time 10 '${{ vars.EULA_API_URL }}')"
+          curl -fsS --max-time 10 "${{ vars.EULA_API_URL }}" \
             | python3 -c "import sys,json; d=json.load(sys.stdin); print('version:', d['version']); print('effective_date:', d['effective_date'])"
 
       - name: Run export script
         id: export
         run: |
-          output=$(python tools/export_eula_migration.py --api-url "${{ secrets.EULA_API_URL }}" 2>&1)
+          output=$(python tools/export_eula_migration.py --api-url "${{ vars.EULA_API_URL }}" 2>&1)
           echo "$output"
           written=$(echo "$output" | grep '^Written:' | awk '{print $2}')
           if [ -z "$written" ]; then
