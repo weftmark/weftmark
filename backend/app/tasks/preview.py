@@ -46,6 +46,16 @@ async def _generate_preview(task: Task, draft_id: uuid.UUID) -> None:
             try:
                 wif_bytes = storage.read_file(draft.wif_path)
                 wif_draft = rendering.load_draft(wif_bytes)
+
+                # Full color preview (threading + tie-up + drawdown) if not yet generated
+                if not draft.preview_path:
+                    try:
+                        png_full = rendering.render_full_draft(wif_draft)
+                        draft.preview_path = storage.save_preview(draft.id, png_full)
+                    except Exception as exc:
+                        log.warning("preview_task_full_failed draft_id=%s error=%s", draft_id, exc)
+
+                # Reduced drawdown preview for the project screen
                 png, scale = rendering.render_drawdown_preview(wif_draft, settings.drawdown_preview_max_px)
                 preview_path = storage.save_drawdown_preview(png)
                 draft.drawdown_preview_path = preview_path

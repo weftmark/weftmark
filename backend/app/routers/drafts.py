@@ -1,3 +1,4 @@
+import asyncio
 import urllib.parse
 import uuid
 from datetime import datetime
@@ -150,16 +151,7 @@ async def create_draft(
     db.add(draft)
     await db.flush()  # get draft.id without committing
 
-    draft.wif_path = storage.save_wif(draft.id, wif_file.filename, wif_bytes)
-
-    # Render preview if parseable
-    if lint.is_parseable and not lint.errors:
-        try:
-            wif_draft = rendering.load_draft(wif_bytes)
-            png = rendering.render_full_draft(wif_draft)
-            draft.preview_path = storage.save_preview(draft.id, png)
-        except Exception as exc:
-            draft.lint_warnings = list(draft.lint_warnings) + [f"Preview rendering failed: {exc}"]
+    draft.wif_path = await storage.asave_wif(draft.id, wif_file.filename, wif_bytes)
 
     await db.commit()
     await db.refresh(draft)
@@ -217,9 +209,9 @@ async def get_preview(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db)
-    if not storage.preview_exists(draft.preview_path):
+    if not await storage.afile_exists(draft.preview_path):
         raise HTTPException(status_code=404, detail="Preview not available")
-    png = storage.read_preview(draft.preview_path)  # type: ignore[arg-type]
+    png = await storage.aread_file(draft.preview_path)  # type: ignore[arg-type]
     return Response(content=png, media_type="image/png")
 
 
@@ -242,13 +234,14 @@ async def get_drawdown(
     if start_row is not None or row_count is not None:
         if not draft.wif_path:
             raise HTTPException(status_code=404, detail="No WIF file for this draft")
-        if not storage.file_exists(draft.wif_path):
+        if not await storage.afile_exists(draft.wif_path):
             raise HTTPException(status_code=404, detail="WIF file not found in storage")
-        wif_bytes = storage.read_file(draft.wif_path)
+        wif_bytes = await storage.aread_file(draft.wif_path)
         try:
-            wif_draft = rendering.load_draft(wif_bytes)
-            png, total_rows, actual_start, actual_row_count, actual_scale = rendering.render_drawdown_tile(
-                wif_draft, start_row=start_row or 0, row_count=row_count
+            _sr = start_row or 0
+            _rc = row_count
+            png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(
+                lambda: rendering.render_drawdown_tile(rendering.load_draft(wif_bytes), start_row=_sr, row_count=_rc)
             )
         except HTTPException:
             raise
@@ -267,8 +260,8 @@ async def get_drawdown(
         )
 
     # Non-tiled: serve pre-generated cached preview if available
-    if draft.drawdown_preview_path and storage.file_exists(draft.drawdown_preview_path):
-        png = storage.read_drawdown_preview(draft.drawdown_preview_path)
+    if draft.drawdown_preview_path and await storage.afile_exists(draft.drawdown_preview_path):
+        png = await storage.aread_drawdown_preview(draft.drawdown_preview_path)
         scale = draft.drawdown_preview_scale or rendering.DRAWDOWN_SCALE
         total_rows = draft.weft_threads or 0
         return Response(
@@ -286,13 +279,14 @@ async def get_drawdown(
     if not draft.wif_path:
         raise HTTPException(status_code=404, detail="No WIF file for this draft")
 
-    if not storage.file_exists(draft.wif_path):
+    if not await storage.afile_exists(draft.wif_path):
         raise HTTPException(status_code=404, detail="WIF file not found in storage")
 
-    wif_bytes = storage.read_file(draft.wif_path)
+    wif_bytes = await storage.aread_file(draft.wif_path)
     try:
-        wif_draft = rendering.load_draft(wif_bytes)
-        png, total_rows, actual_scale = rendering.render_drawdown_only(wif_draft)
+        png, total_rows, actual_scale = await asyncio.to_thread(
+            lambda: rendering.render_drawdown_only(rendering.load_draft(wif_bytes))
+        )
     except HTTPException:
         raise
     except Exception as exc:
@@ -322,9 +316,9 @@ async def download_wif(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db)
-    if not draft.wif_path or not storage.file_exists(draft.wif_path):
+    if not draft.wif_path or not await storage.afile_exists(draft.wif_path):
         raise HTTPException(status_code=404, detail="WIF file not available for this draft")
-    wif_bytes = storage.read_file(draft.wif_path)
+    wif_bytes = await storage.aread_file(draft.wif_path)
     filename = draft.wif_filename or "draft.wif"
     return Response(
         content=wif_bytes,
@@ -345,9 +339,9 @@ async def download_wif_modified(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db)
-    if not draft.wif_modified_path or not storage.file_exists(draft.wif_modified_path):
+    if not draft.wif_modified_path or not await storage.afile_exists(draft.wif_modified_path):
         raise HTTPException(status_code=404, detail="No modified WIF file for this draft")
-    wif_bytes = storage.read_file(draft.wif_modified_path)
+    wif_bytes = await storage.aread_file(draft.wif_modified_path)
     base = (draft.wif_filename or "draft.wif").rsplit(".", 1)[0]
     filename = f"{base}-modified.wif"
     return Response(
@@ -392,16 +386,16 @@ async def generate_liftplan(
         raise HTTPException(status_code=400, detail="WIF file has no [TIEUP] section — cannot compute lift plan")
 
     # Read from modified file if one exists (to chain onto prior modifications)
-    has_mod = draft.wif_modified_path and storage.file_exists(draft.wif_modified_path)
+    has_mod = draft.wif_modified_path and await storage.afile_exists(draft.wif_modified_path)
     source_path = draft.wif_modified_path if has_mod else draft.wif_path
-    wif_bytes = storage.read_file(source_path)
+    wif_bytes = await storage.aread_file(source_path)
     try:
-        updated_bytes = wif_parser.compute_liftplan(wif_bytes)
+        updated_bytes = await asyncio.to_thread(wif_parser.compute_liftplan, wif_bytes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     modified_filename = draft.wif_filename.rsplit(".", 1)[0] + "-modified.wif"
-    draft.wif_modified_path = storage.save_wif(draft.id, modified_filename, updated_bytes)
+    draft.wif_modified_path = await storage.asave_wif(draft.id, modified_filename, updated_bytes)
     draft.has_liftplan = True
     draft.liftplan_generated = True
 

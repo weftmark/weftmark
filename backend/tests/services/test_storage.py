@@ -409,3 +409,47 @@ class TestS3Paths:
         monkeypatch.setattr("boto3.client", mock_boto3_client)
         storage._s3()
         mock_boto3_client.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Async wrappers (asyncio.to_thread round-trips)
+# ---------------------------------------------------------------------------
+
+
+class TestAsyncWrappers:
+    async def test_asave_wif_and_aread_file_round_trip(self):
+        pid = _pid()
+        key = await storage.asave_wif(pid, "test.wif", b"WIF DATA")
+        assert await storage.aread_file(key) == b"WIF DATA"
+
+    async def test_afile_exists_true_after_save(self):
+        pid = _pid()
+        key = await storage.asave_wif(pid, "test.wif", b"data")
+        assert await storage.afile_exists(key) is True
+
+    async def test_afile_exists_false_for_missing(self):
+        assert await storage.afile_exists("no/such/file.wif") is False
+
+    async def test_afile_exists_false_for_none(self):
+        assert await storage.afile_exists(None) is False
+
+    async def test_asave_project_photo_and_read_round_trip(self):
+        pid, phid = _pid(), _pid()
+        key = await storage.asave_project_photo(pid, phid, ".jpg", b"JPEG DATA")
+        assert await storage.aread_file(key) == b"JPEG DATA"
+
+    async def test_adelete_project_photo_removes_file(self):
+        pid, phid = _pid(), _pid()
+        key = await storage.asave_project_photo(pid, phid, ".jpg", b"data")
+        await storage.adelete_project_photo(key)
+        assert await storage.afile_exists(key) is False
+
+    async def test_aread_drawdown_preview_round_trip(self):
+        data = b"\x89PNG\r\n\x1a\n"
+        key = storage.save_drawdown_preview(data)
+        assert await storage.aread_drawdown_preview(key) == data
+
+    async def test_asave_drawdown_preview_round_trip(self):
+        data = b"\x89PNG\r\n\x1a\n"
+        key = await storage.asave_drawdown_preview(data)
+        assert storage.read_drawdown_preview(key) == data
