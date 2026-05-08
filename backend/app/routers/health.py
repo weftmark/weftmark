@@ -44,6 +44,7 @@ _HEALTH_ALERT_COOLDOWN_S = 3600  # re-alert at most once per hour if status stay
 
 # Superuser email cache — refreshed when DB is healthy; used as fallback when DB is down
 _superuser_email_cache: list[str] = []
+_open_health_event_id: int | None = None
 
 
 def set_readiness(result: ReadinessResponse) -> None:
@@ -270,6 +271,60 @@ async def _dispatch_health_alert(result: ReadinessResponse, is_recovery: bool) -
         log.exception("Failed to send health alert email")
 
 
+async def _record_health_transition(prev_status: str | None, result: ReadinessResponse) -> None:
+    """Write or close a ServerEvent row to capture health status transitions.
+
+    Silently skips on any DB error — the events log is best-effort.
+    """
+    global _open_health_event_id
+    new_status = result.status
+    if prev_status == new_status:
+        return
+    try:
+        from app.database import AsyncSessionLocal
+        from app.services.server_events import (
+            ET_HEALTH_DEGRADED,
+            ET_HEALTH_ERROR,
+            SEV_ERROR,
+            SEV_WARN,
+            STATUS_OPEN,
+            close_event,
+            write_event,
+        )
+
+        async with AsyncSessionLocal() as db:
+            # Close any open health event when recovering
+            if new_status == "ok" and _open_health_event_id is not None:
+                from sqlalchemy import select
+
+                from app.models.server_event import ServerEvent
+
+                evt = await db.scalar(select(ServerEvent).where(ServerEvent.id == _open_health_event_id))
+                if evt and evt.status == STATUS_OPEN:
+                    await close_event(db, evt)
+                    await db.commit()
+                _open_health_event_id = None
+                return
+
+            # Open a new event when health goes bad
+            if new_status in ("degraded", "error"):
+                failed = [s.name for s in result.services if not s.ok]
+                et = ET_HEALTH_ERROR if new_status == "error" else ET_HEALTH_DEGRADED
+                sev = SEV_ERROR if new_status == "error" else SEV_WARN
+                evt = await write_event(
+                    db,
+                    event_type=et,
+                    severity=sev,
+                    message=f"Services failing: {', '.join(failed)}" if failed else "Health probe failure",
+                    details={"failed_services": failed, "probe_status": new_status},
+                )
+                await db.commit()
+                await db.refresh(evt)
+                _open_health_event_id = evt.id
+    except Exception:
+        log.debug("Could not record health transition event", exc_info=True)
+
+
 async def _detailed_refresh_loop() -> None:
     global _detailed_cache, _last_alert_status, _last_alert_at
     while True:
@@ -279,6 +334,7 @@ async def _detailed_refresh_loop() -> None:
             postgres_ok = any(s.name == "PostgreSQL" and s.ok for s in result.services)
             if postgres_ok:
                 await _refresh_superuser_email_cache()
+            await _record_health_transition(_last_alert_status, result)
             new_status = result.status
             now = datetime.now(timezone.utc)
             prev_status = _last_alert_status

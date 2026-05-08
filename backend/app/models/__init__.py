@@ -15,6 +15,7 @@ from app.models.pending_signup import PendingSignup
 from app.models.project import Project, ProjectPhoto, ProjectStep
 from app.models.scheduled_task import ScheduledTask
 from app.models.seed_run import SeedRun
+from app.models.server_event import ServerEvent
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
@@ -41,4 +42,5 @@ __all__ = [
     "ProjectStep",
     "EulaVersion",
     "ScheduledTask",
+    "ServerEvent",
 ]

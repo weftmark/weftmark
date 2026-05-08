@@ -38,6 +38,7 @@ import {
   runPurgeSoftDeleted,
   listScheduledTasks,
   patchScheduledTask,
+  getServerEvents,
   type ScheduledTask,
   type TaskHistoryItem,
   type AdminUser,
@@ -55,6 +56,7 @@ import {
   type CveFinding,
   type WorkerStatus,
   type WorkerInfo,
+  type ServerEvent,
 } from "@/api/admin";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
@@ -1233,6 +1235,131 @@ function ServicesTab() {
       )}
 
       <DbInfoPanel />
+      <ServerEventsPanel />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Server events panel (inside ServicesTab)
+// ---------------------------------------------------------------------------
+
+const SERVER_EVENT_TYPES = [
+  "stack.startup",
+  "stack.shutdown",
+  "health.degraded",
+  "health.error",
+  "health.check",
+];
+
+function severityBadge(severity: ServerEvent["severity"]) {
+  if (severity === "error") return <span className="px-1.5 py-0.5 rounded text-xs bg-destructive/15 text-destructive font-medium">error</span>;
+  if (severity === "warn") return <span className="px-1.5 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 font-medium">warn</span>;
+  return <span className="px-1.5 py-0.5 rounded text-xs bg-muted text-muted-foreground font-medium">info</span>;
+}
+
+function formatElapsed(ms: number | null) {
+  if (ms === null) return "—";
+  if (ms < 1000) return `${ms}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  const m = Math.floor(s / 60);
+  const rem = Math.round(s % 60);
+  return `${m}m ${rem}s`;
+}
+
+function ServerEventsPanel() {
+  const [page, setPage] = useState(1);
+  const [eventType, setEventType] = useState("");
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["server-events", page, eventType],
+    queryFn: () => getServerEvents({ page, page_size: 25, event_type: eventType || undefined }),
+    refetchInterval: 60_000,
+  });
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Server Events Log</h3>
+        <div className="flex items-center gap-2">
+          <select
+            value={eventType}
+            onChange={(e) => { setEventType(e.target.value); setPage(1); }}
+            className="text-xs border rounded px-2 py-1 bg-background"
+          >
+            <option value="">All types</option>
+            {SERVER_EVENT_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          {data && (
+            <span className="text-xs text-muted-foreground">
+              {data.total.toLocaleString()} event{data.total !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
+      {isError && <p className="text-xs text-destructive">Failed to load server events.</p>}
+
+      {data && data.items.length === 0 && (
+        <p className="text-xs text-muted-foreground">No events recorded yet.</p>
+      )}
+
+      {data && data.items.length > 0 && (
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/50 text-muted-foreground">
+              <tr>
+                <th className="text-left px-3 py-2">Time</th>
+                <th className="text-left px-3 py-2">Type</th>
+                <th className="text-left px-3 py-2">Severity</th>
+                <th className="text-left px-3 py-2">Status</th>
+                <th className="text-left px-3 py-2">Elapsed</th>
+                <th className="text-left px-3 py-2">Version</th>
+                <th className="text-left px-3 py-2">Message</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {data.items.map((evt) => (
+                <tr key={evt.id} className="hover:bg-muted/30">
+                  <td className="px-3 py-2 whitespace-nowrap text-muted-foreground font-mono">
+                    {new Date(evt.started_at).toLocaleString()}
+                  </td>
+                  <td className="px-3 py-2 font-mono">{evt.event_type}</td>
+                  <td className="px-3 py-2">{severityBadge(evt.severity)}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{evt.status}</td>
+                  <td className="px-3 py-2 font-mono whitespace-nowrap">{formatElapsed(evt.elapsed_ms)}</td>
+                  <td className="px-3 py-2 font-mono text-muted-foreground">{evt.app_version}</td>
+                  <td className="px-3 py-2 text-muted-foreground max-w-xs truncate">{evt.message ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {data && data.pages > 1 && (
+        <div className="flex items-center gap-2 justify-center text-xs">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="px-2 py-1 border rounded disabled:opacity-40"
+          >
+            ←
+          </button>
+          <span className="text-muted-foreground">Page {data.page} of {data.pages}</span>
+          <button
+            disabled={page >= data.pages}
+            onClick={() => setPage((p) => p + 1)}
+            className="px-2 py-1 border rounded disabled:opacity-40"
+          >
+            →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
