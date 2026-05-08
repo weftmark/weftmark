@@ -15,6 +15,8 @@ from app.services.email import (
     send_account_approved_email,
     send_account_denied_email,
     send_approval_confirmation_to_admins,
+    send_health_degraded_alert,
+    send_health_recovered_alert,
     send_invite_email,
     send_pending_signup_notification,
     send_signup_received_email,
@@ -658,6 +660,215 @@ class TestSendStackShutdownAlert:
                 app_base_url="http://localhost:3000",
                 version="1.0.0",
                 uptime_seconds=100.0,
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_delay.assert_not_called()
+
+    async def test_body_has_no_unfilled_placeholders(self):
+        mock = await self._call()
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "{" not in combined
+
+
+# ---------------------------------------------------------------------------
+# send_health_degraded_alert
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestSendHealthDegradedAlert:
+    async def _call(
+        self,
+        emails=None,
+        env="production",
+        app_base_url="http://weftmark.example.com",
+        version="1.0.0",
+        probe_rows=None,
+        status="degraded",
+        timestamp="2026-01-01T00:00:00Z",
+    ):
+        if emails is None:
+            emails = ["su@test.com"]
+        if probe_rows is None:
+            probe_rows = [("PostgreSQL", True, ""), ("SMTP", False, "connection refused")]
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_health_degraded_alert(
+                superuser_emails=emails,
+                env=env,
+                app_base_url=app_base_url,
+                version=version,
+                probe_rows=probe_rows,
+                status=status,
+                timestamp=timestamp,
+            )
+        return mock_delay
+
+    async def test_delay_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipients_correct(self):
+        mock = await self._call(emails=["a@test.com", "b@test.com"])
+        to = _kwargs(mock)["to"]
+        assert "a@test.com" in to
+        assert "b@test.com" in to
+
+    async def test_subject_contains_env(self):
+        mock = await self._call(env="production")
+        assert "production" in _kwargs(mock)["subject"].lower()
+
+    async def test_subject_contains_degraded_or_health(self):
+        mock = await self._call(status="degraded")
+        subj = _kwargs(mock)["subject"].lower()
+        assert "degraded" in subj or "health" in subj
+
+    async def test_subject_error_status(self):
+        mock = await self._call(status="error")
+        subj = _kwargs(mock)["subject"].lower()
+        assert "error" in subj or "health" in subj
+
+    async def test_subject_contains_timestamp(self):
+        mock = await self._call(timestamp="2026-05-08T12:00:00Z")
+        subj = _kwargs(mock)["subject"]
+        assert "2026-05-08" in subj or "12:00" in subj
+
+    async def test_body_contains_failed_service(self):
+        mock = await self._call(probe_rows=[("SMTP", False, "connection refused")])
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "SMTP" in combined
+
+    async def test_body_contains_failure_detail(self):
+        mock = await self._call(probe_rows=[("SMTP", False, "connection refused")])
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "connection refused" in combined
+
+    async def test_body_contains_admin_url(self):
+        mock = await self._call(app_base_url="http://weftmark.example.com")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "weftmark.example.com" in combined
+
+    async def test_body_contains_version(self):
+        mock = await self._call(version="9.8.7")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "9.8.7" in combined
+
+    async def test_no_delay_when_smtp_unconfigured(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "smtp_user", "")
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_health_degraded_alert(
+                superuser_emails=["su@test.com"],
+                env="production",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                probe_rows=[],
+                status="degraded",
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_delay.assert_not_called()
+
+    async def test_no_delay_when_no_recipients(self):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_health_degraded_alert(
+                superuser_emails=[],
+                env="production",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                probe_rows=[],
+                status="degraded",
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_delay.assert_not_called()
+
+    async def test_body_has_no_unfilled_placeholders(self):
+        mock = await self._call()
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "{" not in combined
+
+
+# ---------------------------------------------------------------------------
+# send_health_recovered_alert
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestSendHealthRecoveredAlert:
+    async def _call(
+        self,
+        emails=None,
+        env="production",
+        app_base_url="http://weftmark.example.com",
+        version="1.0.0",
+        timestamp="2026-01-01T00:00:00Z",
+    ):
+        if emails is None:
+            emails = ["su@test.com"]
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_health_recovered_alert(
+                superuser_emails=emails,
+                env=env,
+                app_base_url=app_base_url,
+                version=version,
+                timestamp=timestamp,
+            )
+        return mock_delay
+
+    async def test_delay_called_once(self):
+        mock = await self._call()
+        mock.assert_called_once()
+
+    async def test_recipients_correct(self):
+        mock = await self._call(emails=["a@test.com", "b@test.com"])
+        to = _kwargs(mock)["to"]
+        assert "a@test.com" in to
+        assert "b@test.com" in to
+
+    async def test_subject_contains_env(self):
+        mock = await self._call(env="production")
+        assert "production" in _kwargs(mock)["subject"].lower()
+
+    async def test_subject_contains_recovered(self):
+        mock = await self._call()
+        assert "recover" in _kwargs(mock)["subject"].lower()
+
+    async def test_body_contains_admin_url(self):
+        mock = await self._call(app_base_url="http://weftmark.example.com")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "weftmark.example.com" in combined
+
+    async def test_body_contains_version(self):
+        mock = await self._call(version="9.8.7")
+        combined = _kwargs(mock)["txt"] + " " + _kwargs(mock)["html"]
+        assert "9.8.7" in combined
+
+    async def test_no_delay_when_smtp_unconfigured(self, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "smtp_user", "")
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_health_recovered_alert(
+                superuser_emails=["su@test.com"],
+                env="production",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
+                timestamp="2026-01-01T00:00:00Z",
+            )
+        mock_delay.assert_not_called()
+
+    async def test_no_delay_when_no_recipients(self):
+        mock_delay = MagicMock()
+        with patch("app.tasks.email_task.send_email.delay", mock_delay):
+            await send_health_recovered_alert(
+                superuser_emails=[],
+                env="production",
+                app_base_url="http://localhost:3000",
+                version="1.0.0",
                 timestamp="2026-01-01T00:00:00Z",
             )
         mock_delay.assert_not_called()

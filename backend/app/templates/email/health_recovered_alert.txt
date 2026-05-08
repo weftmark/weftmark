@@ -1,0 +1,11 @@
+HEALTH RECOVERED — {env}
+========================================
+
+Time (UTC):   {timestamp}
+Environment:  {env}
+URL:          {app_base_url}
+Backend:      {version}
+
+All service probes are now passing.
+
+View the admin dashboard: {admin_url}

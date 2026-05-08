@@ -1,0 +1,12 @@
+HEALTH {status_label} — {env}
+========================================
+
+Time (UTC):   {timestamp}
+Environment:  {env}
+URL:          {app_base_url}
+Backend:      {version}
+
+SERVICE PROBE RESULTS
+{probe_table_txt}
+
+View the admin dashboard: {admin_url}
