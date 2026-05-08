@@ -145,14 +145,33 @@ def _seeded_versions() -> set[str]:
 # Migration file generator
 # ---------------------------------------------------------------------------
 
-def _next_revision() -> str:
-    """Return the next four-digit revision number (zero-padded)."""
+def _next_file_prefix() -> str:
+    """Return the next four-digit filename prefix (zero-padded)."""
     existing = [
         int(m.group(1))
         for p in MIGRATIONS_DIR.glob("*.py")
         if (m := re.match(r"^(\d{4})_", p.name))
     ]
     return f"{(max(existing) + 1) if existing else 1:04d}"
+
+
+def _head_revision_id() -> str:
+    """Return the actual revision ID string from the last migration file."""
+    numbered = sorted(
+        p for p in MIGRATIONS_DIR.glob("*.py")
+        if re.match(r"^\d{4}_", p.name)
+    )
+    if not numbered:
+        return "0000"
+    content = numbered[-1].read_text(encoding="utf-8")
+    m = re.search(r'^revision\s*(?::\s*str)?\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+    return m.group(1) if m else numbered[-1].stem.split("_")[0]
+
+
+def _new_revision_id() -> str:
+    """Generate a random 12-hex-char revision ID matching Alembic's default style."""
+    import secrets
+    return secrets.token_hex(6)
 
 
 def _make_migration(version: dict, revision: str, prev_revision: str) -> str:
@@ -261,20 +280,15 @@ def main() -> None:
 
     print(f"\n{len(pending)} version(s) need a migration: {[v['version'] for v in pending]}\n")
 
-    # Find the current head revision from the last migration file
-    all_revisions = sorted(
-        p.stem.split("_")[0]
-        for p in MIGRATIONS_DIR.glob("*.py")
-        if re.match(r"^\d{4}_", p.name)
-    )
-    prev_revision = all_revisions[-1] if all_revisions else "0000"
+    prev_revision = _head_revision_id()
 
     generated: list[Path] = []
     for version in pending:
-        revision = _next_revision()
+        file_prefix = _next_file_prefix()
+        revision = _new_revision_id()
         content = _make_migration(version, revision, prev_revision)
         slug = re.sub(r"[^a-z0-9]+", "_", version["version"].lower()).strip("_")
-        filename = f"{revision}_eula_version_{slug}.py"
+        filename = f"{file_prefix}_eula_version_{slug}.py"
         out_path = MIGRATIONS_DIR / filename
 
         if args.dry_run:
@@ -285,7 +299,7 @@ def main() -> None:
             print(f"Written: {out_path.relative_to(REPO_ROOT)}")
             generated.append(out_path)
 
-        prev_revision = revision
+        prev_revision = revision  # chain: next migration's down_revision is this one's revision
 
     if generated and not args.dry_run:
         print("\nNext steps:")
