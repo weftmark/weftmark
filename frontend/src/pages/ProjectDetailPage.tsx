@@ -1457,11 +1457,11 @@ export function ProjectDetailPage() {
               {isActiveTracking && (
                 <div className="mt-6">
                   {!confirmComplete ? (
-                    <Button onClick={() => setConfirmComplete(true)}>Mark complete</Button>
+                    <Button variant="success" onClick={() => setConfirmComplete(true)}>Mark complete</Button>
                   ) : (
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-sm">Mark this project as completed?</span>
-                      <Button size="sm" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
+                      <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
                       <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
                     </div>
                   )}
@@ -1643,7 +1643,7 @@ export function ProjectDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {!confirmComplete && !confirmAbandon && (
                   <>
-                    <Button variant="outline" size="sm" onClick={() => setConfirmComplete(true)}>
+                    <Button variant="success" size="sm" onClick={() => setConfirmComplete(true)}>
                       Mark complete
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
@@ -1654,7 +1654,7 @@ export function ProjectDetailPage() {
                 {confirmComplete && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Mark this project as completed?</span>
-                    <Button size="sm" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
+                    <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
                   </div>
                 )}
