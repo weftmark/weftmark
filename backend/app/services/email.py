@@ -236,6 +236,58 @@ async def send_stack_shutdown_alert(
     await _send(superuser_emails, subject, txt, html)
 
 
+async def send_health_degraded_alert(
+    superuser_emails: list[str],
+    env: str,
+    app_base_url: str,
+    version: str,
+    probe_rows: list[tuple[str, bool, str]],
+    status: str,
+    timestamp: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not superuser_emails:
+        return
+    admin_url = f"{app_base_url}/admin" if app_base_url else f"{settings.frontend_url}/admin"
+    status_label = "Error" if status == "error" else "Degraded"
+    txt, html = _render(
+        "health_degraded_alert",
+        env=env,
+        app_base_url=app_base_url,
+        version=version,
+        status_label=status_label,
+        timestamp=timestamp,
+        admin_url=admin_url,
+        probe_table_txt=_probe_table_txt(probe_rows),
+        probe_table_html=_probe_table_html(probe_rows),
+    )
+    subject = f"[{settings.app_name} {env}] Health {status_label} — {timestamp}"
+    await _send(superuser_emails, subject, txt, html)
+
+
+async def send_health_recovered_alert(
+    superuser_emails: list[str],
+    env: str,
+    app_base_url: str,
+    version: str,
+    timestamp: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not superuser_emails:
+        return
+    admin_url = f"{app_base_url}/admin" if app_base_url else f"{settings.frontend_url}/admin"
+    txt, html = _render(
+        "health_recovered_alert",
+        env=env,
+        app_base_url=app_base_url,
+        version=version,
+        timestamp=timestamp,
+        admin_url=admin_url,
+    )
+    subject = f"[{settings.app_name} {env}] Health Recovered — {timestamp}"
+    await _send(superuser_emails, subject, txt, html)
+
+
 async def send_test_email(to_email: str) -> None:
     settings = get_settings()
     txt, html = _render("test_email")
