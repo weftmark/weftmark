@@ -28,7 +28,20 @@ from pyweaving import Draft  # noqa: E402
 from pyweaving.render import ImageRenderer  # noqa: E402
 from pyweaving.wif import WIFReader  # noqa: E402
 
-from app.config import get_settings
+
+# PyWeaving's paint_fill_marker insets by 2px on each side; at scale < 4 this
+# produces endx - 2 < startx + 2, causing Pillow to raise "x1 must be >= x0".
+# Patch it to skip drawing when the cell is too small to fit the inset.
+def _paint_fill_marker(self, draw, box):  # type: ignore[override]
+    startx, starty, endx, endy = box
+    x0, y0, x1, y1 = startx + 2, starty + 2, endx - 2, endy - 2
+    if x0 < x1 and y0 < y1:
+        draw.rectangle((x0, y0, x1, y1), fill=self.markers)
+
+
+ImageRenderer.paint_fill_marker = _paint_fill_marker  # type: ignore[method-assign]
+
+from app.config import get_settings  # noqa: E402
 
 DRAWDOWN_SCALE = 20
 
