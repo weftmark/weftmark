@@ -374,3 +374,33 @@ export const patchScheduledTask = (
   name: string,
   body: { enabled?: boolean; cron?: string; config?: Record<string, unknown> },
 ) => api.patch<ScheduledTask>(`/api/admin/scheduled-tasks/${name}`, body);
+
+export interface ServerEvent {
+  id: number;
+  event_type: string;
+  severity: "info" | "warn" | "error";
+  status: "open" | "closed";
+  started_at: string;
+  ended_at: string | null;
+  elapsed_ms: number | null;
+  app_version: string;
+  message: string | null;
+  details: Record<string, unknown> | null;
+}
+
+export interface ServerEventPage {
+  items: ServerEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+export const getServerEvents = (params: { page?: number; page_size?: number; event_type?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.event_type) qs.set("event_type", params.event_type);
+  const query = qs.toString();
+  return api.get<ServerEventPage>(`/api/admin/server-events${query ? `?${query}` : ""}`);
+};

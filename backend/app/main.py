@@ -96,6 +96,63 @@ async def _send_shutdown_alert() -> None:
         log.exception("Failed to send shutdown alert email")
 
 
+async def _write_startup_server_event(readiness, boot_started_at: datetime) -> None:
+    try:
+        from app.database import AsyncSessionLocal
+        from app.models.server_event import ServerEvent
+        from app.services.server_events import ET_STARTUP, SEV_ERROR, SEV_INFO, SEV_WARN, close_open_events
+        from app.version import VERSION as _VERSION
+
+        async with AsyncSessionLocal() as db:
+            await close_open_events(db, event_types=[ET_STARTUP])
+            now = datetime.now(timezone.utc)
+            elapsed_ms = int((now - boot_started_at).total_seconds() * 1000)
+            sev = SEV_INFO if readiness.status == "ok" else (SEV_ERROR if readiness.status == "error" else SEV_WARN)
+            failed = [s.name for s in readiness.services if not s.ok]
+            evt = ServerEvent(
+                event_type=ET_STARTUP,
+                severity=sev,
+                status="closed",
+                started_at=boot_started_at,
+                ended_at=now,
+                elapsed_ms=elapsed_ms,
+                app_version=_VERSION,
+                message=f"Started — probe status: {readiness.status}",
+                details={"probe_status": readiness.status, "failed_services": failed},
+            )
+            db.add(evt)
+            await db.commit()
+    except Exception:
+        log.exception("Failed to write startup server event")
+
+
+async def _write_shutdown_server_event() -> None:
+    try:
+        from app.database import AsyncSessionLocal
+        from app.models.server_event import ServerEvent
+        from app.services.server_events import ET_SHUTDOWN, SEV_INFO
+        from app.version import VERSION as _VERSION
+
+        now = datetime.now(timezone.utc)
+        uptime_ms = int((now - start_time).total_seconds() * 1000)
+        async with AsyncSessionLocal() as db:
+            evt = ServerEvent(
+                event_type=ET_SHUTDOWN,
+                severity=SEV_INFO,
+                status="closed",
+                started_at=now,
+                ended_at=now,
+                elapsed_ms=uptime_ms,
+                app_version=_VERSION,
+                message=f"Stopped — {uptime_ms // 1000}s uptime",
+                details={"uptime_ms": uptime_ms},
+            )
+            db.add(evt)
+            await db.commit()
+    except Exception:
+        log.exception("Failed to write shutdown server event")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global start_time
@@ -107,12 +164,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     set_readiness(readiness)
     start_detailed_refresh()
     asyncio.create_task(_send_startup_alert(readiness))
+    asyncio.create_task(_write_startup_server_event(readiness, start_time))
 
     yield
 
     stop_detailed_refresh()
     try:
-        await asyncio.wait_for(_send_shutdown_alert(), timeout=5.0)
+        await asyncio.wait_for(
+            asyncio.gather(_send_shutdown_alert(), _write_shutdown_server_event(), return_exceptions=True),
+            timeout=5.0,
+        )
     except Exception:
         pass
 

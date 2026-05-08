@@ -24,6 +24,7 @@ from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
 from app.models.pending_signup import PendingSignup
 from app.models.project import Project, ProjectPhoto
+from app.models.server_event import ServerEvent
 from app.models.user import User
 from app.models.yarn import Yarn
 from app.services.audit import write_audit_log
@@ -1033,6 +1034,58 @@ async def list_audit_log(
         for r in rows.all()
     ]
     return AuditLogPage(items=items, total=total, page=page, page_size=page_size, pages=pages)
+
+
+# ---------------------------------------------------------------------------
+# Server events log
+# ---------------------------------------------------------------------------
+
+
+class ServerEventResponse(BaseModel):
+    id: int
+    event_type: str
+    severity: str
+    status: str
+    started_at: datetime
+    ended_at: datetime | None
+    elapsed_ms: int | None
+    app_version: str
+    message: str | None
+    details: dict | None
+
+    model_config = {"from_attributes": True}
+
+
+class ServerEventPage(BaseModel):
+    items: list[ServerEventResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("/server-events", response_model=ServerEventPage)
+async def list_server_events(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    page: int = 1,
+    page_size: int = 50,
+    event_type: str | None = None,
+) -> ServerEventPage:
+    stmt = select(ServerEvent)
+    count_stmt = select(func.count()).select_from(ServerEvent)
+
+    if event_type:
+        stmt = stmt.where(ServerEvent.event_type == event_type)
+        count_stmt = count_stmt.where(ServerEvent.event_type == event_type)
+
+    total = await db.scalar(count_stmt) or 0
+    pages = max(1, (total + page_size - 1) // page_size)
+    offset = (page - 1) * page_size
+
+    rows = await db.scalars(stmt.order_by(ServerEvent.started_at.desc()).offset(offset).limit(page_size))
+    items = [ServerEventResponse.model_validate(r) for r in rows.all()]
+    return ServerEventPage(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 # ---------------------------------------------------------------------------
