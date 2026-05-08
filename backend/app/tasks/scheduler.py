@@ -22,21 +22,145 @@ REGISTRY: dict[str, dict] = {
             "Scheduled runs skip npm scanning (Python deps only)."
         ),
         "default_cron": "0 2 * * *",
+        "default_config": {},
+    },
+    "s3_audit": {
+        "display_name": "S3 Orphan Audit",
+        "description": (
+            "Scans S3 bucket for files not referenced in the database. "
+            "Results are flagged in the admin warning banner. "
+            "Not applicable when STORAGE_BACKEND=local."
+        ),
+        "default_cron": "0 3 * * 0",
+        "default_config": {},
+    },
+    "stale_signup_dismissal": {
+        "display_name": "Stale Signup Dismissal",
+        "description": (
+            "Auto-dismisses pending signup requests older than the configured threshold. "
+            "Dismissed signups are removed with no notification sent."
+        ),
+        "default_cron": "0 4 * * *",
+        "default_config": {"days": 30},
+    },
+    "invite_pruning": {
+        "display_name": "Expired Invite Pruning",
+        "description": (
+            "Deletes expired, accepted, and revoked invite records older than the retention window. "
+            "Active (pending, not expired) invites are never deleted."
+        ),
+        "default_cron": "30 3 * * 1",
+        "default_config": {"retention_days": 90},
+    },
+    "audit_log_pruning": {
+        "display_name": "Audit Log Pruning",
+        "description": (
+            "Deletes audit log entries older than the retention window. "
+            "Security events (user.banned, user.deleted, user.elevated) are never pruned."
+        ),
+        "default_cron": "0 3 * * 2",
+        "default_config": {"retention_days": 90},
+    },
+    "heartbeat": {
+        "display_name": "Worker Heartbeat",
+        "description": (
+            "No-op task that records itself in the task history every 15 minutes. "
+            "Absence of recent heartbeat entries indicates a worker outage."
+        ),
+        "default_cron": "*/15 * * * *",
+        "default_config": {},
+    },
+    "preview_retry": {
+        "display_name": "Failed Preview Retry",
+        "description": (
+            "Re-dispatches drawdown preview generation for drafts missing a preview. "
+            "Skips drafts uploaded in the last 10 minutes to avoid racing initial generation."
+        ),
+        "default_cron": "0 5 * * *",
+        "default_config": {"limit": 50},
     },
 }
 
 
-def _dispatch_cve_scan(settings):
+def _dispatch_cve_scan(settings, task=None):
     from app.services.task_history import record_queued
     from app.tasks.cve_scan import run_cve_scan
 
-    task = run_cve_scan.delay({})
-    record_queued(settings, task.id, "app.tasks.cve_scan.run_cve_scan", "scheduled:cve_scan")
-    return task
+    t = run_cve_scan.delay({})
+    record_queued(settings, t.id, "app.tasks.cve_scan.run_cve_scan", "scheduled:cve_scan")
+    return t
+
+
+def _dispatch_s3_audit(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.s3_audit import run_s3_orphan_scan
+
+    t = run_s3_orphan_scan.delay()
+    record_queued(settings, t.id, "app.tasks.s3_audit.run_s3_orphan_scan", "scheduled:s3_audit")
+    return t
+
+
+def _dispatch_stale_signup_dismissal(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import dismiss_stale_signups
+
+    cfg = (task.config or {}) if task else {}
+    days = int(cfg.get("days", 30))
+    t = dismiss_stale_signups.delay(days=days)
+    record_queued(settings, t.id, "app.tasks.maintenance.dismiss_stale_signups", "scheduled:stale_signup_dismissal")
+    return t
+
+
+def _dispatch_invite_pruning(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import prune_expired_invites
+
+    cfg = (task.config or {}) if task else {}
+    retention_days = int(cfg.get("retention_days", 90))
+    t = prune_expired_invites.delay(retention_days=retention_days)
+    record_queued(settings, t.id, "app.tasks.maintenance.prune_expired_invites", "scheduled:invite_pruning")
+    return t
+
+
+def _dispatch_audit_log_pruning(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import prune_audit_log
+
+    cfg = (task.config or {}) if task else {}
+    retention_days = int(cfg.get("retention_days", 90))
+    t = prune_audit_log.delay(retention_days=retention_days)
+    record_queued(settings, t.id, "app.tasks.maintenance.prune_audit_log", "scheduled:audit_log_pruning")
+    return t
+
+
+def _dispatch_heartbeat(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import worker_heartbeat
+
+    t = worker_heartbeat.delay()
+    record_queued(settings, t.id, "app.tasks.maintenance.worker_heartbeat", "scheduled:heartbeat")
+    return t
+
+
+def _dispatch_preview_retry(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import retry_failed_previews
+
+    cfg = (task.config or {}) if task else {}
+    limit = int(cfg.get("limit", 50))
+    t = retry_failed_previews.delay(limit=limit)
+    record_queued(settings, t.id, "app.tasks.maintenance.retry_failed_previews", "scheduled:preview_retry")
+    return t
 
 
 DISPATCH_FNS: dict[str, object] = {
     "cve_scan": _dispatch_cve_scan,
+    "s3_audit": _dispatch_s3_audit,
+    "stale_signup_dismissal": _dispatch_stale_signup_dismissal,
+    "invite_pruning": _dispatch_invite_pruning,
+    "audit_log_pruning": _dispatch_audit_log_pruning,
+    "heartbeat": _dispatch_heartbeat,
+    "preview_retry": _dispatch_preview_retry,
 }
 
 
@@ -71,7 +195,7 @@ def run_scheduled_tasks() -> None:
                     if next_fire <= now:
                         dispatch_fn = DISPATCH_FNS.get(task.name)
                         if dispatch_fn:
-                            dispatch_fn(settings)
+                            dispatch_fn(settings, task)
                             task.last_fired_at = now
                             fired.append(task.name)
                             log.info("scheduled_task_fired name=%s", task.name)

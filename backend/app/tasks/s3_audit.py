@@ -14,6 +14,8 @@ from app.celery_app import celery_app
 
 log = logging.getLogger(__name__)
 
+S3_AUDIT_SUMMARY_KEY = "weftmark:s3_audit:summary"
+
 
 @celery_app.task(
     bind=True,
@@ -40,6 +42,7 @@ async def _do_scan() -> dict:
     settings = get_settings()
 
     if settings.storage_backend != "s3":
+        _store_s3_summary(settings, 0, not_applicable=True)
         return {
             "total_s3_keys": 0,
             "total_db_paths": 0,
@@ -112,10 +115,30 @@ async def _do_scan() -> dict:
         for k in sorted(orphaned_keys)
     ]
 
-    return {
+    result = {
         "total_s3_keys": len(s3_files),
         "total_db_paths": len(db_paths),
         "orphaned_count": len(orphaned_files),
         "orphaned_files": orphaned_files,
         "not_applicable": False,
     }
+    _store_s3_summary(settings, len(orphaned_files))
+    return result
+
+
+def _store_s3_summary(settings, orphaned_count: int, not_applicable: bool = False) -> None:
+    import json
+    from datetime import datetime, timezone
+
+    try:
+        import redis as _redis
+
+        scanned_at = datetime.now(timezone.utc).isoformat()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        client.set(
+            S3_AUDIT_SUMMARY_KEY,
+            json.dumps({"orphaned_count": orphaned_count, "scanned_at": scanned_at, "not_applicable": not_applicable}),
+        )
+        client.close()
+    except Exception as exc:
+        log.warning("s3_audit summary redis error: %s", exc)
