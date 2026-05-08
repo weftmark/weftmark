@@ -27,6 +27,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install script dependencies
+        run: pip install packaging
+
       - name: Run export script
         id: export
         run: |
