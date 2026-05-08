@@ -6,6 +6,7 @@ export interface AdminUserCounts {
   projects_completed: number;
   looms: number;
   storage_bytes: number;
+  storage_quota_bytes: number;
 }
 
 export interface AdminUser {
