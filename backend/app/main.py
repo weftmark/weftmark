@@ -11,10 +11,12 @@ from app.config import get_settings
 from app.logging_config import configure_logging
 from app.middleware import SecurityHeadersMiddleware
 from app.routers import admin, auth, dev, drafts, health, logs, looms, projects, system, users, yarn
+from app.telemetry import configure_telemetry
 from app.version import VERSION
 
 settings = get_settings()
 configure_logging(settings.log_level)
+configure_telemetry(settings)
 log = logging.getLogger(__name__)
 
 start_time: datetime = datetime.now(timezone.utc)
@@ -186,6 +188,11 @@ app = FastAPI(
     redoc_url="/api/redoc" if settings.debug else None,
     openapi_url="/api/openapi.json" if settings.debug else None,
 )
+
+if settings.otel_exporter_otlp_endpoint:
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+    FastAPIInstrumentor().instrument_app(app, excluded_urls="health,auth/clerk/webhook")
 
 app.add_middleware(SecurityHeadersMiddleware, production=settings.app_env == "production")
 app.add_middleware(
