@@ -63,9 +63,13 @@ def configure_telemetry(settings) -> None:
         metrics.set_meter_provider(meter_provider)
 
         # Logs — bridge Python logging → OTel log pipeline → Loki
+        from opentelemetry.sdk._logs import LoggingHandler
+
         logger_provider = LoggerProvider(resource=resource)
         logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
         set_logger_provider(logger_provider)
+        # Attach OTel handler to root logger so all Python log records are exported
+        logging.getLogger().addHandler(LoggingHandler(logger_provider=logger_provider))
 
         # Auto-instrumentors (S3/httpx covered by botocore + httpx instrumentors)
         from opentelemetry.instrumentation.celery import CeleryInstrumentor
@@ -74,7 +78,7 @@ def configure_telemetry(settings) -> None:
         HTTPXClientInstrumentor().instrument()
         BotocoreInstrumentor().instrument()
         CeleryInstrumentor().instrument()
-        # Bridge Python log records to OTel without overriding our JSON formatter
+        # Inject OTel trace context into Python log records (trace_id, span_id fields)
         LoggingInstrumentor().instrument(set_logging_format=False)
 
         _configured = True
