@@ -46,6 +46,7 @@ x-worker: &worker-base
     - internal
   volumes:
     - uploads:/app/uploads
+    - geoip_data:/app/data
   depends_on:
     redis:
       condition: service_healthy
@@ -156,6 +157,7 @@ services:
       GEOIP_DB_PATH: ${GEOIP_DB_PATH:-/app/data/GeoLite2-City.mmdb}
     volumes:
       - uploads:/app/uploads
+      - geoip_data:/app/data
     depends_on:
       redis:
         condition: service_healthy
@@ -257,3 +259,4 @@ networks:
 volumes:
   postgres_data:
   uploads:
+  geoip_data:
