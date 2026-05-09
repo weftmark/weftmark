@@ -1,0 +1,146 @@
+"""Tests for business metrics counters (app/metrics.py).
+
+Each test patches the module-level counter with one backed by an
+InMemoryMetricReader so we can assert the exact value and attributes
+without a live OTel Collector.
+"""
+
+import pytest
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+import app.metrics as bm
+
+
+def _make_provider():
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    return provider, reader
+
+
+def _get_data_points(reader: InMemoryMetricReader, metric_name: str) -> list:
+    """Return all data points for the named metric across all scopes."""
+    points = []
+    for resource_metric in reader.get_metrics_data().resource_metrics:
+        for scope_metric in resource_metric.scope_metrics:
+            for metric in scope_metric.metrics:
+                if metric.name == metric_name:
+                    for dp in metric.data.data_points:
+                        points.append(dp)
+    return points
+
+
+@pytest.fixture
+def patched_metrics():
+    """Replace all business counters with in-memory-backed equivalents."""
+    provider, reader = _make_provider()
+    meter = provider.get_meter("weftmark.business")
+
+    originals = {
+        "signups_total": bm.signups_total,
+        "signups_approved_total": bm.signups_approved_total,
+        "eula_accepted_total": bm.eula_accepted_total,
+        "role_changes_total": bm.role_changes_total,
+    }
+
+    bm.signups_total = meter.create_counter("weftmark.user.signups", unit="1")
+    bm.signups_approved_total = meter.create_counter("weftmark.user.signups_approved", unit="1")
+    bm.eula_accepted_total = meter.create_counter("weftmark.user.eula_accepted", unit="1")
+    bm.role_changes_total = meter.create_counter("weftmark.user.role_changes", unit="1")
+
+    yield reader
+
+    bm.signups_total = originals["signups_total"]
+    bm.signups_approved_total = originals["signups_approved_total"]
+    bm.eula_accepted_total = originals["eula_accepted_total"]
+    bm.role_changes_total = originals["role_changes_total"]
+
+    provider.shutdown()
+
+
+class TestSignupsCounter:
+    def test_pending_signup_increments_counter(self, patched_metrics):
+        bm.signups_total.add(1, {"signup_type": "pending"})
+
+        points = _get_data_points(patched_metrics, "weftmark.user.signups")
+        assert len(points) == 1
+        assert points[0].value == 1
+        assert points[0].attributes == {"signup_type": "pending"}
+
+    def test_invited_signup_increments_counter(self, patched_metrics):
+        bm.signups_total.add(1, {"signup_type": "invited"})
+
+        points = _get_data_points(patched_metrics, "weftmark.user.signups")
+        assert len(points) == 1
+        assert points[0].value == 1
+        assert points[0].attributes == {"signup_type": "invited"}
+
+    def test_multiple_signups_accumulate(self, patched_metrics):
+        bm.signups_total.add(1, {"signup_type": "pending"})
+        bm.signups_total.add(1, {"signup_type": "pending"})
+        bm.signups_total.add(1, {"signup_type": "invited"})
+
+        points = _get_data_points(patched_metrics, "weftmark.user.signups")
+        by_type = {p.attributes["signup_type"]: p.value for p in points}
+        assert by_type["pending"] == 2
+        assert by_type["invited"] == 1
+
+
+class TestSignupsApprovedCounter:
+    def test_approval_increments_counter(self, patched_metrics):
+        bm.signups_approved_total.add(1)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.signups_approved")
+        assert len(points) == 1
+        assert points[0].value == 1
+
+    def test_multiple_approvals_accumulate(self, patched_metrics):
+        bm.signups_approved_total.add(1)
+        bm.signups_approved_total.add(1)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.signups_approved")
+        assert points[0].value == 2
+
+
+class TestEulaAcceptedCounter:
+    def test_eula_acceptance_increments_counter(self, patched_metrics):
+        bm.eula_accepted_total.add(1)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.eula_accepted")
+        assert len(points) == 1
+        assert points[0].value == 1
+
+    def test_multiple_acceptances_accumulate(self, patched_metrics):
+        bm.eula_accepted_total.add(1)
+        bm.eula_accepted_total.add(1)
+        bm.eula_accepted_total.add(1)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.eula_accepted")
+        assert points[0].value == 3
+
+
+class TestRoleChangesCounter:
+    def test_promote_to_admin_increments_counter(self, patched_metrics):
+        bm.role_changes_total.add(1, {"new_role": "admin"})
+
+        points = _get_data_points(patched_metrics, "weftmark.user.role_changes")
+        assert len(points) == 1
+        assert points[0].value == 1
+        assert points[0].attributes == {"new_role": "admin"}
+
+    def test_demote_to_user_increments_counter(self, patched_metrics):
+        bm.role_changes_total.add(1, {"new_role": "user"})
+
+        points = _get_data_points(patched_metrics, "weftmark.user.role_changes")
+        assert len(points) == 1
+        assert points[0].attributes == {"new_role": "user"}
+
+    def test_multiple_role_changes_accumulate_by_role(self, patched_metrics):
+        bm.role_changes_total.add(1, {"new_role": "admin"})
+        bm.role_changes_total.add(1, {"new_role": "admin"})
+        bm.role_changes_total.add(1, {"new_role": "user"})
+
+        points = _get_data_points(patched_metrics, "weftmark.user.role_changes")
+        by_role = {p.attributes["new_role"]: p.value for p in points}
+        assert by_role["admin"] == 2
+        assert by_role["user"] == 1

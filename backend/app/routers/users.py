@@ -19,6 +19,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
+from app.metrics import eula_accepted_total
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
@@ -218,6 +219,7 @@ async def accept_eula(
     current_user.eula_accepted_at = datetime.now(timezone.utc)
     await write_audit_log(db, event_type="eula.accepted", actor=current_user, details={"version": current_version})
     await db.commit()
+    eula_accepted_total.add(1)
     await db.refresh(current_user)
     return _to_response(current_user, current_version)
 

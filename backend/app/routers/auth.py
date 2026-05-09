@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.deps import get_current_user, get_db, require_admin
+from app.metrics import signups_total
 from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
 from app.models.user import User
@@ -136,6 +137,7 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
         if existing is None:
             db.add(PendingSignup(clerk_user_id=clerk_user_id, email=email, display_name=display_name))
             await db.commit()
+            signups_total.add(1, {"signup_type": "pending"})
             await set_user_metadata(clerk_user_id, {"status": "pending_signup", "is_admin": False})
             admin_emails = list(
                 await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None)))
@@ -155,6 +157,7 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
     user.clerk_user_id = clerk_user_id
     user.display_name = display_name
     await db.commit()
+    signups_total.add(1, {"signup_type": "invited"})
 
     # Consume the associated invite (audit trail; may already be consumed by seed CLI).
     await _consume_invite(db, email)
