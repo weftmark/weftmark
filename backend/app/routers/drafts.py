@@ -15,6 +15,7 @@ from app.deps import get_current_user, get_db
 from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering, storage, wif_linter, wif_modifier, wif_parser
+from app.services.audit import write_audit_log
 from app.services.rate_limiter import rate_limit
 from app.tasks.preview import generate_drawdown_preview
 
@@ -243,7 +244,22 @@ async def get_drawdown(
             png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(
                 lambda: rendering.render_drawdown_tile(rendering.load_draft(wif_bytes), start_row=_sr, row_count=_rc)
             )
-        except HTTPException:
+        except HTTPException as exc:
+            if exc.status_code == 413:
+                await write_audit_log(
+                    db,
+                    event_type="render.limit_exceeded",
+                    actor=current_user,
+                    details={
+                        "draft_id": str(draft_id),
+                        "warp_threads": draft.warp_threads,
+                        "weft_threads": draft.weft_threads,
+                        "render_max_width": settings.render_max_width,
+                        "render_max_height": settings.render_max_height,
+                        "mode": "tile",
+                    },
+                )
+                await db.commit()
             raise
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
@@ -287,7 +303,22 @@ async def get_drawdown(
         png, total_rows, actual_scale = await asyncio.to_thread(
             lambda: rendering.render_drawdown_only(rendering.load_draft(wif_bytes))
         )
-    except HTTPException:
+    except HTTPException as exc:
+        if exc.status_code == 413:
+            await write_audit_log(
+                db,
+                event_type="render.limit_exceeded",
+                actor=current_user,
+                details={
+                    "draft_id": str(draft_id),
+                    "warp_threads": draft.warp_threads,
+                    "weft_threads": draft.weft_threads,
+                    "render_max_width": settings.render_max_width,
+                    "render_max_height": settings.render_max_height,
+                    "mode": "full",
+                },
+            )
+            await db.commit()
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
