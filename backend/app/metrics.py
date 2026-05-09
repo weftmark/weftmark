@@ -35,6 +35,12 @@ logins_total = _meter.create_counter(
     unit="1",
 )
 
+sessions_ended_total = _meter.create_counter(
+    "weftmark.user.sessions_ended",
+    description="User sessions ended via Clerk session.ended webhook",
+    unit="1",
+)
+
 celery_tasks_total = _meter.create_counter(
     "weftmark.celery.tasks",
     description="Celery task executions by outcome (succeeded/failed/retried/revoked)",

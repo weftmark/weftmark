@@ -43,6 +43,7 @@ def patched_metrics():
         "eula_accepted_total": bm.eula_accepted_total,
         "role_changes_total": bm.role_changes_total,
         "logins_total": bm.logins_total,
+        "sessions_ended_total": bm.sessions_ended_total,
     }
 
     bm.signups_total = meter.create_counter("weftmark.user.signups", unit="1")
@@ -50,6 +51,7 @@ def patched_metrics():
     bm.eula_accepted_total = meter.create_counter("weftmark.user.eula_accepted", unit="1")
     bm.role_changes_total = meter.create_counter("weftmark.user.role_changes", unit="1")
     bm.logins_total = meter.create_counter("weftmark.user.logins", unit="1")
+    bm.sessions_ended_total = meter.create_counter("weftmark.user.sessions_ended", unit="1")
 
     yield reader
 
@@ -58,6 +60,7 @@ def patched_metrics():
     bm.eula_accepted_total = originals["eula_accepted_total"]
     bm.role_changes_total = originals["role_changes_total"]
     bm.logins_total = originals["logins_total"]
+    bm.sessions_ended_total = originals["sessions_ended_total"]
 
     provider.shutdown()
 
@@ -200,6 +203,61 @@ class TestLoginsCounter:
         await auth_router._handle_session_created(admin_data)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
+        by_role = {p.attributes["role"]: p.value for p in points}
+        assert by_role["user"] == 2
+        assert by_role["admin"] == 1
+
+
+_SESSION_ENDED_DATA = {
+    "id": "sess_ended123",
+    "user_id": "user_test123",
+    "status": "ended",
+    "user": {
+        "id": "user_test123",
+        "public_metadata": {"is_admin": False, "status": "active"},
+    },
+}
+
+
+class TestSessionsEndedCounter:
+    @pytest.mark.asyncio
+    async def test_user_session_ended_increments_counter(self, patched_metrics):
+        auth_router.sessions_ended_total = bm.sessions_ended_total
+        await auth_router._handle_session_ended(_SESSION_ENDED_DATA)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
+        assert len(points) == 1
+        assert points[0].value == 1
+        assert points[0].attributes == {"role": "user"}
+
+    @pytest.mark.asyncio
+    async def test_admin_session_ended_uses_admin_role_attribute(self, patched_metrics):
+        auth_router.sessions_ended_total = bm.sessions_ended_total
+        data = {**_SESSION_ENDED_DATA, "user": {"id": "user_test123", "public_metadata": {"is_admin": True}}}
+        await auth_router._handle_session_ended(data)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
+        assert len(points) == 1
+        assert points[0].attributes == {"role": "admin"}
+
+    @pytest.mark.asyncio
+    async def test_missing_public_metadata_defaults_to_user(self, patched_metrics):
+        auth_router.sessions_ended_total = bm.sessions_ended_total
+        data = {**_SESSION_ENDED_DATA, "user": {"id": "user_test123"}}
+        await auth_router._handle_session_ended(data)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
+        assert points[0].attributes == {"role": "user"}
+
+    @pytest.mark.asyncio
+    async def test_multiple_sessions_ended_accumulate_by_role(self, patched_metrics):
+        auth_router.sessions_ended_total = bm.sessions_ended_total
+        admin_data = {**_SESSION_ENDED_DATA, "user": {"id": "u1", "public_metadata": {"is_admin": True}}}
+        await auth_router._handle_session_ended(_SESSION_ENDED_DATA)
+        await auth_router._handle_session_ended(_SESSION_ENDED_DATA)
+        await auth_router._handle_session_ended(admin_data)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
         by_role = {p.attributes["role"]: p.value for p in points}
         assert by_role["user"] == 2
         assert by_role["admin"] == 1

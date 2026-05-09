@@ -1,0 +1,61 @@
+"""Celery task: weekly refresh of the GeoLite2-City MMDB.
+
+Downloads from MaxMind when MAXMIND_LICENSE_KEY is set.
+Skips silently when the key is absent (dev / staging environments without geo).
+"""
+
+import logging
+import os
+import tarfile
+import tempfile
+import urllib.request
+
+from app.celery_app import celery_app
+
+log = logging.getLogger(__name__)
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
+    name="app.tasks.geo.refresh_geoip_database",
+)
+def refresh_geoip_database(self) -> dict:
+    from app.config import get_settings
+
+    settings = get_settings()
+    license_key = settings.maxmind_license_key
+    db_path = settings.geoip_db_path
+
+    if not license_key:
+        log.info("MAXMIND_LICENSE_KEY not set — skipping GeoLite2 refresh")
+        return {"skipped": True, "reason": "no_license_key"}
+
+    url = (
+        "https://download.maxmind.com/app/geoip_download"
+        f"?edition_id=GeoLite2-City&license_key={license_key}&suffix=tar.gz"
+    )
+
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        archive_path = os.path.join(tmpdir, "GeoLite2-City.tar.gz")
+        log.info("Downloading GeoLite2-City database")
+        urllib.request.urlretrieve(url, archive_path)  # noqa: S310
+
+        extracted_mmdb = None
+        with tarfile.open(archive_path, "r:gz") as tar:
+            for member in tar.getmembers():
+                if member.name.endswith("GeoLite2-City.mmdb"):
+                    member.name = os.path.basename(member.name)
+                    tar.extract(member, tmpdir)
+                    extracted_mmdb = os.path.join(tmpdir, "GeoLite2-City.mmdb")
+                    break
+
+        if extracted_mmdb is None:
+            raise RuntimeError("GeoLite2-City.mmdb not found in downloaded archive")
+
+        os.replace(extracted_mmdb, db_path)
+
+    log.info("GeoLite2-City database refreshed at %s", db_path)
+    return {"refreshed": True, "path": db_path}

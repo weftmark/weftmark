@@ -21,6 +21,7 @@ def _make_celery() -> Celery:
         include=[
             "app.tasks.deletion",
             "app.tasks.email_task",
+            "app.tasks.geo",
             "app.tasks.maintenance",
             "app.tasks.metrics",
             "app.tasks.preview",
@@ -48,6 +49,10 @@ def _make_celery() -> Celery:
             "record-business-metrics": {
                 "task": "app.tasks.metrics.record_business_metrics",
                 "schedule": 300.0,
+            },
+            "refresh-geoip-database": {
+                "task": "app.tasks.geo.refresh_geoip_database",
+                "schedule": 604800.0,  # weekly
             },
         },
     )

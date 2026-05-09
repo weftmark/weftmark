@@ -120,6 +120,10 @@ class Settings(BaseSettings):
     # OTEL_SERVICE_NAME is read natively by the SDK from the environment variable.
     otel_exporter_otlp_endpoint: str = ""
 
+    # GeoIP (MaxMind GeoLite2-City) — leave license key empty to disable geo lookups
+    maxmind_license_key: str = ""
+    geoip_db_path: str = "/app/data/GeoLite2-City.mmdb"
+
     # Data retention
     soft_delete_retention_days: int = 365
 
