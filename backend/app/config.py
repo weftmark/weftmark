@@ -115,6 +115,11 @@ class Settings(BaseSettings):
     # Redis / Celery
     redis_url: str = "redis://redis:6379/0"
 
+    # OpenTelemetry — set to the OTLP HTTP collector base URL to enable (e.g. http://otel-collector:4318)
+    # Leave empty (default) to disable telemetry; SDK no-ops gracefully in local dev.
+    # OTEL_SERVICE_NAME is read natively by the SDK from the environment variable.
+    otel_exporter_otlp_endpoint: str = ""
+
     # Data retention
     soft_delete_retention_days: int = 365
 

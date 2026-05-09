@@ -5,10 +5,13 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
+from fastapi import HTTPException
 from httpx import AsyncClient
 from PIL import Image
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.audit_log import AuditLog
 from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering
@@ -369,6 +372,29 @@ class TestGetDrawdown:
 
         assert resp.headers.get("ETag") == f'"{draft.id}"'
 
+    async def test_413_writes_audit_log(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+
+        def _raise_413(*_a, **_kw):
+            raise HTTPException(status_code=413, detail="too big")
+
+        monkeypatch.setattr(rendering, "render_drawdown_only", _raise_413)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
+
+        assert resp.status_code == 413
+        entry = await db_session.scalar(
+            select(AuditLog).where(
+                AuditLog.actor_email == test_user.email,
+                AuditLog.event_type == "render.limit_exceeded",
+            )
+        )
+        assert entry is not None
+        assert entry.details["draft_id"] == str(draft.id)
+        assert entry.details["mode"] == "full"
+
 
 # ---------------------------------------------------------------------------
 # GET /{draft_id}/drawdown?start_row=&row_count=  (tiled)
@@ -449,6 +475,29 @@ class TestGetDrawdownTile:
         draft = await self._draft_with_wif(db_session, test_user)
         resp = await client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
         assert resp.status_code == 401
+
+    async def test_413_writes_audit_log(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+
+        def _raise_413(*_a, **_kw):
+            raise HTTPException(status_code=413, detail="too wide")
+
+        monkeypatch.setattr(rendering, "render_drawdown_tile", _raise_413)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+
+        assert resp.status_code == 413
+        entry = await db_session.scalar(
+            select(AuditLog).where(
+                AuditLog.actor_email == test_user.email,
+                AuditLog.event_type == "render.limit_exceeded",
+            )
+        )
+        assert entry is not None
+        assert entry.details["draft_id"] == str(draft.id)
+        assert entry.details["mode"] == "tile"
 
 
 # ---------------------------------------------------------------------------

@@ -762,6 +762,37 @@ class TestGetProject:
         resp = await client.get(f"/api/projects/{project.id}")
         assert resp.status_code == 401
 
+    async def test_loom_num_treadles_null_without_loom(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.get(f"/api/projects/{project.id}")).json()
+        assert body["loom_num_treadles"] is None
+        assert body["loom_num_shafts"] is None
+
+    async def test_loom_num_treadles_populated_with_loom_version(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        loom, version = await _insert_loom(db_session, test_user)
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            loom_id=loom.id,
+            loom_version_id=version.id,
+            name="Test project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=2,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        body = (await auth_client.get(f"/api/projects/{project.id}")).json()
+        assert body["loom_num_treadles"] == version.num_treadles
+        assert body["loom_num_shafts"] == version.num_shafts
+
 
 # ---------------------------------------------------------------------------
 # TestListProjects
@@ -1163,6 +1194,21 @@ class TestAssignLoom:
             )
         ).json()
         assert body["loom_version_id"] == str(version.id)
+
+    async def test_assign_loom_version_returns_loom_counts(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        loom, version = await _insert_loom(db_session, test_user)
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/assign-loom",
+                json={"loom_id": str(loom.id), "loom_version_id": str(version.id)},
+            )
+        ).json()
+        assert body["loom_num_treadles"] == version.num_treadles
+        assert body["loom_num_shafts"] == version.num_shafts
 
     async def test_wrong_version_for_loom_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User

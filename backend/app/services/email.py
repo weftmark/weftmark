@@ -236,10 +236,110 @@ async def send_stack_shutdown_alert(
     await _send(superuser_emails, subject, txt, html)
 
 
+async def send_health_degraded_alert(
+    superuser_emails: list[str],
+    env: str,
+    app_base_url: str,
+    version: str,
+    probe_rows: list[tuple[str, bool, str]],
+    status: str,
+    timestamp: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not superuser_emails:
+        return
+    admin_url = f"{app_base_url}/admin" if app_base_url else f"{settings.frontend_url}/admin"
+    status_label = "Error" if status == "error" else "Degraded"
+    txt, html = _render(
+        "health_degraded_alert",
+        env=env,
+        app_base_url=app_base_url,
+        version=version,
+        status_label=status_label,
+        timestamp=timestamp,
+        admin_url=admin_url,
+        probe_table_txt=_probe_table_txt(probe_rows),
+        probe_table_html=_probe_table_html(probe_rows),
+    )
+    subject = f"[{settings.app_name} {env}] Health {status_label} — {timestamp}"
+    await _send(superuser_emails, subject, txt, html)
+
+
+async def send_health_recovered_alert(
+    superuser_emails: list[str],
+    env: str,
+    app_base_url: str,
+    version: str,
+    timestamp: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not superuser_emails:
+        return
+    admin_url = f"{app_base_url}/admin" if app_base_url else f"{settings.frontend_url}/admin"
+    txt, html = _render(
+        "health_recovered_alert",
+        env=env,
+        app_base_url=app_base_url,
+        version=version,
+        timestamp=timestamp,
+        admin_url=admin_url,
+    )
+    subject = f"[{settings.app_name} {env}] Health Recovered — {timestamp}"
+    await _send(superuser_emails, subject, txt, html)
+
+
 async def send_test_email(to_email: str) -> None:
     settings = get_settings()
     txt, html = _render("test_email")
     await _send([to_email], f"{settings.app_name} — SMTP Test", txt, html)
+
+
+async def send_credential_expiring_superuser(
+    superuser_emails: list[str],
+    credential_name: str,
+    resource: str,
+    days_remaining: int,
+    expires_on: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not superuser_emails:
+        return
+    days_plural = "" if days_remaining == 1 else "s"
+    admin_url = f"{settings.frontend_url}/admin/credentials"
+    txt, html = _render(
+        "credential_expiring_superuser",
+        credential_name=credential_name,
+        resource=resource,
+        days_remaining=days_remaining,
+        days_plural=days_plural,
+        expires_on=expires_on,
+        admin_url=admin_url,
+    )
+    subject = f"Action required: {credential_name} expires in {days_remaining} day{days_plural}"
+    await _send(superuser_emails, subject, txt, html)
+
+
+async def send_credential_expiring_admin(
+    admin_emails: list[str],
+    credential_name: str,
+    resource: str,
+    days_remaining: int,
+    expires_on: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not admin_emails:
+        return
+    days_plural = "" if days_remaining == 1 else "s"
+    txt, html = _render(
+        "credential_expiring_admin",
+        credential_name=credential_name,
+        resource=resource,
+        days_remaining=days_remaining,
+        days_plural=days_plural,
+        expires_on=expires_on,
+    )
+    subject = f"Notice: {credential_name} expires in {days_remaining} day{days_plural}"
+    await _send(admin_emails, subject, txt, html)
 
 
 async def send_invite_email(
@@ -249,3 +349,95 @@ async def send_invite_email(
     invite_url = f"{settings.frontend_url}/register?token={invite_token}"
     txt, html = _render("invite", invite_url=invite_url, expires_days=expires_days, admin_name=admin_name)
     await _send([to_email], f"{admin_name} has invited you to join {settings.app_name}", txt, html)
+
+
+def _digest_cve_txt(finding_count: int | None, scanned_at: str | None) -> str:
+    if finding_count is None:
+        return "No scan data available"
+    s = "" if finding_count == 1 else "s"
+    line = f"{finding_count} finding{s}"
+    if scanned_at:
+        line += f" (scanned {scanned_at[:10]})"
+    return line
+
+
+def _digest_cve_html(finding_count: int | None, scanned_at: str | None) -> str:
+    if finding_count is None:
+        return '<span style="color:#6b7280;">No scan data available</span>'
+    color = "#dc2626" if finding_count > 0 else "#16a34a"
+    s = "" if finding_count == 1 else "s"
+    html = f'<strong style="color:{color};">{finding_count}</strong>'
+    if scanned_at:
+        html += f' <span style="color:#6b7280;">finding{s} &mdash; scanned {scanned_at[:10]}</span>'
+    return html
+
+
+def _digest_s3_txt(orphaned_count: int | None, scanned_at: str | None) -> str:
+    if orphaned_count is None:
+        return "No scan data available"
+    s = "" if orphaned_count == 1 else "s"
+    line = f"{orphaned_count} orphaned file{s}"
+    if scanned_at:
+        line += f" (scanned {scanned_at[:10]})"
+    return line
+
+
+def _digest_s3_html(orphaned_count: int | None, scanned_at: str | None) -> str:
+    if orphaned_count is None:
+        return '<span style="color:#6b7280;">No scan data available</span>'
+    color = "#dc2626" if orphaned_count > 0 else "#16a34a"
+    s = "" if orphaned_count == 1 else "s"
+    html = f'<strong style="color:{color};">{orphaned_count}</strong>'
+    if scanned_at:
+        html += f' <span style="color:#6b7280;">orphaned file{s} &mdash; scanned {scanned_at[:10]}</span>'
+    return html
+
+
+async def send_admin_digest_email(
+    admin_emails: list[str],
+    week_start: str,
+    week_end: str,
+    new_users: int,
+    pending_signups: int,
+    new_drafts: int,
+    new_projects: int,
+    new_looms: int,
+    storage_str: str,
+    storage_delta_str: str | None,
+    cve_finding_count: int | None,
+    cve_scanned_at: str | None,
+    s3_orphaned_count: int | None,
+    s3_scanned_at: str | None,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not admin_emails:
+        return
+    admin_url = f"{settings.frontend_url}/admin"
+
+    delta_txt = storage_delta_str if storage_delta_str is not None else "—"
+    delta_html = (
+        storage_delta_str
+        if storage_delta_str is not None
+        else '<em style="color:#6b7280;">First run — no prior baseline</em>'
+    )
+
+    txt, html = _render(
+        "admin_digest",
+        week_start=week_start,
+        week_end=week_end,
+        new_users=new_users,
+        pending_signups=pending_signups,
+        new_drafts=new_drafts,
+        new_projects=new_projects,
+        new_looms=new_looms,
+        storage_str=storage_str,
+        delta_txt=delta_txt,
+        delta_html=delta_html,
+        cve_txt=_digest_cve_txt(cve_finding_count, cve_scanned_at),
+        cve_html=_digest_cve_html(cve_finding_count, cve_scanned_at),
+        s3_txt=_digest_s3_txt(s3_orphaned_count, s3_scanned_at),
+        s3_html=_digest_s3_html(s3_orphaned_count, s3_scanned_at),
+        admin_url=admin_url,
+    )
+    subject = f"{settings.app_name} — Weekly Admin Digest ({week_start} – {week_end})"
+    await _send(admin_emails, subject, txt, html)

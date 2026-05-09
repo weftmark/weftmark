@@ -37,6 +37,15 @@ _readiness_cache: ReadinessResponse | None = None  # startup snapshot, never ref
 _detailed_cache: ReadinessResponse | None = None  # live, refreshed every 30 s
 _detailed_task: asyncio.Task | None = None
 
+# Health-alert state — tracks transitions to avoid flooding
+_last_alert_status: str | None = None
+_last_alert_at: datetime | None = None
+_HEALTH_ALERT_COOLDOWN_S = 3600  # re-alert at most once per hour if status stays bad
+
+# Superuser email cache — refreshed when DB is healthy; used as fallback when DB is down
+_superuser_email_cache: list[str] = []
+_open_health_event_id: int | None = None
+
 
 def set_readiness(result: ReadinessResponse) -> None:
     global _readiness_cache
@@ -211,19 +220,166 @@ async def _run_detailed_probes() -> ReadinessResponse:
     return _build_readiness_from_results(results, webhook_result, checked_at=datetime.now(timezone.utc).isoformat())
 
 
+async def _refresh_superuser_email_cache() -> None:
+    """Refresh the in-memory superuser email list from the DB. Silent on failure."""
+    global _superuser_email_cache
+    try:
+        from sqlalchemy import select
+
+        from app.database import AsyncSessionLocal
+        from app.models.user import User
+
+        async with AsyncSessionLocal() as db:
+            rows = await db.scalars(select(User).where(User.is_superuser.is_(True), User.deleted_at.is_(None)))
+            _superuser_email_cache = [u.email for u in rows.all()]
+    except Exception:
+        pass  # keep stale cache; logged by caller if needed
+
+
+async def _dispatch_health_alert(result: ReadinessResponse, is_recovery: bool) -> None:
+    settings = get_settings()
+    if not settings.stack_alert_emails_enabled:
+        return
+    try:
+        from app.services.email import send_health_degraded_alert, send_health_recovered_alert
+
+        emails = _superuser_email_cache
+        if not emails:
+            return
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        base_url = settings.app_base_url or settings.frontend_url
+        if is_recovery:
+            await send_health_recovered_alert(
+                superuser_emails=emails,
+                env=settings.app_env,
+                app_base_url=base_url,
+                version=VERSION,
+                timestamp=ts,
+            )
+        else:
+            probe_rows = [(s.name, s.ok, s.detail) for s in result.services]
+            await send_health_degraded_alert(
+                superuser_emails=emails,
+                env=settings.app_env,
+                app_base_url=base_url,
+                version=VERSION,
+                probe_rows=probe_rows,
+                status=result.status,
+                timestamp=ts,
+            )
+    except Exception:
+        log.exception("Failed to send health alert email")
+
+
+async def _record_health_transition(prev_status: str | None, result: ReadinessResponse) -> None:
+    """Write or close a ServerEvent row to capture health status transitions.
+
+    Silently skips on any DB error — the events log is best-effort.
+    """
+    global _open_health_event_id
+    new_status = result.status
+    if prev_status == new_status:
+        return
+    try:
+        from app.database import AsyncSessionLocal
+        from app.services.server_events import (
+            ET_HEALTH_DEGRADED,
+            ET_HEALTH_ERROR,
+            SEV_ERROR,
+            SEV_WARN,
+            STATUS_OPEN,
+            close_event,
+            write_event,
+        )
+
+        async with AsyncSessionLocal() as db:
+            # Close any open health event when recovering
+            if new_status == "ok" and _open_health_event_id is not None:
+                from sqlalchemy import select
+
+                from app.models.server_event import ServerEvent
+
+                evt = await db.scalar(select(ServerEvent).where(ServerEvent.id == _open_health_event_id))
+                if evt and evt.status == STATUS_OPEN:
+                    await close_event(db, evt)
+                    await db.commit()
+                _open_health_event_id = None
+                return
+
+            # Open a new event when health goes bad
+            if new_status in ("degraded", "error"):
+                failed = [s.name for s in result.services if not s.ok]
+                et = ET_HEALTH_ERROR if new_status == "error" else ET_HEALTH_DEGRADED
+                sev = SEV_ERROR if new_status == "error" else SEV_WARN
+                evt = await write_event(
+                    db,
+                    event_type=et,
+                    severity=sev,
+                    message=f"Services failing: {', '.join(failed)}" if failed else "Health probe failure",
+                    details={"failed_services": failed, "probe_status": new_status},
+                )
+                await db.commit()
+                await db.refresh(evt)
+                _open_health_event_id = evt.id
+    except Exception:
+        log.debug("Could not record health transition event", exc_info=True)
+
+
 async def _detailed_refresh_loop() -> None:
-    global _detailed_cache
+    global _detailed_cache, _last_alert_status, _last_alert_at
+    await asyncio.sleep(DETAILED_REFRESH_INTERVAL_S)  # skip transient startup failures
     while True:
         try:
-            _detailed_cache = await _run_detailed_probes()
+            result = await _run_detailed_probes()
+            # Keep superuser email cache fresh while DB is reachable
+            postgres_ok = any(s.name == "PostgreSQL" and s.ok for s in result.services)
+            if postgres_ok:
+                await _refresh_superuser_email_cache()
+            await _record_health_transition(_last_alert_status, result)
+            new_status = result.status
+            now = datetime.now(timezone.utc)
+            prev_status = _last_alert_status
+
+            if prev_status is None:
+                # First detailed cycle — startup alert already covered initial state
+                _last_alert_status = new_status
+                if new_status != "ok":
+                    _last_alert_at = now
+            else:
+                should_alert = False
+                is_recovery = False
+
+                if new_status in ("degraded", "error"):
+                    if prev_status == "ok":
+                        should_alert = True
+                    elif prev_status != new_status:
+                        # degraded ↔ error transition
+                        should_alert = True
+                    elif _last_alert_at and (now - _last_alert_at).total_seconds() >= _HEALTH_ALERT_COOLDOWN_S:
+                        # Same bad state for >1 h — re-alert
+                        should_alert = True
+                elif new_status == "ok" and prev_status in ("degraded", "error"):
+                    should_alert = True
+                    is_recovery = True
+
+                if should_alert:
+                    asyncio.create_task(_dispatch_health_alert(result, is_recovery))
+                    _last_alert_status = new_status
+                    _last_alert_at = now if new_status != "ok" else None
+                else:
+                    _last_alert_status = new_status
+
+            _detailed_cache = result
         except Exception:
             log.exception("Unexpected error in detailed health refresh loop")
         await asyncio.sleep(DETAILED_REFRESH_INTERVAL_S)
 
 
-def start_detailed_refresh() -> None:
+def start_detailed_refresh(initial_status: str | None = None) -> None:
     """Create the background refresh task. Call from lifespan after startup."""
-    global _detailed_task
+    global _detailed_task, _last_alert_status
+    if initial_status is not None:
+        _last_alert_status = initial_status
     _detailed_task = asyncio.create_task(_detailed_refresh_loop())
 
 

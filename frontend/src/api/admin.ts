@@ -6,6 +6,7 @@ export interface AdminUserCounts {
   projects_completed: number;
   looms: number;
   storage_bytes: number;
+  storage_quota_bytes: number;
 }
 
 export interface AdminUser {
@@ -23,6 +24,8 @@ export interface AdminUser {
   last_active_at: string | null;
   approved_by_name: string | null;
   approved_by_email: string | null;
+  eula_accepted_version: string | null;
+  eula_accepted_at: string | null;
   counts: AdminUserCounts;
 }
 
@@ -374,3 +377,64 @@ export const patchScheduledTask = (
   name: string,
   body: { enabled?: boolean; cron?: string; config?: Record<string, unknown> },
 ) => api.patch<ScheduledTask>(`/api/admin/scheduled-tasks/${name}`, body);
+
+export interface ServerEvent {
+  id: number;
+  event_type: string;
+  severity: "info" | "warn" | "error";
+  status: "open" | "closed";
+  started_at: string;
+  ended_at: string | null;
+  elapsed_ms: number | null;
+  app_version: string;
+  message: string | null;
+  details: Record<string, unknown> | null;
+}
+
+export interface ServerEventPage {
+  items: ServerEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
+export const getServerEvents = (params: { page?: number; page_size?: number; event_type?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.page_size) qs.set("page_size", String(params.page_size));
+  if (params.event_type) qs.set("event_type", params.event_type);
+  const query = qs.toString();
+  return api.get<ServerEventPage>(`/api/admin/server-events${query ? `?${query}` : ""}`);
+};
+
+export type CredentialResource = "smtp" | "s3" | "clerk" | "postgres" | "app";
+
+export interface CredentialExpiry {
+  id: string;
+  name: string;
+  resource: CredentialResource;
+  expires_on: string | null;
+  notes: string | null;
+  last_alerted_at: string | null;
+  updated_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  days_remaining: number | null;
+}
+
+export const listCredentials = () => api.get<CredentialExpiry[]>("/api/admin/credentials");
+
+export const createCredential = (body: {
+  name: string;
+  resource: CredentialResource;
+  expires_on?: string | null;
+  notes?: string | null;
+}) => api.post<CredentialExpiry>("/api/admin/credentials", body);
+
+export const patchCredential = (
+  id: string,
+  body: { name?: string; resource?: CredentialResource; expires_on?: string | null; notes?: string | null },
+) => api.patch<CredentialExpiry>(`/api/admin/credentials/${id}`, body);
+
+export const deleteCredential = (id: string) => api.delete<void>(`/api/admin/credentials/${id}`);

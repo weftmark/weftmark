@@ -91,15 +91,15 @@ function formatDate(iso: string) {
   });
 }
 
-function formatRelative(iso: string | null) {
+function formatDateTime(iso: string | null) {
   if (!iso) return "Never";
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 2) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  return new Date(iso).toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export function UserDetailModal({ target, onClose }: Props) {
@@ -304,8 +304,30 @@ export function UserDetailModal({ target, onClose }: Props) {
           {/* Info */}
           <div className="space-y-1.5">
             <InfoRow label="Joined">{formatDate(u.created_at)}</InfoRow>
-            <InfoRow label="Last login">{formatRelative(u.last_active_at)}</InfoRow>
-            <InfoRow label="Storage">{formatBytes(u.counts.storage_bytes)}</InfoRow>
+            <InfoRow label="Last login">{formatDateTime(u.last_active_at)}</InfoRow>
+            {/* Storage quota */}
+            <div className="flex gap-4 text-sm">
+              <span className="w-28 shrink-0 text-muted-foreground">Storage</span>
+              <div className="flex-1">
+                {(() => {
+                  const used = u.counts.storage_bytes;
+                  const quota = u.counts.storage_quota_bytes;
+                  const pct = Math.min(Math.round((used / quota) * 100), 100);
+                  const barColor = pct >= 90 ? "bg-red-500" : pct >= 75 ? "bg-amber-500" : "bg-primary";
+                  return (
+                    <>
+                      <div className="flex justify-between mb-1">
+                        <span>{formatBytes(used)}</span>
+                        <span className="text-muted-foreground">{formatBytes(quota)} · {pct}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
             <InfoRow label="Drafts">{u.counts.drafts}</InfoRow>
             <InfoRow label="Projects">
               {u.counts.projects_active} active, {u.counts.projects_completed} completed
@@ -317,6 +339,11 @@ export function UserDetailModal({ target, onClose }: Props) {
                 {u.approved_by_email ? ` (${u.approved_by_email})` : ""}
               </InfoRow>
             )}
+            <InfoRow label="EULA">
+              {u.eula_accepted_version
+                ? `v${u.eula_accepted_version} · ${formatDateTime(u.eula_accepted_at)}`
+                : <span className="text-muted-foreground">Not accepted</span>}
+            </InfoRow>
           </div>
 
           {/* Actions */}

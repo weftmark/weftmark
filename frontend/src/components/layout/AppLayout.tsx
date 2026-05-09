@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { VersionBadge } from "@/components/layout/VersionFooter";
+import { useAuth } from "@/hooks/useAuth";
 import type { ReactNode } from "react";
 
 const DETAIL_PATTERN = /^\/projects\/[^/]+/;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function AppLayout({ children }: Props) {
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Track which detail path the user manually expanded the sidebar on.
   // Collapse whenever on a detail page unless this matches the current path.
@@ -47,7 +49,7 @@ export function AppLayout({ children }: Props) {
         </main>
       </div>
 
-      <VersionBadge />
+      {(user?.show_version_numbers ?? true) && <VersionBadge />}
     </div>
   );
 }

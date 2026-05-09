@@ -28,12 +28,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install script dependencies
-        run: pip install packaging
+        run: pip install packaging psycopg2-binary
 
       - name: Run export script
         id: export
         run: |
-          output=$(python tools/export_eula_migration.py --api-url "${{ secrets.EULA_API_URL }}" 2>&1)
+          output=$(python tools/export_eula_migration.py --db-url "${{ secrets.POSTGRES_DSN_DIRECT }}" 2>&1)
           echo "$output"
           written=$(echo "$output" | grep '^Written:' | awk '{print $2}')
           if [ -z "$written" ]; then

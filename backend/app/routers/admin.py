@@ -5,7 +5,7 @@ import math
 import platform
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 import httpx
@@ -18,12 +18,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
 from app.models.audit_log import AuditLog
+from app.models.credential_expiry import RESOURCE_CHOICES, CredentialExpiry
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
 from app.models.pending_signup import PendingSignup
 from app.models.project import Project, ProjectPhoto
+from app.models.server_event import ServerEvent
 from app.models.user import User
 from app.models.yarn import Yarn
 from app.services.audit import write_audit_log
@@ -34,6 +36,7 @@ from app.services.email import (
     send_approval_confirmation_to_admins,
     send_test_email,
 )
+from app.services.storage_quota import MAX_USER_STORAGE_BYTES
 from app.version import VERSION
 
 log = logging.getLogger(__name__)
@@ -51,6 +54,7 @@ class AdminUserCounts(BaseModel):
     projects_completed: int
     looms: int
     storage_bytes: int
+    storage_quota_bytes: int
 
 
 class AdminUserResponse(BaseModel):
@@ -68,6 +72,8 @@ class AdminUserResponse(BaseModel):
     deletion_state: str | None
     deletion_initiated_at: datetime | None
     clerk_errored: bool
+    eula_accepted_version: str | None
+    eula_accepted_at: datetime | None
     counts: AdminUserCounts
 
     model_config = {"from_attributes": False}
@@ -476,12 +482,15 @@ async def list_users(
             deletion_state=u.deletion_state,
             deletion_initiated_at=u.deletion_initiated_at,
             clerk_errored=u.clerk_errored,
+            eula_accepted_version=u.eula_accepted_version,
+            eula_accepted_at=u.eula_accepted_at,
             counts=AdminUserCounts(
                 drafts=draft_counts.get(u.id, 0),
                 projects_active=project_active.get(u.id, 0),
                 projects_completed=project_completed.get(u.id, 0),
                 looms=loom_counts.get(u.id, 0),
                 storage_bytes=storage_bytes.get(u.id, 0),
+                storage_quota_bytes=MAX_USER_STORAGE_BYTES,
             ),
         )
         for u in users
@@ -587,12 +596,15 @@ async def patch_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
+        eula_accepted_version=user.eula_accepted_version,
+        eula_accepted_at=user.eula_accepted_at,
         counts=AdminUserCounts(
             drafts=drafts,
             projects_active=proj_active,
             projects_completed=proj_completed,
             looms=looms,
             storage_bytes=int(project_storage) + int(loom_storage),
+            storage_quota_bytes=MAX_USER_STORAGE_BYTES,
         ),
     )
 
@@ -641,7 +653,16 @@ async def ban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
-        counts=AdminUserCounts(drafts=0, projects_active=0, projects_completed=0, looms=0, storage_bytes=0),
+        eula_accepted_version=user.eula_accepted_version,
+        eula_accepted_at=user.eula_accepted_at,
+        counts=AdminUserCounts(
+            drafts=0,
+            projects_active=0,
+            projects_completed=0,
+            looms=0,
+            storage_bytes=0,
+            storage_quota_bytes=MAX_USER_STORAGE_BYTES,
+        ),
     )
 
 
@@ -680,7 +701,16 @@ async def unban_user(
         deletion_state=user.deletion_state,
         deletion_initiated_at=user.deletion_initiated_at,
         clerk_errored=user.clerk_errored,
-        counts=AdminUserCounts(drafts=0, projects_active=0, projects_completed=0, looms=0, storage_bytes=0),
+        eula_accepted_version=user.eula_accepted_version,
+        eula_accepted_at=user.eula_accepted_at,
+        counts=AdminUserCounts(
+            drafts=0,
+            projects_active=0,
+            projects_completed=0,
+            looms=0,
+            storage_bytes=0,
+            storage_quota_bytes=MAX_USER_STORAGE_BYTES,
+        ),
     )
 
 
@@ -830,7 +860,7 @@ def _smtp_conn_meta(settings: "Settings") -> dict[str, str]:
 
 
 async def _probe_smtp() -> ServiceCheckResult:
-    import aiosmtplib
+    from app.services import smtp_health
 
     settings = get_settings()
     checks: list[ServicePermCheck] = []
@@ -858,33 +888,8 @@ async def _probe_smtp() -> ServiceCheckResult:
         ServicePermCheck(name="config", status="ok", message=f"{settings.smtp_host}:{settings.smtp_port} configured")
     )
 
-    # start_tls=True mirrors aiosmtplib.send() — connect() handles STARTTLS automatically
-    smtp = aiosmtplib.SMTP(hostname=settings.smtp_host, port=settings.smtp_port, start_tls=True, timeout=5)
-
-    try:
-        await asyncio.wait_for(smtp.connect(), timeout=5.0)
-        checks.append(
-            ServicePermCheck(
-                name="connect", status="ok", message=f"TCP connected to {settings.smtp_host}:{settings.smtp_port}"
-            )
-        )
-        checks.append(ServicePermCheck(name="starttls", status="ok", message="STARTTLS negotiated"))
-    except (asyncio.TimeoutError, Exception) as exc:
-        msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
-        checks.append(ServicePermCheck(name="connect", status="error", message=msg))
-        return _make_result("SMTP", checks, meta=meta)
-
-    try:
-        await asyncio.wait_for(smtp.login(settings.smtp_user, settings.smtp_password), timeout=5.0)
-        checks.append(ServicePermCheck(name="auth", status="ok", message=f"Authenticated as {settings.smtp_user}"))
-    except (asyncio.TimeoutError, Exception) as exc:
-        msg = "Timed out after 5 s" if isinstance(exc, asyncio.TimeoutError) else str(exc)[:120]
-        checks.append(ServicePermCheck(name="auth", status="error", message=msg))
-    finally:
-        try:
-            await smtp.quit()
-        except Exception:
-            pass
+    ok, msg = await smtp_health.check(settings.smtp_host, settings.smtp_port)
+    checks.append(ServicePermCheck(name="tcp", status="ok" if ok else "error", message=msg))
 
     return _make_result("SMTP", checks, meta=meta)
 
@@ -1033,6 +1038,58 @@ async def list_audit_log(
         for r in rows.all()
     ]
     return AuditLogPage(items=items, total=total, page=page, page_size=page_size, pages=pages)
+
+
+# ---------------------------------------------------------------------------
+# Server events log
+# ---------------------------------------------------------------------------
+
+
+class ServerEventResponse(BaseModel):
+    id: int
+    event_type: str
+    severity: str
+    status: str
+    started_at: datetime
+    ended_at: datetime | None
+    elapsed_ms: int | None
+    app_version: str
+    message: str | None
+    details: dict | None
+
+    model_config = {"from_attributes": True}
+
+
+class ServerEventPage(BaseModel):
+    items: list[ServerEventResponse]
+    total: int
+    page: int
+    page_size: int
+    pages: int
+
+
+@router.get("/server-events", response_model=ServerEventPage)
+async def list_server_events(
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    page: int = 1,
+    page_size: int = 50,
+    event_type: str | None = None,
+) -> ServerEventPage:
+    stmt = select(ServerEvent)
+    count_stmt = select(func.count()).select_from(ServerEvent)
+
+    if event_type:
+        stmt = stmt.where(ServerEvent.event_type == event_type)
+        count_stmt = count_stmt.where(ServerEvent.event_type == event_type)
+
+    total = await db.scalar(count_stmt) or 0
+    pages = max(1, (total + page_size - 1) // page_size)
+    offset = (page - 1) * page_size
+
+    rows = await db.scalars(stmt.order_by(ServerEvent.started_at.desc()).offset(offset).limit(page_size))
+    items = [ServerEventResponse.model_validate(r) for r in rows.all()]
+    return ServerEventPage(items=items, total=total, page=page, page_size=page_size, pages=pages)
 
 
 # ---------------------------------------------------------------------------
@@ -2210,3 +2267,124 @@ async def patch_scheduled_task(
     await db.commit()
     await db.refresh(row)
     return _task_to_response(row)
+
+
+# ---------------------------------------------------------------------------
+# Credential expiry
+# ---------------------------------------------------------------------------
+
+
+class CredentialExpiryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    resource: str
+    expires_on: date | None
+    notes: str | None
+    last_alerted_at: datetime | None
+    updated_by_user_id: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+    days_remaining: int | None
+
+    model_config = {"from_attributes": False}
+
+
+class CreateCredentialBody(BaseModel):
+    name: str
+    resource: str
+    expires_on: date | None = None
+    notes: str | None = None
+
+
+class PatchCredentialBody(BaseModel):
+    name: str | None = None
+    resource: str | None = None
+    expires_on: date | None = None
+    notes: str | None = None
+
+
+def _credential_to_response(cred: CredentialExpiry) -> CredentialExpiryResponse:
+    days_remaining: int | None = None
+    if cred.expires_on is not None:
+        days_remaining = (cred.expires_on - datetime.now(timezone.utc).date()).days
+    return CredentialExpiryResponse(
+        id=cred.id,
+        name=cred.name,
+        resource=cred.resource,
+        expires_on=cred.expires_on,
+        notes=cred.notes,
+        last_alerted_at=cred.last_alerted_at,
+        updated_by_user_id=cred.updated_by_user_id,
+        created_at=cred.created_at,
+        updated_at=cred.updated_at,
+        days_remaining=days_remaining,
+    )
+
+
+@router.get("/credentials", response_model=list[CredentialExpiryResponse])
+async def list_credentials(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[CredentialExpiryResponse]:
+    rows = await db.scalars(select(CredentialExpiry).order_by(CredentialExpiry.expires_on.asc().nulls_last()))
+    return [_credential_to_response(r) for r in rows.all()]
+
+
+@router.post("/credentials", response_model=CredentialExpiryResponse, status_code=201)
+async def create_credential(
+    body: CreateCredentialBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_superuser),
+) -> CredentialExpiryResponse:
+    if body.resource not in RESOURCE_CHOICES:
+        raise HTTPException(status_code=422, detail=f"Invalid resource. Must be one of: {sorted(RESOURCE_CHOICES)}")
+    cred = CredentialExpiry(
+        name=body.name.strip(),
+        resource=body.resource,
+        expires_on=body.expires_on,
+        notes=body.notes,
+        updated_by_user_id=current_user.id,
+    )
+    db.add(cred)
+    await db.commit()
+    await db.refresh(cred)
+    return _credential_to_response(cred)
+
+
+@router.patch("/credentials/{credential_id}", response_model=CredentialExpiryResponse)
+async def patch_credential(
+    credential_id: uuid.UUID,
+    body: PatchCredentialBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_superuser),
+) -> CredentialExpiryResponse:
+    cred = await db.scalar(select(CredentialExpiry).where(CredentialExpiry.id == credential_id))
+    if cred is None:
+        raise HTTPException(status_code=404, detail="Credential not found")
+    if body.resource is not None and body.resource not in RESOURCE_CHOICES:
+        raise HTTPException(status_code=422, detail=f"Invalid resource. Must be one of: {sorted(RESOURCE_CHOICES)}")
+    if body.name is not None:
+        cred.name = body.name.strip()
+    if body.resource is not None:
+        cred.resource = body.resource
+    if body.expires_on is not None:
+        cred.expires_on = body.expires_on
+    if body.notes is not None:
+        cred.notes = body.notes
+    cred.updated_by_user_id = current_user.id
+    await db.commit()
+    await db.refresh(cred)
+    return _credential_to_response(cred)
+
+
+@router.delete("/credentials/{credential_id}", status_code=204)
+async def delete_credential(
+    credential_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_superuser),
+) -> None:
+    cred = await db.scalar(select(CredentialExpiry).where(CredentialExpiry.id == credential_id))
+    if cred is None:
+        raise HTTPException(status_code=404, detail="Credential not found")
+    await db.delete(cred)
+    await db.commit()

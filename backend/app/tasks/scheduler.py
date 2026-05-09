@@ -79,6 +79,44 @@ REGISTRY: dict[str, dict] = {
         "default_cron": "0 5 * * *",
         "default_config": {"limit": 50},
     },
+    "daily_health_check": {
+        "display_name": "Daily Health Check",
+        "description": (
+            "Runs all service probes once daily and writes the result to the server events log. "
+            "Sends a health degraded alert email if any probe is failing."
+        ),
+        "default_cron": "0 2 * * *",
+        "default_config": {},
+    },
+    "server_event_log_pruning": {
+        "display_name": "Server Event Log Pruning",
+        "description": (
+            "Removes server event log entries older than the configured age limit "
+            "and trims the table when it exceeds the maximum entry count."
+        ),
+        "default_cron": "30 2 * * *",
+        "default_config": {"max_age_days": 28, "max_entries": 1000},
+    },
+    "credential_expiry_check": {
+        "display_name": "Credential Expiry Check",
+        "description": (
+            "Checks all tracked credentials for upcoming expiration and sends alert emails. "
+            "Superusers receive an action-required email; admins receive a notice-only email. "
+            "Weekly alerts start 30 days before expiration; daily alerts begin 7 days before."
+        ),
+        "default_cron": "0 8 * * *",
+        "default_config": {},
+    },
+    "admin_digest": {
+        "display_name": "Weekly Admin Digest",
+        "description": (
+            "Sends a weekly summary email to all active admin users covering new signups, "
+            "pending approvals, platform activity, storage usage, and security status. "
+            "Disabled by default — enable to start receiving weekly digests."
+        ),
+        "default_cron": "0 8 * * 1",
+        "default_config": {},
+    },
 }
 
 
@@ -153,6 +191,45 @@ def _dispatch_preview_retry(settings, task=None):
     return t
 
 
+def _dispatch_daily_health_check(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import daily_health_check
+
+    t = daily_health_check.delay()
+    record_queued(settings, t.id, "app.tasks.maintenance.daily_health_check", "scheduled:daily_health_check")
+    return t
+
+
+def _dispatch_server_event_log_pruning(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import prune_server_event_log
+
+    cfg = (task.config or {}) if task else {}
+    max_age_days = int(cfg.get("max_age_days", 28))
+    max_entries = int(cfg.get("max_entries", 1000))
+    t = prune_server_event_log.delay(max_age_days=max_age_days, max_entries=max_entries)
+    record_queued(settings, t.id, "app.tasks.maintenance.prune_server_event_log", "scheduled:server_event_log_pruning")
+    return t
+
+
+def _dispatch_credential_expiry_check(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import check_credential_expiry
+
+    t = check_credential_expiry.delay()
+    record_queued(settings, t.id, "app.tasks.maintenance.check_credential_expiry", "scheduled:credential_expiry_check")
+    return t
+
+
+def _dispatch_admin_digest(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import send_admin_digest
+
+    t = send_admin_digest.delay()
+    record_queued(settings, t.id, "app.tasks.maintenance.send_admin_digest", "scheduled:admin_digest")
+    return t
+
+
 DISPATCH_FNS: dict[str, object] = {
     "cve_scan": _dispatch_cve_scan,
     "s3_audit": _dispatch_s3_audit,
@@ -161,6 +238,10 @@ DISPATCH_FNS: dict[str, object] = {
     "audit_log_pruning": _dispatch_audit_log_pruning,
     "heartbeat": _dispatch_heartbeat,
     "preview_retry": _dispatch_preview_retry,
+    "daily_health_check": _dispatch_daily_health_check,
+    "server_event_log_pruning": _dispatch_server_event_log_pruning,
+    "credential_expiry_check": _dispatch_credential_expiry_check,
+    "admin_digest": _dispatch_admin_digest,
 }
 
 

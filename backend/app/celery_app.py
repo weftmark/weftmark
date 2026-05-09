@@ -47,6 +47,12 @@ def _make_celery() -> Celery:
 
 celery_app = _make_celery()
 
+_settings = get_settings()
+if _settings.otel_exporter_otlp_endpoint:
+    from app.telemetry import configure_telemetry
+
+    configure_telemetry(_settings)
+
 
 @task_prerun.connect
 def _on_task_prerun(task_id=None, **kwargs):

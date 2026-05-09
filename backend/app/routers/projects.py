@@ -1,3 +1,4 @@
+import asyncio
 import mimetypes
 import uuid
 from datetime import datetime, timezone
@@ -74,6 +75,8 @@ class ProjectDetail(ProjectSummary):
     draft_effective_num_shafts: int | None
     draft_metadata_overrides: dict | None
     loom_name: str | None
+    loom_num_treadles: int | None = None
+    loom_num_shafts: int | None = None
     photos: list[ProjectPhotoSchema] = []
 
 
@@ -147,7 +150,7 @@ async def _check_loom_conflict(
         raise HTTPException(status_code=409, detail="This loom already has an active project")
 
 
-def _wif_path_for_project(draft: Draft, project_type: str) -> str:
+async def _wif_path_for_project(draft: Draft, project_type: str) -> str:
     """Return the correct WIF path for a project type.
 
     For lift projects, prefer the liftplan-augmented file when available so
@@ -155,7 +158,7 @@ def _wif_path_for_project(draft: Draft, project_type: str) -> str:
     the case where the liftplan was embedded in the original WIF by the user's
     design software).
     """
-    if project_type == "lift" and draft.wif_modified_path and storage.file_exists(draft.wif_modified_path):
+    if project_type == "lift" and draft.wif_modified_path and await storage.afile_exists(draft.wif_modified_path):
         return draft.wif_modified_path
     return draft.wif_path
 
@@ -181,7 +184,11 @@ async def _get_owned_project(
 
 
 def _to_detail(
-    project: Project, draft: Draft, loom: Loom | None, photos: list[ProjectPhoto] | None = None
+    project: Project,
+    draft: Draft,
+    loom: Loom | None,
+    photos: list[ProjectPhoto] | None = None,
+    loom_version: LoomVersion | None = None,
 ) -> ProjectDetail:
     return ProjectDetail(
         id=project.id,
@@ -209,6 +216,8 @@ def _to_detail(
         draft_effective_num_shafts=draft.effective_num_shafts,
         draft_metadata_overrides=draft.metadata_overrides,
         loom_name=f"{loom.manufacturer} {loom.model_name}" if loom else None,
+        loom_num_treadles=loom_version.num_treadles if loom_version else None,
+        loom_num_shafts=loom_version.num_shafts if loom_version else None,
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
     )
 
@@ -244,9 +253,9 @@ async def create_project(
         raise HTTPException(status_code=400, detail="WIF file has no [LIFTPLAN] section")
 
     # Parse pick count from WIF
-    wif_bytes = storage.read_file(_wif_path_for_project(draft, body.project_type))
+    wif_bytes = await storage.aread_file(await _wif_path_for_project(draft, body.project_type))
     try:
-        pick_data = wif_parser.parse_picks(wif_bytes, body.project_type)
+        pick_data = await asyncio.to_thread(wif_parser.parse_picks, wif_bytes, body.project_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -337,7 +346,8 @@ async def get_project(
         raise HTTPException(status_code=404, detail="Project not found")
     draft = await db.get(Draft, project.draft_id)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    return _to_detail(project, draft, loom, photos=list(project.photos))  # type: ignore[arg-type]
+    loom_version = await db.get(LoomVersion, project.loom_version_id) if project.loom_version_id else None
+    return _to_detail(project, draft, loom, photos=list(project.photos), loom_version=loom_version)  # type: ignore[arg-type]
 
 
 @router.patch("/{project_id}", response_model=ProjectDetail)
@@ -410,7 +420,8 @@ async def assign_loom(
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
-    return _to_detail(project, draft, loom)
+    loom_version = await db.get(LoomVersion, project.loom_version_id) if project.loom_version_id else None
+    return _to_detail(project, draft, loom, loom_version=loom_version)
 
 
 @router.post("/{project_id}/step", response_model=StepResponse)
@@ -598,7 +609,7 @@ async def upload_project_photo(
     await check_storage_quota(current_user.id, db, incoming_bytes=len(data))
 
     photo_id = uuid.uuid4()
-    file_path = storage.save_project_photo(project.id, photo_id, ".jpg", data)
+    file_path = await storage.asave_project_photo(project.id, photo_id, ".jpg", data)
 
     max_order_result = await db.scalars(
         select(ProjectPhoto.display_order)
@@ -633,9 +644,9 @@ async def get_project_photo(
     photo = await db.scalar(
         select(ProjectPhoto).where(ProjectPhoto.id == photo_id, ProjectPhoto.project_id == project_id)
     )
-    if photo is None or not storage.file_exists(photo.file_path):
+    if photo is None or not await storage.afile_exists(photo.file_path):
         raise HTTPException(status_code=404, detail="Photo not found")
-    data = storage.read_file(photo.file_path)
+    data = await storage.aread_file(photo.file_path)
     ct = mimetypes.guess_type(photo.file_path)[0] or "application/octet-stream"
     return Response(content=data, media_type=ct)
 
@@ -653,7 +664,7 @@ async def delete_project_photo(
     )
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
-    storage.delete_project_photo(photo.file_path)
+    await storage.adelete_project_photo(photo.file_path)
     await db.delete(photo)
     await db.commit()
 
@@ -669,9 +680,9 @@ async def get_picks(
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
 
-    wif_bytes = storage.read_file(_wif_path_for_project(draft, project.project_type))
+    wif_bytes = await storage.aread_file(await _wif_path_for_project(draft, project.project_type))
     try:
-        pick_data = wif_parser.parse_picks(wif_bytes, project.project_type)
+        pick_data = await asyncio.to_thread(wif_parser.parse_picks, wif_bytes, project.project_type)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
