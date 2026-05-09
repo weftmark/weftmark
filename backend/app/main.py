@@ -10,12 +10,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.logging_config import configure_logging
 from app.middleware import SecurityHeadersMiddleware
-from app.routers import admin, auth, dev, drafts, health, logs, looms, projects, system, users, yarn
-from app.telemetry import configure_telemetry
 from app.version import VERSION
 
+# Configure logging before router imports — routers pull in celery_app which
+# calls configure_telemetry(), and that confirmation log would be silently
+# dropped if no handlers are set up yet.
 settings = get_settings()
 configure_logging(settings.log_level)
+
+from app.routers import admin, auth, dev, drafts, health, logs, looms, projects, system, users, yarn  # noqa: E402
+from app.telemetry import configure_telemetry  # noqa: E402
+
 configure_telemetry(settings)
 log = logging.getLogger(__name__)
 
