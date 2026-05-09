@@ -54,6 +54,7 @@ class UserSettingsUpdate(BaseModel):
     idle_timeout_minutes: int | None = None
     measurement_system: str | None = None
     ai_training_consent: bool | None = None
+    show_version_numbers: bool | None = None
 
 
 class EulaAcceptRequest(BaseModel):
@@ -74,6 +75,7 @@ class UserSettingsResponse(BaseModel):
     idle_timeout_minutes: int
     measurement_system: str
     ai_training_consent: bool
+    show_version_numbers: bool
     eula_accepted_version: str | None
     current_eula_version: str
 
@@ -101,6 +103,7 @@ def _to_response(user: User, current_eula_version: str) -> UserSettingsResponse:
         idle_timeout_minutes=user.idle_timeout_minutes,
         measurement_system=user.measurement_system,
         ai_training_consent=user.ai_training_consent,
+        show_version_numbers=user.show_version_numbers,
         eula_accepted_version=user.eula_accepted_version,
         current_eula_version=current_eula_version,
     )
@@ -177,6 +180,9 @@ async def update_settings(
                 detail=f"measurement_system must be one of {sorted(_VALID_MEASUREMENT_SYSTEMS)}",
             )
         current_user.measurement_system = body.measurement_system
+
+    if body.show_version_numbers is not None:
+        current_user.show_version_numbers = body.show_version_numbers
 
     if body.ai_training_consent is not None:
         current_user.ai_training_consent = body.ai_training_consent

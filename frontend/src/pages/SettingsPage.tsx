@@ -33,6 +33,7 @@ export function SettingsPage() {
   const [displayName, setDisplayName] = useState(user?.display_name ?? "");
   const [theme, setTheme] = useState(user?.theme ?? "light");
   const [activityTheme, setActivityTheme] = useState(user?.activity_theme ?? "default");
+  const [showVersionNumbers, setShowVersionNumbers] = useState(user?.show_version_numbers ?? true);
   const [idleTimeout, setIdleTimeout] = useState(user?.idle_timeout_minutes ?? 30);
   const [measurementSystem, setMeasurementSystem] = useState(user?.measurement_system ?? "metric");
   const [dataConsent, setDataConsent] = useState(user?.ai_training_consent ?? false);
@@ -160,6 +161,33 @@ export function SettingsPage() {
                   </select>
                   <p className="text-xs text-muted-foreground mt-1">
                     Controls the visual density of the pick-by-pick tracker.
+                  </p>
+                </Field>
+
+                <Field label="Show version numbers">
+                  <div className="flex items-center gap-3">
+                    <button
+                      role="switch"
+                      aria-checked={showVersionNumbers}
+                      onClick={() => {
+                        const next = !showVersionNumbers;
+                        setShowVersionNumbers(next);
+                        save({ show_version_numbers: next });
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        showVersionNumbers ? "bg-primary" : "bg-input"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          showVersionNumbers ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm">{showVersionNumbers ? "Visible" : "Hidden"}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Show or hide the UI, API, and worker version badge in the bottom-right corner.
                   </p>
                 </Field>
               </Section>

@@ -18,6 +18,7 @@ export interface UserSettingsUpdate {
   idle_timeout_minutes?: number;
   measurement_system?: string;
   ai_training_consent?: boolean;
+  show_version_numbers?: boolean;
 }
 
 export async function updateSettings(body: UserSettingsUpdate): Promise<User> {
