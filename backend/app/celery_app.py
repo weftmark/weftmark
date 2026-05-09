@@ -1,7 +1,11 @@
+import logging
+
 from celery import Celery
+from celery.signals import setup_logging as celery_setup_logging
 from celery.signals import task_failure, task_postrun, task_prerun, worker_ready
 
 from app.config import get_settings
+from app.logging_config import configure_logging
 from app.version import VERSION
 
 WORKER_VERSION_KEY = "weftmark:worker_version"
@@ -52,6 +56,24 @@ if _settings.otel_exporter_otlp_endpoint:
     from app.telemetry import configure_telemetry
 
     configure_telemetry(_settings)
+
+
+@celery_setup_logging.connect
+def _configure_worker_logging(**kwargs):
+    # Connecting to this signal suppresses Celery's own root-logger hijacking.
+    # We replicate what main.py does: JSON StreamHandler first, then re-attach
+    # the OTel LoggingHandler (configure_logging() clears root handlers, which
+    # would otherwise strip the handler added by configure_telemetry()).
+    settings = get_settings()
+    configure_logging(settings.log_level)
+    if settings.otel_exporter_otlp_endpoint:
+        try:
+            from opentelemetry._logs import get_logger_provider
+            from opentelemetry.sdk._logs import LoggingHandler
+
+            logging.getLogger().addHandler(LoggingHandler(logger_provider=get_logger_provider()))
+        except Exception:
+            pass
 
 
 @task_prerun.connect
