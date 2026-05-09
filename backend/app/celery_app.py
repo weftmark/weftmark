@@ -8,6 +8,8 @@ from app.config import get_settings
 from app.logging_config import configure_logging
 from app.version import VERSION
 
+log = logging.getLogger(__name__)
+
 WORKER_VERSION_KEY = "weftmark:worker_version"
 WORKER_VERSION_NODE_PREFIX = "weftmark:worker_version:node:"
 
@@ -21,7 +23,9 @@ def _make_celery() -> Celery:
         include=[
             "app.tasks.deletion",
             "app.tasks.email_task",
+            "app.tasks.geo",
             "app.tasks.maintenance",
+            "app.tasks.metrics",
             "app.tasks.preview",
             "app.tasks.purge",
             "app.tasks.s3_audit",
@@ -43,7 +47,15 @@ def _make_celery() -> Celery:
             "run-scheduled-tasks": {
                 "task": "app.tasks.scheduler.run_scheduled_tasks",
                 "schedule": 60.0,
-            }
+            },
+            "record-business-metrics": {
+                "task": "app.tasks.metrics.record_business_metrics",
+                "schedule": 300.0,
+            },
+            "refresh-geoip-database": {
+                "task": "app.tasks.geo.refresh_geoip_database",
+                "schedule": 604800.0,  # weekly
+            },
         },
     )
     return app
@@ -147,3 +159,19 @@ def _publish_worker_version(sender=None, **kwargs):
         client.close()
     except Exception:
         pass  # version badge degrades gracefully if Redis is unavailable
+
+
+@worker_ready.connect
+def _initial_geoip_download(sender=None, **kwargs):
+    """Queue a GeoLite2 download if the MMDB is absent and the license key is set."""
+    try:
+        import os
+
+        settings = get_settings()
+        if settings.maxmind_license_key and not os.path.exists(settings.geoip_db_path):
+            from app.tasks.geo import refresh_geoip_database
+
+            refresh_geoip_database.delay()
+            log.info("GeoLite2-City MMDB absent — queued initial download")
+    except Exception:
+        pass

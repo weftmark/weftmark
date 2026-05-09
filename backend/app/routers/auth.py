@@ -1,7 +1,7 @@
 """Authentication via Clerk.
 
 Routes:
-  POST /auth/clerk/webhook  — Clerk webhook: user.created / user.deleted
+  POST /auth/clerk/webhook  — Clerk webhook: user.created / user.deleted / session.created / session.ended
   POST /auth/logout         — no-op (Clerk manages sessions client-side)
   GET  /auth/me             — return current user profile
 
@@ -37,7 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.deps import get_current_user, get_db, require_admin
-from app.metrics import logins_total, signups_total
+from app.metrics import logins_total, sessions_ended_total, signups_total
 from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
 from app.models.user import User
@@ -98,6 +98,8 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
             await _handle_user_deleted(db, data)
         elif event_type == "session.created":
             await _handle_session_created(data)
+        elif event_type == "session.ended":
+            await _handle_session_ended(data)
         else:
             log.info("webhook_ignored event_type=%s", event_type)
     except Exception:
@@ -230,6 +232,13 @@ async def _handle_session_created(data: dict) -> None:
     public_metadata = user_data.get("public_metadata", {})
     is_admin = bool(public_metadata.get("is_admin", False))
     logins_total.add(1, {"role": "admin" if is_admin else "user"})
+
+
+async def _handle_session_ended(data: dict) -> None:
+    user_data = data.get("user", {})
+    public_metadata = user_data.get("public_metadata", {})
+    is_admin = bool(public_metadata.get("is_admin", False))
+    sessions_ended_total.add(1, {"role": "admin" if is_admin else "user"})
 
 
 async def _consume_invite(db: AsyncSession, email: str) -> Invite | None:

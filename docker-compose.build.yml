@@ -31,6 +31,8 @@ x-worker-env: &worker-env
   RENDER_MAX_HEIGHT: ${RENDER_MAX_HEIGHT}
   RENDER_DEFAULT_ZOOM: ${RENDER_DEFAULT_ZOOM}
   OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  MAXMIND_LICENSE_KEY: ${MAXMIND_LICENSE_KEY:-}
+  GEOIP_DB_PATH: ${GEOIP_DB_PATH:-/app/data/GeoLite2-City.mmdb}
 
 x-worker: &worker-base
   build:
@@ -44,6 +46,7 @@ x-worker: &worker-base
     - internal
   volumes:
     - uploads:/app/uploads
+    - geoip_data:/app/data
   depends_on:
     redis:
       condition: service_healthy
@@ -150,8 +153,11 @@ services:
       RENDER_DEFAULT_ZOOM: ${RENDER_DEFAULT_ZOOM}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-weftmark-api}
+      MAXMIND_LICENSE_KEY: ${MAXMIND_LICENSE_KEY:-}
+      GEOIP_DB_PATH: ${GEOIP_DB_PATH:-/app/data/GeoLite2-City.mmdb}
     volumes:
       - uploads:/app/uploads
+      - geoip_data:/app/data
     depends_on:
       redis:
         condition: service_healthy
@@ -253,3 +259,4 @@ networks:
 volumes:
   postgres_data:
   uploads:
+  geoip_data:

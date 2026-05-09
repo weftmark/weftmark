@@ -35,11 +35,56 @@ logins_total = _meter.create_counter(
     unit="1",
 )
 
+sessions_ended_total = _meter.create_counter(
+    "weftmark.user.sessions_ended",
+    description="User sessions ended via Clerk session.ended webhook",
+    unit="1",
+)
+
 celery_tasks_total = _meter.create_counter(
     "weftmark.celery.tasks",
     description="Celery task executions by outcome (succeeded/failed/retried/revoked)",
     unit="1",
 )
+
+
+# ---------------------------------------------------------------------------
+# Business entity gauges — populated by tasks/metrics.py on a schedule
+# ---------------------------------------------------------------------------
+
+_gauge_cache: dict[str, int | float] = {}
+
+_BUSINESS_GAUGES: tuple[tuple[str, str], ...] = (
+    ("weftmark.users.total", "Active approved users (clerk_user_id set, not deleted, not banned)"),
+    ("weftmark.users.pending_approval", "Pending signups awaiting admin review"),
+    ("weftmark.projects.total", "Total active projects"),
+    ("weftmark.storage.used_bytes", "Total storage used across all users (bytes)"),
+    ("weftmark.storage.users_at_quota", "Users at >= 90% of their storage quota"),
+)
+
+
+def update_gauge_cache(metric_name: str, value: int | float) -> None:
+    _gauge_cache[metric_name] = value
+
+
+def register_business_gauges() -> None:
+    """Register observable gauges backed by _gauge_cache. Call once after MeterProvider is set."""
+
+    def _make_callback(name: str):
+        def _cb(_options):
+            val = _gauge_cache.get(name)
+            return [Observation(val)] if val is not None else []
+
+        return _cb
+
+    unit_map = {"weftmark.storage.used_bytes": "By"}
+    for name, description in _BUSINESS_GAUGES:
+        _meter.create_observable_gauge(
+            name,
+            callbacks=[_make_callback(name)],
+            description=description,
+            unit=unit_map.get(name, "1"),
+        )
 
 
 def register_pool_metrics(engine) -> None:
