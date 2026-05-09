@@ -88,3 +88,8 @@ def configure_logging(log_level: str) -> None:
         logger.addHandler(handler)
         logger.setLevel(level)
         logger.propagate = False
+
+    # CeleryInstrumentor emits a WARNING for every task when Celery attaches a
+    # dict extra to log records — the SDK skips the attribute safely, so this
+    # is pure noise.  Raise to ERROR to keep Loki clean.
+    logging.getLogger("opentelemetry.attributes").setLevel(logging.ERROR)
