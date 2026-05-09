@@ -49,6 +49,8 @@ export interface ProjectDetail extends ProjectSummary {
   draft_effective_num_shafts: number | null;
   draft_metadata_overrides: Record<string, { original: number | null; override: number }> | null;
   loom_name: string | null;
+  loom_num_treadles: number | null;
+  loom_num_shafts: number | null;
   photos: ProjectPhoto[];
 }
 

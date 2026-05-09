@@ -96,12 +96,14 @@ function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: ()
 function PickDisplay({
   pick,
   totalCount,
+  dimAbove,
   projectType,
   colorMode,
   showWeftColor,
 }: {
   pick: PickRow;
   totalCount: number;
+  dimAbove: number;
   projectType: string;
   colorMode: ColorMode;
   showWeftColor: boolean;
@@ -128,6 +130,7 @@ function PickDisplay({
         >
           {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
             const active = pick.active.includes(n);
+            const trailing = dimAbove > 0 && n > dimAbove;
             if (colorMode !== "theme" && active && weftHex) {
               if (colorMode === "filled") {
                 const fg = contrastColor(weftHex);
@@ -154,7 +157,9 @@ function PickDisplay({
                 className={`rounded-md border-2 flex items-center justify-center text-xs font-bold ${
                   active
                     ? "bg-primary border-primary text-primary-foreground"
-                    : "border-muted bg-muted/30 text-muted-foreground"
+                    : trailing
+                      ? "border-muted/40 bg-muted/10 text-muted-foreground/30"
+                      : "border-muted bg-muted/30 text-muted-foreground"
                 }`}>
                 {n}
               </div>
@@ -1036,6 +1041,9 @@ export function ProjectDetailPage() {
   const [showProgress, setShowProgress] = useState(
     () => localStorage.getItem("proj-view:showProgress") !== "false"
   );
+  const [hideTrailingUnused, setHideTrailingUnused] = useState(
+    () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
+  );
   const [showDesignPreview, setShowDesignPreview] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -1264,11 +1272,25 @@ export function ProjectDetailPage() {
 
   const displayPick = isPlanning ? localPick : project.current_pick;
   const currentPickIndex = displayPick - 1;
+
+  const loomCount = project.project_type === "lift"
+    ? (project.loom_num_shafts ?? null)
+    : (project.loom_num_treadles ?? null);
   const declaredCount = project.project_type === "lift"
     ? (project.draft_num_shafts ?? 0)
     : (project.draft_num_treadles ?? 0);
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
-  const maxActive = declaredCount > 0 ? declaredCount : maxFromPicks;
+  // When a loom is assigned, use its treadle/shaft count; otherwise fall back to draft declared count.
+  const maxActive = (loomCount !== null && loomCount > 0)
+    ? loomCount
+    : (declaredCount > 0 ? declaredCount : maxFromPicks);
+
+  // Highest treadle/shaft index actually used in any pick across the full sequence.
+  const maxUsed = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
+  // Count of trailing unused boxes (never used in any pick, counting from the top).
+  const trailingUnused = maxActive > maxUsed ? maxActive - maxUsed : 0;
+  // Effective box count shown: when hiding trailing, shrink to maxUsed.
+  const displayCount = hideTrailingUnused && trailingUnused > 0 ? maxUsed : maxActive;
 
   const isFinished = displayPick > project.total_picks;
   const isActiveTracking = project.status === "active" && !isPlanning;
@@ -1459,7 +1481,8 @@ export function ProjectDetailPage() {
           ) : picksData ? (
             <PickDisplay
               pick={picksData.picks[currentPickIndex]}
-              totalCount={maxActive}
+              totalCount={displayCount}
+              dimAbove={hideTrailingUnused ? 0 : trailingUnused > 0 ? maxUsed : 0}
               projectType={project.project_type}
               colorMode={colorMode}
               showWeftColor={showWeftColor}
@@ -1479,7 +1502,7 @@ export function ProjectDetailPage() {
               currentPickIndex={currentPickIndex}
               totalPicks={project.total_picks}
               picks={picksData.picks}
-              maxActive={maxActive}
+              maxActive={displayCount}
             />
           </div>
         )}
@@ -1826,6 +1849,31 @@ export function ProjectDetailPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Trailing unused toggle — only shown when there are trailing boxes */}
+              {trailingUnused > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Treadle display</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm">Hide trailing unused</span>
+                      <p className="text-xs text-muted-foreground">{trailingUnused} never-used trailing {trailingUnused === 1 ? "box" : "boxes"}</p>
+                    </div>
+                    <button
+                      role="switch"
+                      aria-checked={hideTrailingUnused}
+                      onClick={() => {
+                        const next = !hideTrailingUnused;
+                        setHideTrailingUnused(next);
+                        localStorage.setItem("proj-view:hideTrailingUnused", String(next));
+                      }}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${hideTrailingUnused ? "bg-primary" : "bg-input"}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${hideTrailingUnused ? "translate-x-4" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Color mode selector */}
               {picksData?.has_weft_colors && (
