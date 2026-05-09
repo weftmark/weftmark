@@ -1,6 +1,7 @@
 from app.models.alembic_meta import AlembicMeta
 from app.models.audit_log import AuditLog
 from app.models.base import Base
+from app.models.credential_expiry import CredentialExpiry
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
@@ -24,6 +25,7 @@ __all__ = [
     "Base",
     "AlembicMeta",
     "AuditLog",
+    "CredentialExpiry",
     "User",
     "UserIdentity",
     "Invite",

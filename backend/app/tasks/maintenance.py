@@ -333,3 +333,123 @@ def prune_server_event_log(self, max_age_days: int = 28, max_entries: int = 1000
         max_entries,
     )
     return {"deleted_age": deleted_age, "deleted_overflow": deleted_overflow}
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
+    name="app.tasks.maintenance.check_credential_expiry",
+)
+def check_credential_expiry(self) -> dict:
+    import asyncio
+
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    from app.config import get_settings
+    from app.models.credential_expiry import CredentialExpiry
+    from app.models.user import User
+
+    settings = get_settings()
+    today = datetime.now(timezone.utc).date()
+    now = datetime.now(timezone.utc)
+    alerted = 0
+    skipped = 0
+
+    engine = create_engine(settings.database_url_sync)
+    try:
+        with Session(engine) as db:
+            credentials = db.scalars(select(CredentialExpiry).where(CredentialExpiry.expires_on.isnot(None))).all()
+
+            superuser_emails = [
+                r
+                for r in db.scalars(
+                    select(User.email).where(User.is_superuser.is_(True), User.is_active.is_(True))
+                ).all()
+                if r
+            ]
+            admin_emails = [
+                r
+                for r in db.scalars(
+                    select(User.email).where(
+                        User.is_admin.is_(True),
+                        User.is_superuser.is_(False),
+                        User.is_active.is_(True),
+                    )
+                ).all()
+                if r
+            ]
+
+            for cred in credentials:
+                days_remaining = (cred.expires_on - today).days
+
+                if days_remaining > 30:
+                    skipped += 1
+                    continue
+
+                # Determine required send interval
+                if days_remaining <= 7:
+                    interval_hours = 24
+                else:
+                    interval_hours = 24 * 7
+
+                if cred.last_alerted_at is not None:
+                    elapsed_hours = (now - cred.last_alerted_at).total_seconds() / 3600
+                    if elapsed_hours < interval_hours:
+                        skipped += 1
+                        continue
+
+                expires_on_str = cred.expires_on.strftime("%B %d, %Y")
+                display_days = max(days_remaining, 0)
+
+                try:
+                    import concurrent.futures
+
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                        pool.submit(
+                            asyncio.run,
+                            _send_credential_alerts(
+                                superuser_emails=superuser_emails,
+                                admin_emails=admin_emails,
+                                credential_name=cred.name,
+                                resource=cred.resource,
+                                days_remaining=display_days,
+                                expires_on=expires_on_str,
+                            ),
+                        ).result()
+                    cred.last_alerted_at = now
+                    alerted += 1
+                except Exception:
+                    log.exception("check_credential_expiry: failed to send alerts for credential id=%s", cred.id)
+            db.commit()
+    finally:
+        engine.dispose()
+
+    log.info("check_credential_expiry alerted=%d skipped=%d", alerted, skipped)
+    return {"alerted": alerted, "skipped": skipped}
+
+
+async def _send_credential_alerts(
+    superuser_emails: list[str],
+    admin_emails: list[str],
+    credential_name: str,
+    resource: str,
+    days_remaining: int,
+    expires_on: str,
+) -> None:
+    from app.services.email import send_credential_expiring_admin, send_credential_expiring_superuser
+
+    await send_credential_expiring_superuser(
+        superuser_emails=superuser_emails,
+        credential_name=credential_name,
+        resource=resource,
+        days_remaining=days_remaining,
+        expires_on=expires_on,
+    )
+    await send_credential_expiring_admin(
+        admin_emails=admin_emails,
+        credential_name=credential_name,
+        resource=resource,
+        days_remaining=days_remaining,
+        expires_on=expires_on,
+    )

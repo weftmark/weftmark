@@ -7,7 +7,7 @@ DB-dependent tests seed data async then verify the sync task reads it correctly.
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -314,7 +314,7 @@ class TestRetryFailedPreviews:
     @pytest.mark.asyncio
     async def test_skips_soft_deleted_drafts(self, db_session, test_user):
         from app.models.draft import Draft
-        from app.tasks.maintenance import retry_failed_previews
+        from app.tasks.maintenance import retry_failed_previews  # noqa: F811
 
         deleted = Draft(
             id=uuid.uuid4(),
@@ -335,3 +335,142 @@ class TestRetryFailedPreviews:
 
         mock_preview.delay.assert_not_called()
         assert result["retried"] == 0
+
+
+# ---------------------------------------------------------------------------
+# check_credential_expiry
+# ---------------------------------------------------------------------------
+
+
+def _cred(db, *, expires_in_days: int | None, last_alerted_hours_ago: float | None = None):
+    from datetime import date, timedelta
+
+    from app.models.credential_expiry import CredentialExpiry
+
+    now = datetime.now(timezone.utc)
+    expires_on = (date.today() + timedelta(days=expires_in_days)) if expires_in_days is not None else None
+    last_alerted_at = (now - timedelta(hours=last_alerted_hours_ago)) if last_alerted_hours_ago is not None else None
+    c = CredentialExpiry(
+        id=uuid.uuid4(),
+        name="Test Cred",
+        resource="smtp",
+        expires_on=expires_on,
+        last_alerted_at=last_alerted_at,
+    )
+    db.add(c)
+    return c
+
+
+class TestCheckCredentialExpiry:
+    @pytest.mark.asyncio
+    async def test_no_credentials_returns_zero(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] == 0
+        mock_send.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_credential_beyond_30_days_skipped(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        _cred(db_session, expires_in_days=60)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] == 0
+        assert result["skipped"] >= 1
+        mock_send.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_credential_at_25_days_alerts_first_time(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        _cred(db_session, expires_in_days=25, last_alerted_hours_ago=None)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_credential_alerts", new_callable=AsyncMock):
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_credential_at_5_days_alerts(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        _cred(db_session, expires_in_days=5, last_alerted_hours_ago=None)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_credential_alerts", new_callable=AsyncMock):
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_weekly_dedup_skips_within_7_days(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        _cred(db_session, expires_in_days=20, last_alerted_hours_ago=72)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] == 0
+        assert result["skipped"] >= 1
+        mock_send.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_daily_dedup_skips_within_24h(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        _cred(db_session, expires_in_days=3, last_alerted_hours_ago=12)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] == 0
+        mock_send.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_overdue_credential_alerts(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        _cred(db_session, expires_in_days=-5, last_alerted_hours_ago=None)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_credential_alerts", new_callable=AsyncMock):
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_last_alerted_at_updated_after_alert(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        cred = _cred(db_session, expires_in_days=5, last_alerted_hours_ago=None)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_credential_alerts", new_callable=AsyncMock):
+            check_credential_expiry.run.__func__(_make_task())
+
+        await db_session.refresh(cred)
+        assert cred.last_alerted_at is not None
+
+    @pytest.mark.asyncio
+    async def test_no_expiry_credential_skipped(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        _cred(db_session, expires_in_days=None)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] == 0
+        mock_send.assert_not_called()

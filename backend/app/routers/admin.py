@@ -5,7 +5,7 @@ import math
 import platform
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 import httpx
@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
 from app.models.audit_log import AuditLog
+from app.models.credential_expiry import RESOURCE_CHOICES, CredentialExpiry
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
@@ -2266,3 +2267,124 @@ async def patch_scheduled_task(
     await db.commit()
     await db.refresh(row)
     return _task_to_response(row)
+
+
+# ---------------------------------------------------------------------------
+# Credential expiry
+# ---------------------------------------------------------------------------
+
+
+class CredentialExpiryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    resource: str
+    expires_on: date | None
+    notes: str | None
+    last_alerted_at: datetime | None
+    updated_by_user_id: uuid.UUID | None
+    created_at: datetime
+    updated_at: datetime
+    days_remaining: int | None
+
+    model_config = {"from_attributes": False}
+
+
+class CreateCredentialBody(BaseModel):
+    name: str
+    resource: str
+    expires_on: date | None = None
+    notes: str | None = None
+
+
+class PatchCredentialBody(BaseModel):
+    name: str | None = None
+    resource: str | None = None
+    expires_on: date | None = None
+    notes: str | None = None
+
+
+def _credential_to_response(cred: CredentialExpiry) -> CredentialExpiryResponse:
+    days_remaining: int | None = None
+    if cred.expires_on is not None:
+        days_remaining = (cred.expires_on - datetime.now(timezone.utc).date()).days
+    return CredentialExpiryResponse(
+        id=cred.id,
+        name=cred.name,
+        resource=cred.resource,
+        expires_on=cred.expires_on,
+        notes=cred.notes,
+        last_alerted_at=cred.last_alerted_at,
+        updated_by_user_id=cred.updated_by_user_id,
+        created_at=cred.created_at,
+        updated_at=cred.updated_at,
+        days_remaining=days_remaining,
+    )
+
+
+@router.get("/credentials", response_model=list[CredentialExpiryResponse])
+async def list_credentials(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[CredentialExpiryResponse]:
+    rows = await db.scalars(select(CredentialExpiry).order_by(CredentialExpiry.expires_on.asc().nulls_last()))
+    return [_credential_to_response(r) for r in rows.all()]
+
+
+@router.post("/credentials", response_model=CredentialExpiryResponse, status_code=201)
+async def create_credential(
+    body: CreateCredentialBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_superuser),
+) -> CredentialExpiryResponse:
+    if body.resource not in RESOURCE_CHOICES:
+        raise HTTPException(status_code=422, detail=f"Invalid resource. Must be one of: {sorted(RESOURCE_CHOICES)}")
+    cred = CredentialExpiry(
+        name=body.name.strip(),
+        resource=body.resource,
+        expires_on=body.expires_on,
+        notes=body.notes,
+        updated_by_user_id=current_user.id,
+    )
+    db.add(cred)
+    await db.commit()
+    await db.refresh(cred)
+    return _credential_to_response(cred)
+
+
+@router.patch("/credentials/{credential_id}", response_model=CredentialExpiryResponse)
+async def patch_credential(
+    credential_id: uuid.UUID,
+    body: PatchCredentialBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_superuser),
+) -> CredentialExpiryResponse:
+    cred = await db.scalar(select(CredentialExpiry).where(CredentialExpiry.id == credential_id))
+    if cred is None:
+        raise HTTPException(status_code=404, detail="Credential not found")
+    if body.resource is not None and body.resource not in RESOURCE_CHOICES:
+        raise HTTPException(status_code=422, detail=f"Invalid resource. Must be one of: {sorted(RESOURCE_CHOICES)}")
+    if body.name is not None:
+        cred.name = body.name.strip()
+    if body.resource is not None:
+        cred.resource = body.resource
+    if body.expires_on is not None:
+        cred.expires_on = body.expires_on
+    if body.notes is not None:
+        cred.notes = body.notes
+    cred.updated_by_user_id = current_user.id
+    await db.commit()
+    await db.refresh(cred)
+    return _credential_to_response(cred)
+
+
+@router.delete("/credentials/{credential_id}", status_code=204)
+async def delete_credential(
+    credential_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_superuser),
+) -> None:
+    cred = await db.scalar(select(CredentialExpiry).where(CredentialExpiry.id == credential_id))
+    if cred is None:
+        raise HTTPException(status_code=404, detail="Credential not found")
+    await db.delete(cred)
+    await db.commit()
