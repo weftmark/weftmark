@@ -222,6 +222,15 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
             )}
           </div>
 
+          {!loomId && selectedDraft && (
+            <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+              <p className="font-medium text-foreground">No loom selected — preview mode</p>
+              <p className="mt-0.5 text-xs text-subdued">
+                This project will not be linked to equipment. Select a project type below to create a standalone tracking preview. You can create a separate project to preview the other type.
+              </p>
+            </div>
+          )}
+
           {selectedLoom && loomVersions.length > 1 && (
             <div>
               <label className="mb-1 block text-sm font-medium">Loom configuration</label>
@@ -301,6 +310,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
           <div className="border-t pt-4">
             <p className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Warp plan</p>
+            <p className="mb-3 text-xs text-muted-foreground">Warp plan tracking is not yet available. These fields are coming in a future update.</p>
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
                 <label className="mb-1 block text-sm font-medium">Finished length / item</label>
