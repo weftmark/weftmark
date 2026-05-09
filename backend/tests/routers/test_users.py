@@ -102,6 +102,21 @@ class TestUpdateSettings:
         assert resp.status_code == 200
         assert resp.json()["ai_training_consent"] is False
 
+    async def test_show_version_numbers_defaults_true(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/users/me")
+        assert resp.status_code == 200
+        assert resp.json()["show_version_numbers"] is True
+
+    async def test_update_show_version_numbers_false(self, auth_client: AsyncClient):
+        resp = await auth_client.patch("/api/users/me", json={"show_version_numbers": False})
+        assert resp.status_code == 200
+        assert resp.json()["show_version_numbers"] is False
+
+    async def test_update_show_version_numbers_true(self, auth_client: AsyncClient):
+        resp = await auth_client.patch("/api/users/me", json={"show_version_numbers": True})
+        assert resp.status_code == 200
+        assert resp.json()["show_version_numbers"] is True
+
     async def test_empty_display_name_returns_422(self, auth_client: AsyncClient):
         resp = await auth_client.patch("/api/users/me", json={"display_name": "   "})
         assert resp.status_code == 422

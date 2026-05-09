@@ -1020,8 +1020,22 @@ export function ProjectDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [stepping, setStepping] = useState(false);
-  const [colorMode, setColorMode] = useState<ColorMode>("strip");
-  const [showWeftColor, setShowWeftColor] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [colorMode, setColorMode] = useState<ColorMode>(
+    () => (localStorage.getItem("proj-view:colorMode") as ColorMode) ?? "strip"
+  );
+  const [showWeftColor, setShowWeftColor] = useState(
+    () => localStorage.getItem("proj-view:showWeftColor") !== "false"
+  );
+  const [showDrawdown, setShowDrawdown] = useState(
+    () => localStorage.getItem("proj-view:showDrawdown") !== "false"
+  );
+  const [showPickDisplay, setShowPickDisplay] = useState(
+    () => localStorage.getItem("proj-view:showPickDisplay") !== "false"
+  );
+  const [showProgress, setShowProgress] = useState(
+    () => localStorage.getItem("proj-view:showProgress") !== "false"
+  );
   const [showDesignPreview, setShowDesignPreview] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -1339,6 +1353,14 @@ export function ProjectDetailPage() {
           >
             View design
           </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="View settings"
+            aria-label="Open view settings"
+          >
+            <AppIcons.settings className="h-4 w-4" />
+          </button>
           <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
             {badgeLabel}
           </span>
@@ -1405,49 +1427,15 @@ export function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Progress bar + color controls — same row to save vertical space */}
-        {(!isPlanning && !isCompleted) || (picksData?.has_weft_colors && !isFinished && !isCompleted) ? (
-          <div className="mx-auto max-w-2xl px-8 pt-6 flex items-center gap-4">
-            {!isPlanning && !isCompleted && (
-              <div className="flex-1">
-                <ProgressBar current={project.current_pick} total={project.total_picks} />
-              </div>
-            )}
-            {picksData?.has_weft_colors && !isFinished && !isCompleted && (
-              <div className="shrink-0 flex items-center gap-3">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <span className="text-sm text-muted-foreground">Weft</span>
-                  <button
-                    role="switch"
-                    aria-checked={showWeftColor}
-                    onClick={() => setShowWeftColor((v) => !v)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 ${showWeftColor ? "bg-primary" : "bg-muted"}`}
-                  >
-                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${showWeftColor ? "translate-x-4" : "translate-x-1"}`} />
-                  </button>
-                </label>
-                <div className="inline-flex rounded-md border border-input overflow-hidden text-sm">
-                  {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
-                    <button
-                      key={mode}
-                      onClick={() => setColorMode(mode)}
-                      className={`px-2.5 py-1 capitalize transition-colors ${
-                        colorMode === mode
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+        {/* Progress bar */}
+        {showProgress && !isPlanning && !isCompleted && (
+          <div className="mx-auto max-w-2xl px-8 pt-6">
+            <ProgressBar current={project.current_pick} total={project.total_picks} />
           </div>
-        ) : null}
+        )}
 
         {/* Pick instruction — stays compact */}
-        {!isCompleted && <div className="mx-auto max-w-2xl px-8 pt-4">
+        {!isCompleted && showPickDisplay && <div className="mx-auto max-w-2xl px-8 pt-4">
           {isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-lg font-medium">All {project.total_picks} picks complete!</p>
@@ -1484,7 +1472,7 @@ export function ProjectDetailPage() {
         </div>}
 
         {/* Pattern view — wider on large screens to show more warp threads */}
-        {picksData && !isFinished && !isCompleted && !isAbandoned && (
+        {showDrawdown && picksData && !isFinished && !isCompleted && !isAbandoned && (
           <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
             <WeavingPatternView
               draftId={project.draft_id}
@@ -1794,6 +1782,75 @@ export function ProjectDetailPage() {
           }}
           onClose={() => setShowAssignLoom(false)}
         />
+      )}
+
+      {/* View settings drawer */}
+      {settingsOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setSettingsOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <span className="text-sm font-semibold">View settings</span>
+              <button
+                onClick={() => setSettingsOpen(false)}
+                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Close settings"
+              >
+                <AppIcons.close className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+              {/* Show/hide toggles */}
+              <div className="space-y-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Show / hide</p>
+                {([
+                  { label: "Progress bar", value: showProgress, key: "proj-view:showProgress", setter: setShowProgress },
+                  { label: "Pick instruction", value: showPickDisplay, key: "proj-view:showPickDisplay", setter: setShowPickDisplay },
+                  { label: "Drawdown pattern", value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
+                  { label: "Weft color", value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
+                ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void }[]).map(({ label, value, key, setter }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-sm">{label}</span>
+                    <button
+                      role="switch"
+                      aria-checked={value}
+                      onClick={() => { setter(!value); localStorage.setItem(key, String(!value)); }}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Color mode selector */}
+              {picksData?.has_weft_colors && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Color mode</p>
+                  <div className="inline-flex rounded-md border border-input overflow-hidden text-sm w-full">
+                    {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => { setColorMode(mode); localStorage.setItem("proj-view:colorMode", mode); }}
+                        className={`flex-1 px-2.5 py-1.5 capitalize transition-colors ${
+                          colorMode === mode
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
