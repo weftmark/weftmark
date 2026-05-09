@@ -36,9 +36,11 @@ def refresh_geoip_database(self) -> dict:
         f"?edition_id=GeoLite2-City&license_key={license_key}&suffix=tar.gz"
     )
 
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    dest_dir = os.path.dirname(db_path)
+    os.makedirs(dest_dir, exist_ok=True)
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    # Temp dir must be on the same filesystem as db_path so os.replace() (rename) works.
+    with tempfile.TemporaryDirectory(dir=dest_dir) as tmpdir:
         archive_path = os.path.join(tmpdir, "GeoLite2-City.tar.gz")
         log.info("Downloading GeoLite2-City database")
         urllib.request.urlretrieve(url, archive_path)  # noqa: S310
