@@ -24,7 +24,7 @@ def configure_telemetry(settings) -> None:
     try:
         from opentelemetry import metrics, trace
         from opentelemetry._logs import set_logger_provider
-        from opentelemetry.exporter.otlp.proto.http.log_exporter import OTLPLogExporter
+        from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
         from opentelemetry.instrumentation.botocore import BotocoreInstrumentor
