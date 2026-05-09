@@ -10,6 +10,10 @@ from __future__ import annotations
 from configparser import RawConfigParser
 from dataclasses import dataclass
 
+from opentelemetry import trace
+
+tracer = trace.get_tracer(__name__)
+
 
 @dataclass
 class PickData:
@@ -53,47 +57,52 @@ def _color_table(config: RawConfigParser, scale: int) -> dict[int, str]:
 
 
 def parse_picks(wif_bytes: bytes, project_type: str) -> PickData:
-    try:
-        text = wif_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        text = wif_bytes.decode("latin-1")
+    with tracer.start_as_current_span("wif.parse_picks") as span:
+        span.set_attribute("wif.project_type", project_type)
 
-    config = RawConfigParser()
-    config.optionxform = str
-    config.read_string(text)
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
 
-    section = "TREADLING" if project_type == "treadle" else "LIFTPLAN"
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
 
-    if not config.has_section(section):
-        raise ValueError(f"WIF file has no [{section}] section")
+        section = "TREADLING" if project_type == "treadle" else "LIFTPLAN"
 
-    raw = dict(config.items(section))
+        if not config.has_section(section):
+            raise ValueError(f"WIF file has no [{section}] section")
 
-    max_pick = max(int(k) for k in raw)
-    picks: list[list[int]] = []
-    for i in range(1, max_pick + 1):
-        val = raw.get(str(i), "")
-        active = [int(x.strip()) for x in val.split(",") if x.strip()] if val.strip() else []
-        picks.append(active)
+        raw = dict(config.items(section))
 
-    # Parse weft colors
-    scale = _color_scale(config)
-    colors = _color_table(config, scale)
+        max_pick = max(int(k) for k in raw)
+        picks: list[list[int]] = []
+        for i in range(1, max_pick + 1):
+            val = raw.get(str(i), "")
+            active = [int(x.strip()) for x in val.split(",") if x.strip()] if val.strip() else []
+            picks.append(active)
 
-    weft_color_map: dict[int, int] = {}
-    if config.has_section("WEFT COLORS"):
-        for k, v in config.items("WEFT COLORS"):
-            try:
-                # Spec: read only the first integer (palette index)
-                weft_color_map[int(k)] = int(v.split(",")[0].strip())
-            except ValueError:
-                continue
+        # Parse weft colors
+        scale = _color_scale(config)
+        colors = _color_table(config, scale)
 
-    weft_colors: list[str | None] = [
-        colors.get(weft_color_map[i]) if i in weft_color_map else None for i in range(1, max_pick + 1)
-    ]
+        weft_color_map: dict[int, int] = {}
+        if config.has_section("WEFT COLORS"):
+            for k, v in config.items("WEFT COLORS"):
+                try:
+                    # Spec: read only the first integer (palette index)
+                    weft_color_map[int(k)] = int(v.split(",")[0].strip())
+                except ValueError:
+                    continue
 
-    return PickData(project_type=project_type, total_picks=max_pick, picks=picks, weft_colors=weft_colors)
+        weft_colors: list[str | None] = [
+            colors.get(weft_color_map[i]) if i in weft_color_map else None for i in range(1, max_pick + 1)
+        ]
+
+        result = PickData(project_type=project_type, total_picks=max_pick, picks=picks, weft_colors=weft_colors)
+        span.set_attribute("wif.total_picks", result.total_picks)
+        return result
 
 
 def compute_liftplan(wif_bytes: bytes) -> bytes:
@@ -103,38 +112,40 @@ def compute_liftplan(wif_bytes: bytes) -> bytes:
 
     Algorithm: for each pick, union the shafts from every treadle pressed.
     """
-    try:
-        text = wif_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        text = wif_bytes.decode("latin-1")
+    with tracer.start_as_current_span("wif.compute_liftplan") as span:
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
 
-    config = RawConfigParser()
-    config.optionxform = str
-    config.read_string(text)
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
 
-    if not config.has_section("TREADLING"):
-        raise ValueError("WIF file has no [TREADLING] section — cannot compute lift plan")
-    if not config.has_section("TIEUP"):
-        raise ValueError("WIF file has no [TIEUP] section — cannot compute lift plan")
+        if not config.has_section("TREADLING"):
+            raise ValueError("WIF file has no [TREADLING] section — cannot compute lift plan")
+        if not config.has_section("TIEUP"):
+            raise ValueError("WIF file has no [TIEUP] section — cannot compute lift plan")
 
-    # tieup[treadle_num] -> sorted list of shaft nums
-    tieup: dict[int, list[int]] = {}
-    for k, v in config.items("TIEUP"):
-        treadle = int(k)
-        shafts = sorted(int(s.strip()) for s in v.split(",") if s.strip())
-        tieup[treadle] = shafts
+        # tieup[treadle_num] -> sorted list of shaft nums
+        tieup: dict[int, list[int]] = {}
+        for k, v in config.items("TIEUP"):
+            treadle = int(k)
+            shafts = sorted(int(s.strip()) for s in v.split(",") if s.strip())
+            tieup[treadle] = shafts
 
-    treadling_raw = dict(config.items("TREADLING"))
-    max_pick = max(int(k) for k in treadling_raw)
+        treadling_raw = dict(config.items("TREADLING"))
+        max_pick = max(int(k) for k in treadling_raw)
+        span.set_attribute("wif.total_picks", max_pick)
 
-    lines = ["[LIFTPLAN]"]
-    for i in range(1, max_pick + 1):
-        val = treadling_raw.get(str(i), "")
-        treadles = [int(t.strip()) for t in val.split(",") if t.strip()] if val.strip() else []
-        shafts: set[int] = set()
-        for t in treadles:
-            shafts.update(tieup.get(t, []))
-        lines.append(f"{i}={','.join(str(s) for s in sorted(shafts))}")
+        lines = ["[LIFTPLAN]"]
+        for i in range(1, max_pick + 1):
+            val = treadling_raw.get(str(i), "")
+            treadles = [int(t.strip()) for t in val.split(",") if t.strip()] if val.strip() else []
+            shafts: set[int] = set()
+            for t in treadles:
+                shafts.update(tieup.get(t, []))
+            lines.append(f"{i}={','.join(str(s) for s in sorted(shafts))}")
 
-    updated = text.rstrip() + "\n\n" + "\n".join(lines) + "\n"
-    return updated.encode("utf-8")
+        updated = text.rstrip() + "\n\n" + "\n".join(lines) + "\n"
+        return updated.encode("utf-8")
