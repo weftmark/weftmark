@@ -474,3 +474,102 @@ class TestCheckCredentialExpiry:
 
         assert result["alerted"] == 0
         mock_send.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# send_admin_digest
+# ---------------------------------------------------------------------------
+
+
+def _make_admin(db, *, is_admin: bool = True, is_active: bool = True):
+    from app.models.user import User
+
+    u = User(
+        id=uuid.uuid4(),
+        email=f"admin-{uuid.uuid4().hex[:8]}@example.test",
+        display_name="Admin User",
+        is_admin=is_admin,
+        is_active=is_active,
+    )
+    db.add(u)
+    return u
+
+
+class TestSendAdminDigest:
+    @pytest.mark.asyncio
+    async def test_no_admins_returns_zero(self, db_session):
+        from app.tasks.maintenance import send_admin_digest
+
+        with patch("app.tasks.maintenance._send_admin_digest_email", new_callable=AsyncMock) as mock_send:
+            with patch("redis.from_url") as mock_redis:
+                mock_redis.return_value.get.return_value = None
+                result = send_admin_digest.run.__func__(_make_task())
+
+        assert result["sent"] == 0
+        mock_send.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_sends_email_to_active_admins(self, db_session):
+        from app.tasks.maintenance import send_admin_digest
+
+        _make_admin(db_session)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_admin_digest_email", new_callable=AsyncMock) as mock_send:
+            with patch("redis.from_url") as mock_redis:
+                mock_redis.return_value.get.return_value = None
+                result = send_admin_digest.run.__func__(_make_task())
+
+        assert result["sent"] == 1
+        mock_send.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_inactive_admin_excluded(self, db_session):
+        from app.tasks.maintenance import send_admin_digest
+
+        _make_admin(db_session, is_active=False)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_admin_digest_email", new_callable=AsyncMock) as mock_send:
+            with patch("redis.from_url") as mock_redis:
+                mock_redis.return_value.get.return_value = None
+                result = send_admin_digest.run.__func__(_make_task())
+
+        assert result["sent"] == 0
+        mock_send.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_redis_failure_still_sends_email(self, db_session):
+        from app.tasks.maintenance import send_admin_digest
+
+        _make_admin(db_session)
+        await db_session.commit()
+
+        with patch("app.tasks.maintenance._send_admin_digest_email", new_callable=AsyncMock) as mock_send:
+            with patch("redis.from_url", side_effect=Exception("Redis unavailable")):
+                result = send_admin_digest.run.__func__(_make_task())
+
+        assert result["sent"] == 1
+        mock_send.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_storage_delta_computed_from_prior_run(self, db_session):
+        import json
+
+        from app.tasks.maintenance import DIGEST_STATE_KEY, send_admin_digest
+
+        _make_admin(db_session)
+        await db_session.commit()
+
+        prior_state = json.dumps({"sent_at": "2026-01-01T08:00:00+00:00", "storage_bytes": 1_048_576})
+
+        with patch("app.tasks.maintenance._send_admin_digest_email", new_callable=AsyncMock) as mock_send:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = lambda key: prior_state.encode() if key == DIGEST_STATE_KEY else None
+            with patch("redis.from_url", return_value=mock_client):
+                result = send_admin_digest.run.__func__(_make_task())
+
+        assert result["sent"] == 1
+        call_kwargs = mock_send.call_args.kwargs
+        # storage_delta_str should be set (non-None) since prior baseline exists
+        assert call_kwargs["storage_delta_str"] is not None
