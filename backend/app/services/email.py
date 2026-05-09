@@ -294,6 +294,54 @@ async def send_test_email(to_email: str) -> None:
     await _send([to_email], f"{settings.app_name} — SMTP Test", txt, html)
 
 
+async def send_credential_expiring_superuser(
+    superuser_emails: list[str],
+    credential_name: str,
+    resource: str,
+    days_remaining: int,
+    expires_on: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not superuser_emails:
+        return
+    days_plural = "" if days_remaining == 1 else "s"
+    admin_url = f"{settings.frontend_url}/admin/credentials"
+    txt, html = _render(
+        "credential_expiring_superuser",
+        credential_name=credential_name,
+        resource=resource,
+        days_remaining=days_remaining,
+        days_plural=days_plural,
+        expires_on=expires_on,
+        admin_url=admin_url,
+    )
+    subject = f"Action required: {credential_name} expires in {days_remaining} day{days_plural}"
+    await _send(superuser_emails, subject, txt, html)
+
+
+async def send_credential_expiring_admin(
+    admin_emails: list[str],
+    credential_name: str,
+    resource: str,
+    days_remaining: int,
+    expires_on: str,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not admin_emails:
+        return
+    days_plural = "" if days_remaining == 1 else "s"
+    txt, html = _render(
+        "credential_expiring_admin",
+        credential_name=credential_name,
+        resource=resource,
+        days_remaining=days_remaining,
+        days_plural=days_plural,
+        expires_on=expires_on,
+    )
+    subject = f"Notice: {credential_name} expires in {days_remaining} day{days_plural}"
+    await _send(admin_emails, subject, txt, html)
+
+
 async def send_invite_email(
     to_email: str, invite_token: str, expires_days: int, admin_name: str = "A weftmark admin"
 ) -> None:

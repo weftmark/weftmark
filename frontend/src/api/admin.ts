@@ -407,3 +407,34 @@ export const getServerEvents = (params: { page?: number; page_size?: number; eve
   const query = qs.toString();
   return api.get<ServerEventPage>(`/api/admin/server-events${query ? `?${query}` : ""}`);
 };
+
+export type CredentialResource = "smtp" | "s3" | "clerk" | "postgres" | "app";
+
+export interface CredentialExpiry {
+  id: string;
+  name: string;
+  resource: CredentialResource;
+  expires_on: string | null;
+  notes: string | null;
+  last_alerted_at: string | null;
+  updated_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  days_remaining: number | null;
+}
+
+export const listCredentials = () => api.get<CredentialExpiry[]>("/api/admin/credentials");
+
+export const createCredential = (body: {
+  name: string;
+  resource: CredentialResource;
+  expires_on?: string | null;
+  notes?: string | null;
+}) => api.post<CredentialExpiry>("/api/admin/credentials", body);
+
+export const patchCredential = (
+  id: string,
+  body: { name?: string; resource?: CredentialResource; expires_on?: string | null; notes?: string | null },
+) => api.patch<CredentialExpiry>(`/api/admin/credentials/${id}`, body);
+
+export const deleteCredential = (id: string) => api.delete<void>(`/api/admin/credentials/${id}`);
