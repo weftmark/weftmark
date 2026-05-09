@@ -31,3 +31,9 @@ logins_total = _meter.create_counter(
     description="User logins via Clerk session.created webhook",
     unit="1",
 )
+
+celery_tasks_total = _meter.create_counter(
+    "weftmark.celery.tasks",
+    description="Celery task executions by outcome (succeeded/failed/retried/revoked)",
+    unit="1",
+)
