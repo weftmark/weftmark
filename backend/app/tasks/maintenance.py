@@ -403,16 +403,20 @@ def check_credential_expiry(self) -> dict:
                 display_days = max(days_remaining, 0)
 
                 try:
-                    asyncio.run(
-                        _send_credential_alerts(
-                            superuser_emails=superuser_emails,
-                            admin_emails=admin_emails,
-                            credential_name=cred.name,
-                            resource=cred.resource,
-                            days_remaining=display_days,
-                            expires_on=expires_on_str,
-                        )
-                    )
+                    import concurrent.futures
+
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                        pool.submit(
+                            asyncio.run,
+                            _send_credential_alerts(
+                                superuser_emails=superuser_emails,
+                                admin_emails=admin_emails,
+                                credential_name=cred.name,
+                                resource=cred.resource,
+                                days_remaining=display_days,
+                                expires_on=expires_on_str,
+                            ),
+                        ).result()
                     cred.last_alerted_at = now
                     alerted += 1
                 except Exception:
