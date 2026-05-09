@@ -41,7 +41,11 @@ def _paint_fill_marker(self, draw, box):  # type: ignore[override]
 
 ImageRenderer.paint_fill_marker = _paint_fill_marker  # type: ignore[method-assign]
 
+from opentelemetry import trace  # noqa: E402
+
 from app.config import get_settings  # noqa: E402
+
+tracer = trace.get_tracer(__name__)
 
 DRAWDOWN_SCALE = 20
 
@@ -50,21 +54,31 @@ def load_draft(wif_bytes: bytes) -> Draft:
     """Parse WIF bytes and return a PyWeaving Draft."""
     from app.services.wif_modifier import zero_treadles_for_liftplan
 
-    wif_bytes = zero_treadles_for_liftplan(wif_bytes)
-    with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as tmp:
-        tmp.write(wif_bytes)
-        tmp_path = tmp.name
-    try:
-        reader = WIFReader(tmp_path)
-        return reader.read()
-    finally:
-        os.unlink(tmp_path)
+    with tracer.start_as_current_span("wif.load_draft") as span:
+        wif_bytes = zero_treadles_for_liftplan(wif_bytes)
+        with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as tmp:
+            tmp.write(wif_bytes)
+            tmp_path = tmp.name
+        try:
+            reader = WIFReader(tmp_path)
+            draft = reader.read()
+            span.set_attribute("wif.warp_threads", len(draft.warp))
+            span.set_attribute("wif.weft_threads", len(draft.weft))
+            return draft
+        finally:
+            os.unlink(tmp_path)
 
 
 def render_full_draft(draft: Draft, scale: int = 10) -> bytes:
     """Render threading + tie-up/liftplan + drawdown as a PNG."""
     renderer = ImageRenderer(draft, scale=scale)
-    im = renderer.make_pil_image()
+    with tracer.start_as_current_span("render.full_draft") as span:
+        span.set_attribute("render.scale", scale)
+        span.set_attribute("render.warp_threads", len(draft.warp))
+        span.set_attribute("render.weft_threads", len(draft.weft))
+        im = renderer.make_pil_image()
+        span.set_attribute("render.width_px", im.width)
+        span.set_attribute("render.height_px", im.height)
     out = io.BytesIO()
     im.save(out, format="PNG")
     return out.getvalue()
@@ -73,7 +87,13 @@ def render_full_draft(draft: Draft, scale: int = 10) -> bytes:
 def render_full_draft_liftplan(draft: Draft, scale: int = 10) -> bytes:
     """Render the full draft using the liftplan view."""
     renderer = ImageRenderer(draft, liftplan=True, scale=scale)
-    im = renderer.make_pil_image()
+    with tracer.start_as_current_span("render.full_draft_liftplan") as span:
+        span.set_attribute("render.scale", scale)
+        span.set_attribute("render.warp_threads", len(draft.warp))
+        span.set_attribute("render.weft_threads", len(draft.weft))
+        im = renderer.make_pil_image()
+        span.set_attribute("render.width_px", im.width)
+        span.set_attribute("render.height_px", im.height)
     out = io.BytesIO()
     im.save(out, format="PNG")
     return out.getvalue()
@@ -96,7 +116,13 @@ def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int
     drawdown_h = weft_count * scale
 
     renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
-    full_im = renderer.make_pil_image()
+    with tracer.start_as_current_span("render.drawdown_preview") as span:
+        span.set_attribute("render.scale", scale)
+        span.set_attribute("render.warp_threads", warp_count)
+        span.set_attribute("render.weft_threads", weft_count)
+        full_im = renderer.make_pil_image()
+        span.set_attribute("render.width_px", drawdown_w)
+        span.set_attribute("render.height_px", drawdown_h)
 
     offsetx = margin
     offsety = margin + (6 + len(draft.shafts)) * scale
@@ -150,7 +176,15 @@ def render_drawdown_tile(
     drawdown_h = weft_count * scale
 
     renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
-    full_im = renderer.make_pil_image()
+    with tracer.start_as_current_span("render.drawdown_tile") as span:
+        span.set_attribute("render.scale", scale)
+        span.set_attribute("render.warp_threads", warp_count)
+        span.set_attribute("render.weft_threads", weft_count)
+        span.set_attribute("render.tile_start_row", actual_start)
+        span.set_attribute("render.tile_row_count", actual_row_count)
+        full_im = renderer.make_pil_image()
+        span.set_attribute("render.width_px", warp_count * scale)
+        span.set_attribute("render.height_px", actual_row_count * scale)
 
     offsetx = margin
     offsety = margin + (6 + len(draft.shafts)) * scale
@@ -204,7 +238,13 @@ def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[byt
     drawdown_h = weft_count * scale
 
     renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
-    full_im = renderer.make_pil_image()
+    with tracer.start_as_current_span("render.drawdown_only") as span:
+        span.set_attribute("render.scale", scale)
+        span.set_attribute("render.warp_threads", warp_count)
+        span.set_attribute("render.weft_threads", weft_count)
+        full_im = renderer.make_pil_image()
+        span.set_attribute("render.width_px", drawdown_w)
+        span.set_attribute("render.height_px", drawdown_h)
 
     # The drawdown occupies the left portion of the image starting at x=0
     # (warp threads 0..N-1 at x = thread_idx * scale).

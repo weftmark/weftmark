@@ -35,6 +35,8 @@ x-worker: &worker-base
     RENDER_MAX_WIDTH: ${RENDER_MAX_WIDTH}
     RENDER_MAX_HEIGHT: ${RENDER_MAX_HEIGHT}
     RENDER_DEFAULT_ZOOM: ${RENDER_DEFAULT_ZOOM}
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    OTEL_SERVICE_NAME: weftmark-worker
   networks:
     - internal
   volumes:
@@ -143,6 +145,8 @@ services:
       RENDER_MAX_WIDTH: ${RENDER_MAX_WIDTH}
       RENDER_MAX_HEIGHT: ${RENDER_MAX_HEIGHT}
       RENDER_DEFAULT_ZOOM: ${RENDER_DEFAULT_ZOOM}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-weftmark-api}
     volumes:
       - uploads:/app/uploads
     depends_on:
