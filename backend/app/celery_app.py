@@ -2,7 +2,7 @@ import logging
 
 from celery import Celery
 from celery.signals import setup_logging as celery_setup_logging
-from celery.signals import task_failure, task_postrun, task_prerun, worker_ready
+from celery.signals import task_failure, task_postrun, task_prerun, task_retry, worker_ready
 
 from app.config import get_settings
 from app.logging_config import configure_logging
@@ -87,7 +87,8 @@ def _on_task_prerun(task_id=None, **kwargs):
 
 
 @task_postrun.connect
-def _on_task_postrun(task_id=None, state=None, **kwargs):
+def _on_task_postrun(task_id=None, state=None, sender=None, **kwargs):
+    task_name = sender.name if sender is not None else "unknown"
     if state == "SUCCESS":
         try:
             from app.services.task_history import record_completed
@@ -95,15 +96,39 @@ def _on_task_postrun(task_id=None, state=None, **kwargs):
             record_completed(get_settings(), task_id, "success")
         except Exception:
             pass
+        try:
+            from app.metrics import celery_tasks_total
+
+            celery_tasks_total.add(1, {"state": "succeeded", "task": task_name})
+        except Exception:
+            pass
 
 
 @task_failure.connect
-def _on_task_failure(task_id=None, exception=None, **kwargs):
+def _on_task_failure(task_id=None, exception=None, sender=None, **kwargs):
+    task_name = sender.name if sender is not None else "unknown"
+    outcome = "revoked" if type(exception).__name__ == "Revoked" else "failed"
     try:
         from app.services.task_history import record_completed
 
-        state = "revoked" if type(exception).__name__ == "Revoked" else "failed"
-        record_completed(get_settings(), task_id, state, error=None if state == "revoked" else str(exception))
+        record_completed(get_settings(), task_id, outcome, error=None if outcome == "revoked" else str(exception))
+    except Exception:
+        pass
+    try:
+        from app.metrics import celery_tasks_total
+
+        celery_tasks_total.add(1, {"state": outcome, "task": task_name})
+    except Exception:
+        pass
+
+
+@task_retry.connect
+def _on_task_retry(sender=None, **kwargs):
+    task_name = sender.name if sender is not None else "unknown"
+    try:
+        from app.metrics import celery_tasks_total
+
+        celery_tasks_total.add(1, {"state": "retried", "task": task_name})
     except Exception:
         pass
 
