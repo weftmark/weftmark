@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.deps import get_current_user, get_db, require_admin
+from app.metrics import logins_total, signups_total
 from app.models.invite import Invite
 from app.models.pending_signup import PendingSignup
 from app.models.user import User
@@ -95,6 +96,8 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
             await _handle_user_updated(db, data)
         elif event_type == "user.deleted":
             await _handle_user_deleted(db, data)
+        elif event_type == "session.created":
+            await _handle_session_created(data)
         else:
             log.info("webhook_ignored event_type=%s", event_type)
     except Exception:
@@ -136,6 +139,7 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
         if existing is None:
             db.add(PendingSignup(clerk_user_id=clerk_user_id, email=email, display_name=display_name))
             await db.commit()
+            signups_total.add(1, {"signup_type": "pending"})
             await set_user_metadata(clerk_user_id, {"status": "pending_signup", "is_admin": False})
             admin_emails = list(
                 await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None)))
@@ -155,6 +159,7 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
     user.clerk_user_id = clerk_user_id
     user.display_name = display_name
     await db.commit()
+    signups_total.add(1, {"signup_type": "invited"})
 
     # Consume the associated invite (audit trail; may already be consumed by seed CLI).
     await _consume_invite(db, email)
@@ -218,6 +223,13 @@ async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
         clerk_user_id,
         user.id,
     )
+
+
+async def _handle_session_created(data: dict) -> None:
+    user_data = data.get("user", {})
+    public_metadata = user_data.get("public_metadata", {})
+    is_admin = bool(public_metadata.get("is_admin", False))
+    logins_total.add(1, {"role": "admin" if is_admin else "user"})
 
 
 async def _consume_invite(db: AsyncSession, email: str) -> Invite | None:
