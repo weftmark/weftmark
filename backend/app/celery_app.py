@@ -22,6 +22,7 @@ def _make_celery() -> Celery:
             "app.tasks.deletion",
             "app.tasks.email_task",
             "app.tasks.maintenance",
+            "app.tasks.metrics",
             "app.tasks.preview",
             "app.tasks.purge",
             "app.tasks.s3_audit",
@@ -43,7 +44,11 @@ def _make_celery() -> Celery:
             "run-scheduled-tasks": {
                 "task": "app.tasks.scheduler.run_scheduled_tasks",
                 "schedule": 60.0,
-            }
+            },
+            "record-business-metrics": {
+                "task": "app.tasks.metrics.record_business_metrics",
+                "schedule": 300.0,
+            },
         },
     )
     return app
