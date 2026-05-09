@@ -193,8 +193,8 @@
       "version": "2.2.0"
     },
     {
-      "bom-ref": "requirements-L25",
-      "description": "requirements line 25: opentelemetry-api==1.27.0",
+      "bom-ref": "requirements-L26",
+      "description": "requirements line 26: opentelemetry-api==1.27.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -208,8 +208,8 @@
       "version": "1.27.0"
     },
     {
-      "bom-ref": "requirements-L27",
-      "description": "requirements line 27: opentelemetry-exporter-otlp-proto-http==1.27.0",
+      "bom-ref": "requirements-L28",
+      "description": "requirements line 28: opentelemetry-exporter-otlp-proto-http==1.27.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -223,8 +223,8 @@
       "version": "1.27.0"
     },
     {
-      "bom-ref": "requirements-L33",
-      "description": "requirements line 33: opentelemetry-instrumentation-botocore==0.48b0",
+      "bom-ref": "requirements-L34",
+      "description": "requirements line 34: opentelemetry-instrumentation-botocore==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -238,8 +238,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L30",
-      "description": "requirements line 30: opentelemetry-instrumentation-celery==0.48b0",
+      "bom-ref": "requirements-L31",
+      "description": "requirements line 31: opentelemetry-instrumentation-celery==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -253,8 +253,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L28",
-      "description": "requirements line 28: opentelemetry-instrumentation-fastapi==0.48b0",
+      "bom-ref": "requirements-L29",
+      "description": "requirements line 29: opentelemetry-instrumentation-fastapi==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -268,8 +268,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L32",
-      "description": "requirements line 32: opentelemetry-instrumentation-httpx==0.48b0",
+      "bom-ref": "requirements-L33",
+      "description": "requirements line 33: opentelemetry-instrumentation-httpx==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -283,8 +283,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L34",
-      "description": "requirements line 34: opentelemetry-instrumentation-logging==0.48b0",
+      "bom-ref": "requirements-L35",
+      "description": "requirements line 35: opentelemetry-instrumentation-logging==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -298,8 +298,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L31",
-      "description": "requirements line 31: opentelemetry-instrumentation-redis==0.48b0",
+      "bom-ref": "requirements-L32",
+      "description": "requirements line 32: opentelemetry-instrumentation-redis==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -313,8 +313,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L29",
-      "description": "requirements line 29: opentelemetry-instrumentation-sqlalchemy==0.48b0",
+      "bom-ref": "requirements-L30",
+      "description": "requirements line 30: opentelemetry-instrumentation-sqlalchemy==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -328,8 +328,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L26",
-      "description": "requirements line 26: opentelemetry-sdk==1.27.0",
+      "bom-ref": "requirements-L27",
+      "description": "requirements line 27: opentelemetry-sdk==1.27.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -477,6 +477,20 @@
       "version": "5.2.0"
     },
     {
+      "bom-ref": "requirements-L25",
+      "description": "requirements line 25: setuptools<80",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/setuptools/"
+        }
+      ],
+      "name": "setuptools",
+      "purl": "pkg:pypi/setuptools",
+      "type": "library"
+    },
+    {
       "bom-ref": "requirements-L3",
       "description": "requirements line 3: sqlalchemy[asyncio]==2.0.49",
       "externalReferences": [
@@ -620,6 +634,9 @@
       "ref": "requirements-L34"
     },
     {
+      "ref": "requirements-L35"
+    },
+    {
       "ref": "requirements-L4"
     },
     {
@@ -639,7 +656,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-09T12:52:52.893328+00:00",
+    "timestamp": "2026-05-09T13:51:39.945227+00:00",
     "tools": {
       "components": [
         {
@@ -743,7 +760,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:06d1a669-eb9a-4542-960a-eca53dcc4891",
+  "serialNumber": "urn:uuid:abd6e338-0c60-487b-b034-8edb50be5693",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
