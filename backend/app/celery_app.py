@@ -8,6 +8,8 @@ from app.config import get_settings
 from app.logging_config import configure_logging
 from app.version import VERSION
 
+log = logging.getLogger(__name__)
+
 WORKER_VERSION_KEY = "weftmark:worker_version"
 WORKER_VERSION_NODE_PREFIX = "weftmark:worker_version:node:"
 
@@ -157,3 +159,19 @@ def _publish_worker_version(sender=None, **kwargs):
         client.close()
     except Exception:
         pass  # version badge degrades gracefully if Redis is unavailable
+
+
+@worker_ready.connect
+def _initial_geoip_download(sender=None, **kwargs):
+    """Queue a GeoLite2 download if the MMDB is absent and the license key is set."""
+    try:
+        import os
+
+        settings = get_settings()
+        if settings.maxmind_license_key and not os.path.exists(settings.geoip_db_path):
+            from app.tasks.geo import refresh_geoip_database
+
+            refresh_geoip_database.delay()
+            log.info("GeoLite2-City MMDB absent — queued initial download")
+    except Exception:
+        pass
