@@ -25,3 +25,9 @@ role_changes_total = _meter.create_counter(
     description="User role changes applied by an admin",
     unit="1",
 )
+
+logins_total = _meter.create_counter(
+    "weftmark.user.logins",
+    description="User logins via Clerk session.created webhook",
+    unit="1",
+)
