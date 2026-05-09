@@ -163,6 +163,21 @@
       "version": "0.136.1"
     },
     {
+      "bom-ref": "requirements-L36",
+      "description": "requirements line 36: geoip2==5.2.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/geoip2/"
+        }
+      ],
+      "name": "geoip2",
+      "purl": "pkg:pypi/geoip2@5.2.0",
+      "type": "library",
+      "version": "5.2.0"
+    },
+    {
       "bom-ref": "requirements-L11",
       "description": "requirements line 11: httpx==0.28.1",
       "externalReferences": [
@@ -637,6 +652,9 @@
       "ref": "requirements-L35"
     },
     {
+      "ref": "requirements-L36"
+    },
+    {
       "ref": "requirements-L4"
     },
     {
@@ -656,7 +674,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-09T13:51:39.945227+00:00",
+    "timestamp": "2026-05-09T23:39:01.234974+00:00",
     "tools": {
       "components": [
         {
@@ -760,7 +778,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:abd6e338-0c60-487b-b034-8edb50be5693",
+  "serialNumber": "urn:uuid:52af774e-4981-4ac2-acb9-9b92946f83e1",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
