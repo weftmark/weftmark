@@ -53,10 +53,6 @@ if _settings.otel_exporter_otlp_endpoint:
 
     configure_telemetry(_settings)
 
-    from opentelemetry.instrumentation.celery import CeleryInstrumentor
-
-    CeleryInstrumentor().instrument()
-
 
 @task_prerun.connect
 def _on_task_prerun(task_id=None, **kwargs):

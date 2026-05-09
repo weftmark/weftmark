@@ -68,9 +68,12 @@ def configure_telemetry(settings) -> None:
         set_logger_provider(logger_provider)
 
         # Auto-instrumentors (S3/httpx covered by botocore + httpx instrumentors)
+        from opentelemetry.instrumentation.celery import CeleryInstrumentor
+
         SQLAlchemyInstrumentor().instrument()
         HTTPXClientInstrumentor().instrument()
         BotocoreInstrumentor().instrument()
+        CeleryInstrumentor().instrument()
         # Bridge Python log records to OTel without overriding our JSON formatter
         LoggingInstrumentor().instrument(set_logging_format=False)
 
