@@ -7,7 +7,7 @@ DB-dependent tests seed data async then verify the sync task reads it correctly.
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -393,8 +393,7 @@ class TestCheckCredentialExpiry:
         _cred(db_session, expires_in_days=25, last_alerted_hours_ago=None)
         await db_session.commit()
 
-        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
-            mock_send.return_value = None
+        with patch("app.tasks.maintenance._send_credential_alerts", new_callable=AsyncMock):
             result = check_credential_expiry.run.__func__(_make_task())
 
         assert result["alerted"] >= 1
@@ -406,8 +405,7 @@ class TestCheckCredentialExpiry:
         _cred(db_session, expires_in_days=5, last_alerted_hours_ago=None)
         await db_session.commit()
 
-        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
-            mock_send.return_value = None
+        with patch("app.tasks.maintenance._send_credential_alerts", new_callable=AsyncMock):
             result = check_credential_expiry.run.__func__(_make_task())
 
         assert result["alerted"] >= 1
@@ -446,8 +444,7 @@ class TestCheckCredentialExpiry:
         _cred(db_session, expires_in_days=-5, last_alerted_hours_ago=None)
         await db_session.commit()
 
-        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
-            mock_send.return_value = None
+        with patch("app.tasks.maintenance._send_credential_alerts", new_callable=AsyncMock):
             result = check_credential_expiry.run.__func__(_make_task())
 
         assert result["alerted"] >= 1
@@ -459,8 +456,7 @@ class TestCheckCredentialExpiry:
         cred = _cred(db_session, expires_in_days=5, last_alerted_hours_ago=None)
         await db_session.commit()
 
-        with patch("app.tasks.maintenance._send_credential_alerts") as mock_send:
-            mock_send.return_value = None
+        with patch("app.tasks.maintenance._send_credential_alerts", new_callable=AsyncMock):
             check_credential_expiry.run.__func__(_make_task())
 
         await db_session.refresh(cred)
