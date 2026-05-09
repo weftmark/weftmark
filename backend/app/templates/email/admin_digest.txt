@@ -1,0 +1,22 @@
+WEEKLY ADMIN DIGEST
+{week_start} – {week_end}
+========================================
+
+USERS
+  Approved this week:    {new_users}
+  Pending approval:      {pending_signups}
+
+PLATFORM ACTIVITY (LAST 7 DAYS)
+  Drafts created:        {new_drafts}
+  Projects started:      {new_projects}
+  Looms added:           {new_looms}
+
+STORAGE
+  Total used:            {storage_str}
+  Change since last:     {delta_txt}
+
+SECURITY
+  CVE findings:          {cve_txt}
+  S3 orphaned files:     {s3_txt}
+
+View the admin dashboard: {admin_url}

@@ -107,6 +107,16 @@ REGISTRY: dict[str, dict] = {
         "default_cron": "0 8 * * *",
         "default_config": {},
     },
+    "admin_digest": {
+        "display_name": "Weekly Admin Digest",
+        "description": (
+            "Sends a weekly summary email to all active admin users covering new signups, "
+            "pending approvals, platform activity, storage usage, and security status. "
+            "Disabled by default — enable to start receiving weekly digests."
+        ),
+        "default_cron": "0 8 * * 1",
+        "default_config": {},
+    },
 }
 
 
@@ -211,6 +221,15 @@ def _dispatch_credential_expiry_check(settings, task=None):
     return t
 
 
+def _dispatch_admin_digest(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import send_admin_digest
+
+    t = send_admin_digest.delay()
+    record_queued(settings, t.id, "app.tasks.maintenance.send_admin_digest", "scheduled:admin_digest")
+    return t
+
+
 DISPATCH_FNS: dict[str, object] = {
     "cve_scan": _dispatch_cve_scan,
     "s3_audit": _dispatch_s3_audit,
@@ -222,6 +241,7 @@ DISPATCH_FNS: dict[str, object] = {
     "daily_health_check": _dispatch_daily_health_check,
     "server_event_log_pruning": _dispatch_server_event_log_pruning,
     "credential_expiry_check": _dispatch_credential_expiry_check,
+    "admin_digest": _dispatch_admin_digest,
 }
 
 

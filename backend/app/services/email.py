@@ -349,3 +349,95 @@ async def send_invite_email(
     invite_url = f"{settings.frontend_url}/register?token={invite_token}"
     txt, html = _render("invite", invite_url=invite_url, expires_days=expires_days, admin_name=admin_name)
     await _send([to_email], f"{admin_name} has invited you to join {settings.app_name}", txt, html)
+
+
+def _digest_cve_txt(finding_count: int | None, scanned_at: str | None) -> str:
+    if finding_count is None:
+        return "No scan data available"
+    s = "" if finding_count == 1 else "s"
+    line = f"{finding_count} finding{s}"
+    if scanned_at:
+        line += f" (scanned {scanned_at[:10]})"
+    return line
+
+
+def _digest_cve_html(finding_count: int | None, scanned_at: str | None) -> str:
+    if finding_count is None:
+        return '<span style="color:#6b7280;">No scan data available</span>'
+    color = "#dc2626" if finding_count > 0 else "#16a34a"
+    s = "" if finding_count == 1 else "s"
+    html = f'<strong style="color:{color};">{finding_count}</strong>'
+    if scanned_at:
+        html += f' <span style="color:#6b7280;">finding{s} &mdash; scanned {scanned_at[:10]}</span>'
+    return html
+
+
+def _digest_s3_txt(orphaned_count: int | None, scanned_at: str | None) -> str:
+    if orphaned_count is None:
+        return "No scan data available"
+    s = "" if orphaned_count == 1 else "s"
+    line = f"{orphaned_count} orphaned file{s}"
+    if scanned_at:
+        line += f" (scanned {scanned_at[:10]})"
+    return line
+
+
+def _digest_s3_html(orphaned_count: int | None, scanned_at: str | None) -> str:
+    if orphaned_count is None:
+        return '<span style="color:#6b7280;">No scan data available</span>'
+    color = "#dc2626" if orphaned_count > 0 else "#16a34a"
+    s = "" if orphaned_count == 1 else "s"
+    html = f'<strong style="color:{color};">{orphaned_count}</strong>'
+    if scanned_at:
+        html += f' <span style="color:#6b7280;">orphaned file{s} &mdash; scanned {scanned_at[:10]}</span>'
+    return html
+
+
+async def send_admin_digest_email(
+    admin_emails: list[str],
+    week_start: str,
+    week_end: str,
+    new_users: int,
+    pending_signups: int,
+    new_drafts: int,
+    new_projects: int,
+    new_looms: int,
+    storage_str: str,
+    storage_delta_str: str | None,
+    cve_finding_count: int | None,
+    cve_scanned_at: str | None,
+    s3_orphaned_count: int | None,
+    s3_scanned_at: str | None,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not admin_emails:
+        return
+    admin_url = f"{settings.frontend_url}/admin"
+
+    delta_txt = storage_delta_str if storage_delta_str is not None else "—"
+    delta_html = (
+        storage_delta_str
+        if storage_delta_str is not None
+        else '<em style="color:#6b7280;">First run — no prior baseline</em>'
+    )
+
+    txt, html = _render(
+        "admin_digest",
+        week_start=week_start,
+        week_end=week_end,
+        new_users=new_users,
+        pending_signups=pending_signups,
+        new_drafts=new_drafts,
+        new_projects=new_projects,
+        new_looms=new_looms,
+        storage_str=storage_str,
+        delta_txt=delta_txt,
+        delta_html=delta_html,
+        cve_txt=_digest_cve_txt(cve_finding_count, cve_scanned_at),
+        cve_html=_digest_cve_html(cve_finding_count, cve_scanned_at),
+        s3_txt=_digest_s3_txt(s3_orphaned_count, s3_scanned_at),
+        s3_html=_digest_s3_html(s3_orphaned_count, s3_scanned_at),
+        admin_url=admin_url,
+    )
+    subject = f"{settings.app_name} — Weekly Admin Digest ({week_start} – {week_end})"
+    await _send(admin_emails, subject, txt, html)
