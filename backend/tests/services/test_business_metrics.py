@@ -5,12 +5,20 @@ InMemoryMetricReader so we can assert the exact value and attributes
 without a live OTel Collector.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 
 import app.metrics as bm
 import app.routers.auth as auth_router
+
+
+def _mock_request(headers: dict) -> MagicMock:
+    req = MagicMock()
+    req.headers.get = lambda key, default="": headers.get(key, default)
+    return req
 
 
 def _make_provider():
@@ -206,6 +214,94 @@ class TestLoginsCounter:
         by_role = {p.attributes["role"]: p.value for p in points}
         assert by_role["user"] == 2
         assert by_role["admin"] == 1
+
+
+_GEO_FULL = {"country_iso": "US", "subdivision": "CO", "city": "Denver"}
+_GEO_COUNTRY_ONLY = {"country_iso": "DE", "subdivision": "", "city": ""}
+
+
+class TestLoginsGeoAttributes:
+    @pytest.mark.asyncio
+    async def test_no_request_emits_no_geo(self, patched_metrics):
+        auth_router.logins_total = bm.logins_total
+        await auth_router._handle_session_created(_SESSION_CREATED_DATA)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.logins")
+        assert points[0].attributes == {"role": "user"}
+
+    @pytest.mark.asyncio
+    async def test_mmdb_provides_full_geo(self, patched_metrics):
+        auth_router.logins_total = bm.logins_total
+        req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "US"})
+
+        with patch("app.services.geo.get_geo", return_value=_GEO_FULL):
+            await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.logins")
+        attrs = points[0].attributes
+        assert attrs["country"] == "US"
+        assert attrs["subdivision"] == "CO"
+        assert attrs["city"] == "Denver"
+
+    @pytest.mark.asyncio
+    async def test_mmdb_absent_falls_back_to_cf_ipcountry(self, patched_metrics):
+        auth_router.logins_total = bm.logins_total
+        req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "GB"})
+
+        with patch("app.services.geo.get_geo", return_value={}):
+            await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.logins")
+        attrs = points[0].attributes
+        assert attrs["country"] == "GB"
+        assert "subdivision" not in attrs
+        assert "city" not in attrs
+
+    @pytest.mark.asyncio
+    async def test_no_ip_no_mmdb_uses_cf_ipcountry(self, patched_metrics):
+        auth_router.logins_total = bm.logins_total
+        req = _mock_request({"CF-IPCountry": "FR"})
+
+        await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.logins")
+        assert points[0].attributes == {"role": "user", "country": "FR"}
+
+    @pytest.mark.asyncio
+    async def test_empty_cf_ipcountry_omits_country_attribute(self, patched_metrics):
+        auth_router.logins_total = bm.logins_total
+        req = _mock_request({"CF-IPCountry": ""})
+
+        await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.logins")
+        assert "country" not in points[0].attributes
+
+    @pytest.mark.asyncio
+    async def test_mmdb_country_iso_takes_precedence_over_cf_header(self, patched_metrics):
+        auth_router.logins_total = bm.logins_total
+        # CF says CA, MMDB says US — MMDB wins
+        req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "CA"})
+
+        with patch("app.services.geo.get_geo", return_value=_GEO_FULL):
+            await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.logins")
+        assert points[0].attributes["country"] == "US"
+
+    @pytest.mark.asyncio
+    async def test_mmdb_empty_subdivision_and_city_omitted(self, patched_metrics):
+        auth_router.logins_total = bm.logins_total
+        req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "DE"})
+
+        with patch("app.services.geo.get_geo", return_value=_GEO_COUNTRY_ONLY):
+            await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+
+        points = _get_data_points(patched_metrics, "weftmark.user.logins")
+        attrs = points[0].attributes
+        assert attrs["country"] == "DE"
+        assert "subdivision" not in attrs
+        assert "city" not in attrs
 
 
 _SESSION_ENDED_DATA = {
