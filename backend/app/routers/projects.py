@@ -20,6 +20,7 @@ from app.services import storage, wif_parser
 from app.services.images import resize_to_jpeg
 from app.services.storage_quota import check_storage_quota
 from app.tasks.preview import generate_drawdown_preview
+from app.tasks.tiles import prerender_drawdown_tiles
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 MAX_PROJECT_PHOTOS = 10
@@ -314,6 +315,7 @@ async def create_project(
     await db.refresh(project)
     if draft.drawdown_preview_path is None:
         generate_drawdown_preview.delay(str(draft.id))
+    prerender_drawdown_tiles.delay(str(draft.id))
     return _to_detail(project, draft, loom)
 
 

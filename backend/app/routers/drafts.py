@@ -158,11 +158,12 @@ async def create_draft(
     await db.commit()
     await db.refresh(draft)
     if draft.wif_path:
-        task = generate_drawdown_preview.delay(str(draft.id))
         from app.config import get_settings
         from app.services.task_history import record_queued
 
+        task = generate_drawdown_preview.delay(str(draft.id))
         record_queued(get_settings(), task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+        prerender_drawdown_tiles.delay(str(draft.id))
     return DraftSummary.from_draft(draft)
 
 
