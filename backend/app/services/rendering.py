@@ -99,6 +99,27 @@ def render_full_draft_liftplan(draft: Draft, scale: int = 10) -> bytes:
     return out.getvalue()
 
 
+def clip_draft_to_effective(draft: Draft, effective_shafts: int | None, effective_treadles: int | None) -> Draft:
+    """Slice draft.shafts and draft.treadles to their effective counts.
+
+    Modifies the draft in-place and returns it. Caller should pass a copy if
+    the original object is reused.
+    """
+    if effective_shafts and effective_shafts < len(draft.shafts):
+        draft.shafts = draft.shafts[:effective_shafts]
+        for thread in draft.warp:
+            thread.shaft = [s for s in thread.shaft if s in draft.shafts]
+        if hasattr(draft, "tieup") and draft.tieup:
+            draft.tieup = {k: v for k, v in draft.tieup.items() if k in draft.shafts}
+    if effective_treadles and effective_treadles < len(draft.treadles):
+        draft.treadles = draft.treadles[:effective_treadles]
+        for thread in draft.weft:
+            thread.treadles = [t for t in thread.treadles if t in draft.treadles]
+        if hasattr(draft, "tieup") and draft.tieup:
+            draft.tieup = {k: {t: v for t, v in row.items() if t in draft.treadles} for k, row in draft.tieup.items()}
+    return draft
+
+
 def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int]:
     """Render a reduced-size drawdown for caching.
 
@@ -138,6 +159,8 @@ def render_drawdown_tile(
     start_row: int = 0,
     row_count: int | None = None,
     scale: int = DRAWDOWN_SCALE,
+    effective_shafts: int | None = None,
+    effective_treadles: int | None = None,
 ) -> tuple[bytes, int, int, int, int]:
     """Render a horizontal strip (tile) of the drawdown.
 
@@ -148,6 +171,9 @@ def render_drawdown_tile(
 
     Returns (png_bytes, total_rows, actual_start_row, actual_row_count, scale_used).
     """
+    if effective_shafts is not None or effective_treadles is not None:
+        draft = clip_draft_to_effective(draft, effective_shafts, effective_treadles)
+
     margin = 20
     warp_count = len(draft.warp)
     weft_count = len(draft.weft)
@@ -201,7 +227,12 @@ def render_drawdown_tile(
     return out.getvalue(), weft_count, actual_start, actual_row_count, scale
 
 
-def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[bytes, int, int]:
+def render_drawdown_only(
+    draft: Draft,
+    scale: int = DRAWDOWN_SCALE,
+    effective_shafts: int | None = None,
+    effective_treadles: int | None = None,
+) -> tuple[bytes, int, int]:
     """Render just the drawdown strip, cropped from the full draft image.
 
     Returns (png_bytes, total_rows, scale_used). Pick 1 is at the top of the image (y=0),
@@ -210,6 +241,9 @@ def render_drawdown_only(draft: Draft, scale: int = DRAWDOWN_SCALE) -> tuple[byt
     Scale is reduced automatically so the output fits within RENDER_MAX_WIDTH/HEIGHT.
     A 413 is raised only if scale=1 would still exceed the limits.
     """
+    if effective_shafts is not None or effective_treadles is not None:
+        draft = clip_draft_to_effective(draft, effective_shafts, effective_treadles)
+
     margin = 20
     warp_count = len(draft.warp)
     weft_count = len(draft.weft)
