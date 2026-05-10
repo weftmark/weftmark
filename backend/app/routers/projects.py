@@ -315,7 +315,11 @@ async def create_project(
     await db.refresh(project)
     if draft.drawdown_preview_path is None:
         generate_drawdown_preview.delay(str(draft.id))
-    prerender_drawdown_tiles.delay(str(draft.id))
+    from app.config import get_settings
+    from app.services.task_history import record_queued
+
+    tile_task = prerender_drawdown_tiles.delay(str(draft.id))
+    record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
     return _to_detail(project, draft, loom)
 
 
