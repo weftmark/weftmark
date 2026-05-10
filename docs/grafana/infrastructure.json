@@ -50,6 +50,22 @@
         "refresh": 1,
         "type": "datasource",
         "label": "Prometheus"
+      },
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "name": "env",
+        "options": [
+          {"selected": false, "text": "All", "value": "$__all"},
+          {"selected": true, "text": "prod", "value": "prod"},
+          {"selected": false, "text": "dev", "value": "dev"}
+        ],
+        "query": "prod,dev",
+        "type": "custom",
+        "label": "Environment"
       }
     ]
   },
@@ -246,7 +262,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "rate(process_cpu_seconds_total{job=~\"weftmark-.*\"}[$__rate_interval])",
+          "expr": "rate(process_cpu_seconds_total{job=~\"weftmark-.*\", deployment_environment=~\"$env\"}[$__rate_interval])",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -273,13 +289,13 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "process_resident_memory_bytes{job=~\"weftmark-.*\"}",
+          "expr": "process_resident_memory_bytes{job=~\"weftmark-.*\", deployment_environment=~\"$env\"}",
           "legendFormat": "{{job}} (RSS)",
           "refId": "A"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "process_virtual_memory_bytes{job=~\"weftmark-.*\"}",
+          "expr": "process_virtual_memory_bytes{job=~\"weftmark-.*\", deployment_environment=~\"$env\"}",
           "legendFormat": "{{job}} (virt)",
           "refId": "B"
         }
