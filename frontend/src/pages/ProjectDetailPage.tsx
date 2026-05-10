@@ -246,8 +246,8 @@ function PickDisplay({
                     active
                       ? "ring-2 ring-primary ring-offset-1"
                       : trailing
-                        ? "bg-muted/10"
-                        : "bg-muted/40"
+                        ? "bg-muted/10 ring-1 ring-border/30"
+                        : "bg-muted/40 ring-1 ring-border/50"
                   }`}
                   style={bg ? { backgroundColor: bg } : active ? { backgroundColor: "var(--primary)" } : undefined}
                 />
@@ -633,7 +633,7 @@ function WeavingPatternView({
                 <div
                   key={n}
                   className={`rounded-[2px] flex-1 min-w-0 ${
-                    pick.active.includes(n) ? "bg-primary" : "bg-muted/40"
+                    pick.active.includes(n) ? "bg-primary" : "bg-muted/40 ring-[0.5px] ring-border/40"
                   }`}
                   style={{ height: boxH }}
                 />
@@ -1452,11 +1452,21 @@ export function ProjectDetailPage() {
   const declaredCount = project.project_type === "lift"
     ? (project.draft_num_shafts ?? 0)
     : (project.draft_num_treadles ?? 0);
+  const effectiveCount = project.project_type === "lift"
+    ? (project.draft_effective_num_shafts ?? null)
+    : (project.draft_effective_num_treadles ?? null);
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
   // When a loom is assigned, use its treadle/shaft count; otherwise fall back to draft declared count.
-  const maxActive = (loomCount !== null && loomCount > 0)
-    ? loomCount
-    : (declaredCount > 0 ? declaredCount : maxFromPicks);
+  // When hiding unused shafts/treadles, cap at the draft's effective count.
+  const maxActive = (() => {
+    const base = (loomCount !== null && loomCount > 0)
+      ? loomCount
+      : (declaredCount > 0 ? declaredCount : maxFromPicks);
+    if (hideUnusedShaftsTreadles && effectiveCount !== null && effectiveCount > 0 && effectiveCount < base) {
+      return effectiveCount;
+    }
+    return base;
+  })();
 
   // Highest treadle/shaft index actually used in any pick across the full sequence.
   const maxUsed = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
@@ -2074,27 +2084,28 @@ export function ProjectDetailPage() {
                 </div>
               </div>
 
-              {/* Color mode selector */}
-              {picksData?.has_weft_colors && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Color mode</p>
-                  <div className="inline-flex rounded-md border border-input overflow-hidden text-sm w-full">
-                    {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
-                      <button
-                        key={mode}
-                        onClick={() => { setColorMode(mode); localStorage.setItem("proj-view:colorMode", mode); }}
-                        className={`flex-1 px-2.5 py-1.5 capitalize transition-colors ${
-                          colorMode === mode
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-background text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        {mode}
-                      </button>
-                    ))}
-                  </div>
+              {/* Color mode selector — always shown; strip/filled have no visible effect without weft colors */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Color mode</p>
+                <div className="inline-flex rounded-md border border-input overflow-hidden text-sm w-full">
+                  {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => { setColorMode(mode); localStorage.setItem("proj-view:colorMode", mode); }}
+                      className={`flex-1 px-2.5 py-1.5 capitalize transition-colors ${
+                        colorMode === mode
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
                 </div>
-              )}
+                {!picksData?.has_weft_colors && (
+                  <p className="text-xs text-muted-foreground">This design has no weft colors defined.</p>
+                )}
+              </div>
             </div>
           </div>
         </>

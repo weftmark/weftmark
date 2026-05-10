@@ -187,6 +187,18 @@ async def _get_owned_project(
     return project
 
 
+async def _resolve_loom_version(project: Project, db: AsyncSession) -> LoomVersion | None:
+    """Return the project's loom version, falling back to the loom's only version when loom_version_id is unset."""
+    if project.loom_version_id:
+        return await db.get(LoomVersion, project.loom_version_id)
+    if project.loom_id:
+        versions = await db.scalars(select(LoomVersion).where(LoomVersion.loom_id == project.loom_id))
+        all_versions = versions.all()
+        if len(all_versions) == 1:
+            return all_versions[0]
+    return None
+
+
 def _to_detail(
     project: Project,
     draft: Draft,
@@ -359,7 +371,7 @@ async def get_project(
         raise HTTPException(status_code=404, detail="Project not found")
     draft = await db.get(Draft, project.draft_id)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    loom_version = await db.get(LoomVersion, project.loom_version_id) if project.loom_version_id else None
+    loom_version = await _resolve_loom_version(project, db)
     if draft is not None and draft.drawdown_preview_path is None:
         generate_drawdown_preview.delay(str(draft.id))
     return _to_detail(project, draft, loom, photos=list(project.photos), loom_version=loom_version)  # type: ignore[arg-type]
@@ -388,7 +400,8 @@ async def rename_project(
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
 @router.post("/{project_id}/assign-loom", response_model=ProjectDetail)
@@ -437,7 +450,7 @@ async def assign_loom(
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
-    loom_version = await db.get(LoomVersion, project.loom_version_id) if project.loom_version_id else None
+    loom_version = await _resolve_loom_version(project, db)
     return _to_detail(project, draft, loom, loom_version=loom_version)
 
 

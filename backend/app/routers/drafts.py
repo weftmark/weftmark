@@ -258,7 +258,8 @@ async def get_drawdown(
             expected_scale = rendering.DRAWDOWN_SCALE
 
         if (
-            warp_count > 0
+            not hide_unused_shafts_treadles
+            and warp_count > 0
             and _sr % tile_row_count == 0
             and _rc == tile_row_count
             and await storage.adrawdown_tile_exists(draft_id, expected_scale, _sr)
