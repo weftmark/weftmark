@@ -94,7 +94,7 @@
       }
     ]
   },
-  "description": "WeftMark \u00e2\u20ac\u201d distributed traces, span metrics, and service graph from Tempo",
+  "description": "WeftMark â€” distributed traces, span metrics, and service graph from Tempo",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -151,14 +151,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(weftmark_db_pool_size_connections, deployment_environment)",
+        "definition": "label_values(deployment_environment)",
         "hide": 0,
         "includeAll": true,
         "multi": false,
         "name": "env",
         "options": [],
         "query": {
-          "query": "label_values(weftmark_db_pool_size_connections, deployment_environment)",
+          "query": "label_values(deployment_environment)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -197,7 +197,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "WeftMark \u00e2\u20ac\u201d Traces Explorer",
+  "title": "weftmark - Traces Explorer",
   "uid": "wm-traces-explorer",
   "version": 1,
   "weekStart": "",
@@ -753,7 +753,7 @@
           "refId": "C"
         }
       ],
-      "title": "Top Spans \u00e2\u20ac\u201d Call Volume & Latency",
+      "title": "Top Spans â€” Call Volume & Latency",
       "transformations": [
         {
           "id": "merge",

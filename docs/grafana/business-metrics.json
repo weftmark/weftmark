@@ -75,7 +75,7 @@
       }
     ]
   },
-  "description": "WeftMark business metrics \u00e2\u20ac\u201d user lifecycle, logins, signups, projects, and storage",
+  "description": "WeftMark business metrics â€” user lifecycle, logins, signups, projects, and storage",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -120,14 +120,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(weftmark_db_pool_size_connections, deployment_environment)",
+        "definition": "label_values(deployment_environment)",
         "hide": 0,
         "includeAll": true,
         "multi": false,
         "name": "env",
         "options": [],
         "query": {
-          "query": "label_values(weftmark_db_pool_size_connections, deployment_environment)",
+          "query": "label_values(deployment_environment)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -144,7 +144,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "WeftMark \u00e2\u20ac\u201d Business Metrics",
+  "title": "weftmark - Business Metrics",
   "uid": "wm-business-metrics",
   "version": 1,
   "weekStart": "",
@@ -642,7 +642,7 @@
           "refId": "A"
         }
       ],
-      "title": "Users at Quota (\u00e2\u2030\u00a590%)",
+      "title": "Users at Quota (â‰¥90%)",
       "type": "stat"
     },
     {
@@ -965,7 +965,7 @@
             "uid": "${datasource}"
           },
           "expr": "sum by (new_role) (rate(weftmark_user_role_changes_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
-          "legendFormat": "\u00e2\u2020\u2019 {{new_role}}",
+          "legendFormat": "â†’ {{new_role}}",
           "refId": "A"
         }
       ],

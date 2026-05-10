@@ -75,7 +75,7 @@
       }
     ]
   },
-  "description": "WeftMark API \u00e2\u20ac\u201d request rate, error rate, latency, and 5xx logs",
+  "description": "WeftMark API â€” request rate, error rate, latency, and 5xx logs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -119,14 +119,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(weftmark_db_pool_size_connections, deployment_environment)",
+        "definition": "label_values(deployment_environment)",
         "hide": 0,
         "includeAll": true,
         "multi": false,
         "name": "env",
         "options": [],
         "query": {
-          "query": "label_values(weftmark_db_pool_size_connections, deployment_environment)",
+          "query": "label_values(deployment_environment)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -165,7 +165,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "WeftMark \u00e2\u20ac\u201d API Overview",
+  "title": "weftmark - API Overview",
   "uid": "wm-api-overview",
   "version": 1,
   "weekStart": "",
@@ -716,7 +716,7 @@
           "refId": "C"
         }
       ],
-      "title": "Top Routes \u00e2\u20ac\u201d Traffic & Latency",
+      "title": "Top Routes â€” Traffic & Latency",
       "transformations": [
         {
           "id": "merge",
