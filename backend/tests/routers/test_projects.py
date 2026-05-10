@@ -23,6 +23,14 @@ def _mock_preview_task(monkeypatch):
     return mock
 
 
+@pytest.fixture(autouse=True)
+def _mock_tile_task(monkeypatch):
+    """Prevent prerender_drawdown_tiles.delay() from connecting to Celery in tests."""
+    mock = MagicMock()
+    monkeypatch.setattr("app.routers.projects.prerender_drawdown_tiles", mock)
+    return mock
+
+
 # ---------------------------------------------------------------------------
 # Minimal WIF bytes used for all tests (has both treadling and liftplan)
 # ---------------------------------------------------------------------------
