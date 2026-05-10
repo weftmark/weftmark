@@ -36,6 +36,39 @@ Each view is accessible individually or as a combined full draft view.
 - Rising vs sinking shed toggle (view fabric from either side)
 - Repeat / tile view (design tiled as it would appear across full fabric width and length)
 
+### Hide Unused Shafts/Treadles
+
+When a draft uses fewer shafts or treadles than the loom supports, the rendered image includes blank rows/columns for the unused ones. This setting clips the rendering to the design's effective counts, reclaiming space and reducing visual noise.
+
+**Behaviour:**
+
+- When enabled: the renderer uses `effective_num_shafts` and `effective_num_treadles` (derived from actual treadling/threading data in the WIF) as the shaft/treadle bounds instead of the declared `num_shafts`/`num_treadles`
+- When disabled (default): all declared shafts and treadles are shown, matching the raw WIF metadata
+- Applies to the drawdown tile viewer and the full-draft preview
+
+**Setting levels:**
+
+| Level | Location | Scope |
+| --- | --- | --- |
+| User default | User Settings → Design Preferences | Applied to all new projects at creation |
+| Project override | Project Settings panel | Per-project; overrides user default for that project only |
+
+- New projects inherit the creating user's default at creation time
+- Changing the project-level setting does not affect other projects or the user default
+- The setting is stored on both `User` and `Project` models as `hide_unused_shafts_treadles` (boolean, default `false`)
+
+**API:**
+
+- `GET /api/drafts/{draft_id}/drawdown?hide_unused_shafts_treadles=true` — query param instructs the renderer to clip to effective counts
+- Frontend reads the project (or user) setting and passes the param; the backend does not auto-resolve the project setting from the project ID
+- `PATCH /api/users/me` and `PATCH /api/projects/{id}` accept `hide_unused_shafts_treadles`
+- `POST /api/projects` inherits the value from the creating user's setting
+
+**Edge cases:**
+
+- If `effective_num_shafts` or `effective_num_treadles` is `null` (e.g. WIF has no treadling section), fall back to declared counts — never fail the render
+- Setting has no effect when `effective_num_shafts == num_shafts` and `effective_num_treadles == num_treadles` (nothing to hide)
+
 ---
 
 ## Color Tools

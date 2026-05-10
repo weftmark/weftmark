@@ -229,10 +229,14 @@ async def get_drawdown(
     draft_id: uuid.UUID,
     start_row: int | None = Query(None, ge=0),
     row_count: int | None = Query(None, ge=1),
+    hide_unused_shafts_treadles: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db)
+
+    effective_shafts = draft.effective_num_shafts if hide_unused_shafts_treadles else None
+    effective_treadles = draft.effective_num_treadles if hide_unused_shafts_treadles else None
 
     # Tiled request: check pre-rendered tile cache first, then render on-demand
     if start_row is not None or row_count is not None:
@@ -276,7 +280,13 @@ async def get_drawdown(
         wif_bytes = await storage.aread_file(draft.wif_path)
         try:
             png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(
-                lambda: rendering.render_drawdown_tile(rendering.load_draft(wif_bytes), start_row=_sr, row_count=_rc)
+                lambda: rendering.render_drawdown_tile(
+                    rendering.load_draft(wif_bytes),
+                    start_row=_sr,
+                    row_count=_rc,
+                    effective_shafts=effective_shafts,
+                    effective_treadles=effective_treadles,
+                )
             )
         except HTTPException as exc:
             if exc.status_code == 413:
@@ -345,7 +355,11 @@ async def get_drawdown(
     wif_bytes = await storage.aread_file(draft.wif_path)
     try:
         png, total_rows, actual_scale = await asyncio.to_thread(
-            lambda: rendering.render_drawdown_only(rendering.load_draft(wif_bytes))
+            lambda: rendering.render_drawdown_only(
+                rendering.load_draft(wif_bytes),
+                effective_shafts=effective_shafts,
+                effective_treadles=effective_treadles,
+            )
         )
     except HTTPException as exc:
         if exc.status_code == 413:

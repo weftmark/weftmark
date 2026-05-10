@@ -27,6 +27,7 @@ export interface ProjectSummary {
   completed_at: string | null;
   abandoned_at: string | null;
   created_at: string;
+  hide_unused_shafts_treadles: boolean;
 }
 
 export interface ProjectPhoto {
@@ -160,6 +161,17 @@ export function updateProjectNotes(id: string, notes: string | null): Promise<Pr
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ notes }),
+  });
+}
+
+export function updateProjectSettings(
+  id: string,
+  settings: { hide_unused_shafts_treadles?: boolean }
+): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
   });
 }
 

@@ -19,6 +19,7 @@ export interface UserSettingsUpdate {
   measurement_system?: string;
   ai_training_consent?: boolean;
   show_version_numbers?: boolean;
+  hide_unused_shafts_treadles?: boolean;
 }
 
 export async function updateSettings(body: UserSettingsUpdate): Promise<User> {

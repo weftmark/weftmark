@@ -60,6 +60,7 @@ class ProjectSummary(BaseModel):
     completed_at: datetime | None
     abandoned_at: datetime | None
     created_at: datetime
+    hide_unused_shafts_treadles: bool
 
     model_config = {"from_attributes": True}
 
@@ -98,6 +99,7 @@ class CreateProjectRequest(BaseModel):
 class RenameProjectRequest(BaseModel):
     name: str | None = None
     notes: str | None = None
+    hide_unused_shafts_treadles: bool | None = None
 
 
 class AssignLoomRequest(BaseModel):
@@ -211,6 +213,7 @@ def _to_detail(
         abandoned_at=project.abandoned_at,
         notes=project.notes,
         created_at=project.created_at,
+        hide_unused_shafts_treadles=project.hide_unused_shafts_treadles,
         draft_name=draft.name,
         draft_num_shafts=draft.num_shafts,
         draft_num_treadles=draft.num_treadles,
@@ -309,6 +312,7 @@ async def create_project(
         waste_between_items=body.waste_between_items,
         warp_waste_allowance=body.warp_waste_allowance,
         length_unit=body.length_unit,
+        hide_unused_shafts_treadles=current_user.hide_unused_shafts_treadles,
     )
     db.add(project)
     await db.commit()
@@ -368,8 +372,8 @@ async def rename_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    if body.name is None and body.notes is None:
-        raise HTTPException(status_code=400, detail="At least one field (name or notes) must be provided")
+    if body.name is None and body.notes is None and body.hide_unused_shafts_treadles is None:
+        raise HTTPException(status_code=400, detail="At least one field must be provided")
     project = await _get_owned_project(project_id, current_user, db)
     if body.name is not None:
         name = body.name.strip()
@@ -378,6 +382,8 @@ async def rename_project(
         project.name = name
     if body.notes is not None:
         project.notes = body.notes
+    if body.hide_unused_shafts_treadles is not None:
+        project.hide_unused_shafts_treadles = body.hide_unused_shafts_treadles
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)

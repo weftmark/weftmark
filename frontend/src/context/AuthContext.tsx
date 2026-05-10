@@ -15,6 +15,7 @@ export interface User {
   measurement_system: string;
   ai_training_consent: boolean;
   show_version_numbers: boolean;
+  hide_unused_shafts_treadles: boolean;
   eula_accepted_version: string | null;
   current_eula_version: string;
   storage_used_bytes: number;

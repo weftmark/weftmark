@@ -34,6 +34,7 @@ export function SettingsPage() {
   const [theme, setTheme] = useState(user?.theme ?? "light");
   const [activityTheme, setActivityTheme] = useState(user?.activity_theme ?? "default");
   const [showVersionNumbers, setShowVersionNumbers] = useState(user?.show_version_numbers ?? true);
+  const [hideUnusedShaftsTreadles, setHideUnusedShaftsTreadles] = useState(user?.hide_unused_shafts_treadles ?? false);
   const [idleTimeout, setIdleTimeout] = useState(user?.idle_timeout_minutes ?? 30);
   const [measurementSystem, setMeasurementSystem] = useState(user?.measurement_system ?? "metric");
   const [dataConsent, setDataConsent] = useState(user?.ai_training_consent ?? false);
@@ -188,6 +189,34 @@ export function SettingsPage() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Show or hide the UI, API, and worker version badge in the bottom-right corner.
+                  </p>
+                </Field>
+
+                <Field label="Hide unused shafts and treadles">
+                  <div className="flex items-center gap-3">
+                    <button
+                      role="switch"
+                      aria-checked={hideUnusedShaftsTreadles}
+                      onClick={() => {
+                        const next = !hideUnusedShaftsTreadles;
+                        setHideUnusedShaftsTreadles(next);
+                        save({ hide_unused_shafts_treadles: next });
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        hideUnusedShaftsTreadles ? "bg-primary" : "bg-input"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          hideUnusedShaftsTreadles ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm">{hideUnusedShaftsTreadles ? "Hidden" : "Shown"}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    When enabled, shafts and treadles not used by the design are hidden in the drawdown
+                    viewer. New projects inherit this setting. Default is off (all shafts/treadles shown).
                   </p>
                 </Field>
               </Section>
