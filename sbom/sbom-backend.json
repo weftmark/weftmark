@@ -478,7 +478,7 @@
     },
     {
       "bom-ref": "requirements-L10",
-      "description": "requirements line 10: redis==5.2.0",
+      "description": "requirements line 10: redis==6.4.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -487,9 +487,9 @@
         }
       ],
       "name": "redis",
-      "purl": "pkg:pypi/redis@5.2.0",
+      "purl": "pkg:pypi/redis@6.4.0",
       "type": "library",
-      "version": "5.2.0"
+      "version": "6.4.0"
     },
     {
       "bom-ref": "requirements-L25",
@@ -674,7 +674,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-09T23:39:01.234974+00:00",
+    "timestamp": "2026-05-10T16:00:51.915622+00:00",
     "tools": {
       "components": [
         {
@@ -778,7 +778,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:52af774e-4981-4ac2-acb9-9b92946f83e1",
+  "serialNumber": "urn:uuid:b42a1ec0-8557-4107-8663-6f479329b1c5",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
