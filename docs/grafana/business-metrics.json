@@ -75,7 +75,7 @@
       }
     ]
   },
-  "description": "WeftMark business metrics â€” user lifecycle, logins, signups, projects, and storage",
+  "description": "WeftMark business metrics — user lifecycle, logins, signups, projects, and storage",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -642,7 +642,7 @@
           "refId": "A"
         }
       ],
-      "title": "Users at Quota (â‰¥90%)",
+      "title": "Users at Quota (≥90%)",
       "type": "stat"
     },
     {
@@ -965,7 +965,7 @@
             "uid": "${datasource}"
           },
           "expr": "sum by (new_role) (rate(weftmark_user_role_changes_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
-          "legendFormat": "â†’ {{new_role}}",
+          "legendFormat": "→ {{new_role}}",
           "refId": "A"
         }
       ],

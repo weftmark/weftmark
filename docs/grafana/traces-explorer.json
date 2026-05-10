@@ -94,7 +94,7 @@
       }
     ]
   },
-  "description": "WeftMark â€” distributed traces, span metrics, and service graph from Tempo",
+  "description": "WeftMark — distributed traces, span metrics, and service graph from Tempo",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -753,7 +753,7 @@
           "refId": "C"
         }
       ],
-      "title": "Top Spans â€” Call Volume & Latency",
+      "title": "Top Spans — Call Volume & Latency",
       "transformations": [
         {
           "id": "merge",

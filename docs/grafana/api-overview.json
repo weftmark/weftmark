@@ -75,7 +75,7 @@
       }
     ]
   },
-  "description": "WeftMark API â€” request rate, error rate, latency, and 5xx logs",
+  "description": "WeftMark API — request rate, error rate, latency, and 5xx logs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -716,7 +716,7 @@
           "refId": "C"
         }
       ],
-      "title": "Top Routes â€” Traffic & Latency",
+      "title": "Top Routes — Traffic & Latency",
       "transformations": [
         {
           "id": "merge",
