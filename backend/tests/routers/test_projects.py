@@ -1,6 +1,7 @@
 import io
 import uuid
 from datetime import date
+from unittest.mock import MagicMock
 
 import pytest
 from httpx import AsyncClient
@@ -12,6 +13,15 @@ from app.models.loom import Loom, LoomVersion, loom_tracking_flags
 from app.models.project import Project
 from app.models.project import ProjectPhoto as ProjectPhotoModel
 from app.models.user import User
+
+
+@pytest.fixture(autouse=True)
+def _mock_preview_task(monkeypatch):
+    """Prevent generate_drawdown_preview.delay() from connecting to Celery in tests."""
+    mock = MagicMock()
+    monkeypatch.setattr("app.routers.projects.generate_drawdown_preview", mock)
+    return mock
+
 
 # ---------------------------------------------------------------------------
 # Minimal WIF bytes used for all tests (has both treadling and liftplan)
