@@ -16,19 +16,57 @@
     }
   ],
   "__requires": [
-    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.0.0"},
-    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"},
-    {"type": "datasource", "id": "loki", "name": "Loki", "version": "1.0.0"},
-    {"type": "panel", "id": "timeseries", "name": "Time series", "version": ""},
-    {"type": "panel", "id": "stat", "name": "Stat", "version": ""},
-    {"type": "panel", "id": "table", "name": "Table", "version": ""},
-    {"type": "panel", "id": "logs", "name": "Logs", "version": ""}
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "loki",
+      "name": "Loki",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "Logs",
+      "version": ""
+    }
   ],
   "annotations": {
     "list": [
       {
         "builtIn": 1,
-        "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -37,7 +75,7 @@
       }
     ]
   },
-  "description": "WeftMark Celery workers — task throughput, duration, and error logs",
+  "description": "WeftMark Celery workers â€” task throughput, duration, and error logs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -45,7 +83,11 @@
   "links": [],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["weftmark", "worker", "celery"],
+  "tags": [
+    "weftmark",
+    "worker",
+    "celery"
+  ],
   "templating": {
     "list": [
       {
@@ -74,57 +116,90 @@
       },
       {
         "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(deployment_environment)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
         "multi": false,
         "name": "env",
-        "options": [
-          {"selected": false, "text": "All", "value": "$__all"},
-          {"selected": true, "text": "prod", "value": "prod"},
-          {"selected": false, "text": "dev", "value": "dev"}
-        ],
-        "query": "prod,dev",
-        "type": "custom",
+        "options": [],
+        "query": {
+          "query": "label_values(deployment_environment)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query",
         "label": "Environment"
       }
     ]
   },
-  "time": {"from": "now-1h", "to": "now"},
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
-  "title": "WeftMark — Worker Overview",
+  "title": "weftmark - Worker Overview",
   "uid": "wm-worker-overview",
   "version": 1,
   "weekStart": "",
   "panels": [
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "ops",
           "mappings": []
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
       "id": 1,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(rate(flower_task_runtime_seconds_count{job=\"weftmark-worker\", deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "tasks/s",
           "refId": "A"
@@ -134,16 +209,30 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 2},
-              {"color": "red", "value": 10}
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
             ]
           },
           "unit": "s",
@@ -151,19 +240,33 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
       "id": 2,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(flower_task_runtime_seconds_bucket{job=\"weftmark-worker\", deployment_environment=~\"$env\"}[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "A"
@@ -173,32 +276,56 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "dateTimeAsIso",
           "mappings": []
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
       "id": 3,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "timestamp(flower_task_runtime_seconds_count{job=\"weftmark-worker\", task=~\".*scheduler.*\"} > 0) * 1000",
           "legendFormat": "Last beat",
           "refId": "A"
@@ -208,32 +335,56 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "short",
           "mappings": []
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
       "id": 4,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "count(count by (worker) (flower_task_runtime_seconds_count{job=\"weftmark-worker\", deployment_environment=~\"$env\"}))",
           "legendFormat": "Workers",
           "refId": "A"
@@ -243,24 +394,50 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 1, "fillOpacity": 10},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
           "unit": "ops"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
       "id": 5,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (task) (rate(flower_task_runtime_seconds_count{job=\"weftmark-worker\", deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "{{task}}",
           "refId": "A"
@@ -270,30 +447,58 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 2},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2
+          },
           "unit": "s"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
       "id": 6,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.50, sum by (le, task) (rate(flower_task_runtime_seconds_bucket{job=\"weftmark-worker\", deployment_environment=~\"$env\"}[$__rate_interval])))",
           "legendFormat": "p50 {{task}}",
           "refId": "A"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.95, sum by (le, task) (rate(flower_task_runtime_seconds_bucket{job=\"weftmark-worker\", deployment_environment=~\"$env\"}[$__rate_interval])))",
           "legendFormat": "p95 {{task}}",
           "refId": "B"
@@ -303,24 +508,50 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 1, "fillOpacity": 10},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
           "unit": "ops"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
       "id": 7,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (span_name) (rate(traces_spanmetrics_calls_total{service=\"weftmark-worker\", deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "{{span_name}}",
           "refId": "A"
@@ -330,8 +561,16 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "loki", "uid": "${loki}"},
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 20},
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
       "id": 8,
       "options": {
         "dedupStrategy": "none",
@@ -342,7 +581,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "loki", "uid": "${loki}"},
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
           "expr": "{service_name=~\"weftmark-worker|weftmark-beat\", deployment_environment=~\"$env\"} | json | level=`ERROR` or level=`CRITICAL`",
           "refId": "A"
         }
@@ -351,8 +593,16 @@
       "type": "logs"
     },
     {
-      "datasource": {"type": "loki", "uid": "${loki}"},
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28},
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
       "id": 9,
       "options": {
         "dedupStrategy": "none",
@@ -363,7 +613,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "loki", "uid": "${loki}"},
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
           "expr": "{service_name=~\"weftmark-worker|weftmark-beat\", deployment_environment=~\"$env\"} | json",
           "refId": "A"
         }
@@ -372,24 +625,50 @@
       "type": "logs"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 2, "fillOpacity": 10},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
           "unit": "ops"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
       "id": 10,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (state) (rate(weftmark_celery_tasks_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "{{state}}",
           "refId": "A"
@@ -399,24 +678,50 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 2, "fillOpacity": 10},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
           "unit": "ops"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
       "id": 11,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (task) (rate(weftmark_celery_tasks_total{deployment_environment=~\"$env\", state=\"failed\"}[$__rate_interval]))",
           "legendFormat": "{{task}}",
           "refId": "A"
@@ -426,33 +731,57 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "blue", "value": null}]
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
           },
           "unit": "short",
           "mappings": []
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 44},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 44
+      },
       "id": 12,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_size{deployment_environment=~\"$env\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "weftmark_db_pool_size_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Size",
           "refId": "A"
         }
@@ -461,16 +790,30 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 3},
-              {"color": "red", "value": 5}
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
             ]
           },
           "unit": "short",
@@ -478,20 +821,34 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 44},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 44
+      },
       "id": 13,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_checked_out{deployment_environment=~\"$env\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "weftmark_db_pool_checked_out_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Checked Out",
           "refId": "A"
         }
@@ -500,33 +857,57 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "short",
           "mappings": []
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 44},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 44
+      },
       "id": 14,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_checked_in{deployment_environment=~\"$env\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "weftmark_db_pool_checked_in_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Idle",
           "refId": "A"
         }
@@ -535,16 +916,30 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 1},
-              {"color": "red", "value": 3}
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
             ]
           },
           "unit": "short",
@@ -552,20 +947,34 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 44},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 44
+      },
       "id": 15,
       "options": {
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_overflow{deployment_environment=~\"$env\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "weftmark_db_pool_overflow_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Overflow",
           "refId": "A"
         }
@@ -574,43 +983,78 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 2, "fillOpacity": 5},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5
+          },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 48},
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
       "id": 16,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_size{deployment_environment=~\"$env\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "weftmark_db_pool_size_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Pool Size",
           "refId": "A"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_checked_out{deployment_environment=~\"$env\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "weftmark_db_pool_checked_out_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Checked Out",
           "refId": "B"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_checked_in{deployment_environment=~\"$env\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "weftmark_db_pool_checked_in_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Idle",
           "refId": "C"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_overflow{deployment_environment=~\"$env\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "weftmark_db_pool_overflow_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Overflow",
           "refId": "D"
         }
