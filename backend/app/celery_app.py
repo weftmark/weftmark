@@ -28,6 +28,7 @@ def _make_celery() -> Celery:
             "app.tasks.metrics",
             "app.tasks.preview",
             "app.tasks.purge",
+            "app.tasks.tiles",
             "app.tasks.s3_audit",
             "app.tasks.cve_scan",
             "app.tasks.debug",
@@ -50,6 +51,10 @@ def _make_celery() -> Celery:
             },
             "record-business-metrics": {
                 "task": "app.tasks.metrics.record_business_metrics",
+                "schedule": 300.0,
+            },
+            "backfill-project-drawdown-previews": {
+                "task": "app.tasks.maintenance.backfill_project_drawdown_previews",
                 "schedule": 300.0,
             },
             "refresh-geoip-database": {

@@ -25,6 +25,14 @@ def _mock_preview_task(monkeypatch):
     return mock
 
 
+@pytest.fixture(autouse=True)
+def _mock_tile_task(monkeypatch):
+    """Prevent prerender_drawdown_tiles.apply_async() from connecting to Celery in tests."""
+    mock = MagicMock()
+    monkeypatch.setattr("app.routers.drafts.prerender_drawdown_tiles", mock)
+    return mock
+
+
 # ---------------------------------------------------------------------------
 # Unit tests for _has_wif_header
 # ---------------------------------------------------------------------------
@@ -498,6 +506,128 @@ class TestGetDrawdownTile:
         assert entry is not None
         assert entry.details["draft_id"] == str(draft.id)
         assert entry.details["mode"] == "tile"
+
+
+# ---------------------------------------------------------------------------
+# GET /{draft_id}/drawdown — pre-rendered tile cache (R2)
+# ---------------------------------------------------------------------------
+
+
+class TestGetDrawdownTileCache:
+    """Tests that the drawdown tile endpoint serves from pre-rendered R2 tiles when available."""
+
+    _TILE_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16  # minimal fake PNG header
+
+    async def _draft_with_wif_and_dimensions(
+        self, db_session: AsyncSession, user: User, warp_threads: int = 8
+    ) -> Draft:
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=user.id,
+            name="Tile Cache Test",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            warp_threads=warp_threads,
+            weft_threads=200,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+        return draft
+
+    async def test_serves_from_cache_on_hit(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        import app.services.storage as storage
+        from app.config import get_settings
+        from app.services.rendering import DRAWDOWN_SCALE
+
+        draft = await self._draft_with_wif_and_dimensions(db_session, test_user)
+        settings = get_settings()
+        tile_row_count = settings.tile_row_count
+        expected_scale = min(settings.render_max_width // draft.warp_threads, DRAWDOWN_SCALE)
+
+        storage.save_drawdown_tile(draft.id, expected_scale, 0, self._TILE_PNG)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count={tile_row_count}")
+        assert resp.status_code == 200
+        assert resp.content == self._TILE_PNG
+
+    async def test_cache_hit_returns_immutable_cache_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        import app.services.storage as storage
+        from app.config import get_settings
+        from app.services.rendering import DRAWDOWN_SCALE
+
+        draft = await self._draft_with_wif_and_dimensions(db_session, test_user)
+        settings = get_settings()
+        tile_row_count = settings.tile_row_count
+        expected_scale = min(settings.render_max_width // draft.warp_threads, DRAWDOWN_SCALE)
+
+        storage.save_drawdown_tile(draft.id, expected_scale, 0, self._TILE_PNG)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count={tile_row_count}")
+        assert "immutable" in (resp.headers.get("Cache-Control") or "")
+
+    async def test_cache_miss_triggers_prerender_task(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        _mock_tile_task: MagicMock,
+    ):
+        from app.config import get_settings
+
+        draft = await self._draft_with_wif_and_dimensions(db_session, test_user)
+        tile_row_count = get_settings().tile_row_count
+
+        await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count={tile_row_count}")
+        _mock_tile_task.apply_async.assert_called_once_with(args=[str(draft.id)])
+
+    async def test_cache_miss_skips_task_when_t0_exists(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        _mock_tile_task: MagicMock,
+    ):
+        """When t0 already exists (eager prerender ran), lazy trigger must not re-queue."""
+        import app.services.storage as storage
+        from app.config import get_settings
+        from app.services.rendering import DRAWDOWN_SCALE
+
+        draft = await self._draft_with_wif_and_dimensions(db_session, test_user)
+        settings = get_settings()
+        tile_row_count = settings.tile_row_count
+        expected_scale = min(settings.render_max_width // draft.warp_threads, DRAWDOWN_SCALE)
+
+        # Pre-save t0 (simulates completed eager prerender) but not the requested tile
+        storage.save_drawdown_tile(draft.id, expected_scale, 0, self._TILE_PNG)
+
+        # Request tile at row 100 — cache miss, but t0 exists so no new task
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=100&row_count={tile_row_count}")
+        assert resp.status_code == 200
+        _mock_tile_task.apply_async.assert_not_called()
+
+    async def test_non_standard_request_skips_cache_and_task(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        _mock_tile_task: MagicMock,
+    ):
+        """A request with row_count != tile_row_count bypasses the tile cache."""
+        draft = await self._draft_with_wif_and_dimensions(db_session, test_user)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.status_code == 200
+        assert resp.headers.get("Cache-Control") == "no-store"
+        _mock_tile_task.apply_async.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

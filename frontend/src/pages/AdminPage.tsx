@@ -2907,32 +2907,38 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
   }
 
   return (
-    <div className="border rounded-lg p-4 space-y-3">
+    <div className="border rounded-lg p-3 space-y-2">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium text-sm">{task.display_name}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
         </div>
-        <label className="flex items-center gap-2 cursor-pointer shrink-0">
-          <span className="text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"}</span>
-          <button
-            role="switch"
-            aria-checked={enabled}
-            onClick={() => setEnabled((v) => !v)}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-              enabled ? "bg-primary" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                enabled ? "translate-x-4" : "translate-x-0.5"
+        <div className="flex items-center gap-2 shrink-0">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <span className="text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"}</span>
+            <button
+              role="switch"
+              aria-checked={enabled}
+              onClick={() => setEnabled((v) => !v)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                enabled ? "bg-primary" : "bg-muted"
               }`}
-            />
-          </button>
-        </label>
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  enabled ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </label>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <Button size="sm" disabled={!isDirty || saving} onClick={save}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground">Schedule:</span>
           <select
@@ -2971,12 +2977,6 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
           </p>
         )}
       </div>
-
-      {error && <p className="text-xs text-destructive">{error}</p>}
-
-      <Button size="sm" disabled={!isDirty || saving} onClick={save}>
-        {saving ? "Saving…" : "Save"}
-      </Button>
     </div>
   );
 }

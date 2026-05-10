@@ -18,6 +18,7 @@ from app.services import rendering, storage, wif_linter, wif_modifier, wif_parse
 from app.services.audit import write_audit_log
 from app.services.rate_limiter import rate_limit
 from app.tasks.preview import generate_drawdown_preview
+from app.tasks.tiles import prerender_drawdown_tiles
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 settings = get_settings()
@@ -157,11 +158,13 @@ async def create_draft(
     await db.commit()
     await db.refresh(draft)
     if draft.wif_path:
-        task = generate_drawdown_preview.delay(str(draft.id))
         from app.config import get_settings
         from app.services.task_history import record_queued
 
+        task = generate_drawdown_preview.delay(str(draft.id))
         record_queued(get_settings(), task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+        tile_task = prerender_drawdown_tiles.delay(str(draft.id))
+        record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
     return DraftSummary.from_draft(draft)
 
 
@@ -231,16 +234,47 @@ async def get_drawdown(
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db)
 
-    # Tiled request: bypass cached preview, render fresh from WIF
+    # Tiled request: check pre-rendered tile cache first, then render on-demand
     if start_row is not None or row_count is not None:
         if not draft.wif_path:
             raise HTTPException(status_code=404, detail="No WIF file for this draft")
         if not await storage.afile_exists(draft.wif_path):
             raise HTTPException(status_code=404, detail="WIF file not found in storage")
+
+        _sr = start_row or 0
+        _rc = row_count
+
+        # Check pre-rendered tile cache when request aligns with standard boundaries
+        tile_row_count = settings.tile_row_count
+        warp_count = draft.warp_threads or 0
+        weft_count = draft.weft_threads or 0
+        if warp_count > 0:
+            expected_scale = min(settings.render_max_width // warp_count, rendering.DRAWDOWN_SCALE)
+        else:
+            expected_scale = rendering.DRAWDOWN_SCALE
+
+        if (
+            warp_count > 0
+            and _sr % tile_row_count == 0
+            and _rc == tile_row_count
+            and await storage.adrawdown_tile_exists(draft_id, expected_scale, _sr)
+        ):
+            cached_png = await storage.aread_drawdown_tile(draft_id, expected_scale, _sr)
+            actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
+            return Response(
+                content=cached_png,
+                media_type="image/png",
+                headers={
+                    "X-Pixels-Per-Row": str(expected_scale),
+                    "X-Total-Rows": str(weft_count),
+                    "X-Start-Row": str(_sr),
+                    "X-Row-Count": str(actual_rc),
+                    "Cache-Control": "public, max-age=31536000, immutable",
+                },
+            )
+
         wif_bytes = await storage.aread_file(draft.wif_path)
         try:
-            _sr = start_row or 0
-            _rc = row_count
             png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(
                 lambda: rendering.render_drawdown_tile(rendering.load_draft(wif_bytes), start_row=_sr, row_count=_rc)
             )
@@ -263,6 +297,16 @@ async def get_drawdown(
             raise
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
+
+        # Trigger background tile pre-render on standard cache miss, but only if
+        # t0 doesn't exist yet — avoids double-fire when eager prerender already ran.
+        if _sr % tile_row_count == 0 and _rc == tile_row_count:
+            if not await storage.adrawdown_tile_exists(draft_id, expected_scale, 0):
+                from app.services.task_history import record_queued
+
+                tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
+                record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+
         return Response(
             content=png,
             media_type="image/png",

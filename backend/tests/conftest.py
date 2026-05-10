@@ -170,6 +170,13 @@ def setup_database():
 
 
 @pytest.fixture
+def db_available(setup_database) -> None:
+    """Skip the test if the test database is not available."""
+    if not _DB_AVAILABLE:
+        pytest.skip("Database not available")
+
+
+@pytest.fixture
 async def db_session(setup_database) -> AsyncGenerator[AsyncSession, None]:
     if not _DB_AVAILABLE:
         pytest.skip("Database not available")

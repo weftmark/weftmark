@@ -19,14 +19,18 @@ _PG_TEST_DB = "test_weaving_site"
 
 
 @pytest.fixture(autouse=True)
-def _use_test_db(monkeypatch):
+def _use_test_db(monkeypatch, db_available):
     """Point tasks' sync engine at the test DB instead of the app DB."""
+    import os
+
     from app.config import get_settings
 
     settings = get_settings()
     monkeypatch.setattr(settings, "postgres_db", _PG_TEST_DB)
     monkeypatch.setattr(settings, "postgres_dsn", "")
     monkeypatch.setattr(settings, "postgres_dsn_direct", "")
+    monkeypatch.setattr(settings, "postgres_host", os.getenv("POSTGRES_HOST", "localhost"))
+    monkeypatch.setattr(settings, "postgres_port", int(os.getenv("POSTGRES_PORT", "5433")))
 
 
 # ---------------------------------------------------------------------------
@@ -335,6 +339,299 @@ class TestRetryFailedPreviews:
 
         mock_preview.delay.assert_not_called()
         assert result["retried"] == 0
+
+
+# ---------------------------------------------------------------------------
+# backfill_project_drawdown_previews
+# ---------------------------------------------------------------------------
+
+
+class TestBackfillProjectDrawdownPreviews:
+    def test_returns_dispatched_key(self):
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        result = backfill_project_drawdown_previews.run.__func__(_make_task())
+        assert "dispatched" in result
+        assert isinstance(result["dispatched"], int)
+
+    def test_zero_when_no_active_projects(self):
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        result = backfill_project_drawdown_previews.run.__func__(_make_task())
+        assert result["dispatched"] == 0
+
+    @pytest.mark.asyncio
+    async def test_dispatches_for_active_project_with_missing_preview(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="No Preview Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+            drawdown_preview_path=None,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Active Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        with patch("app.tasks.preview.generate_drawdown_preview") as mock_preview:
+            mock_preview.delay = MagicMock()
+            result = backfill_project_drawdown_previews.run.__func__(_make_task())
+
+        assert result["dispatched"] >= 1
+        mock_preview.delay.assert_called_once_with(str(draft.id))
+
+    @pytest.mark.asyncio
+    async def test_skips_completed_project(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+            drawdown_preview_path=None,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Completed",
+            project_type="treadle",
+            status="completed",
+            current_pick=10,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        with patch("app.tasks.preview.generate_drawdown_preview") as mock_preview:
+            mock_preview.delay = MagicMock()
+            result = backfill_project_drawdown_previews.run.__func__(_make_task())
+
+        mock_preview.delay.assert_not_called()
+        assert result["dispatched"] == 0
+
+    @pytest.mark.asyncio
+    async def test_skips_abandoned_project(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+            drawdown_preview_path=None,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Abandoned",
+            project_type="treadle",
+            status="abandoned",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        with patch("app.tasks.preview.generate_drawdown_preview") as mock_preview:
+            mock_preview.delay = MagicMock()
+            result = backfill_project_drawdown_previews.run.__func__(_make_task())
+
+        mock_preview.delay.assert_not_called()
+        assert result["dispatched"] == 0
+
+    @pytest.mark.asyncio
+    async def test_skips_project_with_existing_preview(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+            drawdown_preview_path="drawdown-previews/existing.png",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Has Preview",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        with patch("app.tasks.preview.generate_drawdown_preview") as mock_preview:
+            mock_preview.delay = MagicMock()
+            result = backfill_project_drawdown_previews.run.__func__(_make_task())
+
+        mock_preview.delay.assert_not_called()
+        assert result["dispatched"] == 0
+
+    @pytest.mark.asyncio
+    async def test_deduplicates_same_draft_across_projects(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Shared Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+            drawdown_preview_path=None,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        for i in range(3):
+            db_session.add(
+                Project(
+                    owner_id=test_user.id,
+                    draft_id=draft.id,
+                    name=f"Project {i}",
+                    project_type="treadle",
+                    status="active",
+                    current_pick=1,
+                    total_picks=10,
+                )
+            )
+        await db_session.commit()
+
+        with patch("app.tasks.preview.generate_drawdown_preview") as mock_preview:
+            mock_preview.delay = MagicMock()
+            result = backfill_project_drawdown_previews.run.__func__(_make_task())
+
+        assert result["dispatched"] == 1
+        mock_preview.delay.assert_called_once_with(str(draft.id))
+
+    @pytest.mark.asyncio
+    async def test_respects_limit(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        for i in range(5):
+            draft = Draft(
+                id=_uuid.uuid4(),
+                owner_id=test_user.id,
+                name=f"Draft {i}",
+                wif_filename="test.wif",
+                wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+                drawdown_preview_path=None,
+            )
+            db_session.add(draft)
+            await db_session.flush()
+            db_session.add(
+                Project(
+                    owner_id=test_user.id,
+                    draft_id=draft.id,
+                    name=f"Project {i}",
+                    project_type="treadle",
+                    status="active",
+                    current_pick=1,
+                    total_picks=10,
+                )
+            )
+        await db_session.commit()
+
+        with patch("app.tasks.preview.generate_drawdown_preview") as mock_preview:
+            mock_preview.delay = MagicMock()
+            result = backfill_project_drawdown_previews.run.__func__(_make_task(), limit=2)
+
+        assert result["dispatched"] == 2
+        assert mock_preview.delay.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_skips_soft_deleted_project(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import backfill_project_drawdown_previews
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+            drawdown_preview_path=None,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Deleted",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        project.deleted_at = _ago(minutes=5)
+        db_session.add(project)
+        await db_session.commit()
+
+        with patch("app.tasks.preview.generate_drawdown_preview") as mock_preview:
+            mock_preview.delay = MagicMock()
+            result = backfill_project_drawdown_previews.run.__func__(_make_task())
+
+        mock_preview.delay.assert_not_called()
+        assert result["dispatched"] == 0
 
 
 # ---------------------------------------------------------------------------

@@ -56,7 +56,7 @@
       }
     ]
   },
-  "description": "WeftMark â€” host and process resource utilization (CPU, memory, disk, network)",
+  "description": "WeftMark — host and process resource utilization (CPU, memory, disk, network)",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -89,14 +89,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(deployment_environment)",
+        "definition": "label_values(weftmark_users_total_ratio, deployment_environment)",
         "hide": 0,
         "includeAll": true,
         "multi": false,
         "name": "env",
         "options": [],
         "query": {
-          "query": "label_values(deployment_environment)",
+          "query": "label_values(weftmark_users_total_ratio, deployment_environment)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,

@@ -75,7 +75,7 @@
       }
     ]
   },
-  "description": "WeftMark Celery workers â€” task throughput, duration, and error logs",
+  "description": "WeftMark Celery workers — task throughput, duration, and error logs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -120,14 +120,14 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(deployment_environment)",
+        "definition": "label_values(weftmark_users_total_ratio, deployment_environment)",
         "hide": 0,
         "includeAll": true,
         "multi": false,
         "name": "env",
         "options": [],
         "query": {
-          "query": "label_values(deployment_environment)",
+          "query": "label_values(weftmark_users_total_ratio, deployment_environment)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
@@ -585,7 +585,7 @@
             "type": "loki",
             "uid": "${loki}"
           },
-          "expr": "{service_name=~\"weftmark-worker|weftmark-beat\", deployment_environment=~\"$env\"} | json | level=`ERROR` or level=`CRITICAL`",
+          "expr": "{service_name=~\"weftmark-worker|weftmark-beat\", deployment_environment=~\"$env\", level=\"ERROR\"}",
           "refId": "A"
         }
       ],
