@@ -589,6 +589,31 @@ class TestGetDrawdownTileCache:
         await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count={tile_row_count}")
         _mock_tile_task.apply_async.assert_called_once_with(args=[str(draft.id)])
 
+    async def test_cache_miss_skips_task_when_t0_exists(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        _mock_tile_task: MagicMock,
+    ):
+        """When t0 already exists (eager prerender ran), lazy trigger must not re-queue."""
+        import app.services.storage as storage
+        from app.config import get_settings
+        from app.services.rendering import DRAWDOWN_SCALE
+
+        draft = await self._draft_with_wif_and_dimensions(db_session, test_user)
+        settings = get_settings()
+        tile_row_count = settings.tile_row_count
+        expected_scale = min(settings.render_max_width // draft.warp_threads, DRAWDOWN_SCALE)
+
+        # Pre-save t0 (simulates completed eager prerender) but not the requested tile
+        storage.save_drawdown_tile(draft.id, expected_scale, 0, self._TILE_PNG)
+
+        # Request tile at row 100 — cache miss, but t0 exists so no new task
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=100&row_count={tile_row_count}")
+        assert resp.status_code == 200
+        _mock_tile_task.apply_async.assert_not_called()
+
     async def test_non_standard_request_skips_cache_and_task(
         self,
         auth_client: AsyncClient,
