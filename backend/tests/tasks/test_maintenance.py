@@ -19,14 +19,18 @@ _PG_TEST_DB = "test_weaving_site"
 
 
 @pytest.fixture(autouse=True)
-def _use_test_db(monkeypatch):
+def _use_test_db(monkeypatch, db_available):
     """Point tasks' sync engine at the test DB instead of the app DB."""
+    import os
+
     from app.config import get_settings
 
     settings = get_settings()
     monkeypatch.setattr(settings, "postgres_db", _PG_TEST_DB)
     monkeypatch.setattr(settings, "postgres_dsn", "")
     monkeypatch.setattr(settings, "postgres_dsn_direct", "")
+    monkeypatch.setattr(settings, "postgres_host", os.getenv("POSTGRES_HOST", "localhost"))
+    monkeypatch.setattr(settings, "postgres_port", int(os.getenv("POSTGRES_PORT", "5433")))
 
 
 # ---------------------------------------------------------------------------
