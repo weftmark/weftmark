@@ -163,7 +163,8 @@ async def create_draft(
 
         task = generate_drawdown_preview.delay(str(draft.id))
         record_queued(get_settings(), task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
-        prerender_drawdown_tiles.delay(str(draft.id))
+        tile_task = prerender_drawdown_tiles.delay(str(draft.id))
+        record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
     return DraftSummary.from_draft(draft)
 
 
@@ -299,7 +300,10 @@ async def get_drawdown(
 
         # Trigger background tile pre-render on standard cache miss
         if _sr % tile_row_count == 0 and _rc == tile_row_count:
-            prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
+            from app.services.task_history import record_queued
+
+            tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
+            record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
 
         return Response(
             content=png,
