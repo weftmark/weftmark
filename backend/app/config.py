@@ -132,6 +132,7 @@ class Settings(BaseSettings):
     render_max_height: int = 4000
     render_default_zoom: int = 10
     drawdown_preview_max_px: int = 800
+    tile_row_count: int = 100
 
     @model_validator(mode="after")
     def _require_secret_key_in_production(self) -> "Settings":
