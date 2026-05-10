@@ -70,6 +70,22 @@
         "refresh": 1,
         "type": "datasource",
         "label": "Loki"
+      },
+      {
+        "current": {},
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "name": "env",
+        "options": [
+          {"selected": false, "text": "All", "value": "$__all"},
+          {"selected": true, "text": "prod", "value": "prod"},
+          {"selected": false, "text": "dev", "value": "dev"}
+        ],
+        "query": "prod,dev",
+        "type": "custom",
+        "label": "Environment"
       }
     ]
   },
@@ -108,7 +124,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_users_total",
+          "expr": "weftmark_users_total{deployment_environment=~\"$env\"}",
           "legendFormat": "Users",
           "refId": "A"
         }
@@ -147,7 +163,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_users_pending_approval",
+          "expr": "weftmark_users_pending_approval{deployment_environment=~\"$env\"}",
           "legendFormat": "Pending",
           "refId": "A"
         }
@@ -182,7 +198,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_projects_total",
+          "expr": "weftmark_projects_total{deployment_environment=~\"$env\"}",
           "legendFormat": "Projects",
           "refId": "A"
         }
@@ -221,7 +237,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_storage_used_bytes",
+          "expr": "weftmark_storage_used_bytes{deployment_environment=~\"$env\"}",
           "legendFormat": "Storage",
           "refId": "A"
         }
@@ -256,7 +272,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum(rate(weftmark_user_signups_total[$__rate_interval]))",
+          "expr": "sum(rate(weftmark_user_signups_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "signups/s",
           "refId": "A"
         }
@@ -291,7 +307,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum(rate(weftmark_user_logins_total[$__rate_interval]))",
+          "expr": "sum(rate(weftmark_user_logins_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "logins/s",
           "refId": "A"
         }
@@ -326,7 +342,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum(rate(weftmark_user_sessions_ended_total[$__rate_interval]))",
+          "expr": "sum(rate(weftmark_user_sessions_ended_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "sessions ended/s",
           "refId": "A"
         }
@@ -365,7 +381,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_storage_users_at_quota",
+          "expr": "weftmark_storage_users_at_quota{deployment_environment=~\"$env\"}",
           "legendFormat": "At quota",
           "refId": "A"
         }
@@ -392,7 +408,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum by (role) (rate(weftmark_user_logins_total[$__rate_interval]))",
+          "expr": "sum by (role) (rate(weftmark_user_logins_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "{{role}}",
           "refId": "A"
         }
@@ -419,7 +435,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum by (signup_type) (rate(weftmark_user_signups_total[$__rate_interval]))",
+          "expr": "sum by (signup_type) (rate(weftmark_user_signups_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "{{signup_type}}",
           "refId": "A"
         }
@@ -446,13 +462,13 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "rate(weftmark_user_signups_approved_total[$__rate_interval])",
+          "expr": "rate(weftmark_user_signups_approved_total{deployment_environment=~\"$env\"}[$__rate_interval])",
           "legendFormat": "Approved",
           "refId": "A"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "rate(weftmark_user_eula_accepted_total[$__rate_interval])",
+          "expr": "rate(weftmark_user_eula_accepted_total{deployment_environment=~\"$env\"}[$__rate_interval])",
           "legendFormat": "EULA Accepted",
           "refId": "B"
         }
@@ -479,7 +495,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum by (role) (rate(weftmark_user_sessions_ended_total[$__rate_interval]))",
+          "expr": "sum by (role) (rate(weftmark_user_sessions_ended_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "{{role}}",
           "refId": "A"
         }
@@ -506,7 +522,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "topk(10, sum by (country) (rate(weftmark_user_logins_total{country!=\"\"}[$__rate_interval])))",
+          "expr": "topk(10, sum by (country) (rate(weftmark_user_logins_total{deployment_environment=~\"$env\", country!=\"\"}[$__rate_interval])))",
           "legendFormat": "{{country}}",
           "refId": "A"
         }
@@ -533,7 +549,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "sum by (new_role) (rate(weftmark_user_role_changes_total[$__rate_interval]))",
+          "expr": "sum by (new_role) (rate(weftmark_user_role_changes_total{deployment_environment=~\"$env\"}[$__rate_interval]))",
           "legendFormat": "→ {{new_role}}",
           "refId": "A"
         }
@@ -555,7 +571,7 @@
       "targets": [
         {
           "datasource": {"type": "loki", "uid": "${loki}"},
-          "expr": "{service_name=\"weftmark-api\"} | json | message=~\"session\\.created|session\\.ended|user\\.created|signup|login|eula|role_change|geo_country_mismatch\"",
+          "expr": "{service_name=\"weftmark-api\", deployment_environment=~\"$env\"} | json | message=~\"session\\.created|session\\.ended|user\\.created|signup|login|eula|role_change|geo_country_mismatch\"",
           "refId": "A"
         }
       ],
