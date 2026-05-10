@@ -23,21 +23,69 @@
     }
   ],
   "__requires": [
-    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "11.0.0"},
-    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"},
-    {"type": "datasource", "id": "tempo", "name": "Tempo", "version": "1.0.0"},
-    {"type": "datasource", "id": "loki", "name": "Loki", "version": "1.0.0"},
-    {"type": "panel", "id": "timeseries", "name": "Time series", "version": ""},
-    {"type": "panel", "id": "stat", "name": "Stat", "version": ""},
-    {"type": "panel", "id": "table", "name": "Table", "version": ""},
-    {"type": "panel", "id": "nodeGraph", "name": "Node Graph", "version": ""},
-    {"type": "panel", "id": "logs", "name": "Logs", "version": ""}
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "tempo",
+      "name": "Tempo",
+      "version": "1.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "loki",
+      "name": "Loki",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "nodeGraph",
+      "name": "Node Graph",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "Logs",
+      "version": ""
+    }
   ],
   "annotations": {
     "list": [
       {
         "builtIn": 1,
-        "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
@@ -46,7 +94,7 @@
       }
     ]
   },
-  "description": "WeftMark — distributed traces, span metrics, and service graph from Tempo",
+  "description": "WeftMark \u00e2\u20ac\u201d distributed traces, span metrics, and service graph from Tempo",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -54,7 +102,11 @@
   "links": [],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["weftmark", "traces", "tempo"],
+  "tags": [
+    "weftmark",
+    "traces",
+    "tempo"
+  ],
   "templating": {
     "list": [
       {
@@ -95,23 +147,32 @@
       },
       {
         "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(weftmark_db_pool_size_connections, deployment_environment)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
         "multi": false,
         "name": "env",
-        "options": [
-          {"selected": false, "text": "All", "value": "$__all"},
-          {"selected": true, "text": "prod", "value": "prod"},
-          {"selected": false, "text": "dev", "value": "dev"}
-        ],
-        "query": "prod,dev",
-        "type": "custom",
+        "options": [],
+        "query": {
+          "query": "label_values(weftmark_db_pool_size_connections, deployment_environment)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query",
         "label": "Environment"
       },
       {
         "current": {},
-        "datasource": {"type": "prometheus", "uid": "${datasource}"},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
         "definition": "label_values(traces_spanmetrics_calls_total{deployment_environment=~\"$env\"}, service)",
         "hide": 0,
         "includeAll": true,
@@ -130,41 +191,68 @@
       }
     ]
   },
-  "time": {"from": "now-1h", "to": "now"},
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
-  "title": "WeftMark — Traces Explorer",
+  "title": "WeftMark \u00e2\u20ac\u201d Traces Explorer",
   "uid": "wm-traces-explorer",
   "version": 1,
   "weekStart": "",
   "panels": [
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
-            "steps": [{"color": "green", "value": null}]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           },
           "unit": "ops",
           "mappings": []
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
       "id": 1,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(rate(traces_spanmetrics_calls_total{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))",
           "legendFormat": "spans/s",
           "refId": "A"
@@ -174,16 +262,30 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 0.01},
-              {"color": "red", "value": 0.05}
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
             ]
           },
           "unit": "percentunit",
@@ -193,19 +295,33 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
       "id": 2,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum(rate(traces_spanmetrics_calls_total{service=~\"$service\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval])) / sum(rate(traces_spanmetrics_calls_total{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))",
           "legendFormat": "Error %",
           "refId": "A"
@@ -215,16 +331,30 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 500},
-              {"color": "red", "value": 2000}
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 500
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
             ]
           },
           "unit": "ms",
@@ -232,19 +362,33 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
       "id": 3,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.95, sum by (le) (rate(traces_spanmetrics_latency_bucket{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))) * 1000",
           "legendFormat": "p95 ms",
           "refId": "A"
@@ -254,16 +398,30 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "thresholds"},
+          "color": {
+            "mode": "thresholds"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 1000},
-              {"color": "red", "value": 5000}
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 5000
+              }
             ]
           },
           "unit": "ms",
@@ -271,19 +429,33 @@
         },
         "overrides": []
       },
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
       "id": 4,
       "options": {
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.99, sum by (le) (rate(traces_spanmetrics_latency_bucket{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))) * 1000",
           "legendFormat": "p99 ms",
           "refId": "A"
@@ -293,24 +465,50 @@
       "type": "stat"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 1, "fillOpacity": 10},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
           "unit": "ops"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
       "id": 5,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (service) (rate(traces_spanmetrics_calls_total{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))",
           "legendFormat": "{{service}}",
           "refId": "A"
@@ -320,24 +518,50 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 1, "fillOpacity": 10},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10
+          },
           "unit": "ops"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
       "id": 6,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (service) (rate(traces_spanmetrics_calls_total{service=~\"$service\", status_code=\"STATUS_CODE_ERROR\"}[$__rate_interval]))",
           "legendFormat": "{{service}} errors",
           "refId": "A"
@@ -347,36 +571,67 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {"lineWidth": 2},
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2
+          },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
       "id": 7,
       "options": {
-        "legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"},
-        "tooltip": {"mode": "multi", "sort": "desc"}
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.50, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))) * 1000",
           "legendFormat": "p50 {{service}}",
           "refId": "A"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.95, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))) * 1000",
           "legendFormat": "p95 {{service}}",
           "refId": "B"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.99, sum by (le, service) (rate(traces_spanmetrics_latency_bucket{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))) * 1000",
           "legendFormat": "p99 {{service}}",
           "refId": "C"
@@ -386,25 +641,89 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "fieldConfig": {
-        "defaults": {"unit": "ops"},
+        "defaults": {
+          "unit": "ops"
+        },
         "overrides": [
-          {"matcher": {"id": "byName", "options": "Span"}, "properties": [{"id": "custom.width", "value": 320}]},
-          {"matcher": {"id": "byName", "options": "Service"}, "properties": [{"id": "custom.width", "value": 160}]},
-          {"matcher": {"id": "byName", "options": "p95 (ms)"}, "properties": [{"id": "unit", "value": "ms"}]},
-          {"matcher": {"id": "byName", "options": "p99 (ms)"}, "properties": [{"id": "unit", "value": "ms"}]}
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Span"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 320
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Service"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95 (ms)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99 (ms)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          }
         ]
       },
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 20},
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
       "id": 8,
       "options": {
-        "footer": {"show": false},
-        "sortBy": [{"desc": true, "displayName": "Calls/s"}]
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Calls/s"
+          }
+        ]
       },
       "targets": [
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "sum by (service, span_name) (rate(traces_spanmetrics_calls_total{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))",
           "format": "table",
           "instant": true,
@@ -412,7 +731,10 @@
           "refId": "A"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.95, sum by (le, service, span_name) (rate(traces_spanmetrics_latency_bucket{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))) * 1000",
           "format": "table",
           "instant": true,
@@ -420,7 +742,10 @@
           "refId": "B"
         },
         {
-          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
           "expr": "histogram_quantile(0.99, sum by (le, service, span_name) (rate(traces_spanmetrics_latency_bucket{deployment_environment=~\"$env\", service=~\"$service\"}[$__rate_interval]))) * 1000",
           "format": "table",
           "instant": true,
@@ -428,13 +753,22 @@
           "refId": "C"
         }
       ],
-      "title": "Top Spans — Call Volume & Latency",
+      "title": "Top Spans \u00e2\u20ac\u201d Call Volume & Latency",
       "transformations": [
-        {"id": "merge", "options": {}},
+        {
+          "id": "merge",
+          "options": {}
+        },
         {
           "id": "organize",
           "options": {
-            "excludeByName": {"Time": true, "__metrics_gen_instance": true, "source": true, "status_code": true, "span_kind": true},
+            "excludeByName": {
+              "Time": true,
+              "__metrics_gen_instance": true,
+              "source": true,
+              "status_code": true,
+              "span_kind": true
+            },
             "renameByName": {
               "service": "Service",
               "span_name": "Span",
@@ -448,21 +782,38 @@
       "type": "table"
     },
     {
-      "datasource": {"type": "tempo", "uid": "${tempo}"},
-      "fieldConfig": {"defaults": {}, "overrides": []},
-      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 30},
+      "datasource": {
+        "type": "tempo",
+        "uid": "${tempo}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
       "id": 9,
       "options": {},
       "targets": [
         {
-          "datasource": {"type": "tempo", "uid": "${tempo}"},
+          "datasource": {
+            "type": "tempo",
+            "uid": "${tempo}"
+          },
           "filters": [
             {
               "id": "service-name",
               "operator": "=~",
               "scope": "resource",
               "tag": "service.name",
-              "value": ["weftmark-api", "weftmark-worker"],
+              "value": [
+                "weftmark-api",
+                "weftmark-worker"
+              ],
               "valueType": "string"
             }
           ],
@@ -476,8 +827,16 @@
       "type": "nodeGraph"
     },
     {
-      "datasource": {"type": "loki", "uid": "${loki}"},
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 42},
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
       "id": 10,
       "options": {
         "dedupStrategy": "none",
@@ -488,7 +847,10 @@
       },
       "targets": [
         {
-          "datasource": {"type": "loki", "uid": "${loki}"},
+          "datasource": {
+            "type": "loki",
+            "uid": "${loki}"
+          },
           "expr": "{service_name=~\"weftmark-api|weftmark-worker\", deployment_environment=~\"$env\"} | json | trace_id != ``",
           "refId": "A"
         }
