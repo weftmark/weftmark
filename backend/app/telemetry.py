@@ -81,6 +81,13 @@ def configure_telemetry(settings) -> None:
         # Inject OTel trace context into Python log records (trace_id, span_id fields)
         LoggingInstrumentor().instrument(set_logging_format=False)
 
+        # Pool gauges and business entity gauges — import after provider is set
+        from app.database import engine as _db_engine
+        from app.metrics import register_business_gauges, register_pool_metrics
+
+        register_pool_metrics(_db_engine)
+        register_business_gauges()
+
         _configured = True
         log.info("OpenTelemetry configured", extra={"otlp_endpoint": settings.otel_exporter_otlp_endpoint})
 

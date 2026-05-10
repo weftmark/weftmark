@@ -2,11 +2,13 @@ import logging
 
 from celery import Celery
 from celery.signals import setup_logging as celery_setup_logging
-from celery.signals import task_failure, task_postrun, task_prerun, worker_ready
+from celery.signals import task_failure, task_postrun, task_prerun, task_retry, worker_ready
 
 from app.config import get_settings
 from app.logging_config import configure_logging
 from app.version import VERSION
+
+log = logging.getLogger(__name__)
 
 WORKER_VERSION_KEY = "weftmark:worker_version"
 WORKER_VERSION_NODE_PREFIX = "weftmark:worker_version:node:"
@@ -21,7 +23,9 @@ def _make_celery() -> Celery:
         include=[
             "app.tasks.deletion",
             "app.tasks.email_task",
+            "app.tasks.geo",
             "app.tasks.maintenance",
+            "app.tasks.metrics",
             "app.tasks.preview",
             "app.tasks.purge",
             "app.tasks.s3_audit",
@@ -43,7 +47,15 @@ def _make_celery() -> Celery:
             "run-scheduled-tasks": {
                 "task": "app.tasks.scheduler.run_scheduled_tasks",
                 "schedule": 60.0,
-            }
+            },
+            "record-business-metrics": {
+                "task": "app.tasks.metrics.record_business_metrics",
+                "schedule": 300.0,
+            },
+            "refresh-geoip-database": {
+                "task": "app.tasks.geo.refresh_geoip_database",
+                "schedule": 604800.0,  # weekly
+            },
         },
     )
     return app
@@ -87,7 +99,8 @@ def _on_task_prerun(task_id=None, **kwargs):
 
 
 @task_postrun.connect
-def _on_task_postrun(task_id=None, state=None, **kwargs):
+def _on_task_postrun(task_id=None, state=None, sender=None, **kwargs):
+    task_name = sender.name if sender is not None else "unknown"
     if state == "SUCCESS":
         try:
             from app.services.task_history import record_completed
@@ -95,15 +108,39 @@ def _on_task_postrun(task_id=None, state=None, **kwargs):
             record_completed(get_settings(), task_id, "success")
         except Exception:
             pass
+        try:
+            from app.metrics import celery_tasks_total
+
+            celery_tasks_total.add(1, {"state": "succeeded", "task": task_name})
+        except Exception:
+            pass
 
 
 @task_failure.connect
-def _on_task_failure(task_id=None, exception=None, **kwargs):
+def _on_task_failure(task_id=None, exception=None, sender=None, **kwargs):
+    task_name = sender.name if sender is not None else "unknown"
+    outcome = "revoked" if type(exception).__name__ == "Revoked" else "failed"
     try:
         from app.services.task_history import record_completed
 
-        state = "revoked" if type(exception).__name__ == "Revoked" else "failed"
-        record_completed(get_settings(), task_id, state, error=None if state == "revoked" else str(exception))
+        record_completed(get_settings(), task_id, outcome, error=None if outcome == "revoked" else str(exception))
+    except Exception:
+        pass
+    try:
+        from app.metrics import celery_tasks_total
+
+        celery_tasks_total.add(1, {"state": outcome, "task": task_name})
+    except Exception:
+        pass
+
+
+@task_retry.connect
+def _on_task_retry(sender=None, **kwargs):
+    task_name = sender.name if sender is not None else "unknown"
+    try:
+        from app.metrics import celery_tasks_total
+
+        celery_tasks_total.add(1, {"state": "retried", "task": task_name})
     except Exception:
         pass
 
@@ -122,3 +159,19 @@ def _publish_worker_version(sender=None, **kwargs):
         client.close()
     except Exception:
         pass  # version badge degrades gracefully if Redis is unavailable
+
+
+@worker_ready.connect
+def _initial_geoip_download(sender=None, **kwargs):
+    """Queue a GeoLite2 download if the MMDB is absent and the license key is set."""
+    try:
+        import os
+
+        settings = get_settings()
+        if settings.maxmind_license_key and not os.path.exists(settings.geoip_db_path):
+            from app.tasks.geo import refresh_geoip_database
+
+            refresh_geoip_database.delay()
+            log.info("GeoLite2-City MMDB absent — queued initial download")
+    except Exception:
+        pass

@@ -33,3 +33,4 @@ opentelemetry-instrumentation-redis==0.48b0
 opentelemetry-instrumentation-httpx==0.48b0
 opentelemetry-instrumentation-botocore==0.48b0
 opentelemetry-instrumentation-logging==0.48b0
+geoip2==5.2.0

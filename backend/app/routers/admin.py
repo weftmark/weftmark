@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
+from app.metrics import role_changes_total, signups_approved_total
 from app.models.audit_log import AuditLog
 from app.models.credential_expiry import RESOURCE_CHOICES, CredentialExpiry
 from app.models.draft import Draft
@@ -529,6 +530,7 @@ async def patch_user(
     changed = {k: v for k, v in body.model_dump(exclude_none=True).items()}
     await write_audit_log(db, event_type="user.role_changed", actor=admin, target=user, details=changed)
     await db.commit()
+    role_changes_total.add(1, {"new_role": "admin" if user.is_admin else "user"})
     await db.refresh(user)
 
     if (body.is_admin is not None or body.is_superuser is not None) and user.clerk_user_id:
@@ -1283,6 +1285,7 @@ async def approve_pending_signup(
         target_email=signup.email,
     )
     await db.commit()
+    signups_approved_total.add(1)
     await set_user_metadata(
         signup.clerk_user_id, {"status": "active", "is_admin": user.is_admin, "is_superuser": False}
     )

@@ -40,6 +40,21 @@
     "Version": "2.0.49"
   },
   {
+    "License": "Python Software Foundation License",
+    "Name": "aiohappyeyeballs",
+    "Version": "2.6.1"
+  },
+  {
+    "License": "Apache-2.0 AND MIT",
+    "Name": "aiohttp",
+    "Version": "3.13.5"
+  },
+  {
+    "License": "Apache Software License",
+    "Name": "aiosignal",
+    "Version": "1.4.0"
+  },
+  {
     "License": "MIT",
     "Name": "aiosmtplib",
     "Version": "5.1.0"
@@ -205,6 +220,16 @@
     "Version": "1.5.1"
   },
   {
+    "License": "Apache-2.0",
+    "Name": "frozenlist",
+    "Version": "1.8.0"
+  },
+  {
+    "License": "Apache-2.0",
+    "Name": "geoip2",
+    "Version": "5.2.0"
+  },
+  {
     "License": "Apache Software License",
     "Name": "googleapis-common-protos",
     "Version": "1.75.0"
@@ -300,6 +325,11 @@
     "Version": "4.2.0"
   },
   {
+    "License": "Apache-2.0",
+    "Name": "maxminddb",
+    "Version": "3.1.1"
+  },
+  {
     "License": "MIT License",
     "Name": "mdurl",
     "Version": "0.1.2"
@@ -308,6 +338,11 @@
     "License": "Apache-2.0",
     "Name": "msgpack",
     "Version": "1.1.2"
+  },
+  {
+    "License": "Apache License 2.0",
+    "Name": "multidict",
+    "Version": "6.7.1"
   },
   {
     "License": "Apache Software License",
@@ -433,6 +468,11 @@
     "License": "BSD License",
     "Name": "prompt_toolkit",
     "Version": "3.0.52"
+  },
+  {
+    "License": "Apache Software License",
+    "Name": "propcache",
+    "Version": "0.5.2"
   },
   {
     "License": "3-Clause BSD License",
@@ -658,6 +698,11 @@
     "License": "BSD License",
     "Name": "wrapt",
     "Version": "1.17.3"
+  },
+  {
+    "License": "Apache-2.0",
+    "Name": "yarl",
+    "Version": "1.23.0"
   },
   {
     "License": "MIT",
