@@ -452,7 +452,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_size{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_db_pool_size_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Size",
           "refId": "A"
         }
@@ -491,7 +491,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_checked_out{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_db_pool_checked_out_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Checked Out",
           "refId": "A"
         }
@@ -526,7 +526,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_checked_in{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_db_pool_checked_in_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Idle",
           "refId": "A"
         }
@@ -565,7 +565,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_overflow{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_db_pool_overflow_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Overflow",
           "refId": "A"
         }
@@ -592,25 +592,25 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_size{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_db_pool_size_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Pool Size",
           "refId": "A"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_checked_out{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_db_pool_checked_out_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Checked Out",
           "refId": "B"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_checked_in{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_db_pool_checked_in_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Idle",
           "refId": "C"
         },
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_db_pool_overflow{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_db_pool_overflow_connections{deployment_environment=~\"$env\"}",
           "legendFormat": "Overflow",
           "refId": "D"
         }

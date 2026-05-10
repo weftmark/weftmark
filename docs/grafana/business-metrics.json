@@ -125,7 +125,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_users_total{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_users_total_ratio{deployment_environment=~\"$env\"}",
           "legendFormat": "Users",
           "refId": "A"
         }
@@ -164,7 +164,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_users_pending_approval{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_users_pending_approval_ratio{deployment_environment=~\"$env\"}",
           "legendFormat": "Pending",
           "refId": "A"
         }
@@ -199,7 +199,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_projects_total{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_projects_total_ratio{deployment_environment=~\"$env\"}",
           "legendFormat": "Projects",
           "refId": "A"
         }
@@ -382,7 +382,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "${datasource}"},
-          "expr": "weftmark_storage_users_at_quota{deployment_environment=~\"$env\"}",
+          "expr": "weftmark_storage_users_at_quota_ratio{deployment_environment=~\"$env\"}",
           "legendFormat": "At quota",
           "refId": "A"
         }
