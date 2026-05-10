@@ -262,6 +262,37 @@ class TestCreateProject:
         resp = await auth_client.post("/api/projects", json=_base_payload(str(draft.id), loom_id=str(loom.id)))
         assert resp.status_code == 404
 
+    async def test_dispatches_preview_when_draft_has_no_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from unittest.mock import MagicMock, patch
+
+        draft = await _insert_draft(db_session, test_user)
+        assert draft.drawdown_preview_path is None
+
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
+            mock_task.delay = MagicMock()
+            resp = await auth_client.post("/api/projects", json=_base_payload(str(draft.id)))
+
+        assert resp.status_code == 201
+        mock_task.delay.assert_called_once_with(str(draft.id))
+
+    async def test_skips_preview_dispatch_when_draft_already_has_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from unittest.mock import MagicMock, patch
+
+        draft = await _insert_draft(db_session, test_user)
+        draft.drawdown_preview_path = "drawdown-previews/existing.png"
+        await db_session.commit()
+
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
+            mock_task.delay = MagicMock()
+            resp = await auth_client.post("/api/projects", json=_base_payload(str(draft.id)))
+
+        assert resp.status_code == 201
+        mock_task.delay.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # TestRestartProject
@@ -330,6 +361,38 @@ class TestRestartProject:
         project = await _insert_active_project(db_session, test_user, draft, None)
         resp = await client.post(f"/api/projects/{project.id}/restart")
         assert resp.status_code == 401
+
+    async def test_dispatches_preview_when_draft_has_no_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from unittest.mock import MagicMock, patch
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.status = "abandoned"
+        await db_session.commit()
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
+            mock_task.delay = MagicMock()
+            resp = await auth_client.post(f"/api/projects/{project.id}/restart")
+        assert resp.status_code == 200
+        mock_task.delay.assert_called_once_with(str(draft.id))
+
+    async def test_skips_preview_dispatch_when_draft_already_has_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from unittest.mock import MagicMock, patch
+
+        draft = await _insert_draft(db_session, test_user)
+        draft.drawdown_preview_path = "drawdown-previews/existing.png"
+        await db_session.commit()
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.status = "abandoned"
+        await db_session.commit()
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
+            mock_task.delay = MagicMock()
+            resp = await auth_client.post(f"/api/projects/{project.id}/restart")
+        assert resp.status_code == 200
+        mock_task.delay.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +469,34 @@ class TestCloneProject:
         project = await _insert_project_with_status(db_session, test_user, draft, None, "completed")
         resp = await client.post(f"/api/projects/{project.id}/clone")
         assert resp.status_code == 401
+
+    async def test_dispatches_preview_when_draft_has_no_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from unittest.mock import MagicMock, patch
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_project_with_status(db_session, test_user, draft, None, "completed")
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
+            mock_task.delay = MagicMock()
+            resp = await auth_client.post(f"/api/projects/{project.id}/clone")
+        assert resp.status_code == 201
+        mock_task.delay.assert_called_once_with(str(draft.id))
+
+    async def test_skips_preview_dispatch_when_draft_already_has_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from unittest.mock import MagicMock, patch
+
+        draft = await _insert_draft(db_session, test_user)
+        draft.drawdown_preview_path = "drawdown-previews/existing.png"
+        await db_session.commit()
+        project = await _insert_project_with_status(db_session, test_user, draft, None, "completed")
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
+            mock_task.delay = MagicMock()
+            resp = await auth_client.post(f"/api/projects/{project.id}/clone")
+        assert resp.status_code == 201
+        mock_task.delay.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -792,6 +883,34 @@ class TestGetProject:
         body = (await auth_client.get(f"/api/projects/{project.id}")).json()
         assert body["loom_num_treadles"] == version.num_treadles
         assert body["loom_num_shafts"] == version.num_shafts
+
+    async def test_dispatches_preview_when_draft_has_no_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from unittest.mock import MagicMock, patch
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
+            mock_task.delay = MagicMock()
+            resp = await auth_client.get(f"/api/projects/{project.id}")
+        assert resp.status_code == 200
+        mock_task.delay.assert_called_once_with(str(draft.id))
+
+    async def test_skips_preview_dispatch_when_draft_already_has_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from unittest.mock import MagicMock, patch
+
+        draft = await _insert_draft(db_session, test_user)
+        draft.drawdown_preview_path = "drawdown-previews/existing.png"
+        await db_session.commit()
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
+            mock_task.delay = MagicMock()
+            resp = await auth_client.get(f"/api/projects/{project.id}")
+        assert resp.status_code == 200
+        mock_task.delay.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

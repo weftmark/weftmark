@@ -1,12 +1,13 @@
 """Celery tasks: scheduled maintenance operations.
 
 Covers:
-- dismiss_stale_signups      — auto-dismiss pending signups older than N days
-- prune_expired_invites      — delete old non-active invite records
-- prune_audit_log            — delete old audit log entries (security events exempt)
-- worker_heartbeat           — no-op liveness signal
-- retry_failed_previews      — re-dispatch preview generation for drafts missing drawdown previews
-- send_admin_digest          — weekly digest email to all active admins
+- dismiss_stale_signups                 — auto-dismiss pending signups older than N days
+- prune_expired_invites                 — delete old non-active invite records
+- prune_audit_log                       — delete old audit log entries (security events exempt)
+- worker_heartbeat                      — no-op liveness signal
+- retry_failed_previews                 — re-dispatch preview generation for drafts missing drawdown previews
+- send_admin_digest                     — weekly digest email to all active admins
+- backfill_project_drawdown_previews    — dispatch preview generation for active-project drafts missing tiles
 """
 
 import logging
@@ -662,3 +663,43 @@ async def _send_admin_digest_email(
         s3_orphaned_count=s3_orphaned_count,
         s3_scanned_at=s3_scanned_at,
     )
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
+    name="app.tasks.maintenance.backfill_project_drawdown_previews",
+)
+def backfill_project_drawdown_previews(self, limit: int = 50) -> dict:
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    from app.config import get_settings
+    from app.models.draft import Draft
+    from app.models.project import Project
+    from app.tasks.preview import generate_drawdown_preview
+
+    settings = get_settings()
+    engine = create_engine(settings.database_url_sync)
+    dispatched = 0
+    try:
+        with Session(engine) as db:
+            draft_ids = db.scalars(
+                select(Project.draft_id)
+                .join(Draft, Draft.id == Project.draft_id)
+                .where(
+                    Project.status == "active",
+                    Project.deleted_at.is_(None),
+                    Draft.drawdown_preview_path.is_(None),
+                    Draft.deleted_at.is_(None),
+                )
+                .distinct()
+                .limit(limit)
+            ).all()
+            for draft_id in draft_ids:
+                generate_drawdown_preview.delay(str(draft_id))
+                dispatched += 1
+    finally:
+        engine.dispose()
+    log.info("backfill_project_drawdown_previews dispatched=%d limit=%d", dispatched, limit)
+    return {"dispatched": dispatched}

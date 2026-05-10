@@ -19,6 +19,7 @@ from app.models.user import User
 from app.services import storage, wif_parser
 from app.services.images import resize_to_jpeg
 from app.services.storage_quota import check_storage_quota
+from app.tasks.preview import generate_drawdown_preview
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 MAX_PROJECT_PHOTOS = 10
@@ -311,6 +312,8 @@ async def create_project(
     db.add(project)
     await db.commit()
     await db.refresh(project)
+    if draft.drawdown_preview_path is None:
+        generate_drawdown_preview.delay(str(draft.id))
     return _to_detail(project, draft, loom)
 
 
@@ -347,6 +350,8 @@ async def get_project(
     draft = await db.get(Draft, project.draft_id)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
     loom_version = await db.get(LoomVersion, project.loom_version_id) if project.loom_version_id else None
+    if draft is not None and draft.drawdown_preview_path is None:
+        generate_drawdown_preview.delay(str(draft.id))
     return _to_detail(project, draft, loom, photos=list(project.photos), loom_version=loom_version)  # type: ignore[arg-type]
 
 
@@ -534,6 +539,8 @@ async def restart_project(
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    if draft is not None and draft.drawdown_preview_path is None:
+        generate_drawdown_preview.delay(str(draft.id))
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
@@ -567,6 +574,8 @@ async def clone_project(
     await db.refresh(clone)
     draft = await db.get(Draft, clone.draft_id)
     loom = await db.get(Loom, clone.loom_id) if clone.loom_id else None
+    if draft is not None and draft.drawdown_preview_path is None:
+        generate_drawdown_preview.delay(str(draft.id))
     return _to_detail(clone, draft, loom)  # type: ignore[arg-type]
 
 
