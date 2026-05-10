@@ -2907,7 +2907,7 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
   }
 
   return (
-    <div className="border rounded-lg p-4 space-y-3">
+    <div className="border rounded-lg p-3 space-y-2">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium text-sm">{task.display_name}</p>
@@ -2932,7 +2932,7 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
         </label>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground">Schedule:</span>
           <select
@@ -2972,11 +2972,12 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
         )}
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
-
-      <Button size="sm" disabled={!isDirty || saving} onClick={save}>
-        {saving ? "Saving…" : "Save"}
-      </Button>
+      <div className="flex items-center justify-end gap-2">
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <Button size="sm" disabled={!isDirty || saving} onClick={save}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
     </div>
   );
 }
