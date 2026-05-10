@@ -231,8 +231,8 @@ function WeavingPatternView({
   // Incrementing retryCount forces the fetch effect to rerun on explicit retry.
   const [retryCount, setRetryCount] = useState(0);
 
-  // 2× visible rows, so time-to-exhaust is consistent across scale values.
-  const tileSize = Math.max(10, Math.ceil(containerH / pixelsPerRow * 2));
+  // Fixed at backend TILE_ROW_COUNT so requests align with pre-rendered tile boundaries in R2.
+  const tileSize = 100;
 
   useEffect(() => {
     let cancelled = false;

@@ -122,6 +122,39 @@ def drawdown_preview_exists(path: str | None) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Drawdown tiles — pre-rendered strips stored at deterministic paths
+# ---------------------------------------------------------------------------
+
+
+def drawdown_tile_path(draft_id: uuid.UUID, scale: int, start_row: int) -> str:
+    return f"drafts/{draft_id}/tiles/s{scale}/t{start_row}.png"
+
+
+def save_drawdown_tile(draft_id: uuid.UUID, scale: int, start_row: int, data: bytes) -> str:
+    return _put(drawdown_tile_path(draft_id, scale, start_row), data)
+
+
+def drawdown_tile_exists(draft_id: uuid.UUID, scale: int, start_row: int) -> bool:
+    return _exists(drawdown_tile_path(draft_id, scale, start_row))
+
+
+def read_drawdown_tile(draft_id: uuid.UUID, scale: int, start_row: int) -> bytes:
+    return _get(drawdown_tile_path(draft_id, scale, start_row))
+
+
+async def adrawdown_tile_exists(draft_id: uuid.UUID, scale: int, start_row: int) -> bool:
+    return await asyncio.to_thread(drawdown_tile_exists, draft_id, scale, start_row)
+
+
+async def aread_drawdown_tile(draft_id: uuid.UUID, scale: int, start_row: int) -> bytes:
+    return await asyncio.to_thread(read_drawdown_tile, draft_id, scale, start_row)
+
+
+async def asave_drawdown_tile(draft_id: uuid.UUID, scale: int, start_row: int, data: bytes) -> str:
+    return await asyncio.to_thread(save_drawdown_tile, draft_id, scale, start_row, data)
+
+
+# ---------------------------------------------------------------------------
 # Looms — profile photo
 # ---------------------------------------------------------------------------
 
