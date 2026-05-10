@@ -75,7 +75,7 @@
       }
     ]
   },
-  "description": "WeftMark Celery workers â€” task throughput, duration, and error logs",
+  "description": "WeftMark Celery workers — task throughput, duration, and error logs",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,

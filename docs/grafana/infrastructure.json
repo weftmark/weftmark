@@ -56,7 +56,7 @@
       }
     ]
   },
-  "description": "WeftMark â€” host and process resource utilization (CPU, memory, disk, network)",
+  "description": "WeftMark — host and process resource utilization (CPU, memory, disk, network)",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
