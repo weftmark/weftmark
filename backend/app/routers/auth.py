@@ -97,7 +97,7 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
         elif event_type == "user.deleted":
             await _handle_user_deleted(db, data)
         elif event_type == "session.created":
-            await _handle_session_created(data)
+            await _handle_session_created(data, request)
         elif event_type == "session.ended":
             await _handle_session_ended(data)
         else:
@@ -227,11 +227,38 @@ async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
     )
 
 
-async def _handle_session_created(data: dict) -> None:
+async def _handle_session_created(data: dict, request: Request | None = None) -> None:
+    from app.services.geo import anonymize_ip, get_geo
+
     user_data = data.get("user", {})
     public_metadata = user_data.get("public_metadata", {})
     is_admin = bool(public_metadata.get("is_admin", False))
-    logins_total.add(1, {"role": "admin" if is_admin else "user"})
+
+    attrs: dict = {"role": "admin" if is_admin else "user"}
+
+    if request is not None:
+        cf_ip = request.headers.get("CF-Connecting-IP", "")
+        cf_country = request.headers.get("CF-IPCountry", "")
+
+        geo = get_geo(anonymize_ip(cf_ip)) if cf_ip else {}
+
+        if geo:
+            if geo.get("country_iso"):
+                attrs["country"] = geo["country_iso"]
+            if geo.get("subdivision"):
+                attrs["subdivision"] = geo["subdivision"]
+            if geo.get("city"):
+                attrs["city"] = geo["city"]
+            if cf_country and geo.get("country_iso") and geo["country_iso"] != cf_country:
+                log.debug(
+                    "geo_country_mismatch mmdb=%s cf=%s",
+                    geo["country_iso"],
+                    cf_country,
+                )
+        elif cf_country:
+            attrs["country"] = cf_country
+
+    logins_total.add(1, attrs)
 
 
 async def _handle_session_ended(data: dict) -> None:
