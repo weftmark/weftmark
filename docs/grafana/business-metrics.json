@@ -1115,7 +1115,7 @@
             "type": "loki",
             "uid": "${loki}"
           },
-          "expr": "{service_name=\"weftmark-api\", deployment_environment=~\"$env\"} | json | message=~\"session\\.created|session\\.ended|user\\.created|signup|login|eula|role_change|geo_country_mismatch\"",
+          "expr": "{service_name=\"weftmark-api\", deployment_environment=~\"$env\"} | json | message=~\"session.created|session.ended|user.created|signup|login|eula|role_change|geo_country_mismatch\"",
           "refId": "A"
         }
       ],
