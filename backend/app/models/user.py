@@ -36,3 +36,4 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     deletion_initiated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
     clerk_errored: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     show_version_numbers: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    hide_unused_shafts_treadles: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

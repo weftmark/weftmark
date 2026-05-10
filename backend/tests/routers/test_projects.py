@@ -1022,6 +1022,97 @@ class TestRenameProject:
         resp = await auth_client.patch(f"/api/projects/{project.id}", json={})
         assert resp.status_code == 400
 
+    async def test_sets_hide_unused_shafts_treadles(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (
+            await auth_client.patch(f"/api/projects/{project.id}", json={"hide_unused_shafts_treadles": True})
+        ).json()
+        assert body["hide_unused_shafts_treadles"] is True
+
+    async def test_clears_hide_unused_shafts_treadles(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await auth_client.patch(f"/api/projects/{project.id}", json={"hide_unused_shafts_treadles": True})
+        body = (
+            await auth_client.patch(f"/api/projects/{project.id}", json={"hide_unused_shafts_treadles": False})
+        ).json()
+        assert body["hide_unused_shafts_treadles"] is False
+
+
+# ---------------------------------------------------------------------------
+# TestHideUnusedShaftsTreadlesInheritance
+# ---------------------------------------------------------------------------
+
+
+class TestHideUnusedShaftsTreadlesInheritance:
+    async def test_project_inherits_user_default_off(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        """New project inherits hide_unused_shafts_treadles=False (user default)."""
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            warp_threads=4,
+            weft_threads=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        resp = await auth_client.post(
+            "/api/projects",
+            json={"name": "P", "draft_id": str(draft_id), "project_type": "treadle"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["hide_unused_shafts_treadles"] is False
+
+    async def test_project_inherits_user_default_on(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        """New project inherits hide_unused_shafts_treadles=True when user default is on."""
+        import app.services.storage as storage
+
+        test_user.hide_unused_shafts_treadles = True
+        await db_session.commit()
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            warp_threads=4,
+            weft_threads=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        resp = await auth_client.post(
+            "/api/projects",
+            json={"name": "P", "draft_id": str(draft_id), "project_type": "treadle"},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["hide_unused_shafts_treadles"] is True
+
 
 # ---------------------------------------------------------------------------
 # TestDeleteProject

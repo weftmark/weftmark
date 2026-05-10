@@ -87,6 +87,15 @@ def parse_picks(wif_bytes: bytes, project_type: str) -> PickData:
         scale = _color_scale(config)
         colors = _color_table(config, scale)
 
+        # Global default weft color from [WEFT] Color= key (palette index)
+        default_weft_color: str | None = None
+        if config.has_section("WEFT"):
+            try:
+                default_idx = int(config.get("WEFT", "Color").split(",")[0].strip())
+                default_weft_color = colors.get(default_idx)
+            except Exception:
+                pass
+
         weft_color_map: dict[int, int] = {}
         if config.has_section("WEFT COLORS"):
             for k, v in config.items("WEFT COLORS"):
@@ -97,7 +106,7 @@ def parse_picks(wif_bytes: bytes, project_type: str) -> PickData:
                     continue
 
         weft_colors: list[str | None] = [
-            colors.get(weft_color_map[i]) if i in weft_color_map else None for i in range(1, max_pick + 1)
+            colors.get(weft_color_map[i]) if i in weft_color_map else default_weft_color for i in range(1, max_pick + 1)
         ]
 
         result = PickData(project_type=project_type, total_picks=max_pick, picks=picks, weft_colors=weft_colors)

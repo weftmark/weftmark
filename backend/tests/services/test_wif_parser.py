@@ -129,6 +129,26 @@ Version=1.1
         data = parse_picks(content, "treadle")
         assert data.weft_colors[0] == "#c83232"
 
+    def test_weft_global_color_used_when_no_per_pick_section(self):
+        """[WEFT] Color= is used as default when [WEFT COLORS] is absent."""
+        content = wif("[COLOR PALETTE]\nRange=0,255\n\n[COLOR TABLE]\n3=0,0,255\n\n[WEFT]\nColor=3\nThreads=4\n")
+        data = parse_picks(content, "treadle")
+        assert all(c == "#0000ff" for c in data.weft_colors)
+
+    def test_per_pick_colors_override_global_weft_default(self):
+        """[WEFT COLORS] per-pick entries win over [WEFT] Color= global default."""
+        content = wif(
+            "[COLOR PALETTE]\nRange=0,255\n\n"
+            "[COLOR TABLE]\n1=255,0,0\n3=0,0,255\n\n"
+            "[WEFT]\nColor=3\nThreads=4\n\n"
+            "[WEFT COLORS]\n1=1\n2=1\n"
+        )
+        data = parse_picks(content, "treadle")
+        assert data.weft_colors[0] == "#ff0000"  # per-pick overrides global
+        assert data.weft_colors[1] == "#ff0000"
+        assert data.weft_colors[2] == "#0000ff"  # falls back to global
+        assert data.weft_colors[3] == "#0000ff"
+
 
 # ---------------------------------------------------------------------------
 # Color table edge cases (_color_table internals via parse_picks)
