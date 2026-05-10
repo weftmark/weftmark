@@ -298,12 +298,14 @@ async def get_drawdown(
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
 
-        # Trigger background tile pre-render on standard cache miss
+        # Trigger background tile pre-render on standard cache miss, but only if
+        # t0 doesn't exist yet — avoids double-fire when eager prerender already ran.
         if _sr % tile_row_count == 0 and _rc == tile_row_count:
-            from app.services.task_history import record_queued
+            if not await storage.adrawdown_tile_exists(draft_id, expected_scale, 0):
+                from app.services.task_history import record_queued
 
-            tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
-            record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+                tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
+                record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
 
         return Response(
             content=png,
