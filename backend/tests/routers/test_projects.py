@@ -1848,3 +1848,51 @@ class TestProjectDrawdown:
         )
         assert resp.status_code == 200
         _mock_tile_task.apply_async.assert_not_called()
+
+    # --- column slicing ---
+
+    async def test_col_slice_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(
+            f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4&start_col=0&col_count=2"
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+    async def test_col_slice_returns_start_col_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(
+            f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4&start_col=1&col_count=2"
+        )
+        assert resp.status_code == 200
+        assert resp.headers.get("X-Start-Col") == "1"
+        assert resp.headers.get("X-Col-Count") is not None
+
+    async def test_col_slice_narrower_than_full_width(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        import io as _io
+
+        from PIL import Image as PILImage
+
+        _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4)
+        resp_full = await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4")
+        resp_col = await auth_client.get(
+            f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4&start_col=0&col_count=2"
+        )
+        assert resp_full.status_code == 200
+        assert resp_col.status_code == 200
+        img_full = PILImage.open(_io.BytesIO(resp_full.content))
+        img_col = PILImage.open(_io.BytesIO(resp_col.content))
+        assert img_col.width < img_full.width
+
+    async def test_col_slice_invalid_start_col_returns_422(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(
+            f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4&start_col=-1&col_count=2"
+        )
+        assert resp.status_code == 422
