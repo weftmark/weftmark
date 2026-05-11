@@ -25,9 +25,9 @@ def _mock_preview_task(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _mock_tile_task(monkeypatch):
-    """Prevent prerender_drawdown_tiles.delay() from connecting to Celery in tests."""
+    """Prevent prerender_project_tiles.delay/apply_async() from connecting to Celery in tests."""
     mock = MagicMock()
-    monkeypatch.setattr("app.routers.projects.prerender_drawdown_tiles", mock)
+    monkeypatch.setattr("app.routers.projects.prerender_project_tiles", mock)
     return mock
 
 
@@ -57,11 +57,11 @@ Entries=2
 
 [WARP]
 Threads=4
-Units=cm
+Units=centimeters
 
 [WEFT]
 Threads=2
-Units=cm
+Units=centimeters
 
 [THREADING]
 1=1
@@ -80,6 +80,67 @@ Units=cm
 [LIFTPLAN]
 1=1
 2=2
+"""
+
+# Renderable WIF: includes [WEAVING] section and 4 weft threads required by PyWeaving.
+# Used only by _insert_project_with_wif so existing tests are unaffected.
+_WIF_RENDERABLE = b"""[WIF]
+Version=1.1
+Date=April 1 1997
+Developers=wif@mhsoft.com
+Source Program=Test
+Source Version=1.0
+
+[CONTENTS]
+COLOR PALETTE=true
+COLOR TABLE=true
+WEAVING=true
+WARP=true
+WEFT=true
+THREADING=true
+TIEUP=true
+TREADLING=true
+
+[COLOR PALETTE]
+Range=0,255
+Entries=2
+
+[COLOR TABLE]
+1=255,255,255
+2=0,0,0
+
+[WEAVING]
+Shafts=4
+Treadles=4
+Rising Shed=true
+
+[WARP]
+Threads=4
+Units=centimeters
+Color=1
+
+[WEFT]
+Threads=4
+Units=centimeters
+Color=2
+
+[THREADING]
+1=1
+2=2
+3=3
+4=4
+
+[TIEUP]
+1=1
+2=2
+3=3
+4=4
+
+[TREADLING]
+1=1
+2=2
+3=3
+4=4
 """
 
 _LOOM_PAYLOAD = {
@@ -1609,3 +1670,181 @@ class TestUnsupportedLoomType:
             json={"loom_id": str(loom.id)},
         )
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# create_project fires prerender with project.id (not draft.id)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateProjectFiresProjectPrerender:
+    async def test_prerender_called_with_project_id(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, _mock_tile_task
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        resp = await auth_client.post("/api/projects", json=_base_payload(str(draft.id)))
+        assert resp.status_code == 201
+        project_id = resp.json()["id"]
+
+        _mock_tile_task.delay.assert_called_once_with(project_id)
+
+    async def test_prerender_not_called_with_draft_id(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, _mock_tile_task
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        await auth_client.post("/api/projects", json=_base_payload(str(draft.id)))
+
+        call_args = _mock_tile_task.delay.call_args
+        assert call_args is not None
+        assert str(draft.id) not in call_args.args
+
+
+# ---------------------------------------------------------------------------
+# GET /api/projects/{id}/drawdown
+# ---------------------------------------------------------------------------
+
+_TILE_PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16  # minimal fake PNG header
+
+
+async def _insert_project_with_wif(
+    db_session: AsyncSession,
+    owner: User,
+    *,
+    warp_threads: int = 4,
+    weft_threads: int = 4,
+) -> tuple[Draft, "Project"]:
+    import app.services.storage as storage
+
+    draft_id = uuid.uuid4()
+    wif_key = storage.save_wif(draft_id, "test.wif", _WIF_RENDERABLE)
+    draft = Draft(
+        id=draft_id,
+        owner_id=owner.id,
+        name="Tile Test Draft",
+        wif_filename="test.wif",
+        wif_path=wif_key,
+        has_treadling=True,
+        has_liftplan=False,
+        num_shafts=4,
+        num_treadles=4,
+        warp_threads=warp_threads,
+        weft_threads=weft_threads,
+    )
+    db_session.add(draft)
+    await db_session.flush()
+
+    project = Project(
+        owner_id=owner.id,
+        draft_id=draft.id,
+        name="Tile Test Project",
+        project_type="treadle",
+        status="active",
+        current_pick=1,
+        total_picks=weft_threads,
+    )
+    db_session.add(project)
+    await db_session.commit()
+    return draft, project
+
+
+class TestProjectDrawdown:
+    async def test_returns_401_when_unauthenticated(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4")
+        assert resp.status_code == 401
+
+    async def test_returns_404_for_unknown_project(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/drawdown?start_row=0&row_count=4")
+        assert resp.status_code == 404
+
+    async def test_renders_and_returns_png_on_cache_miss(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+        assert resp.content[:4] == b"\x89PNG"
+
+    async def test_returns_dimension_headers(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4")
+        assert resp.status_code == 200
+        assert resp.headers.get("X-Total-Rows") == "4"
+        assert resp.headers.get("X-Total-Cols") == "4"
+        assert resp.headers.get("X-Start-Row") == "0"
+        assert resp.headers.get("X-Pixels-Per-Row") is not None
+
+    async def test_cache_miss_no_store_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4")
+        assert resp.headers.get("Cache-Control") == "no-store"
+
+    async def test_cache_hit_returns_stored_bytes(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        import app.services.storage as storage
+        from app.config import get_settings
+        from app.services.rendering import DRAWDOWN_SCALE
+
+        settings = get_settings()
+        draft, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4)
+        tile_row_count = settings.tile_row_count
+        expected_scale = min(settings.render_max_width // 4, DRAWDOWN_SCALE)
+        storage.save_project_tile(project.id, expected_scale, 0, _TILE_PNG)
+
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count={tile_row_count}")
+        assert resp.status_code == 200
+        assert resp.content == _TILE_PNG
+
+    async def test_cache_hit_immutable_header(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        import app.services.storage as storage
+        from app.config import get_settings
+        from app.services.rendering import DRAWDOWN_SCALE
+
+        settings = get_settings()
+        draft, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4)
+        tile_row_count = settings.tile_row_count
+        expected_scale = min(settings.render_max_width // 4, DRAWDOWN_SCALE)
+        storage.save_project_tile(project.id, expected_scale, 0, _TILE_PNG)
+
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count={tile_row_count}")
+        assert "immutable" in (resp.headers.get("Cache-Control") or "")
+
+    async def test_cache_miss_triggers_prerender_task(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, _mock_tile_task
+    ):
+        from app.config import get_settings
+
+        settings = get_settings()
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        tile_row_count = settings.tile_row_count
+
+        await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count={tile_row_count}")
+        _mock_tile_task.apply_async.assert_called_once_with(args=[str(project.id)])
+
+    async def test_cache_miss_skips_task_when_t0_exists(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, _mock_tile_task
+    ):
+        import app.services.storage as storage
+        from app.config import get_settings
+        from app.services.rendering import DRAWDOWN_SCALE
+
+        settings = get_settings()
+        draft, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4)
+        tile_row_count = settings.tile_row_count
+        expected_scale = min(settings.render_max_width // 4, DRAWDOWN_SCALE)
+
+        storage.save_project_tile(project.id, expected_scale, 0, _TILE_PNG)
+
+        resp = await auth_client.get(
+            f"/api/projects/{project.id}/drawdown?start_row={tile_row_count}&row_count={tile_row_count}"
+        )
+        assert resp.status_code == 200
+        _mock_tile_task.apply_async.assert_not_called()

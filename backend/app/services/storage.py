@@ -155,6 +155,64 @@ async def asave_drawdown_tile(draft_id: uuid.UUID, scale: int, start_row: int, d
 
 
 # ---------------------------------------------------------------------------
+# Project tiles — pre-rendered row strips keyed by project_id
+# ---------------------------------------------------------------------------
+
+
+def project_tile_path(project_id: uuid.UUID, scale: int, start_row: int) -> str:
+    return f"projects/{project_id}/tiles/s{scale}/r{start_row}.png"
+
+
+def save_project_tile(project_id: uuid.UUID, scale: int, start_row: int, data: bytes) -> str:
+    return _put(project_tile_path(project_id, scale, start_row), data)
+
+
+def project_tile_exists(project_id: uuid.UUID, scale: int, start_row: int) -> bool:
+    return _exists(project_tile_path(project_id, scale, start_row))
+
+
+def read_project_tile(project_id: uuid.UUID, scale: int, start_row: int) -> bytes:
+    return _get(project_tile_path(project_id, scale, start_row))
+
+
+async def aproject_tile_exists(project_id: uuid.UUID, scale: int, start_row: int) -> bool:
+    return await asyncio.to_thread(project_tile_exists, project_id, scale, start_row)
+
+
+async def aread_project_tile(project_id: uuid.UUID, scale: int, start_row: int) -> bytes:
+    return await asyncio.to_thread(read_project_tile, project_id, scale, start_row)
+
+
+async def asave_project_tile(project_id: uuid.UUID, scale: int, start_row: int, data: bytes) -> str:
+    return await asyncio.to_thread(save_project_tile, project_id, scale, start_row, data)
+
+
+def delete_project_tiles(project_id: uuid.UUID) -> int:
+    """Delete all pre-rendered tiles for a project. Returns the count of deleted objects."""
+    prefix = f"projects/{project_id}/tiles/"
+    if settings.storage_backend == "s3":
+        paginator = _s3().get_paginator("list_objects_v2")
+        keys = []
+        for page in paginator.paginate(Bucket=settings.s3_bucket_name, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                keys.append(obj["Key"])
+        if keys:
+            for i in range(0, len(keys), 1000):
+                batch = [{"Key": k} for k in keys[i : i + 1000]]
+                _s3().delete_objects(Bucket=settings.s3_bucket_name, Delete={"Objects": batch})
+        return len(keys)
+    else:
+        prefix_path = Path(settings.upload_dir) / prefix
+        if not prefix_path.exists():
+            return 0
+        count = 0
+        for f in prefix_path.rglob("*.png"):
+            f.unlink()
+            count += 1
+        return count
+
+
+# ---------------------------------------------------------------------------
 # Looms — profile photo
 # ---------------------------------------------------------------------------
 

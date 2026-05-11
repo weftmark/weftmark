@@ -8,6 +8,7 @@ Covers:
 - retry_failed_previews                 — re-dispatch preview generation for drafts missing drawdown previews
 - send_admin_digest                     — weekly digest email to all active admins
 - backfill_project_drawdown_previews    — dispatch preview generation for active-project drafts missing tiles
+- prune_inactive_project_tiles          — delete cached tiles for inactive or soft-deleted projects
 """
 
 import logging
@@ -703,3 +704,52 @@ def backfill_project_drawdown_previews(self, limit: int = 50) -> dict:
         engine.dispose()
     log.info("backfill_project_drawdown_previews dispatched=%d limit=%d", dispatched, limit)
     return {"dispatched": dispatched}
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
+    name="app.tasks.maintenance.prune_inactive_project_tiles",
+)
+def prune_inactive_project_tiles(self, inactive_days: int = 10) -> dict:
+    from sqlalchemy import create_engine, or_, select
+    from sqlalchemy.orm import Session
+
+    from app.config import get_settings
+    from app.models.project import Project
+    from app.services import storage
+
+    settings = get_settings()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=inactive_days)
+    pruned_projects = 0
+    pruned_tiles = 0
+
+    engine = create_engine(settings.database_url_sync)
+    try:
+        with Session(engine) as db:
+            project_ids = db.scalars(
+                select(Project.id).where(
+                    or_(
+                        Project.deleted_at.isnot(None),
+                        Project.updated_at < cutoff,
+                    )
+                )
+            ).all()
+            for project_id in project_ids:
+                try:
+                    deleted = storage.delete_project_tiles(project_id)
+                    if deleted > 0:
+                        pruned_projects += 1
+                        pruned_tiles += deleted
+                except Exception:
+                    log.exception("prune_inactive_project_tiles: error deleting tiles for project_id=%s", project_id)
+    finally:
+        engine.dispose()
+
+    log.info(
+        "prune_inactive_project_tiles pruned_projects=%d pruned_tiles=%d inactive_days=%d",
+        pruned_projects,
+        pruned_tiles,
+        inactive_days,
+    )
+    return {"pruned_projects": pruned_projects, "pruned_tiles": pruned_tiles}

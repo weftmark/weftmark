@@ -201,13 +201,13 @@ function useAdaptivePatternHeight(): number {
 }
 
 function WeavingPatternView({
-  draftId,
+  projectId,
   currentPickIndex,
   totalPicks,
   picks,
   maxActive,
 }: {
-  draftId: string;
+  projectId: string;
   currentPickIndex: number;
   totalPicks: number;
   picks: PickRow[];
@@ -286,7 +286,7 @@ function WeavingPatternView({
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await fetch(
-          `/api/drafts/${draftId}/drawdown?start_row=${startRow}&row_count=${tileSize}`,
+          `/api/projects/${projectId}/drawdown?start_row=${startRow}&row_count=${tileSize}`,
           { credentials: "include", headers, signal: controller.signal }
         );
         clearTimeout(timeoutId);
@@ -320,7 +320,7 @@ function WeavingPatternView({
     needed.forEach(s => { fetchTile(s); });
 
     return () => { cancelled = true; };
-  }, [draftId, currentPickIndex, totalPicks, tileSize, retryCount]);
+  }, [projectId, currentPickIndex, totalPicks, tileSize, retryCount]);
 
   // Revoke all object URLs on unmount.
   useEffect(() => {
@@ -1500,7 +1500,7 @@ export function ProjectDetailPage() {
           {showDrawdown && picksData && !isFinished && !isCompleted && !isAbandoned && (
             <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
               <WeavingPatternView
-                draftId={project.draft_id}
+                projectId={project.id}
                 currentPickIndex={currentPickIndex}
                 totalPicks={project.total_picks}
                 picks={picksData.picks}
