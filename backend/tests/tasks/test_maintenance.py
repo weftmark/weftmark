@@ -870,3 +870,153 @@ class TestSendAdminDigest:
         call_kwargs = mock_send.call_args.kwargs
         # storage_delta_str should be set (non-None) since prior baseline exists
         assert call_kwargs["storage_delta_str"] is not None
+
+
+# ---------------------------------------------------------------------------
+# prune_inactive_project_tiles
+# ---------------------------------------------------------------------------
+
+
+class TestPruneInactiveProjectTiles:
+    def test_returns_result_keys(self):
+        from app.tasks.maintenance import prune_inactive_project_tiles
+
+        with patch("app.services.storage.delete_project_tiles", return_value=0):
+            result = prune_inactive_project_tiles.run.__func__(_make_task(), inactive_days=9999)
+
+        assert "pruned_projects" in result
+        assert "pruned_tiles" in result
+        assert isinstance(result["pruned_projects"], int)
+        assert isinstance(result["pruned_tiles"], int)
+
+    def test_zero_when_no_projects(self):
+        from app.tasks.maintenance import prune_inactive_project_tiles
+
+        with patch("app.services.storage.delete_project_tiles", return_value=0) as mock_del:
+            result = prune_inactive_project_tiles.run.__func__(_make_task(), inactive_days=9999)
+
+        assert result["pruned_projects"] == 0
+        assert result["pruned_tiles"] == 0
+        mock_del.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_prunes_inactive_project(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import prune_inactive_project_tiles
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Stale Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        # Backdate updated_at to simulate inactive project
+        from sqlalchemy import update as _update
+
+        from app.models.project import Project as _Project
+
+        await db_session.execute(_update(_Project).where(_Project.id == project.id).values(updated_at=_ago(days=20)))
+        await db_session.commit()
+
+        with patch("app.services.storage.delete_project_tiles", return_value=5) as mock_del:
+            result = prune_inactive_project_tiles.run.__func__(_make_task(), inactive_days=10)
+
+        mock_del.assert_called_once_with(project.id)
+        assert result["pruned_projects"] == 1
+        assert result["pruned_tiles"] == 5
+
+    @pytest.mark.asyncio
+    async def test_keeps_recently_active_project(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import prune_inactive_project_tiles
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Active Project",
+            project_type="treadle",
+            status="active",
+            current_pick=5,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        # updated_at is just now — should NOT be pruned
+
+        with patch("app.services.storage.delete_project_tiles", return_value=0) as mock_del:
+            result = prune_inactive_project_tiles.run.__func__(_make_task(), inactive_days=10)
+
+        mock_del.assert_not_called()
+        assert result["pruned_projects"] == 0
+
+    @pytest.mark.asyncio
+    async def test_prunes_soft_deleted_project(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import prune_inactive_project_tiles
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Deleted Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        project.deleted_at = _ago(minutes=5)
+        db_session.add(project)
+        await db_session.commit()
+
+        with patch("app.services.storage.delete_project_tiles", return_value=3) as mock_del:
+            result = prune_inactive_project_tiles.run.__func__(_make_task(), inactive_days=9999)
+
+        mock_del.assert_called_once_with(project.id)
+        assert result["pruned_projects"] == 1

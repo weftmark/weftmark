@@ -133,6 +133,8 @@ class Settings(BaseSettings):
     render_default_zoom: int = 10
     drawdown_preview_max_px: int = 800
     tile_row_count: int = 100
+    tile_col_count: int = 200
+    tile_prune_inactive_days: int = 10
 
     @model_validator(mode="after")
     def _require_secret_key_in_production(self) -> "Settings":
