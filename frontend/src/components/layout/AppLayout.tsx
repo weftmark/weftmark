@@ -44,7 +44,8 @@ export function AppLayout({ children }: Props) {
           </button>
         </div>
 
-        <main className="flex-1 overflow-y-auto">
+        {/* Detail pages manage their own height/scroll internally; other pages use the scroll wrapper */}
+        <main className={`flex-1 ${isDetailPage ? "overflow-hidden" : "overflow-y-auto"}`}>
           {children}
         </main>
       </div>

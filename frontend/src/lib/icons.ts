@@ -5,6 +5,7 @@
 import {
   Activity,
   CheckSquare,
+  ChevronDown,
   ChevronRight,
   ChevronsRight,
   ChevronsUp,
@@ -49,6 +50,7 @@ export const AppIcons = {
   // ── UI chrome ─────────────────────────────────────────────────────────────
   mobileMenu: Menu,
   close: X,
+  chevronDown: ChevronDown,
   chevronRight: ChevronRight,
   chevronDoubleRight: ChevronsRight,
   presentMode: Maximize2,
