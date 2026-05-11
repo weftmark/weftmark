@@ -360,6 +360,8 @@ async def get_project_drawdown(
     project_id: uuid.UUID,
     start_row: int | None = Query(None, ge=0),
     row_count: int | None = Query(None, ge=1),
+    start_col: int | None = Query(None, ge=0),
+    col_count: int | None = Query(None, ge=1),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
@@ -412,12 +414,16 @@ async def get_project_drawdown(
         )
 
     wif_bytes = await aread_file(wif_path)
+    _sc = start_col
+    _cc = col_count
     try:
-        png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(
+        result = await asyncio.to_thread(
             lambda: rendering.render_drawdown_tile(
                 rendering.load_draft(wif_bytes),
                 start_row=_sr,
                 row_count=_rc,
+                start_col=_sc,
+                col_count=_cc,
             )
         )
     except HTTPException:
@@ -425,14 +431,25 @@ async def get_project_drawdown(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
 
-    # Trigger background tile pre-render on standard boundary miss only when t0 is absent
-    if _sr % tile_row_count == 0 and _rc == tile_row_count:
+    if len(result) == 7:
+        png, total_rows, actual_start, actual_row_count, actual_scale, actual_start_col, actual_col_count = result
+    else:
+        png, total_rows, actual_start, actual_row_count, actual_scale = result
+        actual_start_col = 0
+        actual_col_count = warp_count
+
+    # Trigger background tile pre-render on standard boundary miss only when t0 is absent.
+    # Only applies to full-width (non-column-sliced) requests.
+    if _sc is None and _sr % tile_row_count == 0 and _rc == tile_row_count:
         if not await aproject_tile_exists(project_id, expected_scale, 0):
             from app.services.task_history import record_queued
 
             tile_task = prerender_project_tiles.apply_async(args=[str(project_id)])
             record_queued(_settings, tile_task.id, "app.tasks.tiles.prerender_project_tiles", "preview")
 
+    extra_headers = (
+        {"X-Start-Col": str(actual_start_col), "X-Col-Count": str(actual_col_count)} if _sc is not None else {}
+    )
     return Response(
         content=png,
         media_type="image/png",
@@ -443,6 +460,7 @@ async def get_project_drawdown(
             "X-Start-Row": str(actual_start),
             "X-Row-Count": str(actual_row_count),
             "Cache-Control": "no-store",
+            **extra_headers,
         },
     )
 

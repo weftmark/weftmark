@@ -200,6 +200,11 @@ function useAdaptivePatternHeight(): number {
   return height;
 }
 
+// Fixed at backend TILE_ROW_COUNT / TILE_COL_COUNT — requests must align with
+// pre-rendered tile boundaries in R2.
+const TILE_ROW_COUNT = 100;
+const TILE_COL_COUNT = 200;
+
 function WeavingPatternView({
   projectId,
   currentPickIndex,
@@ -215,112 +220,136 @@ function WeavingPatternView({
 }) {
   const containerH = useAdaptivePatternHeight();
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
+  const [warpCount, setWarpCount] = useState(0);
   // tilesRef: synchronous mirror used in effects for deduplication and eviction.
-  // tiles state: snapshot used during render (updated only on tile add, not eviction).
-  const tilesRef = useRef<Record<number, string>>({});
-  const [tiles, setTiles] = useState<Record<number, string>>({});
-  const fetchingRef = useRef<Set<number>>(new Set());
-  const fetchControllersRef = useRef<Map<number, AbortController>>(new Map());
-  // tileErrorsRef: per-tile error messages (Map<startRow, message>). Ref so fetchTile
-  // can check it without adding to effect deps. State mirror for render.
-  const tileErrorsRef = useRef<Map<number, string>>(new Map());
-  const [tileErrors, setTileErrors] = useState<Map<number, string>>(new Map());
-  // Incrementing retryCount forces the fetch effect to rerun on explicit retry.
+  // Key: `${startRow}_${startCol}`. tiles state: snapshot for render.
+  const tilesRef = useRef<Record<string, string>>({});
+  const [tiles, setTiles] = useState<Record<string, string>>({});
+  const fetchingRef = useRef<Set<string>>(new Set());
+  const fetchControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const tileErrorsRef = useRef<Map<string, string>>(new Map());
+  const [tileErrors, setTileErrors] = useState<Map<string, string>>(new Map());
   const [retryCount, setRetryCount] = useState(0);
+  // scrollColStart: leftmost visible column tile boundary (multiple of TILE_COL_COUNT).
+  // State only changes when a new column tile boundary is crossed, avoiding per-pixel re-renders.
+  const [scrollColStart, setScrollColStart] = useState(0);
 
-  // Fixed at backend TILE_ROW_COUNT so requests align with pre-rendered tile boundaries in R2.
-  const tileSize = 100;
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const raw = e.currentTarget.scrollLeft;
+    const colIndex = pixelsPerRow > 0 ? Math.floor(raw / pixelsPerRow) : 0;
+    const snapped = Math.floor(colIndex / TILE_COL_COUNT) * TILE_COL_COUNT;
+    setScrollColStart(prev => prev === snapped ? prev : snapped);
+  }, [pixelsPerRow]);
 
   useEffect(() => {
     let cancelled = false;
 
-    // Image row 0 = top = last pick. Advancing decreases imageRow toward 0.
-    // Past work is at higher image row numbers (below current in the container).
+    // --- Row range ---
+    // Image row 0 = top = last pick; advancing decreases imageRow toward 0.
     const imageRow = totalPicks - 1 - currentPickIndex;
-    const currentTileStart = Math.floor(imageRow / tileSize) * tileSize;
-    // 1 tile toward row 0 (future picks, above current line).
-    const lookaheadStart = currentTileStart - tileSize;
-    // 1 tile away from row 0 (past picks, below current line = work done).
-    const lookbehindStart = currentTileStart + tileSize;
-    const needed = new Set<number>([currentTileStart]);
-    if (lookaheadStart >= 0) needed.add(lookaheadStart);
-    if (lookbehindStart < totalPicks) needed.add(lookbehindStart);
+    const currentRowStart = Math.floor(imageRow / TILE_ROW_COUNT) * TILE_ROW_COUNT;
+    const lookaheadRowStart = currentRowStart - TILE_ROW_COUNT;
+    const lookbehindRowStart = currentRowStart + TILE_ROW_COUNT;
+    const neededRows: number[] = [currentRowStart];
+    if (lookaheadRowStart >= 0) neededRows.push(lookaheadRowStart);
+    if (lookbehindRowStart < totalPicks) neededRows.push(lookbehindRowStart);
 
-    // Evict tiles and errors outside the needed set (errors auto-clear on eviction so
-    // re-entering the same position retries fresh without an explicit user action).
-    // Also abort any in-flight fetches for evicted tiles — if we re-enter that range
-    // before the old fetch completes, fetchingRef would block a new fetch and the
-    // cancelled result would be discarded, leaving the tile permanently unloaded.
+    // --- Column range ---
+    // Always column-tile: for narrow drafts only col 0 exists; for wide drafts
+    // fetch visible column + 1 lookahead on the right.
+    const neededCols: number[] = [scrollColStart];
+    const nextCol = scrollColStart + TILE_COL_COUNT;
+    if (warpCount === 0 || nextCol < warpCount) neededCols.push(nextCol);
+
+    // All needed (row, col) pairs as `${row}_${col}` keys.
+    const needed = new Set<string>();
+    for (const r of neededRows) {
+      for (const c of neededCols) {
+        needed.add(`${r}_${c}`);
+      }
+    }
+
+    // Evict tiles and errors outside the needed set; abort in-flight fetches.
     let errorsChanged = false;
     for (const k of Object.keys(tilesRef.current)) {
-      const n = parseInt(k);
-      if (!needed.has(n)) {
-        URL.revokeObjectURL(tilesRef.current[n]);
-        delete tilesRef.current[n];
+      if (!needed.has(k)) {
+        URL.revokeObjectURL(tilesRef.current[k]);
+        delete tilesRef.current[k];
       }
     }
-    for (const n of fetchingRef.current) {
-      if (!needed.has(n)) {
-        fetchControllersRef.current.get(n)?.abort();
-        fetchControllersRef.current.delete(n);
-        fetchingRef.current.delete(n);
+    for (const k of fetchingRef.current) {
+      if (!needed.has(k)) {
+        fetchControllersRef.current.get(k)?.abort();
+        fetchControllersRef.current.delete(k);
+        fetchingRef.current.delete(k);
       }
     }
-    for (const n of tileErrorsRef.current.keys()) {
-      if (!needed.has(n)) {
-        tileErrorsRef.current.delete(n);
+    for (const k of tileErrorsRef.current.keys()) {
+      if (!needed.has(k)) {
+        tileErrorsRef.current.delete(k);
         errorsChanged = true;
       }
     }
     if (errorsChanged) setTileErrors(new Map(tileErrorsRef.current));
 
-    const fetchTile = async (startRow: number) => {
-      if (fetchingRef.current.has(startRow)) return;
-      if (tilesRef.current[startRow] !== undefined) return;
-      if (tileErrorsRef.current.has(startRow)) return;
-      fetchingRef.current.add(startRow);
+    const fetchTile = async (startRow: number, startCol: number) => {
+      const key = `${startRow}_${startCol}`;
+      if (fetchingRef.current.has(key)) return;
+      if (tilesRef.current[key] !== undefined) return;
+      if (tileErrorsRef.current.has(key)) return;
+      fetchingRef.current.add(key);
       const controller = new AbortController();
-      fetchControllersRef.current.set(startRow, controller);
+      fetchControllersRef.current.set(key, controller);
       const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const url =
+        `/api/projects/${projectId}/drawdown` +
+        `?start_row=${startRow}&row_count=${TILE_ROW_COUNT}` +
+        `&start_col=${startCol}&col_count=${TILE_COL_COUNT}`;
       try {
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(
-          `/api/projects/${projectId}/drawdown?start_row=${startRow}&row_count=${tileSize}`,
-          { credentials: "include", headers, signal: controller.signal }
-        );
+        const res = await fetch(url, { credentials: "include", headers, signal: controller.signal });
         clearTimeout(timeoutId);
         if (cancelled) return;
         if (!res.ok) {
-          tileErrorsRef.current.set(startRow, "Pattern tile failed to load.");
+          tileErrorsRef.current.set(key, "Pattern tile failed to load.");
           setTileErrors(new Map(tileErrorsRef.current));
           return;
         }
         const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
-        if (!cancelled) setPixelsPerRow(ppr);
+        const wc = parseInt(res.headers.get("X-Total-Cols") ?? "0", 10);
+        if (!cancelled) {
+          setPixelsPerRow(ppr);
+          if (wc > 0) setWarpCount(wc);
+        }
         const blob = await res.blob();
         if (cancelled) return;
-        tilesRef.current[startRow] = URL.createObjectURL(blob);
+        tilesRef.current[key] = URL.createObjectURL(blob);
         setTiles({ ...tilesRef.current });
       } catch (err) {
         clearTimeout(timeoutId);
         if (!cancelled) {
-          const msg = err instanceof Error && err.name === "AbortError"
-            ? "Pattern tile timed out."
-            : "Pattern tile failed to load.";
-          tileErrorsRef.current.set(startRow, msg);
+          const msg =
+            err instanceof Error && err.name === "AbortError"
+              ? "Pattern tile timed out."
+              : "Pattern tile failed to load.";
+          tileErrorsRef.current.set(key, msg);
           setTileErrors(new Map(tileErrorsRef.current));
         }
       } finally {
-        fetchingRef.current.delete(startRow);
-        fetchControllersRef.current.delete(startRow);
+        fetchingRef.current.delete(key);
+        fetchControllersRef.current.delete(key);
       }
     };
 
-    needed.forEach(s => { fetchTile(s); });
+    for (const r of neededRows) {
+      for (const c of neededCols) {
+        fetchTile(r, c);
+      }
+    }
 
     return () => { cancelled = true; };
-  }, [projectId, currentPickIndex, totalPicks, tileSize, retryCount]);
+  }, [projectId, currentPickIndex, totalPicks, scrollColStart, warpCount, retryCount]);
 
   // Revoke all object URLs on unmount.
   useEffect(() => {
@@ -330,14 +359,17 @@ function WeavingPatternView({
     };
   }, []);
 
-  // Compute current tile position for overlay decisions (needed before early returns).
+  // Current row tile boundary for overlay / retry decisions.
   const imageRowForTile = totalPicks - 1 - currentPickIndex;
-  const currentTileStart = Math.floor(imageRowForTile / tileSize) * tileSize;
-  const currentTileReady = tiles[currentTileStart] !== undefined;
-  const currentTileError = tileErrors.get(currentTileStart);
+  const currentTileStart = Math.floor(imageRowForTile / TILE_ROW_COUNT) * TILE_ROW_COUNT;
+  const currentRowPrefix = `${currentTileStart}_`;
+  const currentTileReady = Object.keys(tiles).some(k => k.startsWith(currentRowPrefix));
+  const currentTileError = [...tileErrors.entries()].find(([k]) => k.startsWith(currentRowPrefix))?.[1];
 
   const retryCurrentTile = () => {
-    tileErrorsRef.current.delete(currentTileStart);
+    for (const k of tileErrorsRef.current.keys()) {
+      if (k.startsWith(currentRowPrefix)) tileErrorsRef.current.delete(k);
+    }
     setTileErrors(new Map(tileErrorsRef.current));
     setRetryCount(c => c + 1);
   };
@@ -371,6 +403,9 @@ function WeavingPatternView({
   const highlightH = pixelsPerRow + 2;
   const boxH = Math.max(4, pixelsPerRow - 6);
 
+  const totalImgW = warpCount > 0 ? warpCount * pixelsPerRow : undefined;
+  const totalImgH = totalPicks * pixelsPerRow;
+
   // Picks reversed so the last pick renders first (topmost) — matches drawdown orientation.
   const reversedPicks = [...picks].reverse();
 
@@ -392,37 +427,44 @@ function WeavingPatternView({
     </>
   );
 
-  const totalImgH = totalPicks * pixelsPerRow;
-
   return (
     // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
     <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown tiles — horizontally scrollable to view wide designs */}
-      <div className="flex-1 rounded-lg border overflow-x-auto overflow-y-hidden relative bg-white dark:bg-zinc-900">
+      {/* Drawdown tiles — horizontally scrollable for wide designs */}
+      <div
+        className="flex-1 rounded-lg border overflow-x-auto overflow-y-hidden relative bg-white dark:bg-zinc-900"
+        onScroll={handleScroll}
+      >
         <div
           style={{
             position: "relative",
+            width: totalImgW,
             height: totalImgH,
             transform: `translateY(${translateY}px)`,
             transition: "transform 0.15s ease",
           }}
         >
-          {Object.entries(tiles).map(([k, url]) => (
-            <img
-              key={k}
-              src={url}
-              alt=""
-              style={{
-                position: "absolute",
-                top: parseInt(k) * pixelsPerRow,
-                left: 0,
-                display: "block",
-                imageRendering: "pixelated",
-                maxWidth: "none",
-              }}
-            />
-          ))}
+          {Object.entries(tiles).map(([k, url]) => {
+            const [rowStr, colStr] = k.split("_");
+            const startRow = parseInt(rowStr, 10);
+            const startCol = parseInt(colStr, 10);
+            return (
+              <img
+                key={k}
+                src={url}
+                alt=""
+                style={{
+                  position: "absolute",
+                  top: startRow * pixelsPerRow,
+                  left: startCol * pixelsPerRow,
+                  display: "block",
+                  imageRendering: "pixelated",
+                  maxWidth: "none",
+                }}
+              />
+            );
+          })}
         </div>
         {washoutOverlay}
         {/* Loading overlay — shown whenever the current tile hasn't arrived yet */}
