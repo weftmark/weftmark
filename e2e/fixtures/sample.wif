@@ -1,0 +1,62 @@
+[WIF]
+Version=1.1
+Date=May 11 2026
+Developers=WeftMark e2e test fixture
+Source Program=WeftMark
+Source Version=1.0
+
+[CONTENTS]
+Color Palette=true
+Warp=true
+Weft=true
+Threading=true
+Tieup=true
+Treadling=true
+
+[COLOR PALETTE]
+Entries=2
+Form=RGB
+Range=0,255
+1=0,0,200
+2=200,0,0
+
+[WEAVING]
+Shafts=4
+Treadles=4
+Rising Shed=true
+
+[WARP]
+Threads=8
+Units=Decipoints
+Color=1
+
+[WEFT]
+Threads=8
+Units=Decipoints
+Color=2
+
+[THREADING]
+1=1
+2=2
+3=3
+4=4
+5=1
+6=2
+7=3
+8=4
+
+[TIEUP]
+1=1
+2=2
+3=3
+4=4
+
+[TREADLING]
+1=1
+2=2
+3=3
+4=4
+5=1
+6=2
+7=3
+8=4

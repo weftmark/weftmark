@@ -322,6 +322,7 @@ export function DraftDetailPage() {
                   src={previewUrl(draft.id)}
                   alt={`Draft preview for ${draft.name}`}
                   className="max-w-full"
+                  data-testid="draft-preview-img"
                 />
               </div>
             ) : (
