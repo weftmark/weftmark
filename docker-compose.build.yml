@@ -204,7 +204,7 @@ services:
     environment:
       <<: *worker-env
       OTEL_SERVICE_NAME: weftmark-beat
-    entrypoint: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info", "--pidfile="]
+    entrypoint: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info", "--pidfile=", "--schedule=/app/data/celerybeat-schedule"]
 
   # ----------------------------------------------------------
   # Redis — Celery broker and result backend
