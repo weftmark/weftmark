@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getProject, getProjectPicks, stepProject, jumpProject, completeProject, abandonProject,
   restartProject, cloneProject, listProjects, deleteProject,
-  renameProject, updateProjectNotes, updateProjectSettings, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
+  renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow,
 } from "@/api/projects";
@@ -93,194 +93,26 @@ function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: ()
 // Pick display — current pick instructions
 // ---------------------------------------------------------------------------
 
-// Boxes beyond this count switch to compact (no-label) mode with a detail sheet.
-const COMPACT_THRESHOLD = 8;
-
-function PickDetailSheet({
-  pick,
-  totalCount,
-  dimAbove,
-  projectType,
-  colorMode,
-  weftHex,
-  onClose,
-}: {
-  pick: PickRow;
-  totalCount: number;
-  dimAbove: number;
-  projectType: string;
-  colorMode: ColorMode;
-  weftHex: string | null;
-  onClose: () => void;
-}) {
-  const count = Math.max(totalCount, 1);
-  const activeLabel = pick.active.length === 0
-    ? "None active"
-    : `${projectType === "lift" ? "Shafts" : "Treadles"}: ${pick.active.slice().sort((a, b) => a - b).join(", ")}`;
-
-  return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
-      <div className="fixed bottom-0 inset-x-0 z-50 rounded-t-2xl border-t border-border bg-card px-4 pb-8 pt-4 shadow-xl">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-sm font-semibold">Pick {pick.pick}</p>
-            <p className="text-xs text-muted-foreground">{activeLabel}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Close detail"
-          >
-            <AppIcons.close className="h-4 w-4" />
-          </button>
-        </div>
-
-        {weftHex && (
-          <div
-            className="mb-3 h-6 w-full rounded-md flex items-center justify-center text-xs font-semibold uppercase tracking-wider"
-            style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
-          >
-            Weft color
-          </div>
-        )}
-
-        <div
-          className="grid gap-2"
-          style={{ gridTemplateColumns: `repeat(${Math.min(count, 8)}, 1fr)` }}
-        >
-          {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
-            const active = pick.active.includes(n);
-            const trailing = dimAbove > 0 && n > dimAbove;
-            if (colorMode !== "theme" && active && weftHex) {
-              if (colorMode === "filled") {
-                const fg = contrastColor(weftHex);
-                return (
-                  <div key={n} style={{ backgroundColor: weftHex, borderColor: fg }}
-                    className="aspect-square rounded-lg border-2 flex items-center justify-center text-sm font-bold">
-                    <span style={{ color: fg }}>{n}</span>
-                  </div>
-                );
-              }
-              if (colorMode === "strip") {
-                return (
-                  <div key={n}
-                    className="aspect-square rounded-lg border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center text-sm font-bold">
-                    <span className="absolute bottom-0 left-0 right-0 h-[20%]"
-                      style={{ backgroundColor: weftHex }} />
-                    <span className="relative text-primary-foreground">{n}</span>
-                  </div>
-                );
-              }
-            }
-            return (
-              <div key={n}
-                className={`aspect-square rounded-lg border-2 flex items-center justify-center text-sm font-bold ${
-                  active
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : trailing
-                      ? "border-muted/40 bg-muted/10 text-muted-foreground/30"
-                      : "border-muted bg-muted/30 text-muted-foreground"
-                }`}>
-                {n}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </>
-  );
-}
 
 function PickDisplay({
   pick,
   totalCount,
-  dimAbove,
   projectType,
   colorMode,
   showWeftColor,
 }: {
   pick: PickRow;
   totalCount: number;
-  dimAbove: number;
   projectType: string;
   colorMode: ColorMode;
   showWeftColor: boolean;
 }) {
   const count = Math.max(totalCount, 1);
   const weftHex = pick.color ?? null;
-  const isCompact = count > COMPACT_THRESHOLD;
-  const [detailOpen, setDetailOpen] = useState(false);
-
-  if (isCompact) {
-    return (
-      <>
-        <button
-          className="w-full rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-3 flex items-center gap-3 text-left"
-          onClick={() => setDetailOpen(true)}
-          aria-label="Tap to see pick details"
-        >
-          <div className="shrink-0 text-primary/50">
-            {projectType === "lift" ? (
-              <AppIcons.lift className="h-6 w-6" strokeWidth={1.5} />
-            ) : (
-              <AppIcons.treadle className="h-6 w-6" strokeWidth={1.5} />
-            )}
-          </div>
-
-          {/* Compact dot grid — active boxes filled, inactive dimmed */}
-          <div
-            className="flex-1 grid gap-1"
-            style={{ gridTemplateColumns: `repeat(${count}, 1fr)` }}
-          >
-            {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
-              const active = pick.active.includes(n);
-              const trailing = dimAbove > 0 && n > dimAbove;
-              const bg = active
-                ? (colorMode !== "theme" && weftHex ? weftHex : undefined)
-                : undefined;
-              return (
-                <div
-                  key={n}
-                  className={`aspect-square rounded ${
-                    active
-                      ? "ring-2 ring-primary ring-offset-1"
-                      : trailing
-                        ? "bg-muted/10 ring-1 ring-border/30"
-                        : "bg-muted/40 ring-1 ring-border/50"
-                  }`}
-                  style={bg ? { backgroundColor: bg } : active ? { backgroundColor: "var(--primary)" } : undefined}
-                />
-              );
-            })}
-          </div>
-
-          {/* Active count summary */}
-          <div className="shrink-0 text-right">
-            <p className="text-sm font-semibold text-primary">
-              {pick.active.slice().sort((a, b) => a - b).join(", ")}
-            </p>
-            <p className="text-xs text-muted-foreground">tap for detail</p>
-          </div>
-        </button>
-
-        {detailOpen && (
-          <PickDetailSheet
-            pick={pick}
-            totalCount={totalCount}
-            dimAbove={dimAbove}
-            projectType={projectType}
-            colorMode={colorMode}
-            weftHex={weftHex}
-            onClose={() => setDetailOpen(false)}
-          />
-        )}
-      </>
-    );
-  }
 
   return (
-    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4">
+    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4 mx-auto w-full"
+      style={{ maxWidth: `${Math.min(count * 80 + 80, 720)}px` }}>
       {/* Activity type icon — centered vertically */}
       <div className="shrink-0 flex items-center text-primary/50">
         {projectType === "lift" ? (
@@ -298,7 +130,6 @@ function PickDisplay({
         >
           {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
             const active = pick.active.includes(n);
-            const trailing = dimAbove > 0 && n > dimAbove;
             if (colorMode !== "theme" && active && weftHex) {
               if (colorMode === "filled") {
                 const fg = contrastColor(weftHex);
@@ -325,9 +156,7 @@ function PickDisplay({
                 className={`rounded-md border-2 flex items-center justify-center text-xs font-bold ${
                   active
                     ? "bg-primary border-primary text-primary-foreground"
-                    : trailing
-                      ? "border-muted/40 bg-muted/10 text-muted-foreground/30"
-                      : "border-muted bg-muted/30 text-muted-foreground"
+                    : "border-border bg-muted/60 text-foreground/70"
                 }`}>
                 {n}
               </div>
@@ -353,8 +182,8 @@ function PickDisplay({
 // ---------------------------------------------------------------------------
 
 // Overhead accounts for: app header, project header, progress bar,
-// controls bar, pick instruction card, step controls, and padding.
-const PATTERN_OVERHEAD_PX = 560;
+// controls bar, pick instruction card, step controls, padding, and details panel bar.
+const PATTERN_OVERHEAD_PX = 600;
 const PATTERN_MIN_H = 200;
 const STEP_PANEL_W = 128;
 const COLOR_COL_W = 24;
@@ -377,14 +206,12 @@ function WeavingPatternView({
   totalPicks,
   picks,
   maxActive,
-  hideUnusedShaftsTreadles = false,
 }: {
   draftId: string;
   currentPickIndex: number;
   totalPicks: number;
   picks: PickRow[];
   maxActive: number;
-  hideUnusedShaftsTreadles?: boolean;
 }) {
   const containerH = useAdaptivePatternHeight();
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
@@ -458,9 +285,8 @@ function WeavingPatternView({
       try {
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const hideParam = hideUnusedShaftsTreadles ? "&hide_unused_shafts_treadles=true" : "";
         const res = await fetch(
-          `/api/drafts/${draftId}/drawdown?start_row=${startRow}&row_count=${tileSize}${hideParam}`,
+          `/api/drafts/${draftId}/drawdown?start_row=${startRow}&row_count=${tileSize}`,
           { credentials: "include", headers, signal: controller.signal }
         );
         clearTimeout(timeoutId);
@@ -494,7 +320,7 @@ function WeavingPatternView({
     needed.forEach(s => { fetchTile(s); });
 
     return () => { cancelled = true; };
-  }, [draftId, currentPickIndex, totalPicks, tileSize, hideUnusedShaftsTreadles, retryCount]);
+  }, [draftId, currentPickIndex, totalPicks, tileSize, retryCount]);
 
   // Revoke all object URLs on unmount.
   useEffect(() => {
@@ -1206,7 +1032,7 @@ export function ProjectDetailPage() {
   const [showDrawdown, setShowDrawdown] = useState(
     () => localStorage.getItem("proj-view:showDrawdown") !== "false"
   );
-  const [showPickDisplay, setShowPickDisplay] = useState(
+  const [showPickDisplay] = useState(
     () => localStorage.getItem("proj-view:showPickDisplay") !== "false"
   );
   const [showProgress, setShowProgress] = useState(
@@ -1214,6 +1040,9 @@ export function ProjectDetailPage() {
   );
   const [hideTrailingUnused, setHideTrailingUnused] = useState(
     () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
+  );
+  const [panelOpen, setPanelOpen] = useState(
+    () => localStorage.getItem("proj-view:panelOpen") === "true"
   );
   const [showDesignPreview, setShowDesignPreview] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -1245,8 +1074,6 @@ export function ProjectDetailPage() {
     enabled: !!id,
     staleTime: Infinity,
   });
-
-  const hideUnusedShaftsTreadles = project?.hide_unused_shafts_treadles ?? false;
 
   const isPlanning = project?.status === "active" && !project?.loom_id;
   const isCompleted = project?.status === "completed";
@@ -1452,21 +1279,12 @@ export function ProjectDetailPage() {
   const declaredCount = project.project_type === "lift"
     ? (project.draft_num_shafts ?? 0)
     : (project.draft_num_treadles ?? 0);
-  const effectiveCount = project.project_type === "lift"
-    ? (project.draft_effective_num_shafts ?? null)
-    : (project.draft_effective_num_treadles ?? null);
+
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
   // When a loom is assigned, use its treadle/shaft count; otherwise fall back to draft declared count.
-  // When hiding unused shafts/treadles, cap at the draft's effective count.
-  const maxActive = (() => {
-    const base = (loomCount !== null && loomCount > 0)
-      ? loomCount
-      : (declaredCount > 0 ? declaredCount : maxFromPicks);
-    if (hideUnusedShaftsTreadles && effectiveCount !== null && effectiveCount > 0 && effectiveCount < base) {
-      return effectiveCount;
-    }
-    return base;
-  })();
+  const maxActive = (loomCount !== null && loomCount > 0)
+    ? loomCount
+    : (declaredCount > 0 ? declaredCount : maxFromPicks);
 
   // Highest treadle/shaft index actually used in any pick across the full sequence.
   const maxUsed = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
@@ -1488,7 +1306,7 @@ export function ProjectDetailPage() {
   const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Page header */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
@@ -1584,8 +1402,8 @@ export function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Main */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Main content — fills remaining height; overflow-hidden prevents any page scroll */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {/* Completed summary */}
         {isCompleted && (
           <CompletedSummary
@@ -1634,7 +1452,7 @@ export function ProjectDetailPage() {
 
         {/* Progress bar */}
         {showProgress && !isPlanning && !isCompleted && (
-          <div className="mx-auto max-w-2xl px-8 pt-6">
+          <div className="w-full px-8 pt-6">
             <ProgressBar current={project.current_pick} total={project.total_picks} />
           </div>
         )}
@@ -1665,7 +1483,6 @@ export function ProjectDetailPage() {
             <PickDisplay
               pick={picksData.picks[currentPickIndex]}
               totalCount={displayCount}
-              dimAbove={hideTrailingUnused ? 0 : trailingUnused > 0 ? maxUsed : 0}
               projectType={project.project_type}
               colorMode={colorMode}
               showWeftColor={showWeftColor}
@@ -1677,30 +1494,32 @@ export function ProjectDetailPage() {
           )}
         </div>}
 
-        {/* Pattern view — wider on large screens to show more warp threads */}
-        {showDrawdown && picksData && !isFinished && !isCompleted && !isAbandoned && (
-          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
-            <WeavingPatternView
-              draftId={project.draft_id}
-              currentPickIndex={currentPickIndex}
-              totalPicks={project.total_picks}
-              picks={picksData.picks}
-              maxActive={displayCount}
-              hideUnusedShaftsTreadles={hideUnusedShaftsTreadles}
-            />
-          </div>
-        )}
+        {/* Spacer — always consumes remaining height so step controls stay pinned to bottom */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {/* Pattern view — wider on large screens to show more warp threads */}
+          {showDrawdown && picksData && !isFinished && !isCompleted && !isAbandoned && (
+            <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+              <WeavingPatternView
+                draftId={project.draft_id}
+                currentPickIndex={currentPickIndex}
+                totalPicks={project.total_picks}
+                picks={picksData.picks}
+                maxActive={displayCount}
+              />
+            </div>
+          )}
 
-        {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
-        {isAbandoned && (
-          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
-            <AbandonedDrawdownView
-              draftId={project.draft_id}
-              currentPick={project.current_pick}
-              totalPicks={project.total_picks}
-            />
-          </div>
-        )}
+          {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
+          {isAbandoned && (
+            <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+              <AbandonedDrawdownView
+                draftId={project.draft_id}
+                currentPick={project.current_pick}
+                totalPicks={project.total_picks}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Step controls — active tracking and planning */}
         <div className="w-full px-4 pb-6">
@@ -1736,8 +1555,27 @@ export function ProjectDetailPage() {
           )}
         </div>
 
-        {/* Collapsible sections */}
-        <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0 border-t">
+      </div>
+
+      {/* Details & settings panel — toggle bar always visible; sections scroll when open */}
+      <div className="shrink-0 border-t bg-card">
+        <button
+          onClick={() => {
+            const next = !panelOpen;
+            setPanelOpen(next);
+            localStorage.setItem("proj-view:panelOpen", String(next));
+          }}
+          className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+          aria-expanded={panelOpen}
+        >
+          Details &amp; settings
+          <AppIcons.chevronDown
+            className={`h-4 w-4 transition-transform duration-200 ${panelOpen ? "" : "-rotate-90"}`}
+          />
+        </button>
+        {panelOpen && (
+          <div className="overflow-y-auto max-h-[55dvh] border-t border-border/50">
+            <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0">
           {!isCompleted && (
             <CollapsibleSection title={`Photos (${project.photos.length}/10)`} defaultOpen={isAbandoned}>
               <PhotoGrid
@@ -1963,7 +1801,9 @@ export function ProjectDetailPage() {
               </div>
             )}
           </CollapsibleSection>
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {showDesignPreview && (
@@ -2016,7 +1856,6 @@ export function ProjectDetailPage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Show / hide</p>
                 {([
                   { label: "Progress bar", value: showProgress, key: "proj-view:showProgress", setter: setShowProgress },
-                  { label: "Pick instruction", value: showPickDisplay, key: "proj-view:showPickDisplay", setter: setShowPickDisplay },
                   { label: "Drawdown pattern", value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
                   { label: "Weft color", value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
                 ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void }[]).map(({ label, value, key, setter }) => (
@@ -2058,31 +1897,6 @@ export function ProjectDetailPage() {
                   </div>
                 </div>
               )}
-
-              {/* Project rendering settings (persisted to server) */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Project settings</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm">Hide unused shafts/treadles</span>
-                    <p className="text-xs text-muted-foreground">Clip rendering to design's effective counts</p>
-                  </div>
-                  <button
-                    role="switch"
-                    aria-checked={hideUnusedShaftsTreadles}
-                    onClick={() => {
-                      const next = !hideUnusedShaftsTreadles;
-                      queryClient.setQueryData(["project", project.id], (old: typeof project | undefined) =>
-                        old ? { ...old, hide_unused_shafts_treadles: next } : old
-                      );
-                      updateProjectSettings(project.id, { hide_unused_shafts_treadles: next });
-                    }}
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${hideUnusedShaftsTreadles ? "bg-primary" : "bg-input"}`}
-                  >
-                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${hideUnusedShaftsTreadles ? "translate-x-4" : "translate-x-1"}`} />
-                  </button>
-                </div>
-              </div>
 
               {/* Color mode selector — always shown; strip/filled have no visible effect without weft colors */}
               <div className="space-y-2">
