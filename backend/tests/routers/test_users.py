@@ -663,3 +663,123 @@ class TestActivityHeatmap:
     async def test_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.get("/api/users/me/activity-heatmap")
         assert resp.status_code == 401
+
+    async def test_returns_earliest_activity_date(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = Draft(owner_id=test_user.id, name="E Draft", wif_filename="e.wif", wif_path="drafts/e/original.wif")
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="E Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+        step_dt = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        db_session.add(
+            ProjectStep(project_id=project.id, event_type="advance", from_pick=1, to_pick=2, created_at=step_dt)
+        )
+        await db_session.commit()
+
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        assert resp.json()["earliest_activity_date"] == step_dt.strftime("%Y-%m-%d")
+
+    async def test_earliest_activity_date_null_when_no_steps(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        assert resp.json()["earliest_activity_date"] is None
+
+    async def test_returns_years_with_activity(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = Draft(owner_id=test_user.id, name="Y Draft", wif_filename="y.wif", wif_path="drafts/y/original.wif")
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Y Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+        step_dt = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        db_session.add(
+            ProjectStep(project_id=project.id, event_type="advance", from_pick=1, to_pick=2, created_at=step_dt)
+        )
+        await db_session.commit()
+
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        current_year = datetime.now(timezone.utc).year
+        assert current_year in resp.json()["years_with_activity"]
+
+    async def test_year_param_filters_to_calendar_year(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = Draft(owner_id=test_user.id, name="YP Draft", wif_filename="yp.wif", wif_path="drafts/yp/original.wif")
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="YP Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        this_year = datetime.now(timezone.utc).year
+        last_year = this_year - 1
+        dt_this = datetime(this_year, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+        dt_last = datetime(last_year, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+        db_session.add(
+            ProjectStep(project_id=project.id, event_type="advance", from_pick=1, to_pick=2, created_at=dt_this)
+        )
+        db_session.add(
+            ProjectStep(project_id=project.id, event_type="advance", from_pick=2, to_pick=3, created_at=dt_last)
+        )
+        await db_session.commit()
+
+        resp = await auth_client.get(f"/api/users/me/activity-heatmap?year={last_year}")
+        dates = {d["date"] for d in resp.json()["days"]}
+        assert f"{last_year}-06-15" in dates
+        assert f"{this_year}-06-15" not in dates
+
+    async def test_days_include_project_list(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = Draft(owner_id=test_user.id, name="PL Draft", wif_filename="pl.wif", wif_path="drafts/pl/original.wif")
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="PL Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+        step_dt = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        db_session.add(
+            ProjectStep(project_id=project.id, event_type="advance", from_pick=1, to_pick=2, created_at=step_dt)
+        )
+        await db_session.commit()
+
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        day = resp.json()["days"][0]
+        assert len(day["projects"]) == 1
+        assert day["projects"][0]["name"] == "PL Project"
+        assert day["projects"][0]["step_count"] == 1
+        assert "id" in day["projects"][0]

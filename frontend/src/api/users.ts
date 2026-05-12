@@ -52,8 +52,11 @@ export interface ActivityDay {
 
 export interface ActivityHeatmapData {
   days: ActivityDay[];
+  earliest_activity_date: string | null;
+  years_with_activity: number[];
 }
 
-export function getActivityHeatmap(): Promise<ActivityHeatmapData> {
-  return api.get<ActivityHeatmapData>("/api/users/me/activity-heatmap");
+export function getActivityHeatmap(params?: { year?: number }): Promise<ActivityHeatmapData> {
+  const qs = params?.year != null ? `?year=${params.year}` : "";
+  return api.get<ActivityHeatmapData>(`/api/users/me/activity-heatmap${qs}`);
 }
