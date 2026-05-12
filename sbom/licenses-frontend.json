@@ -398,19 +398,13 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/node",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/node/LICENSE"
   },
-  "@types/prop-types@15.7.15": {
-    "licenses": "MIT",
-    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/prop-types",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/prop-types/LICENSE"
-  },
-  "@types/react-dom@18.3.7": {
+  "@types/react-dom@19.2.3": {
     "licenses": "MIT",
     "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react-dom",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react-dom/LICENSE"
   },
-  "@types/react@18.3.28": {
+  "@types/react@19.2.14": {
     "licenses": "MIT",
     "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react",
@@ -992,14 +986,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/locate-path",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/locate-path/license"
   },
-  "loose-envify@1.4.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/zertosh/loose-envify",
-    "publisher": "Andres Suarez",
-    "email": "zertosh@gmail.com",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/loose-envify",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/loose-envify/LICENSE"
-  },
   "lru-cache@5.1.1": {
     "licenses": "ISC",
     "repository": "https://github.com/isaacs/node-lru-cache",
@@ -1144,7 +1130,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/punycode",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/punycode/LICENSE-MIT.txt"
   },
-  "react-dom@18.3.1": {
+  "react-dom@19.2.6": {
     "licenses": "MIT",
     "repository": "https://github.com/facebook/react",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom",
@@ -1166,7 +1152,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-router",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-router/LICENSE.md"
   },
-  "react@18.3.1": {
+  "react@19.2.6": {
     "licenses": "MIT",
     "repository": "https://github.com/facebook/react",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react",
@@ -1178,7 +1164,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/rolldown",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/rolldown/LICENSE"
   },
-  "scheduler@0.23.2": {
+  "scheduler@0.27.0": {
     "licenses": "MIT",
     "repository": "https://github.com/facebook/react",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/scheduler",
@@ -1336,7 +1322,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.134.4": {
+  "weaving-site@0.134.5": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend"
