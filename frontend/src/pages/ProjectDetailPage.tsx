@@ -408,7 +408,7 @@ function WeavingPatternView({
     }
 
     return () => { cancelled = true; };
-  }, [projectId, currentPickIndex, totalPicks, scrollColStart, retryCount]);
+  }, [projectId, currentPickIndex, totalPicks, scrollColStart, retryCount, lsColKey]);
 
   // Revoke all object URLs on unmount.
   useEffect(() => {
