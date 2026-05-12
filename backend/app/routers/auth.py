@@ -312,6 +312,8 @@ class UserResponse(BaseModel):
     idle_timeout_minutes: int
     measurement_system: str
     ai_training_consent: bool
+    show_version_numbers: bool
+    hide_unused_shafts_treadles: bool
     eula_accepted_version: str | None
     current_eula_version: str
     storage_used_bytes: int
@@ -341,6 +343,8 @@ async def me(
         idle_timeout_minutes=current_user.idle_timeout_minutes,
         measurement_system=current_user.measurement_system,
         ai_training_consent=current_user.ai_training_consent,
+        show_version_numbers=current_user.show_version_numbers,
+        hide_unused_shafts_treadles=current_user.hide_unused_shafts_treadles,
         eula_accepted_version=current_user.eula_accepted_version,
         current_eula_version=current_eula_version,
         storage_used_bytes=storage_used,

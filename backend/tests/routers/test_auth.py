@@ -45,6 +45,14 @@ class TestMe:
         resp = await superuser_client.get("/auth/me")
         assert resp.json()["is_superuser"] is True
 
+    async def test_returns_show_version_numbers(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/auth/me")
+        assert "show_version_numbers" in resp.json()
+
+    async def test_returns_hide_unused_shafts_treadles(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/auth/me")
+        assert "hide_unused_shafts_treadles" in resp.json()
+
 
 class TestLogout:
     async def test_returns_200(self, auth_client: AsyncClient):
