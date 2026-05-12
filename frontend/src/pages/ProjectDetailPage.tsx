@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
@@ -221,17 +221,8 @@ function WeavingPatternView({
   const containerH = useAdaptivePatternHeight();
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
   const [warpCount, setWarpCount] = useState(0);
-  // warpCountRef: ref mirror of warpCount so the fetch effect can read it without
-  // adding warpCount to deps (which would re-run the effect and cancel in-flight fetches
-  // each time a tile response sets the warp count for the first time).
   const warpCountRef = useRef(0);
-  // neededRef: always holds the most-recent needed tile key set.  fetchTile checks this
-  // after awaiting the blob to decide whether to store the tile — cheaper and more precise
-  // than the `cancelled` flag, which fires on any dep change regardless of whether the
-  // tile key is still wanted.
   const neededRef = useRef<Set<string>>(new Set());
-  // tilesRef: synchronous mirror used in effects for deduplication and eviction.
-  // Key: `${startRow}_${startCol}`. tiles state: snapshot for render.
   const tilesRef = useRef<Record<string, string>>({});
   const [tiles, setTiles] = useState<Record<string, string>>({});
   const fetchingRef = useRef<Set<string>>(new Set());
@@ -239,16 +230,45 @@ function WeavingPatternView({
   const tileErrorsRef = useRef<Map<string, string>>(new Map());
   const [tileErrors, setTileErrors] = useState<Map<string, string>>(new Map());
   const [retryCount, setRetryCount] = useState(0);
-  // scrollColStart: leftmost visible column tile boundary (multiple of TILE_COL_COUNT).
-  // State only changes when a new column tile boundary is crossed, avoiding per-pixel re-renders.
-  const [scrollColStart, setScrollColStart] = useState(0);
+
+  // Persist/restore the user's horizontal scroll position per project in localStorage.
+  const lsColKey = `project-drawdown-col-${projectId}`;
+  const [scrollColStart, setScrollColStart] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(`project-drawdown-col-${projectId}`);
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0)
+          return Math.floor(parsed / TILE_COL_COUNT) * TILE_COL_COUNT;
+      }
+    } catch { /* localStorage unavailable */ }
+    return 0;
+  });
+
+  // scrollDivRef + pendingScrollRef: used to restore the saved scroll position after
+  // the first tile response confirms the real pixelsPerRow value.
+  const scrollDivRef = useRef<HTMLDivElement>(null);
+  const scrollRestoredRef = useRef(false);
+  const pendingScrollRef = useRef<number | null>(null);
+
+  // Apply any pending programmatic scroll synchronously after DOM paint.
+  useLayoutEffect(() => {
+    if (pendingScrollRef.current !== null && scrollDivRef.current) {
+      scrollDivRef.current.scrollLeft = pendingScrollRef.current;
+      pendingScrollRef.current = null;
+    }
+  });
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const raw = e.currentTarget.scrollLeft;
     const colIndex = pixelsPerRow > 0 ? Math.floor(raw / pixelsPerRow) : 0;
     const snapped = Math.floor(colIndex / TILE_COL_COUNT) * TILE_COL_COUNT;
-    setScrollColStart(prev => prev === snapped ? prev : snapped);
-  }, [pixelsPerRow]);
+    setScrollColStart(prev => {
+      if (prev === snapped) return prev;
+      try { localStorage.setItem(lsColKey, String(snapped)); } catch { /* noop */ }
+      return snapped;
+    });
+  }, [pixelsPerRow, lsColKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -264,12 +284,15 @@ function WeavingPatternView({
     if (lookbehindRowStart < totalPicks) neededRows.push(lookbehindRowStart);
 
     // --- Column range ---
-    // Always column-tile: for narrow drafts only col 0 exists; for wide drafts
-    // fetch visible column + 1 lookahead on the right.
-    // Use warpCountRef (not warpCount state) so this runs without warpCount as a dep.
-    const neededCols: number[] = [scrollColStart];
-    const nextCol = scrollColStart + TILE_COL_COUNT;
-    if (warpCountRef.current === 0 || nextCol < warpCountRef.current) neededCols.push(nextCol);
+    // Buffer: 1 column behind, current, +1 and +2 ahead. Keeps adjacent tiles warm
+    // so fast scrolling doesn't hit a blank gap. Uses warpCountRef (not state) to
+    // avoid adding warpCount as an effect dep.
+    const W = warpCountRef.current;
+    const neededCols: number[] = [];
+    for (let offset = -1; offset <= 2; offset++) {
+      const c = scrollColStart + offset * TILE_COL_COUNT;
+      if (c >= 0 && (W === 0 || c < W)) neededCols.push(c);
+    }
 
     // All needed (row, col) pairs as `${row}_${col}` keys.
     const needed = new Set<string>();
@@ -344,6 +367,19 @@ function WeavingPatternView({
         if (wc > 0 && wc !== warpCountRef.current) {
           warpCountRef.current = wc;
           setWarpCount(wc);
+          // Clamp saved scroll position if it falls outside the actual warp extent.
+          setScrollColStart(prev => {
+            if (prev >= wc) {
+              try { localStorage.setItem(lsColKey, "0"); } catch { /* noop */ }
+              return 0;
+            }
+            return prev;
+          });
+        }
+        // Restore the user's saved column position once we know the real pixelsPerRow.
+        if (!scrollRestoredRef.current && scrollColStart > 0) {
+          scrollRestoredRef.current = true;
+          pendingScrollRef.current = scrollColStart * ppr;
         }
       } catch (err) {
         clearTimeout(timeoutId);
@@ -361,10 +397,14 @@ function WeavingPatternView({
       }
     };
 
+    // Fetch current column × all rows first so the visible tile arrives ASAP.
+    const priorityCols = neededCols.filter(c => c === scrollColStart);
+    const otherCols = neededCols.filter(c => c !== scrollColStart);
     for (const r of neededRows) {
-      for (const c of neededCols) {
-        fetchTile(r, c);
-      }
+      for (const c of priorityCols) fetchTile(r, c);
+    }
+    for (const r of neededRows) {
+      for (const c of otherCols) fetchTile(r, c);
     }
 
     return () => { cancelled = true; };
@@ -450,40 +490,43 @@ function WeavingPatternView({
     // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
     <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown tiles — horizontally scrollable for wide designs */}
-      <div
-        className="flex-1 rounded-lg border overflow-x-auto overflow-y-hidden relative bg-white dark:bg-zinc-900"
-        onScroll={handleScroll}
-      >
+      {/* Drawdown tiles — wrapper keeps overlays fixed to the viewport area, not the scroll content */}
+      <div className="flex-1 relative rounded-lg border overflow-hidden">
         <div
-          style={{
-            position: "relative",
-            width: totalImgW,
-            height: totalImgH,
-            transform: `translateY(${translateY}px)`,
-            transition: "transform 0.15s ease",
-          }}
+          ref={scrollDivRef}
+          className="absolute inset-0 overflow-x-auto overflow-y-hidden bg-white dark:bg-zinc-900"
+          onScroll={handleScroll}
         >
-          {Object.entries(tiles).map(([k, url]) => {
-            const [rowStr, colStr] = k.split("_");
-            const startRow = parseInt(rowStr, 10);
-            const startCol = parseInt(colStr, 10);
-            return (
-              <img
-                key={k}
-                src={url}
-                alt=""
-                style={{
-                  position: "absolute",
-                  top: startRow * pixelsPerRow,
-                  left: startCol * pixelsPerRow,
-                  display: "block",
-                  imageRendering: "pixelated",
-                  maxWidth: "none",
-                }}
-              />
-            );
-          })}
+          <div
+            style={{
+              position: "relative",
+              width: totalImgW,
+              height: totalImgH,
+              transform: `translateY(${translateY}px)`,
+              transition: "transform 0.15s ease",
+            }}
+          >
+            {Object.entries(tiles).map(([k, url]) => {
+              const [rowStr, colStr] = k.split("_");
+              const startRow = parseInt(rowStr, 10);
+              const startCol = parseInt(colStr, 10);
+              return (
+                <img
+                  key={k}
+                  src={url}
+                  alt=""
+                  style={{
+                    position: "absolute",
+                    top: startRow * pixelsPerRow,
+                    left: startCol * pixelsPerRow,
+                    display: "block",
+                    imageRendering: "pixelated",
+                    maxWidth: "none",
+                  }}
+                />
+              );
+            })}
+          </div>
         </div>
         {washoutOverlay}
         {/* Loading overlay — shown whenever the current tile hasn't arrived yet */}
@@ -528,7 +571,6 @@ function WeavingPatternView({
             </div>
           ))}
         </div>
-        {washoutOverlay}
       </div>
 
       {/* Weft color history column */}
@@ -549,7 +591,6 @@ function WeavingPatternView({
             />
           ))}
         </div>
-        {washoutOverlay}
       </div>
 
       {/* Highlight bars — span all panels + bleed on each side */}
