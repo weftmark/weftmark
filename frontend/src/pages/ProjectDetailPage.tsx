@@ -1625,7 +1625,7 @@ export function ProjectDetailPage() {
 
         {/* Step controls — active tracking and planning */}
         <div className="w-full px-4 pb-6">
-          {(isActiveTracking || isPlanning) && !isFinished && (
+          {(isActiveTracking || isPlanning) && (
             <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8 mb-4">
               {/* Left 1/3 on desktop, below step buttons on mobile */}
               <div className="order-2 lg:order-1 lg:flex lg:justify-center">
