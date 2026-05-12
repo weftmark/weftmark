@@ -61,6 +61,9 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     steps: Mapped[list["ProjectStep"]] = relationship(
         "ProjectStep", back_populates="project", order_by="ProjectStep.created_at"
     )
+    sessions: Mapped[list["WeaveSession"]] = relationship(
+        "WeaveSession", back_populates="project", order_by="WeaveSession.started_at"
+    )
     photos: Mapped[list["ProjectPhoto"]] = relationship(
         "ProjectPhoto", back_populates="project", order_by="ProjectPhoto.display_order"
     )
@@ -76,5 +79,19 @@ class ProjectStep(Base, TimestampMixin):
     event_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "advance" | "reverse"
     from_pick: Mapped[int] = mapped_column(Integer, nullable=False)
     to_pick: Mapped[int] = mapped_column(Integer, nullable=False)
+    dwell_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     project: Mapped["Project"] = relationship("Project", back_populates="steps")
+
+
+class WeaveSession(Base, TimestampMixin):
+    __tablename__ = "weave_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    project: Mapped["Project"] = relationship("Project", back_populates="sessions")

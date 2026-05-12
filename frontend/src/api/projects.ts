@@ -86,6 +86,23 @@ export interface PicksResponse {
   has_weft_colors: boolean;
 }
 
+export interface SessionInfo {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_ms: number;
+}
+
+export interface ProjectMetrics {
+  total_sessions: number;
+  total_session_time_ms: number;
+  current_session_started_at: string | null;
+  total_advance_steps: number;
+  total_reverse_steps: number;
+  total_worked_picks: number;
+  sessions: SessionInfo[];
+}
+
 import { getAuthToken } from "@/api/client";
 
 export class ApiError extends Error {
@@ -205,6 +222,10 @@ export function deleteProject(id: string): Promise<void> {
 
 export function getProjectPicks(id: string): Promise<PicksResponse> {
   return req(`/api/projects/${id}/picks`);
+}
+
+export function getProjectMetrics(id: string): Promise<ProjectMetrics> {
+  return req(`/api/projects/${id}/metrics`);
 }
 
 export function projectPhotoUrl(projectId: string, photoId: string): string {
