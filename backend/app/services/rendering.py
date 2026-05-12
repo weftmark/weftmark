@@ -161,15 +161,21 @@ def render_drawdown_tile(
     scale: int = DRAWDOWN_SCALE,
     effective_shafts: int | None = None,
     effective_treadles: int | None = None,
-) -> tuple[bytes, int, int, int, int]:
-    """Render a horizontal strip (tile) of the drawdown.
+    start_col: int | None = None,
+    col_count: int | None = None,
+) -> tuple[bytes, int, int, int, int] | tuple[bytes, int, int, int, int, int, int]:
+    """Render a tile of the drawdown.
 
-    ``start_row`` and ``row_count`` are in image-row terms:
-    row 0 = top of the image = last pick (completed picks accumulate downward).
+    When ``start_col`` / ``col_count`` are omitted the full warp width is
+    returned and the result is a 5-tuple
+    ``(png_bytes, total_rows, actual_start_row, actual_row_count, scale_used)``.
 
-    Only the width cap from settings is applied — height is determined by ``row_count``.
+    When ``start_col`` / ``col_count`` are given a column-sliced tile is returned
+    and the result is a 7-tuple extending the above with
+    ``(actual_start_col, actual_col_count)``.
 
-    Returns (png_bytes, total_rows, actual_start_row, actual_row_count, scale_used).
+    ``start_row`` / ``start_col`` are 0-based; row 0 = top of the drawdown image
+    (= last pick, since completed picks accumulate downward).
     """
     if effective_shafts is not None or effective_treadles is not None:
         draft = clip_draft_to_effective(draft, effective_shafts, effective_treadles)
@@ -220,11 +226,24 @@ def render_drawdown_tile(
 
     tile_top = actual_start * scale
     tile_bottom = tile_top + actual_row_count * scale
-    tile = full_drawdown.crop((0, tile_top, drawdown_w, tile_bottom))
 
+    if start_col is None:
+        tile = full_drawdown.crop((0, tile_top, drawdown_w, tile_bottom))
+        out = io.BytesIO()
+        tile.save(out, format="PNG")
+        return out.getvalue(), weft_count, actual_start, actual_row_count, scale
+
+    actual_start_col = max(0, min(start_col, warp_count - 1))
+    if col_count is None or col_count <= 0:
+        col_count = warp_count
+    actual_col_count = min(col_count, warp_count - actual_start_col)
+
+    tile_left = actual_start_col * scale
+    tile_right = tile_left + actual_col_count * scale
+    tile = full_drawdown.crop((tile_left, tile_top, tile_right, tile_bottom))
     out = io.BytesIO()
     tile.save(out, format="PNG")
-    return out.getvalue(), weft_count, actual_start, actual_row_count, scale
+    return out.getvalue(), weft_count, actual_start, actual_row_count, scale, actual_start_col, actual_col_count
 
 
 def render_drawdown_only(

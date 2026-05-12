@@ -137,6 +137,13 @@ async def _purge_storage(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
     for p in photos.all():
         _safe_delete(storage, p.file_path)
 
+    projects = await db.scalars(select(Project).where(Project.owner_id == user_id))
+    for project in projects.all():
+        try:
+            storage.delete_project_tiles(project.id)
+        except Exception as exc:
+            log.warning("deletion_storage_error project_tiles project_id=%s error=%s", project.id, exc)
+
     yarns = await db.scalars(select(Yarn).where(Yarn.owner_id == user_id))
     for y in yarns.all():
         if y.photo_path:

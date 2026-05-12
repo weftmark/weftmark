@@ -117,6 +117,16 @@ REGISTRY: dict[str, dict] = {
         "default_cron": "0 8 * * 1",
         "default_config": {},
     },
+    "tile_prune": {
+        "display_name": "Inactive Tile Prune",
+        "description": (
+            "Removes pre-rendered drawdown tiles for projects that have not been active "
+            "within the configured window, and for soft-deleted projects. "
+            "Tiles are regenerated on demand when the project is reopened."
+        ),
+        "default_cron": "0 6 * * *",
+        "default_config": {"inactive_days": 10},
+    },
 }
 
 
@@ -230,6 +240,17 @@ def _dispatch_admin_digest(settings, task=None):
     return t
 
 
+def _dispatch_tile_prune(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import prune_inactive_project_tiles
+
+    cfg = (task.config or {}) if task else {}
+    inactive_days = int(cfg.get("inactive_days", 10))
+    t = prune_inactive_project_tiles.delay(inactive_days=inactive_days)
+    record_queued(settings, t.id, "app.tasks.maintenance.prune_inactive_project_tiles", "scheduled:tile_prune")
+    return t
+
+
 DISPATCH_FNS: dict[str, object] = {
     "cve_scan": _dispatch_cve_scan,
     "s3_audit": _dispatch_s3_audit,
@@ -242,6 +263,7 @@ DISPATCH_FNS: dict[str, object] = {
     "server_event_log_pruning": _dispatch_server_event_log_pruning,
     "credential_expiry_check": _dispatch_credential_expiry_check,
     "admin_digest": _dispatch_admin_digest,
+    "tile_prune": _dispatch_tile_prune,
 }
 
 

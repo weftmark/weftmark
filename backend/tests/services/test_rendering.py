@@ -481,6 +481,68 @@ class TestRenderDrawdownTile:
         img = Image.open(_io.BytesIO(png))
         assert img.height == actual_row_count * scale_used
 
+    # --- column slicing ---
+
+    def test_returns_seven_elements_when_col_params_given(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_tile(draft, start_row=0, row_count=2, start_col=0, col_count=2)
+        assert isinstance(result, tuple) and len(result) == 7
+
+    def test_col_slice_width_equals_col_count_times_scale(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png, _, _, _, scale_used, _, actual_col_count = render_drawdown_tile(
+            draft, start_row=0, row_count=2, scale=scale, start_col=0, col_count=2
+        )
+        img = Image.open(_io.BytesIO(png))
+        assert img.width == actual_col_count * scale_used
+
+    def test_col_slice_narrower_than_full_width(self):
+        import io as _io
+
+        from PIL import Image
+
+        draft = load_draft(MINIMAL_WIF)
+        scale = 10
+        png_full, *_ = render_drawdown_tile(draft, start_row=0, row_count=2, scale=scale)
+        png_col, *_ = render_drawdown_tile(draft, start_row=0, row_count=2, scale=scale, start_col=0, col_count=2)
+        img_full = Image.open(_io.BytesIO(png_full))
+        img_col = Image.open(_io.BytesIO(png_col))
+        assert img_col.width < img_full.width
+        assert img_col.width == 2 * scale
+
+    def test_start_col_offsets_slice(self):
+        draft = load_draft(MINIMAL_WIF)
+        _, _, _, _, _, actual_start_col, _ = render_drawdown_tile(
+            draft, start_row=0, row_count=2, start_col=1, col_count=2
+        )
+        assert actual_start_col == 1
+
+    def test_col_count_clamped_at_draft_end(self):
+        draft = load_draft(MINIMAL_WIF)
+        warp_count = len(draft.warp)
+        _, _, _, _, _, actual_start_col, actual_col_count = render_drawdown_tile(
+            draft, start_row=0, row_count=2, start_col=2, col_count=100
+        )
+        assert actual_start_col + actual_col_count <= warp_count
+
+    def test_start_col_clamped_to_valid_range(self):
+        draft = load_draft(MINIMAL_WIF)
+        warp_count = len(draft.warp)
+        _, _, _, _, _, actual_start_col, _ = render_drawdown_tile(
+            draft, start_row=0, row_count=2, start_col=999, col_count=2
+        )
+        assert actual_start_col <= warp_count - 1
+
+    def test_no_col_params_returns_five_elements(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_tile(draft, start_row=0, row_count=2)
+        assert len(result) == 5
+
 
 # ---------------------------------------------------------------------------
 # render_drawdown_preview

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getProject, getProjectPicks, stepProject, jumpProject, completeProject, abandonProject,
   restartProject, cloneProject, listProjects, deleteProject,
-  renameProject, updateProjectNotes, updateProjectSettings, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
+  renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow,
 } from "@/api/projects";
@@ -93,194 +93,26 @@ function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: ()
 // Pick display — current pick instructions
 // ---------------------------------------------------------------------------
 
-// Boxes beyond this count switch to compact (no-label) mode with a detail sheet.
-const COMPACT_THRESHOLD = 8;
-
-function PickDetailSheet({
-  pick,
-  totalCount,
-  dimAbove,
-  projectType,
-  colorMode,
-  weftHex,
-  onClose,
-}: {
-  pick: PickRow;
-  totalCount: number;
-  dimAbove: number;
-  projectType: string;
-  colorMode: ColorMode;
-  weftHex: string | null;
-  onClose: () => void;
-}) {
-  const count = Math.max(totalCount, 1);
-  const activeLabel = pick.active.length === 0
-    ? "None active"
-    : `${projectType === "lift" ? "Shafts" : "Treadles"}: ${pick.active.slice().sort((a, b) => a - b).join(", ")}`;
-
-  return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
-      <div className="fixed bottom-0 inset-x-0 z-50 rounded-t-2xl border-t border-border bg-card px-4 pb-8 pt-4 shadow-xl">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-sm font-semibold">Pick {pick.pick}</p>
-            <p className="text-xs text-muted-foreground">{activeLabel}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Close detail"
-          >
-            <AppIcons.close className="h-4 w-4" />
-          </button>
-        </div>
-
-        {weftHex && (
-          <div
-            className="mb-3 h-6 w-full rounded-md flex items-center justify-center text-xs font-semibold uppercase tracking-wider"
-            style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
-          >
-            Weft color
-          </div>
-        )}
-
-        <div
-          className="grid gap-2"
-          style={{ gridTemplateColumns: `repeat(${Math.min(count, 8)}, 1fr)` }}
-        >
-          {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
-            const active = pick.active.includes(n);
-            const trailing = dimAbove > 0 && n > dimAbove;
-            if (colorMode !== "theme" && active && weftHex) {
-              if (colorMode === "filled") {
-                const fg = contrastColor(weftHex);
-                return (
-                  <div key={n} style={{ backgroundColor: weftHex, borderColor: fg }}
-                    className="aspect-square rounded-lg border-2 flex items-center justify-center text-sm font-bold">
-                    <span style={{ color: fg }}>{n}</span>
-                  </div>
-                );
-              }
-              if (colorMode === "strip") {
-                return (
-                  <div key={n}
-                    className="aspect-square rounded-lg border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center text-sm font-bold">
-                    <span className="absolute bottom-0 left-0 right-0 h-[20%]"
-                      style={{ backgroundColor: weftHex }} />
-                    <span className="relative text-primary-foreground">{n}</span>
-                  </div>
-                );
-              }
-            }
-            return (
-              <div key={n}
-                className={`aspect-square rounded-lg border-2 flex items-center justify-center text-sm font-bold ${
-                  active
-                    ? "bg-primary border-primary text-primary-foreground"
-                    : trailing
-                      ? "border-muted/40 bg-muted/10 text-muted-foreground/30"
-                      : "border-muted bg-muted/30 text-muted-foreground"
-                }`}>
-                {n}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </>
-  );
-}
 
 function PickDisplay({
   pick,
   totalCount,
-  dimAbove,
   projectType,
   colorMode,
   showWeftColor,
 }: {
   pick: PickRow;
   totalCount: number;
-  dimAbove: number;
   projectType: string;
   colorMode: ColorMode;
   showWeftColor: boolean;
 }) {
   const count = Math.max(totalCount, 1);
   const weftHex = pick.color ?? null;
-  const isCompact = count > COMPACT_THRESHOLD;
-  const [detailOpen, setDetailOpen] = useState(false);
-
-  if (isCompact) {
-    return (
-      <>
-        <button
-          className="w-full rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-3 flex items-center gap-3 text-left"
-          onClick={() => setDetailOpen(true)}
-          aria-label="Tap to see pick details"
-        >
-          <div className="shrink-0 text-primary/50">
-            {projectType === "lift" ? (
-              <AppIcons.lift className="h-6 w-6" strokeWidth={1.5} />
-            ) : (
-              <AppIcons.treadle className="h-6 w-6" strokeWidth={1.5} />
-            )}
-          </div>
-
-          {/* Compact dot grid — active boxes filled, inactive dimmed */}
-          <div
-            className="flex-1 grid gap-1"
-            style={{ gridTemplateColumns: `repeat(${count}, 1fr)` }}
-          >
-            {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
-              const active = pick.active.includes(n);
-              const trailing = dimAbove > 0 && n > dimAbove;
-              const bg = active
-                ? (colorMode !== "theme" && weftHex ? weftHex : undefined)
-                : undefined;
-              return (
-                <div
-                  key={n}
-                  className={`aspect-square rounded ${
-                    active
-                      ? "ring-2 ring-primary ring-offset-1"
-                      : trailing
-                        ? "bg-muted/10 ring-1 ring-border/30"
-                        : "bg-muted/40 ring-1 ring-border/50"
-                  }`}
-                  style={bg ? { backgroundColor: bg } : active ? { backgroundColor: "var(--primary)" } : undefined}
-                />
-              );
-            })}
-          </div>
-
-          {/* Active count summary */}
-          <div className="shrink-0 text-right">
-            <p className="text-sm font-semibold text-primary">
-              {pick.active.slice().sort((a, b) => a - b).join(", ")}
-            </p>
-            <p className="text-xs text-muted-foreground">tap for detail</p>
-          </div>
-        </button>
-
-        {detailOpen && (
-          <PickDetailSheet
-            pick={pick}
-            totalCount={totalCount}
-            dimAbove={dimAbove}
-            projectType={projectType}
-            colorMode={colorMode}
-            weftHex={weftHex}
-            onClose={() => setDetailOpen(false)}
-          />
-        )}
-      </>
-    );
-  }
 
   return (
-    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4">
+    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4 mx-auto w-full"
+      style={{ maxWidth: `${Math.min(count * 80 + 80, 720)}px` }}>
       {/* Activity type icon — centered vertically */}
       <div className="shrink-0 flex items-center text-primary/50">
         {projectType === "lift" ? (
@@ -298,7 +130,6 @@ function PickDisplay({
         >
           {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
             const active = pick.active.includes(n);
-            const trailing = dimAbove > 0 && n > dimAbove;
             if (colorMode !== "theme" && active && weftHex) {
               if (colorMode === "filled") {
                 const fg = contrastColor(weftHex);
@@ -325,9 +156,7 @@ function PickDisplay({
                 className={`rounded-md border-2 flex items-center justify-center text-xs font-bold ${
                   active
                     ? "bg-primary border-primary text-primary-foreground"
-                    : trailing
-                      ? "border-muted/40 bg-muted/10 text-muted-foreground/30"
-                      : "border-muted bg-muted/30 text-muted-foreground"
+                    : "border-border bg-muted/60 text-foreground/70"
                 }`}>
                 {n}
               </div>
@@ -353,8 +182,8 @@ function PickDisplay({
 // ---------------------------------------------------------------------------
 
 // Overhead accounts for: app header, project header, progress bar,
-// controls bar, pick instruction card, step controls, and padding.
-const PATTERN_OVERHEAD_PX = 560;
+// controls bar, pick instruction card, step controls, padding, and details panel bar.
+const PATTERN_OVERHEAD_PX = 600;
 const PATTERN_MIN_H = 200;
 const STEP_PANEL_W = 128;
 const COLOR_COL_W = 24;
@@ -371,130 +200,215 @@ function useAdaptivePatternHeight(): number {
   return height;
 }
 
+// Fixed at backend TILE_ROW_COUNT / TILE_COL_COUNT — requests must align with
+// pre-rendered tile boundaries in R2.
+const TILE_ROW_COUNT = 100;
+const TILE_COL_COUNT = 200;
+
 function WeavingPatternView({
-  draftId,
+  projectId,
   currentPickIndex,
   totalPicks,
   picks,
   maxActive,
-  hideUnusedShaftsTreadles = false,
 }: {
-  draftId: string;
+  projectId: string;
   currentPickIndex: number;
   totalPicks: number;
   picks: PickRow[];
   maxActive: number;
-  hideUnusedShaftsTreadles?: boolean;
 }) {
   const containerH = useAdaptivePatternHeight();
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
-  // tilesRef: synchronous mirror used in effects for deduplication and eviction.
-  // tiles state: snapshot used during render (updated only on tile add, not eviction).
-  const tilesRef = useRef<Record<number, string>>({});
-  const [tiles, setTiles] = useState<Record<number, string>>({});
-  const fetchingRef = useRef<Set<number>>(new Set());
-  const fetchControllersRef = useRef<Map<number, AbortController>>(new Map());
-  // tileErrorsRef: per-tile error messages (Map<startRow, message>). Ref so fetchTile
-  // can check it without adding to effect deps. State mirror for render.
-  const tileErrorsRef = useRef<Map<number, string>>(new Map());
-  const [tileErrors, setTileErrors] = useState<Map<number, string>>(new Map());
-  // Incrementing retryCount forces the fetch effect to rerun on explicit retry.
+  const [warpCount, setWarpCount] = useState(0);
+  const warpCountRef = useRef(0);
+  const neededRef = useRef<Set<string>>(new Set());
+  const tilesRef = useRef<Record<string, string>>({});
+  const [tiles, setTiles] = useState<Record<string, string>>({});
+  const fetchingRef = useRef<Set<string>>(new Set());
+  const fetchControllersRef = useRef<Map<string, AbortController>>(new Map());
+  const tileErrorsRef = useRef<Map<string, string>>(new Map());
+  const [tileErrors, setTileErrors] = useState<Map<string, string>>(new Map());
   const [retryCount, setRetryCount] = useState(0);
 
-  // Fixed at backend TILE_ROW_COUNT so requests align with pre-rendered tile boundaries in R2.
-  const tileSize = 100;
+  // Persist/restore the user's horizontal scroll position per project in localStorage.
+  const lsColKey = `project-drawdown-col-${projectId}`;
+  const [scrollColStart, setScrollColStart] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(`project-drawdown-col-${projectId}`);
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0)
+          return Math.floor(parsed / TILE_COL_COUNT) * TILE_COL_COUNT;
+      }
+    } catch { /* localStorage unavailable */ }
+    return 0;
+  });
+
+  // scrollDivRef + pendingScrollRef: used to restore the saved scroll position after
+  // the first tile response confirms the real pixelsPerRow value.
+  const scrollDivRef = useRef<HTMLDivElement>(null);
+  const scrollRestoredRef = useRef(false);
+  const pendingScrollRef = useRef<number | null>(null);
+
+  // Apply any pending programmatic scroll synchronously after DOM paint.
+  useLayoutEffect(() => {
+    if (pendingScrollRef.current !== null && scrollDivRef.current) {
+      scrollDivRef.current.scrollLeft = pendingScrollRef.current;
+      pendingScrollRef.current = null;
+    }
+  });
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const raw = e.currentTarget.scrollLeft;
+    const colIndex = pixelsPerRow > 0 ? Math.floor(raw / pixelsPerRow) : 0;
+    const snapped = Math.floor(colIndex / TILE_COL_COUNT) * TILE_COL_COUNT;
+    setScrollColStart(prev => {
+      if (prev === snapped) return prev;
+      try { localStorage.setItem(lsColKey, String(snapped)); } catch { /* noop */ }
+      return snapped;
+    });
+  }, [pixelsPerRow, lsColKey]);
 
   useEffect(() => {
     let cancelled = false;
 
-    // Image row 0 = top = last pick. Advancing decreases imageRow toward 0.
-    // Past work is at higher image row numbers (below current in the container).
+    // --- Row range ---
+    // Image row 0 = top = last pick; advancing decreases imageRow toward 0.
     const imageRow = totalPicks - 1 - currentPickIndex;
-    const currentTileStart = Math.floor(imageRow / tileSize) * tileSize;
-    // 1 tile toward row 0 (future picks, above current line).
-    const lookaheadStart = currentTileStart - tileSize;
-    // 1 tile away from row 0 (past picks, below current line = work done).
-    const lookbehindStart = currentTileStart + tileSize;
-    const needed = new Set<number>([currentTileStart]);
-    if (lookaheadStart >= 0) needed.add(lookaheadStart);
-    if (lookbehindStart < totalPicks) needed.add(lookbehindStart);
+    const currentRowStart = Math.floor(imageRow / TILE_ROW_COUNT) * TILE_ROW_COUNT;
+    const lookaheadRowStart = currentRowStart - TILE_ROW_COUNT;
+    const lookbehindRowStart = currentRowStart + TILE_ROW_COUNT;
+    const neededRows: number[] = [currentRowStart];
+    if (lookaheadRowStart >= 0) neededRows.push(lookaheadRowStart);
+    if (lookbehindRowStart < totalPicks) neededRows.push(lookbehindRowStart);
 
-    // Evict tiles and errors outside the needed set (errors auto-clear on eviction so
-    // re-entering the same position retries fresh without an explicit user action).
-    // Also abort any in-flight fetches for evicted tiles — if we re-enter that range
-    // before the old fetch completes, fetchingRef would block a new fetch and the
-    // cancelled result would be discarded, leaving the tile permanently unloaded.
+    // --- Column range ---
+    // Buffer: 1 column behind, current, +1 and +2 ahead. Keeps adjacent tiles warm
+    // so fast scrolling doesn't hit a blank gap. Uses warpCountRef (not state) to
+    // avoid adding warpCount as an effect dep.
+    const W = warpCountRef.current;
+    const neededCols: number[] = [];
+    for (let offset = -1; offset <= 2; offset++) {
+      const c = scrollColStart + offset * TILE_COL_COUNT;
+      if (c >= 0 && (W === 0 || c < W)) neededCols.push(c);
+    }
+
+    // All needed (row, col) pairs as `${row}_${col}` keys.
+    const needed = new Set<string>();
+    for (const r of neededRows) {
+      for (const c of neededCols) {
+        needed.add(`${r}_${c}`);
+      }
+    }
+    // Keep neededRef current so in-flight fetchTile calls can check it after awaiting blob.
+    neededRef.current = needed;
+
+    // Evict tiles and errors outside the needed set; abort in-flight fetches.
+    let tilesEvicted = false;
     let errorsChanged = false;
     for (const k of Object.keys(tilesRef.current)) {
-      const n = parseInt(k);
-      if (!needed.has(n)) {
-        URL.revokeObjectURL(tilesRef.current[n]);
-        delete tilesRef.current[n];
+      if (!needed.has(k)) {
+        URL.revokeObjectURL(tilesRef.current[k]);
+        delete tilesRef.current[k];
+        tilesEvicted = true;
       }
     }
-    for (const n of fetchingRef.current) {
-      if (!needed.has(n)) {
-        fetchControllersRef.current.get(n)?.abort();
-        fetchControllersRef.current.delete(n);
-        fetchingRef.current.delete(n);
+    for (const k of fetchingRef.current) {
+      if (!needed.has(k)) {
+        fetchControllersRef.current.get(k)?.abort();
+        fetchControllersRef.current.delete(k);
+        fetchingRef.current.delete(k);
       }
     }
-    for (const n of tileErrorsRef.current.keys()) {
-      if (!needed.has(n)) {
-        tileErrorsRef.current.delete(n);
+    for (const k of tileErrorsRef.current.keys()) {
+      if (!needed.has(k)) {
+        tileErrorsRef.current.delete(k);
         errorsChanged = true;
       }
     }
+    if (tilesEvicted) setTiles({ ...tilesRef.current });
     if (errorsChanged) setTileErrors(new Map(tileErrorsRef.current));
 
-    const fetchTile = async (startRow: number) => {
-      if (fetchingRef.current.has(startRow)) return;
-      if (tilesRef.current[startRow] !== undefined) return;
-      if (tileErrorsRef.current.has(startRow)) return;
-      fetchingRef.current.add(startRow);
+    const fetchTile = async (startRow: number, startCol: number) => {
+      const key = `${startRow}_${startCol}`;
+      if (fetchingRef.current.has(key)) return;
+      if (tilesRef.current[key] !== undefined) return;
+      if (tileErrorsRef.current.has(key)) return;
+      fetchingRef.current.add(key);
       const controller = new AbortController();
-      fetchControllersRef.current.set(startRow, controller);
+      fetchControllersRef.current.set(key, controller);
       const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const url =
+        `/api/projects/${projectId}/drawdown` +
+        `?start_row=${startRow}&row_count=${TILE_ROW_COUNT}` +
+        `&start_col=${startCol}&col_count=${TILE_COL_COUNT}`;
       try {
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const hideParam = hideUnusedShaftsTreadles ? "&hide_unused_shafts_treadles=true" : "";
-        const res = await fetch(
-          `/api/drafts/${draftId}/drawdown?start_row=${startRow}&row_count=${tileSize}${hideParam}`,
-          { credentials: "include", headers, signal: controller.signal }
-        );
+        const res = await fetch(url, { credentials: "include", headers, signal: controller.signal });
         clearTimeout(timeoutId);
-        if (cancelled) return;
         if (!res.ok) {
-          tileErrorsRef.current.set(startRow, "Pattern tile failed to load.");
+          tileErrorsRef.current.set(key, "Pattern tile failed to load.");
           setTileErrors(new Map(tileErrorsRef.current));
           return;
         }
         const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
-        if (!cancelled) setPixelsPerRow(ppr);
+        const wc = parseInt(res.headers.get("X-Total-Cols") ?? "0", 10);
         const blob = await res.blob();
-        if (cancelled) return;
-        tilesRef.current[startRow] = URL.createObjectURL(blob);
+        // Use neededRef rather than `cancelled`: any dep change updates neededRef so we
+        // only discard tiles that genuinely fell out of the needed window.  The `cancelled`
+        // flag is too broad — it fires on every dep change (including TanStack Query
+        // re-renders) and would discard tiles that are still wanted.
+        if (!neededRef.current.has(key)) return;
+        tilesRef.current[key] = URL.createObjectURL(blob);
         setTiles({ ...tilesRef.current });
+        setPixelsPerRow(ppr);
+        if (wc > 0 && wc !== warpCountRef.current) {
+          warpCountRef.current = wc;
+          setWarpCount(wc);
+          // Clamp saved scroll position if it falls outside the actual warp extent.
+          setScrollColStart(prev => {
+            if (prev >= wc) {
+              try { localStorage.setItem(lsColKey, "0"); } catch { /* noop */ }
+              return 0;
+            }
+            return prev;
+          });
+        }
+        // Restore the user's saved column position once we know the real pixelsPerRow.
+        if (!scrollRestoredRef.current && scrollColStart > 0) {
+          scrollRestoredRef.current = true;
+          pendingScrollRef.current = scrollColStart * ppr;
+        }
       } catch (err) {
         clearTimeout(timeoutId);
         if (!cancelled) {
-          const msg = err instanceof Error && err.name === "AbortError"
-            ? "Pattern tile timed out."
-            : "Pattern tile failed to load.";
-          tileErrorsRef.current.set(startRow, msg);
+          const msg =
+            err instanceof Error && err.name === "AbortError"
+              ? "Pattern tile timed out."
+              : "Pattern tile failed to load.";
+          tileErrorsRef.current.set(key, msg);
           setTileErrors(new Map(tileErrorsRef.current));
         }
       } finally {
-        fetchingRef.current.delete(startRow);
-        fetchControllersRef.current.delete(startRow);
+        fetchingRef.current.delete(key);
+        fetchControllersRef.current.delete(key);
       }
     };
 
-    needed.forEach(s => { fetchTile(s); });
+    // Fetch current column × all rows first so the visible tile arrives ASAP.
+    const priorityCols = neededCols.filter(c => c === scrollColStart);
+    const otherCols = neededCols.filter(c => c !== scrollColStart);
+    for (const r of neededRows) {
+      for (const c of priorityCols) fetchTile(r, c);
+    }
+    for (const r of neededRows) {
+      for (const c of otherCols) fetchTile(r, c);
+    }
 
     return () => { cancelled = true; };
-  }, [draftId, currentPickIndex, totalPicks, tileSize, hideUnusedShaftsTreadles, retryCount]);
+  }, [projectId, currentPickIndex, totalPicks, scrollColStart, retryCount, lsColKey]);
 
   // Revoke all object URLs on unmount.
   useEffect(() => {
@@ -504,14 +418,17 @@ function WeavingPatternView({
     };
   }, []);
 
-  // Compute current tile position for overlay decisions (needed before early returns).
+  // Current row tile boundary for overlay / retry decisions.
   const imageRowForTile = totalPicks - 1 - currentPickIndex;
-  const currentTileStart = Math.floor(imageRowForTile / tileSize) * tileSize;
-  const currentTileReady = tiles[currentTileStart] !== undefined;
-  const currentTileError = tileErrors.get(currentTileStart);
+  const currentTileStart = Math.floor(imageRowForTile / TILE_ROW_COUNT) * TILE_ROW_COUNT;
+  const currentRowPrefix = `${currentTileStart}_`;
+  const currentTileReady = Object.keys(tiles).some(k => k.startsWith(currentRowPrefix));
+  const currentTileError = [...tileErrors.entries()].find(([k]) => k.startsWith(currentRowPrefix))?.[1];
 
   const retryCurrentTile = () => {
-    tileErrorsRef.current.delete(currentTileStart);
+    for (const k of tileErrorsRef.current.keys()) {
+      if (k.startsWith(currentRowPrefix)) tileErrorsRef.current.delete(k);
+    }
     setTileErrors(new Map(tileErrorsRef.current));
     setRetryCount(c => c + 1);
   };
@@ -545,6 +462,9 @@ function WeavingPatternView({
   const highlightH = pixelsPerRow + 2;
   const boxH = Math.max(4, pixelsPerRow - 6);
 
+  const totalImgW = warpCount > 0 ? warpCount * pixelsPerRow : undefined;
+  const totalImgH = totalPicks * pixelsPerRow;
+
   // Picks reversed so the last pick renders first (topmost) — matches drawdown orientation.
   const reversedPicks = [...picks].reverse();
 
@@ -566,37 +486,47 @@ function WeavingPatternView({
     </>
   );
 
-  const totalImgH = totalPicks * pixelsPerRow;
-
   return (
     // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
     <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown tiles — horizontally scrollable to view wide designs */}
-      <div className="flex-1 rounded-lg border overflow-x-auto overflow-y-hidden relative bg-white dark:bg-zinc-900">
+      {/* Drawdown tiles — wrapper keeps overlays fixed to the viewport area, not the scroll content */}
+      <div className="flex-1 relative rounded-lg border overflow-hidden">
         <div
-          style={{
-            position: "relative",
-            height: totalImgH,
-            transform: `translateY(${translateY}px)`,
-            transition: "transform 0.15s ease",
-          }}
+          ref={scrollDivRef}
+          className="absolute inset-0 overflow-x-auto overflow-y-hidden bg-white dark:bg-zinc-900"
+          onScroll={handleScroll}
         >
-          {Object.entries(tiles).map(([k, url]) => (
-            <img
-              key={k}
-              src={url}
-              alt=""
-              style={{
-                position: "absolute",
-                top: parseInt(k) * pixelsPerRow,
-                left: 0,
-                display: "block",
-                imageRendering: "pixelated",
-                maxWidth: "none",
-              }}
-            />
-          ))}
+          <div
+            style={{
+              position: "relative",
+              width: totalImgW,
+              height: totalImgH,
+              transform: `translateY(${translateY}px)`,
+              transition: "transform 0.15s ease",
+            }}
+          >
+            {Object.entries(tiles).map(([k, url]) => {
+              const [rowStr, colStr] = k.split("_");
+              const startRow = parseInt(rowStr, 10);
+              const startCol = parseInt(colStr, 10);
+              return (
+                <img
+                  key={k}
+                  src={url}
+                  alt=""
+                  style={{
+                    position: "absolute",
+                    top: startRow * pixelsPerRow,
+                    left: startCol * pixelsPerRow,
+                    display: "block",
+                    imageRendering: "pixelated",
+                    maxWidth: "none",
+                  }}
+                />
+              );
+            })}
+          </div>
         </div>
         {washoutOverlay}
         {/* Loading overlay — shown whenever the current tile hasn't arrived yet */}
@@ -641,7 +571,6 @@ function WeavingPatternView({
             </div>
           ))}
         </div>
-        {washoutOverlay}
       </div>
 
       {/* Weft color history column */}
@@ -662,7 +591,6 @@ function WeavingPatternView({
             />
           ))}
         </div>
-        {washoutOverlay}
       </div>
 
       {/* Highlight bars — span all panels + bleed on each side */}
@@ -1206,7 +1134,7 @@ export function ProjectDetailPage() {
   const [showDrawdown, setShowDrawdown] = useState(
     () => localStorage.getItem("proj-view:showDrawdown") !== "false"
   );
-  const [showPickDisplay, setShowPickDisplay] = useState(
+  const [showPickDisplay] = useState(
     () => localStorage.getItem("proj-view:showPickDisplay") !== "false"
   );
   const [showProgress, setShowProgress] = useState(
@@ -1214,6 +1142,9 @@ export function ProjectDetailPage() {
   );
   const [hideTrailingUnused, setHideTrailingUnused] = useState(
     () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
+  );
+  const [panelOpen, setPanelOpen] = useState(
+    () => localStorage.getItem("proj-view:panelOpen") === "true"
   );
   const [showDesignPreview, setShowDesignPreview] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -1245,8 +1176,6 @@ export function ProjectDetailPage() {
     enabled: !!id,
     staleTime: Infinity,
   });
-
-  const hideUnusedShaftsTreadles = project?.hide_unused_shafts_treadles ?? false;
 
   const isPlanning = project?.status === "active" && !project?.loom_id;
   const isCompleted = project?.status === "completed";
@@ -1452,21 +1381,12 @@ export function ProjectDetailPage() {
   const declaredCount = project.project_type === "lift"
     ? (project.draft_num_shafts ?? 0)
     : (project.draft_num_treadles ?? 0);
-  const effectiveCount = project.project_type === "lift"
-    ? (project.draft_effective_num_shafts ?? null)
-    : (project.draft_effective_num_treadles ?? null);
+
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
   // When a loom is assigned, use its treadle/shaft count; otherwise fall back to draft declared count.
-  // When hiding unused shafts/treadles, cap at the draft's effective count.
-  const maxActive = (() => {
-    const base = (loomCount !== null && loomCount > 0)
-      ? loomCount
-      : (declaredCount > 0 ? declaredCount : maxFromPicks);
-    if (hideUnusedShaftsTreadles && effectiveCount !== null && effectiveCount > 0 && effectiveCount < base) {
-      return effectiveCount;
-    }
-    return base;
-  })();
+  const maxActive = (loomCount !== null && loomCount > 0)
+    ? loomCount
+    : (declaredCount > 0 ? declaredCount : maxFromPicks);
 
   // Highest treadle/shaft index actually used in any pick across the full sequence.
   const maxUsed = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
@@ -1488,7 +1408,7 @@ export function ProjectDetailPage() {
   const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Page header */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
@@ -1584,8 +1504,8 @@ export function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Main */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Main content — fills remaining height; overflow-hidden prevents any page scroll */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {/* Completed summary */}
         {isCompleted && (
           <CompletedSummary
@@ -1634,7 +1554,7 @@ export function ProjectDetailPage() {
 
         {/* Progress bar */}
         {showProgress && !isPlanning && !isCompleted && (
-          <div className="mx-auto max-w-2xl px-8 pt-6">
+          <div className="w-full px-8 pt-6">
             <ProgressBar current={project.current_pick} total={project.total_picks} />
           </div>
         )}
@@ -1665,7 +1585,6 @@ export function ProjectDetailPage() {
             <PickDisplay
               pick={picksData.picks[currentPickIndex]}
               totalCount={displayCount}
-              dimAbove={hideTrailingUnused ? 0 : trailingUnused > 0 ? maxUsed : 0}
               projectType={project.project_type}
               colorMode={colorMode}
               showWeftColor={showWeftColor}
@@ -1677,30 +1596,32 @@ export function ProjectDetailPage() {
           )}
         </div>}
 
-        {/* Pattern view — wider on large screens to show more warp threads */}
-        {showDrawdown && picksData && !isFinished && !isCompleted && !isAbandoned && (
-          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
-            <WeavingPatternView
-              draftId={project.draft_id}
-              currentPickIndex={currentPickIndex}
-              totalPicks={project.total_picks}
-              picks={picksData.picks}
-              maxActive={displayCount}
-              hideUnusedShaftsTreadles={hideUnusedShaftsTreadles}
-            />
-          </div>
-        )}
+        {/* Spacer — always consumes remaining height so step controls stay pinned to bottom */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {/* Pattern view — wider on large screens to show more warp threads */}
+          {showDrawdown && picksData && !isFinished && !isCompleted && !isAbandoned && (
+            <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+              <WeavingPatternView
+                projectId={project.id}
+                currentPickIndex={currentPickIndex}
+                totalPicks={project.total_picks}
+                picks={picksData.picks}
+                maxActive={displayCount}
+              />
+            </div>
+          )}
 
-        {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
-        {isAbandoned && (
-          <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
-            <AbandonedDrawdownView
-              draftId={project.draft_id}
-              currentPick={project.current_pick}
-              totalPicks={project.total_picks}
-            />
-          </div>
-        )}
+          {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
+          {isAbandoned && (
+            <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+              <AbandonedDrawdownView
+                draftId={project.draft_id}
+                currentPick={project.current_pick}
+                totalPicks={project.total_picks}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Step controls — active tracking and planning */}
         <div className="w-full px-4 pb-6">
@@ -1736,8 +1657,27 @@ export function ProjectDetailPage() {
           )}
         </div>
 
-        {/* Collapsible sections */}
-        <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0 border-t">
+      </div>
+
+      {/* Details & settings panel — toggle bar always visible; sections scroll when open */}
+      <div className="shrink-0 border-t bg-card">
+        <button
+          onClick={() => {
+            const next = !panelOpen;
+            setPanelOpen(next);
+            localStorage.setItem("proj-view:panelOpen", String(next));
+          }}
+          className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+          aria-expanded={panelOpen}
+        >
+          Details &amp; settings
+          <AppIcons.chevronDown
+            className={`h-4 w-4 transition-transform duration-200 ${panelOpen ? "" : "-rotate-90"}`}
+          />
+        </button>
+        {panelOpen && (
+          <div className="overflow-y-auto max-h-[55dvh] border-t border-border/50">
+            <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0">
           {!isCompleted && (
             <CollapsibleSection title={`Photos (${project.photos.length}/10)`} defaultOpen={isAbandoned}>
               <PhotoGrid
@@ -1963,7 +1903,9 @@ export function ProjectDetailPage() {
               </div>
             )}
           </CollapsibleSection>
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {showDesignPreview && (
@@ -2016,7 +1958,6 @@ export function ProjectDetailPage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Show / hide</p>
                 {([
                   { label: "Progress bar", value: showProgress, key: "proj-view:showProgress", setter: setShowProgress },
-                  { label: "Pick instruction", value: showPickDisplay, key: "proj-view:showPickDisplay", setter: setShowPickDisplay },
                   { label: "Drawdown pattern", value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
                   { label: "Weft color", value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
                 ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void }[]).map(({ label, value, key, setter }) => (
@@ -2058,31 +1999,6 @@ export function ProjectDetailPage() {
                   </div>
                 </div>
               )}
-
-              {/* Project rendering settings (persisted to server) */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Project settings</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm">Hide unused shafts/treadles</span>
-                    <p className="text-xs text-muted-foreground">Clip rendering to design's effective counts</p>
-                  </div>
-                  <button
-                    role="switch"
-                    aria-checked={hideUnusedShaftsTreadles}
-                    onClick={() => {
-                      const next = !hideUnusedShaftsTreadles;
-                      queryClient.setQueryData(["project", project.id], (old: typeof project | undefined) =>
-                        old ? { ...old, hide_unused_shafts_treadles: next } : old
-                      );
-                      updateProjectSettings(project.id, { hide_unused_shafts_treadles: next });
-                    }}
-                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${hideUnusedShaftsTreadles ? "bg-primary" : "bg-input"}`}
-                  >
-                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${hideUnusedShaftsTreadles ? "translate-x-4" : "translate-x-1"}`} />
-                  </button>
-                </div>
-              </div>
 
               {/* Color mode selector — always shown; strip/filled have no visible effect without weft colors */}
               <div className="space-y-2">

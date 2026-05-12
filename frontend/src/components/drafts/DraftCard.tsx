@@ -24,6 +24,7 @@ export function DraftCard({ draft, projectCounts }: Props) {
 
   return (
     <button
+      data-testid="draft-card"
       className="text-left w-full rounded-lg border bg-background p-4 shadow-sm hover:border-ring transition-colors"
       onClick={() => navigate(`/drafts/${draft.id}`)}
     >

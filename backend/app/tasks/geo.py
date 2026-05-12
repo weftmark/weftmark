@@ -8,11 +8,14 @@ import logging
 import os
 import tarfile
 import tempfile
+import time
 import urllib.request
 
 from app.celery_app import celery_app
 
 log = logging.getLogger(__name__)
+
+_MIN_AGE_SECONDS = 23 * 3600  # never download more than once per 23 h
 
 
 @celery_app.task(
@@ -30,6 +33,12 @@ def refresh_geoip_database(self) -> dict:
     if not license_key:
         log.info("MAXMIND_LICENSE_KEY not set — skipping GeoLite2 refresh")
         return {"skipped": True, "reason": "no_license_key"}
+
+    if os.path.exists(db_path):
+        age = time.time() - os.path.getmtime(db_path)
+        if age < _MIN_AGE_SECONDS:
+            log.info("GeoLite2-City database is %.1f h old — skipping download", age / 3600)
+            return {"skipped": True, "reason": "fresh", "age_hours": round(age / 3600, 1)}
 
     url = (
         "https://download.maxmind.com/app/geoip_download"

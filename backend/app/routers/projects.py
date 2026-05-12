@@ -20,7 +20,7 @@ from app.services import storage, wif_parser
 from app.services.images import resize_to_jpeg
 from app.services.storage_quota import check_storage_quota
 from app.tasks.preview import generate_drawdown_preview
-from app.tasks.tiles import prerender_drawdown_tiles
+from app.tasks.tiles import prerender_project_tiles
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 MAX_PROJECT_PHOTOS = 10
@@ -334,8 +334,8 @@ async def create_project(
     from app.config import get_settings
     from app.services.task_history import record_queued
 
-    tile_task = prerender_drawdown_tiles.delay(str(draft.id))
-    record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+    tile_task = prerender_project_tiles.delay(str(project.id))
+    record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_project_tiles", "preview")
     return _to_detail(project, draft, loom)
 
 
@@ -353,6 +353,119 @@ async def list_projects(
         q = q.where(Project.loom_id == loom_id)
     result = await db.scalars(q.order_by(Project.created_at.desc()))
     return [ProjectSummary.model_validate(p) for p in result.all()]
+
+
+@router.get("/{project_id}/drawdown")
+async def get_project_drawdown(
+    project_id: uuid.UUID,
+    start_row: int | None = Query(None, ge=0),
+    row_count: int | None = Query(None, ge=1),
+    start_col: int | None = Query(None, ge=0),
+    col_count: int | None = Query(None, ge=1),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    from app.config import get_settings
+    from app.services import rendering
+    from app.services.storage import afile_exists, aproject_tile_exists, aread_file, aread_project_tile
+
+    project = await _get_owned_project(project_id, current_user, db)
+
+    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    wif_path = await _wif_path_for_project(draft, project.project_type)
+    if not wif_path or not await afile_exists(wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not found in storage")
+
+    _settings = get_settings()
+    _sr = start_row or 0
+    _rc = row_count
+    tile_row_count = _settings.tile_row_count
+
+    warp_count = draft.warp_threads or 0
+    weft_count = draft.weft_threads or 0
+    if warp_count > 0:
+        expected_scale = min(_settings.render_max_width // warp_count, rendering.DRAWDOWN_SCALE)
+    else:
+        expected_scale = rendering.DRAWDOWN_SCALE
+
+    # Check pre-rendered project tile cache on standard row-boundary alignment.
+    # Only for full-width requests (start_col=None) — column-sliced requests must
+    # go through render_drawdown_tile so they return the correct pixel slice.
+    if (
+        start_col is None
+        and warp_count > 0
+        and _sr % tile_row_count == 0
+        and _rc == tile_row_count
+        and await aproject_tile_exists(project_id, expected_scale, _sr)
+    ):
+        cached_png = await aread_project_tile(project_id, expected_scale, _sr)
+        actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
+        return Response(
+            content=cached_png,
+            media_type="image/png",
+            headers={
+                "X-Pixels-Per-Row": str(expected_scale),
+                "X-Total-Rows": str(weft_count),
+                "X-Total-Cols": str(warp_count),
+                "X-Start-Row": str(_sr),
+                "X-Row-Count": str(actual_rc),
+                "Cache-Control": "public, max-age=31536000, immutable",
+            },
+        )
+
+    wif_bytes = await aread_file(wif_path)
+    _sc = start_col
+    _cc = col_count
+    try:
+        result = await asyncio.to_thread(
+            lambda: rendering.render_drawdown_tile(
+                rendering.load_draft(wif_bytes),
+                start_row=_sr,
+                row_count=_rc,
+                start_col=_sc,
+                col_count=_cc,
+            )
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
+
+    if len(result) == 7:
+        png, total_rows, actual_start, actual_row_count, actual_scale, actual_start_col, actual_col_count = result
+    else:
+        png, total_rows, actual_start, actual_row_count, actual_scale = result
+        actual_start_col = 0
+        actual_col_count = warp_count
+
+    # Trigger background tile pre-render on standard boundary miss only when t0 is absent.
+    # Only applies to full-width (non-column-sliced) requests.
+    if _sc is None and _sr % tile_row_count == 0 and _rc == tile_row_count:
+        if not await aproject_tile_exists(project_id, expected_scale, 0):
+            from app.services.task_history import record_queued
+
+            tile_task = prerender_project_tiles.apply_async(args=[str(project_id)])
+            record_queued(_settings, tile_task.id, "app.tasks.tiles.prerender_project_tiles", "preview")
+
+    extra_headers = (
+        {"X-Start-Col": str(actual_start_col), "X-Col-Count": str(actual_col_count)} if _sc is not None else {}
+    )
+    return Response(
+        content=png,
+        media_type="image/png",
+        headers={
+            "X-Pixels-Per-Row": str(actual_scale),
+            "X-Total-Rows": str(total_rows),
+            "X-Total-Cols": str(warp_count),
+            "X-Start-Row": str(actual_start),
+            "X-Row-Count": str(actual_row_count),
+            "Cache-Control": "no-store",
+            **extra_headers,
+        },
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectDetail)
