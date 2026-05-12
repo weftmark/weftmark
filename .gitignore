@@ -238,6 +238,15 @@ observability-local/
 test-wif-files/*
 !test-wif-files/.gitkeep
 
+# ------------------------------------------------------------
+# Playwright e2e tests
+# ------------------------------------------------------------
+e2e/.auth/
+e2e/.env
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+
 
 # ------------------------------------------------------------
 # Misc
