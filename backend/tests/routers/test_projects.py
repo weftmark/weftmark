@@ -1,6 +1,6 @@
 import io
 import uuid
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -1896,3 +1896,253 @@ class TestProjectDrawdown:
             f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4&start_col=-1&col_count=2"
         )
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# TestWeaveSessions
+# ---------------------------------------------------------------------------
+
+
+class TestWeaveSessions:
+    async def test_first_step_opens_session(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        from sqlalchemy import select
+
+        from app.models.project import WeaveSession
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        session = await db_session.scalar(select(WeaveSession).where(WeaveSession.project_id == project.id))
+        assert session is not None
+        assert session.ended_at is None
+
+    async def test_second_step_within_timeout_keeps_session(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from sqlalchemy import select
+
+        from app.models.project import ProjectStep, WeaveSession
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+
+        sessions = (await db_session.scalars(select(WeaveSession).where(WeaveSession.project_id == project.id))).all()
+        assert len(sessions) == 1
+        assert sessions[0].ended_at is None
+
+        # Second step should have a dwell_ms set
+        steps = (
+            await db_session.scalars(
+                select(ProjectStep).where(ProjectStep.project_id == project.id).order_by(ProjectStep.created_at)
+            )
+        ).all()
+        assert steps[0].dwell_ms is None  # first step has no previous
+        assert steps[1].dwell_ms is not None
+
+    async def test_step_after_idle_timeout_closes_old_and_opens_new_session(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from sqlalchemy import select
+
+        from app.models.project import ProjectStep, WeaveSession
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+
+        # Insert a step with a timestamp older than the idle timeout (30 min default)
+        old_step = ProjectStep(
+            project_id=project.id,
+            event_type="advance",
+            from_pick=1,
+            to_pick=2,
+            created_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        )
+        db_session.add(old_step)
+        project.current_pick = 2
+        # Manually insert an open session
+        old_session = WeaveSession(
+            project_id=project.id,
+            started_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        )
+        db_session.add(old_session)
+        await db_session.commit()
+
+        # Trigger a new step — gap is > 30 min, so should close old session and open new
+        resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        assert resp.status_code == 200
+
+        await db_session.refresh(old_session)
+        assert old_session.ended_at is not None
+
+        sessions = (await db_session.scalars(select(WeaveSession).where(WeaveSession.project_id == project.id))).all()
+        assert len(sessions) == 2
+        open_sessions = [s for s in sessions if s.ended_at is None]
+        assert len(open_sessions) == 1
+
+    async def test_dwell_ms_capped_at_idle_timeout(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from sqlalchemy import select
+
+        from app.models.project import ProjectStep, WeaveSession
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+
+        old_step = ProjectStep(
+            project_id=project.id,
+            event_type="advance",
+            from_pick=1,
+            to_pick=2,
+            created_at=datetime.now(timezone.utc) - timedelta(hours=2),
+        )
+        db_session.add(old_step)
+        project.current_pick = 2
+        db_session.add(
+            WeaveSession(
+                project_id=project.id,
+                started_at=datetime.now(timezone.utc) - timedelta(hours=2),
+            )
+        )
+        await db_session.commit()
+
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+
+        new_step = await db_session.scalar(
+            select(ProjectStep)
+            .where(ProjectStep.project_id == project.id)
+            .order_by(ProjectStep.created_at.desc())
+            .limit(1)
+        )
+        assert new_step is not None
+        idle_timeout_ms = test_user.idle_timeout_minutes * 60 * 1_000
+        assert new_step.dwell_ms == idle_timeout_ms
+
+    async def test_complete_closes_open_session(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+
+        from app.models.project import WeaveSession
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+
+        open_session = WeaveSession(project_id=project.id, started_at=datetime.now(timezone.utc))
+        db_session.add(open_session)
+        await db_session.commit()
+
+        resp = await auth_client.post(f"/api/projects/{project.id}/complete")
+        assert resp.status_code == 200
+
+        await db_session.refresh(open_session)
+        assert open_session.ended_at is not None
+
+    async def test_abandon_closes_open_session(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+
+        from app.models.project import WeaveSession
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+
+        open_session = WeaveSession(project_id=project.id, started_at=datetime.now(timezone.utc))
+        db_session.add(open_session)
+        await db_session.commit()
+
+        resp = await auth_client.post(f"/api/projects/{project.id}/abandon")
+        assert resp.status_code == 200
+
+        await db_session.refresh(open_session)
+        assert open_session.ended_at is not None
+
+
+# ---------------------------------------------------------------------------
+# TestProjectMetrics
+# ---------------------------------------------------------------------------
+
+
+class TestProjectMetrics:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.get(f"/api/projects/{project.id}/metrics")
+        assert resp.status_code == 200
+
+    async def test_empty_metrics_for_new_project(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
+        assert body["total_sessions"] == 0
+        assert body["total_advance_steps"] == 0
+        assert body["total_worked_picks"] == 0
+
+    async def test_counts_advance_and_reverse_steps(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "reverse"})
+        body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
+        assert body["total_advance_steps"] == 2
+        assert body["total_reverse_steps"] == 1
+
+    async def test_worked_picks_excludes_fast_steps(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+
+        from app.models.project import ProjectStep
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+
+        # Insert two steps: first with dwell > threshold, second with dwell < threshold
+        step1 = ProjectStep(
+            project_id=project.id,
+            event_type="advance",
+            from_pick=1,
+            to_pick=2,
+            dwell_ms=5_000,  # 5s — worked
+        )
+        step2 = ProjectStep(
+            project_id=project.id,
+            event_type="advance",
+            from_pick=2,
+            to_pick=3,
+            dwell_ms=500,  # 0.5s — navigation
+        )
+        db_session.add_all([step1, step2])
+        await db_session.commit()
+
+        body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
+        assert body["total_worked_picks"] == 1
+
+    async def test_current_session_started_at_set_when_open(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from app.models.project import WeaveSession
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        db_session.add(WeaveSession(project_id=project.id, started_at=datetime.now(timezone.utc)))
+        await db_session.commit()
+
+        body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
+        assert body["current_session_started_at"] is not None
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/metrics")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.get(f"/api/projects/{project.id}/metrics")
+        assert resp.status_code == 401

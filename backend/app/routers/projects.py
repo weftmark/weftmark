@@ -14,7 +14,7 @@ from sqlalchemy.orm import selectinload
 from app.deps import get_current_user, get_db
 from app.models.draft import Draft
 from app.models.loom import PROJECT_SUPPORTED_LOOM_TYPES, Loom, LoomVersion
-from app.models.project import Project, ProjectPhoto, ProjectStep
+from app.models.project import Project, ProjectPhoto, ProjectStep, WeaveSession
 from app.models.user import User
 from app.services import storage, wif_parser
 from app.services.images import resize_to_jpeg
@@ -133,9 +133,37 @@ class PicksResponse(BaseModel):
     has_weft_colors: bool
 
 
+class SessionInfo(BaseModel):
+    id: uuid.UUID
+    started_at: datetime
+    ended_at: datetime | None
+    duration_ms: int
+
+
+class ProjectMetricsResponse(BaseModel):
+    total_sessions: int
+    total_session_time_ms: int
+    current_session_started_at: datetime | None
+    total_advance_steps: int
+    total_reverse_steps: int
+    total_worked_picks: int
+    sessions: list[SessionInfo]
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+_WORKED_PICK_THRESHOLD_MS = 3_000  # < 3 s gap = navigation/review, not a woven pick
+
+
+async def _close_open_session(project_id: uuid.UUID, db: AsyncSession) -> None:
+    open_session = await db.scalar(
+        select(WeaveSession).where(WeaveSession.project_id == project_id, WeaveSession.ended_at.is_(None))
+    )
+    if open_session is not None:
+        open_session.ended_at = datetime.now(timezone.utc)
 
 
 async def _check_loom_conflict(
@@ -595,15 +623,47 @@ async def step_project(
             raise HTTPException(status_code=400, detail="Already at first pick")
         project.current_pick -= 1
 
+    # Compute dwell and manage session gap-on-arrival
+    now = datetime.now(timezone.utc)
+    idle_timeout_ms = current_user.idle_timeout_minutes * 60 * 1_000
+
+    last_step = await db.scalar(
+        select(ProjectStep).where(ProjectStep.project_id == project_id).order_by(ProjectStep.created_at.desc()).limit(1)
+    )
+
+    dwell_ms: int | None = None
+    gap_ms: int | None = None
+    if last_step is not None:
+        last_dt = last_step.created_at
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        gap_ms = int((now - last_dt).total_seconds() * 1_000)
+        dwell_ms = min(gap_ms, idle_timeout_ms)
+
+    open_session = await db.scalar(
+        select(WeaveSession).where(WeaveSession.project_id == project_id, WeaveSession.ended_at.is_(None))
+    )
+
+    is_gap_too_long = gap_ms is not None and gap_ms >= idle_timeout_ms
+    if is_gap_too_long and open_session is not None:
+        close_dt = last_step.created_at  # type: ignore[union-attr]
+        if close_dt.tzinfo is None:
+            close_dt = close_dt.replace(tzinfo=timezone.utc)
+        open_session.ended_at = close_dt
+        open_session = None
+
+    if open_session is None:
+        db.add(WeaveSession(project_id=project_id, started_at=now))
+
     step = ProjectStep(
         project_id=project.id,
         event_type=body.direction,
         from_pick=from_pick,
         to_pick=project.current_pick,
+        dwell_ms=dwell_ms,
     )
     db.add(step)
     await db.commit()
-    # current_pick is already updated in-memory; no need to re-fetch draft/loom
     return StepResponse(current_pick=project.current_pick, total_picks=project.total_picks)
 
 
@@ -636,6 +696,7 @@ async def complete_project(
         raise HTTPException(status_code=400, detail="Project is not active")
     project.status = "completed"
     project.completed_at = datetime.now(timezone.utc)
+    await _close_open_session(project_id, db)
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
@@ -654,6 +715,7 @@ async def abandon_project(
         raise HTTPException(status_code=400, detail="Project is not active")
     project.status = "abandoned"
     project.abandoned_at = datetime.now(timezone.utc)
+    await _close_open_session(project_id, db)
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
@@ -680,6 +742,52 @@ async def restart_project(
     if draft is not None and draft.drawdown_preview_path is None:
         generate_drawdown_preview.delay(str(draft.id))
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+
+
+@router.get("/{project_id}/metrics", response_model=ProjectMetricsResponse)
+async def get_project_metrics(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectMetricsResponse:
+    await _get_owned_project(project_id, current_user, db)
+
+    now = datetime.now(timezone.utc)
+
+    sessions = (
+        await db.scalars(
+            select(WeaveSession).where(WeaveSession.project_id == project_id).order_by(WeaveSession.started_at)
+        )
+    ).all()
+
+    steps = (await db.scalars(select(ProjectStep).where(ProjectStep.project_id == project_id))).all()
+
+    total_advance = sum(1 for s in steps if s.event_type == "advance")
+    total_reverse = sum(1 for s in steps if s.event_type == "reverse")
+    total_worked = sum(1 for s in steps if s.dwell_ms is not None and s.dwell_ms >= _WORKED_PICK_THRESHOLD_MS)
+
+    total_session_ms = 0
+    session_infos: list[SessionInfo] = []
+    current_session_started_at: datetime | None = None
+    for sess in sessions:
+        end = sess.ended_at or now
+        duration_ms = int((end - sess.started_at).total_seconds() * 1_000)
+        total_session_ms += duration_ms
+        session_infos.append(
+            SessionInfo(id=sess.id, started_at=sess.started_at, ended_at=sess.ended_at, duration_ms=duration_ms)
+        )
+        if sess.ended_at is None:
+            current_session_started_at = sess.started_at
+
+    return ProjectMetricsResponse(
+        total_sessions=len(sessions),
+        total_session_time_ms=total_session_ms,
+        current_session_started_at=current_session_started_at,
+        total_advance_steps=total_advance,
+        total_reverse_steps=total_reverse,
+        total_worked_picks=total_worked,
+        sessions=session_infos,
+    )
 
 
 @router.post("/{project_id}/clone", response_model=ProjectDetail, status_code=201)

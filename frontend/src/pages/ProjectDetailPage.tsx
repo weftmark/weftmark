@@ -5,11 +5,11 @@ import { AppIcons } from "@/lib/icons";
 import { usePresentMode } from "@/hooks/usePresentMode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getProject, getProjectPicks, stepProject, jumpProject, completeProject, abandonProject,
+  getProject, getProjectPicks, getProjectMetrics, stepProject, jumpProject, completeProject, abandonProject,
   restartProject, cloneProject, listProjects, deleteProject,
   renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
-  type ProjectSummary, type ProjectPhoto, type PickRow,
+  type ProjectSummary, type ProjectPhoto, type PickRow, type ProjectMetrics,
 } from "@/api/projects";
 import { previewUrl } from "@/api/drafts";
 import { getAuthToken } from "@/api/client";
@@ -57,6 +57,53 @@ function CollapsibleSection({
       </button>
       {open && <div className="pb-5">{children}</div>}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Metrics helpers
+// ---------------------------------------------------------------------------
+
+function fmtDuration(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return `${totalSec}s`;
+}
+
+function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!metrics.current_session_started_at) return;
+    const tick = () =>
+      setElapsed(Date.now() - new Date(metrics.current_session_started_at!).getTime());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [metrics.current_session_started_at]);
+
+  return (
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+      <dt className="text-muted-foreground">Total woven picks</dt>
+      <dd>{metrics.total_worked_picks}</dd>
+      <dt className="text-muted-foreground">Total advances</dt>
+      <dd>{metrics.total_advance_steps}</dd>
+      <dt className="text-muted-foreground">Reverses</dt>
+      <dd>{metrics.total_reverse_steps}</dd>
+      <dt className="text-muted-foreground">Sessions</dt>
+      <dd>{metrics.total_sessions}</dd>
+      <dt className="text-muted-foreground">Total weaving time</dt>
+      <dd>{fmtDuration(metrics.total_session_time_ms)}</dd>
+      {metrics.current_session_started_at && (
+        <>
+          <dt className="text-muted-foreground">Current session</dt>
+          <dd className="text-accent font-medium">{fmtDuration(elapsed)}</dd>
+        </>
+      )}
+    </dl>
   );
 }
 
@@ -1192,6 +1239,13 @@ export function ProjectDetailPage() {
     enabled: isCompleted && !!project?.draft_id,
   });
 
+  const { data: metrics } = useQuery<ProjectMetrics>({
+    queryKey: ["project-metrics", id],
+    queryFn: () => getProjectMetrics(id!),
+    enabled: !!id && !!project && !isPlanning,
+    refetchInterval: project?.status === "active" && !!project?.loom_id ? 30_000 : false,
+  });
+
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["project", id] });
 
   const handleJump = useCallback(async (pick: number) => {
@@ -1694,6 +1748,12 @@ export function ProjectDetailPage() {
                   )
                 }
               />
+            </CollapsibleSection>
+          )}
+
+          {metrics && (
+            <CollapsibleSection title="Session metrics">
+              <SessionMetricsPanel metrics={metrics} />
             </CollapsibleSection>
           )}
 
