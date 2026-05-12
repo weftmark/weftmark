@@ -1,9 +1,4 @@
-"""
-WIF rendering service using PyWeaving.
-
-PyWeaving 0.0.7 calls draw.textsize() which was removed in Pillow 10.
-We restore it before importing the renderer so PyWeaving works unmodified.
-"""
+"""WIF rendering service backed by the vendored app.weaving engine."""
 
 from __future__ import annotations
 
@@ -12,38 +7,13 @@ import os
 import tempfile
 
 from fastapi import HTTPException
+from opentelemetry import trace
 from PIL import Image as PILImage
-from PIL import ImageDraw as _ImageDraw
 
-# Pillow ≥10 removed ImageDraw.textsize — patch it back for PyWeaving compatibility
-if not hasattr(_ImageDraw.ImageDraw, "textsize"):
-
-    def _textsize(self, text: str, font=None, *args, **kwargs):  # type: ignore[override]
-        bbox = self.textbbox((0, 0), text, font=font)
-        return bbox[2] - bbox[0], bbox[3] - bbox[1]
-
-    _ImageDraw.ImageDraw.textsize = _textsize  # type: ignore[attr-defined]
-
-from pyweaving import Draft  # noqa: E402
-from pyweaving.render import ImageRenderer  # noqa: E402
-from pyweaving.wif import WIFReader  # noqa: E402
-
-
-# PyWeaving's paint_fill_marker insets by 2px on each side; at scale < 4 this
-# produces endx - 2 < startx + 2, causing Pillow to raise "x1 must be >= x0".
-# Patch it to skip drawing when the cell is too small to fit the inset.
-def _paint_fill_marker(self, draw, box):  # type: ignore[override]
-    startx, starty, endx, endy = box
-    x0, y0, x1, y1 = startx + 2, starty + 2, endx - 2, endy - 2
-    if x0 < x1 and y0 < y1:
-        draw.rectangle((x0, y0, x1, y1), fill=self.markers)
-
-
-ImageRenderer.paint_fill_marker = _paint_fill_marker  # type: ignore[method-assign]
-
-from opentelemetry import trace  # noqa: E402
-
-from app.config import get_settings  # noqa: E402
+from app.config import get_settings
+from app.weaving import Draft
+from app.weaving._render import ImageRenderer
+from app.weaving._wif import WIFReader
 
 tracer = trace.get_tracer(__name__)
 

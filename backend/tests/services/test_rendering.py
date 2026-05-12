@@ -1,9 +1,9 @@
 """
 Tests for app.services.rendering.
 
-PyWeaving requires a real filesystem file, so load_draft uses a temp file
-internally.  These tests verify the Pillow compat patch, basic parse
-correctness, and that render output is valid PNG bytes.
+WIFReader requires a real filesystem file, so load_draft uses a temp file
+internally.  These tests verify basic parse correctness and that render
+output is valid PNG bytes.
 
 A full PyWeaving-compatible WIF requires: [WIF] with Date, [CONTENTS],
 [WEAVING] with Rising Shed, [WARP]/[WEFT] with Threads+Units+Color,
@@ -155,21 +155,16 @@ Form=Decimal
 
 
 # ---------------------------------------------------------------------------
-# Pillow compatibility patch
+# Pillow API compatibility
 # ---------------------------------------------------------------------------
 
 
-class TestPillowPatch:
-    def test_textsize_attribute_exists(self):
-        """The Pillow >=10 compat patch must have added textsize back."""
+class TestPillowCompat:
+    def test_textbbox_available(self):
+        """The vendored renderer uses textbbox (Pillow ≥8); verify it exists."""
         from PIL.ImageDraw import ImageDraw
 
-        assert hasattr(ImageDraw, "textsize"), "Pillow compat patch missing — PyWeaving will fail to render"
-
-    def test_textsize_callable(self):
-        from PIL.ImageDraw import ImageDraw
-
-        assert callable(getattr(ImageDraw, "textsize"))
+        assert hasattr(ImageDraw, "textbbox"), "Pillow textbbox missing — upgrade Pillow"
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +174,7 @@ class TestPillowPatch:
 
 class TestLoadDraft:
     def test_returns_draft_object(self):
-        from pyweaving import Draft
+        from app.weaving import Draft
 
         draft = load_draft(MINIMAL_WIF)
         assert isinstance(draft, Draft)

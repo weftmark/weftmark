@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock
 
 import psycopg2
 import pytest
-import pyweaving.render as _pwr
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -21,13 +20,14 @@ from sqlalchemy.pool import NullPool
 SEEDED_EULA_VERSION = "0.9"
 
 # ---------------------------------------------------------------------------
-# Font patch — must run at import time (rendering tests require it)
+# Font — ensure app/weaving/data/Arial.ttf exists for render tests
 # ---------------------------------------------------------------------------
 
 
-def _patch_pyweaving_font() -> None:
-    data_dir = Path(os.path.dirname(_pwr.__file__)) / "data"
-    target = data_dir / "Arial.ttf"
+def _ensure_weaving_font() -> None:
+    from app.weaving._render import _DATA_DIR
+
+    target = _DATA_DIR / "Arial.ttf"
     if target.exists():
         return
     candidates = [
@@ -38,13 +38,13 @@ def _patch_pyweaving_font() -> None:
     ]
     for src in candidates:
         if src.exists():
-            data_dir.mkdir(parents=True, exist_ok=True)
+            _DATA_DIR.mkdir(parents=True, exist_ok=True)
             shutil.copy(src, target)
             return
-    pytest.skip("No suitable system font found to patch PyWeaving — skipping render tests")
+    pytest.skip("No suitable system font found for render tests")
 
 
-_patch_pyweaving_font()
+_ensure_weaving_font()
 
 # Prevent the production secret-key guard from firing in tests.
 os.environ.setdefault("APP_SECRET_KEY", "test-only-insecure-key-not-for-production")
