@@ -221,6 +221,15 @@ function WeavingPatternView({
   const containerH = useAdaptivePatternHeight();
   const [pixelsPerRow, setPixelsPerRow] = useState(20);
   const [warpCount, setWarpCount] = useState(0);
+  // warpCountRef: ref mirror of warpCount so the fetch effect can read it without
+  // adding warpCount to deps (which would re-run the effect and cancel in-flight fetches
+  // each time a tile response sets the warp count for the first time).
+  const warpCountRef = useRef(0);
+  // neededRef: always holds the most-recent needed tile key set.  fetchTile checks this
+  // after awaiting the blob to decide whether to store the tile — cheaper and more precise
+  // than the `cancelled` flag, which fires on any dep change regardless of whether the
+  // tile key is still wanted.
+  const neededRef = useRef<Set<string>>(new Set());
   // tilesRef: synchronous mirror used in effects for deduplication and eviction.
   // Key: `${startRow}_${startCol}`. tiles state: snapshot for render.
   const tilesRef = useRef<Record<string, string>>({});
@@ -257,9 +266,10 @@ function WeavingPatternView({
     // --- Column range ---
     // Always column-tile: for narrow drafts only col 0 exists; for wide drafts
     // fetch visible column + 1 lookahead on the right.
+    // Use warpCountRef (not warpCount state) so this runs without warpCount as a dep.
     const neededCols: number[] = [scrollColStart];
     const nextCol = scrollColStart + TILE_COL_COUNT;
-    if (warpCount === 0 || nextCol < warpCount) neededCols.push(nextCol);
+    if (warpCountRef.current === 0 || nextCol < warpCountRef.current) neededCols.push(nextCol);
 
     // All needed (row, col) pairs as `${row}_${col}` keys.
     const needed = new Set<string>();
@@ -268,6 +278,8 @@ function WeavingPatternView({
         needed.add(`${r}_${c}`);
       }
     }
+    // Keep neededRef current so in-flight fetchTile calls can check it after awaiting blob.
+    neededRef.current = needed;
 
     // Evict tiles and errors outside the needed set; abort in-flight fetches.
     let errorsChanged = false;
@@ -318,15 +330,19 @@ function WeavingPatternView({
         }
         const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
         const wc = parseInt(res.headers.get("X-Total-Cols") ?? "0", 10);
-        // Await blob BEFORE any state setters — calling setWarpCount/setPixelsPerRow
-        // here would trigger an effect cleanup (cancelled=true) before the blob resolves,
-        // causing the tile to be silently discarded.
         const blob = await res.blob();
-        if (cancelled) return;
+        // Use neededRef rather than `cancelled`: any dep change updates neededRef so we
+        // only discard tiles that genuinely fell out of the needed window.  The `cancelled`
+        // flag is too broad — it fires on every dep change (including TanStack Query
+        // re-renders) and would discard tiles that are still wanted.
+        if (!neededRef.current.has(key)) return;
         tilesRef.current[key] = URL.createObjectURL(blob);
         setTiles({ ...tilesRef.current });
         setPixelsPerRow(ppr);
-        if (wc > 0) setWarpCount(wc);
+        if (wc > 0 && wc !== warpCountRef.current) {
+          warpCountRef.current = wc;
+          setWarpCount(wc);
+        }
       } catch (err) {
         clearTimeout(timeoutId);
         if (!cancelled) {
@@ -350,7 +366,7 @@ function WeavingPatternView({
     }
 
     return () => { cancelled = true; };
-  }, [projectId, currentPickIndex, totalPicks, scrollColStart, warpCount, retryCount]);
+  }, [projectId, currentPickIndex, totalPicks, scrollColStart, retryCount]);
 
   // Revoke all object URLs on unmount.
   useEffect(() => {
