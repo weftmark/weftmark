@@ -391,9 +391,12 @@ async def get_project_drawdown(
     else:
         expected_scale = rendering.DRAWDOWN_SCALE
 
-    # Check pre-rendered project tile cache on standard row-boundary alignment
+    # Check pre-rendered project tile cache on standard row-boundary alignment.
+    # Only for full-width requests (start_col=None) — column-sliced requests must
+    # go through render_drawdown_tile so they return the correct pixel slice.
     if (
-        warp_count > 0
+        start_col is None
+        and warp_count > 0
         and _sr % tile_row_count == 0
         and _rc == tile_row_count
         and await aproject_tile_exists(project_id, expected_scale, _sr)
