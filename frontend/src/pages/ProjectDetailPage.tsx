@@ -318,14 +318,15 @@ function WeavingPatternView({
         }
         const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
         const wc = parseInt(res.headers.get("X-Total-Cols") ?? "0", 10);
-        if (!cancelled) {
-          setPixelsPerRow(ppr);
-          if (wc > 0) setWarpCount(wc);
-        }
+        // Await blob BEFORE any state setters — calling setWarpCount/setPixelsPerRow
+        // here would trigger an effect cleanup (cancelled=true) before the blob resolves,
+        // causing the tile to be silently discarded.
         const blob = await res.blob();
         if (cancelled) return;
         tilesRef.current[key] = URL.createObjectURL(blob);
         setTiles({ ...tilesRef.current });
+        setPixelsPerRow(ppr);
+        if (wc > 0) setWarpCount(wc);
       } catch (err) {
         clearTimeout(timeoutId);
         if (!cancelled) {
