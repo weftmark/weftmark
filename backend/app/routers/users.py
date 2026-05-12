@@ -11,11 +11,12 @@ Routes:
 
 import logging
 import uuid
+from datetime import date as date_cls
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import Date, and_, cast, delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
@@ -133,6 +134,24 @@ async def get_current_eula(db: AsyncSession = Depends(get_db)) -> EulaCurrentRes
 
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+
+class HeatmapProjectEntry(BaseModel):
+    id: str
+    name: str
+    step_count: int
+
+
+class ActivityDayResponse(BaseModel):
+    date: str
+    count: int
+    projects: list[HeatmapProjectEntry]
+
+
+class ActivityHeatmapResponse(BaseModel):
+    days: list[ActivityDayResponse]
+    earliest_activity_date: str | None
+    years_with_activity: list[int]
 
 
 @router.get("/me", response_model=UserSettingsResponse)
@@ -261,6 +280,74 @@ async def data_export(_: User = Depends(get_current_user)) -> dict:
             "It will package your WIF files, photos, and project history into a downloadable archive."
         ),
     }
+
+
+@router.get("/me/activity-heatmap", response_model=ActivityHeatmapResponse)
+async def get_activity_heatmap(
+    year: int | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ActivityHeatmapResponse:
+    from collections import defaultdict
+
+    day_col = cast(func.timezone("UTC", ProjectStep.created_at), Date)
+    base_filter = and_(
+        Project.owner_id == current_user.id,
+        Project.deleted_at.is_(None),
+    )
+
+    if year is not None:
+        date_filter = and_(day_col >= date_cls(year, 1, 1), day_col <= date_cls(year, 12, 31))
+    else:
+        date_filter = ProjectStep.created_at >= func.now() - text("interval '366 days'")
+
+    rows = (
+        await db.execute(
+            select(
+                day_col.label("day"),
+                Project.id.label("project_id"),
+                Project.name.label("project_name"),
+                func.count().label("step_count"),
+            )
+            .join(Project, ProjectStep.project_id == Project.id)
+            .where(base_filter, date_filter)
+            .group_by(text("1"), Project.id, Project.name)
+            .order_by(text("1"), func.count().desc())
+        )
+    ).all()
+
+    days_map: dict[str, list[HeatmapProjectEntry]] = defaultdict(list)
+    for row in rows:
+        days_map[str(row.day)].append(
+            HeatmapProjectEntry(id=str(row.project_id), name=row.project_name, step_count=row.step_count)
+        )
+
+    earliest = await db.scalar(
+        select(func.min(day_col)).join(Project, ProjectStep.project_id == Project.id).where(base_filter)
+    )
+
+    years_rows = (
+        await db.execute(
+            select(func.extract("year", day_col).label("yr"))
+            .join(Project, ProjectStep.project_id == Project.id)
+            .where(base_filter)
+            .distinct()
+            .order_by(text("1"))
+        )
+    ).all()
+
+    return ActivityHeatmapResponse(
+        days=[
+            ActivityDayResponse(
+                date=date_str,
+                count=sum(p.step_count for p in projects),
+                projects=projects,
+            )
+            for date_str, projects in sorted(days_map.items())
+        ],
+        earliest_activity_date=str(earliest) if earliest else None,
+        years_with_activity=[int(r.yr) for r in years_rows],
+    )
 
 
 # ---------------------------------------------------------------------------
