@@ -72,14 +72,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/helper-module-transforms",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/helper-module-transforms/LICENSE"
   },
-  "@babel/helper-plugin-utils@7.28.6": {
-    "licenses": "MIT",
-    "repository": "https://github.com/babel/babel",
-    "publisher": "The Babel Team",
-    "url": "https://babel.dev/team",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/helper-plugin-utils",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/helper-plugin-utils/LICENSE"
-  },
   "@babel/helper-string-parser@7.27.1": {
     "licenses": "MIT",
     "repository": "https://github.com/babel/babel",
@@ -120,22 +112,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/parser/LICENSE"
   },
-  "@babel/plugin-transform-react-jsx-self@7.27.1": {
-    "licenses": "MIT",
-    "repository": "https://github.com/babel/babel",
-    "publisher": "The Babel Team",
-    "url": "https://babel.dev/team",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/plugin-transform-react-jsx-self",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/plugin-transform-react-jsx-self/LICENSE"
-  },
-  "@babel/plugin-transform-react-jsx-source@7.27.1": {
-    "licenses": "MIT",
-    "repository": "https://github.com/babel/babel",
-    "publisher": "The Babel Team",
-    "url": "https://babel.dev/team",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/plugin-transform-react-jsx-source",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/plugin-transform-react-jsx-source/LICENSE"
-  },
   "@babel/template@7.28.6": {
     "licenses": "MIT",
     "repository": "https://github.com/babel/babel",
@@ -173,12 +149,6 @@
     "publisher": "Clerk",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared/LICENSE"
-  },
-  "@esbuild/linux-x64@0.25.12": {
-    "licenses": "MIT",
-    "repository": "https://github.com/evanw/esbuild",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@esbuild/linux-x64",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@esbuild/linux-x64/README.md"
   },
   "@eslint-community/eslint-utils@4.9.1": {
     "licenses": "MIT",
@@ -321,6 +291,13 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@nodelib/fs.walk",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@nodelib/fs.walk/LICENSE"
   },
+  "@oxc-project/types@0.129.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/oxc-project/oxc",
+    "publisher": "Boshen and oxc contributors",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@oxc-project/types",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@oxc-project/types/LICENSE"
+  },
   "@remix-run/router@1.23.2": {
     "licenses": "MIT",
     "repository": "https://github.com/remix-run/react-router",
@@ -329,25 +306,29 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@remix-run/router",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@remix-run/router/LICENSE.md"
   },
-  "@rolldown/pluginutils@1.0.0-beta.27": {
+  "@rolldown/binding-linux-x64-gnu@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/rolldown/rolldown",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/binding-linux-x64-gnu",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/binding-linux-x64-gnu/README.md"
+  },
+  "@rolldown/binding-linux-x64-musl@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/rolldown/rolldown",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/binding-linux-x64-musl",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/binding-linux-x64-musl/README.md"
+  },
+  "@rolldown/pluginutils@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/rolldown/rolldown",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/rolldown/node_modules/@rolldown/pluginutils",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/rolldown/node_modules/@rolldown/pluginutils/LICENSE"
+  },
+  "@rolldown/pluginutils@1.0.0-rc.7": {
     "licenses": "MIT",
     "repository": "https://github.com/rolldown/rolldown",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/pluginutils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/pluginutils/LICENSE"
-  },
-  "@rollup/rollup-linux-x64-gnu@4.60.2": {
-    "licenses": "MIT",
-    "repository": "https://github.com/rollup/rollup",
-    "publisher": "Lukas Taegert-Atkinson",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rollup/rollup-linux-x64-gnu",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rollup/rollup-linux-x64-gnu/README.md"
-  },
-  "@rollup/rollup-linux-x64-musl@4.60.2": {
-    "licenses": "MIT",
-    "repository": "https://github.com/rollup/rollup",
-    "publisher": "Lukas Taegert-Atkinson",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rollup/rollup-linux-x64-musl",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rollup/rollup-linux-x64-musl/README.md"
   },
   "@tanstack/query-core@5.100.9": {
     "licenses": "MIT",
@@ -362,30 +343,6 @@
     "publisher": "tannerlinsley",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/react-query",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/react-query/LICENSE"
-  },
-  "@types/babel__core@7.20.5": {
-    "licenses": "MIT",
-    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/babel__core",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/babel__core/LICENSE"
-  },
-  "@types/babel__generator@7.27.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/babel__generator",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/babel__generator/LICENSE"
-  },
-  "@types/babel__template@7.4.4": {
-    "licenses": "MIT",
-    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/babel__template",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/babel__template/LICENSE"
-  },
-  "@types/babel__traverse@7.28.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/babel__traverse",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/babel__traverse/LICENSE"
   },
   "@types/esrecurse@4.3.1": {
     "licenses": "MIT",
@@ -489,7 +446,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys/LICENSE"
   },
-  "@vitejs/plugin-react@4.7.0": {
+  "@vitejs/plugin-react@6.0.1": {
     "licenses": "MIT",
     "repository": "https://github.com/vitejs/vite-plugin-react",
     "publisher": "Evan You",
@@ -707,6 +664,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/dequal",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/dequal/license"
   },
+  "detect-libc@2.1.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/lovell/detect-libc",
+    "publisher": "Lovell Fuller",
+    "email": "npm@lovell.info",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/detect-libc",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/detect-libc/LICENSE"
+  },
   "didyoumean@1.2.2": {
     "licenses": "Apache-2.0",
     "repository": "https://github.com/dcporter/didyoumean.js",
@@ -739,12 +704,6 @@
     "email": "ljharb@gmail.com",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/es-errors",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/es-errors/LICENSE"
-  },
-  "esbuild@0.25.12": {
-    "licenses": "MIT",
-    "repository": "https://github.com/evanw/esbuild",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/esbuild",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/esbuild/LICENSE.md"
   },
   "escalade@3.2.0": {
     "licenses": "MIT",
@@ -1145,6 +1104,24 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/levn",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/levn/LICENSE"
   },
+  "lightningcss-linux-x64-gnu@1.32.0": {
+    "licenses": "MPL-2.0",
+    "repository": "https://github.com/parcel-bundler/lightningcss",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lightningcss-linux-x64-gnu",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lightningcss-linux-x64-gnu/LICENSE"
+  },
+  "lightningcss-linux-x64-musl@1.32.0": {
+    "licenses": "MPL-2.0",
+    "repository": "https://github.com/parcel-bundler/lightningcss",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lightningcss-linux-x64-musl",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lightningcss-linux-x64-musl/LICENSE"
+  },
+  "lightningcss@1.32.0": {
+    "licenses": "MPL-2.0",
+    "repository": "https://github.com/parcel-bundler/lightningcss",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lightningcss",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lightningcss/LICENSE"
+  },
   "lilconfig@3.1.3": {
     "licenses": "MIT",
     "repository": "https://github.com/antonk52/lilconfig",
@@ -1456,12 +1433,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom/LICENSE"
   },
-  "react-refresh@0.17.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/facebook/react",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-refresh",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-refresh/LICENSE"
-  },
   "react-router-dom@6.30.3": {
     "licenses": "MIT",
     "repository": "https://github.com/remix-run/react-router",
@@ -1518,12 +1489,11 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/reusify",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/reusify/LICENSE"
   },
-  "rollup@4.60.2": {
+  "rolldown@1.0.0": {
     "licenses": "MIT",
-    "repository": "https://github.com/rollup/rollup",
-    "publisher": "Rich Harris",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/rollup",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/rollup/LICENSE.md"
+    "repository": "https://github.com/rolldown/rolldown",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/rolldown",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/rolldown/LICENSE"
   },
   "run-parallel@1.2.0": {
     "licenses": "MIT",
@@ -1684,7 +1654,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/type-check",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/type-check/LICENSE"
   },
-  "typescript@5.9.3": {
+  "typescript@6.0.3": {
     "licenses": "Apache-2.0",
     "repository": "https://github.com/microsoft/TypeScript",
     "publisher": "Microsoft Corp.",
@@ -1728,14 +1698,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/util-deprecate",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/util-deprecate/LICENSE"
   },
-  "vite@6.4.2": {
+  "vite@8.0.12": {
     "licenses": "MIT",
     "repository": "https://github.com/vitejs/vite",
     "publisher": "Evan You",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.96.1": {
+  "weaving-site@0.134.1": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend"
