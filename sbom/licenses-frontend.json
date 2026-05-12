@@ -362,7 +362,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/json-schema",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/json-schema/LICENSE"
   },
-  "@types/node@20.19.39": {
+  "@types/node@24.12.4": {
     "licenses": "MIT",
     "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/node",
@@ -1661,7 +1661,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/typescript",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/typescript/LICENSE.txt"
   },
-  "undici-types@6.21.0": {
+  "undici-types@7.16.0": {
     "licenses": "MIT",
     "repository": "https://github.com/nodejs/undici",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/undici-types",
@@ -1705,7 +1705,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.134.1": {
+  "weaving-site@0.134.3": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend"
