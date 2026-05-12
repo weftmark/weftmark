@@ -37,3 +37,23 @@ export async function deleteAccount(confirm: string): Promise<void> {
 export async function getDataExport(): Promise<{ status: string; milestone: string; message: string }> {
   return api.get("/api/users/me/data-export");
 }
+
+export interface HeatmapProject {
+  id: string;
+  name: string;
+  step_count: number;
+}
+
+export interface ActivityDay {
+  date: string;
+  count: number;
+  projects: HeatmapProject[];
+}
+
+export interface ActivityHeatmapData {
+  days: ActivityDay[];
+}
+
+export function getActivityHeatmap(): Promise<ActivityHeatmapData> {
+  return api.get<ActivityHeatmapData>("/api/users/me/activity-heatmap");
+}

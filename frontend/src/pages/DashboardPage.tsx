@@ -1,10 +1,164 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import { listProjects, PROJECT_TYPE_LABELS } from "@/api/projects";
 import { listDrafts } from "@/api/drafts";
 import { listLooms } from "@/api/looms";
+import { getActivityHeatmap, type ActivityHeatmapData, type ActivityDay } from "@/api/users";
 import { AppIcons } from "@/lib/icons";
+
+const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function intensityClass(count: number): string {
+  if (count === 0) return "bg-muted";
+  if (count <= 2) return "bg-accent/30";
+  if (count <= 5) return "bg-accent/55";
+  if (count <= 10) return "bg-accent/80";
+  return "bg-accent";
+}
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+interface TooltipState {
+  day: ActivityDay;
+  x: number;
+  y: number;
+}
+
+function ActivityHeatmap({ data }: { data: ActivityHeatmapData }) {
+  const dayByDate = new Map(data.days.map((d) => [d.date, d]));
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 364);
+  startDate.setDate(startDate.getDate() - startDate.getDay());
+
+  const days: Date[] = [];
+  const cur = new Date(startDate);
+  while (cur <= today) {
+    days.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  const weeks: Date[][] = [];
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push(days.slice(i, i + 7));
+  }
+
+  const monthLabels: { label: string; col: number }[] = [];
+  weeks.forEach((week, wi) => {
+    week.forEach((d) => {
+      if (d.getDate() === 1) {
+        monthLabels.push({ label: d.toLocaleString("default", { month: "short" }), col: wi });
+      }
+    });
+  });
+
+  const totalSteps = data.days.reduce((s, d) => s + d.count, 0);
+  const activeDays = data.days.filter((d) => d.count > 0).length;
+
+  function scheduleHide() {
+    hideTimerRef.current = setTimeout(() => setTooltip(null), 120);
+  }
+
+  function cancelHide() {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+  }
+
+  function handleCellEnter(e: React.MouseEvent, dateStr: string) {
+    cancelHide();
+    const day = dayByDate.get(dateStr);
+    if (!day || day.count === 0) { setTooltip(null); return; }
+    setTooltip({ day, x: e.clientX, y: e.clientY });
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        {totalSteps.toLocaleString()} steps across {activeDays} day{activeDays !== 1 ? "s" : ""} in the past year
+      </p>
+      <div className="overflow-x-auto pb-1">
+        <div className="inline-flex flex-col gap-[3px]" style={{ minWidth: "max-content" }}>
+          <div className="flex gap-[3px]" style={{ paddingLeft: "22px" }}>
+            {weeks.map((_, wi) => {
+              const label = monthLabels.find((m) => m.col === wi);
+              return (
+                <div key={wi} className="w-[10px] text-[9px] text-muted-foreground leading-none overflow-visible whitespace-nowrap">
+                  {label ? label.label : ""}
+                </div>
+              );
+            })}
+          </div>
+          {[0, 1, 2, 3, 4, 5, 6].map((dow) => (
+            <div key={dow} className="flex items-center gap-[3px]">
+              <span className="w-[18px] text-[9px] text-muted-foreground text-right shrink-0 leading-none">
+                {dow % 2 === 1 ? DOW_LABELS[dow] : ""}
+              </span>
+              {weeks.map((week, wi) => {
+                const day = week[dow];
+                if (!day || day > today) return <div key={wi} className="w-[10px] h-[10px] rounded-[2px] opacity-0" />;
+                const dateStr = toDateStr(day);
+                const count = dayByDate.get(dateStr)?.count ?? 0;
+                return (
+                  <div
+                    key={wi}
+                    className={`w-[10px] h-[10px] rounded-[2px] ${intensityClass(count)} ${count > 0 ? "cursor-pointer" : "cursor-default"}`}
+                    onMouseEnter={(e) => handleCellEnter(e, dateStr)}
+                    onMouseLeave={scheduleHide}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 justify-end">
+        <span className="text-[9px] text-muted-foreground">Less</span>
+        {[0, 2, 5, 10, 11].map((v) => (
+          <div key={v} className={`w-[10px] h-[10px] rounded-[2px] ${intensityClass(v)}`} />
+        ))}
+        <span className="text-[9px] text-muted-foreground">More</span>
+      </div>
+
+      {/* Custom tooltip rendered at cursor position */}
+      {tooltip && (
+        <div
+          className="fixed z-50 w-52 rounded-lg border bg-popover text-popover-foreground shadow-md p-3 space-y-2"
+          style={{ left: tooltip.x + 12, top: tooltip.y - 8 }}
+          onMouseEnter={cancelHide}
+          onMouseLeave={scheduleHide}
+        >
+          <p className="text-xs font-medium text-muted-foreground">
+            {new Date(tooltip.day.date + "T12:00:00").toLocaleDateString("default", {
+              weekday: "short", year: "numeric", month: "short", day: "numeric",
+            })}
+          </p>
+          <ul className="space-y-1">
+            {tooltip.day.projects.map((p) => (
+              <li key={p.id}>
+                <Link
+                  to={`/projects/${p.id}`}
+                  className="flex items-center justify-between gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted transition-colors"
+                  onClick={() => setTooltip(null)}
+                >
+                  <span className="truncate font-medium">{p.name}</span>
+                  <span className="shrink-0 text-muted-foreground tabular-nums">{p.step_count} step{p.step_count !== 1 ? "s" : ""}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -22,6 +176,12 @@ export function DashboardPage() {
   const { data: looms = [] } = useQuery({
     queryKey: ["looms"],
     queryFn: listLooms,
+  });
+
+  const { data: heatmap } = useQuery({
+    queryKey: ["activity-heatmap"],
+    queryFn: getActivityHeatmap,
+    staleTime: 60_000,
   });
 
   const activeProjects = projects.filter((a) => a.status === "active" && !!a.loom_id);
@@ -231,6 +391,16 @@ export function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* Activity heatmap */}
+      {heatmap && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Activity</h2>
+          <div className="rounded-lg border p-4">
+            <ActivityHeatmap data={heatmap} />
+          </div>
+        </section>
+      )}
 
       {/* Storage */}
       {user && (

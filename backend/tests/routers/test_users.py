@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -482,3 +482,184 @@ class TestGetCurrentEula:
     async def test_returns_effective_date(self, client: AsyncClient):
         data = (await client.get("/api/eula/current")).json()
         assert "effective_date" in data
+
+
+# ---------------------------------------------------------------------------
+# GET /api/users/me/activity-heatmap
+# ---------------------------------------------------------------------------
+
+
+class TestActivityHeatmap:
+    async def test_returns_200_with_days_key(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        assert resp.status_code == 200
+        assert "days" in resp.json()
+
+    async def test_empty_when_no_steps(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        assert resp.json()["days"] == []
+
+    async def test_counts_steps_on_a_day(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = Draft(
+            owner_id=test_user.id,
+            name="Heatmap Draft",
+            wif_filename="h.wif",
+            wif_path="drafts/h/original.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Heatmap Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        today = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+        for _ in range(3):
+            db_session.add(
+                ProjectStep(
+                    project_id=project.id,
+                    event_type="advance",
+                    from_pick=1,
+                    to_pick=2,
+                    created_at=today,
+                )
+            )
+        await db_session.commit()
+
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        days = resp.json()["days"]
+        assert len(days) == 1
+        assert days[0]["count"] == 3
+        assert days[0]["date"] == today.strftime("%Y-%m-%d")
+
+    async def test_multiple_days_returned_separately(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = Draft(
+            owner_id=test_user.id,
+            name="Multi Draft",
+            wif_filename="m.wif",
+            wif_path="drafts/m/original.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Multi Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        now = datetime.now(timezone.utc)
+        day1 = now.replace(hour=12, minute=0, second=0, microsecond=0)
+        day2 = (now - timedelta(days=1)).replace(hour=12, minute=0, second=0, microsecond=0)
+        db_session.add(
+            ProjectStep(project_id=project.id, event_type="advance", from_pick=1, to_pick=2, created_at=day1)
+        )
+        db_session.add(
+            ProjectStep(project_id=project.id, event_type="advance", from_pick=2, to_pick=3, created_at=day2)
+        )
+        db_session.add(
+            ProjectStep(project_id=project.id, event_type="advance", from_pick=3, to_pick=4, created_at=day2)
+        )
+        await db_session.commit()
+
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        days = {d["date"]: d["count"] for d in resp.json()["days"]}
+        assert days[day1.strftime("%Y-%m-%d")] == 1
+        assert days[day2.strftime("%Y-%m-%d")] == 2
+
+    async def test_excludes_other_users_steps(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        draft = Draft(
+            owner_id=admin_user.id,
+            name="Admin Draft",
+            wif_filename="a.wif",
+            wif_path="drafts/a/original.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=admin_user.id,
+            draft_id=draft.id,
+            name="Admin Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        db_session.add(
+            ProjectStep(
+                project_id=project.id,
+                event_type="advance",
+                from_pick=1,
+                to_pick=2,
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        await db_session.commit()
+
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        assert resp.json()["days"] == []
+
+    async def test_excludes_steps_older_than_366_days(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = Draft(
+            owner_id=test_user.id,
+            name="Old Draft",
+            wif_filename="o.wif",
+            wif_path="drafts/o/original.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Old Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        old_date = datetime.now(timezone.utc) - timedelta(days=400)
+        db_session.add(
+            ProjectStep(
+                project_id=project.id,
+                event_type="advance",
+                from_pick=1,
+                to_pick=2,
+                created_at=old_date,
+            )
+        )
+        await db_session.commit()
+
+        resp = await auth_client.get("/api/users/me/activity-heatmap")
+        assert resp.json()["days"] == []
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get("/api/users/me/activity-heatmap")
+        assert resp.status_code == 401
