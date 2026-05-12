@@ -282,11 +282,13 @@ function WeavingPatternView({
     neededRef.current = needed;
 
     // Evict tiles and errors outside the needed set; abort in-flight fetches.
+    let tilesEvicted = false;
     let errorsChanged = false;
     for (const k of Object.keys(tilesRef.current)) {
       if (!needed.has(k)) {
         URL.revokeObjectURL(tilesRef.current[k]);
         delete tilesRef.current[k];
+        tilesEvicted = true;
       }
     }
     for (const k of fetchingRef.current) {
@@ -302,6 +304,7 @@ function WeavingPatternView({
         errorsChanged = true;
       }
     }
+    if (tilesEvicted) setTiles({ ...tilesRef.current });
     if (errorsChanged) setTileErrors(new Map(tileErrorsRef.current));
 
     const fetchTile = async (startRow: number, startCol: number) => {
@@ -322,7 +325,6 @@ function WeavingPatternView({
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await fetch(url, { credentials: "include", headers, signal: controller.signal });
         clearTimeout(timeoutId);
-        if (cancelled) return;
         if (!res.ok) {
           tileErrorsRef.current.set(key, "Pattern tile failed to load.");
           setTileErrors(new Map(tileErrorsRef.current));
