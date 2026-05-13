@@ -1,10 +1,290 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
 import { listProjects, PROJECT_TYPE_LABELS } from "@/api/projects";
 import { listDrafts } from "@/api/drafts";
 import { listLooms } from "@/api/looms";
+import { getActivityHeatmap, type ActivityDay } from "@/api/users";
 import { AppIcons } from "@/lib/icons";
+
+const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const RANGE_OPTIONS = [
+  { label: "1M", days: 30 },
+  { label: "3M", days: 90 },
+  { label: "6M", days: 180 },
+  { label: "1Y", days: 366 },
+] as const;
+
+function intensityClass(count: number): string {
+  if (count === 0) return "bg-muted";
+  if (count <= 2) return "bg-accent/30";
+  if (count <= 5) return "bg-accent/55";
+  if (count <= 10) return "bg-accent/80";
+  return "bg-accent";
+}
+
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+interface TooltipState {
+  day: ActivityDay;
+  x: number;
+  y: number;
+}
+
+function defaultDaysFromHistory(earliestDate: string | null): number {
+  if (!earliestDate) return 30;
+  const ageDays = (Date.now() - new Date(earliestDate + "T00:00:00Z").getTime()) / 86_400_000;
+  if (ageDays < 30) return 30;
+  if (ageDays < 90) return 90;
+  if (ageDays < 180) return 180;
+  return 366;
+}
+
+function buildGrid(rangeStart: Date, rangeEnd: Date): Date[][] {
+  const start = new Date(rangeStart);
+  start.setDate(start.getDate() - start.getDay()); // align to Sunday
+  const days: Date[] = [];
+  const cur = new Date(start);
+  while (cur <= rangeEnd) {
+    days.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  const weeks: Date[][] = [];
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
+  return weeks;
+}
+
+function HeatmapGrid({
+  weeks,
+  rangeEnd,
+  dayByDate,
+  onCellEnter,
+  onCellLeave,
+}: {
+  weeks: Date[][];
+  rangeEnd: Date;
+  dayByDate: Map<string, ActivityDay>;
+  onCellEnter: (e: React.MouseEvent, dateStr: string) => void;
+  onCellLeave: () => void;
+}) {
+  const monthLabels: { label: string; col: number }[] = [];
+  weeks.forEach((week, wi) => {
+    week.forEach((d) => {
+      if (d.getDate() === 1) monthLabels.push({ label: d.toLocaleString("default", { month: "short" }), col: wi });
+    });
+  });
+
+  return (
+    <div className="overflow-x-auto pb-1">
+      <div className="inline-flex flex-col gap-[3px]" style={{ minWidth: "max-content" }}>
+        <div className="flex gap-[3px]" style={{ paddingLeft: "22px" }}>
+          {weeks.map((_, wi) => {
+            const label = monthLabels.find((m) => m.col === wi);
+            return (
+              <div key={wi} className="w-[10px] text-[9px] text-muted-foreground leading-none overflow-visible whitespace-nowrap">
+                {label ? label.label : ""}
+              </div>
+            );
+          })}
+        </div>
+        {[0, 1, 2, 3, 4, 5, 6].map((dow) => (
+          <div key={dow} className="flex items-center gap-[3px]">
+            <span className="w-[18px] text-[9px] text-muted-foreground text-right shrink-0 leading-none">
+              {dow % 2 === 1 ? DOW_LABELS[dow] : ""}
+            </span>
+            {weeks.map((week, wi) => {
+              const day = week[dow];
+              if (!day || day > rangeEnd) return <div key={wi} className="w-[10px] h-[10px] rounded-[2px] opacity-0" />;
+              const dateStr = toDateStr(day);
+              const count = dayByDate.get(dateStr)?.count ?? 0;
+              return (
+                <div
+                  key={wi}
+                  className={`w-[10px] h-[10px] rounded-[2px] ${intensityClass(count)} ${count > 0 ? "cursor-pointer" : "cursor-default"}`}
+                  onMouseEnter={(e) => onCellEnter(e, dateStr)}
+                  onMouseLeave={onCellLeave}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActivityHeatmap() {
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  // null = user hasn't made an explicit choice; effective values are derived from data
+  const [selectedDays, setSelectedDays] = useState<number | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
+  const [mode, setMode] = useState<"range" | "year" | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Base fetch: always 366-day window + metadata
+  const { data: baseData } = useQuery({
+    queryKey: ["activity-heatmap"],
+    queryFn: () => getActivityHeatmap(),
+    staleTime: 60_000,
+  });
+
+  const earliestDate = baseData?.earliest_activity_date ?? null;
+
+  // Derive effective mode — user choice wins; fall back to data-driven default
+  const effectiveMode = useMemo((): "range" | "year" => {
+    if (mode !== null) return mode;
+    if (!earliestDate) return "range";
+    return (today.getTime() - new Date(earliestDate + "T00:00:00Z").getTime()) / 86_400_000 >= 365
+      ? "year"
+      : "range";
+  }, [mode, earliestDate, today]);
+
+  // Derive effective days — user choice wins; fall back to data-driven default
+  const effectiveDays = useMemo(
+    () => selectedDays ?? defaultDaysFromHistory(earliestDate),
+    [selectedDays, earliestDate],
+  );
+
+  // Year fetch: only when in year mode
+  const { data: yearData } = useQuery({
+    queryKey: ["activity-heatmap-year", selectedYear],
+    queryFn: () => getActivityHeatmap({ year: selectedYear }),
+    enabled: effectiveMode === "year",
+    staleTime: 5 * 60_000,
+  });
+
+  const displayData = effectiveMode === "year" ? yearData : baseData;
+  const dayByDate = new Map((displayData?.days ?? []).map((d) => [d.date, d]));
+
+  const yearsWithActivity = baseData?.years_with_activity ?? [];
+  const hasMultipleYears = useMemo(() => {
+    if (effectiveMode === "year") return true;
+    if (yearsWithActivity.length > 1) return true;
+    if (!earliestDate) return false;
+    return (today.getTime() - new Date(earliestDate + "T00:00:00Z").getTime()) / 86_400_000 >= 365;
+  }, [effectiveMode, yearsWithActivity, earliestDate, today]);
+
+  // Grid bounds
+  let rangeStart: Date;
+  let rangeEnd: Date;
+  if (effectiveMode === "year") {
+    rangeStart = new Date(selectedYear, 0, 1);
+    rangeEnd = selectedYear === today.getFullYear() ? today : new Date(selectedYear, 11, 31);
+  } else {
+    rangeEnd = today;
+    rangeStart = new Date(today);
+    rangeStart.setDate(today.getDate() - effectiveDays + 1);
+  }
+  const weeks = buildGrid(rangeStart, rangeEnd);
+
+  const totalSteps = (displayData?.days ?? []).reduce((s, d) => s + d.count, 0);
+  const activeDays = (displayData?.days ?? []).filter((d) => d.count > 0).length;
+
+  function scheduleHide() {
+    hideTimerRef.current = setTimeout(() => setTooltip(null), 120);
+  }
+  function cancelHide() {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+  }
+  function handleCellEnter(e: React.MouseEvent, dateStr: string) {
+    cancelHide();
+    const day = dayByDate.get(dateStr);
+    if (!day || day.count === 0) { setTooltip(null); return; }
+    setTooltip({ day, x: e.clientX, y: e.clientY });
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Selector row */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          {totalSteps.toLocaleString()} step{totalSteps !== 1 ? "s" : ""} across {activeDays} day{activeDays !== 1 ? "s" : ""}
+        </p>
+        {hasMultipleYears ? (
+          <select
+            value={selectedYear}
+            onChange={(e) => { setMode("year"); setSelectedYear(Number(e.target.value)); setTooltip(null); }}
+            className="text-xs rounded border border-border bg-background px-2 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {(yearsWithActivity.length > 0 ? yearsWithActivity : [today.getFullYear()]).map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        ) : (
+          <div className="flex gap-1">
+            {RANGE_OPTIONS.map(({ label, days }) => (
+              <button
+                key={label}
+                onClick={() => { setMode("range"); setSelectedDays(days); setTooltip(null); }}
+                className={`px-2 py-0.5 text-xs rounded border transition-colors ${
+                  effectiveMode === "range" && effectiveDays === days
+                    ? "border-ring bg-accent text-accent-foreground font-medium"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-ring"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <HeatmapGrid
+        weeks={weeks}
+        rangeEnd={rangeEnd}
+        dayByDate={dayByDate}
+        onCellEnter={handleCellEnter}
+        onCellLeave={scheduleHide}
+      />
+
+      <div className="flex items-center gap-1.5 justify-end">
+        <span className="text-[9px] text-muted-foreground">Less</span>
+        {[0, 2, 5, 10, 11].map((v) => (
+          <div key={v} className={`w-[10px] h-[10px] rounded-[2px] ${intensityClass(v)}`} />
+        ))}
+        <span className="text-[9px] text-muted-foreground">More</span>
+      </div>
+
+      {tooltip && (
+        <div
+          className="fixed z-50 w-52 rounded-lg border bg-popover text-popover-foreground shadow-md p-3 space-y-2"
+          style={{ left: tooltip.x + 12, top: tooltip.y - 8 }}
+          onMouseEnter={cancelHide}
+          onMouseLeave={scheduleHide}
+        >
+          <p className="text-xs font-medium text-muted-foreground">
+            {new Date(tooltip.day.date + "T12:00:00").toLocaleDateString("default", {
+              weekday: "short", year: "numeric", month: "short", day: "numeric",
+            })}
+          </p>
+          <ul className="space-y-1">
+            {tooltip.day.projects.map((p) => (
+              <li key={p.id}>
+                <Link
+                  to={`/projects/${p.id}`}
+                  className="flex items-center justify-between gap-2 rounded px-1.5 py-1 text-xs hover:bg-muted transition-colors"
+                  onClick={() => setTooltip(null)}
+                >
+                  <span className="truncate font-medium">{p.name}</span>
+                  <span className="shrink-0 text-muted-foreground tabular-nums">{p.step_count} step{p.step_count !== 1 ? "s" : ""}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -229,6 +509,14 @@ export function DashboardPage() {
               <p className="text-xs text-muted-foreground">Completed</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Activity heatmap */}
+      <section>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Activity</h2>
+        <div className="rounded-lg border p-4">
+          <ActivityHeatmap />
         </div>
       </section>
 
