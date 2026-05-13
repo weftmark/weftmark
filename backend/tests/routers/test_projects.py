@@ -2237,3 +2237,125 @@ class TestProjectDrawdownSvg:
     async def test_returns_404_for_unknown_project(self, auth_client: AsyncClient):
         resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/drawdown/svg")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /api/projects/{id}/drawdown/data
+# ---------------------------------------------------------------------------
+
+
+class TestProjectDrawdownData:
+    async def test_returns_200_with_json_content_type(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/data")
+        assert resp.status_code == 200
+        assert "application/json" in resp.headers["content-type"]
+
+    async def test_response_body_has_required_keys(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/data")
+        body = resp.json()
+        assert "cell_px" in body
+        assert "warp_count" in body
+        assert "weft_count" in body
+        assert "floats" in body
+        assert isinstance(body["floats"], list)
+
+    async def test_each_float_is_5_element_list_with_color(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/data")
+        floats = resp.json()["floats"]
+        assert len(floats) > 0
+        for f in floats:
+            assert isinstance(f, list)
+            assert len(f) == 5
+            x, y, w, h, color = f
+            assert isinstance(x, int)
+            assert isinstance(y, int)
+            assert isinstance(w, int) and w > 0
+            assert isinstance(h, int) and h > 0
+            assert isinstance(color, str) and color.startswith("#")
+
+    async def test_returns_dimension_headers(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/data")
+        assert resp.headers.get("X-Total-Rows") == "4"
+        assert resp.headers.get("X-Total-Cols") == "4"
+        assert resp.headers.get("X-Pixels-Per-Row") == "20"
+
+    async def test_cell_px_param_scales_output(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/data?cell_px=10")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["cell_px"] == 10
+        assert resp.headers.get("X-Pixels-Per-Row") == "10"
+        # all float dimensions must be multiples of cell_px=10
+        for x, y, w, h, _ in body["floats"]:
+            assert x % 10 == 0
+            assert y % 10 == 0
+            assert w % 10 == 0
+            assert h % 10 == 0
+
+    async def test_float_coords_match_weft_count_and_cell_px(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/data?cell_px=20")
+        body = resp.json()
+        total_h = body["weft_count"] * body["cell_px"]  # 4 * 20 = 80
+        total_w = body["warp_count"] * body["cell_px"]  # 4 * 20 = 80
+        for x, y, w, h, _ in body["floats"]:
+            assert 0 <= x < total_w
+            assert 0 <= y < total_h
+            assert x + w <= total_w
+            assert y + h <= total_h
+
+    async def test_returns_404_when_wif_missing_from_storage(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft_id = uuid.uuid4()
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Missing WIF Draft",
+            wif_filename="missing.wif",
+            wif_path="drafts/missing/original.wif",
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="No WIF Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=2,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/data")
+        assert resp.status_code == 404
+
+    async def test_returns_401_when_unauthenticated(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await client.get(f"/api/projects/{project.id}/drawdown/data")
+        assert resp.status_code == 401
+
+    async def test_returns_404_for_unknown_project(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/drawdown/data")
+        assert resp.status_code == 404
