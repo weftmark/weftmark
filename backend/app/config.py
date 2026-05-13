@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _DEFAULT_SECRET = "change-me-in-production"
@@ -135,6 +135,62 @@ class Settings(BaseSettings):
     tile_row_count: int = 100
     tile_col_count: int = 200
     tile_prune_inactive_days: int = 10
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _validate_log_level(cls, v: object) -> str:
+        _VALID = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        s = str(v).upper().strip()
+        if s not in _VALID:
+            raise ValueError(f"LOG_LEVEL {v!r} is invalid. Must be one of: {', '.join(sorted(_VALID))}")
+        return s
+
+    @field_validator("storage_backend", mode="before")
+    @classmethod
+    def _validate_storage_backend(cls, v: object) -> str:
+        s = str(v).lower().strip()
+        if s not in ("local", "s3"):
+            raise ValueError(f"STORAGE_BACKEND {v!r} is invalid. Must be 'local' or 's3'.")
+        return s
+
+    def config_warnings(self) -> list[str]:
+        """Return human-readable warnings for non-fatal configuration issues.
+
+        Surfaced via /health/ready through _probe_config(). Does not raise —
+        callers decide severity.
+        """
+        issues: list[str] = []
+
+        # S3 credentials must all be set together when STORAGE_BACKEND=s3
+        if self.storage_backend == "s3":
+            missing = [
+                k
+                for k, v in {
+                    "S3_ENDPOINT_URL": self.s3_endpoint_url,
+                    "S3_ACCESS_KEY_ID": self.s3_access_key_id,
+                    "S3_SECRET_ACCESS_KEY": self.s3_secret_access_key,
+                    "S3_BUCKET_NAME": self.s3_bucket_name,
+                }.items()
+                if not v
+            ]
+            if missing:
+                issues.append(f"STORAGE_BACKEND=s3 but the following vars are not set: {', '.join(missing)}")
+
+        # CORS origins must be comma-separated without spaces
+        if " " in self.cors_origins:
+            issues.append(
+                "CORS_ORIGINS contains spaces — values must be comma-separated with no spaces "
+                "(e.g. http://a.com,http://b.com)"
+            )
+
+        # Webhook secret required for Clerk user-sync
+        if not self.clerk_webhook_secret or not self.clerk_webhook_secret.startswith("whsec_"):
+            issues.append(
+                "CLERK_WEBHOOK_SECRET is not set or does not start with 'whsec_' — "
+                "user-sync webhooks (user.created / user.deleted) will not function"
+            )
+
+        return issues
 
     @model_validator(mode="after")
     def _require_secret_key_in_production(self) -> "Settings":

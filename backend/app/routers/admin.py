@@ -941,18 +941,30 @@ def _probe_webhook_info() -> ServiceCheckResult:
     return _make_result("Clerk Webhook", checks, meta=meta)
 
 
+async def _probe_config() -> ServiceCheckResult:
+    """Check for non-fatal configuration issues surfaced via /health/ready."""
+    settings = get_settings()
+    checks: list[ServicePermCheck] = []
+    for warning in settings.config_warnings():
+        checks.append(ServicePermCheck(name="config", status="error", message=warning))
+    if not checks:
+        checks.append(ServicePermCheck(name="config", status="ok", message="All configuration checks passed"))
+    return _make_result("Configuration", checks)
+
+
 @router.get("/services", response_model=list[ServiceCheckResult])
 async def check_services(
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[ServiceCheckResult]:
-    db_result, s3_result, clerk_result, smtp_result = await asyncio.gather(
+    db_result, s3_result, clerk_result, smtp_result, config_result = await asyncio.gather(
         _probe_postgres(db),
         _probe_s3(),
         _probe_clerk(),
         _probe_smtp(),
+        _probe_config(),
     )
-    return [db_result, s3_result, clerk_result, smtp_result, _probe_webhook_info()]
+    return [db_result, s3_result, clerk_result, smtp_result, _probe_webhook_info(), config_result]
 
 
 # ---------------------------------------------------------------------------
