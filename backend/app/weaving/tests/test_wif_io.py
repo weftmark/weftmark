@@ -1,0 +1,97 @@
+"""Independent tests for WIF I/O.
+
+Run standalone: pytest backend/app/weaving/tests/test_wif_io.py
+No WeftMark fixtures, database, or Celery stack required.
+"""
+
+import os
+import tempfile
+from pathlib import Path
+
+from app.weaving import Draft
+from app.weaving._wif import WIFReader, WIFWriter
+
+_FIXTURES = Path(__file__).parent / "fixtures"
+
+
+class TestWIFReader:
+    def test_reads_plain_weave_fixture(self):
+        path = str(_FIXTURES / "plain_weave_4s.wif")
+        draft = WIFReader(path).read()
+        assert isinstance(draft, Draft)
+
+    def test_correct_shaft_count(self):
+        path = str(_FIXTURES / "plain_weave_4s.wif")
+        draft = WIFReader(path).read()
+        assert len(draft.shafts) == 4
+
+    def test_correct_treadle_count(self):
+        path = str(_FIXTURES / "plain_weave_4s.wif")
+        draft = WIFReader(path).read()
+        assert len(draft.treadles) == 2
+
+    def test_correct_warp_thread_count(self):
+        path = str(_FIXTURES / "plain_weave_4s.wif")
+        draft = WIFReader(path).read()
+        assert len(draft.warp) == 4
+
+    def test_correct_weft_thread_count(self):
+        path = str(_FIXTURES / "plain_weave_4s.wif")
+        draft = WIFReader(path).read()
+        assert len(draft.weft) == 4
+
+    def test_warp_thread_has_shaft(self):
+        path = str(_FIXTURES / "plain_weave_4s.wif")
+        draft = WIFReader(path).read()
+        assert draft.all_threads_attached()
+
+    def test_weft_thread_has_treadles(self):
+        path = str(_FIXTURES / "plain_weave_4s.wif")
+        draft = WIFReader(path).read()
+        assert all(len(t.treadles) > 0 for t in draft.weft)
+
+    def test_colors_parsed(self):
+        path = str(_FIXTURES / "plain_weave_4s.wif")
+        draft = WIFReader(path).read()
+        assert draft.warp[0].color is not None
+        assert draft.weft[0].color is not None
+
+
+class TestWIFWriter:
+    def _round_trip(self, draft: Draft) -> Draft:
+        with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as f:
+            path = f.name
+        try:
+            WIFWriter(draft).write(path)
+            return WIFReader(path).read()
+        finally:
+            os.unlink(path)
+
+    def _make_draft(self) -> Draft:
+        d = Draft(num_shafts=4, num_treadles=2)
+        d.treadles[0].shafts = {d.shafts[0], d.shafts[2]}
+        d.treadles[1].shafts = {d.shafts[1], d.shafts[3]}
+        for ii in range(4):
+            d.add_warp_thread(color=(0, 0, 0), shaft=ii % 4)
+            d.add_weft_thread(color=(255, 255, 255), treadles=[ii % 2])
+        return d
+
+    def test_roundtrip_shaft_count(self):
+        d = self._make_draft()
+        restored = self._round_trip(d)
+        assert len(restored.shafts) == len(d.shafts)
+
+    def test_roundtrip_warp_thread_count(self):
+        d = self._make_draft()
+        restored = self._round_trip(d)
+        assert len(restored.warp) == len(d.warp)
+
+    def test_roundtrip_weft_thread_count(self):
+        d = self._make_draft()
+        restored = self._round_trip(d)
+        assert len(restored.weft) == len(d.weft)
+
+    def test_roundtrip_all_threads_attached(self):
+        d = self._make_draft()
+        restored = self._round_trip(d)
+        assert restored.all_threads_attached()

@@ -219,6 +219,24 @@ async def get_preview(
     return Response(content=png, media_type="image/png")
 
 
+@router.get("/{draft_id}/preview/svg")
+async def get_preview_svg(
+    draft_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if not draft.wif_path:
+        raise HTTPException(status_code=404, detail="No WIF file for this draft")
+    wif_bytes = await storage.aread_file(draft.wif_path)
+    try:
+        wif_draft = await asyncio.to_thread(rendering.load_draft, wif_bytes)
+        svg = await asyncio.to_thread(rendering.render_full_draft_svg, wif_draft)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"SVG rendering failed: {exc}") from exc
+    return Response(content=svg, media_type="image/svg+xml; charset=utf-8")
+
+
 # ---------------------------------------------------------------------------
 # Drawdown-only image
 # ---------------------------------------------------------------------------

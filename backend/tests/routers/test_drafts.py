@@ -764,6 +764,67 @@ class TestGetPreview:
 
 
 # ---------------------------------------------------------------------------
+# GET /api/drafts/{draft_id}/preview/svg
+# ---------------------------------------------------------------------------
+
+
+class TestGetPreviewSvg:
+    async def _draft_with_wif(self, db_session: AsyncSession, user: User) -> Draft:
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=user.id,
+            name="SVG Preview Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            weft_threads=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+        return draft
+
+    async def test_returns_svg_content_type(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/preview/svg")
+        assert resp.status_code == 200
+        assert "image/svg+xml" in resp.headers["content-type"]
+
+    async def test_response_body_is_valid_svg(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._draft_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/preview/svg")
+        assert resp.status_code == 200
+        assert b"<svg" in resp.content
+        assert b"</svg>" in resp.content
+
+    async def test_returns_404_when_no_wif(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/preview/svg")
+        assert resp.status_code == 404
+
+    async def test_other_users_draft_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        draft = await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/preview/svg")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(
+        self, raw_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await raw_client.get(f"/api/drafts/{draft.id}/preview/svg")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
 # POST /api/drafts/{draft_id}/generate-liftplan
 # ---------------------------------------------------------------------------
 

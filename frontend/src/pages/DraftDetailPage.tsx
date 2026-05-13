@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, previewUrl, downloadWif, downloadWifModified } from "@/api/drafts";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, previewSvgUrl, downloadWif, downloadWifModified } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
+import { DraftPreviewModal } from "@/components/drafts/DraftPreviewModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 
@@ -18,6 +19,7 @@ export function DraftDetailPage() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   const { data: draft, isLoading, error } = useQuery({
     queryKey: ["draft", id],
@@ -316,15 +318,23 @@ export function DraftDetailPage() {
           {/* Right column: Preview */}
           <div>
             <h2 className="text-base font-semibold mb-3">Design Preview</h2>
-            {draft.has_preview ? (
-              <div className="overflow-auto rounded-lg border bg-card p-2">
+            {draft.wif_filename ? (
+              <button
+                type="button"
+                className="group w-full overflow-auto rounded-lg border bg-card p-2 cursor-zoom-in text-left"
+                onClick={() => setShowPreviewModal(true)}
+                title="Click to open interactive preview"
+              >
                 <AuthedImage
-                  src={previewUrl(draft.id)}
+                  src={previewSvgUrl(draft.id)}
                   alt={`Draft preview for ${draft.name}`}
-                  className="max-w-full"
+                  className="max-w-full group-hover:opacity-90 transition-opacity"
                   data-testid="draft-preview-img"
                 />
-              </div>
+                <p className="mt-1.5 text-xs text-muted-foreground text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to zoom
+                </p>
+              </button>
             ) : (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm text-muted-foreground">
@@ -391,6 +401,14 @@ export function DraftDetailPage() {
             navigate(`/projects/${newId}`);
           }}
           onClose={() => setShowCreateProject(false)}
+        />
+      )}
+
+      {showPreviewModal && (
+        <DraftPreviewModal
+          draftId={draft.id}
+          draftName={draft.name}
+          onClose={() => setShowPreviewModal(false)}
         />
       )}
     </div>

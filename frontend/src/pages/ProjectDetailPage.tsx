@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
@@ -247,11 +247,6 @@ function useAdaptivePatternHeight(): number {
   return height;
 }
 
-// Fixed at backend TILE_ROW_COUNT / TILE_COL_COUNT — requests must align with
-// pre-rendered tile boundaries in R2.
-const TILE_ROW_COUNT = 100;
-const TILE_COL_COUNT = 200;
-
 function WeavingPatternView({
   projectId,
   currentPickIndex,
@@ -266,253 +261,56 @@ function WeavingPatternView({
   maxActive: number;
 }) {
   const containerH = useAdaptivePatternHeight();
-  const [pixelsPerRow, setPixelsPerRow] = useState(20);
+  const [pixelsPerRow, setPixelsPerRow] = useState(10);
   const [warpCount, setWarpCount] = useState(0);
-  const warpCountRef = useRef(0);
-  const neededRef = useRef<Set<string>>(new Set());
-  const tilesRef = useRef<Record<string, string>>({});
-  const [tiles, setTiles] = useState<Record<string, string>>({});
-  const fetchingRef = useRef<Set<string>>(new Set());
-  const fetchControllersRef = useRef<Map<string, AbortController>>(new Map());
-  const tileErrorsRef = useRef<Map<string, string>>(new Map());
-  const [tileErrors, setTileErrors] = useState<Map<string, string>>(new Map());
-  const [retryCount, setRetryCount] = useState(0);
+  const [svgContent, setSvgContent] = useState<string | null>(null);
+  const [svgError, setSvgError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Persist/restore the user's horizontal scroll position per project in localStorage.
   const lsColKey = `project-drawdown-col-${projectId}`;
-  const [scrollColStart, setScrollColStart] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(`project-drawdown-col-${projectId}`);
-      if (saved !== null) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 0)
-          return Math.floor(parsed / TILE_COL_COUNT) * TILE_COL_COUNT;
-      }
-    } catch { /* localStorage unavailable */ }
-    return 0;
-  });
-
-  // scrollDivRef + pendingScrollRef: used to restore the saved scroll position after
-  // the first tile response confirms the real pixelsPerRow value.
-  const scrollDivRef = useRef<HTMLDivElement>(null);
-  const scrollRestoredRef = useRef(false);
-  const pendingScrollRef = useRef<number | null>(null);
-
-  // Apply any pending programmatic scroll synchronously after DOM paint.
-  useLayoutEffect(() => {
-    if (pendingScrollRef.current !== null && scrollDivRef.current) {
-      scrollDivRef.current.scrollLeft = pendingScrollRef.current;
-      pendingScrollRef.current = null;
-    }
-  });
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const raw = e.currentTarget.scrollLeft;
-    const colIndex = pixelsPerRow > 0 ? Math.floor(raw / pixelsPerRow) : 0;
-    const snapped = Math.floor(colIndex / TILE_COL_COUNT) * TILE_COL_COUNT;
-    setScrollColStart(prev => {
-      if (prev === snapped) return prev;
-      try { localStorage.setItem(lsColKey, String(snapped)); } catch { /* noop */ }
-      return snapped;
-    });
-  }, [pixelsPerRow, lsColKey]);
 
   useEffect(() => {
     let cancelled = false;
-
-    // --- Row range ---
-    // Image row 0 = top = last pick; advancing decreases imageRow toward 0.
-    const imageRow = totalPicks - 1 - currentPickIndex;
-    const currentRowStart = Math.floor(imageRow / TILE_ROW_COUNT) * TILE_ROW_COUNT;
-    const lookaheadRowStart = currentRowStart - TILE_ROW_COUNT;
-    const lookbehindRowStart = currentRowStart + TILE_ROW_COUNT;
-    const neededRows: number[] = [currentRowStart];
-    if (lookaheadRowStart >= 0) neededRows.push(lookaheadRowStart);
-    if (lookbehindRowStart < totalPicks) neededRows.push(lookbehindRowStart);
-
-    // --- Column range ---
-    // Buffer: 1 column behind, current, +1 and +2 ahead. Keeps adjacent tiles warm
-    // so fast scrolling doesn't hit a blank gap. Uses warpCountRef (not state) to
-    // avoid adding warpCount as an effect dep.
-    const W = warpCountRef.current;
-    const neededCols: number[] = [];
-    for (let offset = -1; offset <= 2; offset++) {
-      const c = scrollColStart + offset * TILE_COL_COUNT;
-      if (c >= 0 && (W === 0 || c < W)) neededCols.push(c);
-    }
-
-    // All needed (row, col) pairs as `${row}_${col}` keys.
-    const needed = new Set<string>();
-    for (const r of neededRows) {
-      for (const c of neededCols) {
-        needed.add(`${r}_${c}`);
-      }
-    }
-    // Keep neededRef current so in-flight fetchTile calls can check it after awaiting blob.
-    neededRef.current = needed;
-
-    // Evict tiles and errors outside the needed set; abort in-flight fetches.
-    let tilesEvicted = false;
-    let errorsChanged = false;
-    for (const k of Object.keys(tilesRef.current)) {
-      if (!needed.has(k)) {
-        URL.revokeObjectURL(tilesRef.current[k]);
-        delete tilesRef.current[k];
-        tilesEvicted = true;
-      }
-    }
-    for (const k of fetchingRef.current) {
-      if (!needed.has(k)) {
-        fetchControllersRef.current.get(k)?.abort();
-        fetchControllersRef.current.delete(k);
-        fetchingRef.current.delete(k);
-      }
-    }
-    for (const k of tileErrorsRef.current.keys()) {
-      if (!needed.has(k)) {
-        tileErrorsRef.current.delete(k);
-        errorsChanged = true;
-      }
-    }
-    if (tilesEvicted) setTiles({ ...tilesRef.current });
-    if (errorsChanged) setTileErrors(new Map(tileErrorsRef.current));
-
-    const fetchTile = async (startRow: number, startCol: number) => {
-      const key = `${startRow}_${startCol}`;
-      if (fetchingRef.current.has(key)) return;
-      if (tilesRef.current[key] !== undefined) return;
-      if (tileErrorsRef.current.has(key)) return;
-      fetchingRef.current.add(key);
-      const controller = new AbortController();
-      fetchControllersRef.current.set(key, controller);
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      const url =
-        `/api/projects/${projectId}/drawdown` +
-        `?start_row=${startRow}&row_count=${TILE_ROW_COUNT}` +
-        `&start_col=${startCol}&col_count=${TILE_COL_COUNT}`;
+    async function load() {
       try {
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(url, { credentials: "include", headers, signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!res.ok) {
-          tileErrorsRef.current.set(key, "Pattern tile failed to load.");
-          setTileErrors(new Map(tileErrorsRef.current));
-          return;
-        }
-        const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
+        const res = await fetch(`/api/projects/${projectId}/drawdown/svg`, { headers, credentials: "include" });
+        if (!res.ok) throw new Error(`Pattern failed to load (${res.status})`);
+        const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "10", 10);
         const wc = parseInt(res.headers.get("X-Total-Cols") ?? "0", 10);
-        const blob = await res.blob();
-        // Use neededRef rather than `cancelled`: any dep change updates neededRef so we
-        // only discard tiles that genuinely fell out of the needed window.  The `cancelled`
-        // flag is too broad — it fires on every dep change (including TanStack Query
-        // re-renders) and would discard tiles that are still wanted.
-        if (!neededRef.current.has(key)) return;
-        tilesRef.current[key] = URL.createObjectURL(blob);
-        setTiles({ ...tilesRef.current });
+        const text = await res.text();
+        if (cancelled) return;
         setPixelsPerRow(ppr);
-        if (wc > 0 && wc !== warpCountRef.current) {
-          warpCountRef.current = wc;
-          setWarpCount(wc);
-          // Clamp saved scroll position if it falls outside the actual warp extent.
-          setScrollColStart(prev => {
-            if (prev >= wc) {
-              try { localStorage.setItem(lsColKey, "0"); } catch { /* noop */ }
-              return 0;
-            }
-            return prev;
-          });
-        }
-        // Restore the user's saved column position once we know the real pixelsPerRow.
-        if (!scrollRestoredRef.current && scrollColStart > 0) {
-          scrollRestoredRef.current = true;
-          pendingScrollRef.current = scrollColStart * ppr;
-        }
+        if (wc > 0) setWarpCount(wc);
+        setSvgContent(text);
+        try {
+          const saved = localStorage.getItem(lsColKey);
+          if (saved !== null && scrollRef.current) {
+            scrollRef.current.scrollLeft = parseInt(saved, 10) || 0;
+          }
+        } catch { /* localStorage unavailable */ }
       } catch (err) {
-        clearTimeout(timeoutId);
-        if (!cancelled) {
-          const msg =
-            err instanceof Error && err.name === "AbortError"
-              ? "Pattern tile timed out."
-              : "Pattern tile failed to load.";
-          tileErrorsRef.current.set(key, msg);
-          setTileErrors(new Map(tileErrorsRef.current));
-        }
-      } finally {
-        fetchingRef.current.delete(key);
-        fetchControllersRef.current.delete(key);
+        if (!cancelled) setSvgError(err instanceof Error ? err.message : "Failed to load pattern");
       }
-    };
-
-    // Fetch current column × all rows first so the visible tile arrives ASAP.
-    const priorityCols = neededCols.filter(c => c === scrollColStart);
-    const otherCols = neededCols.filter(c => c !== scrollColStart);
-    for (const r of neededRows) {
-      for (const c of priorityCols) fetchTile(r, c);
     }
-    for (const r of neededRows) {
-      for (const c of otherCols) fetchTile(r, c);
-    }
-
+    load();
     return () => { cancelled = true; };
-  }, [projectId, currentPickIndex, totalPicks, scrollColStart, retryCount, lsColKey]);
+  }, [projectId, lsColKey]);
 
-  // Revoke all object URLs on unmount.
-  useEffect(() => {
-    return () => {
-      Object.values(tilesRef.current).forEach(url => URL.revokeObjectURL(url));
-      tilesRef.current = {};
-    };
-  }, []);
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    try { localStorage.setItem(lsColKey, String(e.currentTarget.scrollLeft)); } catch { /* noop */ }
+  }, [lsColKey]);
 
-  // Current row tile boundary for overlay / retry decisions.
-  const imageRowForTile = totalPicks - 1 - currentPickIndex;
-  const currentTileStart = Math.floor(imageRowForTile / TILE_ROW_COUNT) * TILE_ROW_COUNT;
-  const currentRowPrefix = `${currentTileStart}_`;
-  const currentTileReady = Object.keys(tiles).some(k => k.startsWith(currentRowPrefix));
-  const currentTileError = [...tileErrors.entries()].find(([k]) => k.startsWith(currentRowPrefix))?.[1];
-
-  const retryCurrentTile = () => {
-    for (const k of tileErrorsRef.current.keys()) {
-      if (k.startsWith(currentRowPrefix)) tileErrorsRef.current.delete(k);
-    }
-    setTileErrors(new Map(tileErrorsRef.current));
-    setRetryCount(c => c + 1);
-  };
-
-  // Full skeleton while no tiles are loaded yet.
-  if (Object.keys(tiles).length === 0) return (
-    <div className="relative flex gap-2" style={{ height: containerH }}>
-      <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted flex flex-col items-center justify-center gap-2">
-        {currentTileError ? (
-          <>
-            <span className="text-sm text-muted-foreground">{currentTileError}</span>
-            <button className="text-xs underline text-accent" onClick={retryCurrentTile}>Tap to retry</button>
-          </>
-        ) : (
-          <>
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Loading pattern…</span>
-          </>
-        )}
-      </div>
-      <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: STEP_PANEL_W }} />
-      <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: COLOR_COL_W }} />
-    </div>
-  );
-
-  // Image is flipped: last pick at y=0 (top), pick 1 at bottom.
+  // SVG is flipped: last pick at y=0 (top), first pick at bottom — same orientation as tiles.
   const flippedIndex = totalPicks - 1 - currentPickIndex;
   const translateY = containerH / 2 - pixelsPerRow / 2 - flippedIndex * pixelsPerRow;
   const futureRegionH = Math.max(0, containerH / 2 - pixelsPerRow / 2);
   const highlightTop = containerH / 2 - pixelsPerRow / 2 - 1;
   const highlightH = pixelsPerRow + 2;
   const boxH = Math.max(4, pixelsPerRow - 6);
-
   const totalImgW = warpCount > 0 ? warpCount * pixelsPerRow : undefined;
-  const totalImgH = totalPicks * pixelsPerRow;
 
-  // Picks reversed so the last pick renders first (topmost) — matches drawdown orientation.
   const reversedPicks = [...picks].reverse();
 
   const washoutOverlay = (
@@ -533,63 +331,39 @@ function WeavingPatternView({
     </>
   );
 
+  if (!svgContent) return (
+    <div className="relative flex gap-2" style={{ height: containerH }}>
+      <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted flex flex-col items-center justify-center gap-2">
+        {svgError ? (
+          <span className="text-sm text-muted-foreground">{svgError}</span>
+        ) : (
+          <>
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Loading pattern…</span>
+          </>
+        )}
+      </div>
+      <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: STEP_PANEL_W }} />
+      <div className="rounded-lg border overflow-hidden relative shrink-0 bg-muted animate-pulse" style={{ width: COLOR_COL_W }} />
+    </div>
+  );
+
   return (
-    // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
     <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown tiles — wrapper keeps overlays fixed to the viewport area, not the scroll content */}
+      {/* Drawdown SVG — single load, translate to center current pick */}
       <div className="flex-1 relative rounded-lg border overflow-hidden">
         <div
-          ref={scrollDivRef}
+          ref={scrollRef}
           className="absolute inset-0 overflow-x-auto overflow-y-hidden bg-white dark:bg-zinc-900"
           onScroll={handleScroll}
         >
           <div
-            style={{
-              position: "relative",
-              width: totalImgW,
-              height: totalImgH,
-              transform: `translateY(${translateY}px)`,
-              transition: "transform 0.15s ease",
-            }}
-          >
-            {Object.entries(tiles).map(([k, url]) => {
-              const [rowStr, colStr] = k.split("_");
-              const startRow = parseInt(rowStr, 10);
-              const startCol = parseInt(colStr, 10);
-              return (
-                <img
-                  key={k}
-                  src={url}
-                  alt=""
-                  style={{
-                    position: "absolute",
-                    top: startRow * pixelsPerRow,
-                    left: startCol * pixelsPerRow,
-                    display: "block",
-                    imageRendering: "pixelated",
-                    maxWidth: "none",
-                  }}
-                />
-              );
-            })}
-          </div>
+            style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", width: totalImgW }}
+            dangerouslySetInnerHTML={{ __html: svgContent }}
+          />
         </div>
         {washoutOverlay}
-        {/* Loading overlay — shown whenever the current tile hasn't arrived yet */}
-        {!currentTileReady && !currentTileError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none z-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Loading pattern…</span>
-          </div>
-        )}
-        {/* Error overlay — shown on tile fetch failure or timeout */}
-        {currentTileError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 z-10">
-            <span className="text-sm text-muted-foreground">{currentTileError}</span>
-            <button className="text-xs underline text-accent" onClick={retryCurrentTile}>Tap to retry</button>
-          </div>
-        )}
       </div>
 
       {/* Lift/treadle step panel */}
@@ -597,9 +371,7 @@ function WeavingPatternView({
         className="rounded-lg border overflow-hidden relative bg-background shrink-0"
         style={{ width: STEP_PANEL_W }}
       >
-        <div
-          style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}
-        >
+        <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}>
           {reversedPicks.map((pick) => (
             <div
               key={pick.pick}
@@ -625,16 +397,11 @@ function WeavingPatternView({
         className="rounded-lg border overflow-hidden relative shrink-0"
         style={{ width: COLOR_COL_W }}
       >
-        <div
-          style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}
-        >
+        <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}>
           {reversedPicks.map((pick) => (
             <div
               key={pick.pick}
-              style={{
-                height: pixelsPerRow,
-                backgroundColor: pick.color ?? "hsl(var(--muted))",
-              }}
+              style={{ height: pixelsPerRow, backgroundColor: pick.color ?? "hsl(var(--muted))" }}
             />
           ))}
         </div>

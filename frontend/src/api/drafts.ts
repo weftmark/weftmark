@@ -76,6 +76,10 @@ export function previewUrl(id: string): string {
   return `/api/drafts/${id}/preview`;
 }
 
+export function previewSvgUrl(id: string): string {
+  return `/api/drafts/${id}/preview/svg`;
+}
+
 export async function generateLiftplan(id: string): Promise<DraftDetail> {
   return req(`/api/drafts/${id}/generate-liftplan`, { method: "POST" });
 }
