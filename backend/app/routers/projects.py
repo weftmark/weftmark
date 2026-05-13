@@ -499,7 +499,7 @@ async def get_project_drawdown(
 @router.get("/{project_id}/drawdown/svg")
 async def get_project_drawdown_svg(
     project_id: uuid.UUID,
-    cell_px: int = Query(10, ge=4, le=30),
+    cell_px: int = Query(20, ge=4, le=30),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:

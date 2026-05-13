@@ -2183,16 +2183,16 @@ class TestProjectDrawdownSvg:
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg")
         assert resp.headers.get("X-Total-Rows") == "4"
         assert resp.headers.get("X-Total-Cols") == "4"
-        assert resp.headers.get("X-Pixels-Per-Row") == "10"
+        assert resp.headers.get("X-Pixels-Per-Row") == "20"
 
     async def test_cell_px_param_scales_output(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
         _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)
-        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg?cell_px=20")
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg?cell_px=10")
         assert resp.status_code == 200
-        assert resp.headers.get("X-Pixels-Per-Row") == "20"
-        assert b'width="80"' in resp.content  # 4 warps × 20 px
+        assert resp.headers.get("X-Pixels-Per-Row") == "10"
+        assert b'width="40"' in resp.content  # 4 warps × 10 px
 
     async def test_returns_404_when_wif_missing_from_storage(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
