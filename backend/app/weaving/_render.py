@@ -570,7 +570,7 @@ class SVGRenderer:
 # ---------------------------------------------------------------------------
 
 
-def drawdown_svg(draft, cell_px: int = 10) -> str:
+def drawdown_svg(draft, cell_px: int = 20) -> str:
     """Render the drawdown grid as a symbol-deduped SVG string.
 
     Orientation matches the tile renderer: last pick at y=0 (top), first pick at
@@ -614,6 +614,15 @@ def drawdown_svg(draft, cell_px: int = 10) -> str:
         rows.append(f'<rect x="0" y="{y}" width="{total_w}" height="{cell_px}" fill="{weft_css}"/>')
         rows.append(f'<use href="#s{sid}" x="0" y="{y}"/>')
 
+    # Single <path> grid overlay — all cell borders in one element (one draw call).
+    # Vertical lines at every column boundary, horizontal at every row boundary.
+    grid_parts: list[str] = []
+    for x in range(0, total_w + 1, cell_px):
+        grid_parts.append(f"M{x} 0V{total_h}")
+    for y in range(0, total_h + 1, cell_px):
+        grid_parts.append(f"M0 {y}H{total_w}")
+    grid = f'<path d="{"".join(grid_parts)}" stroke="#7f7f7f" stroke-width="0.5" fill="none"/>'
+
     defs = f"<defs>{''.join(symbol_defs)}</defs>"
     body = "".join(rows)
     return (
@@ -621,5 +630,5 @@ def drawdown_svg(draft, cell_px: int = 10) -> str:
         f' viewBox="0 0 {total_w} {total_h}"'
         f' xmlns="http://www.w3.org/2000/svg"'
         f' xmlns:xlink="http://www.w3.org/1999/xlink">'
-        f"{defs}{body}</svg>"
+        f"{defs}{body}{grid}</svg>"
     )
