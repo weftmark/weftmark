@@ -2170,13 +2170,14 @@ class TestProjectDrawdownSvg:
         assert b"<svg" in resp.content
         assert b"</svg>" in resp.content
 
-    async def test_response_contains_symbol_defs(
+    async def test_response_contains_float_rects_with_stroke(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
         _, project = await _insert_project_with_wif(db_session, test_user)
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg")
-        assert b"<symbol" in resp.content
-        assert b"<use" in resp.content
+        # Float-based rendering: each visible float is a <rect> with a stroke attribute.
+        assert b"<rect" in resp.content
+        assert b'stroke="#7f7f7f"' in resp.content
 
     async def test_returns_dimension_headers(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)

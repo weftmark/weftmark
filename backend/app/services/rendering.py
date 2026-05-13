@@ -229,7 +229,7 @@ def render_drawdown_tile(
     return out.getvalue(), weft_count, actual_start, actual_row_count, scale, actual_start_col, actual_col_count
 
 
-def render_drawdown_svg(draft: Draft, cell_px: int = 10) -> str:
+def render_drawdown_svg(draft: Draft, cell_px: int = 20) -> str:
     """Render the drawdown grid as a symbol-deduped SVG string.
 
     Suitable for project step-tracking: load once, highlight current pick via
