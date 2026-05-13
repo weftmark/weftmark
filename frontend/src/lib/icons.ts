@@ -19,12 +19,15 @@ import {
   Maximize2,
   Menu,
   Minimize2,
+  RotateCcw,
   Scroll,
   Settings,
   ShieldCheck,
   Wrench,
   X,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 export type { LucideIcon } from "lucide-react";
@@ -55,6 +58,9 @@ export const AppIcons = {
   chevronDoubleRight: ChevronsRight,
   presentMode: Maximize2,
   exitPresentMode: Minimize2,
+  zoomIn: ZoomIn,
+  zoomOut: ZoomOut,
+  zoomReset: RotateCcw,
 
   // ── Landing page features ─────────────────────────────────────────────────
   designLibrary: Layers,
