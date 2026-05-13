@@ -44,6 +44,7 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
 
     # Step tracking
     current_pick: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    current_item: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     total_picks: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Warp plan inputs

@@ -8,6 +8,7 @@ import {
   getProject, getProjectPicks, getProjectMetrics, stepProject, jumpProject, completeProject, abandonProject,
   restartProject, cloneProject, listProjects, deleteProject,
   renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
+  advanceItem, jumpItem,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow, type ProjectMetrics,
 } from "@/api/projects";
@@ -1061,6 +1062,7 @@ export function ProjectDetailPage() {
     if (!cached) return;
     if (direction === "advance" && cached.current_pick > cached.total_picks) return;
     if (direction === "reverse" && cached.current_pick <= 1) return;
+    // Block advance when at item end — user must explicitly advance the item
 
     const newPick = direction === "advance" ? cached.current_pick + 1 : cached.current_pick - 1;
 
@@ -1082,7 +1084,7 @@ export function ProjectDetailPage() {
           // Never revert below the current optimistic pick — guards against the rare
           // case where a lower-pick response arrives last due to network reordering.
           const safePick = Math.max(old.current_pick, result.current_pick);
-          return { ...old, current_pick: safePick, total_picks: result.total_picks };
+          return { ...old, current_pick: safePick, total_picks: result.total_picks, current_item: result.current_item };
         });
       }
     } catch {
@@ -1134,6 +1136,28 @@ export function ProjectDetailPage() {
     try { await abandonProject(id); invalidate(); setConfirmAbandon(false); }
     finally { setActionLoading(false); }
   };
+
+  const handleAdvanceItem = useCallback(async () => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      const result = await advanceItem(id);
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
+        old ? { ...old, current_pick: result.current_pick, current_item: result.current_item } : old
+      );
+    } finally { setActionLoading(false); }
+  }, [id, queryClient]);
+
+  const handleJumpItem = useCallback(async (item: number) => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      const updated = await jumpItem(id, item);
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
+        old ? { ...updated, photos: old.photos } : updated
+      );
+    } finally { setActionLoading(false); }
+  }, [id, queryClient]);
 
   const handleRestart = async () => {
     if (!id) return;
@@ -1238,7 +1262,10 @@ export function ProjectDetailPage() {
   // Effective box count shown: when hiding trailing, shrink to maxUsed.
   const displayCount = hideTrailingUnused && trailingUnused > 0 ? maxUsed : maxActive;
 
-  const isFinished = displayPick > project.total_picks;
+  const isMultiItem = project.num_items > 1;
+  const isOnLastItem = project.current_item >= project.num_items;
+  const isAtItemEnd = displayPick > project.total_picks && !isOnLastItem;
+  const isFinished = displayPick > project.total_picks && isOnLastItem;
   const isActiveTracking = project.status === "active" && !isPlanning;
   const isAbandoned = project.status === "abandoned";
 
@@ -1395,18 +1422,58 @@ export function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Progress bar */}
+        {/* Progress bar + item indicator */}
         {showProgress && !isPlanning && !isCompleted && (
           <div className="w-full px-8 pt-6">
+            {isMultiItem && (
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: project.num_items }, (_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => isActiveTracking && handleJumpItem(i + 1)}
+                      disabled={!isActiveTracking || actionLoading}
+                      title={`Jump to item ${i + 1}`}
+                      className={`h-2.5 rounded-full transition-all ${
+                        i + 1 === project.current_item
+                          ? "w-6 bg-primary"
+                          : i + 1 < project.current_item
+                          ? "w-2.5 bg-primary/40"
+                          : "w-2.5 bg-muted-foreground/30"
+                      } ${isActiveTracking && !actionLoading ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Item {project.current_item} of {project.num_items}
+                </span>
+              </div>
+            )}
             <ProgressBar current={project.current_pick} total={project.total_picks} />
           </div>
         )}
 
         {/* Pick instruction — full width so treadle/lift boxes use available space */}
         {!isCompleted && showPickDisplay && <div className="w-full px-8 pt-4">
-          {isFinished ? (
+          {isAtItemEnd ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-lg font-medium">All {project.total_picks} picks complete!</p>
+              <p className="text-lg font-medium">Item {project.current_item} complete!</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {project.total_picks} picks done. Ready to start item {project.current_item + 1} of {project.num_items}.
+              </p>
+              {isActiveTracking && (
+                <div className="mt-6">
+                  <Button variant="success" onClick={handleAdvanceItem} disabled={actionLoading}>
+                    {actionLoading ? "…" : `Start item ${project.current_item + 1}`}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : isFinished ? (
+            <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
+              <p className="text-lg font-medium">
+                {isMultiItem ? `All ${project.num_items} items complete!` : `All ${project.total_picks} picks complete!`}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Mark the project as completed when you're done.
               </p>
@@ -1442,7 +1509,7 @@ export function ProjectDetailPage() {
         {/* Spacer — always consumes remaining height so step controls stay pinned to bottom */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Pattern view — wider on large screens to show more warp threads */}
-          {showDrawdown && picksData && !isFinished && !isCompleted && !isAbandoned && (
+          {showDrawdown && picksData && !isFinished && !isAtItemEnd && !isCompleted && !isAbandoned && (
             <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
               <WeavingPatternView
                 projectId={project.id}
@@ -1627,9 +1694,11 @@ export function ProjectDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {!confirmComplete && !confirmAbandon && (
                   <>
-                    <Button variant="success" size="sm" onClick={() => setConfirmComplete(true)}>
-                      Mark complete
-                    </Button>
+                    {isFinished && (
+                      <Button variant="success" size="sm" onClick={() => setConfirmComplete(true)}>
+                        Mark complete
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
                       Abandon
                     </Button>

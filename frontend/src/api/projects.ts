@@ -21,6 +21,7 @@ export interface ProjectSummary {
   project_type: ProjectType;
   status: ProjectStatus;
   current_pick: number;
+  current_item: number;
   total_picks: number;
   num_items: number;
   length_unit: string;
@@ -71,6 +72,8 @@ export interface CreateProjectPayload {
 export interface StepResponse {
   current_pick: number;
   total_picks: number;
+  current_item: number;
+  num_items: number;
 }
 
 export interface PickRow {
@@ -213,6 +216,18 @@ export function jumpProject(id: string, pick: number): Promise<ProjectDetail> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ pick }),
+  });
+}
+
+export function advanceItem(id: string): Promise<StepResponse> {
+  return req(`/api/projects/${id}/advance-item`, { method: "POST" });
+}
+
+export function jumpItem(id: string, item: number): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/jump-item`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ item }),
   });
 }
 

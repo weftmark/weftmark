@@ -1275,7 +1275,7 @@ class TestStepProject:
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
         body = (await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})).json()
-        assert set(body.keys()) == {"current_pick", "total_picks"}
+        assert set(body.keys()) == {"current_pick", "total_picks", "current_item", "num_items"}
 
     async def test_logs_step_to_database(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         from sqlalchemy import select
@@ -1367,21 +1367,48 @@ class TestCompleteProject:
     async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
         resp = await auth_client.post(f"/api/projects/{project.id}/complete")
         assert resp.status_code == 200
 
     async def test_status_becomes_completed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
         body = (await auth_client.post(f"/api/projects/{project.id}/complete")).json()
         assert body["status"] == "completed"
 
     async def test_sets_completed_at(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
         await auth_client.post(f"/api/projects/{project.id}/complete")
         await db_session.refresh(project)
         assert project.completed_at is not None
+
+    async def test_fails_if_not_at_last_pick_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        # current_pick=1, not at end
+        resp = await auth_client.post(f"/api/projects/{project.id}/complete")
+        assert resp.status_code == 400
+
+    async def test_fails_if_not_on_last_item_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 1
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/projects/{project.id}/complete")
+        assert resp.status_code == 400
 
     async def test_already_completed_returns_400(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
@@ -1447,6 +1474,146 @@ class TestAbandonProject:
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
         resp = await client.post(f"/api/projects/{project.id}/abandon")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestAdvanceItem
+# ---------------------------------------------------------------------------
+
+
+class TestAdvanceItem:
+    async def test_increments_item_and_resets_pick(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 1
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
+        body = (await auth_client.post(f"/api/projects/{project.id}/advance-item")).json()
+        assert body["current_item"] == 2
+        assert body["current_pick"] == 1
+
+    async def test_response_includes_num_items(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 1
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
+        body = (await auth_client.post(f"/api/projects/{project.id}/advance-item")).json()
+        assert body["num_items"] == 3
+
+    async def test_fails_if_not_at_item_end_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 1
+        # current_pick still at 1, not at item end
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        assert resp.status_code == 400
+
+    async def test_fails_if_on_last_item_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 3
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        assert resp.status_code == 400
+
+    async def test_single_item_project_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        assert resp.status_code == 400
+
+    async def test_inactive_project_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.status = "completed"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/advance-item")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.post(f"/api/projects/{project.id}/advance-item")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestJumpItem
+# ---------------------------------------------------------------------------
+
+
+class TestJumpItem:
+    async def test_sets_item_and_resets_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 5
+        project.current_item = 3
+        project.current_pick = 2
+        await db_session.commit()
+        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 2})).json()
+        assert body["current_item"] == 2
+        assert body["current_pick"] == 1
+
+    async def test_clamps_above_num_items(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        await db_session.commit()
+        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 99})).json()
+        assert body["current_item"] == 3
+
+    async def test_clamps_below_one(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        await db_session.commit()
+        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 0})).json()
+        assert body["current_item"] == 1
+
+    async def test_inactive_project_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.status = "completed"
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/jump-item", json={"item": 1})
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})
         assert resp.status_code == 401
 
 
@@ -2029,6 +2196,8 @@ class TestWeaveSessions:
 
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
 
         open_session = WeaveSession(project_id=project.id, started_at=datetime.now(timezone.utc))
         db_session.add(open_session)

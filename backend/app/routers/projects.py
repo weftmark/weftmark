@@ -54,6 +54,7 @@ class ProjectSummary(BaseModel):
     project_type: str
     status: str
     current_pick: int
+    current_item: int
     total_picks: int
     num_items: int
     length_unit: str
@@ -111,6 +112,10 @@ class JumpRequest(BaseModel):
     pick: int
 
 
+class JumpItemRequest(BaseModel):
+    item: int
+
+
 class StepRequest(BaseModel):
     direction: str  # "advance" | "reverse"
 
@@ -118,6 +123,8 @@ class StepRequest(BaseModel):
 class StepResponse(BaseModel):
     current_pick: int
     total_picks: int
+    current_item: int
+    num_items: int
 
 
 class PickRow(BaseModel):
@@ -243,6 +250,7 @@ def _to_detail(
         project_type=project.project_type,
         status=project.status,
         current_pick=project.current_pick,
+        current_item=project.current_item,
         total_picks=project.total_picks,
         finished_length_per_item=project.finished_length_per_item,
         num_items=project.num_items,
@@ -753,7 +761,12 @@ async def step_project(
     )
     db.add(step)
     await db.commit()
-    return StepResponse(current_pick=project.current_pick, total_picks=project.total_picks)
+    return StepResponse(
+        current_pick=project.current_pick,
+        total_picks=project.total_picks,
+        current_item=project.current_item,
+        num_items=project.num_items,
+    )
 
 
 @router.post("/{project_id}/jump", response_model=ProjectDetail)
@@ -774,6 +787,49 @@ async def jump_project(
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
+@router.post("/{project_id}/advance-item", response_model=StepResponse)
+async def advance_item(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StepResponse:
+    project = await _get_owned_project(project_id, current_user, db)
+    if project.status != "active":
+        raise HTTPException(status_code=400, detail="Project is not active")
+    if project.current_pick <= project.total_picks:
+        raise HTTPException(status_code=400, detail="Current item is not finished — advance to the last pick first")
+    if project.current_item >= project.num_items:
+        raise HTTPException(status_code=400, detail="Already on the last item — use complete instead")
+    project.current_item += 1
+    project.current_pick = 1
+    await db.commit()
+    return StepResponse(
+        current_pick=project.current_pick,
+        total_picks=project.total_picks,
+        current_item=project.current_item,
+        num_items=project.num_items,
+    )
+
+
+@router.post("/{project_id}/jump-item", response_model=ProjectDetail)
+async def jump_item(
+    project_id: uuid.UUID,
+    body: JumpItemRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    project = await _get_owned_project(project_id, current_user, db)
+    if project.status != "active":
+        raise HTTPException(status_code=400, detail="Project is not active")
+    project.current_item = max(1, min(body.item, project.num_items))
+    project.current_pick = 1
+    await db.commit()
+    await db.refresh(project)
+    draft = await db.get(Draft, project.draft_id)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+
+
 @router.post("/{project_id}/complete", response_model=ProjectDetail)
 async def complete_project(
     project_id: uuid.UUID,
@@ -783,6 +839,10 @@ async def complete_project(
     project = await _get_owned_project(project_id, current_user, db)
     if project.status != "active":
         raise HTTPException(status_code=400, detail="Project is not active")
+    if project.current_pick <= project.total_picks:
+        raise HTTPException(status_code=400, detail="Not all picks are done — advance to the last pick first")
+    if project.current_item < project.num_items:
+        raise HTTPException(status_code=400, detail="Not all items are done — advance to the last item first")
     project.status = "completed"
     project.completed_at = datetime.now(timezone.utc)
     await _close_open_session(project_id, db)
