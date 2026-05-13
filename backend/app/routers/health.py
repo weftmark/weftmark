@@ -161,11 +161,11 @@ def _build_readiness_from_results(
 async def run_startup_probes() -> ReadinessResponse:
     """Run service probes concurrently and return a ReadinessResponse.
 
-    Covers PostgreSQL, S3, Clerk API, and SMTP — services that gate startup.
-    Webhook round-trip health is checked separately via /health/detailed.
+    Covers PostgreSQL, S3, Clerk API, SMTP, and configuration — services that
+    gate startup. Webhook round-trip health is checked separately via /health/detailed.
     """
     from app.database import AsyncSessionLocal
-    from app.routers.admin import _probe_clerk, _probe_postgres, _probe_s3, _probe_smtp
+    from app.routers.admin import _probe_clerk, _probe_config, _probe_postgres, _probe_s3, _probe_smtp
 
     try:
         async with AsyncSessionLocal() as db:
@@ -174,6 +174,7 @@ async def run_startup_probes() -> ReadinessResponse:
                 _probe_s3(),
                 _probe_clerk(),
                 _probe_smtp(),
+                _probe_config(),
                 return_exceptions=True,
             )
     except Exception as exc:
@@ -193,9 +194,9 @@ async def run_startup_probes() -> ReadinessResponse:
 
 
 async def _run_detailed_probes() -> ReadinessResponse:
-    """Run all 5 probes and return a ReadinessResponse with a fresh checked_at."""
+    """Run all probes and return a ReadinessResponse with a fresh checked_at."""
     from app.database import AsyncSessionLocal
-    from app.routers.admin import _probe_clerk, _probe_postgres, _probe_s3, _probe_smtp
+    from app.routers.admin import _probe_clerk, _probe_config, _probe_postgres, _probe_s3, _probe_smtp
     from app.services.clerk_webhook_probe import run_webhook_probe
 
     try:
@@ -206,6 +207,7 @@ async def _run_detailed_probes() -> ReadinessResponse:
                     _probe_s3(),
                     _probe_clerk(),
                     _probe_smtp(),
+                    _probe_config(),
                     return_exceptions=True,
                 ),
                 run_webhook_probe(),

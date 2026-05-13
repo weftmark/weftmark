@@ -1123,11 +1123,11 @@ class TestAdminServices:
         resp = await admin_client.get("/api/admin/services")
         assert resp.status_code == 200
 
-    async def test_returns_five_services(self, admin_client: AsyncClient):
+    async def test_returns_six_services(self, admin_client: AsyncClient):
         data = (await admin_client.get("/api/admin/services")).json()
-        assert len(data) == 5
+        assert len(data) == 6
         names = {s["service"] for s in data}
-        assert names == {"PostgreSQL", "S3", "Clerk", "SMTP", "Clerk Webhook"}
+        assert names == {"PostgreSQL", "S3", "Clerk", "SMTP", "Clerk Webhook", "Configuration"}
 
     async def test_webhook_service_includes_url(self, admin_client: AsyncClient):
         data = (await admin_client.get("/api/admin/services")).json()
