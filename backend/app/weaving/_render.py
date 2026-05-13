@@ -571,44 +571,70 @@ class SVGRenderer:
 
 
 def drawdown_svg(draft, cell_px: int = 20) -> str:
-    """Render the drawdown as a float-based SVG string.
+    """Render the drawdown as a symbol-deduped SVG string with float-boundary borders.
 
-    Each visible float (consecutive same-thread cells) is one <rect> with a
-    border — matching ImageRenderer.paint_drawdown() exactly.  No internal cell
-    borders are drawn within multi-cell floats.
+    DOM layout: O(weft) background rects + O(unique lift patterns) <symbol> defs
+    + O(weft) <use> refs.  Borders are drawn as a single <path> whose sub-paths
+    are one outline rect per visible float — so no internal cell borders appear
+    within multi-cell floats.
 
-    Orientation: last pick at y=0 (top), first pick at bottom — matches the
-    PNG tile renderer used by the project step-tracking view.
+    Orientation: last pick at y=0 (top), first pick at bottom.
 
-    Returns an SVG string without an XML declaration — suitable for inline DOM
-    injection via dangerouslySetInnerHTML.
+    Returns an SVG string without an XML declaration — suitable for
+    dangerouslySetInnerHTML injection.
     """
     warp_count = len(draft.warp)
     weft_count = len(draft.weft)
     total_w = warp_count * cell_px
     total_h = weft_count * cell_px
 
-    rects: list[str] = []
-    for start, end, visible, _length, thread in draft.compute_floats():
+    warp_colors = [t.color.css for t in draft.warp]
+
+    symbol_map: dict[tuple[int, ...], int] = {}
+    symbol_defs: list[str] = []
+    row_data: list[tuple[int, str]] = []
+
+    for weft_thread in draft.weft:
+        connected = weft_thread.connected_shafts
+        warp_up = tuple(x for x, wt in enumerate(draft.warp) if (wt.shaft not in connected) ^ draft.rising_shed)
+        if warp_up not in symbol_map:
+            sid = len(symbol_map)
+            symbol_map[warp_up] = sid
+            rects = "".join(
+                f'<rect x="{x * cell_px}" y="0" width="{cell_px}" height="{cell_px}" fill="{warp_colors[x]}"/>'
+                for x in warp_up
+            )
+            symbol_defs.append(f'<symbol id="s{sid}" width="{total_w}" height="{cell_px}">{rects}</symbol>')
+        weft_css = weft_thread.color.css if weft_thread.color else "#ffffff"
+        row_data.append((symbol_map[warp_up], weft_css))
+
+    rows: list[str] = []
+    for weft_idx, (sid, weft_css) in enumerate(row_data):
+        svg_row = weft_count - 1 - weft_idx
+        y = svg_row * cell_px
+        rows.append(f'<rect x="0" y="{y}" width="{total_w}" height="{cell_px}" fill="{weft_css}"/>')
+        rows.append(f'<use href="#s{sid}" x="0" y="{y}"/>')
+
+    # Single <path> whose sub-paths outline each visible float — borders only at
+    # float edges, never inside a multi-cell float.
+    border_parts: list[str] = []
+    for start, end, visible, _length, _thread in draft.compute_floats():
         if not visible:
             continue
-        # Flip y: weft index 0 is the first pick (bottom of image); last pick is at y=0.
-        # A float spanning weft rows y_start..y_end maps to:
-        #   svg_y = (weft_count - 1 - y_end) * cell_px   (top edge of the rect)
         svg_x = start[0] * cell_px
         svg_y = (weft_count - 1 - end[1]) * cell_px
         w = (end[0] - start[0] + 1) * cell_px
         h = (end[1] - start[1] + 1) * cell_px
-        color = thread.color.css if thread.color else "#ffffff"
-        rects.append(
-            f'<rect x="{svg_x}" y="{svg_y}" width="{w}" height="{h}"'
-            f' fill="{color}" stroke="#7f7f7f" stroke-width="0.5"/>'
-        )
+        border_parts.append(f"M{svg_x} {svg_y}h{w}v{h}h{-w}z")
 
-    body = "".join(rects)
+    border = f'<path d="{"".join(border_parts)}" stroke="#7f7f7f" stroke-width="0.5" fill="none"/>'
+
+    defs = f"<defs>{''.join(symbol_defs)}</defs>"
+    body = "".join(rows)
     return (
         f'<svg width="{total_w}" height="{total_h}"'
         f' viewBox="0 0 {total_w} {total_h}"'
-        f' xmlns="http://www.w3.org/2000/svg">'
-        f"{body}</svg>"
+        f' xmlns="http://www.w3.org/2000/svg"'
+        f' xmlns:xlink="http://www.w3.org/1999/xlink">'
+        f"{defs}{body}{border}</svg>"
     )
