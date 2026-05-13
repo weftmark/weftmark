@@ -247,6 +247,13 @@ function useAdaptivePatternHeight(): number {
   return height;
 }
 
+type DrawdownPayload = {
+  cell_px: number;
+  warp_count: number;
+  weft_count: number;
+  floats: [number, number, number, number, string][];
+};
+
 function WeavingPatternView({
   projectId,
   currentPickIndex,
@@ -261,10 +268,9 @@ function WeavingPatternView({
   maxActive: number;
 }) {
   const containerH = useAdaptivePatternHeight();
-  const [pixelsPerRow, setPixelsPerRow] = useState(10);
-  const [warpCount, setWarpCount] = useState(0);
-  const [svgContent, setSvgContent] = useState<string | null>(null);
-  const [svgError, setSvgError] = useState<string | null>(null);
+  const [drawdownData, setDrawdownData] = useState<DrawdownPayload | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const lsColKey = `project-drawdown-col-${projectId}`;
@@ -275,15 +281,11 @@ function WeavingPatternView({
       try {
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(`/api/projects/${projectId}/drawdown/svg`, { headers, credentials: "include" });
+        const res = await fetch(`/api/projects/${projectId}/drawdown/data?cell_px=20`, { headers, credentials: "include" });
         if (!res.ok) throw new Error(`Pattern failed to load (${res.status})`);
-        const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "10", 10);
-        const wc = parseInt(res.headers.get("X-Total-Cols") ?? "0", 10);
-        const text = await res.text();
+        const data = (await res.json()) as DrawdownPayload;
         if (cancelled) return;
-        setPixelsPerRow(ppr);
-        if (wc > 0) setWarpCount(wc);
-        setSvgContent(text);
+        setDrawdownData(data);
         try {
           const saved = localStorage.getItem(lsColKey);
           if (saved !== null && scrollRef.current) {
@@ -291,25 +293,48 @@ function WeavingPatternView({
           }
         } catch { /* localStorage unavailable */ }
       } catch (err) {
-        if (!cancelled) setSvgError(err instanceof Error ? err.message : "Failed to load pattern");
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Failed to load pattern");
       }
     }
     load();
     return () => { cancelled = true; };
   }, [projectId, lsColKey]);
 
+  useEffect(() => {
+    if (!drawdownData || !canvasRef.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+
+    // Pass 1 — fill each float with its thread color
+    for (const [x, y, w, h, fill] of drawdownData.floats) {
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, y, w, h);
+    }
+
+    // Pass 2 — stroke all float borders in a single draw call
+    const borders = new Path2D();
+    for (const [x, y, w, h] of drawdownData.floats) {
+      borders.rect(x, y, w, h);
+    }
+    ctx.strokeStyle = "#7f7f7f";
+    ctx.lineWidth = 0.5;
+    ctx.stroke(borders);
+  }, [drawdownData]);
+
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     try { localStorage.setItem(lsColKey, String(e.currentTarget.scrollLeft)); } catch { /* noop */ }
   }, [lsColKey]);
 
-  // SVG is flipped: last pick at y=0 (top), first pick at bottom — same orientation as tiles.
+  const pixelsPerRow = drawdownData?.cell_px ?? 20;
+  const warpCount = drawdownData?.warp_count ?? 0;
+
+  // Canvas is flipped: last pick at y=0 (top), first pick at bottom — matches PNG tile orientation.
   const flippedIndex = totalPicks - 1 - currentPickIndex;
   const translateY = containerH / 2 - pixelsPerRow / 2 - flippedIndex * pixelsPerRow;
   const futureRegionH = Math.max(0, containerH / 2 - pixelsPerRow / 2);
   const highlightTop = containerH / 2 - pixelsPerRow / 2 - 1;
   const highlightH = pixelsPerRow + 2;
   const boxH = Math.max(4, pixelsPerRow - 6);
-  const totalImgW = warpCount > 0 ? warpCount * pixelsPerRow : undefined;
 
   const reversedPicks = [...picks].reverse();
 
@@ -324,11 +349,11 @@ function WeavingPatternView({
     />
   );
 
-  if (!svgContent) return (
+  if (!drawdownData) return (
     <div className="relative flex gap-2" style={{ height: containerH }}>
       <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted flex flex-col items-center justify-center gap-2">
-        {svgError ? (
-          <span className="text-sm text-muted-foreground">{svgError}</span>
+        {loadError ? (
+          <span className="text-sm text-muted-foreground">{loadError}</span>
         ) : (
           <>
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -344,17 +369,21 @@ function WeavingPatternView({
   return (
     <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown SVG — single load, translate to center current pick */}
+      {/* Drawdown canvas — single load, translate to center current pick */}
       <div className="flex-1 relative rounded-lg border overflow-hidden">
         <div
           ref={scrollRef}
           className="absolute inset-0 overflow-x-auto overflow-y-hidden bg-white dark:bg-zinc-900"
           onScroll={handleScroll}
         >
-          <div
-            style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", width: totalImgW }}
-            dangerouslySetInnerHTML={{ __html: svgContent }}
-          />
+          <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}>
+            <canvas
+              ref={canvasRef}
+              width={warpCount * pixelsPerRow}
+              height={(drawdownData?.weft_count ?? 0) * pixelsPerRow}
+              style={{ display: "block", imageRendering: "pixelated" }}
+            />
+          </div>
         </div>
         {washoutOverlay}
       </div>
