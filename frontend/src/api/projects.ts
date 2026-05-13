@@ -129,6 +129,10 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+export function drawdownSvgUrl(projectId: string, cellPx = 10): string {
+  return `/api/projects/${projectId}/drawdown/svg?cell_px=${cellPx}`;
+}
+
 export function listProjects(params?: { draftId?: string; loomId?: string }): Promise<ProjectSummary[]> {
   const qs = new URLSearchParams();
   if (params?.draftId) qs.set("draft_id", params.draftId);

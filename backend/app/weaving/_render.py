@@ -563,3 +563,63 @@ class SVGRenderer:
         s = _SVG_PREAMBLE + "\n" + self.make_svg_doc()
         with open(filename, "w") as f:
             f.write(s)
+
+
+# ---------------------------------------------------------------------------
+# Symbol-deduped drawdown SVG (project step tracking)
+# ---------------------------------------------------------------------------
+
+
+def drawdown_svg(draft, cell_px: int = 10) -> str:
+    """Render the drawdown grid as a symbol-deduped SVG string.
+
+    Orientation matches the tile renderer: last pick at y=0 (top), first pick at
+    bottom.  Identical lift patterns share a <symbol> element so byte size scales
+    with unique_patterns × warp_count rather than total_picks × warp_count.
+
+    Returns an SVG string without an XML declaration — suitable for inline DOM
+    injection via dangerouslySetInnerHTML.
+    """
+    warp_count = len(draft.warp)
+    weft_count = len(draft.weft)
+    total_w = warp_count * cell_px
+    total_h = weft_count * cell_px
+
+    warp_colors = [t.color.css for t in draft.warp]
+
+    symbol_map: dict[tuple[int, ...], int] = {}
+    symbol_defs: list[str] = []
+    row_data: list[tuple[int, str]] = []  # (symbol_id, weft_css)
+
+    for weft_thread in draft.weft:
+        connected = weft_thread.connected_shafts
+        # Columns where the warp thread is visible (mirrors compute_drawdown_at logic).
+        warp_up = tuple(x for x, wt in enumerate(draft.warp) if (wt.shaft not in connected) ^ draft.rising_shed)
+        if warp_up not in symbol_map:
+            sid = len(symbol_map)
+            symbol_map[warp_up] = sid
+            rects = "".join(
+                f'<rect x="{x * cell_px}" y="0" width="{cell_px}" height="{cell_px}" fill="{warp_colors[x]}"/>'
+                for x in warp_up
+            )
+            symbol_defs.append(f'<symbol id="s{sid}" width="{total_w}" height="{cell_px}">{rects}</symbol>')
+        weft_css = weft_thread.color.css if weft_thread.color else "#ffffff"
+        row_data.append((symbol_map[warp_up], weft_css))
+
+    rows: list[str] = []
+    for weft_idx, (sid, weft_css) in enumerate(row_data):
+        # Flip: weft index 0 (first pick) at bottom, last pick at top (y=0).
+        svg_row = weft_count - 1 - weft_idx
+        y = svg_row * cell_px
+        rows.append(f'<rect x="0" y="{y}" width="{total_w}" height="{cell_px}" fill="{weft_css}"/>')
+        rows.append(f'<use href="#s{sid}" x="0" y="{y}"/>')
+
+    defs = f"<defs>{''.join(symbol_defs)}</defs>"
+    body = "".join(rows)
+    return (
+        f'<svg width="{total_w}" height="{total_h}"'
+        f' viewBox="0 0 {total_w} {total_h}"'
+        f' xmlns="http://www.w3.org/2000/svg"'
+        f' xmlns:xlink="http://www.w3.org/1999/xlink">'
+        f"{defs}{body}</svg>"
+    )

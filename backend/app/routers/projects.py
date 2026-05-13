@@ -496,6 +496,50 @@ async def get_project_drawdown(
     )
 
 
+@router.get("/{project_id}/drawdown/svg")
+async def get_project_drawdown_svg(
+    project_id: uuid.UUID,
+    cell_px: int = Query(10, ge=4, le=30),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    from app.services import rendering
+    from app.services.storage import afile_exists, aread_file
+
+    project = await _get_owned_project(project_id, current_user, db)
+    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    wif_path = await _wif_path_for_project(draft, project.project_type)
+    if not wif_path or not await afile_exists(wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not found in storage")
+
+    wif_bytes = await aread_file(wif_path)
+    try:
+
+        def _render() -> tuple:
+            d = rendering.load_draft(wif_bytes)
+            s = rendering.render_drawdown_svg(d, cell_px)
+            return d, s
+
+        wif_draft, svg = await asyncio.to_thread(_render)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"SVG rendering failed: {exc}") from exc
+
+    return Response(
+        content=svg,
+        media_type="image/svg+xml; charset=utf-8",
+        headers={
+            "X-Pixels-Per-Row": str(cell_px),
+            "X-Total-Rows": str(len(wif_draft.weft)),
+            "X-Total-Cols": str(len(wif_draft.warp)),
+        },
+    )
+
+
 @router.get("/{project_id}", response_model=ProjectDetail)
 async def get_project(
     project_id: uuid.UUID,

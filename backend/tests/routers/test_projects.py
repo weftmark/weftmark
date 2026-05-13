@@ -2146,3 +2146,91 @@ class TestProjectMetrics:
         project = await _insert_active_project(db_session, test_user, draft, None)
         resp = await client.get(f"/api/projects/{project.id}/metrics")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /api/projects/{id}/drawdown/svg
+# ---------------------------------------------------------------------------
+
+
+class TestProjectDrawdownSvg:
+    async def test_returns_200_with_svg_content_type(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg")
+        assert resp.status_code == 200
+        assert "image/svg+xml" in resp.headers["content-type"]
+
+    async def test_response_body_is_valid_svg(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg")
+        assert b"<svg" in resp.content
+        assert b"</svg>" in resp.content
+
+    async def test_response_contains_symbol_defs(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg")
+        assert b"<symbol" in resp.content
+        assert b"<use" in resp.content
+
+    async def test_returns_dimension_headers(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg")
+        assert resp.headers.get("X-Total-Rows") == "4"
+        assert resp.headers.get("X-Total-Cols") == "4"
+        assert resp.headers.get("X-Pixels-Per-Row") == "10"
+
+    async def test_cell_px_param_scales_output(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg?cell_px=20")
+        assert resp.status_code == 200
+        assert resp.headers.get("X-Pixels-Per-Row") == "20"
+        assert b'width="80"' in resp.content  # 4 warps × 20 px
+
+    async def test_returns_404_when_wif_missing_from_storage(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft_id = uuid.uuid4()
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Missing WIF Draft",
+            wif_filename="missing.wif",
+            wif_path="drafts/missing/original.wif",  # path not in storage
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="No WIF Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=2,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg")
+        assert resp.status_code == 404
+
+    async def test_returns_401_when_unauthenticated(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await client.get(f"/api/projects/{project.id}/drawdown/svg")
+        assert resp.status_code == 401
+
+    async def test_returns_404_for_unknown_project(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/drawdown/svg")
+        assert resp.status_code == 404

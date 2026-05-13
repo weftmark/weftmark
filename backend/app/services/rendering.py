@@ -13,6 +13,7 @@ from PIL import Image as PILImage
 from app.config import get_settings
 from app.weaving import Draft
 from app.weaving._render import ImageRenderer, SVGRenderer
+from app.weaving._render import drawdown_svg as _drawdown_svg
 from app.weaving._wif import WIFReader
 
 tracer = trace.get_tracer(__name__)
@@ -226,6 +227,21 @@ def render_drawdown_tile(
     out = io.BytesIO()
     tile.save(out, format="PNG")
     return out.getvalue(), weft_count, actual_start, actual_row_count, scale, actual_start_col, actual_col_count
+
+
+def render_drawdown_svg(draft: Draft, cell_px: int = 10) -> str:
+    """Render the drawdown grid as a symbol-deduped SVG string.
+
+    Suitable for project step-tracking: load once, highlight current pick via
+    CSS/DOM on the client — zero server round-trips per step advance or reverse.
+    """
+    with tracer.start_as_current_span("render.drawdown_svg") as span:
+        span.set_attribute("render.cell_px", cell_px)
+        span.set_attribute("render.warp_threads", len(draft.warp))
+        span.set_attribute("render.weft_threads", len(draft.weft))
+        svg = _drawdown_svg(draft, cell_px=cell_px)
+        span.set_attribute("render.svg_bytes", len(svg.encode()))
+    return svg
 
 
 def render_drawdown_only(
