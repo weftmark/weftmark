@@ -314,21 +314,14 @@ function WeavingPatternView({
   const reversedPicks = [...picks].reverse();
 
   const washoutOverlay = (
-    <>
-      <div
-        className="absolute left-0 right-0 pointer-events-none"
-        style={{
-          top: 0,
-          height: futureRegionH,
-          backdropFilter: "saturate(0) brightness(1.6)",
-          WebkitBackdropFilter: "saturate(0) brightness(1.6)",
-        }}
-      />
-      <div
-        className="absolute left-0 right-0 pointer-events-none bg-white/50 dark:bg-zinc-900/55"
-        style={{ top: 0, height: futureRegionH }}
-      />
-    </>
+    <div
+      className="absolute left-0 right-0 pointer-events-none"
+      style={{
+        top: 0,
+        height: futureRegionH,
+        background: "linear-gradient(to bottom, hsl(var(--background)) 20%, transparent)",
+      }}
+    />
   );
 
   if (!svgContent) return (
@@ -359,7 +352,7 @@ function WeavingPatternView({
           onScroll={handleScroll}
         >
           <div
-            style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", width: totalImgW }}
+            style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", width: totalImgW, willChange: "transform" }}
             dangerouslySetInnerHTML={{ __html: svgContent }}
           />
         </div>
@@ -371,7 +364,7 @@ function WeavingPatternView({
         className="rounded-lg border overflow-hidden relative bg-background shrink-0"
         style={{ width: STEP_PANEL_W }}
       >
-        <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}>
+        <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", willChange: "transform" }}>
           {reversedPicks.map((pick) => (
             <div
               key={pick.pick}
@@ -397,7 +390,7 @@ function WeavingPatternView({
         className="rounded-lg border overflow-hidden relative shrink-0"
         style={{ width: COLOR_COL_W }}
       >
-        <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}>
+        <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", willChange: "transform" }}>
           {reversedPicks.map((pick) => (
             <div
               key={pick.pick}

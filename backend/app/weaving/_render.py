@@ -571,11 +571,14 @@ class SVGRenderer:
 
 
 def drawdown_svg(draft, cell_px: int = 20) -> str:
-    """Render the drawdown grid as a symbol-deduped SVG string.
+    """Render the drawdown as a float-based SVG string.
 
-    Orientation matches the tile renderer: last pick at y=0 (top), first pick at
-    bottom.  Identical lift patterns share a <symbol> element so byte size scales
-    with unique_patterns × warp_count rather than total_picks × warp_count.
+    Each visible float (consecutive same-thread cells) is one <rect> with a
+    border — matching ImageRenderer.paint_drawdown() exactly.  No internal cell
+    borders are drawn within multi-cell floats.
+
+    Orientation: last pick at y=0 (top), first pick at bottom — matches the
+    PNG tile renderer used by the project step-tracking view.
 
     Returns an SVG string without an XML declaration — suitable for inline DOM
     injection via dangerouslySetInnerHTML.
@@ -585,50 +588,27 @@ def drawdown_svg(draft, cell_px: int = 20) -> str:
     total_w = warp_count * cell_px
     total_h = weft_count * cell_px
 
-    warp_colors = [t.color.css for t in draft.warp]
+    rects: list[str] = []
+    for start, end, visible, _length, thread in draft.compute_floats():
+        if not visible:
+            continue
+        # Flip y: weft index 0 is the first pick (bottom of image); last pick is at y=0.
+        # A float spanning weft rows y_start..y_end maps to:
+        #   svg_y = (weft_count - 1 - y_end) * cell_px   (top edge of the rect)
+        svg_x = start[0] * cell_px
+        svg_y = (weft_count - 1 - end[1]) * cell_px
+        w = (end[0] - start[0] + 1) * cell_px
+        h = (end[1] - start[1] + 1) * cell_px
+        color = thread.color.css if thread.color else "#ffffff"
+        rects.append(
+            f'<rect x="{svg_x}" y="{svg_y}" width="{w}" height="{h}"'
+            f' fill="{color}" stroke="#7f7f7f" stroke-width="0.5"/>'
+        )
 
-    symbol_map: dict[tuple[int, ...], int] = {}
-    symbol_defs: list[str] = []
-    row_data: list[tuple[int, str]] = []  # (symbol_id, weft_css)
-
-    for weft_thread in draft.weft:
-        connected = weft_thread.connected_shafts
-        # Columns where the warp thread is visible (mirrors compute_drawdown_at logic).
-        warp_up = tuple(x for x, wt in enumerate(draft.warp) if (wt.shaft not in connected) ^ draft.rising_shed)
-        if warp_up not in symbol_map:
-            sid = len(symbol_map)
-            symbol_map[warp_up] = sid
-            rects = "".join(
-                f'<rect x="{x * cell_px}" y="0" width="{cell_px}" height="{cell_px}" fill="{warp_colors[x]}"/>'
-                for x in warp_up
-            )
-            symbol_defs.append(f'<symbol id="s{sid}" width="{total_w}" height="{cell_px}">{rects}</symbol>')
-        weft_css = weft_thread.color.css if weft_thread.color else "#ffffff"
-        row_data.append((symbol_map[warp_up], weft_css))
-
-    rows: list[str] = []
-    for weft_idx, (sid, weft_css) in enumerate(row_data):
-        # Flip: weft index 0 (first pick) at bottom, last pick at top (y=0).
-        svg_row = weft_count - 1 - weft_idx
-        y = svg_row * cell_px
-        rows.append(f'<rect x="0" y="{y}" width="{total_w}" height="{cell_px}" fill="{weft_css}"/>')
-        rows.append(f'<use href="#s{sid}" x="0" y="{y}"/>')
-
-    # Single <path> grid overlay — all cell borders in one element (one draw call).
-    # Vertical lines at every column boundary, horizontal at every row boundary.
-    grid_parts: list[str] = []
-    for x in range(0, total_w + 1, cell_px):
-        grid_parts.append(f"M{x} 0V{total_h}")
-    for y in range(0, total_h + 1, cell_px):
-        grid_parts.append(f"M0 {y}H{total_w}")
-    grid = f'<path d="{"".join(grid_parts)}" stroke="#7f7f7f" stroke-width="0.5" fill="none"/>'
-
-    defs = f"<defs>{''.join(symbol_defs)}</defs>"
-    body = "".join(rows)
+    body = "".join(rects)
     return (
         f'<svg width="{total_w}" height="{total_h}"'
         f' viewBox="0 0 {total_w} {total_h}"'
-        f' xmlns="http://www.w3.org/2000/svg"'
-        f' xmlns:xlink="http://www.w3.org/1999/xlink">'
-        f"{defs}{body}{grid}</svg>"
+        f' xmlns="http://www.w3.org/2000/svg">'
+        f"{body}</svg>"
     )
