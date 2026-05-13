@@ -638,3 +638,36 @@ def drawdown_svg(draft, cell_px: int = 20) -> str:
         f' xmlns:xlink="http://www.w3.org/1999/xlink">'
         f"{defs}{body}{border}</svg>"
     )
+
+
+def drawdown_data(draft, cell_px: int = 20) -> dict:
+    """Return float geometry as a plain dict ready for JSON serialisation.
+
+    Each entry in ``floats`` is ``[x, y, w, h, color_hex]`` with y-coordinates
+    flipped so that the last pick is at y=0 (top) — matching the orientation of
+    ``drawdown_svg()`` and the PNG tile renderer.
+
+    Suitable for client-side canvas rendering: fill each float in pass 1, then
+    stroke all outlines via a single Path2D in pass 2.
+    """
+    weft_count = len(draft.weft)
+    floats: list[list] = []
+    for start, end, visible, _length, thread in draft.compute_floats():
+        if not visible:
+            continue
+        x = int(start[0]) * cell_px
+        y = (weft_count - 1 - int(end[1])) * cell_px
+        w = (int(end[0]) - int(start[0]) + 1) * cell_px
+        h = (int(end[1]) - int(start[1]) + 1) * cell_px
+        if thread.color:
+            r, g, b = thread.color.rgb
+            color = f"#{int(r):02x}{int(g):02x}{int(b):02x}"
+        else:
+            color = "#ffffff"
+        floats.append([x, y, w, h, color])
+    return {
+        "cell_px": cell_px,
+        "warp_count": len(draft.warp),
+        "weft_count": weft_count,
+        "floats": floats,
+    }
