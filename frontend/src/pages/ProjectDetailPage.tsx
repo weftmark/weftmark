@@ -352,7 +352,7 @@ function WeavingPatternView({
           onScroll={handleScroll}
         >
           <div
-            style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", width: totalImgW, willChange: "transform" }}
+            style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", width: totalImgW }}
             dangerouslySetInnerHTML={{ __html: svgContent }}
           />
         </div>
