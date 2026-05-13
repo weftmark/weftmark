@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, previewUrl, downloadWif, downloadWifModified } from "@/api/drafts";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, previewSvgUrl, downloadWif, downloadWifModified } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -316,10 +316,10 @@ export function DraftDetailPage() {
           {/* Right column: Preview */}
           <div>
             <h2 className="text-base font-semibold mb-3">Design Preview</h2>
-            {draft.has_preview ? (
+            {draft.wif_filename ? (
               <div className="overflow-auto rounded-lg border bg-card p-2">
                 <AuthedImage
-                  src={previewUrl(draft.id)}
+                  src={previewSvgUrl(draft.id)}
                   alt={`Draft preview for ${draft.name}`}
                   className="max-w-full"
                   data-testid="draft-preview-img"

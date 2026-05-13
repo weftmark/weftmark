@@ -12,7 +12,7 @@ from PIL import Image as PILImage
 
 from app.config import get_settings
 from app.weaving import Draft
-from app.weaving._render import ImageRenderer
+from app.weaving._render import ImageRenderer, SVGRenderer
 from app.weaving._wif import WIFReader
 
 tracer = trace.get_tracer(__name__)
@@ -52,6 +52,18 @@ def render_full_draft(draft: Draft, scale: int = 10) -> bytes:
     out = io.BytesIO()
     im.save(out, format="PNG")
     return out.getvalue()
+
+
+def render_full_draft_svg(draft: Draft, scale: int = 10) -> str:
+    """Render the full draft (threading + tie-up/liftplan + drawdown) as an SVG string."""
+    renderer = SVGRenderer(draft, scale=scale)
+    with tracer.start_as_current_span("render.full_draft_svg") as span:
+        span.set_attribute("render.scale", scale)
+        span.set_attribute("render.warp_threads", len(draft.warp))
+        span.set_attribute("render.weft_threads", len(draft.weft))
+        svg = renderer.render_to_string()
+        span.set_attribute("render.svg_bytes", len(svg.encode()))
+    return svg
 
 
 def render_full_draft_liftplan(draft: Draft, scale: int = 10) -> bytes:
