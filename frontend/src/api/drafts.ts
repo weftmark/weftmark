@@ -21,6 +21,12 @@ export interface WifColor {
   hex: string;
 }
 
+export interface WeftColorStat {
+  hex: string;
+  count: number;
+  percentage: number;
+}
+
 export interface Draft {
   id: string;
   name: string;
@@ -46,6 +52,7 @@ export interface Draft {
   metadata_overrides: Record<string, { original: number | null; override: number }> | null;
   wif_measurements: WifMeasurements | null;
   wif_colors: WifColor[] | null;
+  weft_color_stats: WeftColorStat[] | null;
   warp_length_cm: number | null;
   warp_length_overridden: boolean;
   weaving_width_override_cm: number | null;

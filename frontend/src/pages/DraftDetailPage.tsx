@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, downloadWif, downloadWifModified } from "@/api/drafts";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, downloadWif, downloadWifModified, type WeftColorStat } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -10,7 +10,7 @@ import { DraftPreviewModal } from "@/components/drafts/DraftPreviewModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { useAuthContext } from "@/context/AuthContext";
-import { measurementSystemToUnit, convertLength, formatLength } from "@/lib/units";
+import { measurementSystemToUnit, convertLength, formatLength, formatApproxLength } from "@/lib/units";
 import { nearestColorName } from "@/lib/colorName";
 
 export function DraftDetailPage() {
@@ -481,17 +481,40 @@ export function DraftDetailPage() {
               {draft.wif_colors && draft.wif_colors.length > 0 && (
                 <div className="mt-4 space-y-2">
                   <h3 className="text-sm font-medium">Color palette</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {draft.wif_colors.map((c) => (
-                      <div key={c.index} className="flex flex-col items-center gap-1 w-16" title={`#${c.index}: RGB(${c.r}, ${c.g}, ${c.b}) — ${c.hex}`}>
+                  <div className="flex flex-wrap gap-3">
+                    {draft.wif_colors.map((c) => {
+                      const stat: WeftColorStat | undefined = draft.weft_color_stats?.find(
+                        (s) => s.hex === c.hex,
+                      );
+                      const approxLengthCm =
+                        stat && weavingWidthCm != null
+                          ? stat.count * weavingWidthCm
+                          : null;
+                      return (
                         <div
-                          className="h-8 w-16 rounded border border-border flex-shrink-0"
-                          style={{ backgroundColor: c.hex }}
-                        />
-                        <span className="text-[10px] text-muted-foreground font-mono leading-none">{c.hex}</span>
-                        <span className="text-[10px] text-subdued leading-none text-center">{nearestColorName(c.hex)}</span>
-                      </div>
-                    ))}
+                          key={c.index}
+                          className="flex flex-col items-center gap-1 w-20"
+                          title={`#${c.index}: RGB(${c.r}, ${c.g}, ${c.b}) — ${c.hex}`}
+                        >
+                          <div
+                            className="h-8 w-20 rounded border border-border flex-shrink-0"
+                            style={{ backgroundColor: c.hex }}
+                          />
+                          <span className="text-[10px] text-muted-foreground font-mono leading-none">{c.hex}</span>
+                          <span className="text-[10px] text-subdued leading-none text-center">{nearestColorName(c.hex)}</span>
+                          {stat && (
+                            <span className="text-[10px] text-muted-foreground leading-none text-center">
+                              {stat.count} picks ({stat.percentage}%)
+                            </span>
+                          )}
+                          {approxLengthCm != null && (
+                            <span className="text-[10px] text-subdued leading-none text-center">
+                              ~{formatApproxLength(approxLengthCm, displayUnit)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

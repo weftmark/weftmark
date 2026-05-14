@@ -156,6 +156,62 @@ def extract_colors(wif_bytes: bytes) -> list[dict]:
         return []
 
 
+def extract_weft_color_stats(wif_bytes: bytes) -> list[dict]:
+    """Count picks per weft color from LIFTPLAN (preferred) or TREADLING + TIEUP.
+
+    Returns a list of dicts sorted by count descending:
+      hex (str), count (int), percentage (float, 0–100, rounded to 1 dp)
+
+    Returns [] if no treadling/liftplan section exists or no colors are defined.
+    Never raises.
+    """
+    try:
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
+
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
+
+        project_type: str | None = None
+        if config.has_section("LIFTPLAN"):
+            project_type = "lift"
+        elif config.has_section("TREADLING"):
+            project_type = "treadle"
+
+        if project_type is None:
+            return []
+
+        pick_data = parse_picks(wif_bytes, project_type)
+        total = len(pick_data.weft_colors)
+        if total == 0:
+            return []
+
+        counts: dict[str, int] = {}
+        for hex_color in pick_data.weft_colors:
+            if hex_color is None:
+                continue
+            counts[hex_color] = counts.get(hex_color, 0) + 1
+
+        if not counts:
+            return []
+
+        counted = sum(counts.values())
+        result = [
+            {
+                "hex": hex_color,
+                "count": count,
+                "percentage": round(count * 100 / counted, 1),
+            }
+            for hex_color, count in sorted(counts.items(), key=lambda x: -x[1])
+        ]
+        return result
+    except Exception:
+        return []
+
+
 @dataclass
 class PickData:
     project_type: str  # "treadle" | "lift"
