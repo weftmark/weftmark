@@ -32,6 +32,7 @@ def _make_celery() -> Celery:
             "app.tasks.s3_audit",
             "app.tasks.cve_scan",
             "app.tasks.debug",
+            "app.tasks.reparse",
             "app.tasks.scheduler",
         ],
     )

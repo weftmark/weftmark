@@ -28,7 +28,12 @@ async def _reparse_all() -> dict:
     from app.config import get_settings
     from app.models.draft import Draft
     from app.services import storage
-    from app.services.wif_parser import extract_colors, extract_measurements, extract_weft_color_stats
+    from app.services.wif_parser import (
+        extract_colors,
+        extract_measurements,
+        extract_warp_color_stats,
+        extract_weft_color_stats,
+    )
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
@@ -54,6 +59,7 @@ async def _reparse_all() -> dict:
                     draft.wif_measurements = measurements or None
                     draft.wif_colors = colors or None
                     draft.weft_color_stats = extract_weft_color_stats(wif_bytes) or None
+                    draft.warp_color_stats = extract_warp_color_stats(wif_bytes) or None
 
                     # Only update warp_length_cm if the user hasn't manually overridden it.
                     if not draft.warp_length_overridden:

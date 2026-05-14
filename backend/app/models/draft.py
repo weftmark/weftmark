@@ -72,6 +72,10 @@ class Draft(Base, TimestampMixin, SoftDeleteMixin):
     # List of {hex, count, percentage} sorted by count desc; null if no pick data.
     weft_color_stats: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
+    # Thread count per warp color from [WARP COLORS] / [WARP] Color= default.
+    # List of {hex, count, percentage} sorted by count desc; null if no color data.
+    warp_color_stats: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
     # Effective warp length in cm — populated from WIF on import or set manually.
     warp_length_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
 

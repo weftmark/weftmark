@@ -21,11 +21,14 @@ export interface WifColor {
   hex: string;
 }
 
-export interface WeftColorStat {
+export interface ColorStat {
   hex: string;
   count: number;
   percentage: number;
 }
+
+/** @deprecated use ColorStat */
+export type WeftColorStat = ColorStat;
 
 export interface Draft {
   id: string;
@@ -52,7 +55,8 @@ export interface Draft {
   metadata_overrides: Record<string, { original: number | null; override: number }> | null;
   wif_measurements: WifMeasurements | null;
   wif_colors: WifColor[] | null;
-  weft_color_stats: WeftColorStat[] | null;
+  weft_color_stats: ColorStat[] | null;
+  warp_color_stats: ColorStat[] | null;
   warp_length_cm: number | null;
   warp_length_overridden: boolean;
   weaving_width_override_cm: number | null;

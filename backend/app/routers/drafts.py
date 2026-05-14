@@ -78,6 +78,7 @@ class DraftSummary(BaseModel):
     wif_measurements: dict | None
     wif_colors: list | None
     weft_color_stats: list | None
+    warp_color_stats: list | None
     warp_length_cm: float | None
     warp_length_overridden: bool
     weaving_width_override_cm: float | None
@@ -161,6 +162,7 @@ async def create_draft(
         warp_length_cm=measurements.get("warp_length") if measurements else None,
         wif_colors=wif_parser.extract_colors(wif_bytes) or None,
         weft_color_stats=wif_parser.extract_weft_color_stats(wif_bytes) or None,
+        warp_color_stats=wif_parser.extract_warp_color_stats(wif_bytes) or None,
     )
     db.add(draft)
     await db.flush()  # get draft.id without committing
