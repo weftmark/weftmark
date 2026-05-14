@@ -800,8 +800,11 @@ async def advance_item(
         raise HTTPException(status_code=400, detail="Current item is not finished — advance to the last pick first")
     if project.current_item >= project.num_items:
         raise HTTPException(status_code=400, detail="Already on the last item — use complete instead")
+    picks = dict(project.item_picks or {})
+    picks[str(project.current_item)] = project.current_pick
     project.current_item += 1
-    project.current_pick = 1
+    project.current_pick = int(picks.get(str(project.current_item), 1))
+    project.item_picks = picks
     await db.commit()
     return StepResponse(
         current_pick=project.current_pick,
@@ -821,8 +824,12 @@ async def jump_item(
     project = await _get_owned_project(project_id, current_user, db)
     if project.status != "active":
         raise HTTPException(status_code=400, detail="Project is not active")
-    project.current_item = max(1, min(body.item, project.num_items))
-    project.current_pick = 1
+    picks = dict(project.item_picks or {})
+    picks[str(project.current_item)] = project.current_pick
+    target = max(1, min(body.item, project.num_items))
+    project.current_item = target
+    project.current_pick = int(picks.get(str(target), 1))
+    project.item_picks = picks
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)

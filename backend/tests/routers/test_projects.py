@@ -1496,6 +1496,45 @@ class TestAdvanceItem:
         assert body["current_item"] == 2
         assert body["current_pick"] == 1
 
+    async def test_saves_departing_item_pick_and_restores_on_return(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 1
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
+        # Advance to item 2
+        await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        # Work a bit on item 2
+        project2 = await db_session.get(type(project), project.id)
+        assert project2 is not None
+        project2.current_pick = 2
+        await db_session.commit()
+        # Jump back to item 1 — should restore to total_picks + 1 (completed state)
+        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})).json()
+        assert body["current_item"] == 1
+        assert body["current_pick"] == project.total_picks + 1
+
+    async def test_restores_previously_visited_item_pick(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 2
+        project.current_pick = 2
+        project.item_picks = {"1": project.total_picks + 1}
+        await db_session.commit()
+        # Advance from item 2 (at end) to item 3 — item 2's pick (2) should be saved
+        project.current_pick = project.total_picks + 1
+        await db_session.commit()
+        await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        # Jump back to item 2 — should restore pick 2
+        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 2})).json()
+        assert body["current_pick"] == project.total_picks + 1  # saved at end
+
     async def test_response_includes_num_items(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
@@ -1578,7 +1617,35 @@ class TestJumpItem:
         await db_session.commit()
         body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 2})).json()
         assert body["current_item"] == 2
-        assert body["current_pick"] == 1
+        assert body["current_pick"] == 1  # item 2 never visited → defaults to 1
+
+    async def test_restores_pick_for_previously_visited_item(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 2
+        project.current_pick = 7
+        project.item_picks = {"1": project.total_picks + 1}  # item 1 was completed
+        await db_session.commit()
+        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})).json()
+        assert body["current_item"] == 1
+        assert body["current_pick"] == project.total_picks + 1
+
+    async def test_saves_current_pick_when_jumping(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.num_items = 3
+        project.current_item = 2
+        project.current_pick = 7
+        await db_session.commit()
+        await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})
+        await db_session.refresh(project)
+        assert project.item_picks.get("2") == 7
 
     async def test_clamps_above_num_items(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)

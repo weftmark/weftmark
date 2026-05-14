@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
@@ -46,6 +46,9 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     current_pick: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     current_item: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     total_picks: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Stores last known pick per item: {"1": 3, "2": 7}. Updated on item transitions so
+    # jumping back to a previously visited item restores where the weaver left off.
+    item_picks: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Warp plan inputs
     finished_length_per_item: Mapped[Decimal | None] = mapped_column(Numeric(8, 1), nullable=True)
