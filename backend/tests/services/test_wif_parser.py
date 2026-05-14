@@ -7,7 +7,7 @@ color scale normalisation, liftplan computation, encoding fallback.
 
 import pytest
 
-from app.services.wif_parser import PickData, compute_liftplan, parse_picks
+from app.services.wif_parser import PickData, compute_liftplan, extract_colors, extract_measurements, parse_picks
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -512,3 +512,236 @@ Version=1.1
         )
         result = compute_liftplan(latin1_content)
         assert b"[LIFTPLAN]" in result
+
+
+# ---------------------------------------------------------------------------
+# extract_measurements
+# ---------------------------------------------------------------------------
+
+
+def _mwif(warp: str = "", weft: str = "") -> bytes:
+    sections = ["[WIF]\nVersion=1.1\n\n[WEAVING]\nShafts=4\nTreadles=4"]
+    if warp:
+        sections.append(f"[WARP]\n{warp}")
+    if weft:
+        sections.append(f"[WEFT]\n{weft}")
+    return "\n\n".join(sections).encode()
+
+
+class TestExtractMeasurements:
+    def test_returns_dict(self):
+        result = extract_measurements(_mwif())
+        assert isinstance(result, dict)
+
+    def test_empty_when_no_warp_section(self):
+        result = extract_measurements(b"[WIF]\nVersion=1.1")
+        assert result == {}
+
+    def test_warp_length_inches_normalized_to_cm(self):
+        result = extract_measurements(_mwif(warp="Units=Inches\nLength=100"))
+        assert pytest.approx(result["warp_length"], rel=1e-4) == 254.0
+        assert result["warp_length_original"] == 100.0
+        assert result["warp_length_unit"] == "in"
+
+    def test_warp_length_centimeters_unchanged(self):
+        result = extract_measurements(_mwif(warp="Units=Centimeters\nLength=200"))
+        assert pytest.approx(result["warp_length"]) == 200.0
+        assert result["warp_length_unit"] == "cm"
+
+    def test_warp_length_decipoints_normalized(self):
+        # 720 decipoints = 1 inch = 2.54 cm
+        result = extract_measurements(_mwif(warp="Units=Decipoints\nLength=720"))
+        assert pytest.approx(result["warp_length"], rel=1e-3) == 2.54
+        assert result["warp_length_unit"] == "dp"
+
+    def test_default_unit_is_inches_when_absent(self):
+        result = extract_measurements(_mwif(warp="Length=10"))
+        assert pytest.approx(result["warp_length"], rel=1e-4) == 25.4
+        assert result["warp_length_unit"] == "in"
+
+    def test_warp_spacing_extracted(self):
+        result = extract_measurements(_mwif(warp="Units=Inches\nSpacing=0.2"))
+        assert pytest.approx(result["warp_spacing"], rel=1e-4) == 0.508
+        assert result["warp_spacing_original"] == 0.2
+        assert result["warp_spacing_unit"] == "in"
+
+    def test_weft_spacing_extracted(self):
+        result = extract_measurements(_mwif(weft="Units=Centimeters\nSpacing=0.3"))
+        assert pytest.approx(result["weft_spacing"]) == 0.3
+        assert result["weft_spacing_unit"] == "cm"
+
+    def test_warp_length_absent_key_missing(self):
+        result = extract_measurements(_mwif(warp="Units=Inches\nSpacing=0.2"))
+        assert "warp_length" not in result
+        assert "warp_spacing" in result
+
+    def test_weft_length_inches_normalized(self):
+        result = extract_measurements(_mwif(weft="Units=Inches\nLength=50"))
+        assert pytest.approx(result["weft_length"], rel=1e-4) == 127.0
+        assert result["weft_length_original"] == 50.0
+        assert result["weft_length_unit"] == "in"
+
+    def test_weft_length_centimeters_unchanged(self):
+        result = extract_measurements(_mwif(weft="Units=Centimeters\nLength=300"))
+        assert pytest.approx(result["weft_length"]) == 300.0
+        assert result["weft_length_unit"] == "cm"
+
+    def test_weft_length_absent_key_missing(self):
+        result = extract_measurements(_mwif(weft="Units=Inches\nSpacing=0.2"))
+        assert "weft_length" not in result
+        assert "weft_spacing" in result
+
+    def test_non_numeric_length_skipped(self):
+        result = extract_measurements(_mwif(warp="Units=Inches\nLength=not_a_number"))
+        assert "warp_length" not in result
+
+    def test_warp_and_weft_different_units(self):
+        result = extract_measurements(_mwif(warp="Units=Inches\nLength=100", weft="Units=Centimeters\nSpacing=0.5"))
+        assert result["warp_length_unit"] == "in"
+        assert result["weft_spacing_unit"] == "cm"
+        assert pytest.approx(result["weft_spacing"]) == 0.5
+
+    def test_invalid_wif_bytes_returns_empty(self):
+        result = extract_measurements(b"\xff\xfe invalid binary \x00")
+        assert isinstance(result, dict)
+
+    def test_latin1_wif_parsed(self):
+        latin1_wif = "[WIF]\nVersion=1.1\n\n[WARP]\nUnits=Inches\nLength=50\n".encode("latin-1")
+        result = extract_measurements(latin1_wif)
+        assert pytest.approx(result["warp_length"], rel=1e-4) == 127.0
+
+
+# ---------------------------------------------------------------------------
+# extract_colors
+# ---------------------------------------------------------------------------
+
+
+def _cwif(
+    table_body: str = "",
+    palette: str = "Range=0,255\nForm=Decimal",
+    weft_colors: str = "",
+    warp_colors: str = "",
+    weft_default: str = "",
+    warp_default: str = "",
+) -> bytes:
+    """Build a minimal WIF for color extraction tests.
+
+    table_body: content of [COLOR TABLE]
+    weft_colors: content of [WEFT COLORS] (per-pick palette index refs)
+    warp_colors: content of [WARP COLORS] (per-thread palette index refs)
+    weft_default: value for [WEFT] Color= key
+    warp_default: value for [WARP] Color= key
+    """
+    sections = [f"[WIF]\nVersion=1.1\n\n[COLOR PALETTE]\n{palette}"]
+    if table_body:
+        sections.append(f"[COLOR TABLE]\n{table_body}")
+    if weft_colors:
+        sections.append(f"[WEFT COLORS]\n{weft_colors}")
+    if warp_colors:
+        sections.append(f"[WARP COLORS]\n{warp_colors}")
+    if weft_default or warp_default:
+        weft_line = f"Color={weft_default}" if weft_default else ""
+        warp_line = f"Color={warp_default}" if warp_default else ""
+        if weft_line:
+            sections.append(f"[WEFT]\n{weft_line}")
+        if warp_line:
+            sections.append(f"[WARP]\n{warp_line}")
+    return "\n\n".join(sections).encode()
+
+
+class TestExtractColors:
+    def test_returns_list(self):
+        result = extract_colors(_cwif("1=255,0,0", weft_colors="1=1"))
+        assert isinstance(result, list)
+
+    def test_empty_when_no_color_table(self):
+        result = extract_colors(b"[WIF]\nVersion=1.1")
+        assert result == []
+
+    def test_empty_when_no_references_in_design(self):
+        """Color table exists but nothing in the design references any index."""
+        result = extract_colors(_cwif("1=255,0,0\n2=0,255,0"))
+        assert result == []
+
+    def test_single_color_via_weft_colors(self):
+        result = extract_colors(_cwif("1=255,0,0", weft_colors="1=1"))
+        assert len(result) == 1
+        c = result[0]
+        assert c["index"] == 1
+        assert c["r"] == 255
+        assert c["hex"] == "#ff0000"
+
+    def test_single_color_via_global_weft_default(self):
+        result = extract_colors(_cwif("2=0,255,0", weft_default="2"))
+        assert len(result) == 1
+        assert result[0]["index"] == 2
+        assert result[0]["hex"] == "#00ff00"
+
+    def test_single_color_via_global_warp_default(self):
+        result = extract_colors(_cwif("3=0,0,255", warp_default="3"))
+        assert len(result) == 1
+        assert result[0]["hex"] == "#0000ff"
+
+    def test_single_color_via_warp_colors(self):
+        result = extract_colors(_cwif("4=128,0,128", warp_colors="1=4"))
+        assert len(result) == 1
+        assert result[0]["index"] == 4
+
+    def test_unreferenced_color_excluded(self):
+        """Color 2 is in the table but not referenced — must not appear."""
+        result = extract_colors(_cwif("1=255,0,0\n2=0,255,0", weft_colors="1=1"))
+        assert len(result) == 1
+        assert result[0]["index"] == 1
+
+    def test_multiple_referenced_colors_sorted(self):
+        result = extract_colors(_cwif("3=0,0,255\n1=255,0,0\n2=0,255,0", weft_colors="1=3\n2=1\n3=2"))
+        assert [c["index"] for c in result] == [1, 2, 3]
+        assert result[0]["hex"] == "#ff0000"
+        assert result[1]["hex"] == "#00ff00"
+        assert result[2]["hex"] == "#0000ff"
+
+    def test_scale_65535_normalized_to_255(self):
+        result = extract_colors(_cwif("1=65535,0,0", palette="Range=0,65535", weft_colors="1=1"))
+        assert result[0]["r"] == 255
+        assert result[0]["hex"] == "#ff0000"
+
+    def test_scale_100_normalized(self):
+        result = extract_colors(_cwif("1=100,0,0", palette="Range=0,100", weft_colors="1=1"))
+        assert result[0]["r"] == 255
+        assert result[0]["hex"] == "#ff0000"
+
+    def test_values_clamped_below_zero(self):
+        result = extract_colors(_cwif("1=-10,0,0", weft_colors="1=1"))
+        assert result[0]["r"] == 0
+
+    def test_values_clamped_above_255(self):
+        result = extract_colors(_cwif("1=300,0,0", weft_colors="1=1"))
+        assert result[0]["r"] == 255
+
+    def test_short_rgb_entry_skipped(self):
+        result = extract_colors(_cwif("1=100,50\n2=200,100,50", weft_colors="1=1\n2=2"))
+        assert len(result) == 1
+        assert result[0]["index"] == 2
+
+    def test_non_numeric_entry_skipped(self):
+        result = extract_colors(_cwif("1=abc,def,ghi\n2=0,255,0", weft_colors="1=1\n2=2"))
+        assert len(result) == 1
+        assert result[0]["hex"] == "#00ff00"
+
+    def test_invalid_bytes_returns_empty(self):
+        result = extract_colors(b"\xff\xfe not a wif")
+        assert result == []
+
+    def test_all_fields_present(self):
+        result = extract_colors(_cwif("1=128,64,32", weft_colors="1=1"))
+        c = result[0]
+        assert set(c.keys()) == {"index", "r", "g", "b", "hex"}
+        assert c["hex"] == f"#{128:02x}{64:02x}{32:02x}"
+
+    def test_latin1_wif_parsed(self):
+        latin1_wif = (
+            "[WIF]\nVersion=1.1\n\n[COLOR PALETTE]\nRange=0,255\n\n[COLOR TABLE]\n1=255,0,0\n\n[WEFT COLORS]\n1=1\n"
+        ).encode("latin-1")
+        result = extract_colors(latin1_wif)
+        assert len(result) == 1
+        assert result[0]["hex"] == "#ff0000"
