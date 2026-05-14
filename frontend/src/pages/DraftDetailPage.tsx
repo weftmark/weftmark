@@ -478,7 +478,19 @@ export function DraftDetailPage() {
                 </dd>
               </dl>
 
-              {draft.wif_colors && draft.wif_colors.length > 0 && (
+              {draft.wif_colors && draft.wif_colors.length > 0 && (() => {
+                // When both stat arrays are populated, drop colors that appear in neither —
+                // they are defined-as-default colors fully overridden by per-thread/per-pick assignments.
+                const bothStatsPresent = draft.warp_color_stats !== null && draft.weft_color_stats !== null;
+                const visibleColors = bothStatsPresent
+                  ? draft.wif_colors.filter(
+                      (c) =>
+                        draft.weft_color_stats!.some((s) => s.hex === c.hex) ||
+                        draft.warp_color_stats!.some((s) => s.hex === c.hex),
+                    )
+                  : draft.wif_colors;
+                if (visibleColors.length === 0) return null;
+                return (
                 <div className="mt-4 space-y-2">
                   <h3 className="text-sm font-medium">Color palette</h3>
                   <table className="w-full text-xs">
@@ -489,12 +501,12 @@ export function DraftDetailPage() {
                         <th className="text-right pb-1.5 font-normal pr-3">Warp ends</th>
                         <th className="text-right pb-1.5 font-normal pr-3">Weft picks</th>
                         {weavingWidthCm != null && (
-                          <th className="text-right pb-1.5 font-normal">~Length</th>
+                          <th className="text-right pb-1.5 font-normal">Est. weft length</th>
                         )}
                       </tr>
                     </thead>
                     <tbody>
-                      {draft.wif_colors.map((c) => {
+                      {visibleColors.map((c) => {
                         const weftStat: ColorStat | undefined = draft.weft_color_stats?.find(
                           (s) => s.hex === c.hex,
                         );
@@ -544,7 +556,8 @@ export function DraftDetailPage() {
                     </tbody>
                   </table>
                 </div>
-              )}
+                );
+              })()}
             </div>
 
             <div className="space-y-3 border-t pt-4">
