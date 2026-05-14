@@ -4,6 +4,8 @@ import { createProject, completeProject, abandonProject, listProjects, ApiError,
 import { listDrafts } from "@/api/drafts";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useAuthContext } from "@/context/AuthContext";
+import { measurementSystemToUnit, convertLength, formatLength } from "@/lib/units";
 
 interface Props {
   onSuccess: (id: string) => void;
@@ -23,6 +25,7 @@ function convertLen(value: string, toUnit: "cm" | "in"): string {
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
 export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props) {
+  const { user } = useAuthContext();
   const [name, setName] = useState("");
   const [draftId, setDraftId] = useState(defaultDraftId ?? "");
   const [projectType, setProjectType] = useState<ProjectType | "">("");
@@ -32,7 +35,11 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
   const [numItems, setNumItems] = useState("1");
   const [wasteBetween, setWasteBetween] = useState("");
   const [warpWaste, setWarpWaste] = useState("");
-  const [lengthUnit, setLengthUnit] = useState<"cm" | "in">("cm");
+  const [lengthUnit, setLengthUnit] = useState<"cm" | "in">(
+    measurementSystemToUnit(user?.measurement_system ?? "metric")
+  );
+  // Track previous draft ID to detect when draft selection changes.
+  const [prevDraftId, setPrevDraftId] = useState<string | undefined>(undefined);
 
   const handleUnitChange = (newUnit: "cm" | "in") => {
     setFinishedLength((v) => convertLen(v, newUnit));
@@ -54,6 +61,18 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
   const selectedDraft = drafts.find((d) => d.id === draftId);
   const selectedLoom = looms.find((l) => l.id === loomId);
+
+  // Pre-populate finished length when draft selection changes (setState during render — React-approved).
+  const warpLengthDefaultCm = selectedDraft?.warp_length_cm ?? null;
+  if (selectedDraft?.id !== prevDraftId) {
+    setPrevDraftId(selectedDraft?.id);
+    if (selectedDraft?.warp_length_cm != null) {
+      const val = convertLength(selectedDraft.warp_length_cm, "cm", lengthUnit);
+      setFinishedLength(parseFloat(val.toFixed(1)).toString());
+    } else {
+      setFinishedLength("");
+    }
+  }
 
   // Filter project types by what the WIF supports and loom supports
   const availableTypes: ProjectType[] = [];
@@ -110,6 +129,20 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
     selectedDraft?.num_shafts != null &&
     selectedDraft?.effective_num_shafts != null &&
     selectedDraft.num_shafts !== selectedDraft.effective_num_shafts;
+
+  const draftHasWarpLength = selectedDraft?.warp_length_cm != null;
+  const finishedLengthCm = finishedLength !== "" && !isNaN(parseFloat(finishedLength))
+    ? convertLength(parseFloat(finishedLength), lengthUnit, "cm")
+    : null;
+  const warpLengthDefaultLabel = warpLengthDefaultCm != null
+    ? formatLength(convertLength(warpLengthDefaultCm, "cm", lengthUnit), lengthUnit)
+    : null;
+  const finishedLengthDeviatesFromDefault = warpLengthDefaultCm != null
+    && finishedLengthCm != null
+    && Math.abs(finishedLengthCm - warpLengthDefaultCm) > 0.5;
+  const finishedLengthMatchesDefault = warpLengthDefaultCm != null
+    && finishedLengthCm != null
+    && Math.abs(finishedLengthCm - warpLengthDefaultCm) <= 0.5;
 
   const loomWasteInCurrentUnit = (allowance: string | null | undefined, wasteUnit: string): string => {
     if (!allowance) return "";
@@ -311,40 +344,73 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
           <div className="border-t pt-4">
             <p className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Warp plan</p>
             <p className="mb-3 text-xs text-muted-foreground">Warp plan tracking is not yet available. These fields are coming in a future update.</p>
+
+            {selectedDraft && !draftHasWarpLength && (
+              <div className="mb-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+                <p className="font-medium text-foreground">Warp length not set</p>
+                <p className="mt-0.5 text-xs text-subdued">
+                  Set the warp length on the draft page to enable warp waste and spacing calculations.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
                 <label className="mb-1 block text-sm font-medium">Finished length / item</label>
                 <div className="flex gap-2">
-                  <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={finishedLength} onChange={(e) => setFinishedLength(e.target.value)} placeholder="50" />
-                  <select className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={lengthUnit} onChange={(e) => handleUnitChange(e.target.value as "cm" | "in")}>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={finishedLength}
+                    onChange={(e) => setFinishedLength(e.target.value)}
+                    placeholder="50"
+                  />
+                  <select
+                    className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={lengthUnit}
+                    onChange={(e) => handleUnitChange(e.target.value as "cm" | "in")}
+                  >
                     <option value="cm">cm</option>
                     <option value="in">in</option>
                   </select>
                 </div>
+                {finishedLengthDeviatesFromDefault && (
+                  <p className="mt-1 text-xs text-copper-on-subtle">
+                    Changed from WIF warp length ({warpLengthDefaultLabel})
+                  </p>
+                )}
+                {finishedLengthMatchesDefault && (
+                  <p className="mt-1 text-xs text-muted-foreground">Pre-filled from WIF warp length</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Number of items</label>
                 <input type="number" min={1} step="1" className={f} value={numItems} onChange={(e) => setNumItems(e.target.value)} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              {parseInt(numItems, 10) > 1 && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Waste between items</label>
+
+            {draftHasWarpLength && (
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                {parseInt(numItems, 10) > 1 && (
+                  <div>
+                    <label className="mb-1 block text-sm font-medium">Waste between items</label>
+                    <div className="flex gap-1">
+                      <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={wasteBetween} onChange={(e) => setWasteBetween(e.target.value)} placeholder="5" />
+                      <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
+                    </div>
+                  </div>
+                )}
+                <div className={parseInt(numItems, 10) <= 1 ? "col-span-2" : ""}>
+                  <label className="mb-1 block text-sm font-medium">Loom warp waste</label>
                   <div className="flex gap-1">
-                    <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={wasteBetween} onChange={(e) => setWasteBetween(e.target.value)} placeholder="5" />
+                    <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={warpWaste || loomWasteInCurrentUnit(selectedVersion?.warp_waste_allowance ?? loomDetail?.versions.at(-1)?.warp_waste_allowance, selectedVersion?.warp_waste_unit ?? loomDetail?.versions.at(-1)?.warp_waste_unit ?? "cm")} onChange={(e) => setWarpWaste(e.target.value)} placeholder="30" />
                     <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
                   </div>
                 </div>
-              )}
-              <div className={parseInt(numItems, 10) <= 1 ? "col-span-2" : ""}>
-                <label className="mb-1 block text-sm font-medium">Loom warp waste</label>
-                <div className="flex gap-1">
-                  <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={warpWaste || loomWasteInCurrentUnit(selectedVersion?.warp_waste_allowance ?? loomDetail?.versions.at(-1)?.warp_waste_allowance, selectedVersion?.warp_waste_unit ?? loomDetail?.versions.at(-1)?.warp_waste_unit ?? "cm")} onChange={(e) => setWarpWaste(e.target.value)} placeholder="30" />
-                  <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
-                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {conflictProject && (
