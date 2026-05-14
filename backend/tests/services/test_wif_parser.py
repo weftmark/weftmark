@@ -7,7 +7,15 @@ color scale normalisation, liftplan computation, encoding fallback.
 
 import pytest
 
-from app.services.wif_parser import PickData, compute_liftplan, extract_colors, extract_measurements, parse_picks
+from app.services.wif_parser import (
+    PickData,
+    compute_liftplan,
+    extract_colors,
+    extract_measurements,
+    extract_warp_color_stats,
+    extract_weft_color_stats,
+    parse_picks,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -745,3 +753,174 @@ class TestExtractColors:
         result = extract_colors(latin1_wif)
         assert len(result) == 1
         assert result[0]["hex"] == "#ff0000"
+
+
+def _stats_wif(weft_colors_section: str = "", color_table: str = "", liftplan: str = "") -> bytes:
+    """Build a minimal WIF for weft_color_stats tests."""
+    parts = ["[WIF]\nVersion=1.1\n\n[COLOR PALETTE]\nRange=0,255\n"]
+    if color_table:
+        parts.append(f"[COLOR TABLE]\n{color_table}\n")
+    if liftplan:
+        parts.append(f"[LIFTPLAN]\n{liftplan}\n")
+    else:
+        parts.append("[TREADLING]\n1=1\n2=2\n3=1\n4=2\n\n[TIEUP]\n1=1\n2=2\n")
+    if weft_colors_section:
+        parts.append(f"[WEFT COLORS]\n{weft_colors_section}\n")
+    return "".join(parts).encode("utf-8")
+
+
+class TestExtractWeftColorStats:
+    def test_returns_empty_without_picks_section(self):
+        result = extract_weft_color_stats(b"[WIF]\nVersion=1.1\n")
+        assert result == []
+
+    def test_returns_empty_without_color_assignments(self):
+        result = extract_weft_color_stats(_stats_wif())
+        assert result == []
+
+    def test_single_color_all_picks(self):
+        result = extract_weft_color_stats(
+            _stats_wif(
+                color_table="1=255,0,0\n",
+                weft_colors_section="1=1\n2=1\n3=1\n4=1\n",
+            )
+        )
+        assert len(result) == 1
+        assert result[0]["hex"] == "#ff0000"
+        assert result[0]["count"] == 4
+        assert result[0]["percentage"] == 100.0
+
+    def test_two_colors_counts_and_percentages(self):
+        result = extract_weft_color_stats(
+            _stats_wif(
+                color_table="1=255,0,0\n2=0,0,255\n",
+                weft_colors_section="1=1\n2=1\n3=2\n4=2\n",
+            )
+        )
+        assert len(result) == 2
+        by_hex = {r["hex"]: r for r in result}
+        assert by_hex["#ff0000"]["count"] == 2
+        assert by_hex["#0000ff"]["count"] == 2
+        assert by_hex["#ff0000"]["percentage"] == 50.0
+
+    def test_sorted_by_count_descending(self):
+        result = extract_weft_color_stats(
+            _stats_wif(
+                color_table="1=255,0,0\n2=0,0,255\n",
+                weft_colors_section="1=1\n2=1\n3=1\n4=2\n",
+            )
+        )
+        assert result[0]["count"] >= result[1]["count"]
+
+    def test_liftplan_preferred_over_treadling(self):
+        w = _stats_wif(
+            color_table="1=255,0,0\n",
+            liftplan="1=1\n2=1\n",
+            weft_colors_section="1=1\n2=1\n",
+        )
+        result = extract_weft_color_stats(w)
+        assert len(result) == 1
+        assert result[0]["count"] == 2
+
+    def test_invalid_bytes_returns_empty(self):
+        assert extract_weft_color_stats(b"\xff\xfe invalid") == []
+
+
+# ---------------------------------------------------------------------------
+# extract_warp_color_stats
+# ---------------------------------------------------------------------------
+
+
+def _warp_stats_wif(
+    num_threads: int = 0,
+    warp_colors_section: str = "",
+    color_table: str = "",
+    warp_default: str = "",
+) -> bytes:
+    parts = ["[WIF]\nVersion=1.1\n\n[COLOR PALETTE]\nRange=0,255\n"]
+    if num_threads:
+        parts.append(f"[WEAVING]\nWarp threads={num_threads}\n")
+    if color_table:
+        parts.append(f"[COLOR TABLE]\n{color_table}\n")
+    if warp_colors_section:
+        parts.append(f"[WARP COLORS]\n{warp_colors_section}\n")
+    if warp_default:
+        parts.append(f"[WARP]\nColor={warp_default}\n")
+    return "".join(parts).encode("utf-8")
+
+
+class TestExtractWarpColorStats:
+    def test_returns_empty_without_color_table(self):
+        result = extract_warp_color_stats(b"[WIF]\nVersion=1.1\n")
+        assert result == []
+
+    def test_returns_empty_without_thread_count_or_warp_colors(self):
+        result = extract_warp_color_stats(_warp_stats_wif(color_table="1=255,0,0\n"))
+        assert result == []
+
+    def test_single_color_all_threads_via_default(self):
+        result = extract_warp_color_stats(_warp_stats_wif(num_threads=4, color_table="1=255,0,0\n", warp_default="1"))
+        assert len(result) == 1
+        assert result[0]["hex"] == "#ff0000"
+        assert result[0]["count"] == 4
+        assert result[0]["percentage"] == 100.0
+
+    def test_per_thread_colors_override_default(self):
+        result = extract_warp_color_stats(
+            _warp_stats_wif(
+                num_threads=4,
+                color_table="1=255,0,0\n2=0,0,255\n",
+                warp_colors_section="1=1\n2=1\n3=2\n4=2\n",
+            )
+        )
+        by_hex = {r["hex"]: r for r in result}
+        assert by_hex["#ff0000"]["count"] == 2
+        assert by_hex["#0000ff"]["count"] == 2
+
+    def test_sorted_by_count_descending(self):
+        result = extract_warp_color_stats(
+            _warp_stats_wif(
+                num_threads=4,
+                color_table="1=255,0,0\n2=0,0,255\n",
+                warp_colors_section="1=1\n2=1\n3=1\n4=2\n",
+            )
+        )
+        assert result[0]["count"] >= result[1]["count"]
+
+    def test_thread_count_inferred_from_warp_colors_max_key(self):
+        """No [WEAVING] section — thread count derived from max key in WARP COLORS."""
+        result = extract_warp_color_stats(
+            _warp_stats_wif(
+                color_table="1=255,0,0\n",
+                warp_colors_section="1=1\n2=1\n3=1\n",
+            )
+        )
+        assert len(result) == 1
+        assert result[0]["count"] == 3
+
+    def test_thread_count_inferred_from_threading_section(self):
+        """No [WEAVING] or [WARP COLORS] — thread count from max [THREADING] key."""
+        content = (
+            b"[WIF]\nVersion=1.1\n\n"
+            b"[COLOR PALETTE]\nRange=0,255\n\n"
+            b"[COLOR TABLE]\n1=255,0,0\n\n"
+            b"[WARP]\nColor=1\n\n"
+            b"[THREADING]\n1=1\n2=2\n3=1\n4=2\n"
+        )
+        result = extract_warp_color_stats(content)
+        assert len(result) == 1
+        assert result[0]["count"] == 4
+
+    def test_percentages_sum_to_100(self):
+        result = extract_warp_color_stats(
+            _warp_stats_wif(
+                num_threads=3,
+                color_table="1=255,0,0\n2=0,255,0\n",
+                warp_colors_section="1=1\n2=1\n3=2\n",
+            )
+        )
+        total = sum(r["percentage"] for r in result)
+        assert pytest.approx(total, abs=0.2) == 100.0
+
+    def test_invalid_bytes_returns_empty(self):
+        assert extract_warp_color_stats(b"\xff\xfe invalid") == []

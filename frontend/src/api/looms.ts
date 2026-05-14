@@ -32,6 +32,15 @@ export interface LoomVersionAccessory {
   created_at: string;
 }
 
+export interface LoomReed {
+  id: string;
+  dents_per_inch: number;
+  width_cm: number | null;
+  label: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface LoomVersion {
   id: string;
   version_number: number;
@@ -62,6 +71,7 @@ export interface Loom {
   notes: string | null;
   has_photo: boolean;
   current_version: LoomVersion | null;
+  reeds: LoomReed[];
   created_at: string;
 }
 
@@ -290,4 +300,23 @@ export function addAccessory(loomId: string, versionId: string, name: string): P
 
 export function deleteAccessory(loomId: string, versionId: string, accessoryId: string): Promise<void> {
   return req(`/api/looms/${loomId}/versions/${versionId}/accessories/${accessoryId}`, { method: "DELETE" });
+}
+
+export interface AddReedPayload {
+  dents_per_inch: number;
+  width_cm?: number;
+  label?: string;
+  notes?: string;
+}
+
+export function addReed(loomId: string, payload: AddReedPayload): Promise<LoomReed> {
+  return req(`/api/looms/${loomId}/reeds`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteReed(loomId: string, reedId: string): Promise<void> {
+  return req(`/api/looms/${loomId}/reeds/${reedId}`, { method: "DELETE" });
 }

@@ -4,6 +4,8 @@ import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
 import { usePresentMode } from "@/hooks/usePresentMode";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthContext } from "@/context/AuthContext";
+import { measurementSystemToUnit, displayLength } from "@/lib/units";
 import {
   getProject, getProjectPicks, getProjectMetrics, stepProject, jumpProject, completeProject, abandonProject,
   restartProject, cloneProject, listProjects, deleteProject,
@@ -832,6 +834,8 @@ function CompletedSummary({
   siblings: ProjectSummary[];
   onPhotosChange: (photos: ProjectPhoto[]) => void;
 }) {
+  const { user } = useAuthContext();
+  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [photos, setPhotos] = useState<ProjectPhoto[]>(project.photos);
 
   const pct = project.total_picks > 0
@@ -869,11 +873,11 @@ function CompletedSummary({
           )}
           {project.finished_length_per_item && (
             <><dt className="text-muted-foreground">Length / item</dt>
-            <dd>{project.finished_length_per_item} {project.length_unit}</dd></>
+            <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd></>
           )}
           {project.warp_waste_allowance && (
             <><dt className="text-muted-foreground">Warp waste</dt>
-            <dd>{project.warp_waste_allowance} {project.length_unit}</dd></>
+            <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
           )}
           <dt className="text-muted-foreground">Type</dt>
           <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
@@ -960,6 +964,8 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [stepping, setStepping] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>(
@@ -1675,11 +1681,11 @@ export function ProjectDetailPage() {
               )}
               {project.finished_length_per_item && (
                 <><dt className="text-muted-foreground">Length / item</dt>
-                <dd>{project.finished_length_per_item} {project.length_unit}</dd></>
+                <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd></>
               )}
               {project.warp_waste_allowance && (
                 <><dt className="text-muted-foreground">Warp waste</dt>
-                <dd>{project.warp_waste_allowance} {project.length_unit}</dd></>
+                <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
               )}
               {project.completed_at && (
                 <><dt className="text-muted-foreground">Completed</dt>

@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 from app.deps import get_current_user, get_db
 from app.models.loom import (
     Loom,
+    LoomReed,
     LoomVersion,
     LoomVersionAccessory,
     LoomVersionPhoto,
@@ -75,6 +76,17 @@ class LoomVersionAccessorySchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class LoomReedSchema(BaseModel):
+    id: uuid.UUID
+    dents_per_inch: float
+    width_cm: float | None
+    label: str | None
+    notes: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class LoomVersionSchema(BaseModel):
     id: uuid.UUID
     version_number: int
@@ -107,6 +119,7 @@ class LoomSummary(BaseModel):
     notes: str | None
     has_photo: bool
     current_version: LoomVersionSchema | None
+    reeds: list[LoomReedSchema]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -124,6 +137,7 @@ class LoomSummary(BaseModel):
             "notes": loom.notes,
             "has_photo": loom.photo_path is not None,
             "current_version": loom.current_version,
+            "reeds": loom.reeds,
             "created_at": loom.created_at,
         }
         return cls.model_validate(data)
@@ -144,6 +158,7 @@ class LoomDetail(BaseModel):
     has_photo: bool
     current_version: LoomVersionSchema | None
     versions: list[LoomVersionSchema]
+    reeds: list[LoomReedSchema]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -165,6 +180,7 @@ class LoomDetail(BaseModel):
             "has_photo": loom.photo_path is not None,
             "current_version": loom.current_version,
             "versions": loom.versions,
+            "reeds": loom.reeds,
             "created_at": loom.created_at,
         }
         return cls.model_validate(data)
@@ -231,6 +247,13 @@ class AddAccessoryRequest(BaseModel):
     name: str
 
 
+class AddReedRequest(BaseModel):
+    dents_per_inch: float
+    width_cm: float | None = None
+    label: str | None = None
+    notes: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -244,6 +267,7 @@ async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession) -> L
             selectinload(Loom.versions).selectinload(LoomVersion.photos),
             selectinload(Loom.versions).selectinload(LoomVersion.receipts),
             selectinload(Loom.versions).selectinload(LoomVersion.accessories),
+            selectinload(Loom.reeds),
         )
     )
     if loom is None:
@@ -337,6 +361,7 @@ async def list_looms(
             selectinload(Loom.versions).selectinload(LoomVersion.photos),
             selectinload(Loom.versions).selectinload(LoomVersion.receipts),
             selectinload(Loom.versions).selectinload(LoomVersion.accessories),
+            selectinload(Loom.reeds),
         )
         .order_by(Loom.created_at.desc())
     )
@@ -723,4 +748,47 @@ async def delete_accessory(
     if acc is None:
         raise HTTPException(status_code=404, detail="Accessory not found")
     await db.delete(acc)
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Reed inventory
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{loom_id}/reeds", response_model=LoomReedSchema, status_code=201)
+async def add_reed(
+    loom_id: uuid.UUID,
+    body: AddReedRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LoomReedSchema:
+    if body.dents_per_inch <= 0:
+        raise HTTPException(status_code=400, detail="dents_per_inch must be positive")
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    reed = LoomReed(
+        loom_id=loom.id,
+        dents_per_inch=body.dents_per_inch,
+        width_cm=body.width_cm,
+        label=body.label,
+        notes=body.notes,
+    )
+    db.add(reed)
+    await db.commit()
+    await db.refresh(reed)
+    return LoomReedSchema.model_validate(reed)
+
+
+@router.delete("/{loom_id}/reeds/{reed_id}", status_code=204)
+async def delete_reed(
+    loom_id: uuid.UUID,
+    reed_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    reed = next((r for r in loom.reeds if r.id == reed_id), None)
+    if reed is None:
+        raise HTTPException(status_code=404, detail="Reed not found")
+    await db.delete(reed)
     await db.commit()

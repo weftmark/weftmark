@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { addLoomVersion, type AddVersionPayload, type LoomType } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useAuthContext } from "@/context/AuthContext";
+import { measurementSystemToUnit } from "@/lib/units";
 
 interface Props {
   loomId: string;
@@ -17,12 +19,13 @@ function showsHeddles(t: LoomType) { return t === "rigid_heddle" || t === "other
 function showsWarpWaste(t: LoomType) { return t !== "inkle"; }
 
 export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props) {
+  const { user } = useAuthContext();
   const [versionName, setVersionName] = useState("");
   const [numShafts, setNumShafts] = useState("4");
   const [numTreadles, setNumTreadles] = useState("4");
   const [numHeddles, setNumHeddles] = useState("");
   const [warpWaste, setWarpWaste] = useState("");
-  const [warpWasteUnit, setWarpWasteUnit] = useState("cm");
+  const [warpWasteUnit, setWarpWasteUnit] = useState<string>(measurementSystemToUnit(user?.measurement_system ?? "metric"));
   const [effectiveDate, setEffectiveDate] = useState(today());
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);

@@ -156,6 +156,138 @@ def extract_colors(wif_bytes: bytes) -> list[dict]:
         return []
 
 
+def extract_warp_color_stats(wif_bytes: bytes) -> list[dict]:
+    """Count warp threads per color from [WARP COLORS] and [WARP] Color= default.
+
+    Returns a list of dicts sorted by count descending:
+      hex (str), count (int), percentage (float, 0–100, rounded to 1 dp)
+
+    Returns [] if no color table or no warp thread count can be determined.
+    Never raises.
+    """
+    try:
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
+
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
+
+        scale = _color_scale(config)
+        colors = _color_table(config, scale)
+        if not colors:
+            return []
+
+        default_warp_color: str | None = None
+        if config.has_section("WARP"):
+            try:
+                default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
+                default_warp_color = colors.get(default_idx)
+            except Exception:
+                pass
+
+        warp_color_map: dict[int, int] = {}
+        if config.has_section("WARP COLORS"):
+            for k, v in config.items("WARP COLORS"):
+                try:
+                    warp_color_map[int(k)] = int(v.split(",")[0].strip())
+                except ValueError:
+                    continue
+
+        num_warp: int | None = None
+        if config.has_section("WEAVING"):
+            try:
+                num_warp = int(config.get("WEAVING", "Warp threads").strip())
+            except Exception:
+                pass
+        if num_warp is None and warp_color_map:
+            num_warp = max(warp_color_map.keys())
+        # Last resort: infer from [THREADING] max key (thread index = warp thread count)
+        if num_warp is None and config.has_section("THREADING"):
+            try:
+                num_warp = max(int(k) for k in dict(config.items("THREADING")))
+            except Exception:
+                pass
+        if not num_warp:
+            return []
+
+        counts: dict[str, int] = {}
+        for i in range(1, num_warp + 1):
+            hex_color = colors.get(warp_color_map[i]) if i in warp_color_map else default_warp_color
+            if hex_color is None:
+                continue
+            counts[hex_color] = counts.get(hex_color, 0) + 1
+
+        if not counts:
+            return []
+
+        counted = sum(counts.values())
+        return [
+            {"hex": h, "count": c, "percentage": round(c * 100 / counted, 1)}
+            for h, c in sorted(counts.items(), key=lambda x: -x[1])
+        ]
+    except Exception:
+        return []
+
+
+def extract_weft_color_stats(wif_bytes: bytes) -> list[dict]:
+    """Count picks per weft color from LIFTPLAN (preferred) or TREADLING + TIEUP.
+
+    Returns a list of dicts sorted by count descending:
+      hex (str), count (int), percentage (float, 0–100, rounded to 1 dp)
+
+    Returns [] if no treadling/liftplan section exists or no colors are defined.
+    Never raises.
+    """
+    try:
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
+
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
+
+        project_type: str | None = None
+        if config.has_section("LIFTPLAN"):
+            project_type = "lift"
+        elif config.has_section("TREADLING"):
+            project_type = "treadle"
+
+        if project_type is None:
+            return []
+
+        pick_data = parse_picks(wif_bytes, project_type)
+        total = len(pick_data.weft_colors)
+        if total == 0:
+            return []
+
+        counts: dict[str, int] = {}
+        for hex_color in pick_data.weft_colors:
+            if hex_color is None:
+                continue
+            counts[hex_color] = counts.get(hex_color, 0) + 1
+
+        if not counts:
+            return []
+
+        counted = sum(counts.values())
+        result = [
+            {
+                "hex": hex_color,
+                "count": count,
+                "percentage": round(count * 100 / counted, 1),
+            }
+            for hex_color, count in sorted(counts.items(), key=lambda x: -x[1])
+        ]
+        return result
+    except Exception:
+        return []
+
+
 @dataclass
 class PickData:
     project_type: str  # "treadle" | "lift"

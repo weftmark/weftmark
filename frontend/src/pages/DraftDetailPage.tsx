@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, downloadWif, downloadWifModified } from "@/api/drafts";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -10,7 +10,7 @@ import { DraftPreviewModal } from "@/components/drafts/DraftPreviewModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { useAuthContext } from "@/context/AuthContext";
-import { measurementSystemToUnit, convertLength, formatLength } from "@/lib/units";
+import { measurementSystemToUnit, convertLength, formatLength, formatApproxLength } from "@/lib/units";
 import { nearestColorName } from "@/lib/colorName";
 
 export function DraftDetailPage() {
@@ -478,23 +478,86 @@ export function DraftDetailPage() {
                 </dd>
               </dl>
 
-              {draft.wif_colors && draft.wif_colors.length > 0 && (
+              {draft.wif_colors && draft.wif_colors.length > 0 && (() => {
+                // When both stat arrays are populated, drop colors that appear in neither —
+                // they are defined-as-default colors fully overridden by per-thread/per-pick assignments.
+                const bothStatsPresent = draft.warp_color_stats !== null && draft.weft_color_stats !== null;
+                const visibleColors = bothStatsPresent
+                  ? draft.wif_colors.filter(
+                      (c) =>
+                        draft.weft_color_stats!.some((s) => s.hex === c.hex) ||
+                        draft.warp_color_stats!.some((s) => s.hex === c.hex),
+                    )
+                  : draft.wif_colors;
+                if (visibleColors.length === 0) return null;
+                return (
                 <div className="mt-4 space-y-2">
                   <h3 className="text-sm font-medium">Color palette</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {draft.wif_colors.map((c) => (
-                      <div key={c.index} className="flex flex-col items-center gap-1 w-16" title={`#${c.index}: RGB(${c.r}, ${c.g}, ${c.b}) — ${c.hex}`}>
-                        <div
-                          className="h-8 w-16 rounded border border-border flex-shrink-0"
-                          style={{ backgroundColor: c.hex }}
-                        />
-                        <span className="text-[10px] text-muted-foreground font-mono leading-none">{c.hex}</span>
-                        <span className="text-[10px] text-subdued leading-none text-center">{nearestColorName(c.hex)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-muted-foreground">
+                        <th className="text-left pb-1.5 font-normal pr-3">Color</th>
+                        <th className="text-left pb-1.5 font-normal pr-3">Name</th>
+                        <th className="text-right pb-1.5 font-normal pr-3">Warp ends</th>
+                        <th className="text-right pb-1.5 font-normal pr-3">Weft picks</th>
+                        {weavingWidthCm != null && (
+                          <th className="text-right pb-1.5 font-normal">Est. weft length</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleColors.map((c) => {
+                        const weftStat: ColorStat | undefined = draft.weft_color_stats?.find(
+                          (s) => s.hex === c.hex,
+                        );
+                        const warpStat: ColorStat | undefined = draft.warp_color_stats?.find(
+                          (s) => s.hex === c.hex,
+                        );
+                        const approxLengthCm =
+                          weftStat && weavingWidthCm != null
+                            ? weftStat.count * weavingWidthCm
+                            : null;
+                        return (
+                          <tr
+                            key={c.index}
+                            className="border-t border-border"
+                            title={`#${c.index}: RGB(${c.r}, ${c.g}, ${c.b})`}
+                          >
+                            <td className="py-1.5 pr-3">
+                              <div className="flex items-center gap-1.5">
+                                <div
+                                  className="h-4 w-6 rounded-sm border border-border flex-shrink-0"
+                                  style={{ backgroundColor: c.hex }}
+                                />
+                                <span className="font-mono text-muted-foreground">{c.hex}</span>
+                              </div>
+                            </td>
+                            <td className="py-1.5 pr-3 text-subdued">{nearestColorName(c.hex)}</td>
+                            <td className="py-1.5 pr-3 text-right tabular-nums">
+                              {warpStat
+                                ? <>{warpStat.count} <span className="text-muted-foreground">({warpStat.percentage}%)</span></>
+                                : <span className="text-muted-foreground">—</span>}
+                            </td>
+                            <td className="py-1.5 pr-3 text-right tabular-nums">
+                              {weftStat
+                                ? <>{weftStat.count} <span className="text-muted-foreground">({weftStat.percentage}%)</span></>
+                                : <span className="text-muted-foreground">—</span>}
+                            </td>
+                            {weavingWidthCm != null && (
+                              <td className="py-1.5 text-right tabular-nums text-subdued">
+                                {approxLengthCm != null
+                                  ? `~${formatApproxLength(approxLengthCm, displayUnit)}`
+                                  : <span className="text-muted-foreground">—</span>}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              )}
+                );
+              })()}
             </div>
 
             <div className="space-y-3 border-t pt-4">
