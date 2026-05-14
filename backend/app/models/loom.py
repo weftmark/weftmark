@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -48,6 +48,9 @@ class Loom(Base, TimestampMixin, SoftDeleteMixin):
 
     versions: Mapped[list["LoomVersion"]] = relationship(
         "LoomVersion", back_populates="loom", order_by="LoomVersion.version_number"
+    )
+    reeds: Mapped[list["LoomReed"]] = relationship(
+        "LoomReed", back_populates="loom", order_by="LoomReed.dents_per_inch", cascade="all, delete-orphan"
     )
     owner: Mapped["User"] = relationship("User", foreign_keys=[owner_id])  # type: ignore[name-defined]
 
@@ -135,3 +138,16 @@ class LoomVersionAccessory(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
 
     version: Mapped["LoomVersion"] = relationship("LoomVersion", back_populates="accessories")
+
+
+class LoomReed(Base, TimestampMixin):
+    __tablename__ = "loom_reeds"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    loom_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("looms.id"), nullable=False, index=True)
+    dents_per_inch: Mapped[float] = mapped_column(Float, nullable=False)
+    width_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    loom: Mapped["Loom"] = relationship("Loom", back_populates="reeds")

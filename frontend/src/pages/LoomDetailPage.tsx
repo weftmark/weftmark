@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthContext } from "@/context/AuthContext";
+import { measurementSystemToUnit, displayLength } from "@/lib/units";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import {
@@ -9,8 +11,9 @@ import {
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
   uploadVersionReceipt, deleteVersionReceipt, versionReceiptUrl,
   addAccessory, deleteAccessory, updateVersion,
+  addReed, deleteReed,
   type LoomDetail, type LoomVersion, type LoomVersionPhoto,
-  type LoomVersionReceipt, type LoomVersionAccessory,
+  type LoomVersionReceipt, type LoomVersionAccessory, type LoomReed,
   LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
@@ -461,6 +464,145 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
 }
 
 // ---------------------------------------------------------------------------
+// Reed inventory
+// ---------------------------------------------------------------------------
+
+function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+  const [dentsInput, setDentsInput] = useState("");
+  const [widthInput, setWidthInput] = useState("");
+  const [labelInput, setLabelInput] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const dents = parseFloat(dentsInput);
+    if (!dentsInput || isNaN(dents) || dents <= 0) {
+      setError("Dents per inch must be a positive number");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await addReed(loom.id, {
+        dents_per_inch: dents,
+        ...(widthInput ? { width_cm: parseFloat(widthInput) } : {}),
+        ...(labelInput.trim() ? { label: labelInput.trim() } : {}),
+      });
+      setDentsInput("");
+      setWidthInput("");
+      setLabelInput("");
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add reed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (reed: LoomReed) => {
+    try {
+      await deleteReed(loom.id, reed.id);
+      onChanged();
+    } catch {
+      /* ignore */
+    } finally {
+      setConfirmId(null);
+    }
+  };
+
+  const duplicate = dentsInput
+    ? loom.reeds.some((r) => r.dents_per_inch === parseFloat(dentsInput))
+    : false;
+
+  return (
+    <section className="border-t pt-6">
+      <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Reed inventory</h2>
+      {loom.reeds.length > 0 && (
+        <ul className="mb-4 space-y-2">
+          {loom.reeds.map((reed) => (
+            <li key={reed.id} className="flex items-center gap-3 text-sm">
+              <span className="w-20 font-medium tabular-nums">{reed.dents_per_inch} dent</span>
+              {reed.width_cm != null && (
+                <span className="text-muted-foreground">{reed.width_cm} cm wide</span>
+              )}
+              {reed.label && (
+                <span className="text-muted-foreground italic">{reed.label}</span>
+              )}
+              <span className="ml-auto shrink-0">
+                {confirmId !== reed.id ? (
+                  <button
+                    onClick={() => setConfirmId(reed.id)}
+                    className="text-xs text-destructive hover:underline"
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <ConfirmInline
+                    label={`Remove ${reed.dents_per_inch}-dent reed?`}
+                    onConfirm={() => handleDelete(reed)}
+                    onCancel={() => setConfirmId(null)}
+                  />
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Dents/inch *</label>
+          <input
+            type="number"
+            min="0.5"
+            step="0.5"
+            className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={dentsInput}
+            onChange={(e) => setDentsInput(e.target.value)}
+            placeholder="e.g. 10"
+            disabled={saving}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Width (cm)</label>
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={widthInput}
+            onChange={(e) => setWidthInput(e.target.value)}
+            placeholder="optional"
+            disabled={saving}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Label</label>
+          <input
+            className="w-36 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={labelInput}
+            onChange={(e) => setLabelInput(e.target.value)}
+            placeholder="optional"
+            disabled={saving}
+          />
+        </div>
+        <Button size="sm" variant="outline" type="submit" disabled={saving || !dentsInput}>
+          Add reed
+        </Button>
+      </form>
+      {duplicate && (
+        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+          You already have a {parseFloat(dentsInput)}-dent reed on this loom.
+        </p>
+      )}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </section>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
 // Version card
 // ---------------------------------------------------------------------------
 
@@ -473,6 +615,8 @@ function VersionCard({
   onChanged: () => void;
   onClone: (v: LoomVersion) => void;
 }) {
+  const { user } = useAuthContext();
+  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [open, setOpen] = useState(isCurrent);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(version.name ?? "");
@@ -560,8 +704,8 @@ function VersionCard({
                 {version.num_shafts != null && (<><dt className="text-muted-foreground">Shafts</dt><dd>{version.num_shafts}</dd></>)}
                 {version.num_treadles != null && (<><dt className="text-muted-foreground">Treadles</dt><dd>{version.num_treadles}</dd></>)}
                 {version.num_heddles != null && (<><dt className="text-muted-foreground">Heddles</dt><dd>{version.num_heddles}</dd></>)}
-                {version.weaving_width && (<><dt className="text-muted-foreground">Weaving width</dt><dd>{version.weaving_width} {version.weaving_width_unit}</dd></>)}
-                {version.warp_waste_allowance && (<><dt className="text-muted-foreground">Warp waste</dt><dd>{version.warp_waste_allowance} {version.warp_waste_unit}</dd></>)}
+                {version.weaving_width && (<><dt className="text-muted-foreground">Weaving width</dt><dd>{displayLength(version.weaving_width, version.weaving_width_unit, displayUnit)}</dd></>)}
+                {version.warp_waste_allowance && (<><dt className="text-muted-foreground">Warp waste</dt><dd>{displayLength(version.warp_waste_allowance, version.warp_waste_unit, displayUnit)}</dd></>)}
               </dl>
               <button
                 type="button"
@@ -718,6 +862,8 @@ export function LoomDetailPage() {
             ))}
           </div>
         </section>
+
+        <ReedsPanel loom={loom} onChanged={invalidate} />
 
         <section className="border-t pt-6">
           <div className="flex items-center justify-between mb-4">
