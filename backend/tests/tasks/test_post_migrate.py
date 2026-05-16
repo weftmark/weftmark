@@ -90,6 +90,20 @@ def _make_draft(owner_id, *, wif_colors=None, deleted=False):
     return d
 
 
+_REPARSE_CONDITION = (
+    "SELECT COUNT(*) FROM drafts WHERE wif_colors IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
+)
+
+
+def _reparse_registry_entry(dispatch_fn):
+    return {
+        "name": "reparse_drafts",
+        "description": "test",
+        "condition": _REPARSE_CONDITION,
+        "dispatch": dispatch_fn,
+    }
+
+
 # ---------------------------------------------------------------------------
 # No null rows — nothing to dispatch
 # ---------------------------------------------------------------------------
@@ -102,16 +116,11 @@ class TestNoNullRows:
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 
-    def test_skips_when_all_drafts_have_wif_colors(self, db_session, test_user):
+    async def test_skips_when_all_drafts_have_wif_colors(self, db_session, test_user):
         """Drafts that already have wif_colors set are not counted."""
-        import asyncio
-
-        async def seed():
-            d = _make_draft(test_user.id, wif_colors=[1, 2, 3])
-            db_session.add(d)
-            await db_session.commit()
-
-        asyncio.get_event_loop().run_until_complete(seed())
+        d = _make_draft(test_user.id, wif_colors=[1, 2, 3])
+        db_session.add(d)
+        await db_session.commit()
 
         result = _run()
         assert result["dispatched"] == []
@@ -124,50 +133,28 @@ class TestNoNullRows:
 
 
 class TestNullRowsPresent:
-    def test_dispatches_reparse_when_wif_colors_null(self, db_session, test_user, mock_redis):
+    async def test_dispatches_reparse_when_wif_colors_null(self, db_session, test_user, mock_redis):
         """A draft with wif_path but null wif_colors triggers reparse_all_drafts dispatch."""
-        import asyncio
+        d = _make_draft(test_user.id, wif_colors=None)
+        db_session.add(d)
+        await db_session.commit()
 
-        async def seed():
-            d = _make_draft(test_user.id, wif_colors=None)
-            db_session.add(d)
-            await db_session.commit()
-
-        asyncio.get_event_loop().run_until_complete(seed())
-
-        dispatched_tasks = []
-        with patch("app.tasks.post_migrate.reparse_all_drafts") as mock_task:
-            mock_task.delay.side_effect = lambda: dispatched_tasks.append("reparse_all_drafts")
-
-            with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
-                mock_registry.return_value = [
-                    {
-                        "name": "reparse_drafts",
-                        "description": "test",
-                        "condition": (
-                            "SELECT COUNT(*) FROM drafts "
-                            "WHERE wif_colors IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
-                        ),
-                        "dispatch": lambda: mock_task.delay(),
-                    }
-                ]
-
-                result = _run(mock_redis)
+        dispatched_tasks: list[str] = []
+        with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
+            mock_registry.return_value = [
+                _reparse_registry_entry(lambda: dispatched_tasks.append("reparse_all_drafts"))
+            ]
+            result = _run(mock_redis)
 
         assert len(result["dispatched"]) == 1
         assert "reparse_drafts" in result["dispatched"][0]
         assert result["dispatched"][0].endswith("(null_rows=1)")
 
-    def test_deleted_drafts_not_counted(self, db_session, test_user):
+    async def test_deleted_drafts_not_counted(self, db_session, test_user):
         """Soft-deleted drafts with null wif_colors must not trigger dispatch."""
-        import asyncio
-
-        async def seed():
-            d = _make_draft(test_user.id, wif_colors=None, deleted=True)
-            db_session.add(d)
-            await db_session.commit()
-
-        asyncio.get_event_loop().run_until_complete(seed())
+        d = _make_draft(test_user.id, wif_colors=None, deleted=True)
+        db_session.add(d)
+        await db_session.commit()
 
         result = _run()
         assert result["dispatched"] == []
@@ -180,62 +167,33 @@ class TestNullRowsPresent:
 
 
 class TestRedisLockHeld:
-    def test_skips_when_lock_already_held(self, db_session, test_user, mock_redis_locked):
+    async def test_skips_when_lock_already_held(self, db_session, test_user, mock_redis_locked):
         """If Redis lock is held (another worker already dispatched), skip without dispatching."""
-        import asyncio
+        d = _make_draft(test_user.id, wif_colors=None)
+        db_session.add(d)
+        await db_session.commit()
 
-        async def seed():
-            d = _make_draft(test_user.id, wif_colors=None)
-            db_session.add(d)
-            await db_session.commit()
-
-        asyncio.get_event_loop().run_until_complete(seed())
-
+        dispatched: list[str] = []
         with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
-            dispatched = []
-            mock_registry.return_value = [
-                {
-                    "name": "reparse_drafts",
-                    "description": "test",
-                    "condition": (
-                        "SELECT COUNT(*) FROM drafts "
-                        "WHERE wif_colors IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
-                    ),
-                    "dispatch": lambda: dispatched.append("called"),
-                }
-            ]
+            mock_registry.return_value = [_reparse_registry_entry(lambda: dispatched.append("called"))]
             result = _run(mock_redis_locked)
 
         assert result["dispatched"] == []
         assert dispatched == []
         assert any("lock_held" in s for s in result["skipped"])
 
-    def test_lock_released_on_dispatch_error(self, db_session, test_user, mock_redis):
+    async def test_lock_released_on_dispatch_error(self, db_session, test_user, mock_redis):
         """If dispatch raises, the Redis lock is released so the next worker can retry."""
-        import asyncio
-
-        async def seed():
-            d = _make_draft(test_user.id, wif_colors=None)
-            db_session.add(d)
-            await db_session.commit()
-
-        asyncio.get_event_loop().run_until_complete(seed())
+        d = _make_draft(test_user.id, wif_colors=None)
+        db_session.add(d)
+        await db_session.commit()
 
         with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
             mock_registry.return_value = [
-                {
-                    "name": "reparse_drafts",
-                    "description": "test",
-                    "condition": (
-                        "SELECT COUNT(*) FROM drafts "
-                        "WHERE wif_colors IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
-                    ),
-                    "dispatch": lambda: (_ for _ in ()).throw(RuntimeError("broker down")),
-                }
+                _reparse_registry_entry(lambda: (_ for _ in ()).throw(RuntimeError("broker down")))
             ]
             result = _run(mock_redis)
 
-        # Lock must have been released
         mock_redis.delete.assert_called_once()
         assert result["dispatched"] == []
 
