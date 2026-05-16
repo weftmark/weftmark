@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 interface Props {
   draftId: string;
   draftName: string;
+  warpThreads?: number;
+  weftThreads?: number;
   onClose: () => void;
 }
 
@@ -15,12 +17,18 @@ const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 4;
 const ZOOM_DEFAULT = 1;
 
+// Drafts above this thread-area threshold get a load-confirmation gate.
+// 400k threads ≈ 800 warp × 500 weft — produces a noticeably large SVG.
+const LARGE_DRAFT_THRESHOLD = 400_000;
+
 function parseSvgDimensions(svg: string): { w: number; h: number } {
   const m = svg.match(/width="(\d+(?:\.\d+)?)"[^>]*height="(\d+(?:\.\d+)?)"/);
   return m ? { w: parseFloat(m[1]), h: parseFloat(m[2]) } : { w: 800, h: 600 };
 }
 
-export function DraftPreviewModal({ draftId, draftName, onClose }: Props) {
+export function DraftPreviewModal({ draftId, draftName, warpThreads = 0, weftThreads = 0, onClose }: Props) {
+  const isLarge = warpThreads * weftThreads > LARGE_DRAFT_THRESHOLD;
+  const [confirmed, setConfirmed] = useState(!isLarge);
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [naturalDims, setNaturalDims] = useState({ w: 0, h: 0 });
   const [zoom, setZoom] = useState(ZOOM_DEFAULT);
@@ -28,6 +36,7 @@ export function DraftPreviewModal({ draftId, draftName, onClose }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!confirmed) return;
     let cancelled = false;
     async function load() {
       try {
@@ -50,7 +59,7 @@ export function DraftPreviewModal({ draftId, draftName, onClose }: Props) {
     }
     load();
     return () => { cancelled = true; };
-  }, [draftId]);
+  }, [draftId, confirmed]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -121,13 +130,29 @@ export function DraftPreviewModal({ draftId, draftName, onClose }: Props) {
 
         {/* Content */}
         <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/30 p-4">
-          {error && (
+          {!confirmed && (
+            <div className="flex items-center justify-center h-full">
+              <div className="max-w-sm rounded-lg border bg-card p-6 text-center space-y-4">
+                <p className="text-sm font-medium">Large design</p>
+                <p className="text-sm text-muted-foreground">
+                  This design has {warpThreads.toLocaleString()} warp &times; {weftThreads.toLocaleString()} weft threads.
+                  The interactive preview may be slow to load, especially on mobile.
+                </p>
+                <div className="flex justify-center gap-3">
+                  <Button size="sm" onClick={() => setConfirmed(true)}>Load preview</Button>
+                  <Button size="sm" variant="outline" onClick={onClose}>Cancel</Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {confirmed && error && (
             <div className="flex items-center justify-center h-full">
               <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
 
-          {!error && !svgContent && (
+          {confirmed && !error && !svgContent && (
             <div className="flex items-center justify-center h-full">
               <p className="text-sm text-muted-foreground">Loading preview…</p>
             </div>

@@ -233,6 +233,19 @@ async def get_preview(
     return Response(content=png, media_type="image/png")
 
 
+@router.get("/{draft_id}/drawdown_preview")
+async def get_drawdown_preview(
+    draft_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if not draft.drawdown_preview_path or not await storage.afile_exists(draft.drawdown_preview_path):
+        raise HTTPException(status_code=404, detail="Drawdown preview not available")
+    png = await storage.aread_drawdown_preview(draft.drawdown_preview_path)
+    return Response(content=png, media_type="image/png")
+
+
 @router.get("/{draft_id}/preview/svg")
 async def get_preview_svg(
     draft_id: uuid.UUID,

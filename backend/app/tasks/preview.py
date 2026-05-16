@@ -1,4 +1,9 @@
-"""Celery task: pre-generate a reduced-size drawdown preview for a draft."""
+"""Celery tasks: pre-generate draft preview images.
+
+generate_drawdown_preview  — per-draft task dispatched on WIF upload
+backfill_all_drawdown_previews — bulk task dispatched by post_migrate for
+                                  drafts missing drawdown_preview_path
+"""
 
 import asyncio
 import logging
@@ -70,3 +75,55 @@ async def _generate_preview(task: Task, draft_id: uuid.UUID) -> None:
                     pass
     finally:
         await engine.dispose()
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
+    soft_time_limit=300,
+    time_limit=360,
+    name="app.tasks.preview.backfill_all_drawdown_previews",
+)
+def backfill_all_drawdown_previews(self: Task) -> dict:
+    """Dispatch generate_drawdown_preview for every draft missing a thumbnail PNG."""
+    return asyncio.run(_backfill_all_previews())
+
+
+async def _backfill_all_previews() -> dict:
+    from sqlalchemy import select
+
+    from app.config import get_settings
+    from app.models.draft import Draft
+    from app.services import storage
+
+    settings = get_settings()
+    engine = create_async_engine(settings.database_url, echo=False)
+    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    dispatched = skipped = 0
+    try:
+        async with async_session() as db:
+            drafts = (
+                await db.scalars(
+                    select(Draft)
+                    .where(
+                        Draft.deleted_at.is_(None),
+                        Draft.drawdown_preview_path.is_(None),
+                        Draft.wif_path.isnot(None),
+                    )
+                    .order_by(Draft.created_at)
+                )
+            ).all()
+
+            for draft in drafts:
+                if not storage.file_exists(draft.wif_path):
+                    skipped += 1
+                    continue
+                generate_drawdown_preview.delay(str(draft.id))
+                dispatched += 1
+    finally:
+        await engine.dispose()
+
+    result = {"dispatched": dispatched, "skipped": skipped}
+    log.info("backfill_all_drawdown_previews_complete %s", result)
+    return result

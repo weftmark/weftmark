@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { Draft } from "@/api/drafts";
+import { drawdownPreviewUrl } from "@/api/drafts";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 import { AppIcons } from "@/lib/icons";
 
 interface ProjectCounts {
@@ -25,9 +27,19 @@ export function DraftCard({ draft, projectCounts }: Props) {
   return (
     <button
       data-testid="draft-card"
-      className="text-left w-full rounded-lg border bg-background p-4 shadow-sm hover:border-ring transition-colors"
+      className="text-left w-full rounded-lg border bg-background shadow-sm hover:border-ring transition-colors overflow-hidden"
       onClick={() => navigate(`/drafts/${draft.id}`)}
     >
+      {draft.has_drawdown_preview && (
+        <div className="w-full h-20 bg-muted overflow-hidden">
+          <AuthedImage
+            src={drawdownPreviewUrl(draft.id)}
+            alt=""
+            className="w-full h-full object-cover object-top"
+          />
+        </div>
+      )}
+      <div className="p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="truncate font-medium">{draft.name}</h3>
@@ -109,6 +121,7 @@ export function DraftCard({ draft, projectCounts }: Props) {
           )}
         </div>
       )}
+      </div>
     </button>
   );
 }
