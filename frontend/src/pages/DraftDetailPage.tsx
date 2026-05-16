@@ -712,6 +712,11 @@ export function DraftDetailPage() {
                   alt={`Draft preview for ${draft.name}`}
                   className="max-w-full group-hover:opacity-90 transition-opacity"
                   data-testid="draft-preview-img"
+                  loadingContent={
+                    <div className="w-full min-h-48 animate-pulse rounded-md bg-muted flex items-center justify-center">
+                      <span className="text-sm text-muted-foreground">Rendering preview…</span>
+                    </div>
+                  }
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground text-center opacity-0 group-hover:opacity-100 transition-opacity">
                   Click to zoom
