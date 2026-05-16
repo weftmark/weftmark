@@ -127,7 +127,9 @@ def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int
     """Render a reduced-size drawdown for caching.
 
     Scales down so the image width fits within max_px. Returns (png_bytes, scale_used).
-    Does not apply render_max_* limits — the reduced scale prevents oversized output.
+    Uses render_drawdown_png so colors render correctly even at scale=1 — the
+    ImageRenderer outline approach paints every pixel with the foreground gray at
+    scale=1, obliterating thread colors.
     """
     warp_count = len(draft.warp)
     weft_count = len(draft.weft)
@@ -135,26 +137,14 @@ def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int
         raise ValueError("Draft has no drawdown data to render")
 
     scale = max(1, min(DRAWDOWN_SCALE, max_px // warp_count))
-    margin = 20
-    drawdown_w = warp_count * scale
-    drawdown_h = weft_count * scale
-
-    renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
     with tracer.start_as_current_span("render.drawdown_preview") as span:
         span.set_attribute("render.scale", scale)
         span.set_attribute("render.warp_threads", warp_count)
         span.set_attribute("render.weft_threads", weft_count)
-        full_im = renderer.make_pil_image()
-        span.set_attribute("render.width_px", drawdown_w)
-        span.set_attribute("render.height_px", drawdown_h)
-
-    offsetx = margin
-    offsety = margin + (6 + len(draft.shafts)) * scale
-    cropped = full_im.crop((offsetx, offsety, offsetx + drawdown_w, offsety + drawdown_h))
-    cropped = cropped.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
-    out = io.BytesIO()
-    cropped.save(out, format="PNG")
-    return out.getvalue(), scale
+        png_bytes = render_drawdown_png(draft, scale=scale)
+        span.set_attribute("render.width_px", warp_count * scale)
+        span.set_attribute("render.height_px", weft_count * scale)
+    return png_bytes, scale
 
 
 def render_drawdown_tile(
