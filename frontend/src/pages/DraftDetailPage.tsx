@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, drawdownPreviewUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -703,12 +703,12 @@ export function DraftDetailPage() {
             {draft.wif_filename ? (
               <button
                 type="button"
-                className="group w-full overflow-auto rounded-lg border bg-card p-2 cursor-zoom-in text-left"
+                className="group w-full overflow-hidden rounded-lg border bg-card p-2 cursor-zoom-in text-left"
                 onClick={() => setShowPreviewModal(true)}
                 title="Click to open interactive preview"
               >
                 <AuthedImage
-                  src={previewSvgUrl(draft.id)}
+                  src={draft.has_drawdown_preview ? drawdownPreviewUrl(draft.id) : previewSvgUrl(draft.id)}
                   alt={`Draft preview for ${draft.name}`}
                   className="max-w-full group-hover:opacity-90 transition-opacity"
                   data-testid="draft-preview-img"
@@ -795,6 +795,8 @@ export function DraftDetailPage() {
         <DraftPreviewModal
           draftId={draft.id}
           draftName={draft.name}
+          warpThreads={draft.warp_threads ?? 0}
+          weftThreads={draft.weft_threads ?? 0}
           onClose={() => setShowPreviewModal(false)}
         />
       )}

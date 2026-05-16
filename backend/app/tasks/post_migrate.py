@@ -49,6 +49,7 @@ _REDIS_KEY_PREFIX = "weftmark:post_migrate:"
 
 
 def _backfill_registry() -> list[dict]:
+    from app.tasks.preview import backfill_all_drawdown_previews
     from app.tasks.reparse import reparse_all_drafts
 
     return [
@@ -59,6 +60,15 @@ def _backfill_registry() -> list[dict]:
                 "SELECT COUNT(*) FROM drafts WHERE wif_colors IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
             ),
             "dispatch": lambda: reparse_all_drafts.delay(),
+        },
+        {
+            "name": "drawdown_preview",
+            "description": "Pre-render drawdown_preview PNG for drafts missing it",
+            "condition": (
+                "SELECT COUNT(*) FROM drafts"
+                " WHERE drawdown_preview_path IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
+            ),
+            "dispatch": lambda: backfill_all_drawdown_previews.delay(),
         },
     ]
 

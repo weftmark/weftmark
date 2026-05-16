@@ -120,6 +120,10 @@ export function previewSvgUrl(id: string): string {
   return `/api/drafts/${id}/preview/svg`;
 }
 
+export function drawdownPreviewUrl(id: string): string {
+  return `/api/drafts/${id}/drawdown_preview`;
+}
+
 export async function generateLiftplan(id: string): Promise<DraftDetail> {
   return req(`/api/drafts/${id}/generate-liftplan`, { method: "POST" });
 }
