@@ -23,6 +23,7 @@ from app.services.rendering import (
     render_drawdown_tile,
     render_full_draft,
     render_full_draft_liftplan,
+    safe_preview_scale,
 )
 
 # Real-world liftplan WIF that declares Treadles=8 as metadata (TempoWeave Designer output).
@@ -262,6 +263,102 @@ class TestRenderFullDraft:
         draft = load_draft(MINIMAL_WIF)
         result = render_full_draft(draft)
         assert result[:4] == b"\x89PNG"
+
+
+# ---------------------------------------------------------------------------
+# safe_preview_scale
+# ---------------------------------------------------------------------------
+
+
+class TestSafePreviewScale:
+    def test_small_draft_unchanged(self):
+        draft = load_draft(MINIMAL_WIF)  # 4 warp × 4 weft — tiny
+        assert safe_preview_scale(draft, desired_scale=10) == 10
+
+    def test_large_draft_reduced(self):
+        """A draft large enough to exceed the pixel cap must return a scale below desired."""
+        # Build a WIF with many warp/weft threads to simulate a large draft
+        big_wif = _make_wif(warp=500, weft=2000, shafts=4)
+        draft = load_draft(big_wif)
+        result = safe_preview_scale(draft, desired_scale=10)
+        # 500 * 2000 * 10^2 = 100M pixels — right at the limit; should be <= 10
+        assert result <= 10
+        # And total pixels at returned scale should be under the cap
+        total = 500 * (2000 + 6 + 4) * result * result
+        assert total <= 100_000_000
+
+    def test_very_large_draft_capped(self):
+        """Draft similar to Waffle 1 (1285 warp × 3058 weft) must render at reduced scale."""
+        big_wif = _make_wif(warp=1285, weft=3058, shafts=8)
+        draft = load_draft(big_wif)
+        result = safe_preview_scale(draft, desired_scale=10)
+        assert result < 10  # must reduce
+        total = 1285 * (3058 + 6 + 8) * result * result
+        assert total <= 100_000_000
+
+    def test_returns_at_least_one(self):
+        """Even an enormous draft must return scale >= 1."""
+        big_wif = _make_wif(warp=10000, weft=50000, shafts=32)
+        draft = load_draft(big_wif)
+        assert safe_preview_scale(draft, desired_scale=10) >= 1
+
+    def test_render_full_draft_large_does_not_raise(self):
+        """render_full_draft on a large draft must not raise DecompressionBombError."""
+        big_wif = _make_wif(warp=1285, weft=3058, shafts=8)
+        draft = load_draft(big_wif)
+        result = render_full_draft(draft)
+        assert result[:4] == b"\x89PNG"
+
+
+def _make_wif(warp: int, weft: int, shafts: int) -> bytes:
+    """Build a minimal valid WIF with the given thread counts."""
+    threading = "\n".join(f"{i}={((i - 1) % shafts) + 1}" for i in range(1, warp + 1))
+    treadling = "\n".join(f"{i}={((i - 1) % shafts) + 1}" for i in range(1, weft + 1))
+    tieup = "\n".join(f"{i}={i}" for i in range(1, shafts + 1))
+    return f"""[WIF]
+Version=1.1
+Date=April 2024
+Source Program=TestSuite
+
+[CONTENTS]
+THREADING=true
+TIEUP=true
+TREADLING=true
+COLOR TABLE=true
+COLOR PALETTE=true
+
+[WEAVING]
+Shafts={shafts}
+Treadles={shafts}
+Rising Shed=true
+
+[WARP]
+Threads={warp}
+Units=Inches
+Color=1
+
+[WEFT]
+Threads={weft}
+Units=Inches
+Color=2
+
+[COLOR PALETTE]
+Range=0,255
+Form=Decimal
+
+[COLOR TABLE]
+1=200,50,50
+2=50,50,200
+
+[THREADING]
+{threading}
+
+[TIEUP]
+{tieup}
+
+[TREADLING]
+{treadling}
+""".encode()
 
 
 # ---------------------------------------------------------------------------

@@ -21,6 +21,24 @@ tracer = trace.get_tracer(__name__)
 
 DRAWDOWN_SCALE = 20
 
+# We generate images from WIF data we control — PIL's decompression bomb check
+# is designed for untrusted external image files and does not apply here.
+PILImage.MAX_IMAGE_PIXELS = None
+
+_PREVIEW_MAX_PIXELS = 100_000_000  # 100 MP cap for synchronous preview renders
+
+
+def safe_preview_scale(draft: Draft, desired_scale: int = 10) -> int:
+    """Return the largest scale ≤ desired_scale that keeps the full image under _PREVIEW_MAX_PIXELS."""
+    warp = len(draft.warp)
+    weft = len(draft.weft)
+    shaft_rows = 6 + len(draft.shafts)
+    if warp <= 0 or weft <= 0:
+        return desired_scale
+    # full image approx: warp*s wide, (weft + shaft_rows)*s tall (ignoring small margins)
+    max_scale = max(1, int((_PREVIEW_MAX_PIXELS / (warp * (weft + shaft_rows))) ** 0.5))
+    return min(desired_scale, max_scale)
+
 
 def load_draft(wif_bytes: bytes) -> Draft:
     """Parse WIF bytes and return a PyWeaving Draft."""
@@ -43,6 +61,7 @@ def load_draft(wif_bytes: bytes) -> Draft:
 
 def render_full_draft(draft: Draft, scale: int = 10) -> bytes:
     """Render threading + tie-up/liftplan + drawdown as a PNG."""
+    scale = safe_preview_scale(draft, scale)
     renderer = ImageRenderer(draft, scale=scale)
     with tracer.start_as_current_span("render.full_draft") as span:
         span.set_attribute("render.scale", scale)

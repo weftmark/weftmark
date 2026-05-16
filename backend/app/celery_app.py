@@ -32,6 +32,7 @@ def _make_celery() -> Celery:
             "app.tasks.s3_audit",
             "app.tasks.cve_scan",
             "app.tasks.debug",
+            "app.tasks.post_migrate",
             "app.tasks.reparse",
             "app.tasks.scheduler",
         ],
@@ -179,5 +180,21 @@ def _initial_geoip_download(sender=None, **kwargs):
 
             refresh_geoip_database.delay()
             log.info("GeoLite2-City MMDB absent — queued initial download")
+    except Exception:
+        pass
+
+
+@worker_ready.connect
+def _run_post_migrate_backfills(sender=None, **kwargs):
+    """Dispatch post-migration backfills on every worker startup.
+
+    Each backfill is idempotent (checks null rows) and guarded by a Redis
+    SETNX lock, so only one worker dispatches per deploy window.
+    """
+    try:
+        from app.tasks.post_migrate import run_post_migrate_backfills
+
+        run_post_migrate_backfills.delay()
+        log.info("post_migrate_backfills queued on worker_ready")
     except Exception:
         pass
