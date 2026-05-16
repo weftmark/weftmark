@@ -63,6 +63,7 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     hide_unused_shafts_treadles: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     color_replacements: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     drawdown_preview_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    drawdown_svg_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     steps: Mapped[list["ProjectStep"]] = relationship(
         "ProjectStep", back_populates="project", order_by="ProjectStep.created_at"

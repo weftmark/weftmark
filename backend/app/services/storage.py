@@ -199,6 +199,18 @@ def project_drawdown_preview_exists(path: str | None) -> bool:
     return _exists(path)
 
 
+def save_project_drawdown_svg(data: str) -> str:
+    return _put(f"projects/{uuid.uuid4()}.svg", data.encode("utf-8"))
+
+
+def read_project_drawdown_svg(path: str) -> str:
+    return _get(path).decode("utf-8")
+
+
+def project_drawdown_svg_exists(path: str | None) -> bool:
+    return _exists(path)
+
+
 def delete_project_tiles(project_id: uuid.UUID) -> int:
     """Delete all pre-rendered tiles for a project. Returns the count of deleted objects."""
     prefix = f"projects/{project_id}/tiles/"
@@ -395,3 +407,15 @@ async def aread_project_drawdown_preview(path: str) -> bytes:
 
 async def aproject_drawdown_preview_exists(path: str | None) -> bool:
     return await asyncio.to_thread(project_drawdown_preview_exists, path)
+
+
+async def asave_project_drawdown_svg(data: str) -> str:
+    return await asyncio.to_thread(save_project_drawdown_svg, data)
+
+
+async def aread_project_drawdown_svg(path: str) -> str:
+    return await asyncio.to_thread(read_project_drawdown_svg, path)
+
+
+async def aproject_drawdown_svg_exists(path: str | None) -> bool:
+    return await asyncio.to_thread(project_drawdown_svg_exists, path)

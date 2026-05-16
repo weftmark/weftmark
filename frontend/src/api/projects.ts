@@ -31,6 +31,7 @@ export interface ProjectSummary {
   created_at: string;
   hide_unused_shafts_treadles: boolean;
   has_drawdown_preview: boolean;
+  has_drawdown_svg: boolean;
 }
 
 export interface ProjectPhoto {
@@ -198,6 +199,10 @@ export function drawdownDataUrl(projectId: string, cellPx = 20): string {
 
 export function projectDrawdownPreviewUrl(projectId: string): string {
   return `/api/projects/${projectId}/drawdown_preview`;
+}
+
+export function projectDrawdownSvgUrl(projectId: string): string {
+  return `/api/projects/${projectId}/drawdown_svg`;
 }
 
 export function listProjects(params?: { draftId?: string; loomId?: string }): Promise<ProjectSummary[]> {
