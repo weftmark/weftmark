@@ -3,9 +3,10 @@ import { getAuthToken } from "@/api/client";
 
 interface Props extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
+  loadingContent?: React.ReactNode;
 }
 
-export function AuthedImage({ src, ...props }: Props) {
+export function AuthedImage({ src, loadingContent, ...props }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,6 +36,6 @@ export function AuthedImage({ src, ...props }: Props) {
     };
   }, [src]);
 
-  if (!blobUrl) return null;
+  if (!blobUrl) return loadingContent ? <>{loadingContent}</> : null;
   return <img src={blobUrl} {...props} />;
 }
