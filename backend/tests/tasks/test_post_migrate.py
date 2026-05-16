@@ -70,24 +70,58 @@ def _run(redis_client=None):
         return post_migrate_run()
 
 
-def _make_draft(owner_id, *, wif_colors=None, deleted=False):
-    """Build an unsaved Draft ORM instance for seeding."""
-    from app.models.draft import Draft
+async def _seed_draft(db_session, owner_id, *, wif_colors=None, deleted=False):
+    """Insert a draft row and commit.
+
+    When wif_colors is None, the column is omitted from the INSERT so PostgreSQL
+    stores SQL NULL — not the JSON 'null'::jsonb that SQLAlchemy's JSONB type
+    produces when Python None is passed explicitly (none_as_null defaults to False).
+    The backfill condition checks `wif_colors IS NULL`, which only matches SQL NULL.
+    """
+    from sqlalchemy import text
 
     uid = str(uuid.uuid4())
-    d = Draft(
-        id=uuid.uuid4(),
-        owner_id=owner_id,
-        name=f"test-{uid}",
-        wif_filename="test.wif",
-        wif_path=f"drafts/{uid}.wif",
-        wif_colors=wif_colors,
-    )
-    if deleted:
-        from datetime import datetime, timezone
+    if wif_colors is None:
+        # Omit wif_colors → SQL NULL default; include deleted_at when needed
+        if deleted:
+            sql = text(
+                "INSERT INTO drafts "
+                "(id, owner_id, name, wif_filename, wif_path, deleted_at, created_at, updated_at) "
+                "VALUES (:id, :owner, :name, :wif_fn, :wif_path, NOW(), NOW(), NOW())"
+            )
+        else:
+            sql = text(
+                "INSERT INTO drafts "
+                "(id, owner_id, name, wif_filename, wif_path, created_at, updated_at) "
+                "VALUES (:id, :owner, :name, :wif_fn, :wif_path, NOW(), NOW())"
+            )
+        await db_session.execute(
+            sql,
+            {
+                "id": str(uuid.uuid4()),
+                "owner": str(owner_id),
+                "name": f"test-{uid}",
+                "wif_fn": "test.wif",
+                "wif_path": f"drafts/{uid}.wif",
+            },
+        )
+    else:
+        from app.models.draft import Draft
 
-        d.deleted_at = datetime.now(timezone.utc)
-    return d
+        d = Draft(
+            id=uuid.uuid4(),
+            owner_id=owner_id,
+            name=f"test-{uid}",
+            wif_filename="test.wif",
+            wif_path=f"drafts/{uid}.wif",
+            wif_colors=wif_colors,
+        )
+        if deleted:
+            from datetime import datetime, timezone
+
+            d.deleted_at = datetime.now(timezone.utc)
+        db_session.add(d)
+    await db_session.commit()
 
 
 _REPARSE_CONDITION = (
@@ -118,9 +152,7 @@ class TestNoNullRows:
 
     async def test_skips_when_all_drafts_have_wif_colors(self, db_session, test_user):
         """Drafts that already have wif_colors set are not counted."""
-        d = _make_draft(test_user.id, wif_colors=[1, 2, 3])
-        db_session.add(d)
-        await db_session.commit()
+        await _seed_draft(db_session, test_user.id, wif_colors=[1, 2, 3])
 
         result = _run()
         assert result["dispatched"] == []
@@ -135,9 +167,7 @@ class TestNoNullRows:
 class TestNullRowsPresent:
     async def test_dispatches_reparse_when_wif_colors_null(self, db_session, test_user, mock_redis):
         """A draft with wif_path but null wif_colors triggers reparse_all_drafts dispatch."""
-        d = _make_draft(test_user.id, wif_colors=None)
-        db_session.add(d)
-        await db_session.commit()
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
 
         dispatched_tasks: list[str] = []
         with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
@@ -152,9 +182,7 @@ class TestNullRowsPresent:
 
     async def test_deleted_drafts_not_counted(self, db_session, test_user):
         """Soft-deleted drafts with null wif_colors must not trigger dispatch."""
-        d = _make_draft(test_user.id, wif_colors=None, deleted=True)
-        db_session.add(d)
-        await db_session.commit()
+        await _seed_draft(db_session, test_user.id, wif_colors=None, deleted=True)
 
         result = _run()
         assert result["dispatched"] == []
@@ -169,9 +197,7 @@ class TestNullRowsPresent:
 class TestRedisLockHeld:
     async def test_skips_when_lock_already_held(self, db_session, test_user, mock_redis_locked):
         """If Redis lock is held (another worker already dispatched), skip without dispatching."""
-        d = _make_draft(test_user.id, wif_colors=None)
-        db_session.add(d)
-        await db_session.commit()
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
 
         dispatched: list[str] = []
         with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
@@ -184,9 +210,7 @@ class TestRedisLockHeld:
 
     async def test_lock_released_on_dispatch_error(self, db_session, test_user, mock_redis):
         """If dispatch raises, the Redis lock is released so the next worker can retry."""
-        d = _make_draft(test_user.id, wif_colors=None)
-        db_session.add(d)
-        await db_session.commit()
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
 
         with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
             mock_registry.return_value = [
