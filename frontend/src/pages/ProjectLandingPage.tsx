@@ -5,7 +5,7 @@ import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, displayLength, formatApproxLength, convertLength, type LengthUnit } from "@/lib/units";
 import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
-  updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl,
+  updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail,
 } from "@/api/projects";
@@ -1080,7 +1080,11 @@ export function ProjectLandingPage() {
       {/* Drawdown modal */}
       {drawdownOpen && (
         <DrawdownModal
-          svgUrl={drawdownSvgUrl(project.id, 8)}
+          svgUrl={
+            project.has_drawdown_svg
+              ? projectDrawdownSvgUrl(project.id)
+              : drawdownSvgUrl(project.id, 8)
+          }
           onClose={() => setDrawdownOpen(false)}
         />
       )}

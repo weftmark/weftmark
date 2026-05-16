@@ -14,7 +14,7 @@ import {
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow, type ProjectMetrics,
 } from "@/api/projects";
-import { drawdownPreviewUrl } from "@/api/projects";
+import { drawdownPreviewUrl, projectDrawdownPreviewUrl } from "@/api/projects";
 import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
@@ -116,13 +116,18 @@ function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
 
 function DesignPreviewModal({
   projectId,
+  hasDrawdownPreview,
   colorReplacements,
   onClose,
 }: {
   projectId: string;
+  hasDrawdownPreview: boolean;
   colorReplacements: Record<string, string> | null;
   onClose: () => void;
 }) {
+  const src = hasDrawdownPreview
+    ? projectDrawdownPreviewUrl(projectId)
+    : drawdownPreviewUrl(projectId, colorReplacements ?? undefined);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -136,7 +141,7 @@ function DesignPreviewModal({
           Close ✕
         </button>
         <AuthedImage
-          src={drawdownPreviewUrl(projectId, colorReplacements ?? undefined)}
+          src={src}
           alt="WIF design preview"
           className="max-h-[80vh] mx-auto block rounded-lg shadow-2xl"
           style={{ imageRendering: "pixelated" }}
@@ -897,7 +902,11 @@ function CompletedSummary({
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
         <div className="overflow-auto rounded-lg border bg-card p-2">
           <AuthedImage
-            src={drawdownPreviewUrl(project.id, project.color_replacements ?? undefined)}
+            src={
+              project.has_drawdown_preview
+                ? projectDrawdownPreviewUrl(project.id)
+                : drawdownPreviewUrl(project.id, project.color_replacements ?? undefined)
+            }
             alt={`Design for ${project.draft_name}`}
             className="w-full block"
             style={{ imageRendering: "pixelated" }}
@@ -1860,6 +1869,7 @@ export function ProjectDetailPage() {
       {showDesignPreview && (
         <DesignPreviewModal
           projectId={project.id}
+          hasDrawdownPreview={project.has_drawdown_preview}
           colorReplacements={project.color_replacements}
           onClose={() => setShowDesignPreview(false)}
         />
