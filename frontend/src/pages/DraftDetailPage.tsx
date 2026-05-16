@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -708,13 +708,13 @@ export function DraftDetailPage() {
                 title="Click to open interactive preview"
               >
                 <AuthedImage
-                  src={previewSvgUrl(draft.id)}
+                  src={draft.has_preview ? previewUrl(draft.id) : previewSvgUrl(draft.id)}
                   alt={`Draft preview for ${draft.name}`}
                   className="max-w-full group-hover:opacity-90 transition-opacity"
                   data-testid="draft-preview-img"
                   loadingContent={
                     <div className="w-full min-h-48 animate-pulse rounded-md bg-muted flex items-center justify-center">
-                      <span className="text-sm text-muted-foreground">Rendering preview…</span>
+                      <span className="text-sm text-muted-foreground">Loading preview…</span>
                     </div>
                   }
                 />
