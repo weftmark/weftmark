@@ -304,8 +304,8 @@ export function DashboardPage() {
     queryFn: listLooms,
   });
 
-  const activeProjects = projects.filter((a) => a.status === "active" && !!a.loom_id);
-  const planningProjects = projects.filter((a) => a.status === "active" && !a.loom_id);
+  const activeProjects = projects.filter((a) => (a.status === "active" || a.status === "created") && !!a.loom_id);
+  const planningProjects = projects.filter((a) => (a.status === "active" || a.status === "created") && !a.loom_id);
   const completedCount = projects.filter((a) => a.status === "completed").length;
 
   return (
@@ -424,38 +424,46 @@ export function DashboardPage() {
                   ? Math.round((Math.min(a.current_pick - 1, a.total_picks) / a.total_picks) * 100)
                   : 0;
               return (
-                <Link
-                  key={a.id}
-                  to={`/projects/${a.id}`}
-                  className="flex items-center gap-4 rounded-lg border p-4 hover:border-ring transition-colors"
-                >
-                  <div className="shrink-0">
-                    {a.project_type === "treadle"
-                      ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                      : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{a.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {PROJECT_TYPE_LABELS[a.project_type]}
-                    </p>
-                    <div className="mt-2">
-                      <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                        <span>
-                          Pick {Math.min(a.current_pick, a.total_picks)} of {a.total_picks}
-                        </span>
-                        <span>{pct}%</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
+                <div key={a.id} className="rounded-lg border hover:border-ring transition-colors">
+                  <Link
+                    to={`/projects/${a.id}`}
+                    className="flex items-center gap-4 p-4"
+                  >
+                    <div className="shrink-0">
+                      {a.project_type === "treadle"
+                        ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                        : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
                     </div>
-                  </div>
-                  <span className="shrink-0 text-sm text-muted-foreground">Continue →</span>
-                </Link>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{a.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {PROJECT_TYPE_LABELS[a.project_type]}
+                      </p>
+                      {a.status === "active" && (
+                        <div className="mt-2">
+                          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                            <span>Pick {Math.min(a.current_pick, a.total_picks)} of {a.total_picks}</span>
+                            <span>{pct}%</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                  {a.status === "active" && (
+                    <div className="border-t px-4 pb-3 pt-2">
+                      <Link
+                        to={`/projects/${a.id}/track`}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+                      >
+                        <AppIcons.projectActive className="h-3.5 w-3.5" />
+                        Continue Weaving
+                      </Link>
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>

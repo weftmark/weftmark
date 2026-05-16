@@ -133,6 +133,7 @@ async def _prerender_project(task: Task, project_id: uuid.UUID) -> None:
                     lambda _pid, scale, start, data: storage.save_project_tile(project_id, scale, start, data),
                     entity_id=project_id,
                     entity_label="project_id",
+                    color_replacements=project.color_replacements or {},
                 )
                 log.info("tile_prerender_done project_id=%s tiles=%d", project_id, tile_count)
             except Exception as exc:
@@ -154,8 +155,11 @@ def _render_and_store_tiles(
     save_fn,
     entity_id: uuid.UUID,
     entity_label: str,
+    color_replacements: dict | None = None,
 ) -> int:
     wif_draft = rendering.load_draft(wif_bytes)
+    if color_replacements:
+        rendering.apply_color_replacements(wif_draft, color_replacements)
 
     warp_count = len(wif_draft.warp)
     weft_count = len(wif_draft.weft)

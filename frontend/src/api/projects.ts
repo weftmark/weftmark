@@ -1,5 +1,5 @@
 export type ProjectType = "treadle" | "lift";
-export type ProjectStatus = "active" | "completed" | "abandoned";
+export type ProjectStatus = "created" | "active" | "completed" | "abandoned";
 
 export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
   treadle: "Treadle tracking",
@@ -7,6 +7,7 @@ export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
 };
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  created: "Not started",
   active: "Active",
   completed: "Completed",
   abandoned: "Abandoned",
@@ -38,6 +39,35 @@ export interface ProjectPhoto {
   created_at: string;
 }
 
+export interface WifColor {
+  index: number;
+  r: number;
+  g: number;
+  b: number;
+  hex: string;
+}
+
+export interface ColorStat {
+  hex: string;
+  count: number;
+  percentage: number;
+}
+
+export interface WifMeasurements {
+  warp_length?: number;
+  warp_length_original?: number;
+  warp_length_unit?: string;
+  warp_spacing?: number;
+  warp_spacing_original?: number;
+  warp_spacing_unit?: string;
+  weft_length?: number;
+  weft_length_original?: number;
+  weft_length_unit?: string;
+  weft_spacing?: number;
+  weft_spacing_original?: number;
+  weft_spacing_unit?: string;
+}
+
 export interface ProjectDetail extends ProjectSummary {
   finished_length_per_item: string | null;
   waste_between_items: string | null;
@@ -50,9 +80,22 @@ export interface ProjectDetail extends ProjectSummary {
   draft_effective_num_treadles: number | null;
   draft_effective_num_shafts: number | null;
   draft_metadata_overrides: Record<string, { original: number | null; override: number }> | null;
+  draft_wif_colors: WifColor[] | null;
+  draft_warp_color_stats: ColorStat[] | null;
+  draft_weft_color_stats: ColorStat[] | null;
+  draft_wif_measurements: WifMeasurements | null;
+  draft_warp_threads: number | null;
+  draft_weft_threads: number | null;
+  draft_warp_length_cm: number | null;
+  draft_weaving_width_override_cm: number | null;
+  draft_epi_override: number | null;
+  color_replacements: Record<string, string> | null;
   loom_name: string | null;
   loom_num_treadles: number | null;
   loom_num_shafts: number | null;
+  loom_warp_waste_allowance: string | null;
+  loom_warp_waste_unit: string | null;
+  loom_resolved_version_id: string | null;
   photos: ProjectPhoto[];
 }
 
@@ -132,8 +175,20 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function drawdownSvgUrl(projectId: string, cellPx = 10): string {
-  return `/api/projects/${projectId}/drawdown/svg?cell_px=${cellPx}`;
+export function drawdownSvgUrl(projectId: string, cellPx = 10, colorReplacements?: Record<string, string>): string {
+  const qs = new URLSearchParams({ cell_px: String(cellPx) });
+  if (colorReplacements && Object.keys(colorReplacements).length > 0) {
+    qs.set("color_replacements", JSON.stringify(colorReplacements));
+  }
+  return `/api/projects/${projectId}/drawdown/svg?${qs}`;
+}
+
+export function drawdownPreviewUrl(projectId: string, colorReplacements?: Record<string, string>): string {
+  if (colorReplacements && Object.keys(colorReplacements).length > 0) {
+    const qs = new URLSearchParams({ color_replacements: JSON.stringify(colorReplacements) });
+    return `/api/projects/${projectId}/drawdown/preview?${qs}`;
+  }
+  return `/api/projects/${projectId}/drawdown/preview`;
 }
 
 export function drawdownDataUrl(projectId: string, cellPx = 20): string {
@@ -158,6 +213,10 @@ export function createProject(payload: CreateProjectPayload): Promise<ProjectDet
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export function startProject(id: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/start`, { method: "POST" });
 }
 
 export function stepProject(id: string, direction: "advance" | "reverse"): Promise<StepResponse> {
@@ -200,6 +259,23 @@ export function updateProjectSettings(
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(settings),
+  });
+}
+
+export function updateProjectWarpSetup(
+  id: string,
+  data: {
+    num_items?: number;
+    finished_length_per_item?: number | null;
+    waste_between_items?: number | null;
+    warp_waste_allowance?: number | null;
+    length_unit?: string;
+  }
+): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/warp-setup`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 }
 
@@ -263,4 +339,15 @@ export function uploadProjectPhoto(projectId: string, file: File): Promise<Proje
 
 export function deleteProjectPhoto(projectId: string, photoId: string): Promise<void> {
   return req(`/api/projects/${projectId}/photos/${photoId}`, { method: "DELETE" });
+}
+
+export function setProjectColorReplacements(
+  id: string,
+  colorReplacements: Record<string, string>,
+): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/color-replacements`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ color_replacements: colorReplacements }),
+  });
 }

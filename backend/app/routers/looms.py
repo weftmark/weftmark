@@ -234,6 +234,8 @@ class AddVersionRequest(BaseModel):
 class UpdateVersionRequest(BaseModel):
     name: str | None = None
     description: str | None = None
+    warp_waste_allowance: Decimal | None = None
+    warp_waste_unit: str | None = None
 
 
 class CloneVersionRequest(BaseModel):

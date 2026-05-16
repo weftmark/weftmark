@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 PROJECT_TYPES = ("treadle", "lift")
-PROJECT_STATUSES = ("active", "completed", "abandoned")
+PROJECT_STATUSES = ("created", "active", "completed", "abandoned")
 
 
 class ProjectPhoto(Base, TimestampMixin):
@@ -61,6 +61,7 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     abandoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     hide_unused_shafts_treadles: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    color_replacements: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     steps: Mapped[list["ProjectStep"]] = relationship(
         "ProjectStep", back_populates="project", order_by="ProjectStep.created_at"

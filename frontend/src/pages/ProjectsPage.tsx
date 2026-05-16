@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const STATUS_COLORS: Record<string, string> = {
+  created: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   plan: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   completed: "bg-muted text-muted-foreground",
@@ -42,7 +43,7 @@ function ProjectCard({ project, onAssign }: {
   onAssign?: (id: string) => void;
 }) {
   const [showPreview, setShowPreview] = useState(false);
-  const isPlanning = project.status === "active" && !project.loom_id;
+  const isPlanning = (project.status === "active" || project.status === "created") && !project.loom_id;
   const badgeKey = isPlanning ? "plan" : project.status;
   const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
 
@@ -119,6 +120,17 @@ function ProjectCard({ project, onAssign }: {
           </button>
         </div>
       )}
+      {project.status === "active" && project.loom_id && (
+        <div className="border-t px-3 pb-3 pt-2">
+          <Link
+            to={`/projects/${project.id}/track`}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+          >
+            <AppIcons.projectActive className="h-3.5 w-3.5" />
+            Continue Weaving
+          </Link>
+        </div>
+      )}
       {showPreview && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -189,7 +201,8 @@ export function ProjectsPage() {
 
   const currentYear = new Date().getFullYear();
 
-  const planning = projects.filter((p) => p.status === "active" && !p.loom_id);
+  const planning = projects.filter((p) => (p.status === "active" || p.status === "created") && !p.loom_id);
+  const notStarted = projects.filter((p) => p.status === "created" && !!p.loom_id);
   const active = projects.filter((p) => p.status === "active" && !!p.loom_id);
 
   const completed = projects
@@ -225,6 +238,15 @@ export function ProjectsPage() {
           <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {active.map((p) => <ProjectCard key={p.id} project={p} />)}
+          </div>
+        </section>
+      )}
+
+      {notStarted.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Not started</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {notStarted.map((p) => <ProjectCard key={p.id} project={p} />)}
           </div>
         </section>
       )}

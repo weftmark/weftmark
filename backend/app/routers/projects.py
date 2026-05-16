@@ -78,9 +78,22 @@ class ProjectDetail(ProjectSummary):
     draft_effective_num_treadles: int | None
     draft_effective_num_shafts: int | None
     draft_metadata_overrides: dict | None
+    draft_wif_colors: list | None
+    draft_warp_color_stats: list | None
+    draft_weft_color_stats: list | None
+    draft_wif_measurements: dict | None
+    draft_warp_threads: int | None
+    draft_weft_threads: int | None
+    draft_warp_length_cm: float | None
+    draft_weaving_width_override_cm: float | None
+    draft_epi_override: float | None
+    color_replacements: dict | None
     loom_name: str | None
     loom_num_treadles: int | None = None
     loom_num_shafts: int | None = None
+    loom_warp_waste_allowance: Decimal | None = None
+    loom_warp_waste_unit: str | None = None
+    loom_resolved_version_id: uuid.UUID | None = None
     photos: list[ProjectPhotoSchema] = []
 
 
@@ -101,6 +114,18 @@ class RenameProjectRequest(BaseModel):
     name: str | None = None
     notes: str | None = None
     hide_unused_shafts_treadles: bool | None = None
+
+
+class WarpSetupRequest(BaseModel):
+    num_items: int | None = None
+    finished_length_per_item: Decimal | None = None
+    waste_between_items: Decimal | None = None
+    warp_waste_allowance: Decimal | None = None
+    length_unit: str | None = None
+
+
+class ColorReplacementsRequest(BaseModel):
+    color_replacements: dict[str, str]
 
 
 class AssignLoomRequest(BaseModel):
@@ -176,11 +201,11 @@ async def _close_open_session(project_id: uuid.UUID, db: AsyncSession) -> None:
 async def _check_loom_conflict(
     loom_id: uuid.UUID, exclude_id: uuid.UUID | None, owner_id: uuid.UUID, db: AsyncSession
 ) -> None:
-    """Raise 409 if the loom already has an active project (other than exclude_id)."""
+    """Raise 409 if the loom already has an active or not-yet-started project (other than exclude_id)."""
     q = select(Project).where(
         Project.loom_id == loom_id,
         Project.owner_id == owner_id,
-        Project.status == "active",
+        Project.status.in_(("created", "active")),
         Project.deleted_at.is_(None),
     )
     if exclude_id is not None:
@@ -262,15 +287,28 @@ def _to_detail(
         notes=project.notes,
         created_at=project.created_at,
         hide_unused_shafts_treadles=project.hide_unused_shafts_treadles,
+        color_replacements=project.color_replacements,
         draft_name=draft.name,
         draft_num_shafts=draft.num_shafts,
         draft_num_treadles=draft.num_treadles,
         draft_effective_num_treadles=draft.effective_num_treadles,
         draft_effective_num_shafts=draft.effective_num_shafts,
         draft_metadata_overrides=draft.metadata_overrides,
+        draft_wif_colors=draft.wif_colors,
+        draft_warp_color_stats=draft.warp_color_stats,
+        draft_weft_color_stats=draft.weft_color_stats,
+        draft_wif_measurements=draft.wif_measurements,
+        draft_warp_threads=draft.warp_threads,
+        draft_weft_threads=draft.weft_threads,
+        draft_warp_length_cm=draft.warp_length_cm,
+        draft_weaving_width_override_cm=draft.weaving_width_override_cm,
+        draft_epi_override=draft.epi_override,
         loom_name=f"{loom.manufacturer} {loom.model_name}" if loom else None,
         loom_num_treadles=loom_version.num_treadles if loom_version else None,
         loom_num_shafts=loom_version.num_shafts if loom_version else None,
+        loom_warp_waste_allowance=loom_version.warp_waste_allowance if loom_version else None,
+        loom_warp_waste_unit=loom_version.warp_waste_unit if loom_version else None,
+        loom_resolved_version_id=loom_version.id if loom_version else None,
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
     )
 
@@ -352,7 +390,7 @@ async def create_project(
         loom_version_id=body.loom_version_id,
         name=body.name,
         project_type=body.project_type,
-        status="active",
+        status="created",
         current_pick=1,
         total_picks=pick_data.total_picks,
         finished_length_per_item=body.finished_length_per_item,
@@ -455,16 +493,16 @@ async def get_project_drawdown(
     wif_bytes = await aread_file(wif_path)
     _sc = start_col
     _cc = col_count
+    _replacements = project.color_replacements or {}
     try:
-        result = await asyncio.to_thread(
-            lambda: rendering.render_drawdown_tile(
-                rendering.load_draft(wif_bytes),
-                start_row=_sr,
-                row_count=_rc,
-                start_col=_sc,
-                col_count=_cc,
-            )
-        )
+
+        def _render_tile() -> tuple:
+            d = rendering.load_draft(wif_bytes)
+            if _replacements:
+                rendering.apply_color_replacements(d, _replacements)
+            return rendering.render_drawdown_tile(d, start_row=_sr, row_count=_rc, start_col=_sc, col_count=_cc)
+
+        result = await asyncio.to_thread(_render_tile)
     except HTTPException:
         raise
     except Exception as exc:
@@ -507,10 +545,13 @@ async def get_project_drawdown(
 @router.get("/{project_id}/drawdown/svg")
 async def get_project_drawdown_svg(
     project_id: uuid.UUID,
-    cell_px: int = Query(20, ge=4, le=30),
+    cell_px: int = Query(20, ge=1, le=30),
+    color_replacements: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
+    import json
+
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
 
@@ -523,11 +564,20 @@ async def get_project_drawdown_svg(
     if not wif_path or not await afile_exists(wif_path):
         raise HTTPException(status_code=404, detail="WIF file not found in storage")
 
+    replacements: dict[str, str] = {}
+    if color_replacements:
+        try:
+            replacements = json.loads(color_replacements)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid color_replacements JSON")
+
     wif_bytes = await aread_file(wif_path)
     try:
 
         def _render() -> tuple:
             d = rendering.load_draft(wif_bytes)
+            if replacements:
+                rendering.apply_color_replacements(d, replacements)
             s = rendering.render_drawdown_svg(d, cell_px)
             return d, s
 
@@ -545,6 +595,57 @@ async def get_project_drawdown_svg(
             "X-Total-Rows": str(len(wif_draft.weft)),
             "X-Total-Cols": str(len(wif_draft.warp)),
         },
+    )
+
+
+@router.get("/{project_id}/drawdown/preview")
+async def get_project_drawdown_preview(
+    project_id: uuid.UUID,
+    color_replacements: str | None = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Full draft PNG (threading + tieup + drawdown), optionally with colour replacements applied."""
+    import json
+
+    from app.services import rendering
+    from app.services.storage import afile_exists, aread_file
+
+    project = await _get_owned_project(project_id, current_user, db)
+    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    wif_path = await _wif_path_for_project(draft, project.project_type)
+    if not wif_path or not await afile_exists(wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not found in storage")
+
+    replacements: dict[str, str] = {}
+    if color_replacements:
+        try:
+            replacements = json.loads(color_replacements)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid color_replacements JSON")
+
+    wif_bytes = await aread_file(wif_path)
+    try:
+
+        def _render() -> bytes:
+            d = rendering.load_draft(wif_bytes)
+            if replacements:
+                rendering.apply_color_replacements(d, replacements)
+            return rendering.render_full_draft(d)
+
+        png_bytes = await asyncio.to_thread(_render)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Preview rendering failed: {exc}") from exc
+
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={"Cache-Control": "private, max-age=60"},
     )
 
 
@@ -572,6 +673,8 @@ async def get_project_drawdown_data(
 
         def _render() -> tuple:
             d = rendering.load_draft(wif_bytes)
+            if project.color_replacements:
+                rendering.apply_color_replacements(d, project.color_replacements)
             data = rendering.render_drawdown_data(d, cell_px)
             return d, data
 
@@ -642,6 +745,61 @@ async def rename_project(
     return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
+@router.patch("/{project_id}/color-replacements", response_model=ProjectDetail)
+async def set_color_replacements(
+    project_id: uuid.UUID,
+    body: ColorReplacementsRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    import re
+
+    hex_re = re.compile(r"^#[0-9a-fA-F]{6}$")
+    for k, v in body.color_replacements.items():
+        if not hex_re.match(k) or not hex_re.match(v):
+            raise HTTPException(status_code=422, detail="color_replacements keys and values must be 6-digit hex colors")
+    project = await _get_owned_project(project_id, current_user, db)
+    project.color_replacements = body.color_replacements or None
+    await db.commit()
+    await db.refresh(project)
+    prerender_project_tiles.delay(str(project_id))
+    draft = await db.get(Draft, project.draft_id)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+
+
+@router.patch("/{project_id}/warp-setup", response_model=ProjectDetail)
+async def update_warp_setup(
+    project_id: uuid.UUID,
+    body: WarpSetupRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    project = await _get_owned_project(project_id, current_user, db)
+    fields = body.model_fields_set
+    if not fields:
+        raise HTTPException(status_code=400, detail="At least one field must be provided")
+    if "num_items" in fields:
+        if project.status != "created":
+            raise HTTPException(status_code=400, detail="Items can only be changed before weaving starts")
+        project.num_items = max(1, body.num_items)  # type: ignore[arg-type]
+    if "finished_length_per_item" in fields:
+        project.finished_length_per_item = body.finished_length_per_item
+    if "waste_between_items" in fields:
+        project.waste_between_items = body.waste_between_items
+    if "warp_waste_allowance" in fields:
+        project.warp_waste_allowance = body.warp_waste_allowance
+    if "length_unit" in fields and body.length_unit in ("cm", "in"):
+        project.length_unit = body.length_unit  # type: ignore[assignment]
+    await db.commit()
+    await db.refresh(project)
+    draft = await db.get(Draft, project.draft_id)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+
+
 @router.post("/{project_id}/assign-loom", response_model=ProjectDetail)
 async def assign_loom(
     project_id: uuid.UUID,
@@ -650,7 +808,7 @@ async def assign_loom(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
-    if project.status != "active":
+    if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
     if project.loom_id is not None:
         raise HTTPException(status_code=400, detail="Project already has a loom assigned")
@@ -692,6 +850,26 @@ async def assign_loom(
     return _to_detail(project, draft, loom, loom_version=loom_version)
 
 
+@router.post("/{project_id}/start", response_model=ProjectDetail)
+async def start_project(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    """Transition a project from 'created' to 'active'. Idempotent if already active."""
+    project = await _get_owned_project(project_id, current_user, db)
+    if project.status not in ("created", "active"):
+        raise HTTPException(status_code=400, detail="Only projects in 'created' or 'active' status can be started")
+    if project.status == "created":
+        project.status = "active"
+        await db.commit()
+        await db.refresh(project)
+    draft = await db.get(Draft, project.draft_id)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+
+
 @router.post("/{project_id}/step", response_model=StepResponse)
 async def step_project(
     project_id: uuid.UUID,
@@ -706,8 +884,10 @@ async def step_project(
     # two simultaneous taps from reading the same current_pick and producing a
     # duplicate increment.
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
-    if project.status != "active":
+    if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    if project.status == "created":
+        project.status = "active"
 
     from_pick = project.current_pick
 
@@ -777,7 +957,7 @@ async def jump_project(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
-    if project.status != "active":
+    if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
     project.current_pick = max(1, min(body.pick, project.total_picks + 1))
     await db.commit()
@@ -794,7 +974,7 @@ async def advance_item(
     db: AsyncSession = Depends(get_db),
 ) -> StepResponse:
     project = await _get_owned_project(project_id, current_user, db)
-    if project.status != "active":
+    if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
     if project.current_pick <= project.total_picks:
         raise HTTPException(status_code=400, detail="Current item is not finished — advance to the last pick first")
@@ -822,7 +1002,7 @@ async def jump_item(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
-    if project.status != "active":
+    if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
     picks = dict(project.item_picks or {})
     picks[str(project.current_item)] = project.current_pick
@@ -844,7 +1024,7 @@ async def complete_project(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
-    if project.status != "active":
+    if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
     if project.current_pick <= project.total_picks:
         raise HTTPException(status_code=400, detail="Not all picks are done — advance to the last pick first")
@@ -867,7 +1047,7 @@ async def abandon_project(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
-    if project.status != "active":
+    if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
     project.status = "abandoned"
     project.abandoned_at = datetime.now(timezone.utc)
@@ -890,7 +1070,7 @@ async def restart_project(
         raise HTTPException(status_code=400, detail="Only abandoned projects can be restarted")
     if project.loom_id:
         await _check_loom_conflict(project.loom_id, project.id, current_user.id, db)
-    project.status = "active"
+    project.status = "created"
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
@@ -962,7 +1142,7 @@ async def clone_project(
         loom_version_id=source.loom_version_id,
         name=source.name,
         project_type=source.project_type,
-        status="active",
+        status="created",
         current_pick=1,
         total_picks=source.total_picks,
         finished_length_per_item=source.finished_length_per_item,
@@ -1097,8 +1277,13 @@ async def get_picks(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    replacements = {k.lower(): v for k, v in (project.color_replacements or {}).items()}
+
+    def _apply(color: str | None) -> str | None:
+        return replacements.get(color.lower(), color) if color else None
+
     pick_rows = [
-        PickRow(pick=i + 1, active=row, color=pick_data.weft_colors[i]) for i, row in enumerate(pick_data.picks)
+        PickRow(pick=i + 1, active=row, color=_apply(pick_data.weft_colors[i])) for i, row in enumerate(pick_data.picks)
     ]
     return PicksResponse(
         project_type=pick_data.project_type,

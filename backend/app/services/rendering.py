@@ -256,6 +256,28 @@ def render_drawdown_svg(draft: Draft, cell_px: int = 20) -> str:
     return svg
 
 
+def apply_color_replacements(draft: Draft, color_map: dict[str, str]) -> None:
+    """Replace thread colors in-place based on a hex→hex mapping.
+
+    ``color_map`` maps source hex strings (e.g. ``"#ff0000"``) to replacement
+    hex strings.  Comparison is case-insensitive.  Threads whose color does not
+    appear in the map are left unchanged.
+    """
+    if not color_map:
+        return
+    normalized: dict[tuple[int, int, int], tuple[int, int, int]] = {}
+    for src, dst in color_map.items():
+        src_rgb = tuple(int(src.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+        dst_rgb = tuple(int(dst.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+        normalized[src_rgb] = dst_rgb  # type: ignore[assignment]
+
+    from app.weaving import Color
+
+    for thread in (*draft.warp, *draft.weft):
+        if thread.color is not None and thread.color.rgb in normalized:
+            thread.color = Color(normalized[thread.color.rgb])
+
+
 def render_drawdown_only(
     draft: Draft,
     scale: int = DRAWDOWN_SCALE,
@@ -321,3 +343,50 @@ def render_drawdown_only(
     out = io.BytesIO()
     cropped.save(out, format="PNG")
     return out.getvalue(), weft_count, scale
+
+
+def render_drawdown_png(draft: Draft, scale: int = 1) -> bytes:
+    """Render just the drawdown grid as a PNG, without cropping from a full draft image.
+
+    Uses the same warp-up/weft-background logic as the SVG renderer so colors are
+    consistent. Orientation: last pick at y=0 (top), first pick at bottom — matching
+    the SVG drawdown and the step-tracking tile renderer.
+
+    Returns raw PNG bytes.
+    """
+    warp_count = len(draft.warp)
+    weft_count = len(draft.weft)
+    scale = max(1, scale)
+    w = warp_count * scale
+    h = weft_count * scale
+
+    img = PILImage.new("RGB", (w, h), (255, 255, 255))
+    pixels = img.load()
+
+    warp_rgbs = [t.color.rgb if t.color else (0, 0, 0) for t in draft.warp]
+
+    for weft_idx, weft_thread in enumerate(draft.weft):
+        # Flip vertically: weft index 0 is the first pick (bottom); render it last row.
+        svg_row = weft_count - 1 - weft_idx
+        y0 = svg_row * scale
+
+        weft_rgb = weft_thread.color.rgb if weft_thread.color else (255, 255, 255)
+
+        # Fill entire row with weft color.
+        for dy in range(scale):
+            for x in range(w):
+                pixels[x, y0 + dy] = weft_rgb  # type: ignore[index]
+
+        # Paint warp-up threads on top.
+        connected = weft_thread.connected_shafts
+        warp_up = (x for x, wt in enumerate(draft.warp) if (wt.shaft not in connected) ^ draft.rising_shed)
+        for x in warp_up:
+            rgb = warp_rgbs[x]
+            x0 = x * scale
+            for dy in range(scale):
+                for dx in range(scale):
+                    pixels[x0 + dx, y0 + dy] = rgb  # type: ignore[index]
+
+    out = io.BytesIO()
+    img.save(out, format="PNG")
+    return out.getvalue()
