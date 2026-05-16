@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, drawdownPreviewUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -708,7 +708,7 @@ export function DraftDetailPage() {
                 title="Click to open interactive preview"
               >
                 <AuthedImage
-                  src={draft.has_drawdown_preview ? drawdownPreviewUrl(draft.id) : previewSvgUrl(draft.id)}
+                  src={previewSvgUrl(draft.id)}
                   alt={`Draft preview for ${draft.name}`}
                   className="max-w-full group-hover:opacity-90 transition-opacity"
                   data-testid="draft-preview-img"
