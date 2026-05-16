@@ -31,6 +31,22 @@ def _mock_tile_task(monkeypatch):
     return mock
 
 
+@pytest.fixture(autouse=True)
+def _mock_project_preview_task(monkeypatch):
+    """Prevent generate_project_drawdown_preview.delay() from connecting to Celery in tests."""
+    mock = MagicMock()
+    monkeypatch.setattr("app.routers.projects.generate_project_drawdown_preview", mock)
+    return mock
+
+
+@pytest.fixture(autouse=True)
+def _mock_project_svg_task(monkeypatch):
+    """Prevent generate_project_drawdown_svg.delay() from connecting to Celery in tests."""
+    mock = MagicMock()
+    monkeypatch.setattr("app.routers.projects.generate_project_drawdown_svg", mock)
+    return mock
+
+
 # ---------------------------------------------------------------------------
 # Minimal WIF bytes used for all tests (has both treadling and liftplan)
 # ---------------------------------------------------------------------------
