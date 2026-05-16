@@ -19,7 +19,7 @@ from app.models.user import User
 from app.services import storage, wif_parser
 from app.services.images import resize_to_jpeg
 from app.services.storage_quota import check_storage_quota
-from app.tasks.preview import generate_drawdown_preview
+from app.tasks.preview import generate_drawdown_preview, generate_project_drawdown_preview
 from app.tasks.tiles import prerender_project_tiles
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
@@ -62,6 +62,7 @@ class ProjectSummary(BaseModel):
     abandoned_at: datetime | None
     created_at: datetime
     hide_unused_shafts_treadles: bool
+    has_drawdown_preview: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -309,6 +310,7 @@ def _to_detail(
         loom_warp_waste_allowance=loom_version.warp_waste_allowance if loom_version else None,
         loom_warp_waste_unit=loom_version.warp_waste_unit if loom_version else None,
         loom_resolved_version_id=loom_version.id if loom_version else None,
+        has_drawdown_preview=project.drawdown_preview_path is not None,
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
     )
 
@@ -410,6 +412,7 @@ async def create_project(
 
     tile_task = prerender_project_tiles.delay(str(project.id))
     record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_project_tiles", "preview")
+    generate_project_drawdown_preview.delay(str(project.id))
     return _to_detail(project, draft, loom)
 
 
@@ -649,6 +652,24 @@ async def get_project_drawdown_preview(
     )
 
 
+@router.get("/{project_id}/drawdown_preview")
+async def get_project_drawdown_preview_cached(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return the pre-rendered drawdown thumbnail PNG for a project, or 404 if not yet generated."""
+    project = await _get_owned_project(project_id, current_user, db)
+    if not project.drawdown_preview_path:
+        raise HTTPException(status_code=404, detail="Preview not yet generated")
+    data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
+    return Response(
+        content=data,
+        media_type="image/png",
+        headers={"Cache-Control": "private, max-age=86400"},
+    )
+
+
 @router.get("/{project_id}/drawdown/data")
 async def get_project_drawdown_data(
     project_id: uuid.UUID,
@@ -763,6 +784,7 @@ async def set_color_replacements(
     await db.commit()
     await db.refresh(project)
     prerender_project_tiles.delay(str(project_id))
+    generate_project_drawdown_preview.delay(str(project_id))
     draft = await db.get(Draft, project.draft_id)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
     loom_version = await _resolve_loom_version(project, db)

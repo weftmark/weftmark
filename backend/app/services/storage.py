@@ -187,6 +187,18 @@ async def asave_project_tile(project_id: uuid.UUID, scale: int, start_row: int, 
     return await asyncio.to_thread(save_project_tile, project_id, scale, start_row, data)
 
 
+def save_project_drawdown_preview(data: bytes) -> str:
+    return _put(f"projects/{uuid.uuid4()}.png", data)
+
+
+def read_project_drawdown_preview(path: str) -> bytes:
+    return _get(path)
+
+
+def project_drawdown_preview_exists(path: str | None) -> bool:
+    return _exists(path)
+
+
 def delete_project_tiles(project_id: uuid.UUID) -> int:
     """Delete all pre-rendered tiles for a project. Returns the count of deleted objects."""
     prefix = f"projects/{project_id}/tiles/"
@@ -371,3 +383,15 @@ async def asave_yarn_photo(yarn_id: uuid.UUID, ext: str, data: bytes) -> str:
 
 async def adelete_yarn_photo(photo_path: str) -> None:
     await asyncio.to_thread(delete_yarn_photo, photo_path)
+
+
+async def asave_project_drawdown_preview(data: bytes) -> str:
+    return await asyncio.to_thread(save_project_drawdown_preview, data)
+
+
+async def aread_project_drawdown_preview(path: str) -> bytes:
+    return await asyncio.to_thread(read_project_drawdown_preview, path)
+
+
+async def aproject_drawdown_preview_exists(path: str | None) -> bool:
+    return await asyncio.to_thread(project_drawdown_preview_exists, path)

@@ -30,6 +30,7 @@ export interface ProjectSummary {
   abandoned_at: string | null;
   created_at: string;
   hide_unused_shafts_treadles: boolean;
+  has_drawdown_preview: boolean;
 }
 
 export interface ProjectPhoto {
@@ -193,6 +194,10 @@ export function drawdownPreviewUrl(projectId: string, colorReplacements?: Record
 
 export function drawdownDataUrl(projectId: string, cellPx = 20): string {
   return `/api/projects/${projectId}/drawdown/data?cell_px=${cellPx}`;
+}
+
+export function projectDrawdownPreviewUrl(projectId: string): string {
+  return `/api/projects/${projectId}/drawdown_preview`;
 }
 
 export function listProjects(params?: { draftId?: string; loomId?: string }): Promise<ProjectSummary[]> {
