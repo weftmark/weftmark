@@ -129,6 +129,8 @@ export interface AddVersionPayload {
 export interface UpdateVersionPayload {
   name?: string;
   description?: string;
+  warp_waste_allowance?: number | null;
+  warp_waste_unit?: string;
 }
 
 export interface CloneVersionPayload {
@@ -173,6 +175,14 @@ export function createLoom(payload: CreateLoomPayload): Promise<LoomDetail> {
 
 export function updateLoom(id: string, payload: UpdateLoomPayload): Promise<LoomDetail> {
   return req(`/api/looms/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateLoomVersion(loomId: string, versionId: string, payload: UpdateVersionPayload): Promise<LoomVersion> {
+  return req(`/api/looms/${loomId}/versions/${versionId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

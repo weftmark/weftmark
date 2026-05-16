@@ -19,6 +19,7 @@ import {
   Maximize2,
   Menu,
   Minimize2,
+  Pencil,
   RotateCcw,
   Scroll,
   Settings,
@@ -51,6 +52,7 @@ export const AppIcons = {
   logout: LogOut,
 
   // ── UI chrome ─────────────────────────────────────────────────────────────
+  edit: Pencil,
   mobileMenu: Menu,
   close: X,
   chevronDown: ChevronDown,

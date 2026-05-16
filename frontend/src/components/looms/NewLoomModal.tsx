@@ -218,7 +218,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
 
           {/* Dimensions — available for all types except inkle */}
           {loomType !== "inkle" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div>
                 <label className="mb-1 block text-sm font-medium">Weaving width (optional)</label>
                 <div className="flex gap-2">

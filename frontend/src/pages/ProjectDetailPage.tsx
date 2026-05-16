@@ -3,18 +3,18 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
 import { usePresentMode } from "@/hooks/usePresentMode";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, displayLength } from "@/lib/units";
 import {
   getProject, getProjectPicks, getProjectMetrics, stepProject, jumpProject, completeProject, abandonProject,
-  restartProject, cloneProject, listProjects, deleteProject,
+  restartProject, cloneProject, listProjects, deleteProject, startProject,
   renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
   advanceItem, jumpItem,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow, type ProjectMetrics,
 } from "@/api/projects";
-import { previewUrl } from "@/api/drafts";
+import { drawdownPreviewUrl } from "@/api/projects";
 import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
@@ -114,7 +114,15 @@ function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
 // WIF design preview modal
 // ---------------------------------------------------------------------------
 
-function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: () => void }) {
+function DesignPreviewModal({
+  projectId,
+  colorReplacements,
+  onClose,
+}: {
+  projectId: string;
+  colorReplacements: Record<string, string> | null;
+  onClose: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -128,9 +136,9 @@ function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: ()
           Close ✕
         </button>
         <AuthedImage
-          src={previewUrl(draftId)}
+          src={drawdownPreviewUrl(projectId, colorReplacements ?? undefined)}
           alt="WIF design preview"
-          className="w-full rounded-lg shadow-2xl"
+          className="max-h-[80vh] mx-auto block rounded-lg shadow-2xl"
           style={{ imageRendering: "pixelated" }}
         />
       </div>
@@ -889,9 +897,9 @@ function CompletedSummary({
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
         <div className="overflow-auto rounded-lg border bg-card p-2">
           <AuthedImage
-            src={previewUrl(project.draft_id)}
+            src={drawdownPreviewUrl(project.id, project.color_replacements ?? undefined)}
             alt={`Design for ${project.draft_name}`}
-            className="max-w-full mx-auto block"
+            className="w-full block"
             style={{ imageRendering: "pixelated" }}
           />
         </div>
@@ -1021,7 +1029,22 @@ export function ProjectDetailPage() {
   });
 
   const isPlanning = project?.status === "active" && !project?.loom_id;
+  const isCreated = project?.status === "created";
   const isCompleted = project?.status === "completed";
+
+  // Auto-transition "created" → "active" when the tracker is opened
+  const startMutation = useMutation({
+    mutationFn: () => startProject(id!),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["project", id], (old: typeof project) =>
+        old ? { ...updated, photos: old.photos } : updated
+      );
+    },
+  });
+  useEffect(() => {
+    if (isCreated && id) startMutation.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreated, id]);
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects"],
@@ -1272,7 +1295,7 @@ export function ProjectDetailPage() {
   const isOnLastItem = project.current_item >= project.num_items;
   const isAtItemEnd = displayPick > project.total_picks && !isOnLastItem;
   const isFinished = displayPick > project.total_picks && isOnLastItem;
-  const isActiveTracking = project.status === "active" && !isPlanning;
+  const isActiveTracking = (project.status === "active" || project.status === "created") && !isPlanning;
   const isAbandoned = project.status === "abandoned";
 
   // Badge for planning vs active
@@ -1299,6 +1322,8 @@ export function ProjectDetailPage() {
             <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <Link to="/projects" className="text-muted-foreground hover:text-foreground">Projects</Link>
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <Link to={`/projects/${project.id}`} className="text-muted-foreground hover:text-foreground truncate max-w-[12rem]">{project.name}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           {editingName ? (
@@ -1834,7 +1859,8 @@ export function ProjectDetailPage() {
 
       {showDesignPreview && (
         <DesignPreviewModal
-          draftId={project.draft_id}
+          projectId={project.id}
+          colorReplacements={project.color_replacements}
           onClose={() => setShowDesignPreview(false)}
         />
       )}

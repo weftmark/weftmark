@@ -251,7 +251,7 @@ class TestCreateProject:
         body = resp.json()
         assert body["name"] == "My project"
         assert body["project_type"] == "treadle"
-        assert body["status"] == "active"
+        assert body["status"] == "created"
         assert body["current_pick"] == 1
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
@@ -395,7 +395,7 @@ class TestRestartProject:
         project.status = "abandoned"
         await db_session.commit()
         resp = await auth_client.post(f"/api/projects/{project.id}/restart")
-        assert resp.json()["status"] == "active"
+        assert resp.json()["status"] == "created"
 
     async def test_preserves_current_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
@@ -510,11 +510,11 @@ class TestCloneProject:
         resp = await auth_client.post(f"/api/projects/{project.id}/clone")
         assert resp.json()["current_pick"] == 1
 
-    async def test_clone_is_active(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+    async def test_clone_is_created(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_project_with_status(db_session, test_user, draft, None, "completed")
         resp = await auth_client.post(f"/api/projects/{project.id}/clone")
-        assert resp.json()["status"] == "active"
+        assert resp.json()["status"] == "created"
 
     async def test_clone_copies_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
@@ -2594,4 +2594,106 @@ class TestProjectDrawdownData:
 
     async def test_returns_404_for_unknown_project(self, auth_client: AsyncClient):
         resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/drawdown/data")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestStartProject
+# ---------------------------------------------------------------------------
+
+
+class TestStartProject:
+    async def test_created_transitions_to_active(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_project_with_status(db_session, test_user, draft, None, "created")
+        resp = await auth_client.post(f"/api/projects/{project.id}/start")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "active"
+
+    async def test_idempotent_when_already_active(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.post(f"/api/projects/{project.id}/start")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "active"
+
+    async def test_completed_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_project_with_status(db_session, test_user, draft, None, "completed")
+        resp = await auth_client.post(f"/api/projects/{project.id}/start")
+        assert resp.status_code == 400
+
+    async def test_abandoned_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_project_with_status(db_session, test_user, draft, None, "abandoned")
+        resp = await auth_client.post(f"/api/projects/{project.id}/start")
+        assert resp.status_code == 400
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_project_with_status(db_session, test_user, draft, None, "created")
+        resp = await client.post(f"/api/projects/{project.id}/start")
+        assert resp.status_code == 401
+
+    async def test_unknown_project_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/start")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestSetColorReplacements
+# ---------------------------------------------------------------------------
+
+
+class TestSetColorReplacements:
+    async def test_stores_replacements(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = {"color_replacements": {"#ff0000": "#0000ff"}}
+        resp = await auth_client.patch(f"/api/projects/{project.id}/color-replacements", json=body)
+        assert resp.status_code == 200
+        assert resp.json()["color_replacements"] == {"#ff0000": "#0000ff"}
+
+    async def test_replaces_existing_map(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.color_replacements = {"#aaaaaa": "#bbbbbb"}
+        await db_session.commit()
+        body = {"color_replacements": {"#111111": "#222222"}}
+        resp = await auth_client.patch(f"/api/projects/{project.id}/color-replacements", json=body)
+        assert resp.json()["color_replacements"] == {"#111111": "#222222"}
+
+    async def test_empty_map_clears_replacements(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.color_replacements = {"#ff0000": "#0000ff"}
+        await db_session.commit()
+        body = {"color_replacements": {}}
+        resp = await auth_client.patch(f"/api/projects/{project.id}/color-replacements", json=body)
+        assert resp.status_code == 200
+        assert resp.json()["color_replacements"] is None
+
+    async def test_invalid_hex_returns_422(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = {"color_replacements": {"notahex": "#0000ff"}}
+        resp = await auth_client.patch(f"/api/projects/{project.id}/color-replacements", json=body)
+        assert resp.status_code == 422
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = {"color_replacements": {"#ff0000": "#0000ff"}}
+        resp = await client.patch(f"/api/projects/{project.id}/color-replacements", json=body)
+        assert resp.status_code == 401
+
+    async def test_unknown_project_returns_404(self, auth_client: AsyncClient):
+        body = {"color_replacements": {"#ff0000": "#0000ff"}}
+        resp = await auth_client.patch(f"/api/projects/{uuid.uuid4()}/color-replacements", json=body)
         assert resp.status_code == 404

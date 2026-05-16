@@ -64,10 +64,24 @@ export function UploadWifModal({ onSuccess, onClose }: Props) {
               ref={fileRef}
               type="file"
               accept=".wif"
-              className="w-full text-sm"
+              className="hidden"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               required
             />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="w-full rounded-md border-2 border-dashed border-input bg-background px-4 py-5 text-sm transition-colors hover:border-ring hover:bg-muted focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              {file ? (
+                <span className="font-medium text-foreground">{file.name}</span>
+              ) : (
+                <span className="text-muted-foreground">
+                  Drop a <span className="font-medium text-foreground">.wif</span> file here, or{" "}
+                  <span className="font-medium text-primary underline underline-offset-2">browse</span>
+                </span>
+              )}
+            </button>
           </div>
 
           {error && (
