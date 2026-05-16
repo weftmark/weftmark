@@ -6,7 +6,21 @@ Design previews are generated server-side using the **PyWeaving** Python library
 
 Reference: https://pyweaving.readthedocs.io/en/latest/
 
-Rendering jobs run as background tasks via Celery to avoid blocking API responses.
+### Render modes
+
+| Mode | Endpoint | Output |
+| --- | --- | --- |
+| Full draft preview | `GET /api/drafts/{id}/preview` | Threading diagram + tie-up + drawdown, PNG |
+| Full draft with color replacements | `GET /api/projects/{id}/drawdown/preview` | Same layout, project colors applied |
+| Drawdown tiles (at-loom viewer) | `GET /api/projects/{id}/drawdown` | Progressive row tiles from R2 |
+
+### Rendering pipeline
+
+1. **On-demand preview** — the preview endpoint loads the WIF, applies any color replacements, calls `render_full_draft(draft)` (PyWeaving `ImageRenderer`), and returns the PNG synchronously.
+2. **Tile pre-render (Celery)** — the `prerender_project_tiles` task slices the drawdown into row strips (`tile_row_count` rows each) and stores them in R2. The loom-side canvas viewer loads tiles progressively as the user scrolls through picks.
+3. **Cache invalidation** — saving color replacements via `PUT /api/projects/{id}/color-replacements` dispatches `prerender_project_tiles.delay()` to re-render and overwrite the cached tiles with the new colors applied.
+
+Tile key format: `tiles/projects/{project_id}/{scale}/{row_start}.png`
 
 ---
 
@@ -74,8 +88,9 @@ When a draft uses fewer shafts or treadles than the loom supports, the rendered 
 ## Color Tools
 
 - Color simulation using color data from the WIF `[COLOR TABLE]` and `[COLOR PALETTE]` sections
-- Color substitution — swap colors to preview different colorways without modifying the WIF file
-- Isolate warp colors or weft colors independently
+- **Per-project color replacements** — swap colors to preview different colorways without modifying the WIF file. Replacements are stored on the `Project` model as a hex→hex map and applied at render time by `rendering.apply_color_replacements(draft, color_map)` before any image generation
+- Color changes propagate automatically through the drawdown preview, the at-loom pick display, and the completed summary
+- Isolate warp colors or weft colors independently (Phase 2)
 
 ---
 
@@ -102,4 +117,6 @@ When viewing a design within an active weaving project:
 
 - Large designs with many threads may take meaningful time to render
 - The frontend shows a loading state while rendering jobs process
-- Rendered images are cached to avoid re-rendering identical views
+- Draft tiles are pre-rendered by Celery and stored in R2 — the at-loom viewer fetches tiles progressively rather than waiting for the full drawdown to render
+- `RENDER_MAX_WIDTH` / `RENDER_MAX_HEIGHT` cap the maximum image dimensions; `effective_scale` is calculated so the rendered image stays within these bounds
+- Stale tiles (from projects inactive for `tile_prune_inactive_days` days) are pruned periodically by a Celery Beat scheduled task

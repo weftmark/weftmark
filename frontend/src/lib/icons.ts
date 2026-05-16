@@ -19,12 +19,16 @@ import {
   Maximize2,
   Menu,
   Minimize2,
+  Pencil,
+  RotateCcw,
   Scroll,
   Settings,
   ShieldCheck,
   Wrench,
   X,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 export type { LucideIcon } from "lucide-react";
@@ -48,6 +52,7 @@ export const AppIcons = {
   logout: LogOut,
 
   // ── UI chrome ─────────────────────────────────────────────────────────────
+  edit: Pencil,
   mobileMenu: Menu,
   close: X,
   chevronDown: ChevronDown,
@@ -55,6 +60,9 @@ export const AppIcons = {
   chevronDoubleRight: ChevronsRight,
   presentMode: Maximize2,
   exitPresentMode: Minimize2,
+  zoomIn: ZoomIn,
+  zoomOut: ZoomOut,
+  zoomReset: RotateCcw,
 
   // ── Landing page features ─────────────────────────────────────────────────
   designLibrary: Layers,

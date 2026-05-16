@@ -1,17 +1,20 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
 import { usePresentMode } from "@/hooks/usePresentMode";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthContext } from "@/context/AuthContext";
+import { measurementSystemToUnit, displayLength } from "@/lib/units";
 import {
   getProject, getProjectPicks, getProjectMetrics, stepProject, jumpProject, completeProject, abandonProject,
-  restartProject, cloneProject, listProjects, deleteProject,
+  restartProject, cloneProject, listProjects, deleteProject, startProject,
   renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
+  advanceItem, jumpItem,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow, type ProjectMetrics,
 } from "@/api/projects";
-import { previewUrl } from "@/api/drafts";
+import { drawdownPreviewUrl, projectDrawdownPreviewUrl } from "@/api/projects";
 import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
@@ -111,7 +114,20 @@ function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
 // WIF design preview modal
 // ---------------------------------------------------------------------------
 
-function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: () => void }) {
+function DesignPreviewModal({
+  projectId,
+  hasDrawdownPreview,
+  colorReplacements,
+  onClose,
+}: {
+  projectId: string;
+  hasDrawdownPreview: boolean;
+  colorReplacements: Record<string, string> | null;
+  onClose: () => void;
+}) {
+  const src = hasDrawdownPreview
+    ? projectDrawdownPreviewUrl(projectId)
+    : drawdownPreviewUrl(projectId, colorReplacements ?? undefined);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -125,9 +141,9 @@ function DesignPreviewModal({ draftId, onClose }: { draftId: string; onClose: ()
           Close ✕
         </button>
         <AuthedImage
-          src={previewUrl(draftId)}
+          src={src}
           alt="WIF design preview"
-          className="w-full rounded-lg shadow-2xl"
+          className="max-h-[80vh] mx-auto block rounded-lg shadow-2xl"
           style={{ imageRendering: "pixelated" }}
         />
       </div>
@@ -247,10 +263,12 @@ function useAdaptivePatternHeight(): number {
   return height;
 }
 
-// Fixed at backend TILE_ROW_COUNT / TILE_COL_COUNT — requests must align with
-// pre-rendered tile boundaries in R2.
-const TILE_ROW_COUNT = 100;
-const TILE_COL_COUNT = 200;
+type DrawdownPayload = {
+  cell_px: number;
+  warp_count: number;
+  weft_count: number;
+  floats: [number, number, number, number, string][];
+};
 
 function WeavingPatternView({
   projectId,
@@ -266,229 +284,92 @@ function WeavingPatternView({
   maxActive: number;
 }) {
   const containerH = useAdaptivePatternHeight();
-  const [pixelsPerRow, setPixelsPerRow] = useState(20);
-  const [warpCount, setWarpCount] = useState(0);
-  const warpCountRef = useRef(0);
-  const neededRef = useRef<Set<string>>(new Set());
-  const tilesRef = useRef<Record<string, string>>({});
-  const [tiles, setTiles] = useState<Record<string, string>>({});
-  const fetchingRef = useRef<Set<string>>(new Set());
-  const fetchControllersRef = useRef<Map<string, AbortController>>(new Map());
-  const tileErrorsRef = useRef<Map<string, string>>(new Map());
-  const [tileErrors, setTileErrors] = useState<Map<string, string>>(new Map());
-  const [retryCount, setRetryCount] = useState(0);
+  const [drawdownData, setDrawdownData] = useState<DrawdownPayload | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Persist/restore the user's horizontal scroll position per project in localStorage.
   const lsColKey = `project-drawdown-col-${projectId}`;
-  const [scrollColStart, setScrollColStart] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(`project-drawdown-col-${projectId}`);
-      if (saved !== null) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed >= 0)
-          return Math.floor(parsed / TILE_COL_COUNT) * TILE_COL_COUNT;
-      }
-    } catch { /* localStorage unavailable */ }
-    return 0;
-  });
-
-  // scrollDivRef + pendingScrollRef: used to restore the saved scroll position after
-  // the first tile response confirms the real pixelsPerRow value.
-  const scrollDivRef = useRef<HTMLDivElement>(null);
-  const scrollRestoredRef = useRef(false);
-  const pendingScrollRef = useRef<number | null>(null);
-
-  // Apply any pending programmatic scroll synchronously after DOM paint.
-  useLayoutEffect(() => {
-    if (pendingScrollRef.current !== null && scrollDivRef.current) {
-      scrollDivRef.current.scrollLeft = pendingScrollRef.current;
-      pendingScrollRef.current = null;
-    }
-  });
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const raw = e.currentTarget.scrollLeft;
-    const colIndex = pixelsPerRow > 0 ? Math.floor(raw / pixelsPerRow) : 0;
-    const snapped = Math.floor(colIndex / TILE_COL_COUNT) * TILE_COL_COUNT;
-    setScrollColStart(prev => {
-      if (prev === snapped) return prev;
-      try { localStorage.setItem(lsColKey, String(snapped)); } catch { /* noop */ }
-      return snapped;
-    });
-  }, [pixelsPerRow, lsColKey]);
 
   useEffect(() => {
     let cancelled = false;
-
-    // --- Row range ---
-    // Image row 0 = top = last pick; advancing decreases imageRow toward 0.
-    const imageRow = totalPicks - 1 - currentPickIndex;
-    const currentRowStart = Math.floor(imageRow / TILE_ROW_COUNT) * TILE_ROW_COUNT;
-    const lookaheadRowStart = currentRowStart - TILE_ROW_COUNT;
-    const lookbehindRowStart = currentRowStart + TILE_ROW_COUNT;
-    const neededRows: number[] = [currentRowStart];
-    if (lookaheadRowStart >= 0) neededRows.push(lookaheadRowStart);
-    if (lookbehindRowStart < totalPicks) neededRows.push(lookbehindRowStart);
-
-    // --- Column range ---
-    // Buffer: 1 column behind, current, +1 and +2 ahead. Keeps adjacent tiles warm
-    // so fast scrolling doesn't hit a blank gap. Uses warpCountRef (not state) to
-    // avoid adding warpCount as an effect dep.
-    const W = warpCountRef.current;
-    const neededCols: number[] = [];
-    for (let offset = -1; offset <= 2; offset++) {
-      const c = scrollColStart + offset * TILE_COL_COUNT;
-      if (c >= 0 && (W === 0 || c < W)) neededCols.push(c);
-    }
-
-    // All needed (row, col) pairs as `${row}_${col}` keys.
-    const needed = new Set<string>();
-    for (const r of neededRows) {
-      for (const c of neededCols) {
-        needed.add(`${r}_${c}`);
-      }
-    }
-    // Keep neededRef current so in-flight fetchTile calls can check it after awaiting blob.
-    neededRef.current = needed;
-
-    // Evict tiles and errors outside the needed set; abort in-flight fetches.
-    let tilesEvicted = false;
-    let errorsChanged = false;
-    for (const k of Object.keys(tilesRef.current)) {
-      if (!needed.has(k)) {
-        URL.revokeObjectURL(tilesRef.current[k]);
-        delete tilesRef.current[k];
-        tilesEvicted = true;
-      }
-    }
-    for (const k of fetchingRef.current) {
-      if (!needed.has(k)) {
-        fetchControllersRef.current.get(k)?.abort();
-        fetchControllersRef.current.delete(k);
-        fetchingRef.current.delete(k);
-      }
-    }
-    for (const k of tileErrorsRef.current.keys()) {
-      if (!needed.has(k)) {
-        tileErrorsRef.current.delete(k);
-        errorsChanged = true;
-      }
-    }
-    if (tilesEvicted) setTiles({ ...tilesRef.current });
-    if (errorsChanged) setTileErrors(new Map(tileErrorsRef.current));
-
-    const fetchTile = async (startRow: number, startCol: number) => {
-      const key = `${startRow}_${startCol}`;
-      if (fetchingRef.current.has(key)) return;
-      if (tilesRef.current[key] !== undefined) return;
-      if (tileErrorsRef.current.has(key)) return;
-      fetchingRef.current.add(key);
-      const controller = new AbortController();
-      fetchControllersRef.current.set(key, controller);
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      const url =
-        `/api/projects/${projectId}/drawdown` +
-        `?start_row=${startRow}&row_count=${TILE_ROW_COUNT}` +
-        `&start_col=${startCol}&col_count=${TILE_COL_COUNT}`;
+    async function load() {
       try {
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(url, { credentials: "include", headers, signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!res.ok) {
-          tileErrorsRef.current.set(key, "Pattern tile failed to load.");
-          setTileErrors(new Map(tileErrorsRef.current));
-          return;
-        }
-        const ppr = parseInt(res.headers.get("X-Pixels-Per-Row") ?? "20", 10);
-        const wc = parseInt(res.headers.get("X-Total-Cols") ?? "0", 10);
-        const blob = await res.blob();
-        // Use neededRef rather than `cancelled`: any dep change updates neededRef so we
-        // only discard tiles that genuinely fell out of the needed window.  The `cancelled`
-        // flag is too broad — it fires on every dep change (including TanStack Query
-        // re-renders) and would discard tiles that are still wanted.
-        if (!neededRef.current.has(key)) return;
-        tilesRef.current[key] = URL.createObjectURL(blob);
-        setTiles({ ...tilesRef.current });
-        setPixelsPerRow(ppr);
-        if (wc > 0 && wc !== warpCountRef.current) {
-          warpCountRef.current = wc;
-          setWarpCount(wc);
-          // Clamp saved scroll position if it falls outside the actual warp extent.
-          setScrollColStart(prev => {
-            if (prev >= wc) {
-              try { localStorage.setItem(lsColKey, "0"); } catch { /* noop */ }
-              return 0;
-            }
-            return prev;
-          });
-        }
-        // Restore the user's saved column position once we know the real pixelsPerRow.
-        if (!scrollRestoredRef.current && scrollColStart > 0) {
-          scrollRestoredRef.current = true;
-          pendingScrollRef.current = scrollColStart * ppr;
-        }
+        const res = await fetch(`/api/projects/${projectId}/drawdown/data?cell_px=20`, { headers, credentials: "include" });
+        if (!res.ok) throw new Error(`Pattern failed to load (${res.status})`);
+        const data = (await res.json()) as DrawdownPayload;
+        if (cancelled) return;
+        setDrawdownData(data);
+        try {
+          const saved = localStorage.getItem(lsColKey);
+          if (saved !== null && scrollRef.current) {
+            scrollRef.current.scrollLeft = parseInt(saved, 10) || 0;
+          }
+        } catch { /* localStorage unavailable */ }
       } catch (err) {
-        clearTimeout(timeoutId);
-        if (!cancelled) {
-          const msg =
-            err instanceof Error && err.name === "AbortError"
-              ? "Pattern tile timed out."
-              : "Pattern tile failed to load.";
-          tileErrorsRef.current.set(key, msg);
-          setTileErrors(new Map(tileErrorsRef.current));
-        }
-      } finally {
-        fetchingRef.current.delete(key);
-        fetchControllersRef.current.delete(key);
+        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Failed to load pattern");
       }
-    };
-
-    // Fetch current column × all rows first so the visible tile arrives ASAP.
-    const priorityCols = neededCols.filter(c => c === scrollColStart);
-    const otherCols = neededCols.filter(c => c !== scrollColStart);
-    for (const r of neededRows) {
-      for (const c of priorityCols) fetchTile(r, c);
     }
-    for (const r of neededRows) {
-      for (const c of otherCols) fetchTile(r, c);
-    }
-
+    load();
     return () => { cancelled = true; };
-  }, [projectId, currentPickIndex, totalPicks, scrollColStart, retryCount, lsColKey]);
+  }, [projectId, lsColKey]);
 
-  // Revoke all object URLs on unmount.
   useEffect(() => {
-    return () => {
-      Object.values(tilesRef.current).forEach(url => URL.revokeObjectURL(url));
-      tilesRef.current = {};
-    };
-  }, []);
+    if (!drawdownData || !canvasRef.current) return;
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
 
-  // Current row tile boundary for overlay / retry decisions.
-  const imageRowForTile = totalPicks - 1 - currentPickIndex;
-  const currentTileStart = Math.floor(imageRowForTile / TILE_ROW_COUNT) * TILE_ROW_COUNT;
-  const currentRowPrefix = `${currentTileStart}_`;
-  const currentTileReady = Object.keys(tiles).some(k => k.startsWith(currentRowPrefix));
-  const currentTileError = [...tileErrors.entries()].find(([k]) => k.startsWith(currentRowPrefix))?.[1];
-
-  const retryCurrentTile = () => {
-    for (const k of tileErrorsRef.current.keys()) {
-      if (k.startsWith(currentRowPrefix)) tileErrorsRef.current.delete(k);
+    // Pass 1 — fill each float with its thread color
+    for (const [x, y, w, h, fill] of drawdownData.floats) {
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, y, w, h);
     }
-    setTileErrors(new Map(tileErrorsRef.current));
-    setRetryCount(c => c + 1);
-  };
 
-  // Full skeleton while no tiles are loaded yet.
-  if (Object.keys(tiles).length === 0) return (
+    // Pass 2 — stroke all float borders in a single draw call
+    const borders = new Path2D();
+    for (const [x, y, w, h] of drawdownData.floats) {
+      borders.rect(x, y, w, h);
+    }
+    ctx.strokeStyle = "#7f7f7f";
+    ctx.lineWidth = 0.5;
+    ctx.stroke(borders);
+  }, [drawdownData]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    try { localStorage.setItem(lsColKey, String(e.currentTarget.scrollLeft)); } catch { /* noop */ }
+  }, [lsColKey]);
+
+  const pixelsPerRow = drawdownData?.cell_px ?? 20;
+  const warpCount = drawdownData?.warp_count ?? 0;
+
+  // Canvas is flipped: last pick at y=0 (top), first pick at bottom — matches PNG tile orientation.
+  const flippedIndex = totalPicks - 1 - currentPickIndex;
+  const translateY = containerH / 2 - pixelsPerRow / 2 - flippedIndex * pixelsPerRow;
+  const futureRegionH = Math.max(0, containerH / 2 - pixelsPerRow / 2);
+  const highlightTop = containerH / 2 - pixelsPerRow / 2 - 1;
+  const highlightH = pixelsPerRow + 2;
+  const boxH = Math.max(4, pixelsPerRow - 6);
+
+  const reversedPicks = [...picks].reverse();
+
+  const washoutOverlay = (
+    <div
+      className="absolute left-0 right-0 pointer-events-none"
+      style={{
+        top: 0,
+        height: futureRegionH,
+        background: "linear-gradient(to bottom, hsl(var(--background)) 20%, transparent)",
+      }}
+    />
+  );
+
+  if (!drawdownData) return (
     <div className="relative flex gap-2" style={{ height: containerH }}>
       <div className="flex-1 rounded-lg border overflow-hidden relative bg-muted flex flex-col items-center justify-center gap-2">
-        {currentTileError ? (
-          <>
-            <span className="text-sm text-muted-foreground">{currentTileError}</span>
-            <button className="text-xs underline text-accent" onClick={retryCurrentTile}>Tap to retry</button>
-          </>
+        {loadError ? (
+          <span className="text-sm text-muted-foreground">{loadError}</span>
         ) : (
           <>
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -501,95 +382,26 @@ function WeavingPatternView({
     </div>
   );
 
-  // Image is flipped: last pick at y=0 (top), pick 1 at bottom.
-  const flippedIndex = totalPicks - 1 - currentPickIndex;
-  const translateY = containerH / 2 - pixelsPerRow / 2 - flippedIndex * pixelsPerRow;
-  const futureRegionH = Math.max(0, containerH / 2 - pixelsPerRow / 2);
-  const highlightTop = containerH / 2 - pixelsPerRow / 2 - 1;
-  const highlightH = pixelsPerRow + 2;
-  const boxH = Math.max(4, pixelsPerRow - 6);
-
-  const totalImgW = warpCount > 0 ? warpCount * pixelsPerRow : undefined;
-  const totalImgH = totalPicks * pixelsPerRow;
-
-  // Picks reversed so the last pick renders first (topmost) — matches drawdown orientation.
-  const reversedPicks = [...picks].reverse();
-
-  const washoutOverlay = (
-    <>
-      <div
-        className="absolute left-0 right-0 pointer-events-none"
-        style={{
-          top: 0,
-          height: futureRegionH,
-          backdropFilter: "saturate(0) brightness(1.6)",
-          WebkitBackdropFilter: "saturate(0) brightness(1.6)",
-        }}
-      />
-      <div
-        className="absolute left-0 right-0 pointer-events-none bg-white/50 dark:bg-zinc-900/55"
-        style={{ top: 0, height: futureRegionH }}
-      />
-    </>
-  );
-
   return (
-    // Outer wrapper: no overflow-hidden so highlight bars bleed left/right.
     <div className="relative flex gap-2" style={{ height: containerH }}>
 
-      {/* Drawdown tiles — wrapper keeps overlays fixed to the viewport area, not the scroll content */}
+      {/* Drawdown canvas — single load, translate to center current pick */}
       <div className="flex-1 relative rounded-lg border overflow-hidden">
         <div
-          ref={scrollDivRef}
+          ref={scrollRef}
           className="absolute inset-0 overflow-x-auto overflow-y-hidden bg-white dark:bg-zinc-900"
           onScroll={handleScroll}
         >
-          <div
-            style={{
-              position: "relative",
-              width: totalImgW,
-              height: totalImgH,
-              transform: `translateY(${translateY}px)`,
-              transition: "transform 0.15s ease",
-            }}
-          >
-            {Object.entries(tiles).map(([k, url]) => {
-              const [rowStr, colStr] = k.split("_");
-              const startRow = parseInt(rowStr, 10);
-              const startCol = parseInt(colStr, 10);
-              return (
-                <img
-                  key={k}
-                  src={url}
-                  alt=""
-                  style={{
-                    position: "absolute",
-                    top: startRow * pixelsPerRow,
-                    left: startCol * pixelsPerRow,
-                    display: "block",
-                    imageRendering: "pixelated",
-                    maxWidth: "none",
-                  }}
-                />
-              );
-            })}
+          <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}>
+            <canvas
+              ref={canvasRef}
+              width={warpCount * pixelsPerRow}
+              height={(drawdownData?.weft_count ?? 0) * pixelsPerRow}
+              style={{ display: "block", imageRendering: "pixelated" }}
+            />
           </div>
         </div>
         {washoutOverlay}
-        {/* Loading overlay — shown whenever the current tile hasn't arrived yet */}
-        {!currentTileReady && !currentTileError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none z-10">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Loading pattern…</span>
-          </div>
-        )}
-        {/* Error overlay — shown on tile fetch failure or timeout */}
-        {currentTileError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 z-10">
-            <span className="text-sm text-muted-foreground">{currentTileError}</span>
-            <button className="text-xs underline text-accent" onClick={retryCurrentTile}>Tap to retry</button>
-          </div>
-        )}
       </div>
 
       {/* Lift/treadle step panel */}
@@ -597,9 +409,7 @@ function WeavingPatternView({
         className="rounded-lg border overflow-hidden relative bg-background shrink-0"
         style={{ width: STEP_PANEL_W }}
       >
-        <div
-          style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}
-        >
+        <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", willChange: "transform" }}>
           {reversedPicks.map((pick) => (
             <div
               key={pick.pick}
@@ -625,16 +435,11 @@ function WeavingPatternView({
         className="rounded-lg border overflow-hidden relative shrink-0"
         style={{ width: COLOR_COL_W }}
       >
-        <div
-          style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease" }}
-        >
+        <div style={{ transform: `translateY(${translateY}px)`, transition: "transform 0.15s ease", willChange: "transform" }}>
           {reversedPicks.map((pick) => (
             <div
               key={pick.pick}
-              style={{
-                height: pixelsPerRow,
-                backgroundColor: pick.color ?? "hsl(var(--muted))",
-              }}
+              style={{ height: pixelsPerRow, backgroundColor: pick.color ?? "hsl(var(--muted))" }}
             />
           ))}
         </div>
@@ -1042,6 +847,8 @@ function CompletedSummary({
   siblings: ProjectSummary[];
   onPhotosChange: (photos: ProjectPhoto[]) => void;
 }) {
+  const { user } = useAuthContext();
+  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [photos, setPhotos] = useState<ProjectPhoto[]>(project.photos);
 
   const pct = project.total_picks > 0
@@ -1079,11 +886,11 @@ function CompletedSummary({
           )}
           {project.finished_length_per_item && (
             <><dt className="text-muted-foreground">Length / item</dt>
-            <dd>{project.finished_length_per_item} {project.length_unit}</dd></>
+            <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd></>
           )}
           {project.warp_waste_allowance && (
             <><dt className="text-muted-foreground">Warp waste</dt>
-            <dd>{project.warp_waste_allowance} {project.length_unit}</dd></>
+            <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
           )}
           <dt className="text-muted-foreground">Type</dt>
           <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
@@ -1095,9 +902,13 @@ function CompletedSummary({
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
         <div className="overflow-auto rounded-lg border bg-card p-2">
           <AuthedImage
-            src={previewUrl(project.draft_id)}
+            src={
+              project.has_drawdown_preview
+                ? projectDrawdownPreviewUrl(project.id)
+                : drawdownPreviewUrl(project.id, project.color_replacements ?? undefined)
+            }
             alt={`Design for ${project.draft_name}`}
-            className="max-w-full mx-auto block"
+            className="w-full block"
             style={{ imageRendering: "pixelated" }}
           />
         </div>
@@ -1170,6 +981,8 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [stepping, setStepping] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>(
@@ -1225,7 +1038,22 @@ export function ProjectDetailPage() {
   });
 
   const isPlanning = project?.status === "active" && !project?.loom_id;
+  const isCreated = project?.status === "created";
   const isCompleted = project?.status === "completed";
+
+  // Auto-transition "created" → "active" when the tracker is opened
+  const startMutation = useMutation({
+    mutationFn: () => startProject(id!),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["project", id], (old: typeof project) =>
+        old ? { ...updated, photos: old.photos } : updated
+      );
+    },
+  });
+  useEffect(() => {
+    if (isCreated && id) startMutation.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreated, id]);
 
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects"],
@@ -1272,6 +1100,7 @@ export function ProjectDetailPage() {
     if (!cached) return;
     if (direction === "advance" && cached.current_pick > cached.total_picks) return;
     if (direction === "reverse" && cached.current_pick <= 1) return;
+    // Block advance when at item end — user must explicitly advance the item
 
     const newPick = direction === "advance" ? cached.current_pick + 1 : cached.current_pick - 1;
 
@@ -1293,7 +1122,7 @@ export function ProjectDetailPage() {
           // Never revert below the current optimistic pick — guards against the rare
           // case where a lower-pick response arrives last due to network reordering.
           const safePick = Math.max(old.current_pick, result.current_pick);
-          return { ...old, current_pick: safePick, total_picks: result.total_picks };
+          return { ...old, current_pick: safePick, total_picks: result.total_picks, current_item: result.current_item };
         });
       }
     } catch {
@@ -1345,6 +1174,28 @@ export function ProjectDetailPage() {
     try { await abandonProject(id); invalidate(); setConfirmAbandon(false); }
     finally { setActionLoading(false); }
   };
+
+  const handleAdvanceItem = useCallback(async () => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      const result = await advanceItem(id);
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
+        old ? { ...old, current_pick: result.current_pick, current_item: result.current_item } : old
+      );
+    } finally { setActionLoading(false); }
+  }, [id, queryClient]);
+
+  const handleJumpItem = useCallback(async (item: number) => {
+    if (!id) return;
+    setActionLoading(true);
+    try {
+      const updated = await jumpItem(id, item);
+      queryClient.setQueryData<typeof project>(["project", id], (old) =>
+        old ? { ...updated, photos: old.photos } : updated
+      );
+    } finally { setActionLoading(false); }
+  }, [id, queryClient]);
 
   const handleRestart = async () => {
     if (!id) return;
@@ -1449,8 +1300,11 @@ export function ProjectDetailPage() {
   // Effective box count shown: when hiding trailing, shrink to maxUsed.
   const displayCount = hideTrailingUnused && trailingUnused > 0 ? maxUsed : maxActive;
 
-  const isFinished = displayPick > project.total_picks;
-  const isActiveTracking = project.status === "active" && !isPlanning;
+  const isMultiItem = project.num_items > 1;
+  const isOnLastItem = project.current_item >= project.num_items;
+  const isAtItemEnd = displayPick > project.total_picks && !isOnLastItem;
+  const isFinished = displayPick > project.total_picks && isOnLastItem;
+  const isActiveTracking = (project.status === "active" || project.status === "created") && !isPlanning;
   const isAbandoned = project.status === "abandoned";
 
   // Badge for planning vs active
@@ -1477,6 +1331,8 @@ export function ProjectDetailPage() {
             <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <Link to="/projects" className="text-muted-foreground hover:text-foreground">Projects</Link>
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <Link to={`/projects/${project.id}`} className="text-muted-foreground hover:text-foreground truncate max-w-[12rem]">{project.name}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           {editingName ? (
@@ -1606,18 +1462,58 @@ export function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Progress bar */}
+        {/* Progress bar + item indicator */}
         {showProgress && !isPlanning && !isCompleted && (
           <div className="w-full px-8 pt-6">
+            {isMultiItem && (
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: project.num_items }, (_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => isActiveTracking && handleJumpItem(i + 1)}
+                      disabled={!isActiveTracking || actionLoading}
+                      title={`Jump to item ${i + 1}`}
+                      className={`h-2.5 rounded-full transition-all ${
+                        i + 1 === project.current_item
+                          ? "w-6 bg-primary"
+                          : i + 1 < project.current_item
+                          ? "w-2.5 bg-primary/40"
+                          : "w-2.5 bg-muted-foreground/30"
+                      } ${isActiveTracking && !actionLoading ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Item {project.current_item} of {project.num_items}
+                </span>
+              </div>
+            )}
             <ProgressBar current={project.current_pick} total={project.total_picks} />
           </div>
         )}
 
         {/* Pick instruction — full width so treadle/lift boxes use available space */}
         {!isCompleted && showPickDisplay && <div className="w-full px-8 pt-4">
-          {isFinished ? (
+          {isAtItemEnd ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-lg font-medium">All {project.total_picks} picks complete!</p>
+              <p className="text-lg font-medium">Item {project.current_item} complete!</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {project.total_picks} picks done. Ready to start item {project.current_item + 1} of {project.num_items}.
+              </p>
+              {isActiveTracking && (
+                <div className="mt-6">
+                  <Button variant="success" onClick={handleAdvanceItem} disabled={actionLoading}>
+                    {actionLoading ? "…" : `Start item ${project.current_item + 1}`}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : isFinished ? (
+            <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
+              <p className="text-lg font-medium">
+                {isMultiItem ? `All ${project.num_items} items complete!` : `All ${project.total_picks} picks complete!`}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Mark the project as completed when you're done.
               </p>
@@ -1653,7 +1549,7 @@ export function ProjectDetailPage() {
         {/* Spacer — always consumes remaining height so step controls stay pinned to bottom */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Pattern view — wider on large screens to show more warp threads */}
-          {showDrawdown && picksData && !isFinished && !isCompleted && !isAbandoned && (
+          {showDrawdown && picksData && !isFinished && !isAtItemEnd && !isCompleted && !isAbandoned && (
             <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
               <WeavingPatternView
                 projectId={project.id}
@@ -1819,11 +1715,11 @@ export function ProjectDetailPage() {
               )}
               {project.finished_length_per_item && (
                 <><dt className="text-muted-foreground">Length / item</dt>
-                <dd>{project.finished_length_per_item} {project.length_unit}</dd></>
+                <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd></>
               )}
               {project.warp_waste_allowance && (
                 <><dt className="text-muted-foreground">Warp waste</dt>
-                <dd>{project.warp_waste_allowance} {project.length_unit}</dd></>
+                <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
               )}
               {project.completed_at && (
                 <><dt className="text-muted-foreground">Completed</dt>
@@ -1838,9 +1734,11 @@ export function ProjectDetailPage() {
               <div className="flex flex-wrap gap-2">
                 {!confirmComplete && !confirmAbandon && (
                   <>
-                    <Button variant="success" size="sm" onClick={() => setConfirmComplete(true)}>
-                      Mark complete
-                    </Button>
+                    {isFinished && (
+                      <Button variant="success" size="sm" onClick={() => setConfirmComplete(true)}>
+                        Mark complete
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
                       Abandon
                     </Button>
@@ -1970,7 +1868,9 @@ export function ProjectDetailPage() {
 
       {showDesignPreview && (
         <DesignPreviewModal
-          draftId={project.draft_id}
+          projectId={project.id}
+          hasDrawdownPreview={project.has_drawdown_preview}
+          colorReplacements={project.color_replacements}
           onClose={() => setShowDesignPreview(false)}
         />
       )}

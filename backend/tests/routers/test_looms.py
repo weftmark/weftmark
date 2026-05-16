@@ -722,3 +722,61 @@ class TestVersionReceipt:
             files={"file": ("receipt.jpg", _fake_png(), "image/jpeg")},
         )
         assert resp.status_code == 401
+
+
+class TestReedInventory:
+    async def test_add_reed_returns_201(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/reeds", json={"dents_per_inch": 10})
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["dents_per_inch"] == 10.0
+        assert data["width_cm"] is None
+        assert data["label"] is None
+
+    async def test_add_reed_with_optional_fields(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.post(
+            f"/api/looms/{loom['id']}/reeds",
+            json={"dents_per_inch": 12, "width_cm": 60.0, "label": "Macomber 12-dent"},
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["width_cm"] == 60.0
+        assert data["label"] == "Macomber 12-dent"
+
+    async def test_add_reed_zero_dents_returns_400(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/reeds", json={"dents_per_inch": 0})
+        assert resp.status_code == 400
+
+    async def test_reeds_included_in_get_loom(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        await auth_client.post(f"/api/looms/{loom['id']}/reeds", json={"dents_per_inch": 8})
+        await auth_client.post(f"/api/looms/{loom['id']}/reeds", json={"dents_per_inch": 10})
+        detail = (await auth_client.get(f"/api/looms/{loom['id']}")).json()
+        dents = [r["dents_per_inch"] for r in detail["reeds"]]
+        assert dents == [8.0, 10.0]
+
+    async def test_reeds_included_in_list_looms(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        await auth_client.post(f"/api/looms/{loom['id']}/reeds", json={"dents_per_inch": 10})
+        looms = (await auth_client.get("/api/looms")).json()
+        match = next(entry for entry in looms if entry["id"] == loom["id"])
+        assert len(match["reeds"]) == 1
+        assert match["reeds"][0]["dents_per_inch"] == 10.0
+
+    async def test_delete_reed_returns_204(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        reed = (await auth_client.post(f"/api/looms/{loom['id']}/reeds", json={"dents_per_inch": 10})).json()
+        resp = await auth_client.delete(f"/api/looms/{loom['id']}/reeds/{reed['id']}")
+        assert resp.status_code == 204
+
+    async def test_delete_unknown_reed_returns_404(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.delete(f"/api/looms/{loom['id']}/reeds/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.post(f"/api/looms/{uuid.uuid4()}/reeds", json={"dents_per_inch": 10})
+        assert resp.status_code == 401

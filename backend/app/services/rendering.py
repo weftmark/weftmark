@@ -1,9 +1,4 @@
-"""
-WIF rendering service using PyWeaving.
-
-PyWeaving 0.0.7 calls draw.textsize() which was removed in Pillow 10.
-We restore it before importing the renderer so PyWeaving works unmodified.
-"""
+"""WIF rendering service backed by the vendored app.weaving engine."""
 
 from __future__ import annotations
 
@@ -12,42 +7,37 @@ import os
 import tempfile
 
 from fastapi import HTTPException
+from opentelemetry import trace
 from PIL import Image as PILImage
-from PIL import ImageDraw as _ImageDraw
 
-# Pillow ≥10 removed ImageDraw.textsize — patch it back for PyWeaving compatibility
-if not hasattr(_ImageDraw.ImageDraw, "textsize"):
-
-    def _textsize(self, text: str, font=None, *args, **kwargs):  # type: ignore[override]
-        bbox = self.textbbox((0, 0), text, font=font)
-        return bbox[2] - bbox[0], bbox[3] - bbox[1]
-
-    _ImageDraw.ImageDraw.textsize = _textsize  # type: ignore[attr-defined]
-
-from pyweaving import Draft  # noqa: E402
-from pyweaving.render import ImageRenderer  # noqa: E402
-from pyweaving.wif import WIFReader  # noqa: E402
-
-
-# PyWeaving's paint_fill_marker insets by 2px on each side; at scale < 4 this
-# produces endx - 2 < startx + 2, causing Pillow to raise "x1 must be >= x0".
-# Patch it to skip drawing when the cell is too small to fit the inset.
-def _paint_fill_marker(self, draw, box):  # type: ignore[override]
-    startx, starty, endx, endy = box
-    x0, y0, x1, y1 = startx + 2, starty + 2, endx - 2, endy - 2
-    if x0 < x1 and y0 < y1:
-        draw.rectangle((x0, y0, x1, y1), fill=self.markers)
-
-
-ImageRenderer.paint_fill_marker = _paint_fill_marker  # type: ignore[method-assign]
-
-from opentelemetry import trace  # noqa: E402
-
-from app.config import get_settings  # noqa: E402
+from app.config import get_settings
+from app.weaving import Draft
+from app.weaving._render import ImageRenderer, SVGRenderer
+from app.weaving._render import drawdown_data as _drawdown_data
+from app.weaving._render import drawdown_svg as _drawdown_svg
+from app.weaving._wif import WIFReader
 
 tracer = trace.get_tracer(__name__)
 
 DRAWDOWN_SCALE = 20
+
+# We generate images from WIF data we control — PIL's decompression bomb check
+# is designed for untrusted external image files and does not apply here.
+PILImage.MAX_IMAGE_PIXELS = None
+
+_PREVIEW_MAX_PIXELS = 100_000_000  # 100 MP cap for synchronous preview renders
+
+
+def safe_preview_scale(draft: Draft, desired_scale: int = 10) -> int:
+    """Return the largest scale ≤ desired_scale that keeps the full image under _PREVIEW_MAX_PIXELS."""
+    warp = len(draft.warp)
+    weft = len(draft.weft)
+    shaft_rows = 6 + len(draft.shafts)
+    if warp <= 0 or weft <= 0:
+        return desired_scale
+    # full image approx: warp*s wide, (weft + shaft_rows)*s tall (ignoring small margins)
+    max_scale = max(1, int((_PREVIEW_MAX_PIXELS / (warp * (weft + shaft_rows))) ** 0.5))
+    return min(desired_scale, max_scale)
 
 
 def load_draft(wif_bytes: bytes) -> Draft:
@@ -71,6 +61,7 @@ def load_draft(wif_bytes: bytes) -> Draft:
 
 def render_full_draft(draft: Draft, scale: int = 10) -> bytes:
     """Render threading + tie-up/liftplan + drawdown as a PNG."""
+    scale = safe_preview_scale(draft, scale)
     renderer = ImageRenderer(draft, scale=scale)
     with tracer.start_as_current_span("render.full_draft") as span:
         span.set_attribute("render.scale", scale)
@@ -82,6 +73,18 @@ def render_full_draft(draft: Draft, scale: int = 10) -> bytes:
     out = io.BytesIO()
     im.save(out, format="PNG")
     return out.getvalue()
+
+
+def render_full_draft_svg(draft: Draft, scale: int = 10) -> str:
+    """Render the full draft (threading + tie-up/liftplan + drawdown) as an SVG string."""
+    renderer = SVGRenderer(draft, scale=scale)
+    with tracer.start_as_current_span("render.full_draft_svg") as span:
+        span.set_attribute("render.scale", scale)
+        span.set_attribute("render.warp_threads", len(draft.warp))
+        span.set_attribute("render.weft_threads", len(draft.weft))
+        svg = renderer.render_to_string()
+        span.set_attribute("render.svg_bytes", len(svg.encode()))
+    return svg
 
 
 def render_full_draft_liftplan(draft: Draft, scale: int = 10) -> bytes:
@@ -124,7 +127,9 @@ def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int
     """Render a reduced-size drawdown for caching.
 
     Scales down so the image width fits within max_px. Returns (png_bytes, scale_used).
-    Does not apply render_max_* limits — the reduced scale prevents oversized output.
+    Uses render_drawdown_png so colors render correctly even at scale=1 — the
+    ImageRenderer outline approach paints every pixel with the foreground gray at
+    scale=1, obliterating thread colors.
     """
     warp_count = len(draft.warp)
     weft_count = len(draft.weft)
@@ -132,26 +137,14 @@ def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int
         raise ValueError("Draft has no drawdown data to render")
 
     scale = max(1, min(DRAWDOWN_SCALE, max_px // warp_count))
-    margin = 20
-    drawdown_w = warp_count * scale
-    drawdown_h = weft_count * scale
-
-    renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
     with tracer.start_as_current_span("render.drawdown_preview") as span:
         span.set_attribute("render.scale", scale)
         span.set_attribute("render.warp_threads", warp_count)
         span.set_attribute("render.weft_threads", weft_count)
-        full_im = renderer.make_pil_image()
-        span.set_attribute("render.width_px", drawdown_w)
-        span.set_attribute("render.height_px", drawdown_h)
-
-    offsetx = margin
-    offsety = margin + (6 + len(draft.shafts)) * scale
-    cropped = full_im.crop((offsetx, offsety, offsetx + drawdown_w, offsety + drawdown_h))
-    cropped = cropped.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
-    out = io.BytesIO()
-    cropped.save(out, format="PNG")
-    return out.getvalue(), scale
+        png_bytes = render_drawdown_png(draft, scale=scale)
+        span.set_attribute("render.width_px", warp_count * scale)
+        span.set_attribute("render.height_px", weft_count * scale)
+    return png_bytes, scale
 
 
 def render_drawdown_tile(
@@ -246,6 +239,54 @@ def render_drawdown_tile(
     return out.getvalue(), weft_count, actual_start, actual_row_count, scale, actual_start_col, actual_col_count
 
 
+def render_drawdown_data(draft: Draft, cell_px: int = 20) -> dict:
+    """Return float geometry as a dict for JSON delivery to the canvas renderer."""
+    with tracer.start_as_current_span("render.drawdown_data") as span:
+        span.set_attribute("render.cell_px", cell_px)
+        span.set_attribute("render.warp_threads", len(draft.warp))
+        span.set_attribute("render.weft_threads", len(draft.weft))
+        data = _drawdown_data(draft, cell_px=cell_px)
+        span.set_attribute("render.float_count", len(data["floats"]))
+    return data
+
+
+def render_drawdown_svg(draft: Draft, cell_px: int = 20) -> str:
+    """Render the drawdown grid as a symbol-deduped SVG string.
+
+    Suitable for project step-tracking: load once, highlight current pick via
+    CSS/DOM on the client — zero server round-trips per step advance or reverse.
+    """
+    with tracer.start_as_current_span("render.drawdown_svg") as span:
+        span.set_attribute("render.cell_px", cell_px)
+        span.set_attribute("render.warp_threads", len(draft.warp))
+        span.set_attribute("render.weft_threads", len(draft.weft))
+        svg = _drawdown_svg(draft, cell_px=cell_px)
+        span.set_attribute("render.svg_bytes", len(svg.encode()))
+    return svg
+
+
+def apply_color_replacements(draft: Draft, color_map: dict[str, str]) -> None:
+    """Replace thread colors in-place based on a hex→hex mapping.
+
+    ``color_map`` maps source hex strings (e.g. ``"#ff0000"``) to replacement
+    hex strings.  Comparison is case-insensitive.  Threads whose color does not
+    appear in the map are left unchanged.
+    """
+    if not color_map:
+        return
+    normalized: dict[tuple[int, int, int], tuple[int, int, int]] = {}
+    for src, dst in color_map.items():
+        src_rgb = tuple(int(src.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+        dst_rgb = tuple(int(dst.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
+        normalized[src_rgb] = dst_rgb  # type: ignore[assignment]
+
+    from app.weaving import Color
+
+    for thread in (*draft.warp, *draft.weft):
+        if thread.color is not None and thread.color.rgb in normalized:
+            thread.color = Color(normalized[thread.color.rgb])
+
+
 def render_drawdown_only(
     draft: Draft,
     scale: int = DRAWDOWN_SCALE,
@@ -311,3 +352,50 @@ def render_drawdown_only(
     out = io.BytesIO()
     cropped.save(out, format="PNG")
     return out.getvalue(), weft_count, scale
+
+
+def render_drawdown_png(draft: Draft, scale: int = 1) -> bytes:
+    """Render just the drawdown grid as a PNG, without cropping from a full draft image.
+
+    Uses the same warp-up/weft-background logic as the SVG renderer so colors are
+    consistent. Orientation: last pick at y=0 (top), first pick at bottom — matching
+    the SVG drawdown and the step-tracking tile renderer.
+
+    Returns raw PNG bytes.
+    """
+    warp_count = len(draft.warp)
+    weft_count = len(draft.weft)
+    scale = max(1, scale)
+    w = warp_count * scale
+    h = weft_count * scale
+
+    img = PILImage.new("RGB", (w, h), (255, 255, 255))
+    pixels = img.load()
+
+    warp_rgbs = [t.color.rgb if t.color else (0, 0, 0) for t in draft.warp]
+
+    for weft_idx, weft_thread in enumerate(draft.weft):
+        # Flip vertically: weft index 0 is the first pick (bottom); render it last row.
+        svg_row = weft_count - 1 - weft_idx
+        y0 = svg_row * scale
+
+        weft_rgb = weft_thread.color.rgb if weft_thread.color else (255, 255, 255)
+
+        # Fill entire row with weft color.
+        for dy in range(scale):
+            for x in range(w):
+                pixels[x, y0 + dy] = weft_rgb  # type: ignore[index]
+
+        # Paint warp-up threads on top.
+        connected = weft_thread.connected_shafts
+        warp_up = (x for x, wt in enumerate(draft.warp) if (wt.shaft not in connected) ^ draft.rising_shed)
+        for x in warp_up:
+            rgb = warp_rgbs[x]
+            x0 = x * scale
+            for dy in range(scale):
+                for dx in range(scale):
+                    pixels[x0 + dx, y0 + dy] = rgb  # type: ignore[index]
+
+    out = io.BytesIO()
+    img.save(out, format="PNG")
+    return out.getvalue()

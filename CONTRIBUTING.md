@@ -8,19 +8,19 @@ The requirements, architecture, and implementation of this project were develope
 
 ## License
 
-This project is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). Contributions are accepted under the same terms. By submitting a contribution you agree that your work will be licensed accordingly.
-
-Commercial use of this software or any derivative work requires explicit written permission from the project author.
+This project is licensed under the [Business Source License 1.1 (BUSL-1.1)](LICENSE). The source is publicly visible for review and learning. Commercial use is not permitted until 2029-01-01, at which point the license converts to MIT. By submitting a contribution you agree that your work will be licensed under the same terms.
 
 ## Getting Started
 
 1. Read the [requirements documentation](docs/requirements/README.md) to understand the full scope of the project before making changes.
-2. Review the [project memory](.claude/memory/project.md) for key architectural decisions and the rationale behind them.
-3. Set up your local environment using the [README](README.md#getting-started) instructions.
+2. Read [`docs/architecture.md`](docs/architecture.md) for the tech stack, repo structure, and local setup instructions.
+3. If working with Claude, read [`.claude/memory/MEMORY.md`](.claude/memory/MEMORY.md) at the start of any session.
 
 ## Development Workflow
 
-- **Branch** from `main` for all changes.
+- **Branch** from `dev` for all changes — never commit directly to `main` or `dev`.
+- **Pull requests target `dev`** — not `main`. The `main` branch is prod-ready; merges to it go through `dev` first.
+- **Hotfixes** branch from `main`, PR to `main`, then backport to `dev` as a follow-up PR.
 - **Keep commits focused** — one logical change per commit.
 - **Write meaningful commit messages** — describe why, not just what.
 - **Do not break existing behavior** without discussion.

@@ -75,6 +75,14 @@ class DraftSummary(BaseModel):
     has_drawdown_preview: bool
     has_modified_file: bool
     metadata_overrides: dict | None
+    wif_measurements: dict | None
+    wif_colors: list | None
+    weft_color_stats: list | None
+    warp_color_stats: list | None
+    warp_length_cm: float | None
+    warp_length_overridden: bool
+    weaving_width_override_cm: float | None
+    epi_override: float | None
     is_shared: bool
     created_at: datetime
     updated_at: datetime
@@ -127,6 +135,7 @@ async def create_draft(
         )
 
     lint = wif_linter.lint(wif_bytes)
+    measurements = wif_parser.extract_measurements(wif_bytes)
 
     draft = Draft(
         owner_id=current_user.id,
@@ -149,6 +158,11 @@ async def create_draft(
         lint_errors=lint.errors,
         wif_source_software=lint.source_software,
         wif_source_version=lint.source_version,
+        wif_measurements=measurements or None,
+        warp_length_cm=measurements.get("warp_length") if measurements else None,
+        wif_colors=wif_parser.extract_colors(wif_bytes) or None,
+        weft_color_stats=wif_parser.extract_weft_color_stats(wif_bytes) or None,
+        warp_color_stats=wif_parser.extract_warp_color_stats(wif_bytes) or None,
     )
     db.add(draft)
     await db.flush()  # get draft.id without committing
@@ -217,6 +231,37 @@ async def get_preview(
         raise HTTPException(status_code=404, detail="Preview not available")
     png = await storage.aread_file(draft.preview_path)  # type: ignore[arg-type]
     return Response(content=png, media_type="image/png")
+
+
+@router.get("/{draft_id}/drawdown_preview")
+async def get_drawdown_preview(
+    draft_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if not draft.drawdown_preview_path or not await storage.afile_exists(draft.drawdown_preview_path):
+        raise HTTPException(status_code=404, detail="Drawdown preview not available")
+    png = await storage.aread_drawdown_preview(draft.drawdown_preview_path)
+    return Response(content=png, media_type="image/png")
+
+
+@router.get("/{draft_id}/preview/svg")
+async def get_preview_svg(
+    draft_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if not draft.wif_path:
+        raise HTTPException(status_code=404, detail="No WIF file for this draft")
+    wif_bytes = await storage.aread_file(draft.wif_path)
+    try:
+        wif_draft = await asyncio.to_thread(rendering.load_draft, wif_bytes)
+        svg = await asyncio.to_thread(rendering.render_full_draft_svg, wif_draft)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"SVG rendering failed: {exc}") from exc
+    return Response(content=svg, media_type="image/svg+xml; charset=utf-8")
 
 
 # ---------------------------------------------------------------------------
@@ -568,6 +613,55 @@ async def override_metadata(
     from app.services.task_history import record_queued
 
     record_queued(get_settings(), _prev_task2.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+    return DraftDetail(**_draft_detail_data(draft))
+
+
+# ---------------------------------------------------------------------------
+# Set / override measurements
+# ---------------------------------------------------------------------------
+
+
+class PatchMeasurementsRequest(BaseModel):
+    warp_length: float | None = None
+    weaving_width: float | None = None
+    epi: float | None = None
+    unit: str = "cm"  # "cm" | "in" — applies to warp_length and weaving_width; epi is always ends/inch
+
+
+@router.patch("/{draft_id}/measurements", response_model=DraftDetail)
+async def patch_measurements(
+    draft_id: uuid.UUID,
+    body: PatchMeasurementsRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DraftDetail:
+    if body.unit not in ("cm", "in"):
+        raise HTTPException(status_code=400, detail="unit must be 'cm' or 'in'")
+
+    draft = await _get_owned_draft(draft_id, current_user, db)
+
+    if body.warp_length is not None:
+        if body.warp_length <= 0:
+            raise HTTPException(status_code=400, detail="warp_length must be positive")
+        warp_length_cm = body.warp_length if body.unit == "cm" else round(body.warp_length * 2.54, 4)
+        was_from_wif = bool(draft.wif_measurements and "warp_length" in draft.wif_measurements)
+        draft.warp_length_cm = warp_length_cm
+        draft.warp_length_overridden = was_from_wif
+
+    if body.weaving_width is not None:
+        if body.weaving_width <= 0:
+            raise HTTPException(status_code=400, detail="weaving_width must be positive")
+        draft.weaving_width_override_cm = (
+            body.weaving_width if body.unit == "cm" else round(body.weaving_width * 2.54, 4)
+        )
+
+    if body.epi is not None:
+        if body.epi <= 0:
+            raise HTTPException(status_code=400, detail="epi must be positive")
+        draft.epi_override = body.epi
+
+    await db.commit()
+    await db.refresh(draft)
     return DraftDetail(**_draft_detail_data(draft))
 
 

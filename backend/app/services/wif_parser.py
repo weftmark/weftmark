@@ -1,8 +1,5 @@
 """
-Parse treadling and liftplan pick data from WIF bytes.
-
-Returns a list of picks, each with the set of active treadles or shafts (1-indexed),
-plus optional per-pick weft color derived from [COLOR TABLE] and [WEFT COLORS].
+Parse treadling, liftplan, and dimensional measurements from WIF bytes.
 """
 
 from __future__ import annotations
@@ -13,6 +10,282 @@ from dataclasses import dataclass
 from opentelemetry import trace
 
 tracer = trace.get_tracer(__name__)
+
+# WIF unit → (canonical label, cm multiplier)
+_UNIT_CONVERSIONS: dict[str, tuple[str, float]] = {
+    "centimeters": ("cm", 1.0),
+    "inches": ("in", 2.54),
+    "decipoints": ("dp", 2.54 / 720),
+}
+
+
+def _parse_unit(raw: str) -> tuple[str, float]:
+    """Return (canonical_label, cm_multiplier). Defaults to inches per WIF spec."""
+    return _UNIT_CONVERSIONS.get(raw.lower().strip(), ("in", 2.54))
+
+
+def extract_measurements(wif_bytes: bytes) -> dict:
+    """Extract dimensional measurements from WIF [WARP] and [WEFT] sections.
+
+    Returns a dict with a subset of these keys (only present if found in WIF):
+      warp_length, warp_length_original, warp_length_unit
+      warp_spacing, warp_spacing_original, warp_spacing_unit
+      weft_length, weft_length_original, weft_length_unit
+      weft_spacing, weft_spacing_original, weft_spacing_unit
+
+    *_length and *_spacing values are normalized to centimeters.
+    *_original values are the raw numbers from the WIF file.
+    *_unit values are the canonical label ("in", "cm", "dp").
+    Never raises — returns {} on any parse failure.
+    """
+    try:
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
+
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
+
+        result: dict = {}
+
+        for section, prefix in (("WARP", "warp"), ("WEFT", "weft")):
+            if not config.has_section(section):
+                continue
+
+            raw_unit = ""
+            try:
+                raw_unit = config.get(section, "Units").strip()
+            except Exception:
+                pass
+            unit_label, multiplier = _parse_unit(raw_unit or "Inches")
+
+            try:
+                length_val = float(config.get(section, "Length").strip())
+                result[f"{prefix}_length_original"] = length_val
+                result[f"{prefix}_length_unit"] = unit_label
+                result[f"{prefix}_length"] = round(length_val * multiplier, 4)
+            except Exception:
+                pass
+
+            try:
+                spacing_val = float(config.get(section, "Spacing").strip())
+                result[f"{prefix}_spacing_original"] = spacing_val
+                result[f"{prefix}_spacing_unit"] = unit_label
+                result[f"{prefix}_spacing"] = round(spacing_val * multiplier, 4)
+            except Exception:
+                pass
+
+        return result
+    except Exception:
+        return {}
+
+
+def extract_colors(wif_bytes: bytes) -> list[dict]:
+    """Extract only the colors referenced in the design from WIF [COLOR TABLE].
+
+    A color is considered "used" if its palette index appears in any of:
+      [WEFT COLORS], [WARP COLORS], [WEFT] Color=, [WARP] Color=
+
+    Returns a list of dicts, each with:
+      index (int), r (int, 0–255), g (int, 0–255), b (int, 0–255), hex (str)
+
+    Values are normalized from the [COLOR PALETTE] Range to 0–255.
+    Returns [] if no color table exists or no colors are referenced in the design.
+    Never raises.
+    """
+    try:
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
+
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
+
+        if not config.has_section("COLOR TABLE"):
+            return []
+
+        # Collect palette indices actually referenced in the design.
+        used: set[int] = set()
+
+        for sect in ("WEFT", "WARP"):
+            if config.has_section(sect):
+                try:
+                    used.add(int(config.get(sect, "Color").split(",")[0].strip()))
+                except Exception:
+                    pass
+
+        for sect in ("WEFT COLORS", "WARP COLORS"):
+            if config.has_section(sect):
+                for _, v in config.items(sect):
+                    try:
+                        used.add(int(v.split(",")[0].strip()))
+                    except ValueError:
+                        continue
+
+        if not used:
+            return []
+
+        scale = _color_scale(config)
+        colors: list[dict] = []
+
+        for k, v in config.items("COLOR TABLE"):
+            try:
+                idx = int(k)
+                if idx not in used:
+                    continue
+                parts = [int(p.strip()) for p in v.split(",")]
+                if len(parts) < 3:
+                    continue
+                r, g, b = parts[:3]
+                if scale != 255:
+                    r = round(r * 255 / scale)
+                    g = round(g * 255 / scale)
+                    b = round(b * 255 / scale)
+                r, g, b = (max(0, min(255, c)) for c in (r, g, b))
+                colors.append({"index": idx, "r": r, "g": g, "b": b, "hex": f"#{r:02x}{g:02x}{b:02x}"})
+            except (ValueError, ZeroDivisionError):
+                continue
+
+        colors.sort(key=lambda c: c["index"])
+        return colors
+    except Exception:
+        return []
+
+
+def extract_warp_color_stats(wif_bytes: bytes) -> list[dict]:
+    """Count warp threads per color from [WARP COLORS] and [WARP] Color= default.
+
+    Returns a list of dicts sorted by count descending:
+      hex (str), count (int), percentage (float, 0–100, rounded to 1 dp)
+
+    Returns [] if no color table or no warp thread count can be determined.
+    Never raises.
+    """
+    try:
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
+
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
+
+        scale = _color_scale(config)
+        colors = _color_table(config, scale)
+        if not colors:
+            return []
+
+        default_warp_color: str | None = None
+        if config.has_section("WARP"):
+            try:
+                default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
+                default_warp_color = colors.get(default_idx)
+            except Exception:
+                pass
+
+        warp_color_map: dict[int, int] = {}
+        if config.has_section("WARP COLORS"):
+            for k, v in config.items("WARP COLORS"):
+                try:
+                    warp_color_map[int(k)] = int(v.split(",")[0].strip())
+                except ValueError:
+                    continue
+
+        num_warp: int | None = None
+        if config.has_section("WEAVING"):
+            try:
+                num_warp = int(config.get("WEAVING", "Warp threads").strip())
+            except Exception:
+                pass
+        if num_warp is None and warp_color_map:
+            num_warp = max(warp_color_map.keys())
+        # Last resort: infer from [THREADING] max key (thread index = warp thread count)
+        if num_warp is None and config.has_section("THREADING"):
+            try:
+                num_warp = max(int(k) for k in dict(config.items("THREADING")))
+            except Exception:
+                pass
+        if not num_warp:
+            return []
+
+        counts: dict[str, int] = {}
+        for i in range(1, num_warp + 1):
+            hex_color = colors.get(warp_color_map[i]) if i in warp_color_map else default_warp_color
+            if hex_color is None:
+                continue
+            counts[hex_color] = counts.get(hex_color, 0) + 1
+
+        if not counts:
+            return []
+
+        counted = sum(counts.values())
+        return [
+            {"hex": h, "count": c, "percentage": round(c * 100 / counted, 1)}
+            for h, c in sorted(counts.items(), key=lambda x: -x[1])
+        ]
+    except Exception:
+        return []
+
+
+def extract_weft_color_stats(wif_bytes: bytes) -> list[dict]:
+    """Count picks per weft color from LIFTPLAN (preferred) or TREADLING + TIEUP.
+
+    Returns a list of dicts sorted by count descending:
+      hex (str), count (int), percentage (float, 0–100, rounded to 1 dp)
+
+    Returns [] if no treadling/liftplan section exists or no colors are defined.
+    Never raises.
+    """
+    try:
+        try:
+            text = wif_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = wif_bytes.decode("latin-1")
+
+        config = RawConfigParser()
+        config.optionxform = str
+        config.read_string(text)
+
+        project_type: str | None = None
+        if config.has_section("LIFTPLAN"):
+            project_type = "lift"
+        elif config.has_section("TREADLING"):
+            project_type = "treadle"
+
+        if project_type is None:
+            return []
+
+        pick_data = parse_picks(wif_bytes, project_type)
+        total = len(pick_data.weft_colors)
+        if total == 0:
+            return []
+
+        counts: dict[str, int] = {}
+        for hex_color in pick_data.weft_colors:
+            if hex_color is None:
+                continue
+            counts[hex_color] = counts.get(hex_color, 0) + 1
+
+        if not counts:
+            return []
+
+        counted = sum(counts.values())
+        result = [
+            {
+                "hex": hex_color,
+                "count": count,
+                "percentage": round(count * 100 / counted, 1),
+            }
+            for hex_color, count in sorted(counts.items(), key=lambda x: -x[1])
+        ]
+        return result
+    except Exception:
+        return []
 
 
 @dataclass

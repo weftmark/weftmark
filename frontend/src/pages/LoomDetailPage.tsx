@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthContext } from "@/context/AuthContext";
+import { measurementSystemToUnit, displayLength, convertLength, type LengthUnit } from "@/lib/units";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import {
@@ -9,8 +11,9 @@ import {
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
   uploadVersionReceipt, deleteVersionReceipt, versionReceiptUrl,
   addAccessory, deleteAccessory, updateVersion,
+  addReed, deleteReed,
   type LoomDetail, type LoomVersion, type LoomVersionPhoto,
-  type LoomVersionReceipt, type LoomVersionAccessory,
+  type LoomVersionReceipt, type LoomVersionAccessory, type LoomReed,
   LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
@@ -461,6 +464,145 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
 }
 
 // ---------------------------------------------------------------------------
+// Reed inventory
+// ---------------------------------------------------------------------------
+
+function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+  const [dentsInput, setDentsInput] = useState("");
+  const [widthInput, setWidthInput] = useState("");
+  const [labelInput, setLabelInput] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const dents = parseFloat(dentsInput);
+    if (!dentsInput || isNaN(dents) || dents <= 0) {
+      setError("Dents per inch must be a positive number");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await addReed(loom.id, {
+        dents_per_inch: dents,
+        ...(widthInput ? { width_cm: parseFloat(widthInput) } : {}),
+        ...(labelInput.trim() ? { label: labelInput.trim() } : {}),
+      });
+      setDentsInput("");
+      setWidthInput("");
+      setLabelInput("");
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add reed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (reed: LoomReed) => {
+    try {
+      await deleteReed(loom.id, reed.id);
+      onChanged();
+    } catch {
+      /* ignore */
+    } finally {
+      setConfirmId(null);
+    }
+  };
+
+  const duplicate = dentsInput
+    ? loom.reeds.some((r) => r.dents_per_inch === parseFloat(dentsInput))
+    : false;
+
+  return (
+    <section className="border-t pt-6">
+      <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Reed inventory</h2>
+      {loom.reeds.length > 0 && (
+        <ul className="mb-4 space-y-2">
+          {loom.reeds.map((reed) => (
+            <li key={reed.id} className="flex items-center gap-3 text-sm">
+              <span className="w-20 font-medium tabular-nums">{reed.dents_per_inch} dent</span>
+              {reed.width_cm != null && (
+                <span className="text-muted-foreground">{reed.width_cm} cm wide</span>
+              )}
+              {reed.label && (
+                <span className="text-muted-foreground italic">{reed.label}</span>
+              )}
+              <span className="ml-auto shrink-0">
+                {confirmId !== reed.id ? (
+                  <button
+                    onClick={() => setConfirmId(reed.id)}
+                    className="text-xs text-destructive hover:underline"
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <ConfirmInline
+                    label={`Remove ${reed.dents_per_inch}-dent reed?`}
+                    onConfirm={() => handleDelete(reed)}
+                    onCancel={() => setConfirmId(null)}
+                  />
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Dents/inch *</label>
+          <input
+            type="number"
+            min="0.5"
+            step="0.5"
+            className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={dentsInput}
+            onChange={(e) => setDentsInput(e.target.value)}
+            placeholder="e.g. 10"
+            disabled={saving}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Width (cm)</label>
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={widthInput}
+            onChange={(e) => setWidthInput(e.target.value)}
+            placeholder="optional"
+            disabled={saving}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-muted-foreground">Label</label>
+          <input
+            className="w-36 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={labelInput}
+            onChange={(e) => setLabelInput(e.target.value)}
+            placeholder="optional"
+            disabled={saving}
+          />
+        </div>
+        <Button size="sm" variant="outline" type="submit" disabled={saving || !dentsInput}>
+          Add reed
+        </Button>
+      </form>
+      {duplicate && (
+        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+          You already have a {parseFloat(dentsInput)}-dent reed on this loom.
+        </p>
+      )}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </section>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
 // Version card
 // ---------------------------------------------------------------------------
 
@@ -473,10 +615,18 @@ function VersionCard({
   onChanged: () => void;
   onClone: (v: LoomVersion) => void;
 }) {
+  const { user } = useAuthContext();
+  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [open, setOpen] = useState(isCurrent);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(version.name ?? "");
   const [editDesc, setEditDesc] = useState(version.description ?? "");
+  const [editWasteUnit, setEditWasteUnit] = useState<LengthUnit>(
+    (version.warp_waste_allowance ? version.warp_waste_unit : displayUnit) as LengthUnit
+  );
+  const [editWaste, setEditWaste] = useState(
+    version.warp_waste_allowance ? parseFloat(version.warp_waste_allowance).toFixed(1) : ""
+  );
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const displayName = version.name || `v${version.version_number}`;
@@ -486,9 +636,11 @@ function VersionCard({
     setSaving(true);
     setEditError(null);
     try {
+      const waste = editWaste.trim() ? parseFloat(editWaste) : undefined;
       await updateVersion(loom.id, version.id, {
         name: editName.trim() || undefined,
         description: editDesc.trim() || undefined,
+        ...(waste !== undefined ? { warp_waste_allowance: waste, warp_waste_unit: editWasteUnit } : {}),
       });
       onChanged();
       setEditing(false);
@@ -502,9 +654,19 @@ function VersionCard({
   const handleEditCancel = () => {
     setEditName(version.name ?? "");
     setEditDesc(version.description ?? "");
+    setEditWaste(version.warp_waste_allowance ? parseFloat(version.warp_waste_allowance).toFixed(1) : "");
+    setEditWasteUnit((version.warp_waste_allowance ? version.warp_waste_unit : displayUnit) as LengthUnit);
     setEditError(null);
     setEditing(false);
   };
+
+  function handleWasteUnitChange(newUnit: LengthUnit) {
+    if (editWaste) {
+      const val = parseFloat(editWaste);
+      if (!isNaN(val)) setEditWaste(convertLength(val, editWasteUnit, newUnit).toFixed(1));
+    }
+    setEditWasteUnit(newUnit);
+  }
 
   return (
     <div className={`rounded-lg border ${isCurrent ? "border-ring" : ""}`}>
@@ -526,56 +688,97 @@ function VersionCard({
       </button>
 
       {open && (
-        <div className="border-t px-4 py-4 space-y-5">
-          {editing ? (
-            <form onSubmit={handleEditSave} className="space-y-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Configuration name</label>
-                <input
-                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder={`v${version.version_number}`}
-                  autoFocus
-                />
+        <div className="border-t px-4 py-4 space-y-3">
+          {/* Specs / edit form */}
+          <div className="rounded-md border border-border p-3">
+            {editing ? (
+              <form onSubmit={handleEditSave} className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Configuration name</label>
+                  <input
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder={`v${version.version_number}`}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
+                  <input
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={editDesc}
+                    onChange={(e) => setEditDesc(e.target.value)}
+                    placeholder="Optional description"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Warp waste default</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      value={editWaste}
+                      onChange={(e) => setEditWaste(e.target.value)}
+                      placeholder="e.g. 50"
+                    />
+                    <select
+                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      value={editWasteUnit}
+                      onChange={(e) => handleWasteUnitChange(e.target.value as LengthUnit)}
+                    >
+                      <option value="cm">cm</option>
+                      <option value="in">in</option>
+                    </select>
+                  </div>
+                </div>
+                {editError && <p className="text-xs text-destructive">{editError}</p>}
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={handleEditCancel} disabled={saving}>Cancel</Button>
+                </div>
+              </form>
+            ) : (
+              <div className="flex items-start justify-between gap-2">
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+                  {version.num_shafts != null && (<><dt className="text-muted-foreground">Shafts</dt><dd>{version.num_shafts}</dd></>)}
+                  {version.num_treadles != null && (<><dt className="text-muted-foreground">Treadles</dt><dd>{version.num_treadles}</dd></>)}
+                  {version.num_heddles != null && (<><dt className="text-muted-foreground">Heddles</dt><dd>{version.num_heddles}</dd></>)}
+                  {version.weaving_width && (<><dt className="text-muted-foreground">Weaving width</dt><dd>{displayLength(version.weaving_width, version.weaving_width_unit, displayUnit)}</dd></>)}
+                  <dt className="text-muted-foreground">Warp waste</dt>
+                  <dd>
+                    {version.warp_waste_allowance ? (() => {
+                      const storedUnit = (version.warp_waste_unit ?? displayUnit) as LengthUnit;
+                      const primary = displayLength(version.warp_waste_allowance, storedUnit, storedUnit);
+                      if (storedUnit === displayUnit) return primary;
+                      const secondary = displayLength(version.warp_waste_allowance, storedUnit, displayUnit);
+                      return <><span className="font-medium">{primary}</span>{" "}<span className="text-xs text-muted-foreground">({secondary})</span></>;
+                    })() : <span className="italic text-muted-foreground">Not set</span>}
+                  </dd>
+                </dl>
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Edit configuration"
+                >
+                  <AppIcons.edit className="h-4 w-4" />
+                </button>
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
-                <input
-                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  value={editDesc}
-                  onChange={(e) => setEditDesc(e.target.value)}
-                  placeholder="Optional description"
-                />
-              </div>
-              {editError && <p className="text-xs text-destructive">{editError}</p>}
-              <div className="flex gap-2">
-                <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
-                <Button type="button" size="sm" variant="outline" onClick={handleEditCancel} disabled={saving}>Cancel</Button>
-              </div>
-            </form>
-          ) : (
-            <div className="flex items-center justify-between">
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-                {version.num_shafts != null && (<><dt className="text-muted-foreground">Shafts</dt><dd>{version.num_shafts}</dd></>)}
-                {version.num_treadles != null && (<><dt className="text-muted-foreground">Treadles</dt><dd>{version.num_treadles}</dd></>)}
-                {version.num_heddles != null && (<><dt className="text-muted-foreground">Heddles</dt><dd>{version.num_heddles}</dd></>)}
-                {version.weaving_width && (<><dt className="text-muted-foreground">Weaving width</dt><dd>{version.weaving_width} {version.weaving_width_unit}</dd></>)}
-                {version.warp_waste_allowance && (<><dt className="text-muted-foreground">Warp waste</dt><dd>{version.warp_waste_allowance} {version.warp_waste_unit}</dd></>)}
-              </dl>
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="shrink-0 text-xs text-muted-foreground hover:text-foreground hover:underline"
-              >
-                Edit name
-              </button>
-            </div>
-          )}
+            )}
+          </div>
 
-          <VersionAccessories loom={loom} version={version} onChanged={onChanged} />
-          <VersionPhotos loom={loom} version={version} onChanged={onChanged} />
-          <VersionReceipts loom={loom} version={version} onChanged={onChanged} />
+          <div className="rounded-md border border-border p-3">
+            <VersionAccessories loom={loom} version={version} onChanged={onChanged} />
+          </div>
+          <div className="rounded-md border border-border p-3">
+            <VersionPhotos loom={loom} version={version} onChanged={onChanged} />
+          </div>
+          <div className="rounded-md border border-border p-3">
+            <VersionReceipts loom={loom} version={version} onChanged={onChanged} />
+          </div>
 
           <div className="border-t pt-3">
             <Button size="sm" variant="outline" onClick={() => onClone(version)}>
@@ -718,6 +921,8 @@ export function LoomDetailPage() {
             ))}
           </div>
         </section>
+
+        <ReedsPanel loom={loom} onChanged={invalidate} />
 
         <section className="border-t pt-6">
           <div className="flex items-center justify-between mb-4">

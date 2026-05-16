@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -57,6 +57,36 @@ class Draft(Base, TimestampMixin, SoftDeleteMixin):
     # Pre-generated reduced-size drawdown for fast serving
     drawdown_preview_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     drawdown_preview_scale: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # WIF-extracted dimensional measurements (normalized to cm where applicable).
+    # Keys: warp_length, warp_length_original, warp_length_unit, warp_spacing, ...,
+    #       weft_length, weft_length_original, weft_length_unit, weft_spacing, ...
+    # Only keys that were present in the WIF are stored; {} or null if none found.
+    wif_measurements: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Color palette extracted from WIF [COLOR TABLE], normalized to 0–255 RGB.
+    # List of {index, r, g, b, hex} objects sorted by index; null if no COLOR TABLE in WIF.
+    wif_colors: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    # Pick count per weft color computed from LIFTPLAN or TREADLING.
+    # List of {hex, count, percentage} sorted by count desc; null if no pick data.
+    weft_color_stats: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    # Thread count per warp color from [WARP COLORS] / [WARP] Color= default.
+    # List of {hex, count, percentage} sorted by count desc; null if no color data.
+    warp_color_stats: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    # Effective warp length in cm — populated from WIF on import or set manually.
+    warp_length_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # True when the user has explicitly overridden the WIF's warp_length value.
+    warp_length_overridden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # User-entered weaving width override in cm (null = derive from WIF weft_length or thread count × spacing).
+    weaving_width_override_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # User-entered EPI override (ends per inch; null = derive from WIF warp_spacing or width ÷ thread count).
+    epi_override: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Sharing
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

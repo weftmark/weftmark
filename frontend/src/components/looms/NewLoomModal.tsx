@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createLoom, type CreateLoomPayload, type LoomType, LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useAuthContext } from "@/context/AuthContext";
+import { measurementSystemToUnit } from "@/lib/units";
 
 interface Props {
   onSuccess: () => void;
@@ -16,6 +18,8 @@ function showsTreadles(t: LoomType) { return t === "floor_loom"; }
 function showsHeddles(t: LoomType) { return t === "rigid_heddle" || t === "other"; }
 
 export function NewLoomModal({ onSuccess, onClose }: Props) {
+  const { user } = useAuthContext();
+  const defaultUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [loomType, setLoomType] = useState<LoomType>("floor_loom");
   const [manufacturer, setManufacturer] = useState("");
   const [modelName, setModelName] = useState("");
@@ -25,9 +29,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
   const [treadlesManuallySet, setTreadlesManuallySet] = useState(false);
   const [numHeddles, setNumHeddles] = useState("");
   const [weavingWidth, setWeavingWidth] = useState("");
-  const [weavingWidthUnit, setWeavingWidthUnit] = useState("cm");
+  const [weavingWidthUnit, setWeavingWidthUnit] = useState<string>(defaultUnit);
   const [warpWaste, setWarpWaste] = useState("");
-  const [warpWasteUnit, setWarpWasteUnit] = useState("cm");
+  const [warpWasteUnit, setWarpWasteUnit] = useState<string>(defaultUnit);
   const [effectiveDate, setEffectiveDate] = useState(today());
   const [notes, setNotes] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
@@ -214,7 +218,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
 
           {/* Dimensions — available for all types except inkle */}
           {loomType !== "inkle" && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div>
                 <label className="mb-1 block text-sm font-medium">Weaving width (optional)</label>
                 <div className="flex gap-2">

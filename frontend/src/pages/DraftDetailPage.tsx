@@ -2,22 +2,37 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, previewUrl, downloadWif, downloadWifModified } from "@/api/drafts";
+import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
+import { DraftPreviewModal } from "@/components/drafts/DraftPreviewModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
+import { useAuthContext } from "@/context/AuthContext";
+import { measurementSystemToUnit, convertLength, formatLength, formatApproxLength } from "@/lib/units";
+import { nearestColorName } from "@/lib/colorName";
 
 export function DraftDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthContext();
+  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showDangerZone, setShowDangerZone] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [editingWarpLength, setEditingWarpLength] = useState(false);
+  const [warpLengthInput, setWarpLengthInput] = useState("");
+  const [warpLengthUnit, setWarpLengthUnit] = useState<"cm" | "in">(displayUnit);
+  const [editingWeavingWidth, setEditingWeavingWidth] = useState(false);
+  const [weavingWidthInput, setWeavingWidthInput] = useState("");
+  const [weavingWidthUnit, setWeavingWidthUnit] = useState<"cm" | "in">(displayUnit);
+  const [editingEpi, setEditingEpi] = useState(false);
+  const [epiInput, setEpiInput] = useState("");
 
   const { data: draft, isLoading, error } = useQuery({
     queryKey: ["draft", id],
@@ -56,6 +71,38 @@ export function DraftDetailPage() {
     },
   });
 
+  const warpLengthMutation = useMutation({
+    mutationFn: ({ length, unit }: { length: number; unit: "cm" | "in" }) =>
+      setDraftWarpLength(id!, length, unit),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["draft", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      setEditingWarpLength(false);
+      setWarpLengthInput("");
+    },
+  });
+
+  const weavingWidthMutation = useMutation({
+    mutationFn: ({ width, unit }: { width: number; unit: "cm" | "in" }) =>
+      setDraftWeavingWidth(id!, width, unit),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["draft", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      setEditingWeavingWidth(false);
+      setWeavingWidthInput("");
+    },
+  });
+
+  const epiMutation = useMutation({
+    mutationFn: ({ epi }: { epi: number }) => setDraftEpi(id!, epi),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["draft", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      setEditingEpi(false);
+      setEpiInput("");
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -71,6 +118,36 @@ export function DraftDetailPage() {
       </div>
     );
   }
+
+  // Weaving width: user override → WIF weft_length → calculated from thread count × spacing
+  const weavingWidthCm: number | null =
+    draft.weaving_width_override_cm ??
+    draft.wif_measurements?.weft_length ??
+    (draft.warp_threads != null && draft.wif_measurements?.warp_spacing != null
+      ? draft.warp_threads * draft.wif_measurements.warp_spacing
+      : null);
+  const weavingWidthSource: "override" | "wif" | "calculated" | null =
+    draft.weaving_width_override_cm != null ? "override" :
+    draft.wif_measurements?.weft_length != null ? "wif" :
+    (draft.warp_threads != null && draft.wif_measurements?.warp_spacing != null) ? "calculated" :
+    null;
+
+  // EPI: user override → WIF warp_spacing → calculated from width ÷ thread count
+  const epiFromSpacing =
+    draft.wif_measurements?.warp_spacing != null && draft.wif_measurements.warp_spacing > 0
+      ? Math.round((2.54 / draft.wif_measurements.warp_spacing) * 10) / 10
+      : null;
+  const epiFromWidthAndCount =
+    weavingWidthCm != null && weavingWidthCm > 0 && draft.warp_threads != null
+      ? Math.round((draft.warp_threads / (weavingWidthCm / 2.54)) * 10) / 10
+      : null;
+  const resolvedEpi: number | null =
+    draft.epi_override ?? epiFromSpacing ?? epiFromWidthAndCount;
+  const epiSource: "override" | "spacing" | "calculated" | null =
+    draft.epi_override != null ? "override" :
+    epiFromSpacing != null ? "spacing" :
+    epiFromWidthAndCount != null ? "calculated" :
+    null;
 
   return (
     <div className="p-6 max-w-5xl mx-auto w-full space-y-6">
@@ -173,7 +250,314 @@ export function DraftDetailPage() {
                     <dd>{draft.wif_source_software}{draft.wif_source_version ? ` ${draft.wif_source_version}` : ""}</dd>
                   </>
                 )}
+                <dt className="text-muted-foreground">Warp length</dt>
+                <dd>
+                  {editingWarpLength ? (
+                    <form
+                      className="flex items-center gap-1.5 flex-wrap"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const v = parseFloat(warpLengthInput);
+                        if (!isNaN(v) && v > 0) {
+                          warpLengthMutation.mutate({ length: v, unit: warpLengthUnit });
+                        }
+                      }}
+                    >
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.1"
+                        className="w-24 rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={warpLengthInput}
+                        onChange={(e) => setWarpLengthInput(e.target.value)}
+                        placeholder="e.g. 500"
+                        autoFocus
+                        required
+                      />
+                      <select
+                        className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={warpLengthUnit}
+                        onChange={(e) => setWarpLengthUnit(e.target.value as "cm" | "in")}
+                      >
+                        <option value="cm">cm</option>
+                        <option value="in">in</option>
+                      </select>
+                      <Button type="submit" size="sm" disabled={warpLengthMutation.isPending}>
+                        {warpLengthMutation.isPending ? "Saving…" : "Save"}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setEditingWarpLength(false); setWarpLengthInput(""); }}
+                        disabled={warpLengthMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                      {warpLengthMutation.isError && (
+                        <span className="text-xs text-destructive">
+                          {warpLengthMutation.error instanceof Error ? warpLengthMutation.error.message : "Save failed"}
+                        </span>
+                      )}
+                    </form>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {draft.warp_length_cm != null ? (
+                        <>
+                          <span>{formatLength(convertLength(draft.warp_length_cm, "cm", displayUnit), displayUnit)}</span>
+                          {draft.wif_measurements?.warp_length != null && !draft.warp_length_overridden && (
+                            <span className="text-xs text-muted-foreground">
+                              ({draft.wif_measurements.warp_length_original} {draft.wif_measurements.warp_length_unit} in WIF)
+                            </span>
+                          )}
+                          {draft.warp_length_overridden && draft.wif_measurements?.warp_length != null && (
+                            <span className="text-xs text-muted-foreground">
+                              (WIF: {draft.wif_measurements.warp_length_original} {draft.wif_measurements.warp_length_unit}, overridden)
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                            onClick={() => {
+                              const v = convertLength(draft.warp_length_cm!, "cm", displayUnit);
+                              setWarpLengthInput(parseFloat(v.toFixed(1)).toString());
+                              setWarpLengthUnit(displayUnit);
+                              setEditingWarpLength(true);
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-muted-foreground">Not set</span>
+                          <button
+                            type="button"
+                            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                            onClick={() => { setWarpLengthInput(""); setWarpLengthUnit(displayUnit); setEditingWarpLength(true); }}
+                          >
+                            Set
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </dd>
+                {draft.warp_length_cm == null && !editingWarpLength && (
+                  <>
+                    <dt />
+                    <dd className="text-xs text-subdued">
+                      Warp calculations unavailable until warp length is set.
+                    </dd>
+                  </>
+                )}
+                <dt className="text-muted-foreground">Weaving width</dt>
+                <dd>
+                  {editingWeavingWidth ? (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        className="w-20 rounded border border-border bg-input px-2 py-0.5 text-sm"
+                        value={weavingWidthInput}
+                        onChange={(e) => setWeavingWidthInput(e.target.value)}
+                      />
+                      <select
+                        className="rounded border border-border bg-input px-1 py-0.5 text-sm"
+                        value={weavingWidthUnit}
+                        onChange={(e) => setWeavingWidthUnit(e.target.value as "cm" | "in")}
+                      >
+                        <option value="cm">cm</option>
+                        <option value="in">in</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="text-xs text-accent underline underline-offset-2"
+                        onClick={() => {
+                          const v = parseFloat(weavingWidthInput);
+                          if (!isNaN(v) && v > 0) weavingWidthMutation.mutate({ width: v, unit: weavingWidthUnit });
+                        }}
+                      >Save</button>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-2"
+                        onClick={() => { setEditingWeavingWidth(false); setWeavingWidthInput(""); }}
+                      >Cancel</button>
+                    </div>
+                  ) : weavingWidthCm != null ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{formatLength(convertLength(weavingWidthCm, "cm", displayUnit), displayUnit)}</span>
+                      {weavingWidthSource === "wif" && draft.wif_measurements?.weft_length_unit !== displayUnit && (
+                        <span className="text-xs text-muted-foreground">
+                          ({draft.wif_measurements!.weft_length_original} {draft.wif_measurements!.weft_length_unit} in WIF)
+                        </span>
+                      )}
+                      {weavingWidthSource === "calculated" && (
+                        <span className="text-xs text-muted-foreground">(thread count × spacing)</span>
+                      )}
+                      {weavingWidthSource === "override" && (
+                        <span className="text-xs text-muted-foreground">(manually set)</span>
+                      )}
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                        onClick={() => {
+                          setWeavingWidthInput(String(Math.round(convertLength(weavingWidthCm, "cm", displayUnit) * 10) / 10));
+                          setWeavingWidthUnit(displayUnit);
+                          setEditingWeavingWidth(true);
+                        }}
+                      >Edit</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Not set</span>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                        onClick={() => { setWeavingWidthInput(""); setWeavingWidthUnit(displayUnit); setEditingWeavingWidth(true); }}
+                      >Set</button>
+                    </div>
+                  )}
+                </dd>
+                <dt className="text-muted-foreground">EPI</dt>
+                <dd>
+                  {editingEpi ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        className="w-20 rounded border border-border bg-input px-2 py-0.5 text-sm"
+                        value={epiInput}
+                        onChange={(e) => setEpiInput(e.target.value)}
+                      />
+                      <span className="text-sm text-muted-foreground">ends/in</span>
+                      <button
+                        type="button"
+                        className="text-xs text-accent underline underline-offset-2"
+                        onClick={() => {
+                          const v = parseFloat(epiInput);
+                          if (!isNaN(v) && v > 0) epiMutation.mutate({ epi: v });
+                        }}
+                      >Save</button>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-2"
+                        onClick={() => { setEditingEpi(false); setEpiInput(""); }}
+                      >Cancel</button>
+                    </div>
+                  ) : resolvedEpi != null ? (
+                    <div className="flex items-center gap-2">
+                      <span>{resolvedEpi} ends/in</span>
+                      {epiSource === "calculated" && (
+                        <span className="text-xs text-muted-foreground">(width ÷ thread count)</span>
+                      )}
+                      {epiSource === "spacing" && (
+                        <span className="text-xs text-muted-foreground">(from WIF spacing)</span>
+                      )}
+                      {epiSource === "override" && (
+                        <span className="text-xs text-muted-foreground">(manually set)</span>
+                      )}
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                        onClick={() => { setEpiInput(String(resolvedEpi)); setEditingEpi(true); }}
+                      >Edit</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Not set</span>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                        onClick={() => { setEpiInput(""); setEditingEpi(true); }}
+                      >Set</button>
+                    </div>
+                  )}
+                </dd>
               </dl>
+
+              {draft.wif_colors && draft.wif_colors.length > 0 && (() => {
+                // When both stat arrays are populated, drop colors that appear in neither —
+                // they are defined-as-default colors fully overridden by per-thread/per-pick assignments.
+                const bothStatsPresent = draft.warp_color_stats !== null && draft.weft_color_stats !== null;
+                const visibleColors = bothStatsPresent
+                  ? draft.wif_colors.filter(
+                      (c) =>
+                        draft.weft_color_stats!.some((s) => s.hex === c.hex) ||
+                        draft.warp_color_stats!.some((s) => s.hex === c.hex),
+                    )
+                  : draft.wif_colors;
+                if (visibleColors.length === 0) return null;
+                return (
+                <div className="mt-4 space-y-2">
+                  <h3 className="text-sm font-medium">Color palette</h3>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-muted-foreground">
+                        <th className="text-left pb-1.5 font-normal pr-3">Color</th>
+                        <th className="text-left pb-1.5 font-normal pr-3">Name</th>
+                        <th className="text-right pb-1.5 font-normal pr-3">Warp ends</th>
+                        <th className="text-right pb-1.5 font-normal pr-3">Weft picks</th>
+                        {weavingWidthCm != null && (
+                          <th className="text-right pb-1.5 font-normal">Est. weft length</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleColors.map((c) => {
+                        const weftStat: ColorStat | undefined = draft.weft_color_stats?.find(
+                          (s) => s.hex === c.hex,
+                        );
+                        const warpStat: ColorStat | undefined = draft.warp_color_stats?.find(
+                          (s) => s.hex === c.hex,
+                        );
+                        const approxLengthCm =
+                          weftStat && weavingWidthCm != null
+                            ? weftStat.count * weavingWidthCm
+                            : null;
+                        return (
+                          <tr
+                            key={c.index}
+                            className="border-t border-border"
+                            title={`#${c.index}: RGB(${c.r}, ${c.g}, ${c.b})`}
+                          >
+                            <td className="py-1.5 pr-3">
+                              <div className="flex items-center gap-1.5">
+                                <div
+                                  className="h-4 w-6 rounded-sm border border-border flex-shrink-0"
+                                  style={{ backgroundColor: c.hex }}
+                                />
+                                <span className="font-mono text-muted-foreground">{c.hex}</span>
+                              </div>
+                            </td>
+                            <td className="py-1.5 pr-3 text-subdued">{nearestColorName(c.hex)}</td>
+                            <td className="py-1.5 pr-3 text-right tabular-nums">
+                              {warpStat
+                                ? <>{warpStat.count} <span className="text-muted-foreground">({warpStat.percentage}%)</span></>
+                                : <span className="text-muted-foreground">—</span>}
+                            </td>
+                            <td className="py-1.5 pr-3 text-right tabular-nums">
+                              {weftStat
+                                ? <>{weftStat.count} <span className="text-muted-foreground">({weftStat.percentage}%)</span></>
+                                : <span className="text-muted-foreground">—</span>}
+                            </td>
+                            {weavingWidthCm != null && (
+                              <td className="py-1.5 text-right tabular-nums text-subdued">
+                                {approxLengthCm != null
+                                  ? `~${formatApproxLength(approxLengthCm, displayUnit)}`
+                                  : <span className="text-muted-foreground">—</span>}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                );
+              })()}
             </div>
 
             <div className="space-y-3 border-t pt-4">
@@ -316,15 +700,28 @@ export function DraftDetailPage() {
           {/* Right column: Preview */}
           <div>
             <h2 className="text-base font-semibold mb-3">Design Preview</h2>
-            {draft.has_preview ? (
-              <div className="overflow-auto rounded-lg border bg-card p-2">
+            {draft.wif_filename ? (
+              <button
+                type="button"
+                className="group w-full overflow-hidden rounded-lg border bg-card p-2 cursor-zoom-in text-left"
+                onClick={() => setShowPreviewModal(true)}
+                title="Click to open interactive preview"
+              >
                 <AuthedImage
-                  src={previewUrl(draft.id)}
+                  src={draft.has_preview ? previewUrl(draft.id) : previewSvgUrl(draft.id)}
                   alt={`Draft preview for ${draft.name}`}
-                  className="max-w-full"
+                  className="max-w-full group-hover:opacity-90 transition-opacity"
                   data-testid="draft-preview-img"
+                  loadingContent={
+                    <div className="w-full min-h-48 animate-pulse rounded-md bg-muted flex items-center justify-center">
+                      <span className="text-sm text-muted-foreground">Loading preview…</span>
+                    </div>
+                  }
                 />
-              </div>
+                <p className="mt-1.5 text-xs text-muted-foreground text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to zoom
+                </p>
+              </button>
             ) : (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm text-muted-foreground">
@@ -391,6 +788,16 @@ export function DraftDetailPage() {
             navigate(`/projects/${newId}`);
           }}
           onClose={() => setShowCreateProject(false)}
+        />
+      )}
+
+      {showPreviewModal && (
+        <DraftPreviewModal
+          draftId={draft.id}
+          draftName={draft.name}
+          warpThreads={draft.warp_threads ?? 0}
+          weftThreads={draft.weft_threads ?? 0}
+          onClose={() => setShowPreviewModal(false)}
         />
       )}
     </div>

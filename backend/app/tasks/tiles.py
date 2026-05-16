@@ -133,6 +133,7 @@ async def _prerender_project(task: Task, project_id: uuid.UUID) -> None:
                     lambda _pid, scale, start, data: storage.save_project_tile(project_id, scale, start, data),
                     entity_id=project_id,
                     entity_label="project_id",
+                    color_replacements=project.color_replacements or {},
                 )
                 log.info("tile_prerender_done project_id=%s tiles=%d", project_id, tile_count)
             except Exception as exc:
@@ -154,8 +155,11 @@ def _render_and_store_tiles(
     save_fn,
     entity_id: uuid.UUID,
     entity_label: str,
+    color_replacements: dict | None = None,
 ) -> int:
     wif_draft = rendering.load_draft(wif_bytes)
+    if color_replacements:
+        rendering.apply_color_replacements(wif_draft, color_replacements)
 
     warp_count = len(wif_draft.warp)
     weft_count = len(wif_draft.weft)
@@ -167,6 +171,23 @@ def _render_and_store_tiles(
     if effective_scale < 1:
         log.warning("tile_prerender_skip %s=%s reason=too_wide", entity_label, entity_id)
         return 0
+
+    # Also cap scale so the full rendered image stays within PIL's pixel limit.
+    # The full image includes the threading diagram rows above the drawdown, so
+    # total height > weft_count alone. We use weft_count as the dominant term.
+    # Target: keep total pixels under ~100M to avoid DecompressionBombError.
+    _MAX_RENDER_PIXELS = 100_000_000
+    shaft_rows = 6 + len(wif_draft.shafts)
+    max_scale_by_pixels = max(1, int((_MAX_RENDER_PIXELS / (warp_count * (weft_count + shaft_rows))) ** 0.5))
+    if max_scale_by_pixels < effective_scale:
+        log.info(
+            "tile_prerender_scale_reduced %s=%s scale=%d->%d reason=pixel_limit",
+            entity_label,
+            entity_id,
+            effective_scale,
+            max_scale_by_pixels,
+        )
+        effective_scale = max_scale_by_pixels
 
     margin = 20
     renderer = ImageRenderer(wif_draft, scale=effective_scale, margin_pixels=margin)

@@ -1,0 +1,49 @@
+# Extraction-ready package metadata stub.
+# NOT used by the WeftMark build system — this is a living checklist that
+# documents how to extract app/weaving/ as a standalone library.
+#
+# To activate: copy to pyproject.toml at repo root, rename package directory
+# from backend/app/weaving/ to src/weaving/, update imports, publish to PyPI.
+#
+# WeftMark BSL 1.1 converts to MIT on 2029-01-01 — extraction target date.
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pyweaving2"
+version = "1.0.0"
+description = "A Python library for working with weaving drafts (WIF, rendering, analysis)"
+authors = [
+    { name = "Scott Torborg", email = "storborg@gmail.com" },
+    { name = "WeftMark Contributors" },
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pillow>=10.0",
+    "numpy>=1.24",   # Phase 3: NumPy drawdown matrix
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/weaving"]
+
+# ---------------------------------------------------------------------------
+# Extraction checklist (verify before publishing)
+# ---------------------------------------------------------------------------
+# [ ] Zero imports from app.models, app.routers, app.services, app.db
+# [ ] All WeftMark-specific integrations removed or moved to app layer
+# [ ] backend/app/weaving/tests/ passes with: pytest backend/app/weaving/tests/
+# [ ] No WeftMark conftest.py fixtures used in the tests
+# [ ] No settings / .env reads inside the package
+# [ ] Font bundled or documented as external dependency
+# [ ] UPSTREAM_LICENSE and THIRD_PARTY_LICENSES.md included in sdist
+# [ ] __all__ in __init__.py is complete and accurate

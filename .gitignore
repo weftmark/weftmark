@@ -14,6 +14,7 @@
 .env.local
 .env.komodo
 .env.*.local
+.env.test85
 # .env.example and .env.*.example are intentionally tracked
 .remotehost
 # .remotehost.example is intentionally tracked

@@ -3,13 +3,13 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 PROJECT_TYPES = ("treadle", "lift")
-PROJECT_STATUSES = ("active", "completed", "abandoned")
+PROJECT_STATUSES = ("created", "active", "completed", "abandoned")
 
 
 class ProjectPhoto(Base, TimestampMixin):
@@ -44,7 +44,11 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
 
     # Step tracking
     current_pick: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    current_item: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     total_picks: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Stores last known pick per item: {"1": 3, "2": 7}. Updated on item transitions so
+    # jumping back to a previously visited item restores where the weaver left off.
+    item_picks: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Warp plan inputs
     finished_length_per_item: Mapped[Decimal | None] = mapped_column(Numeric(8, 1), nullable=True)
@@ -57,6 +61,9 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     abandoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     hide_unused_shafts_treadles: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    color_replacements: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    drawdown_preview_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    drawdown_svg_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     steps: Mapped[list["ProjectStep"]] = relationship(
         "ProjectStep", back_populates="project", order_by="ProjectStep.created_at"
