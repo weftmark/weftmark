@@ -83,17 +83,28 @@ async def _seed_draft(db_session, owner_id, *, wif_colors=None, deleted=False):
     uid = str(uuid.uuid4())
     if wif_colors is None:
         # Omit wif_colors → SQL NULL default; include deleted_at when needed
+        _bool_defaults = "FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE"
+        _jsonb_defaults = "'[]'::jsonb, '[]'::jsonb"
+        _bool_cols = (
+            "has_threading, has_tieup, has_treadling, has_liftplan, has_color_palette, "
+            "liftplan_generated, warp_length_overridden, is_shared"
+        )
+        _jsonb_cols = "lint_warnings, lint_errors"
         if deleted:
             sql = text(
                 "INSERT INTO drafts "
-                "(id, owner_id, name, wif_filename, wif_path, deleted_at, created_at, updated_at) "
-                "VALUES (:id, :owner, :name, :wif_fn, :wif_path, NOW(), NOW(), NOW())"
+                f"(id, owner_id, name, wif_filename, wif_path, {_bool_cols}, {_jsonb_cols}, "
+                "deleted_at, created_at, updated_at) "
+                f"VALUES (:id, :owner, :name, :wif_fn, :wif_path, {_bool_defaults}, {_jsonb_defaults}, "
+                "NOW(), NOW(), NOW())"
             )
         else:
             sql = text(
                 "INSERT INTO drafts "
-                "(id, owner_id, name, wif_filename, wif_path, created_at, updated_at) "
-                "VALUES (:id, :owner, :name, :wif_fn, :wif_path, NOW(), NOW())"
+                f"(id, owner_id, name, wif_filename, wif_path, {_bool_cols}, {_jsonb_cols}, "
+                "created_at, updated_at) "
+                f"VALUES (:id, :owner, :name, :wif_fn, :wif_path, {_bool_defaults}, {_jsonb_defaults}, "
+                "NOW(), NOW())"
             )
         await db_session.execute(
             sql,
