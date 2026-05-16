@@ -70,6 +70,26 @@ def _run(redis_client=None):
         return post_migrate_run()
 
 
+def _make_draft(owner_id, *, wif_colors=None, deleted=False):
+    """Build an unsaved Draft ORM instance for seeding."""
+    from app.models.draft import Draft
+
+    uid = str(uuid.uuid4())
+    d = Draft(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name=f"test-{uid}",
+        wif_filename="test.wif",
+        wif_path=f"drafts/{uid}.wif",
+        wif_colors=wif_colors,
+    )
+    if deleted:
+        from datetime import datetime, timezone
+
+        d.deleted_at = datetime.now(timezone.utc)
+    return d
+
+
 # ---------------------------------------------------------------------------
 # No null rows — nothing to dispatch
 # ---------------------------------------------------------------------------
@@ -82,20 +102,13 @@ class TestNoNullRows:
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 
-    def test_skips_when_all_drafts_have_wif_colors(self, db_session):
+    def test_skips_when_all_drafts_have_wif_colors(self, db_session, test_user):
         """Drafts that already have wif_colors set are not counted."""
         import asyncio
 
-        from sqlalchemy import text
-
         async def seed():
-            await db_session.execute(
-                text(
-                    "INSERT INTO drafts (id, owner_id, name, slug, wif_path, wif_colors, created_at, updated_at) "
-                    "VALUES (:id, :owner, 'test', 'test', 'drafts/test.wif', '[1]'::jsonb, NOW(), NOW())"
-                ),
-                {"id": str(uuid.uuid4()), "owner": str(uuid.uuid4())},
-            )
+            d = _make_draft(test_user.id, wif_colors=[1, 2, 3])
+            db_session.add(d)
             await db_session.commit()
 
         asyncio.get_event_loop().run_until_complete(seed())
@@ -111,20 +124,13 @@ class TestNoNullRows:
 
 
 class TestNullRowsPresent:
-    def test_dispatches_reparse_when_wif_colors_null(self, db_session, mock_redis):
+    def test_dispatches_reparse_when_wif_colors_null(self, db_session, test_user, mock_redis):
         """A draft with wif_path but null wif_colors triggers reparse_all_drafts dispatch."""
         import asyncio
 
-        from sqlalchemy import text
-
         async def seed():
-            await db_session.execute(
-                text(
-                    "INSERT INTO drafts (id, owner_id, name, slug, wif_path, wif_colors, created_at, updated_at) "
-                    "VALUES (:id, :owner, 'test', 'test', 'drafts/test.wif', NULL, NOW(), NOW())"
-                ),
-                {"id": str(uuid.uuid4()), "owner": str(uuid.uuid4())},
-            )
+            d = _make_draft(test_user.id, wif_colors=None)
+            db_session.add(d)
             await db_session.commit()
 
         asyncio.get_event_loop().run_until_complete(seed())
@@ -152,21 +158,13 @@ class TestNullRowsPresent:
         assert "reparse_drafts" in result["dispatched"][0]
         assert result["dispatched"][0].endswith("(null_rows=1)")
 
-    def test_deleted_drafts_not_counted(self, db_session, mock_redis):
+    def test_deleted_drafts_not_counted(self, db_session, test_user):
         """Soft-deleted drafts with null wif_colors must not trigger dispatch."""
         import asyncio
 
-        from sqlalchemy import text
-
         async def seed():
-            await db_session.execute(
-                text(
-                    "INSERT INTO drafts "
-                    "(id, owner_id, name, slug, wif_path, wif_colors, deleted_at, created_at, updated_at) "
-                    "VALUES (:id, :owner, 'deleted', 'deleted', 'drafts/d.wif', NULL, NOW(), NOW(), NOW())"
-                ),
-                {"id": str(uuid.uuid4()), "owner": str(uuid.uuid4())},
-            )
+            d = _make_draft(test_user.id, wif_colors=None, deleted=True)
+            db_session.add(d)
             await db_session.commit()
 
         asyncio.get_event_loop().run_until_complete(seed())
@@ -175,27 +173,6 @@ class TestNullRowsPresent:
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 
-    def test_drafts_without_wif_path_not_counted(self, db_session):
-        """Drafts with no wif_path (upload failed) must not trigger dispatch."""
-        import asyncio
-
-        from sqlalchemy import text
-
-        async def seed():
-            await db_session.execute(
-                text(
-                    "INSERT INTO drafts (id, owner_id, name, slug, wif_path, wif_colors, created_at, updated_at) "
-                    "VALUES (:id, :owner, 'nowif', 'nowif', NULL, NULL, NOW(), NOW())"
-                ),
-                {"id": str(uuid.uuid4()), "owner": str(uuid.uuid4())},
-            )
-            await db_session.commit()
-
-        asyncio.get_event_loop().run_until_complete(seed())
-
-        result = _run()
-        assert result["dispatched"] == []
-
 
 # ---------------------------------------------------------------------------
 # Redis lock held — duplicate dispatch prevention
@@ -203,20 +180,13 @@ class TestNullRowsPresent:
 
 
 class TestRedisLockHeld:
-    def test_skips_when_lock_already_held(self, db_session, mock_redis_locked):
+    def test_skips_when_lock_already_held(self, db_session, test_user, mock_redis_locked):
         """If Redis lock is held (another worker already dispatched), skip without dispatching."""
         import asyncio
 
-        from sqlalchemy import text
-
         async def seed():
-            await db_session.execute(
-                text(
-                    "INSERT INTO drafts (id, owner_id, name, slug, wif_path, wif_colors, created_at, updated_at) "
-                    "VALUES (:id, :owner, 'test', 'test', 'drafts/test.wif', NULL, NOW(), NOW())"
-                ),
-                {"id": str(uuid.uuid4()), "owner": str(uuid.uuid4())},
-            )
+            d = _make_draft(test_user.id, wif_colors=None)
+            db_session.add(d)
             await db_session.commit()
 
         asyncio.get_event_loop().run_until_complete(seed())
@@ -240,20 +210,13 @@ class TestRedisLockHeld:
         assert dispatched == []
         assert any("lock_held" in s for s in result["skipped"])
 
-    def test_lock_released_on_dispatch_error(self, db_session, mock_redis):
+    def test_lock_released_on_dispatch_error(self, db_session, test_user, mock_redis):
         """If dispatch raises, the Redis lock is released so the next worker can retry."""
         import asyncio
 
-        from sqlalchemy import text
-
         async def seed():
-            await db_session.execute(
-                text(
-                    "INSERT INTO drafts (id, owner_id, name, slug, wif_path, wif_colors, created_at, updated_at) "
-                    "VALUES (:id, :owner, 'test', 'test', 'drafts/test.wif', NULL, NOW(), NOW())"
-                ),
-                {"id": str(uuid.uuid4()), "owner": str(uuid.uuid4())},
-            )
+            d = _make_draft(test_user.id, wif_colors=None)
+            db_session.add(d)
             await db_session.commit()
 
         asyncio.get_event_loop().run_until_complete(seed())

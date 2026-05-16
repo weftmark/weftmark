@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 
+import redis as _redis
 from celery import Task
 
 from app.celery_app import celery_app
@@ -80,7 +81,6 @@ def run_post_migrate_backfills(self: Task) -> dict:
 
 
 def _run() -> dict:
-    import redis as _redis
     from sqlalchemy import create_engine, text
     from sqlalchemy.orm import Session
 
