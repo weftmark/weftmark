@@ -25,6 +25,30 @@ Used with floor looms where treadle pedals raise or lower groups of shafts (e.g.
 
 ---
 
+## Project Landing Page
+
+When a project is created but has not yet had any picks recorded, it enters **pre-tracking state** and shows the Project Landing Page. This page is the staging area before weaving starts:
+
+- **Design preview** — full draft layout (threading diagram, tie-up, drawdown) rendered with the project's current color replacements applied
+- **Color palette editor** — swap warp and weft colors per-project without touching the source WIF file. Color changes flow through the drawdown preview, pick display at the loom, and the completed summary automatically
+- **Warp setup** — configure finished length per item, number of items, waste between items; see calculated total warp length
+- **Draft summary** — WIF metadata, EPI, reed recommendations
+
+Once the user starts tracking (records the first pick), the project moves to active state and the landing page is replaced by the loom-side tracking interface.
+
+---
+
+## Color Replacements
+
+Each project maintains a `color_replacements` map of hex→hex swaps applied on top of the WIF `[COLOR TABLE]` data.
+
+- Color replacements are saved via `PUT /api/projects/{id}/color-replacements`
+- Saving new replacements invalidates and re-renders the R2 drawdown tile cache (`prerender_project_tiles` Celery task)
+- The design preview endpoint (`GET /api/projects/{id}/drawdown/preview`) applies replacements at render time
+- The at-the-loom drawdown tile endpoint applies replacements from the cached tiles (or renders inline if not cached)
+
+---
+
 ## Creating a Project
 
 When creating a project, the user provides:
@@ -182,3 +206,17 @@ Projects that have been started but not completed are referred to as **WIPs** (w
 ## Multi-Product Projects
 
 A single project can produce multiple end products on one warp (e.g. five hand towels). The warping plan accounts for waste between products. All products in the project are tracked together under a single step sequence.
+
+---
+
+## Completed Project Summary
+
+When a project is marked complete, the Completed Summary page is shown. It includes:
+
+- **Design preview** — full draft layout PNG with the project's color replacements applied; image fills the summary card
+- **Session metrics** — total picks, total sessions, total time, average picks per session
+- **Warp setup details** — finished length per item, number of items, waste, total warp length
+- **Photos** — all attached photos displayed in chronological order
+- **Notes** — post-project observations entered by the user
+
+The design preview uses the same `render_full_draft` rendering path as the project landing page, ensuring consistent appearance.

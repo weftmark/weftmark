@@ -69,6 +69,31 @@ Upgrades that change technical specifications (shaft count, treadle count, weavi
 
 ---
 
+## Reed Inventory
+
+Each loom can have an associated collection of reeds. Reed records are stored on the loom (not versioned — reeds are accessories, not configuration).
+
+### Reed Record
+
+| Field | Description |
+| --- | --- |
+| Dent count | Threads per inch or per cm (the "sett" of the reed) |
+| Unit | `imperial` (dents per inch) or `metric` (dents per 10 cm) |
+| Width | Maximum weaving width this reed allows |
+| Notes | Optional free-text notes |
+
+### Reed Recommendations
+
+When a user is about to create a project, the platform cross-references the draft's EPI (ends per inch, from the WIF) against the reeds recorded for the selected loom and presents a list of compatible reeds, ranked by how closely their dent count matches the draft's EPI. Incompatible reeds (wrong sett for the design) are shown separately with an explanation.
+
+---
+
+## Loom Photos
+
+Users can attach photos to a loom record (e.g. full loom, control panel, specific accessories). Photos are stored in R2 and displayed on the loom detail page. Photo upload and display use the same `AuthedImage` + Bearer-fetch pattern as project progress photos.
+
+---
+
 ## Compatibility with WIF Files
 
 When a user creates a project, the platform uses the loom's technical specifications to determine compatibility:

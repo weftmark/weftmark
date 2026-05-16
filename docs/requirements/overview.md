@@ -145,11 +145,47 @@ Portrait orientation is preferred for the project (loom-side) interface.
 
 - Looms, drafts, and projects use **soft delete** — records are archived, not permanently destroyed
 - Soft-deleted looms retain their full versioned state history and remain accessible from any project that references them
+- Configurable retention period (`SOFT_DELETE_RETENTION_DAYS`); permanent purge triggered from Admin → Maintenance
 
 ---
 
 ## Email
 
-- Transactional email (invite links) is delivered via **SMTP2Go**
+- Transactional email (invite links, health alerts) is delivered via **SMTP2Go**
 - SMTP credentials are configured via environment variables
 - Invite links are single-use, time-limited (administrator-configurable expiry), and sent to the invitee's email address
+- Stack health alerts (startup, degraded, recovery) are sent to superuser accounts when `STACK_ALERT_EMAILS_ENABLED=true`
+
+---
+
+## Rendering
+
+- Draft previews and drawdown images are generated server-side by **PyWeaving** (Python)
+- The full draft layout (threading diagram, tie-up, drawdown) is rendered as a single PNG image
+- Tile pre-rendering runs as a Celery background task — drawdown tiles are sliced into row strips and stored in R2 for progressive loading during the weaving session
+- Per-project color replacements are applied to the rendered output; saving new colors triggers a tile re-render
+
+---
+
+## Feature Highlights (Current)
+
+The following features are implemented and live as of v0.145.0:
+
+- WIF 1.1 import with detailed lint report
+- Draft library with threading, tie-up, drawdown preview, and color palette display
+- Treadle-tracking and lift-tracking project modes
+- Project landing page — set color replacements, review design, configure warp before tracking starts
+- Color palette editor with per-project hex→hex color swaps flowing through drawdown, pick display, and completed summary
+- Progressive drawdown tile viewer (canvas-based, pan + zoom)
+- Pick-by-pick tracking with worked-pick dwell detection, session auto-detection, and Bluetooth pedal support
+- Warp thread count per palette color; filtered unused colors
+- Reed inventory with EPI-based recommendations
+- Loom versioned history; projects reference exact loom configuration
+- Photo documentation with captions, auto-stamped step/session metadata
+- Project completion summary with design preview, session metrics, and warp setup details
+- Yarn inventory (products + physical units)
+- Admin console: user management, approval queue, platform health, audit log, maintenance
+- OpenTelemetry observability (traces, metrics, structured logs)
+- GeoIP geolocation for audit logs and metrics (MaxMind GeoLite2)
+- EULA acceptance gate with versioned EULA content
+- Light and dark mode; metric and imperial measurement support

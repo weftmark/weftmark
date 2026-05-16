@@ -1,6 +1,6 @@
 # Test Coverage and Gaps
 
-**Current overall coverage: ~86%** (908 tests, last measured 2026-05-05 v0.85.0)
+**Current overall coverage: ~86%** (908 tests, last measured 2026-05-05 v0.85.0 — see History for recent versions)
 
 > **Note:** Prior measurements (~65%) were significantly undercounted. SQLAlchemy async sessions use greenlets internally; coverage.py lost `sys.settrace` after every `await db.scalar()/commit()` call, causing all post-await lines in every router to appear uncovered. Fixed in commit `47311ca` by adding `[coverage:run] concurrency = greenlet` in `backend/setup.cfg`.
 
@@ -119,3 +119,4 @@ Reassess coverage completeness when:
 | 2026-05-03 | v0.76.1 | 65% | 823 tests; full rename of Project→Draft model, router, API, and frontend completed (issues #296/#311) |
 | 2026-05-05 | v0.85.0 | ~65.3% | 19 new tests added; new modules covered: `logs.py`, `storage_quota.py`, `wif_modifier.py`; 64.78%→65.3% to clear CI gate |
 | 2026-05-05 | v0.85.0 | 85.93% | Fixed greenlet coverage tracking (`setup.cfg` `concurrency=greenlet`); prior ~65% numbers were systematic undercounts. 908 tests; 7 new auth webhook unit tests added. |
+| 2026-05-15 | v0.145.0 | ~86% | Coverage stable; new features (color replacements, project landing page, reed inventory, tile pre-render) added without regression. |
