@@ -28,6 +28,7 @@ x-worker-env: &worker-env
   OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=${APP_ENV},service.version=${IMAGE_TAG:-dev}"
   OTEL_SERVICE_NAME: weftmark-worker
+  GITHUB_FEEDBACK_TOKEN: ${GITHUB_FEEDBACK_TOKEN:-}
 
 x-worker: &worker-base
   image: ghcr.io/weftmark/weftmark-backend:${IMAGE_TAG:-latest}
@@ -120,6 +121,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=${APP_ENV},service.version=${IMAGE_TAG:-dev}"
       OTEL_SERVICE_NAME: weftmark-api
+      GITHUB_FEEDBACK_TOKEN: ${GITHUB_FEEDBACK_TOKEN:-}
     networks:
       - public
       - internal

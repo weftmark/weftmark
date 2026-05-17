@@ -16,7 +16,7 @@ from app.version import VERSION
 router = APIRouter(tags=["health"])
 log = logging.getLogger(__name__)
 
-DETAILED_REFRESH_INTERVAL_S = 30
+DETAILED_REFRESH_INTERVAL_S = 300  # 5 minutes steady-state poll
 
 
 class ReadinessService(BaseModel):
@@ -34,13 +34,19 @@ class ReadinessResponse(BaseModel):
 
 
 _readiness_cache: ReadinessResponse | None = None  # startup snapshot, never refreshed
-_detailed_cache: ReadinessResponse | None = None  # live, refreshed every 30 s
+_detailed_cache: ReadinessResponse | None = None  # live, refreshed every 5 min
 _detailed_task: asyncio.Task | None = None
 
 # Health-alert state — tracks transitions to avoid flooding
 _last_alert_status: str | None = None
 _last_alert_at: datetime | None = None
 _HEALTH_ALERT_COOLDOWN_S = 3600  # re-alert at most once per hour if status stays bad
+
+# Retry grace — require 3 consecutive non-ok results before surfacing a failure,
+# with at least FAILURE_RETRY_GAP_S between each attempt.
+_FAILURE_CONFIRM_COUNT = 3
+_FAILURE_RETRY_GAP_S = 60
+_consecutive_failures: int = 0
 
 # Superuser email cache — refreshed when DB is healthy; used as fallback when DB is down
 _superuser_email_cache: list[str] = []
@@ -328,7 +334,7 @@ async def _record_health_transition(prev_status: str | None, result: ReadinessRe
 
 
 async def _detailed_refresh_loop() -> None:
-    global _detailed_cache, _last_alert_status, _last_alert_at
+    global _detailed_cache, _last_alert_status, _last_alert_at, _consecutive_failures
     await asyncio.sleep(DETAILED_REFRESH_INTERVAL_S)  # skip transient startup failures
     while True:
         try:
@@ -337,8 +343,28 @@ async def _detailed_refresh_loop() -> None:
             postgres_ok = any(s.name == "PostgreSQL" and s.ok for s in result.services)
             if postgres_ok:
                 await _refresh_superuser_email_cache()
-            await _record_health_transition(_last_alert_status, result)
-            new_status = result.status
+
+            if result.status == "ok":
+                # Recovery — reset failure counter and surface immediately
+                _consecutive_failures = 0
+                confirmed_result = result
+            else:
+                # Non-ok: require FAILURE_CONFIRM_COUNT consecutive failures before surfacing
+                _consecutive_failures += 1
+                if _consecutive_failures < _FAILURE_CONFIRM_COUNT:
+                    log.warning(
+                        "Health probe non-ok (attempt %d/%d) — retrying in %ds before surfacing",
+                        _consecutive_failures,
+                        _FAILURE_CONFIRM_COUNT,
+                        _FAILURE_RETRY_GAP_S,
+                    )
+                    await asyncio.sleep(_FAILURE_RETRY_GAP_S)
+                    continue
+                # Third consecutive failure — surface it
+                confirmed_result = result
+
+            await _record_health_transition(_last_alert_status, confirmed_result)
+            new_status = confirmed_result.status
             now = datetime.now(timezone.utc)
             prev_status = _last_alert_status
 
@@ -365,13 +391,13 @@ async def _detailed_refresh_loop() -> None:
                     is_recovery = True
 
                 if should_alert:
-                    asyncio.create_task(_dispatch_health_alert(result, is_recovery))
+                    asyncio.create_task(_dispatch_health_alert(confirmed_result, is_recovery))
                     _last_alert_status = new_status
                     _last_alert_at = now if new_status != "ok" else None
                 else:
                     _last_alert_status = new_status
 
-            _detailed_cache = result
+            _detailed_cache = confirmed_result
         except Exception:
             log.exception("Unexpected error in detailed health refresh loop")
         await asyncio.sleep(DETAILED_REFRESH_INTERVAL_S)

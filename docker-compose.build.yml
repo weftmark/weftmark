@@ -35,6 +35,7 @@ x-worker-env: &worker-env
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=${APP_ENV}"
   MAXMIND_LICENSE_KEY: ${MAXMIND_LICENSE_KEY:-}
   GEOIP_DB_PATH: ${GEOIP_DB_PATH:-/app/data/GeoLite2-City.mmdb}
+  GITHUB_FEEDBACK_TOKEN: ${GITHUB_FEEDBACK_TOKEN:-}
 
 x-worker: &worker-base
   build:
@@ -159,6 +160,7 @@ services:
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=${APP_ENV}"
       MAXMIND_LICENSE_KEY: ${MAXMIND_LICENSE_KEY:-}
       GEOIP_DB_PATH: ${GEOIP_DB_PATH:-/app/data/GeoLite2-City.mmdb}
+      GITHUB_FEEDBACK_TOKEN: ${GITHUB_FEEDBACK_TOKEN:-}
     volumes:
       - uploads:/app/uploads
       - geoip_data:/app/data

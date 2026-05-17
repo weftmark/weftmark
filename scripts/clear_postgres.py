@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _lib import dry, fail, header, info, load_env, ok, require_dev_env, resolve_postgres_dsn, warn
+from _lib import dry, fail, header, info, load_env, ok, require_dev_env, resolve_postgres_dsn
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 

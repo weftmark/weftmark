@@ -10,7 +10,9 @@ export function PublicFooter() {
           <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
           <span className="text-muted-foreground">Contact</span>
         </nav>
-        <p className="text-xs text-muted-foreground">Built by a weaver, with AI assistance.</p>
+        <Link to="/about" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+          Built by a hobbyist, with AI assistance.
+        </Link>
       </div>
     </footer>
   );

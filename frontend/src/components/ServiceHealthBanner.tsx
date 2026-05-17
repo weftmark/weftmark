@@ -16,7 +16,7 @@ export function ServiceHealthBanner() {
           setReadiness({ status: "error", services: [{ name: "backend", ok: false, critical: true, message: "unreachable", detail: "" }] });
         });
     check();
-    const id = setInterval(check, 30_000);
+    const id = setInterval(check, 300_000);
     return () => clearInterval(id);
   }, []);
 

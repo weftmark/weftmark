@@ -5,7 +5,7 @@ interface Props {
 export function EulaContent({ bodyHtml }: Props) {
   return (
     <div
-      className="text-sm leading-relaxed space-y-2"
+      className="eula-content text-sm leading-relaxed space-y-2"
       dangerouslySetInnerHTML={{ __html: bodyHtml }}
     />
   );

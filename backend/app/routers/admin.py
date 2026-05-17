@@ -25,7 +25,7 @@ from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
 from app.models.pending_signup import PendingSignup
-from app.models.project import Project, ProjectPhoto
+from app.models.project import Project, ProjectPhoto, ProjectStep
 from app.models.server_event import ServerEvent
 from app.models.user import User
 from app.models.yarn import Yarn
@@ -126,6 +126,26 @@ class AdminDbInfoResponse(BaseModel):
     is_at_head: bool
     last_squash_at: str | None
     last_migrated_at: str | None
+
+
+class StorageReportFile(BaseModel):
+    entity_type: str
+    entity_id: uuid.UUID
+    filename: str
+    s3_key: str
+    size_bytes: int | None
+    s3_verified: bool
+    exists_in_s3: bool | None
+
+
+class UserStorageReportResponse(BaseModel):
+    user_id: uuid.UUID
+    email: str
+    display_name: str | None
+    files: list[StorageReportFile]
+    total_bytes: int
+    file_count: int
+    missing_from_s3_count: int
 
 
 class ServicePermCheck(BaseModel):
@@ -756,6 +776,35 @@ async def delete_user(
     log.info("admin_delete_initiated user_id=%s by=%s", user_id, requesting_user.email)
 
     return {"status": "pending", "user_id": str(user_id)}
+
+
+@router.get("/users/{user_id}/storage-report", response_model=UserStorageReportResponse)
+async def get_user_storage_report(
+    user_id: uuid.UUID,
+    verify_s3: bool = False,
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> UserStorageReportResponse:
+    from app.services.storage_quota import get_user_files_report
+
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    raw_files = await get_user_files_report(db, user_id, verify_s3=verify_s3)
+    files = [StorageReportFile(**f) for f in raw_files]
+    total_bytes = sum(f.size_bytes for f in files if f.size_bytes is not None)
+    missing = sum(1 for f in files if f.exists_in_s3 is False)
+
+    return UserStorageReportResponse(
+        user_id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        files=files,
+        total_bytes=total_bytes,
+        file_count=len(files),
+        missing_from_s3_count=missing,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2403,3 +2452,104 @@ async def delete_credential(
         raise HTTPException(status_code=404, detail="Credential not found")
     await db.delete(cred)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Admin: project share slug report
+# ---------------------------------------------------------------------------
+
+
+class AdminSlugRecord(BaseModel):
+    slug: str
+    project_id: uuid.UUID
+    project_name: str
+    project_status: str
+    owner_email: str
+    share_visibility: str
+    share_expires_at: datetime | None
+    created_at: datetime
+
+
+@router.get("/project-slugs", response_model=list[AdminSlugRecord])
+async def list_project_slugs(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[AdminSlugRecord]:
+    rows = await db.scalars(
+        select(Project).where(
+            Project.share_slug.isnot(None),
+            Project.share_visibility != "private",
+            Project.deleted_at.is_(None),
+        )
+    )
+    projects = rows.all()
+    owner_ids = list({p.owner_id for p in projects})
+    owners = {}
+    if owner_ids:
+        user_rows = await db.scalars(select(User).where(User.id.in_(owner_ids)))
+        owners = {u.id: u.email for u in user_rows.all()}
+
+    return [
+        AdminSlugRecord(
+            slug=slug,
+            project_id=p.id,
+            project_name=p.name,
+            project_status=p.status,
+            owner_email=owners.get(p.owner_id, "unknown"),
+            share_visibility=p.share_visibility,
+            share_expires_at=p.share_expires_at,
+            created_at=p.created_at,
+        )
+        for p in projects
+        if (slug := p.share_slug) is not None
+    ]
+
+
+@router.delete("/project-slugs/{slug}", status_code=204)
+async def admin_revoke_project_slug(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> None:
+    project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
+    if project is None:
+        raise HTTPException(status_code=404, detail="Slug not found")
+    project.share_slug = None
+    project.share_visibility = "private"
+    project.share_expires_at = None
+    await db.commit()
+
+
+class AdminProjectStepRecord(BaseModel):
+    id: uuid.UUID
+    event_type: str
+    from_pick: int
+    to_pick: int
+    dwell_ms: int | None
+    created_at: datetime
+
+
+@router.get("/project-steps", response_model=list[AdminProjectStepRecord])
+async def admin_list_project_steps(
+    project_id: uuid.UUID,
+    limit: int = 200,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[AdminProjectStepRecord]:
+    rows = await db.scalars(
+        select(ProjectStep)
+        .where(ProjectStep.project_id == project_id)
+        .order_by(ProjectStep.created_at.desc())
+        .limit(limit)
+    )
+    return [
+        AdminProjectStepRecord(
+            id=s.id,
+            event_type=s.event_type,
+            from_pick=s.from_pick,
+            to_pick=s.to_pick,
+            dwell_ms=s.dwell_ms,
+            created_at=s.created_at,
+        )
+        for s in rows.all()
+    ]

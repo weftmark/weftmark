@@ -18,7 +18,20 @@ from app.version import VERSION
 settings = get_settings()
 configure_logging(settings.log_level)
 
-from app.routers import admin, auth, dev, drafts, health, logs, looms, projects, system, users, yarn  # noqa: E402
+from app.routers import (  # noqa: E402
+    admin,
+    auth,
+    dev,
+    drafts,
+    feedback,
+    health,
+    logs,
+    looms,
+    projects,
+    system,
+    users,
+    yarn,
+)
 from app.telemetry import configure_telemetry  # noqa: E402
 
 configure_telemetry(settings)
@@ -220,4 +233,6 @@ app.include_router(drafts.router)
 app.include_router(looms.router)
 app.include_router(yarn.router)
 app.include_router(projects.router)
+app.include_router(projects.share_router)
+app.include_router(feedback.router)
 app.include_router(admin.router)

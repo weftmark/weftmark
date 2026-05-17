@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { downloadAuthed } from "@/api/client";
 import { resizeImageToFile, formatBytes } from "@/lib/image-utils";
+import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
 
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — must match backend MAX_FILE_SIZE
 const MAX_VERSION_PHOTOS = 5;            // must match backend MAX_VERSION_PHOTOS
@@ -64,6 +65,8 @@ function ConfirmInline({
 // ---------------------------------------------------------------------------
 
 function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+  const { user } = useAuthContext();
+  const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -136,21 +139,25 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
         </div>
       )}
       <div className="flex flex-col gap-2">
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
-        <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !!pendingFile}>
-          {uploading ? "Uploading…" : loom.has_photo ? "Replace photo" : "Upload photo"}
-        </Button>
-        {loom.has_photo && !confirmRemove && (
-          <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={uploading || !!pendingFile}>
-            Remove photo
-          </Button>
-        )}
-        {loom.has_photo && confirmRemove && (
-          <ConfirmInline
-            label="Remove this photo?"
-            onConfirm={handleDelete}
-            onCancel={() => setConfirmRemove(false)}
-          />
+        {!isReadOnly && (
+          <>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !!pendingFile}>
+              {uploading ? "Uploading…" : loom.has_photo ? "Replace photo" : "Upload photo"}
+            </Button>
+            {loom.has_photo && !confirmRemove && (
+              <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={uploading || !!pendingFile}>
+                Remove photo
+              </Button>
+            )}
+            {loom.has_photo && confirmRemove && (
+              <ConfirmInline
+                label="Remove this photo?"
+                onConfirm={handleDelete}
+                onCancel={() => setConfirmRemove(false)}
+              />
+            )}
+          </>
         )}
         {pendingFile && (
           <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
@@ -454,7 +461,7 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
           placeholder="e.g. Second warp beam"
           disabled={saving}
         />
-        <Button size="sm" variant="outline" type="submit" disabled={saving || !input.trim()}>
+        <Button size="sm" type="submit" disabled={saving || !input.trim()}>
           Add
         </Button>
       </form>
@@ -587,7 +594,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
             disabled={saving}
           />
         </div>
-        <Button size="sm" variant="outline" type="submit" disabled={saving || !dentsInput}>
+        <Button size="sm" type="submit" disabled={saving || !dentsInput}>
           Add reed
         </Button>
       </form>
@@ -616,6 +623,7 @@ function VersionCard({
   onClone: (v: LoomVersion) => void;
 }) {
   const { user } = useAuthContext();
+  const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
   const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [open, setOpen] = useState(isCurrent);
   const [editing, setEditing] = useState(false);
@@ -758,14 +766,16 @@ function VersionCard({
                     })() : <span className="italic text-muted-foreground">Not set</span>}
                   </dd>
                 </dl>
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
-                  className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  title="Edit configuration"
-                >
-                  <AppIcons.edit className="h-4 w-4" />
-                </button>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(true)}
+                    className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    title="Edit configuration"
+                  >
+                    <AppIcons.edit className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -780,14 +790,16 @@ function VersionCard({
             <VersionReceipts loom={loom} version={version} onChanged={onChanged} />
           </div>
 
-          <div className="border-t pt-3">
-            <Button size="sm" variant="outline" onClick={() => onClone(version)}>
-              Clone this configuration
-            </Button>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Creates a new configuration pre-filled with {displayName}'s spec and accessories.
-            </p>
-          </div>
+          {!isReadOnly && (
+            <div className="border-t pt-3">
+              <Button size="sm" variant="outline" onClick={() => onClone(version)}>
+                Clone this configuration
+              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Creates a new configuration pre-filled with {displayName}'s spec and accessories.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -802,6 +814,7 @@ export function LoomDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthContext();
   const [showAddVersion, setShowAddVersion] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [cloneSource, setCloneSource] = useState<LoomVersion | null>(null);
@@ -853,9 +866,12 @@ export function LoomDetailPage() {
 
   const sortedVersions = [...loom.versions].sort((a, b) => b.version_number - a.version_number);
   const currentVersionId = loom.current_version?.id;
+  const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
+    <div className="max-w-3xl mx-auto w-full">
+      {isReadOnly && <SuperuserInspectionBanner />}
+      <div className="p-6 space-y-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <Link to="/looms" className="text-muted-foreground hover:text-foreground">Equipment</Link>
@@ -864,8 +880,8 @@ export function LoomDetailPage() {
           <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>
-          <Button size="sm" onClick={() => setShowAddVersion(true)}>Add version</Button>
+          {!isReadOnly && <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>}
+          {!isReadOnly && <Button size="sm" onClick={() => setShowAddVersion(true)}>Add version</Button>}
         </div>
       </div>
         {!SUPPORTED_LOOM_TYPES.has(loom.loom_type) && (
@@ -934,38 +950,40 @@ export function LoomDetailPage() {
           <ProjectSummaryList projects={loomProjects} />
         </section>
 
-        <section className="border-t pt-6">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between text-sm font-medium text-destructive hover:text-destructive/80"
-            onClick={() => { setDangerZoneOpen((o) => !o); setConfirmDelete(false); }}
-          >
-            <span>Danger zone</span>
-            <span className="text-xs text-muted-foreground">{dangerZoneOpen ? "▲ collapse" : "▼ expand"}</span>
-          </button>
-          {dangerZoneOpen && (
-            <div className="mt-4 rounded-md border border-destructive/30 px-4 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium">Delete this loom</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">Permanently removes the loom and all its configurations. This cannot be undone.</p>
-                </div>
-                {!confirmDelete ? (
-                  <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
-                    Delete loom
-                  </Button>
-                ) : (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
-                    <Button size="sm" onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      {deleting ? "Deleting…" : "Confirm delete"}
-                    </Button>
+        {!isReadOnly && (
+          <section className="border-t pt-6">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between text-sm font-medium text-destructive hover:text-destructive/80"
+              onClick={() => { setDangerZoneOpen((o) => !o); setConfirmDelete(false); }}
+            >
+              <span>Danger zone</span>
+              <span className="text-xs text-muted-foreground">{dangerZoneOpen ? "▲ collapse" : "▼ expand"}</span>
+            </button>
+            {dangerZoneOpen && (
+              <div className="mt-4 rounded-md border border-destructive/30 px-4 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Delete this loom</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Permanently removes the loom and all its configurations. This cannot be undone.</p>
                   </div>
-                )}
+                  {!confirmDelete ? (
+                    <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
+                      Delete loom
+                    </Button>
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
+                      <Button size="sm" onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        {deleting ? "Deleting…" : "Confirm delete"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        )}
 
       {showAddVersion && (
         <AddVersionModal loomId={loom.id} loomType={loom.loom_type} onSuccess={handleVersionAdded} onClose={() => setShowAddVersion(false)} />
@@ -976,6 +994,7 @@ export function LoomDetailPage() {
       {cloneSource && (
         <CloneVersionModal loomId={loom.id} source={cloneSource} onSuccess={handleCloned} onClose={() => setCloneSource(null)} />
       )}
+      </div>
     </div>
   );
 }

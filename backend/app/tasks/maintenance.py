@@ -9,6 +9,7 @@ Covers:
 - send_admin_digest                     — weekly digest email to all active admins
 - backfill_project_drawdown_previews    — dispatch preview generation for active-project drafts missing tiles
 - prune_inactive_project_tiles          — delete cached tiles for inactive or soft-deleted projects
+- expire_project_slugs                  — revoke share slugs whose share_expires_at has passed
 """
 
 import logging
@@ -753,3 +754,44 @@ def prune_inactive_project_tiles(self, inactive_days: int = 10) -> dict:
         inactive_days,
     )
     return {"pruned_projects": pruned_projects, "pruned_tiles": pruned_tiles}
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
+    name="app.tasks.maintenance.expire_project_slugs",
+)
+def expire_project_slugs(self) -> dict:
+    """Revoke share slugs whose share_expires_at has passed."""
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    from app.config import get_settings
+    from app.models.project import Project
+
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    revoked = 0
+
+    engine = create_engine(settings.database_url_sync)
+    try:
+        with Session(engine) as db:
+            expired = db.scalars(
+                select(Project).where(
+                    Project.share_slug.isnot(None),
+                    Project.share_expires_at.isnot(None),
+                    Project.share_expires_at <= now,
+                    Project.deleted_at.is_(None),
+                )
+            ).all()
+            for project in expired:
+                project.share_slug = None
+                project.share_visibility = "private"
+                project.share_expires_at = None
+                revoked += 1
+            db.commit()
+    finally:
+        engine.dispose()
+
+    log.info("expire_project_slugs revoked=%d", revoked)
+    return {"revoked": revoked}

@@ -17,8 +17,11 @@ import {
 import { drawdownPreviewUrl, projectDrawdownPreviewUrl } from "@/api/projects";
 import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
+import { ShareModal } from "@/components/projects/ShareModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button } from "@/components/ui/button";
+import { ZoomablePreviewModal } from "@/components/ui/ZoomablePreviewModal";
+import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
 
 // ---------------------------------------------------------------------------
 // Color utilities
@@ -88,6 +91,8 @@ function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
     return () => clearInterval(id);
   }, [metrics.current_session_started_at]);
 
+  const avgSec = metrics.avg_pick_dwell_ms != null ? (metrics.avg_pick_dwell_ms / 1000).toFixed(1) : null;
+
   return (
     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
       <dt className="text-muted-foreground">Total woven picks</dt>
@@ -96,6 +101,12 @@ function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
       <dd>{metrics.total_advance_steps}</dd>
       <dt className="text-muted-foreground">Reverses</dt>
       <dd>{metrics.total_reverse_steps}</dd>
+      {avgSec != null && (
+        <>
+          <dt className="text-muted-foreground">Avg pick time</dt>
+          <dd>{avgSec}s</dd>
+        </>
+      )}
       <dt className="text-muted-foreground">Sessions</dt>
       <dd>{metrics.total_sessions}</dd>
       <dt className="text-muted-foreground">Total weaving time</dt>
@@ -118,36 +129,24 @@ function DesignPreviewModal({
   projectId,
   hasDrawdownPreview,
   colorReplacements,
+  draftName,
   onClose,
 }: {
   projectId: string;
   hasDrawdownPreview: boolean;
   colorReplacements: Record<string, string> | null;
+  draftName: string;
   onClose: () => void;
 }) {
   const src = hasDrawdownPreview
     ? projectDrawdownPreviewUrl(projectId)
     : drawdownPreviewUrl(projectId, colorReplacements ?? undefined);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-    >
-      <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={onClose}
-          className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"
-        >
-          Close ✕
-        </button>
-        <AuthedImage
-          src={src}
-          alt="WIF design preview"
-          className="max-h-[80vh] mx-auto block rounded-lg shadow-2xl"
-          style={{ imageRendering: "pixelated" }}
-        />
-      </div>
-    </div>
+    <ZoomablePreviewModal
+      src={src}
+      title={draftName}
+      onClose={onClose}
+    />
   );
 }
 
@@ -163,32 +162,46 @@ function PickDisplay({
   projectType,
   colorMode,
   showWeftColor,
+  compact = false,
 }: {
   pick: PickRow;
   totalCount: number;
   projectType: string;
   colorMode: ColorMode;
   showWeftColor: boolean;
+  compact?: boolean;
 }) {
   const count = Math.max(totalCount, 1);
   const weftHex = pick.color ?? null;
+  // Scale number size to fill cell: larger font for fewer boxes, smaller for many.
+  const cellFontSize = compact
+    ? `${Math.max(11, Math.min(32, Math.floor(160 / count)))}px`
+    : `${Math.max(14, Math.min(44, Math.floor(210 / count)))}px`;
 
   return (
-    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4 mx-auto w-full"
-      style={{ maxWidth: `${Math.min(count * 80 + 80, 720)}px` }}>
-      {/* Activity type icon — centered vertically */}
-      <div className="shrink-0 flex items-center text-primary/50">
-        {projectType === "lift" ? (
-          <AppIcons.lift className="h-8 w-8" strokeWidth={1.5} />
-        ) : (
-          <AppIcons.treadle className="h-8 w-8" strokeWidth={1.5} />
-        )}
-      </div>
+    <div
+      className={`rounded-xl bg-primary/5 dark:bg-primary/10 px-4 py-4 flex items-stretch gap-4 mx-auto w-full ${
+        compact
+          ? "border border-primary/20 h-20 opacity-75"
+          : "border-2 border-primary/30 h-28"
+      }`}
+      style={compact ? undefined : { maxWidth: `${Math.min(count * 80 + 80, 720)}px` }}
+    >
+      {/* Activity type icon — centered vertically; omitted on compact prev/next cards */}
+      {!compact && (
+        <div className="shrink-0 flex items-center text-primary/50">
+          {projectType === "lift" ? (
+            <AppIcons.lift className="h-8 w-8" strokeWidth={1.5} />
+          ) : (
+            <AppIcons.treadle className="h-8 w-8" strokeWidth={1.5} />
+          )}
+        </div>
+      )}
 
       {/* Box grid + optional weft bar — fills remaining height */}
       <div className="flex-1 flex flex-col gap-2 min-h-0">
         <div
-          className="flex-1 grid gap-1.5 min-h-0"
+          className="flex-1 grid gap-1 min-h-0"
           style={{ gridTemplateColumns: `repeat(${count}, 1fr)` }}
         >
           {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
@@ -198,36 +211,38 @@ function PickDisplay({
                 const fg = contrastColor(weftHex);
                 return (
                   <div key={n} style={{ backgroundColor: weftHex, borderColor: fg }}
-                    className="rounded-md border-2 flex items-center justify-center text-xs font-bold">
-                    <span style={{ color: fg }}>{n}</span>
+                    className="rounded-md border-2 flex items-center justify-center font-bold">
+                    <span style={{ color: fg, fontSize: cellFontSize }}>{n}</span>
                   </div>
                 );
               }
               if (colorMode === "strip") {
                 return (
                   <div key={n}
-                    className="rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center text-xs font-bold">
-                    <span className="absolute bottom-0 left-0 right-0 h-[20%]"
-                      style={{ backgroundColor: weftHex }} />
-                    <span className="relative text-primary-foreground">{n}</span>
+                    className="rounded-md border-2 overflow-hidden border-primary bg-primary flex flex-col font-bold">
+                    <div className="flex-1 flex items-center justify-center">
+                      <span className="text-primary-foreground" style={{ fontSize: cellFontSize }}>{n}</span>
+                    </div>
+                    <div className="h-[20%] shrink-0" style={{ backgroundColor: weftHex }} />
                   </div>
                 );
               }
             }
             return (
               <div key={n}
-                className={`rounded-md border-2 flex items-center justify-center text-xs font-bold ${
+                className={`rounded-md border-2 flex items-center justify-center font-bold ${
                   active
                     ? "bg-primary border-primary text-primary-foreground"
                     : "border-border bg-muted/60 text-foreground/70"
-                }`}>
+                }`}
+                style={{ fontSize: cellFontSize }}>
                 {n}
               </div>
             );
           })}
         </div>
 
-        {showWeftColor && weftHex && (
+        {!compact && showWeftColor && weftHex && (
           <div
             className="h-6 w-full shrink-0 rounded-md flex items-center justify-center text-xs font-semibold uppercase tracking-wider"
             style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
@@ -704,11 +719,13 @@ function PhotoGrid({
   photos,
   onUploaded,
   onDeleted,
+  readOnly = false,
 }: {
   projectId: string;
   photos: ProjectPhoto[];
   onUploaded: (p: ProjectPhoto) => void;
   onDeleted: (id: string) => void;
+  readOnly?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -743,7 +760,7 @@ function PhotoGrid({
     <div>
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-medium">Photos <span className="text-muted-foreground font-normal">({photos.length}/10)</span></p>
-        {photos.length < 10 && (
+        {!readOnly && photos.length < 10 && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -764,14 +781,18 @@ function PhotoGrid({
       </div>
       {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
       {photos.length === 0 ? (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50"
-        >
-          Add photos to document your work
-        </button>
+        readOnly ? (
+          <p className="text-sm text-muted-foreground/60 italic">No photos.</p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            Add photos to document your work
+          </button>
+        )
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {photos.map((p) => (
@@ -782,17 +803,19 @@ function PhotoGrid({
                 className="w-full h-full object-cover rounded-md border cursor-pointer"
                 onClick={() => setLightbox(p.id)}
               />
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }}
-                className="absolute top-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
-                aria-label="Delete photo"
-              >
-                ✕
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }}
+                  className="absolute top-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
+                  aria-label="Delete photo"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
-          {photos.length < 10 && (
+          {!readOnly && photos.length < 10 && (
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -1003,6 +1026,9 @@ export function ProjectDetailPage() {
   const [hideTrailingUnused, setHideTrailingUnused] = useState(
     () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
   );
+  const [showPickCards, setShowPickCards] = useState(
+    () => localStorage.getItem("proj-view:showPickCards") !== "false"
+  );
   const [panelOpen, setPanelOpen] = useState(
     () => localStorage.getItem("proj-view:panelOpen") === "true"
   );
@@ -1012,6 +1038,7 @@ export function ProjectDetailPage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState("");
   const [showAssignLoom, setShowAssignLoom] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
@@ -1081,9 +1108,19 @@ export function ProjectDetailPage() {
     setStepping(true);
     try {
       const updated = await jumpProject(id, pick);
-      queryClient.setQueryData<typeof project>(["project", id], (old) =>
-        old ? { ...updated, photos: old.photos } : updated
-      );
+      // Merge only the fields a jump can change — preserves loom/draft metadata
+      // that determines shaft/treadle display count.
+      queryClient.setQueryData<typeof project>(["project", id], (old) => {
+        if (!old) return updated;
+        return {
+          ...old,
+          current_pick: updated.current_pick,
+          current_item: updated.current_item,
+          total_picks: updated.total_picks,
+          num_items: updated.num_items,
+          status: updated.status,
+        };
+      });
     } finally {
       setStepping(false);
     }
@@ -1191,9 +1228,17 @@ export function ProjectDetailPage() {
     setActionLoading(true);
     try {
       const updated = await jumpItem(id, item);
-      queryClient.setQueryData<typeof project>(["project", id], (old) =>
-        old ? { ...updated, photos: old.photos } : updated
-      );
+      queryClient.setQueryData<typeof project>(["project", id], (old) => {
+        if (!old) return updated;
+        return {
+          ...old,
+          current_pick: updated.current_pick,
+          current_item: updated.current_item,
+          total_picks: updated.total_picks,
+          num_items: updated.num_items,
+          status: updated.status,
+        };
+      });
     } finally { setActionLoading(false); }
   }, [id, queryClient]);
 
@@ -1307,6 +1352,8 @@ export function ProjectDetailPage() {
   const isActiveTracking = (project.status === "active" || project.status === "created") && !isPlanning;
   const isAbandoned = project.status === "abandoned";
 
+  const isReadOnly = !!user?.is_superuser && project.owner_id !== user.id;
+
   // Badge for planning vs active
   const badgeClasses = isPlanning
     ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
@@ -1317,6 +1364,7 @@ export function ProjectDetailPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {isReadOnly && <SuperuserInspectionBanner />}
       {/* Page header */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
@@ -1335,7 +1383,9 @@ export function ProjectDetailPage() {
             <Link to={`/projects/${project.id}`} className="text-muted-foreground hover:text-foreground truncate max-w-[12rem]">{project.name}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
-          {editingName ? (
+          {isReadOnly ? (
+            <span className="font-semibold truncate">{project.name}</span>
+          ) : editingName ? (
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -1388,17 +1438,46 @@ export function ProjectDetailPage() {
           >
             View design
           </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title="View settings"
-            aria-label="Open view settings"
+          <Link
+            to={`/projects/${project.id}/warping-plan`}
+            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hidden sm:inline-flex items-center gap-1"
+            title="View printable weave plan"
           >
-            <AppIcons.settings className="h-4 w-4" />
-          </button>
+            Weave Plan
+          </Link>
+          {!isReadOnly && (
+            <button
+              onClick={() => setShareModalOpen(true)}
+              className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="Share project"
+              aria-label="Share project"
+            >
+              <AppIcons.share className="h-4 w-4" />
+            </button>
+          )}
+          {!isReadOnly && (
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="View settings"
+              aria-label="Open view settings"
+            >
+              <AppIcons.settings className="h-4 w-4" />
+            </button>
+          )}
           <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
             {badgeLabel}
           </span>
+          {!isReadOnly && project.share_slug && project.share_visibility !== "private" && (
+            <button
+              onClick={() => setShareModalOpen(true)}
+              className="rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
+              title="Project is shared — click to manage"
+            >
+              <AppIcons.share className="h-3 w-3" />
+              Shared
+            </button>
+          )}
           {presentModeSupported && (
             <button
               onClick={togglePresentMode}
@@ -1532,13 +1611,58 @@ export function ProjectDetailPage() {
               )}
             </div>
           ) : picksData ? (
-            <PickDisplay
-              pick={picksData.picks[currentPickIndex]}
-              totalCount={displayCount}
-              projectType={project.project_type}
-              colorMode={colorMode}
-              showWeftColor={showWeftColor}
-            />
+            showPickCards ? (
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr] gap-3 items-center w-full">
+                {/* Prev pick card — desktop only */}
+                <div className="hidden md:block">
+                  {currentPickIndex > 0 ? (
+                    <div>
+                      <p className="text-xs text-muted-foreground text-center mb-1.5">← Pick {picksData.picks[currentPickIndex - 1].pick}</p>
+                      <PickDisplay
+                        pick={picksData.picks[currentPickIndex - 1]}
+                        totalCount={displayCount}
+                        projectType={project.project_type}
+                        colorMode={colorMode}
+                        showWeftColor={false}
+                        compact
+                      />
+                    </div>
+                  ) : <div className="h-20" />}
+                </div>
+                {/* Current pick */}
+                <PickDisplay
+                  pick={picksData.picks[currentPickIndex]}
+                  totalCount={displayCount}
+                  projectType={project.project_type}
+                  colorMode={colorMode}
+                  showWeftColor={showWeftColor}
+                />
+                {/* Next pick card — desktop only */}
+                <div className="hidden md:block">
+                  {currentPickIndex < picksData.picks.length - 1 ? (
+                    <div>
+                      <p className="text-xs text-muted-foreground text-center mb-1.5">Pick {picksData.picks[currentPickIndex + 1].pick} →</p>
+                      <PickDisplay
+                        pick={picksData.picks[currentPickIndex + 1]}
+                        totalCount={displayCount}
+                        projectType={project.project_type}
+                        colorMode={colorMode}
+                        showWeftColor={false}
+                        compact
+                      />
+                    </div>
+                  ) : <div className="h-20" />}
+                </div>
+              </div>
+            ) : (
+              <PickDisplay
+                pick={picksData.picks[currentPickIndex]}
+                totalCount={displayCount}
+                projectType={project.project_type}
+                colorMode={colorMode}
+                showWeftColor={showWeftColor}
+              />
+            )
           ) : (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-sm text-muted-foreground">Pick data loading…</p>
@@ -1575,7 +1699,7 @@ export function ProjectDetailPage() {
 
         {/* Step controls — active tracking and planning */}
         <div className="w-full px-4 pb-6">
-          {(isActiveTracking || isPlanning) && (
+          {!isReadOnly && (isActiveTracking || isPlanning) && (
             <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8 mb-4">
               {/* Left 1/3 on desktop, below step buttons on mobile */}
               <div className="order-2 lg:order-1 lg:flex lg:justify-center">
@@ -1600,7 +1724,7 @@ export function ProjectDetailPage() {
             </div>
           )}
 
-          {(isActiveTracking || isPlanning) && (
+          {!isReadOnly && (isActiveTracking || isPlanning) && (
             <p className="text-center text-sm text-muted-foreground">
               ← → arrow keys or spacebar to navigate picks
             </p>
@@ -1628,11 +1752,12 @@ export function ProjectDetailPage() {
         {panelOpen && (
           <div className="overflow-y-auto max-h-[55dvh] border-t border-border/50">
             <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0">
-          {!isCompleted && (
+          {(!isCompleted || isReadOnly) && (
             <CollapsibleSection title={`Photos (${project.photos.length}/10)`} defaultOpen={isAbandoned}>
               <PhotoGrid
                 projectId={project.id}
                 photos={project.photos}
+                readOnly={isReadOnly}
                 onUploaded={(p) =>
                   queryClient.setQueryData<typeof project>(["project", id], (old) =>
                     old ? { ...old, photos: [...old.photos, p] } : old
@@ -1654,7 +1779,13 @@ export function ProjectDetailPage() {
           )}
 
           <CollapsibleSection title="Notes" defaultOpen={!!project.notes}>
-            {editingNotes ? (
+            {isReadOnly ? (
+              project.notes ? (
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{project.notes}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground/60 italic">No notes.</p>
+              )
+            ) : editingNotes ? (
               <textarea
                 autoFocus
                 className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
@@ -1729,7 +1860,7 @@ export function ProjectDetailPage() {
           </CollapsibleSection>
 
           {/* Active tracking: complete / abandon */}
-          {isActiveTracking && (
+          {!isReadOnly && isActiveTracking && (
             <CollapsibleSection title="Actions">
               <div className="flex flex-wrap gap-2">
                 {!confirmComplete && !confirmAbandon && (
@@ -1762,7 +1893,7 @@ export function ProjectDetailPage() {
             </CollapsibleSection>
           )}
 
-          {project.status === "abandoned" && (
+          {!isReadOnly && project.status === "abandoned" && (
             <CollapsibleSection title="Actions">
               <div className="space-y-3">
                 {!confirmRestart && !restartConflict && (
@@ -1800,7 +1931,7 @@ export function ProjectDetailPage() {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Clone project">
+          {!isReadOnly && <CollapsibleSection title="Clone project">
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">Create a new project with the same configuration, starting at pick 1.</p>
               {!confirmClone && !cloneConflict && (
@@ -1835,9 +1966,9 @@ export function ProjectDetailPage() {
                 </div>
               )}
             </div>
-          </CollapsibleSection>
+          </CollapsibleSection>}
 
-          <CollapsibleSection title="Danger zone">
+          {!isReadOnly && <CollapsibleSection title="Danger zone">
             {!confirmDelete ? (
               <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>
                 Delete project
@@ -1860,7 +1991,7 @@ export function ProjectDetailPage() {
                 </Button>
               </div>
             )}
-          </CollapsibleSection>
+          </CollapsibleSection>}
             </div>
           </div>
         )}
@@ -1871,6 +2002,7 @@ export function ProjectDetailPage() {
           projectId={project.id}
           hasDrawdownPreview={project.has_drawdown_preview}
           colorReplacements={project.color_replacements}
+          draftName={project.draft_name}
           onClose={() => setShowDesignPreview(false)}
         />
       )}
@@ -1890,6 +2022,18 @@ export function ProjectDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["projects"] });
           }}
           onClose={() => setShowAssignLoom(false)}
+        />
+      )}
+
+      {shareModalOpen && (
+        <ShareModal
+          project={project}
+          onUpdated={(updated) => {
+            queryClient.setQueryData(["project", id], (old: typeof project) =>
+              old ? { ...old, ...updated } : updated
+            );
+          }}
+          onClose={() => setShareModalOpen(false)}
         />
       )}
 
@@ -1920,6 +2064,7 @@ export function ProjectDetailPage() {
                   { label: "Progress bar", value: showProgress, key: "proj-view:showProgress", setter: setShowProgress },
                   { label: "Drawdown pattern", value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
                   { label: "Weft color", value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
+                  { label: "Prev/next pick cards", value: showPickCards, key: "proj-view:showPickCards", setter: setShowPickCards },
                 ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void }[]).map(({ label, value, key, setter }) => (
                   <div key={label} className="flex items-center justify-between">
                     <span className="text-sm">{label}</span>
@@ -1938,11 +2083,17 @@ export function ProjectDetailPage() {
               {/* Trailing unused toggle — only shown when there are trailing boxes */}
               {trailingUnused > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Treadle display</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {project.project_type === "lift" ? "Shaft display" : "Treadle display"}
+                  </p>
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-sm">Hide trailing unused</span>
-                      <p className="text-xs text-muted-foreground">{trailingUnused} never-used trailing {trailingUnused === 1 ? "box" : "boxes"}</p>
+                      <span className="text-sm">
+                        Hide unused {project.project_type === "lift" ? "shafts" : "treadles"}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        {trailingUnused} unused trailing {trailingUnused === 1 ? (project.project_type === "lift" ? "shaft" : "treadle") : (project.project_type === "lift" ? "shafts" : "treadles")}
+                      </p>
                     </div>
                     <button
                       role="switch"

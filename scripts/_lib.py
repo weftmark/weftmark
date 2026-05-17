@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 # Force UTF-8 output on Windows terminals that default to CP1252.
 if hasattr(sys.stdout, "reconfigure"):

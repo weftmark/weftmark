@@ -23,6 +23,7 @@ def _make_celery() -> Celery:
         include=[
             "app.tasks.deletion",
             "app.tasks.email_task",
+            "app.tasks.feedback_dispatch",
             "app.tasks.geo",
             "app.tasks.maintenance",
             "app.tasks.metrics",
@@ -62,6 +63,10 @@ def _make_celery() -> Celery:
             "refresh-geoip-database": {
                 "task": "app.tasks.geo.refresh_geoip_database",
                 "schedule": 604800.0,  # weekly
+            },
+            "expire-project-slugs": {
+                "task": "app.tasks.maintenance.expire_project_slugs",
+                "schedule": 86400.0,  # nightly
             },
         },
     )
@@ -196,5 +201,51 @@ def _run_post_migrate_backfills(sender=None, **kwargs):
 
         run_post_migrate_backfills.delay()
         log.info("post_migrate_backfills queued on worker_ready")
+    except Exception:
+        pass
+
+
+@worker_ready.connect
+def _run_startup_sweeps(sender=None, **kwargs):
+    """Fire recovery sweeps once per deploy on the first worker to start.
+
+    Uses a Redis SETNX lock keyed by VERSION so sweeps run once per deploy
+    regardless of how many worker processes start. Covers work that may have
+    stalled while the worker was down:
+    - retry_failed_feedback: stale pending/failed GitHub Discussion dispatches
+    - retry_failed_previews: drafts missing a drawdown preview
+    """
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        lock_key = f"weftmark:startup_sweep:{VERSION}"
+        acquired = client.set(lock_key, "1", nx=True, ex=300)
+        client.close()
+        if not acquired:
+            return
+
+        from app.services.task_history import record_queued
+
+        # send_task dispatches by name without a local registry lookup, avoiding
+        # NotRegistered races during worker_ready when some include modules may not
+        # yet be visible to the signal handler's app instance. countdown=15 gives
+        # pool processes time to finish initializing before executing.
+        t1 = celery_app.send_task(
+            "app.tasks.feedback_dispatch.retry_failed_feedback",
+            kwargs={"limit": 20},
+            countdown=15,
+        )
+        record_queued(settings, t1.id, "app.tasks.feedback_dispatch.retry_failed_feedback", "startup:feedback_retry")
+        log.info("startup_sweep feedback_retry task_id=%s", t1.id)
+
+        t2 = celery_app.send_task(
+            "app.tasks.maintenance.retry_failed_previews",
+            kwargs={"limit": 50},
+            countdown=15,
+        )
+        record_queued(settings, t2.id, "app.tasks.maintenance.retry_failed_previews", "startup:preview_retry")
+        log.info("startup_sweep preview_retry task_id=%s", t2.id)
     except Exception:
         pass

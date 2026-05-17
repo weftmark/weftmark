@@ -43,8 +43,13 @@ import {
   createCredential,
   patchCredential,
   deleteCredential,
+  listProjectSlugs,
+  adminRevokeSlug,
+  listProjectSteps,
+  type AdminProjectStep,
   type CredentialExpiry,
   type CredentialResource,
+  type AdminSlugRecord,
   type ScheduledTask,
   type TaskHistoryItem,
   type AdminUser,
@@ -64,12 +69,21 @@ import {
   type WorkerInfo,
   type ServerEvent,
 } from "@/api/admin";
+import {
+  listAdminFeedback,
+  softDeleteFeedback,
+  recoverFeedback,
+  retryFeedbackDispatch,
+  SUBMISSION_TYPE_LABELS,
+  type FeedbackRecord,
+  type SubmissionType,
+} from "@/api/feedback";
 import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from "@/api/health";
 import { EulaContent } from "@/components/EulaContent";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
 
-type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "credentials" | "superuser";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "credentials" | "superuser" | "slugs" | "feedback";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -156,7 +170,9 @@ export function AdminPage() {
       {tab === "services" && <ServicesTab />}
       {tab === "deps" && <DepsTab />}
       {tab === "audit" && <AuditLogTab />}
+      {tab === "feedback" && <FeedbackTab />}
       {tab === "credentials" && <CredentialsTab />}
+      {tab === "slugs" && <SlugsTab />}
       {tab === "superuser" && <SuperuserTab />}
     </div>
   );
@@ -1637,6 +1653,395 @@ function credentialStatus(daysRemaining: number | null): { label: string; cls: s
   if (daysRemaining <= 7) return { label: "Critical", cls: "bg-destructive/10 text-destructive" };
   if (daysRemaining <= 30) return { label: "Warning", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" };
   return { label: "OK", cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" };
+}
+
+// ---------------------------------------------------------------------------
+// Slugs tab
+// ---------------------------------------------------------------------------
+
+function SlugsTab() {
+  const queryClient = useQueryClient();
+
+  const { data: slugs = [], isLoading } = useQuery({
+    queryKey: ["admin", "project-slugs"],
+    queryFn: listProjectSlugs,
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (slug: string) => adminRevokeSlug(slug),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "project-slugs"] }),
+  });
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
+  }
+
+  if (slugs.length === 0) {
+    return <div className="text-sm text-muted-foreground py-8 text-center">No active share links.</div>;
+  }
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">Active share links</h2>
+        <span className="text-xs text-muted-foreground">{slugs.length} link{slugs.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div className="rounded-lg border border-border overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
+          <thead>
+            <tr className="border-b border-border bg-muted/30">
+              {["Slug", "Project", "Owner", "Visibility", "Status", "Expires", ""].map((h) => (
+                <th key={h} className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {slugs.map((row: AdminSlugRecord) => {
+              const expired = row.share_expires_at ? new Date(row.share_expires_at) <= new Date() : false;
+              return (
+                <tr key={row.slug} className="border-b border-border last:border-0 hover:bg-muted/20">
+                  <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">
+                    <a
+                      href={`/p/${row.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      {row.slug}
+                    </a>
+                  </td>
+                  <td className="px-3 py-2.5 max-w-[200px] truncate">{row.project_name}</td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground">{row.owner_email}</td>
+                  <td className="px-3 py-2.5 text-xs capitalize">{row.share_visibility}</td>
+                  <td className="px-3 py-2.5 text-xs capitalize">{row.project_status}</td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {row.share_expires_at ? (
+                      <span className={expired ? "text-destructive" : ""}>
+                        {new Date(row.share_expires_at).toLocaleDateString()}
+                        {expired && " (expired)"}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Never</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive h-7 px-2"
+                      onClick={() => {
+                        if (confirm(`Revoke share link for "${row.project_name}"?`)) {
+                          revokeMutation.mutate(row.slug);
+                        }
+                      }}
+                      disabled={revokeMutation.isPending}
+                    >
+                      Revoke
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+      <StepLogSection />
+    </div>
+  );
+}
+
+function StepLogSection() {
+  const [projectId, setProjectId] = useState("");
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
+
+  const { data: steps, isLoading, isError } = useQuery({
+    queryKey: ["admin", "project-steps", submittedId],
+    queryFn: () => listProjectSteps(submittedId!, 200),
+    enabled: !!submittedId,
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = projectId.trim();
+    if (trimmed) setSubmittedId(trimmed);
+  }
+
+  function formatDwell(ms: number | null) {
+    if (ms == null) return "—";
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  return (
+    <div className="space-y-3 mt-8">
+      <h2 className="text-base font-semibold">Project step log</h2>
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+        <input
+          className="border border-border rounded px-2 py-1 text-sm bg-input flex-1 max-w-sm"
+          placeholder="Project ID (UUID)"
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+        />
+        <Button type="submit" size="sm" variant="secondary">Load</Button>
+      </form>
+      {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
+      {isError && <div className="text-sm text-destructive">Failed to load steps.</div>}
+      {steps && steps.length === 0 && (
+        <div className="text-sm text-muted-foreground">No steps recorded for this project.</div>
+      )}
+      {steps && steps.length > 0 && (
+        <div className="rounded-lg border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Timestamp</th>
+                <th className="px-3 py-2 font-medium">Event</th>
+                <th className="px-3 py-2 font-medium">Pick</th>
+                <th className="px-3 py-2 font-medium">Dwell</th>
+              </tr>
+            </thead>
+            <tbody>
+              {steps.map((s: AdminProjectStep) => (
+                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/20">
+                  <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(s.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <span className={s.event_type === "advance" ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}>
+                      {s.event_type}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 font-mono text-xs">
+                    {s.from_pick} → {s.to_pick}
+                  </td>
+                  <td className="px-3 py-1.5 text-xs text-muted-foreground">{formatDwell(s.dwell_ms)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Feedback tab
+// ---------------------------------------------------------------------------
+
+function FeedbackTab() {
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState<SubmissionType | "">("");
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [detail, setDetail] = useState<FeedbackRecord | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "feedback", page, typeFilter, includeDeleted],
+    queryFn: () =>
+      listAdminFeedback({
+        page,
+        page_size: 25,
+        submission_type: typeFilter || undefined,
+        include_deleted: includeDeleted,
+      }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => softDeleteFeedback(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "feedback"] });
+      setDetail(null);
+    },
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: (id: string) => retryFeedbackDispatch(id),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "feedback"] });
+      setDetail(updated);
+    },
+  });
+
+  const recoverMutation = useMutation({
+    mutationFn: (id: string) => recoverFeedback(id),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "feedback"] });
+      setDetail(updated);
+    },
+  });
+
+  const STATUS_COLORS: Record<string, string> = {
+    sent: "text-green-600 dark:text-green-400",
+    failed: "text-destructive",
+    pending: "text-amber-600 dark:text-amber-400",
+    skipped: "text-muted-foreground",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2 className="text-base font-semibold">Feedback submissions</h2>
+        <div className="flex items-center gap-2 text-sm">
+          <select
+            className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value as SubmissionType | ""); setPage(1); }}
+          >
+            <option value="">All types</option>
+            {(Object.entries(SUBMISSION_TYPE_LABELS) as [SubmissionType, string][]).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+          <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground">
+            <input type="checkbox" checked={includeDeleted} onChange={(e) => setIncludeDeleted(e.target.checked)} />
+            Show deleted
+          </label>
+        </div>
+      </div>
+
+      {isLoading && <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>}
+      {data && data.items.length === 0 && (
+        <div className="text-sm text-muted-foreground py-8 text-center">No submissions found.</div>
+      )}
+      {data && data.items.length > 0 && (
+        <div className="rounded-lg border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Date</th>
+                <th className="px-3 py-2 font-medium">Type</th>
+                <th className="px-3 py-2 font-medium">Subject</th>
+                <th className="px-3 py-2 font-medium">User</th>
+                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((item: FeedbackRecord) => (
+                <tr
+                  key={item.id}
+                  className={`border-b border-border last:border-0 hover:bg-muted/20 ${item.deleted_at ? "opacity-50" : ""}`}
+                >
+                  <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {SUBMISSION_TYPE_LABELS[item.submission_type as SubmissionType] ?? item.submission_type}
+                  </td>
+                  <td className="px-3 py-2 max-w-[200px] truncate text-muted-foreground">
+                    {item.subject ?? item.body.slice(0, 60)}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">
+                    {item.is_anonymous ? "Anonymous" : (item.user_email ?? "—")}
+                  </td>
+                  <td className={`px-3 py-2 text-xs ${STATUS_COLORS[item.dispatch_status] ?? ""}`}>
+                    {item.dispatch_status}
+                  </td>
+                  <td className="px-3 py-2">
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setDetail(item)}>
+                      View
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {data && data.pages > 1 && (
+        <div className="flex items-center justify-end gap-2 text-sm">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+          <span className="text-muted-foreground">{page} / {data.pages}</span>
+          <Button variant="outline" size="sm" disabled={page >= data.pages} onClick={() => setPage(p => p + 1)}>Next</Button>
+        </div>
+      )}
+
+      {/* Detail modal */}
+      {detail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetail(null)}>
+          <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">
+                {SUBMISSION_TYPE_LABELS[detail.submission_type as SubmissionType] ?? detail.submission_type}
+              </h3>
+              <button onClick={() => setDetail(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+                <span className="text-xs">✕</span>
+              </button>
+            </div>
+
+            {detail.subject && <p className="font-medium text-sm">{detail.subject}</p>}
+            <p className="text-sm whitespace-pre-wrap border border-border rounded p-3 bg-muted/30">{detail.body}</p>
+
+            {detail.diagnostics && Object.keys(detail.diagnostics).length > 0 && (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">Diagnostics</p>
+                {Object.entries(detail.diagnostics).map(([k, v]) =>
+                  v ? <p key={k}><span className="font-mono">{k}:</span> {String(v)}</p> : null
+                )}
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Submitted: {new Date(detail.created_at).toLocaleString()}</p>
+              <p>User: {detail.is_anonymous ? "Anonymous" : (detail.user_email ?? "Unauthenticated")}</p>
+              <p>Dispatch: <span className={STATUS_COLORS[detail.dispatch_status] ?? ""}>{detail.dispatch_status}</span></p>
+              {detail.github_discussion_url && (
+                <p>
+                  <a href={detail.github_discussion_url} target="_blank" rel="noopener noreferrer" className="underline text-primary">
+                    View on GitHub
+                  </a>
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 flex-wrap">
+              {/* Retry dispatch: shown for failed or pending submissions */}
+              {!detail.deleted_at && (detail.dispatch_status === "failed" || detail.dispatch_status === "pending") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={retryMutation.isPending}
+                  onClick={() => retryMutation.mutate(detail.id)}
+                >
+                  {retryMutation.isPending ? "Retrying…" : "Retry dispatch"}
+                </Button>
+              )}
+              {detail.deleted_at ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={recoverMutation.isPending}
+                  onClick={() => recoverMutation.mutate(detail.id)}
+                >
+                  {recoverMutation.isPending ? "Recovering…" : "Recover"}
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => {
+                    if (confirm("Soft-delete this submission?")) deleteMutation.mutate(detail.id);
+                  }}
+                >
+                  {deleteMutation.isPending ? "Deleting…" : "Delete"}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setDetail(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CredentialsTab() {

@@ -6,15 +6,18 @@ import { measurementSystemToUnit, displayLength, formatApproxLength, convertLeng
 import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
+  getWarpingPlan,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail,
 } from "@/api/projects";
+import { TieUpDiagram } from "@/components/TieUpDiagram";
 import { previewUrl } from "@/api/drafts";
 import { getAuthToken } from "@/api/client";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { ShareModal } from "@/components/projects/ShareModal";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -109,8 +112,9 @@ function ZoomInput({ zoom, onCommit }: { zoom: number; onCommit: (z: number) => 
 // Drawdown modal (click thumbnail to open)
 // ---------------------------------------------------------------------------
 
-function DrawdownModal({ svgUrl, onClose }: {
+function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
   svgUrl: string;
+  title?: string;
   onClose: () => void;
 }) {
   const [zoom, setZoom] = useState(1);
@@ -161,6 +165,16 @@ function DrawdownModal({ svgUrl, onClose }: {
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+      if (e.key === "0") handleReset();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose]);
 
   function applyTransform(z: number, px: number, py: number) {
     if (!innerRef.current) return;
@@ -277,6 +291,7 @@ function DrawdownModal({ svgUrl, onClose }: {
       >
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
+          <span className="text-sm font-medium truncate flex-1">{title}</span>
           <button className={btnCls} onClick={() => handleZoomChange(Math.max(0.05, +(zoomRef.current - 0.25).toFixed(2)))} title="Zoom out">
             <AppIcons.zoomOut className="h-4 w-4" />
           </button>
@@ -284,12 +299,11 @@ function DrawdownModal({ svgUrl, onClose }: {
           <button className={btnCls} onClick={() => handleZoomChange(Math.min(8, +(zoomRef.current + 0.25).toFixed(2)))} title="Zoom in">
             <AppIcons.zoomIn className="h-4 w-4" />
           </button>
-          <button className={btnCls} onClick={handleReset} title="Fit to window">
-            <AppIcons.zoomReset className="h-3.5 w-3.5" />
+          <button className={btnCls} onClick={handleReset} title="Zoom to fit (0)">
+            <AppIcons.zoomFit className="h-4 w-4" />
           </button>
-          <div className="flex-1" />
           <button
-            className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors ml-1"
             onClick={onClose}
             title="Close"
           >
@@ -322,6 +336,87 @@ function DrawdownModal({ svgUrl, onClose }: {
             style={{ transformOrigin: "0 0", display: "inline-block", willChange: "transform" }}
             dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tie-up modal
+// ---------------------------------------------------------------------------
+
+function TieUpModal({ projectId, draftName, onClose }: {
+  projectId: string;
+  draftName: string;
+  onClose: () => void;
+}) {
+  const { data: plan, isLoading } = useQuery({
+    queryKey: ["warping-plan", projectId],
+    queryFn: () => getWarpingPlan(projectId),
+  });
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-lg w-full max-h-[80vh]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h2 className="font-semibold text-sm">Treadle Tie-Up — {draftName}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+            <AppIcons.close className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-5">
+          {isLoading && (
+            <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
+              <AppIcons.spinner className="h-4 w-4 animate-spin mr-2" /> Loading…
+            </div>
+          )}
+          {plan && !plan.has_tieup && (
+            <p className="text-sm text-muted-foreground italic">
+              Tie-up data not available — this WIF file does not contain a [TIEUP] section.
+            </p>
+          )}
+          {plan?.has_tieup && plan.tieup && plan.tieup_num_shafts && plan.tieup_num_treadles && (
+            <>
+              <p className="text-xs text-muted-foreground mb-4">
+                Columns = treadles · Rows = shafts · Filled = connected
+              </p>
+              <div className="overflow-x-auto">
+                <TieUpDiagram
+                  tieup={plan.tieup}
+                  numShafts={plan.tieup_num_shafts}
+                  numTreadles={plan.tieup_num_treadles}
+                />
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
+          <Link
+            to={`/projects/${projectId}/warping-plan`}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            View Weave Plan
+          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              window.open(`/projects/${projectId}/warping-plan`, "_blank");
+            }}
+          >
+            <AppIcons.print className="h-4 w-4 mr-1.5" />
+            Print / Save PDF
+          </Button>
         </div>
       </div>
     </div>
@@ -745,6 +840,8 @@ function WarpSetupSection({
   );
 }
 
+// ShareModal is imported from @/components/projects/ShareModal
+
 // ---------------------------------------------------------------------------
 // Notes inline editor
 // ---------------------------------------------------------------------------
@@ -829,6 +926,8 @@ export function ProjectLandingPage() {
   const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
 
   const [drawdownOpen, setDrawdownOpen] = useState(false);
+  const [tieupOpen, setTieupOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -903,6 +1002,16 @@ export function ProjectLandingPage() {
             <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
               {PROJECT_TYPE_LABELS[project.project_type]}
             </span>
+            {project.share_slug && project.share_visibility !== "private" && (
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
+                title="Project is shared — click to manage"
+              >
+                <AppIcons.share className="h-3 w-3" />
+                Shared
+              </button>
+            )}
           </div>
           <h1 className="text-xl font-semibold leading-tight truncate">{project.name}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -912,21 +1021,41 @@ export function ProjectLandingPage() {
             {project.loom_name && <span> · {project.loom_name}</span>}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={() => setShareModalOpen(true)}
+          title="Share project"
+        >
+          <AppIcons.share className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Preview + specs */}
       <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
-        <button
-          className="rounded-lg overflow-hidden border border-border bg-muted/20 flex-shrink-0 hover:border-ring transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
-          onClick={() => setDrawdownOpen(true)}
-          title="Click to view full drawdown"
-        >
-          <AuthedImage
-            src={previewUrl(project.draft_id)}
-            alt="Draft preview"
-            className="h-36 w-36 object-contain"
-          />
-        </button>
+        <div className="flex flex-col gap-1.5 flex-shrink-0">
+          <button
+            className="rounded-lg overflow-hidden border border-border bg-muted/20 hover:border-ring transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+            onClick={() => setDrawdownOpen(true)}
+            title="Click to view full drawdown"
+          >
+            <AuthedImage
+              src={previewUrl(project.draft_id)}
+              alt="Draft preview"
+              className="h-36 w-36 object-contain"
+            />
+          </button>
+          {project.project_type === "treadle" && (
+            <button
+              className="text-xs text-center text-muted-foreground hover:text-foreground py-0.5 border border-border/50 rounded hover:border-border transition-colors"
+              onClick={() => setTieupOpen(true)}
+              title="View treadle tie-up diagram"
+            >
+              Tie-up
+            </button>
+          )}
+        </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm pt-1">
           {project.draft_num_shafts != null && (
             <>
@@ -1066,10 +1195,16 @@ export function ProjectLandingPage() {
         >
           Delete
         </Button>
+        <Link
+          to={`/projects/${project.id}/warping-plan`}
+          className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
+        >
+          Weave Plan
+        </Link>
         {isActive && (
           <Link
             to={`/projects/${project.id}/track`}
-            className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }), "ml-auto")}
+            className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
           >
             <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
             {project.status === "created" ? "Start Weaving" : "Track"}
@@ -1085,7 +1220,24 @@ export function ProjectLandingPage() {
               ? projectDrawdownSvgUrl(project.id)
               : drawdownSvgUrl(project.id, 8)
           }
+          title={project.draft_name}
           onClose={() => setDrawdownOpen(false)}
+        />
+      )}
+      {/* Tie-up modal */}
+      {tieupOpen && (
+        <TieUpModal
+          projectId={project.id}
+          draftName={project.draft_name}
+          onClose={() => setTieupOpen(false)}
+        />
+      )}
+      {/* Share modal */}
+      {shareModalOpen && (
+        <ShareModal
+          project={project}
+          onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
+          onClose={() => setShareModalOpen(false)}
         />
       )}
     </div>

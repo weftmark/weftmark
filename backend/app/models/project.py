@@ -57,6 +57,10 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     warp_waste_allowance: Mapped[Decimal | None] = mapped_column(Numeric(8, 1), nullable=True)
     length_unit: Mapped[str] = mapped_column(String(5), nullable=False, default="cm")
 
+    share_slug: Mapped[str | None] = mapped_column(String(64), unique=True, index=True, nullable=True)
+    share_visibility: Mapped[str] = mapped_column(String(10), nullable=False, default="private")
+    share_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     abandoned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

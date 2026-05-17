@@ -124,6 +124,15 @@ class Settings(BaseSettings):
     maxmind_license_key: str = ""
     geoip_db_path: str = "/app/data/GeoLite2-City.mmdb"
 
+    # GitHub Discussions feedback integration (optional — issue #34)
+    # PAT with write:discussion + read:discussion scopes on the target repo.
+    # Leave empty to store feedback locally only; no error surfaced to users.
+    github_feedback_token: str = ""
+    github_feedback_repo: str = "weftmark/weftmark"
+
+    # Feedback rate limiting
+    feedback_rate_limit_per_hour: int = 5
+
     # Data retention
     soft_delete_retention_days: int = 365
 

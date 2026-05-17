@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { listLooms, type Loom } from "@/api/looms";
+import { listLooms, loomPhotoUrl, type Loom } from "@/api/looms";
 import { AppIcons } from "@/lib/icons";
+import { AuthedImage } from "@/components/ui/AuthedImage";
 import { listProjects } from "@/api/projects";
 import { NewLoomModal } from "@/components/looms/NewLoomModal";
 import { Button } from "@/components/ui/button";
@@ -18,8 +19,18 @@ function LoomCard({ loom, projectCounts }: { loom: Loom; projectCounts?: LoomPro
   return (
     <Link
       to={`/looms/${loom.id}`}
-      className="rounded-lg border p-5 hover:border-ring transition-colors block"
+      className="rounded-lg border hover:border-ring transition-colors block overflow-hidden"
     >
+      {loom.has_photo && (
+        <div className="w-full h-32 bg-muted overflow-hidden">
+          <AuthedImage
+            src={loomPhotoUrl(loom.id)}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+      <div className="p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-3">
           <div className="shrink-0 mt-0.5">
@@ -78,6 +89,7 @@ function LoomCard({ loom, projectCounts }: { loom: Loom; projectCounts?: LoomPro
           )}
         </div>
       )}
+      </div>
     </Link>
   );
 }

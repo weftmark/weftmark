@@ -165,7 +165,7 @@ function ActivityHeatmap() {
   const displayData = effectiveMode === "year" ? yearData : baseData;
   const dayByDate = new Map((displayData?.days ?? []).map((d) => [d.date, d]));
 
-  const yearsWithActivity = baseData?.years_with_activity ?? [];
+  const yearsWithActivity = useMemo(() => baseData?.years_with_activity ?? [], [baseData]);
   const hasMultipleYears = useMemo(() => {
     if (effectiveMode === "year") return true;
     if (yearsWithActivity.length > 1) return true;

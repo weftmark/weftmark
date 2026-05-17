@@ -1,5 +1,7 @@
 import asyncio
 import mimetypes
+import re
+import secrets
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -51,6 +53,7 @@ class ProjectPhotoSchema(BaseModel):
 
 class ProjectSummary(BaseModel):
     id: uuid.UUID
+    owner_id: uuid.UUID
     draft_id: uuid.UUID
     loom_id: uuid.UUID | None
     loom_version_id: uuid.UUID | None
@@ -68,6 +71,9 @@ class ProjectSummary(BaseModel):
     hide_unused_shafts_treadles: bool
     has_drawdown_preview: bool = False
     has_drawdown_svg: bool = False
+    share_slug: str | None = None
+    share_visibility: str = "private"
+    share_expires_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -171,11 +177,47 @@ class PicksResponse(BaseModel):
     has_weft_colors: bool
 
 
+class WarpingPlanEndEntry(BaseModel):
+    end: int
+    shafts: list[int]
+    color: str | None
+
+
+class WarpingPlanColorRun(BaseModel):
+    color: str | None
+    color_name: str | None = None
+    start_end: int
+    end_end: int
+    count: int
+
+
+class WarpingPlanResponse(BaseModel):
+    project_id: uuid.UUID
+    draft_name: str
+    project_type: str
+    warp_threads: int | None
+    total_picks: int | None
+    num_shafts: int | None
+    num_treadles: int | None
+    warp_color_summary: list[dict]
+    weft_color_summary: list[dict]
+    threading: list[WarpingPlanEndEntry] | None
+    warp_color_runs: list[WarpingPlanColorRun] | None
+    warp_length_cm: float | None
+    epi: float | None
+    has_threading: bool
+    tieup: list[list[int]] | None = None
+    tieup_num_shafts: int | None = None
+    tieup_num_treadles: int | None = None
+    has_tieup: bool = False
+
+
 class SessionInfo(BaseModel):
     id: uuid.UUID
     started_at: datetime
     ended_at: datetime | None
     duration_ms: int
+    step_count: int
 
 
 class ProjectMetricsResponse(BaseModel):
@@ -185,7 +227,39 @@ class ProjectMetricsResponse(BaseModel):
     total_advance_steps: int
     total_reverse_steps: int
     total_worked_picks: int
+    avg_pick_dwell_ms: int | None
     sessions: list[SessionInfo]
+
+
+class ShareProjectRequest(BaseModel):
+    visibility: str  # "link"
+    expires_at: datetime | None = None
+
+
+class SharedProjectResponse(BaseModel):
+    slug: str
+    project_name: str
+    project_status: str
+    project_type: str
+    owner_display_name: str
+    draft_name: str
+    draft_num_shafts: int | None
+    draft_num_treadles: int | None
+    num_items: int
+    total_picks: int
+    current_pick: int
+    current_item: int
+    share_visibility: str
+    share_expires_at: datetime | None
+    created_at: datetime
+    completed_at: datetime | None
+    abandoned_at: datetime | None
+    has_drawdown_preview: bool
+    has_drawdown_svg: bool
+    color_replacements: dict | None
+    draft_wif_colors: list | None
+    draft_warp_color_stats: list | None
+    draft_weft_color_stats: list | None
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +268,30 @@ class ProjectMetricsResponse(BaseModel):
 
 
 _WORKED_PICK_THRESHOLD_MS = 3_000  # < 3 s gap = navigation/review, not a woven pick
+
+share_router = APIRouter(prefix="/api/share", tags=["share"])
+
+_SLUG_MAX_NAME_CHARS = 48
+_SLUG_SUFFIX_BYTES = 3  # → 4 base64url chars
+
+
+def _slugify(name: str) -> str:
+    """Convert a project name to a URL-safe slug segment."""
+    s = name.lower().strip()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    s = s.strip("-")
+    return s[:_SLUG_MAX_NAME_CHARS].rstrip("-") or "project"
+
+
+async def _generate_unique_slug(name: str, db: AsyncSession, max_attempts: int = 8) -> str:
+    base = _slugify(name)
+    for _ in range(max_attempts):
+        suffix = secrets.token_urlsafe(_SLUG_SUFFIX_BYTES)
+        candidate = f"{base}-{suffix}"
+        existing = await db.scalar(select(Project).where(Project.share_slug == candidate))
+        if existing is None:
+            return candidate
+    raise HTTPException(status_code=500, detail="Could not generate unique share slug")
 
 
 async def _close_open_session(project_id: uuid.UUID, db: AsyncSession) -> None:
@@ -239,12 +337,14 @@ async def _get_owned_project(
     db: AsyncSession,
     *,
     with_for_update: bool = False,
+    allow_superuser: bool = False,
 ) -> Project:
     stmt = select(Project).where(
         Project.id == project_id,
-        Project.owner_id == user.id,
         Project.deleted_at.is_(None),
     )
+    if not (allow_superuser and user.is_superuser):
+        stmt = stmt.where(Project.owner_id == user.id)
     if with_for_update:
         stmt = stmt.with_for_update()
     project = await db.scalar(stmt)
@@ -274,6 +374,7 @@ def _to_detail(
 ) -> ProjectDetail:
     return ProjectDetail(
         id=project.id,
+        owner_id=project.owner_id,
         draft_id=project.draft_id,
         loom_id=project.loom_id,
         loom_version_id=project.loom_version_id,
@@ -317,6 +418,9 @@ def _to_detail(
         loom_resolved_version_id=loom_version.id if loom_version else None,
         has_drawdown_preview=project.drawdown_preview_path is not None,
         has_drawdown_svg=project.drawdown_svg_path is not None,
+        share_slug=project.share_slug,
+        share_visibility=project.share_visibility,
+        share_expires_at=project.share_expires_at,
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
     )
 
@@ -453,7 +557,7 @@ async def get_project_drawdown(
     from app.services import rendering
     from app.services.storage import afile_exists, aproject_tile_exists, aread_file, aread_project_tile
 
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
 
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
@@ -565,7 +669,7 @@ async def get_project_drawdown_svg(
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
 
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -621,7 +725,7 @@ async def get_project_drawdown_preview(
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
 
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -666,7 +770,7 @@ async def get_project_drawdown_preview_cached(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Return the pre-rendered drawdown thumbnail PNG for a project, or 404 if not yet generated."""
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     if not project.drawdown_preview_path:
         raise HTTPException(status_code=404, detail="Preview not yet generated")
     data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
@@ -684,7 +788,7 @@ async def get_project_drawdown_svg_cached(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Return the pre-rendered drawdown SVG for a project, or 404 if not yet generated."""
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     if not project.drawdown_svg_path:
         raise HTTPException(status_code=404, detail="SVG not yet generated")
     svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
@@ -705,7 +809,7 @@ async def get_project_drawdown_data(
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
 
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -748,11 +852,14 @@ async def get_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    result = await db.scalars(
+    stmt = (
         select(Project)
-        .where(Project.id == project_id, Project.owner_id == current_user.id, Project.deleted_at.is_(None))
+        .where(Project.id == project_id, Project.deleted_at.is_(None))
         .options(selectinload(Project.photos))
     )
+    if not current_user.is_superuser:
+        stmt = stmt.where(Project.owner_id == current_user.id)
+    result = await db.scalars(stmt)
     project = result.first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -1134,7 +1241,7 @@ async def get_project_metrics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectMetricsResponse:
-    await _get_owned_project(project_id, current_user, db)
+    await _get_owned_project(project_id, current_user, db, allow_superuser=True)
 
     now = datetime.now(timezone.utc)
 
@@ -1148,7 +1255,14 @@ async def get_project_metrics(
 
     total_advance = sum(1 for s in steps if s.event_type == "advance")
     total_reverse = sum(1 for s in steps if s.event_type == "reverse")
-    total_worked = sum(1 for s in steps if s.dwell_ms is not None and s.dwell_ms >= _WORKED_PICK_THRESHOLD_MS)
+
+    worked_dwells = [
+        s.dwell_ms
+        for s in steps
+        if s.event_type == "advance" and s.dwell_ms is not None and s.dwell_ms >= _WORKED_PICK_THRESHOLD_MS
+    ]
+    total_worked = len(worked_dwells)
+    avg_pick_dwell_ms = int(sum(worked_dwells) / len(worked_dwells)) if worked_dwells else None
 
     total_session_ms = 0
     session_infos: list[SessionInfo] = []
@@ -1157,8 +1271,15 @@ async def get_project_metrics(
         end = sess.ended_at or now
         duration_ms = int((end - sess.started_at).total_seconds() * 1_000)
         total_session_ms += duration_ms
+        step_count = sum(1 for s in steps if sess.started_at <= s.created_at <= end)
         session_infos.append(
-            SessionInfo(id=sess.id, started_at=sess.started_at, ended_at=sess.ended_at, duration_ms=duration_ms)
+            SessionInfo(
+                id=sess.id,
+                started_at=sess.started_at,
+                ended_at=sess.ended_at,
+                duration_ms=duration_ms,
+                step_count=step_count,
+            )
         )
         if sess.ended_at is None:
             current_session_started_at = sess.started_at
@@ -1170,6 +1291,7 @@ async def get_project_metrics(
         total_advance_steps=total_advance,
         total_reverse_steps=total_reverse,
         total_worked_picks=total_worked,
+        avg_pick_dwell_ms=avg_pick_dwell_ms,
         sessions=session_infos,
     )
 
@@ -1279,7 +1401,7 @@ async def get_project_photo(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    await _get_owned_project(project_id, current_user, db)
+    await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     photo = await db.scalar(
         select(ProjectPhoto).where(ProjectPhoto.id == photo_id, ProjectPhoto.project_id == project_id)
     )
@@ -1314,7 +1436,7 @@ async def get_picks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PicksResponse:
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -1338,4 +1460,256 @@ async def get_picks(
         total_picks=pick_data.total_picks,
         picks=pick_rows,
         has_weft_colors=any(p.color is not None for p in pick_rows),
+    )
+
+
+def _compute_color_runs(entries: list[dict]) -> list[WarpingPlanColorRun]:
+    if not entries:
+        return []
+    runs: list[WarpingPlanColorRun] = []
+    cur_color = entries[0]["color"]
+    cur_name = entries[0].get("color_name")
+    start = entries[0]["end"]
+    count = 1
+    for entry in entries[1:]:
+        if entry["color"] == cur_color:
+            count += 1
+        else:
+            runs.append(
+                WarpingPlanColorRun(
+                    color=cur_color, color_name=cur_name, start_end=start, end_end=start + count - 1, count=count
+                )
+            )
+            cur_color = entry["color"]
+            cur_name = entry.get("color_name")
+            start = entry["end"]
+            count = 1
+    runs.append(
+        WarpingPlanColorRun(
+            color=cur_color, color_name=cur_name, start_end=start, end_end=start + count - 1, count=count
+        )
+    )
+    return runs
+
+
+@router.get("/{project_id}/warping-plan", response_model=WarpingPlanResponse)
+async def get_warping_plan(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> WarpingPlanResponse:
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
+    draft = await db.get(Draft, project.draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    epi: float | None = draft.epi_override
+    if epi is None and draft.wif_measurements:
+        spacing = draft.wif_measurements.get("warp_spacing")
+        if spacing and spacing > 0:
+            epi = round(2.54 / spacing, 1)
+
+    threading_entries: list[WarpingPlanEndEntry] | None = None
+    warp_color_runs: list[WarpingPlanColorRun] | None = None
+    tieup_data: list[list[int]] | None = None
+    tieup_num_shafts: int | None = None
+    tieup_num_treadles: int | None = None
+
+    wif_path = await _wif_path_for_project(draft, project.project_type)
+    if wif_path and await storage.afile_exists(wif_path):
+        wif_bytes = await storage.aread_file(wif_path)
+        if draft.has_threading:
+            try:
+                t_data = await asyncio.to_thread(wif_parser.parse_threading, wif_bytes)
+                raw_entries = [
+                    {
+                        "end": i + 1,
+                        "shafts": shafts,
+                        "color": t_data.warp_colors[i],
+                        "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,
+                    }
+                    for i, shafts in enumerate(t_data.threading)
+                ]
+                threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]
+                warp_color_runs = _compute_color_runs(raw_entries)
+            except ValueError:
+                pass
+        try:
+            tu = await asyncio.to_thread(wif_parser.parse_tieup, wif_bytes)
+            tieup_data = tu.tieup
+            tieup_num_shafts = tu.num_shafts
+            tieup_num_treadles = tu.num_treadles
+        except ValueError:
+            pass
+
+    return WarpingPlanResponse(
+        project_id=project.id,
+        draft_name=draft.name,
+        project_type=project.project_type,
+        warp_threads=draft.warp_threads,
+        total_picks=draft.weft_threads,
+        num_shafts=draft.effective_num_shafts or draft.num_shafts,
+        num_treadles=draft.effective_num_treadles or draft.num_treadles,
+        warp_color_summary=draft.warp_color_stats or [],
+        weft_color_summary=draft.weft_color_stats or [],
+        threading=threading_entries,
+        warp_color_runs=warp_color_runs,
+        warp_length_cm=draft.warp_length_cm,
+        epi=epi,
+        has_threading=bool(draft.has_threading),
+        tieup=tieup_data,
+        tieup_num_shafts=tieup_num_shafts,
+        tieup_num_treadles=tieup_num_treadles,
+        has_tieup=tieup_data is not None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Share endpoints (owner)
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/{project_id}/share", response_model=ProjectDetail)
+async def update_project_share(
+    project_id: uuid.UUID,
+    body: ShareProjectRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    if body.visibility != "link":
+        raise HTTPException(status_code=400, detail="visibility must be 'link'")
+
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
+    draft = await db.get(Draft, project.draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    if project.share_slug is None:
+        project.share_slug = await _generate_unique_slug(project.name, db)
+
+    project.share_visibility = body.visibility
+    project.share_expires_at = body.expires_at
+
+    await db.commit()
+    await db.refresh(project)
+
+    loom: Loom | None = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    photos = list(
+        await db.scalars(
+            select(ProjectPhoto).where(ProjectPhoto.project_id == project.id).order_by(ProjectPhoto.display_order)
+        )
+    )
+    return _to_detail(project, draft, loom, photos, loom_version)
+
+
+@router.delete("/{project_id}/share", status_code=204)
+async def revoke_project_share(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
+    project.share_slug = None
+    project.share_visibility = "private"
+    project.share_expires_at = None
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Public share endpoint (no auth)
+# ---------------------------------------------------------------------------
+
+
+@share_router.get("/projects/{slug}", response_model=SharedProjectResponse)
+async def get_shared_project(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> SharedProjectResponse:
+    project = await db.scalar(
+        select(Project).where(
+            Project.share_slug == slug,
+            Project.deleted_at.is_(None),
+        )
+    )
+    if project is None or project.share_visibility == "private":
+        raise HTTPException(status_code=404, detail="Shared project not found")
+
+    now = datetime.now(timezone.utc)
+    if project.share_expires_at is not None and project.share_expires_at <= now:
+        raise HTTPException(status_code=410, detail="This share link has expired")
+
+    draft = await db.get(Draft, project.draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    from app.models.user import User as UserModel
+
+    owner = await db.get(UserModel, project.owner_id)
+    owner_display = owner.display_name if owner and owner.display_name else "Unknown"
+
+    return SharedProjectResponse(
+        slug=slug,
+        project_name=project.name,
+        project_status=project.status,
+        project_type=project.project_type,
+        owner_display_name=owner_display,
+        draft_name=draft.name,
+        draft_num_shafts=draft.effective_num_shafts or draft.num_shafts,
+        draft_num_treadles=draft.effective_num_treadles or draft.num_treadles,
+        num_items=project.num_items,
+        total_picks=project.total_picks,
+        current_pick=project.current_pick,
+        current_item=project.current_item,
+        share_visibility=project.share_visibility,
+        share_expires_at=project.share_expires_at,
+        created_at=project.created_at,
+        completed_at=project.completed_at,
+        abandoned_at=project.abandoned_at,
+        has_drawdown_preview=project.drawdown_preview_path is not None,
+        has_drawdown_svg=project.drawdown_svg_path is not None,
+        color_replacements=project.color_replacements,
+        draft_wif_colors=draft.wif_colors,
+        draft_warp_color_stats=draft.warp_color_stats,
+        draft_weft_color_stats=draft.weft_color_stats,
+    )
+
+
+@share_router.get("/projects/{slug}/preview")
+async def get_shared_project_preview(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return the pre-rendered drawdown preview PNG for a shared project (no auth required)."""
+    project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
+    if project is None or project.share_visibility == "private":
+        raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(timezone.utc)
+    if project.share_expires_at is not None and project.share_expires_at <= now:
+        raise HTTPException(status_code=410, detail="Expired")
+    if not project.drawdown_preview_path:
+        raise HTTPException(status_code=404, detail="Preview not yet generated")
+    data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
+    return Response(content=data, media_type="image/png", headers={"Cache-Control": "public, max-age=300"})
+
+
+@share_router.get("/projects/{slug}/svg")
+async def get_shared_project_svg(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return the pre-rendered drawdown SVG for a shared project (no auth required)."""
+    project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
+    if project is None or project.share_visibility == "private":
+        raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(timezone.utc)
+    if project.share_expires_at is not None and project.share_expires_at <= now:
+        raise HTTPException(status_code=410, detail="Expired")
+    if not project.drawdown_svg_path:
+        raise HTTPException(status_code=404, detail="SVG not yet generated")
+    svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
+    return Response(
+        content=svg_text,
+        media_type="image/svg+xml; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=300"},
     )

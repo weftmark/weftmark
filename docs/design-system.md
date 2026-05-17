@@ -157,7 +157,7 @@ The authenticated app shell (sidebar, pages, modals) uses CSS custom properties 
 | `text-foreground` | `--foreground` | stone-900 | stone-50 |
 | `bg-card` / `text-card-foreground` | `--card` | white | stone-800 |
 | `bg-popover` / `text-popover-foreground` | `--popover` | white | stone-800 |
-| `bg-primary` / `text-primary-foreground` | `--primary` | zinc-800 | amber-500 |
+| `bg-primary` / `text-primary-foreground` | `--primary` | amber-900 | amber-500 |
 | `bg-secondary` / `text-secondary-foreground` | `--secondary` | stone-100 | stone-700 |
 | `bg-muted` / `text-muted-foreground` | `--muted` | stone-100 | stone-700 |
 | `text-accent` / `bg-accent` | `--accent` | amber-600 | amber-500 |
@@ -189,6 +189,41 @@ All authenticated UI adapts automatically when the CSS variables change under `.
 - **Do** use `bg-card` for panel/modal surfaces, `bg-background` for page canvas.
 - **Don't** use raw palette classes (`stone-*`, `amber-*`, `zinc-*`) inside authenticated components — changes to the palette would then require hunting down every hard-coded class.
 - **Don't** add dark mode overrides to public pages (landing, login, register, about, privacy, terms).
+
+---
+
+## Button Conventions (Authenticated App)
+
+Use `<Button>` from `frontend/src/components/ui/button.tsx`. Match intent to variant — do not choose a variant based on aesthetics alone.
+
+| Intent | Variant | When to use |
+| --- | --- | --- |
+| Confirm / save / submit | `default` (no `variant` prop) | The primary positive action in a form or dialog — "Save", "Add", "Submit" |
+| Cancel / dismiss / close | `variant="outline"` | The secondary escape action alongside a confirm button |
+| Delete / ban / irreversible | `variant="destructive"` | Any action that cannot be undone |
+| Secondary neutral | `variant="secondary"` | Second-tier actions that aren't destructive and aren't the primary CTA |
+| Positive outcome / advance | `variant="success"` | Marking a step complete, advancing a project, green-light actions |
+| Toolbar / icon-only | `variant="ghost"` | Icon buttons in toolbars, inline row actions with no border needed |
+
+### Common patterns
+
+```tsx
+// Save / Cancel pair in a form
+<Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+<Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Cancel</Button>
+
+// Confirm / Cancel in a destructive dialog
+<Button variant="destructive" onClick={handleDelete}>Delete</Button>
+<Button variant="outline" onClick={() => setConfirm(false)}>Cancel</Button>
+
+// Inline "Add" mini-form (submit = primary action, no cancel present)
+<Button type="submit" size="sm" disabled={saving || !input.trim()}>Add</Button>
+```
+
+### What changed (v0.145+)
+
+- `--primary` in light mode shifted from zinc-800 (cool gray) to amber-900 (dark copper `#78350f`), consistent with the amber-500 copper primary already used in dark mode. All `bg-primary` surfaces — buttons, progress bars, toggles — now read as copper in light mode.
+- `variant="outline"` border changed from `border-input` to `border-foreground/25`, which has better contrast in dark mode where the previous stone-700 border was nearly invisible against the stone-800 card surface.
 
 ---
 

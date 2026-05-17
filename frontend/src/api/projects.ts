@@ -13,8 +13,11 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   abandoned: "Abandoned",
 };
 
+export type ShareVisibility = "private" | "link" | "public";
+
 export interface ProjectSummary {
   id: string;
+  owner_id: string;
   draft_id: string;
   loom_id: string | null;
   loom_version_id: string | null;
@@ -32,6 +35,46 @@ export interface ProjectSummary {
   hide_unused_shafts_treadles: boolean;
   has_drawdown_preview: boolean;
   has_drawdown_svg: boolean;
+  share_slug: string | null;
+  share_visibility: ShareVisibility;
+  share_expires_at: string | null;
+}
+
+export interface WifColor {
+  index: number;
+  hex: string;
+}
+
+export interface ColorStat {
+  hex: string;
+  count: number;
+  percentage: number;
+}
+
+export interface SharedProject {
+  slug: string;
+  project_name: string;
+  project_status: ProjectStatus;
+  project_type: ProjectType;
+  owner_display_name: string;
+  draft_name: string;
+  draft_num_shafts: number | null;
+  draft_num_treadles: number | null;
+  num_items: number;
+  total_picks: number;
+  current_pick: number;
+  current_item: number;
+  share_visibility: ShareVisibility;
+  share_expires_at: string | null;
+  created_at: string;
+  completed_at: string | null;
+  abandoned_at: string | null;
+  has_drawdown_preview: boolean;
+  has_drawdown_svg: boolean;
+  color_replacements: Record<string, string> | null;
+  draft_wif_colors: WifColor[] | null;
+  draft_warp_color_stats: ColorStat[] | null;
+  draft_weft_color_stats: ColorStat[] | null;
 }
 
 export interface ProjectPhoto {
@@ -134,11 +177,53 @@ export interface PicksResponse {
   has_weft_colors: boolean;
 }
 
+export interface WarpingPlanEndEntry {
+  end: number;
+  shafts: number[];
+  color: string | null;
+}
+
+export interface WarpingPlanColorRun {
+  color: string | null;
+  color_name: string | null;
+  start_end: number;
+  end_end: number;
+  count: number;
+}
+
+export interface ColorStat {
+  hex: string;
+  count: number;
+  percentage: number;
+}
+
+export interface WarpingPlan {
+  project_id: string;
+  draft_name: string;
+  project_type: ProjectType;
+  warp_threads: number | null;
+  total_picks: number | null;
+  num_shafts: number | null;
+  num_treadles: number | null;
+  warp_color_summary: ColorStat[];
+  weft_color_summary: ColorStat[];
+  threading: WarpingPlanEndEntry[] | null;
+  warp_color_runs: WarpingPlanColorRun[] | null;
+  warp_length_cm: number | null;
+  epi: number | null;
+  has_threading: boolean;
+  tieup: number[][] | null;
+  tieup_num_shafts: number | null;
+  tieup_num_treadles: number | null;
+  has_tieup: boolean;
+}
+
 export interface SessionInfo {
   id: string;
   started_at: string;
   ended_at: string | null;
   duration_ms: number;
+  step_count: number;
 }
 
 export interface ProjectMetrics {
@@ -148,6 +233,7 @@ export interface ProjectMetrics {
   total_advance_steps: number;
   total_reverse_steps: number;
   total_worked_picks: number;
+  avg_pick_dwell_ms: number | null;
   sessions: SessionInfo[];
 }
 
@@ -337,6 +423,10 @@ export function getProjectMetrics(id: string): Promise<ProjectMetrics> {
   return req(`/api/projects/${id}/metrics`);
 }
 
+export function getWarpingPlan(id: string): Promise<WarpingPlan> {
+  return req(`/api/projects/${id}/warping-plan`);
+}
+
 export function projectPhotoUrl(projectId: string, photoId: string): string {
   return `/api/projects/${projectId}/photos/${photoId}`;
 }
@@ -360,4 +450,32 @@ export function setProjectColorReplacements(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ color_replacements: colorReplacements }),
   });
+}
+
+export function updateProjectShare(
+  id: string,
+  visibility: "link",
+  expiresAt?: string | null,
+): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/share`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ visibility, expires_at: expiresAt ?? null }),
+  });
+}
+
+export function revokeProjectShare(id: string): Promise<void> {
+  return req(`/api/projects/${id}/share`, { method: "DELETE" });
+}
+
+export function getSharedProject(slug: string): Promise<SharedProject> {
+  return req(`/api/share/projects/${slug}`);
+}
+
+export function sharedProjectPreviewUrl(slug: string): string {
+  return `/api/share/projects/${slug}/preview`;
+}
+
+export function sharedProjectSvgUrl(slug: string): string {
+  return `/api/share/projects/${slug}/svg`;
 }

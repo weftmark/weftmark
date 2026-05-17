@@ -32,6 +32,7 @@ export type WeftColorStat = ColorStat;
 
 export interface Draft {
   id: string;
+  owner_id: string;
   name: string;
   description: string | null;
   wif_filename: string;

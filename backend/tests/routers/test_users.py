@@ -102,10 +102,10 @@ class TestUpdateSettings:
         assert resp.status_code == 200
         assert resp.json()["ai_training_consent"] is False
 
-    async def test_show_version_numbers_defaults_true(self, auth_client: AsyncClient):
+    async def test_show_version_numbers_defaults_false(self, auth_client: AsyncClient):
         resp = await auth_client.get("/api/users/me")
         assert resp.status_code == 200
-        assert resp.json()["show_version_numbers"] is True
+        assert resp.json()["show_version_numbers"] is False
 
     async def test_update_show_version_numbers_false(self, auth_client: AsyncClient):
         resp = await auth_client.patch("/api/users/me", json={"show_version_numbers": False})
