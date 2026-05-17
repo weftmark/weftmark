@@ -203,3 +203,39 @@ def _run_post_migrate_backfills(sender=None, **kwargs):
         log.info("post_migrate_backfills queued on worker_ready")
     except Exception:
         pass
+
+
+@worker_ready.connect
+def _run_startup_sweeps(sender=None, **kwargs):
+    """Fire recovery sweeps once per deploy on the first worker to start.
+
+    Uses a Redis SETNX lock keyed by VERSION so sweeps run once per deploy
+    regardless of how many worker processes start. Covers work that may have
+    stalled while the worker was down:
+    - retry_failed_feedback: stale pending/failed GitHub Discussion dispatches
+    - retry_failed_previews: drafts missing a drawdown preview
+    """
+    try:
+        import redis as _redis
+
+        settings = get_settings()
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+        lock_key = f"weftmark:startup_sweep:{VERSION}"
+        acquired = client.set(lock_key, "1", nx=True, ex=300)
+        client.close()
+        if not acquired:
+            return
+
+        from app.services.task_history import record_queued
+        from app.tasks.feedback_dispatch import retry_failed_feedback
+        from app.tasks.maintenance import retry_failed_previews
+
+        t1 = retry_failed_feedback.delay()
+        record_queued(settings, t1.id, "app.tasks.feedback_dispatch.retry_failed_feedback", "startup:feedback_retry")
+        log.info("startup_sweep feedback_retry task_id=%s", t1.id)
+
+        t2 = retry_failed_previews.delay()
+        record_queued(settings, t2.id, "app.tasks.maintenance.retry_failed_previews", "startup:preview_retry")
+        log.info("startup_sweep preview_retry task_id=%s", t2.id)
+    except Exception:
+        pass
