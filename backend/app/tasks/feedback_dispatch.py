@@ -56,10 +56,6 @@ async def _dispatch(task, feedback_id: str) -> dict:
             log.warning("feedback_dispatch feedback_id=%s not found", feedback_id)
             return {"status": "not_found"}
 
-        user_email = None
-        if not row.is_anonymous and row.user:
-            user_email = row.user.email
-
         title = build_discussion_title(row.submission_type, row.subject)
         body = build_discussion_body(
             submission_type=row.submission_type,
@@ -67,7 +63,6 @@ async def _dispatch(task, feedback_id: str) -> dict:
             body=row.body,
             diagnostics=row.diagnostics,
             is_anonymous=row.is_anonymous,
-            user_email=user_email,
         )
 
         try:
@@ -94,15 +89,16 @@ async def _dispatch(task, feedback_id: str) -> dict:
 
     # Send emails after successful dispatch (fire and forget; don't retry on email failure)
     try:
-        await _send_emails(feedback_id, url, user_email, settings)
+        await _send_emails(feedback_id, url, settings)
     except Exception:
         log.exception("feedback_dispatch email failed feedback_id=%s — ignoring", feedback_id)
 
     return {"status": "sent", "url": url}
 
 
-async def _send_emails(feedback_id: str, discussion_url: str, user_email: str | None, settings) -> None:
+async def _send_emails(feedback_id: str, discussion_url: str, settings) -> None:
     from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
 
     from app.database import AsyncSessionLocal
     from app.models.feedback import UserFeedback
@@ -111,7 +107,13 @@ async def _send_emails(feedback_id: str, discussion_url: str, user_email: str | 
     from app.services.github_discussions import _type_label
 
     async with AsyncSessionLocal() as db:
-        row = await db.get(UserFeedback, uuid.UUID(feedback_id))
+        row = (
+            await db.execute(
+                select(UserFeedback)
+                .options(selectinload(UserFeedback.user))
+                .where(UserFeedback.id == uuid.UUID(feedback_id))
+            )
+        ).scalar_one_or_none()
         if not row:
             return
         type_label = _type_label(row.submission_type)
@@ -129,9 +131,9 @@ async def _send_emails(feedback_id: str, discussion_url: str, user_email: str | 
         if admin_emails:
             await mail_svc.send_feedback_admin_alert(list(admin_emails), type_label, discussion_url, row.subject)
 
-        # User confirmation (non-anonymous authenticated users only)
-        if user_email and not row.is_anonymous:
-            await mail_svc.send_feedback_user_confirmation(user_email, type_label, discussion_url)
+        # User confirmation (non-anonymous authenticated users only; email from relationship)
+        if not row.is_anonymous and row.user and row.user.email:
+            await mail_svc.send_feedback_user_confirmation(row.user.email, type_label, discussion_url)
 
 
 @celery_app.task(
@@ -147,7 +149,9 @@ def retry_failed_feedback(self, limit: int = 20) -> dict:
 
 
 async def _retry_failed(limit: int) -> dict:
-    from sqlalchemy import select
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import or_, select
 
     from app.config import get_settings
     from app.database import AsyncSessionLocal
@@ -158,12 +162,20 @@ async def _retry_failed(limit: int) -> dict:
     if not settings.github_feedback_token:
         return {"dispatched": 0, "reason": "no_token"}
 
+    stale_cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+
     async with AsyncSessionLocal() as db:
         rows = (
             (
                 await db.execute(
                     select(UserFeedback.id)
-                    .where(UserFeedback.dispatch_status == "failed", UserFeedback.deleted_at.is_(None))
+                    .where(UserFeedback.deleted_at.is_(None))
+                    .where(
+                        or_(
+                            UserFeedback.dispatch_status == "failed",
+                            (UserFeedback.dispatch_status == "pending") & (UserFeedback.created_at < stale_cutoff),
+                        )
+                    )
                     .limit(limit)
                 )
             )

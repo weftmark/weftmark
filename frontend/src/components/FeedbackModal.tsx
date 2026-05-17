@@ -191,8 +191,8 @@ export function FeedbackModal({ onClose }: Props) {
                 </label>
                 <p className="text-xs text-muted-foreground pl-6">
                   {isAnonymous
-                    ? "Your name won't appear on the GitHub Discussion, but admins can still see who submitted. You'll see this in your feedback history."
-                    : "Your display name will appear on the GitHub Discussion thread."}
+                    ? "Page URL and project/draft IDs won't be included in the public Discussion. Admins can still see who submitted, and it will appear in your feedback history."
+                    : "Page URL and project/draft IDs (if opted in below) will appear in the public Discussion."}
                 </p>
               </div>
             )}
