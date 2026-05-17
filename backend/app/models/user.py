@@ -42,3 +42,4 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     tracker_show_drawdown: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     tracker_show_progress: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     tracker_show_pick_cards: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    onboarding_dismissed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
