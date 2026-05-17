@@ -6,6 +6,7 @@ import {
   Activity,
   CheckSquare,
   ChevronDown,
+  ListChecks,
   ChevronRight,
   ChevronsRight,
   ChevronsUp,
@@ -59,6 +60,7 @@ export const AppIcons = {
   admin: ShieldCheck,
   logout: LogOut,
   feedback: MessageSquare,
+  onboarding: ListChecks,
 
   // ── UI chrome ─────────────────────────────────────────────────────────────
   edit: Pencil,

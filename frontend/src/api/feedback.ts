@@ -81,3 +81,11 @@ export const recoverFeedback = (id: string) =>
 
 export const retryFeedbackDispatch = (id: string) =>
   api.post<FeedbackRecord>(`/api/admin/feedback/${id}/retry-dispatch`, {});
+
+export interface FeedbackStatus {
+  dispatch_status: string;
+  github_discussion_url: string | null;
+}
+
+export const getFeedbackStatus = (id: string) =>
+  api.get<FeedbackStatus>(`/api/feedback/${id}/status`);

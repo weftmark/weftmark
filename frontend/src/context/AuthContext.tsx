@@ -16,6 +16,12 @@ export interface User {
   ai_training_consent: boolean;
   show_version_numbers: boolean;
   hide_unused_shafts_treadles: boolean;
+  tracker_color_mode: string;
+  tracker_show_weft_color: boolean;
+  tracker_show_drawdown: boolean;
+  tracker_show_progress: boolean;
+  tracker_show_pick_cards: boolean;
+  onboarding_dismissed: boolean;
   eula_accepted_version: string | null;
   current_eula_version: string;
   storage_used_bytes: number;

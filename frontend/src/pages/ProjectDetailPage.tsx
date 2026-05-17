@@ -1008,27 +1008,32 @@ export function ProjectDetailPage() {
   const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [stepping, setStepping] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [colorMode, setColorMode] = useState<ColorMode>(
-    () => (localStorage.getItem("proj-view:colorMode") as ColorMode) ?? "strip"
-  );
-  const [showWeftColor, setShowWeftColor] = useState(
-    () => localStorage.getItem("proj-view:showWeftColor") !== "false"
-  );
-  const [showDrawdown, setShowDrawdown] = useState(
-    () => localStorage.getItem("proj-view:showDrawdown") !== "false"
-  );
+  const [colorMode, setColorMode] = useState<ColorMode>(() => {
+    const stored = localStorage.getItem("proj-view:colorMode");
+    return (stored as ColorMode) ?? (user?.tracker_color_mode as ColorMode) ?? "strip";
+  });
+  const [showWeftColor, setShowWeftColor] = useState(() => {
+    const stored = localStorage.getItem("proj-view:showWeftColor");
+    return stored !== null ? stored !== "false" : (user?.tracker_show_weft_color ?? true);
+  });
+  const [showDrawdown, setShowDrawdown] = useState(() => {
+    const stored = localStorage.getItem("proj-view:showDrawdown");
+    return stored !== null ? stored !== "false" : (user?.tracker_show_drawdown ?? true);
+  });
   const [showPickDisplay] = useState(
     () => localStorage.getItem("proj-view:showPickDisplay") !== "false"
   );
-  const [showProgress, setShowProgress] = useState(
-    () => localStorage.getItem("proj-view:showProgress") !== "false"
-  );
+  const [showProgress, setShowProgress] = useState(() => {
+    const stored = localStorage.getItem("proj-view:showProgress");
+    return stored !== null ? stored !== "false" : (user?.tracker_show_progress ?? true);
+  });
   const [hideTrailingUnused, setHideTrailingUnused] = useState(
     () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
   );
-  const [showPickCards, setShowPickCards] = useState(
-    () => localStorage.getItem("proj-view:showPickCards") !== "false"
-  );
+  const [showPickCards, setShowPickCards] = useState(() => {
+    const stored = localStorage.getItem("proj-view:showPickCards");
+    return stored !== null ? stored !== "false" : (user?.tracker_show_pick_cards ?? true);
+  });
   const [panelOpen, setPanelOpen] = useState(
     () => localStorage.getItem("proj-view:panelOpen") === "true"
   );

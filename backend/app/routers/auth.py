@@ -314,6 +314,12 @@ class UserResponse(BaseModel):
     ai_training_consent: bool
     show_version_numbers: bool
     hide_unused_shafts_treadles: bool
+    tracker_color_mode: str
+    tracker_show_weft_color: bool
+    tracker_show_drawdown: bool
+    tracker_show_progress: bool
+    tracker_show_pick_cards: bool
+    onboarding_dismissed: bool
     eula_accepted_version: str | None
     current_eula_version: str
     storage_used_bytes: int
@@ -345,6 +351,12 @@ async def me(
         ai_training_consent=current_user.ai_training_consent,
         show_version_numbers=current_user.show_version_numbers,
         hide_unused_shafts_treadles=current_user.hide_unused_shafts_treadles,
+        tracker_color_mode=current_user.tracker_color_mode,
+        tracker_show_weft_color=current_user.tracker_show_weft_color,
+        tracker_show_drawdown=current_user.tracker_show_drawdown,
+        tracker_show_progress=current_user.tracker_show_progress,
+        tracker_show_pick_cards=current_user.tracker_show_pick_cards,
+        onboarding_dismissed=current_user.onboarding_dismissed,
         eula_accepted_version=current_user.eula_accepted_version,
         current_eula_version=current_eula_version,
         storage_used_bytes=storage_used,
