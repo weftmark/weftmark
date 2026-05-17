@@ -40,6 +40,17 @@ export interface ProjectSummary {
   share_expires_at: string | null;
 }
 
+export interface WifColor {
+  index: number;
+  hex: string;
+}
+
+export interface ColorStat {
+  hex: string;
+  count: number;
+  percentage: number;
+}
+
 export interface SharedProject {
   slug: string;
   project_name: string;
@@ -58,8 +69,12 @@ export interface SharedProject {
   created_at: string;
   completed_at: string | null;
   abandoned_at: string | null;
+  has_drawdown_preview: boolean;
   has_drawdown_svg: boolean;
   color_replacements: Record<string, string> | null;
+  draft_wif_colors: WifColor[] | null;
+  draft_warp_color_stats: ColorStat[] | null;
+  draft_weft_color_stats: ColorStat[] | null;
 }
 
 export interface ProjectPhoto {
@@ -452,5 +467,13 @@ export function revokeProjectShare(id: string): Promise<void> {
 }
 
 export function getSharedProject(slug: string): Promise<SharedProject> {
-  return req(`/share/projects/${slug}`);
+  return req(`/api/share/projects/${slug}`);
+}
+
+export function sharedProjectPreviewUrl(slug: string): string {
+  return `/api/share/projects/${slug}/preview`;
+}
+
+export function sharedProjectSvgUrl(slug: string): string {
+  return `/api/share/projects/${slug}/svg`;
 }

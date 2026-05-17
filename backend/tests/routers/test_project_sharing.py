@@ -3,7 +3,7 @@
 Covers:
 - PATCH /api/projects/{id}/share — create/update share slug
 - DELETE /api/projects/{id}/share — revoke
-- GET /share/projects/{slug} — public read
+- GET /api/share/projects/{slug} — public read
 - GET /api/admin/project-slugs — admin slug report
 - DELETE /api/admin/project-slugs/{slug} — admin revoke
 """
@@ -190,7 +190,7 @@ async def test_revoke_share(auth_client: AsyncClient, db_session: AsyncSession, 
 
 
 # ---------------------------------------------------------------------------
-# GET /share/projects/{slug}
+# GET /api/share/projects/{slug}
 # ---------------------------------------------------------------------------
 
 
@@ -199,7 +199,7 @@ async def test_public_slug_access(client: AsyncClient, db_session: AsyncSession,
     draft = await _insert_draft(db_session, test_user)
     project = await _insert_project(db_session, test_user, draft, share_slug="pub-abc123", share_visibility="link")
 
-    resp = await client.get("/share/projects/pub-abc123")
+    resp = await client.get("/api/share/projects/pub-abc123")
     assert resp.status_code == 200
     data = resp.json()
     assert data["slug"] == "pub-abc123"
@@ -212,7 +212,7 @@ async def test_private_slug_returns_404(client: AsyncClient, db_session: AsyncSe
     draft = await _insert_draft(db_session, test_user)
     await _insert_project(db_session, test_user, draft, share_slug="priv-xyz", share_visibility="private")
 
-    resp = await client.get("/share/projects/priv-xyz")
+    resp = await client.get("/api/share/projects/priv-xyz")
     assert resp.status_code == 404
 
 
@@ -229,13 +229,13 @@ async def test_expired_slug_returns_410(client: AsyncClient, db_session: AsyncSe
         share_expires_at=past,
     )
 
-    resp = await client.get("/share/projects/exp-abc")
+    resp = await client.get("/api/share/projects/exp-abc")
     assert resp.status_code == 410
 
 
 @pytest.mark.asyncio
 async def test_unknown_slug_returns_404(client: AsyncClient):
-    resp = await client.get("/share/projects/does-not-exist-xyz")
+    resp = await client.get("/api/share/projects/does-not-exist-xyz")
     assert resp.status_code == 404
 
 

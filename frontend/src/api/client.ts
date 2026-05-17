@@ -45,7 +45,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const text = await response.text().catch(() => response.statusText);
-    throw new Error(text || `HTTP ${response.status}`);
+    const err = new Error(text || `HTTP ${response.status}`) as Error & { status: number };
+    err.status = response.status;
+    throw err;
   }
 
   // 204 No Content

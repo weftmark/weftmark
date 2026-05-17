@@ -11,6 +11,8 @@ import {
   ChevronsUp,
   CircleCheck,
   CircleHelp,
+  Copy,
+  ExternalLink,
   FileDown,
   FolderOpen,
   Footprints,
@@ -27,6 +29,7 @@ import {
   Scan,
   Scroll,
   Settings,
+  Share2,
   ShieldCheck,
   Wrench,
   X,
@@ -71,6 +74,11 @@ export const AppIcons = {
   zoomOut: ZoomOut,
   zoomReset: RotateCcw,
   zoomFit: Scan,
+
+  // ── Sharing ───────────────────────────────────────────────────────────────
+  share: Share2,
+  copyLink: Copy,
+  externalLink: ExternalLink,
 
   // ── Landing page features ─────────────────────────────────────────────────
   designLibrary: Layers,

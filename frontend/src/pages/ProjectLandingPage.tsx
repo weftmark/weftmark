@@ -841,20 +841,48 @@ function WarpSetupSection({
 }
 
 // ---------------------------------------------------------------------------
-// Share section
+// Share modal
 // ---------------------------------------------------------------------------
 
-function ShareSection({
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  }
+}
+
+function ShareModal({
   project,
   onUpdated,
+  onClose,
 }: {
   project: ProjectDetail;
   onUpdated: (updated: ProjectDetail) => void;
+  onClose: () => void;
 }) {
   const [visibility, setVisibility] = useState<"link" | "public">(
     project.share_visibility === "public" ? "public" : "link"
   );
   const [expiryDays, setExpiryDays] = useState<string>("30");
+  const [copied, setCopied] = useState(false);
+
+  const hasSlug = !!project.share_slug && project.share_visibility !== "private";
+  const shareUrl = hasSlug ? `${window.location.origin}/p/${project.share_slug}` : null;
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const shareMutation = useMutation({
     mutationFn: () => {
@@ -869,101 +897,133 @@ function ShareSection({
 
   const revokeMutation = useMutation({
     mutationFn: () => revokeProjectShare(project.id),
-    onSuccess: () => onUpdated({ ...project, share_slug: null, share_visibility: "private", share_expires_at: null }),
+    onSuccess: () => {
+      onUpdated({ ...project, share_slug: null, share_visibility: "private", share_expires_at: null });
+      onClose();
+    },
   });
 
-  const hasSlug = !!project.share_slug && project.share_visibility !== "private";
-  const shareUrl = hasSlug ? `${window.location.origin}/p/${project.share_slug}` : null;
+  async function handleCopy() {
+    if (!shareUrl) return;
+    const ok = await copyToClipboard(shareUrl);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      alert(`Copy this URL:\n${shareUrl}`);
+    }
+  }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <h3 className="text-sm font-semibold">Share project</h3>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-md w-full">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h2 className="font-semibold text-sm flex items-center gap-2">
+            <AppIcons.share className="h-4 w-4" />
+            Share project
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+            <AppIcons.close className="h-4 w-4" />
+          </button>
+        </div>
 
-      {hasSlug && shareUrl ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <input
-              readOnly
-              value={shareUrl}
-              className="flex-1 rounded border border-border bg-muted px-2 py-1 text-xs font-mono text-muted-foreground select-all"
-              onClick={(e) => (e.target as HTMLInputElement).select()}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigator.clipboard.writeText(shareUrl)}
-            >
-              Copy
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
-            <span className="capitalize">{project.share_visibility === "public" ? "Public" : "Anyone with link"}</span>
-            {project.share_expires_at && (
-              <span>· expires {new Date(project.share_expires_at).toLocaleDateString()}</span>
-            )}
-          </div>
-          <div className="flex gap-2 flex-wrap pt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => revokeMutation.mutate()}
-              disabled={revokeMutation.isPending}
-            >
-              Revoke link
-            </Button>
-          </div>
+        <div className="p-4 space-y-4">
+          {hasSlug && shareUrl ? (
+            <>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 rounded border border-border bg-muted px-2 py-1.5 text-xs font-mono text-muted-foreground select-all min-w-0"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <Button variant="outline" size="sm" onClick={handleCopy} className="shrink-0 min-w-[72px]">
+                  {copied ? "Copied!" : (
+                    <><AppIcons.copyLink className="h-3.5 w-3.5 mr-1" />Copy</>
+                  )}
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                <span>{project.share_visibility === "public" ? "Public" : "Anyone with link"}</span>
+                {project.share_expires_at && (
+                  <span>· expires {new Date(project.share_expires_at).toLocaleDateString()}</span>
+                )}
+                <a
+                  href={`/p/${project.share_slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  View <AppIcons.externalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <div className="pt-1 border-t border-border">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => revokeMutation.mutate()}
+                  disabled={revokeMutation.isPending}
+                >
+                  {revokeMutation.isPending ? "Revoking…" : "Revoke link"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Create a read-only link to share this project with others.
+              </p>
+              <div className="flex gap-4 text-sm flex-wrap">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`vis-${project.id}`}
+                    value="link"
+                    checked={visibility === "link"}
+                    onChange={() => setVisibility("link")}
+                  />
+                  Anyone with link
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`vis-${project.id}`}
+                    value="public"
+                    checked={visibility === "public"}
+                    onChange={() => setVisibility("public")}
+                  />
+                  Public (listed)
+                </label>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <label className="text-muted-foreground text-xs shrink-0">Expires after</label>
+                <select
+                  value={expiryDays}
+                  onChange={(e) => setExpiryDays(e.target.value)}
+                  className="rounded border border-border bg-background px-2 py-1 text-xs"
+                >
+                  <option value="7">7 days</option>
+                  <option value="30">30 days</option>
+                  <option value="90">90 days</option>
+                  <option value="365">1 year</option>
+                  <option value="">Never</option>
+                </select>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => shareMutation.mutate()}
+                disabled={shareMutation.isPending}
+              >
+                {shareMutation.isPending ? "Creating…" : "Create link"}
+              </Button>
+            </>
+          )}
         </div>
-      ) : (
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Share a read-only view of this project with a private link.
-          </p>
-          <div className="flex gap-4 text-sm flex-wrap">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name={`vis-${project.id}`}
-                value="link"
-                checked={visibility === "link"}
-                onChange={() => setVisibility("link")}
-              />
-              Anyone with link
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name={`vis-${project.id}`}
-                value="public"
-                checked={visibility === "public"}
-                onChange={() => setVisibility("public")}
-              />
-              Public (listed)
-            </label>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <label className="text-muted-foreground text-xs shrink-0">Expires after</label>
-            <select
-              value={expiryDays}
-              onChange={(e) => setExpiryDays(e.target.value)}
-              className="rounded border border-border bg-background px-2 py-1 text-xs"
-            >
-              <option value="7">7 days</option>
-              <option value="30">30 days</option>
-              <option value="90">90 days</option>
-              <option value="365">1 year</option>
-              <option value="">Never</option>
-            </select>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => shareMutation.mutate()}
-            disabled={shareMutation.isPending}
-          >
-            Create link
-          </Button>
-        </div>
-      )}
-    </section>
+      </div>
+    </div>
   );
 }
 
@@ -1052,6 +1112,7 @@ export function ProjectLandingPage() {
 
   const [drawdownOpen, setDrawdownOpen] = useState(false);
   const [tieupOpen, setTieupOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -1126,6 +1187,16 @@ export function ProjectLandingPage() {
             <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
               {PROJECT_TYPE_LABELS[project.project_type]}
             </span>
+            {project.share_slug && project.share_visibility !== "private" && (
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
+                title="Project is shared — click to manage"
+              >
+                <AppIcons.share className="h-3 w-3" />
+                Shared
+              </button>
+            )}
           </div>
           <h1 className="text-xl font-semibold leading-tight truncate">{project.name}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -1135,6 +1206,15 @@ export function ProjectLandingPage() {
             {project.loom_name && <span> · {project.loom_name}</span>}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={() => setShareModalOpen(true)}
+          title="Share project"
+        >
+          <AppIcons.share className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Preview + specs */}
@@ -1287,12 +1367,6 @@ export function ProjectLandingPage() {
         onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
       />
 
-      {/* Share */}
-      <ShareSection
-        project={project}
-        onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
-      />
-
       {/* Actions */}
       <section className="flex flex-wrap gap-2 pt-2 border-t border-border">
         <Button
@@ -1341,6 +1415,14 @@ export function ProjectLandingPage() {
           projectId={project.id}
           draftName={project.draft_name}
           onClose={() => setTieupOpen(false)}
+        />
+      )}
+      {/* Share modal */}
+      {shareModalOpen && (
+        <ShareModal
+          project={project}
+          onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
+          onClose={() => setShareModalOpen(false)}
         />
       )}
     </div>

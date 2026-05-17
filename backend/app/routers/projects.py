@@ -252,8 +252,12 @@ class SharedProjectResponse(BaseModel):
     created_at: datetime
     completed_at: datetime | None
     abandoned_at: datetime | None
+    has_drawdown_preview: bool
     has_drawdown_svg: bool
     color_replacements: dict | None
+    draft_wif_colors: list | None
+    draft_warp_color_stats: list | None
+    draft_weft_color_stats: list | None
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +267,7 @@ class SharedProjectResponse(BaseModel):
 
 _WORKED_PICK_THRESHOLD_MS = 3_000  # < 3 s gap = navigation/review, not a woven pick
 
-share_router = APIRouter(prefix="/share", tags=["share"])
+share_router = APIRouter(prefix="/api/share", tags=["share"])
 
 _SLUG_MAX_NAME_CHARS = 48
 _SLUG_SUFFIX_BYTES = 3  # → 4 base64url chars
@@ -1645,6 +1649,50 @@ async def get_shared_project(
         created_at=project.created_at,
         completed_at=project.completed_at,
         abandoned_at=project.abandoned_at,
+        has_drawdown_preview=project.drawdown_preview_path is not None,
         has_drawdown_svg=project.drawdown_svg_path is not None,
         color_replacements=project.color_replacements,
+        draft_wif_colors=draft.wif_colors,
+        draft_warp_color_stats=draft.warp_color_stats,
+        draft_weft_color_stats=draft.weft_color_stats,
+    )
+
+
+@share_router.get("/projects/{slug}/preview")
+async def get_shared_project_preview(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return the pre-rendered drawdown preview PNG for a shared project (no auth required)."""
+    project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
+    if project is None or project.share_visibility == "private":
+        raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(timezone.utc)
+    if project.share_expires_at is not None and project.share_expires_at <= now:
+        raise HTTPException(status_code=410, detail="Expired")
+    if not project.drawdown_preview_path:
+        raise HTTPException(status_code=404, detail="Preview not yet generated")
+    data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
+    return Response(content=data, media_type="image/png", headers={"Cache-Control": "public, max-age=300"})
+
+
+@share_router.get("/projects/{slug}/svg")
+async def get_shared_project_svg(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return the pre-rendered drawdown SVG for a shared project (no auth required)."""
+    project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
+    if project is None or project.share_visibility == "private":
+        raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(timezone.utc)
+    if project.share_expires_at is not None and project.share_expires_at <= now:
+        raise HTTPException(status_code=410, detail="Expired")
+    if not project.drawdown_svg_path:
+        raise HTTPException(status_code=404, detail="SVG not yet generated")
+    svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
+    return Response(
+        content=svg_text,
+        media_type="image/svg+xml; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=300"},
     )
