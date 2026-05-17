@@ -259,3 +259,6 @@ e2e/playwright-report/
 
 # PDF exports (generated on demand)
 *.generated.pdf
+
+# Benchmark outputs
+scripts/benchmarkout/
