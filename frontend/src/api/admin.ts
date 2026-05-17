@@ -438,3 +438,17 @@ export const patchCredential = (
 ) => api.patch<CredentialExpiry>(`/api/admin/credentials/${id}`, body);
 
 export const deleteCredential = (id: string) => api.delete<void>(`/api/admin/credentials/${id}`);
+
+export interface AdminSlugRecord {
+  slug: string;
+  project_id: string;
+  project_name: string;
+  project_status: string;
+  owner_email: string;
+  share_visibility: string;
+  share_expires_at: string | null;
+  created_at: string;
+}
+
+export const listProjectSlugs = () => api.get<AdminSlugRecord[]>("/api/admin/project-slugs");
+export const adminRevokeSlug = (slug: string) => api.delete<void>(`/api/admin/project-slugs/${slug}`);

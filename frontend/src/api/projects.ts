@@ -13,6 +13,8 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   abandoned: "Abandoned",
 };
 
+export type ShareVisibility = "private" | "link" | "public";
+
 export interface ProjectSummary {
   id: string;
   owner_id: string;
@@ -33,6 +35,31 @@ export interface ProjectSummary {
   hide_unused_shafts_treadles: boolean;
   has_drawdown_preview: boolean;
   has_drawdown_svg: boolean;
+  share_slug: string | null;
+  share_visibility: ShareVisibility;
+  share_expires_at: string | null;
+}
+
+export interface SharedProject {
+  slug: string;
+  project_name: string;
+  project_status: ProjectStatus;
+  project_type: ProjectType;
+  owner_display_name: string;
+  draft_name: string;
+  draft_num_shafts: number | null;
+  draft_num_treadles: number | null;
+  num_items: number;
+  total_picks: number;
+  current_pick: number;
+  current_item: number;
+  share_visibility: ShareVisibility;
+  share_expires_at: string | null;
+  created_at: string;
+  completed_at: string | null;
+  abandoned_at: string | null;
+  has_drawdown_svg: boolean;
+  color_replacements: Record<string, string> | null;
 }
 
 export interface ProjectPhoto {
@@ -406,4 +433,24 @@ export function setProjectColorReplacements(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ color_replacements: colorReplacements }),
   });
+}
+
+export function updateProjectShare(
+  id: string,
+  visibility: "link" | "public",
+  expiresAt?: string | null,
+): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/share`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ visibility, expires_at: expiresAt ?? null }),
+  });
+}
+
+export function revokeProjectShare(id: string): Promise<void> {
+  return req(`/api/projects/${id}/share`, { method: "DELETE" });
+}
+
+export function getSharedProject(slug: string): Promise<SharedProject> {
+  return req(`/share/projects/${slug}`);
 }

@@ -63,6 +63,10 @@ def _make_celery() -> Celery:
                 "task": "app.tasks.geo.refresh_geoip_database",
                 "schedule": 604800.0,  # weekly
             },
+            "expire-project-slugs": {
+                "task": "app.tasks.maintenance.expire_project_slugs",
+                "schedule": 86400.0,  # nightly
+            },
         },
     )
     return app

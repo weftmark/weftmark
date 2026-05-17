@@ -6,6 +6,7 @@ import { measurementSystemToUnit, displayLength, formatApproxLength, convertLeng
 import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
+  updateProjectShare, revokeProjectShare,
   getWarpingPlan,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail,
@@ -840,6 +841,133 @@ function WarpSetupSection({
 }
 
 // ---------------------------------------------------------------------------
+// Share section
+// ---------------------------------------------------------------------------
+
+function ShareSection({
+  project,
+  onUpdated,
+}: {
+  project: ProjectDetail;
+  onUpdated: (updated: ProjectDetail) => void;
+}) {
+  const [visibility, setVisibility] = useState<"link" | "public">(
+    project.share_visibility === "public" ? "public" : "link"
+  );
+  const [expiryDays, setExpiryDays] = useState<string>("30");
+
+  const shareMutation = useMutation({
+    mutationFn: () => {
+      const days = parseInt(expiryDays, 10);
+      const expires = !isNaN(days) && days > 0
+        ? new Date(Date.now() + days * 86_400_000).toISOString()
+        : null;
+      return updateProjectShare(project.id, visibility, expires);
+    },
+    onSuccess: onUpdated,
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: () => revokeProjectShare(project.id),
+    onSuccess: () => onUpdated({ ...project, share_slug: null, share_visibility: "private", share_expires_at: null }),
+  });
+
+  const hasSlug = !!project.share_slug && project.share_visibility !== "private";
+  const shareUrl = hasSlug ? `${window.location.origin}/p/${project.share_slug}` : null;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+      <h3 className="text-sm font-semibold">Share project</h3>
+
+      {hasSlug && shareUrl ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              value={shareUrl}
+              className="flex-1 rounded border border-border bg-muted px-2 py-1 text-xs font-mono text-muted-foreground select-all"
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigator.clipboard.writeText(shareUrl)}
+            >
+              Copy
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+            <span className="capitalize">{project.share_visibility === "public" ? "Public" : "Anyone with link"}</span>
+            {project.share_expires_at && (
+              <span>· expires {new Date(project.share_expires_at).toLocaleDateString()}</span>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => revokeMutation.mutate()}
+              disabled={revokeMutation.isPending}
+            >
+              Revoke link
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Share a read-only view of this project with a private link.
+          </p>
+          <div className="flex gap-4 text-sm flex-wrap">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name={`vis-${project.id}`}
+                value="link"
+                checked={visibility === "link"}
+                onChange={() => setVisibility("link")}
+              />
+              Anyone with link
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name={`vis-${project.id}`}
+                value="public"
+                checked={visibility === "public"}
+                onChange={() => setVisibility("public")}
+              />
+              Public (listed)
+            </label>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <label className="text-muted-foreground text-xs shrink-0">Expires after</label>
+            <select
+              value={expiryDays}
+              onChange={(e) => setExpiryDays(e.target.value)}
+              className="rounded border border-border bg-background px-2 py-1 text-xs"
+            >
+              <option value="7">7 days</option>
+              <option value="30">30 days</option>
+              <option value="90">90 days</option>
+              <option value="365">1 year</option>
+              <option value="">Never</option>
+            </select>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => shareMutation.mutate()}
+            disabled={shareMutation.isPending}
+          >
+            Create link
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Notes inline editor
 // ---------------------------------------------------------------------------
 
@@ -1156,6 +1284,12 @@ export function ProjectLandingPage() {
       <NotesSection
         projectId={project.id}
         initialNotes={project.notes}
+        onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
+      />
+
+      {/* Share */}
+      <ShareSection
+        project={project}
         onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
       />
 

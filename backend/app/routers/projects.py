@@ -1,5 +1,7 @@
 import asyncio
 import mimetypes
+import re
+import secrets
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -69,6 +71,9 @@ class ProjectSummary(BaseModel):
     hide_unused_shafts_treadles: bool
     has_drawdown_preview: bool = False
     has_drawdown_svg: bool = False
+    share_slug: str | None = None
+    share_visibility: str = "private"
+    share_expires_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -224,12 +229,63 @@ class ProjectMetricsResponse(BaseModel):
     sessions: list[SessionInfo]
 
 
+class ShareProjectRequest(BaseModel):
+    visibility: str  # "link" | "public"
+    expires_at: datetime | None = None
+
+
+class SharedProjectResponse(BaseModel):
+    slug: str
+    project_name: str
+    project_status: str
+    project_type: str
+    owner_display_name: str
+    draft_name: str
+    draft_num_shafts: int | None
+    draft_num_treadles: int | None
+    num_items: int
+    total_picks: int
+    current_pick: int
+    current_item: int
+    share_visibility: str
+    share_expires_at: datetime | None
+    created_at: datetime
+    completed_at: datetime | None
+    abandoned_at: datetime | None
+    has_drawdown_svg: bool
+    color_replacements: dict | None
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
 _WORKED_PICK_THRESHOLD_MS = 3_000  # < 3 s gap = navigation/review, not a woven pick
+
+share_router = APIRouter(prefix="/share", tags=["share"])
+
+_SLUG_MAX_NAME_CHARS = 48
+_SLUG_SUFFIX_BYTES = 3  # → 4 base64url chars
+
+
+def _slugify(name: str) -> str:
+    """Convert a project name to a URL-safe slug segment."""
+    s = name.lower().strip()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    s = s.strip("-")
+    return s[:_SLUG_MAX_NAME_CHARS].rstrip("-") or "project"
+
+
+async def _generate_unique_slug(name: str, db: AsyncSession, max_attempts: int = 8) -> str:
+    base = _slugify(name)
+    for _ in range(max_attempts):
+        suffix = secrets.token_urlsafe(_SLUG_SUFFIX_BYTES)
+        candidate = f"{base}-{suffix}"
+        existing = await db.scalar(select(Project).where(Project.share_slug == candidate))
+        if existing is None:
+            return candidate
+    raise HTTPException(status_code=500, detail="Could not generate unique share slug")
 
 
 async def _close_open_session(project_id: uuid.UUID, db: AsyncSession) -> None:
@@ -356,6 +412,9 @@ def _to_detail(
         loom_resolved_version_id=loom_version.id if loom_version else None,
         has_drawdown_preview=project.drawdown_preview_path is not None,
         has_drawdown_svg=project.drawdown_svg_path is not None,
+        share_slug=project.share_slug,
+        share_visibility=project.share_visibility,
+        share_expires_at=project.share_expires_at,
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
     )
 
@@ -1481,4 +1540,111 @@ async def get_warping_plan(
         tieup_num_shafts=tieup_num_shafts,
         tieup_num_treadles=tieup_num_treadles,
         has_tieup=tieup_data is not None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Share endpoints (owner)
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/{project_id}/share", response_model=ProjectDetail)
+async def update_project_share(
+    project_id: uuid.UUID,
+    body: ShareProjectRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    if body.visibility not in ("link", "public"):
+        raise HTTPException(status_code=400, detail="visibility must be 'link' or 'public'")
+
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
+    draft = await db.get(Draft, project.draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    if project.share_slug is None:
+        project.share_slug = await _generate_unique_slug(project.name, db)
+
+    project.share_visibility = body.visibility
+    project.share_expires_at = body.expires_at
+
+    await db.commit()
+    await db.refresh(project)
+
+    loom: Loom | None = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    photos = list(
+        await db.scalars(
+            select(ProjectPhoto).where(ProjectPhoto.project_id == project.id).order_by(ProjectPhoto.display_order)
+        )
+    )
+    return _to_detail(project, draft, loom, photos, loom_version)
+
+
+@router.delete("/{project_id}/share", status_code=204)
+async def revoke_project_share(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
+    project.share_slug = None
+    project.share_visibility = "private"
+    project.share_expires_at = None
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Public share endpoint (no auth)
+# ---------------------------------------------------------------------------
+
+
+@share_router.get("/projects/{slug}", response_model=SharedProjectResponse)
+async def get_shared_project(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> SharedProjectResponse:
+    project = await db.scalar(
+        select(Project).where(
+            Project.share_slug == slug,
+            Project.deleted_at.is_(None),
+        )
+    )
+    if project is None or project.share_visibility == "private":
+        raise HTTPException(status_code=404, detail="Shared project not found")
+
+    now = datetime.now(timezone.utc)
+    if project.share_expires_at is not None and project.share_expires_at <= now:
+        raise HTTPException(status_code=410, detail="This share link has expired")
+
+    draft = await db.get(Draft, project.draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    from app.models.user import User as UserModel
+
+    owner = await db.get(UserModel, project.owner_id)
+    owner_display = owner.display_name if owner and owner.display_name else "Unknown"
+
+    return SharedProjectResponse(
+        slug=slug,
+        project_name=project.name,
+        project_status=project.status,
+        project_type=project.project_type,
+        owner_display_name=owner_display,
+        draft_name=draft.name,
+        draft_num_shafts=draft.effective_num_shafts or draft.num_shafts,
+        draft_num_treadles=draft.effective_num_treadles or draft.num_treadles,
+        num_items=project.num_items,
+        total_picks=project.total_picks,
+        current_pick=project.current_pick,
+        current_item=project.current_item,
+        share_visibility=project.share_visibility,
+        share_expires_at=project.share_expires_at,
+        created_at=project.created_at,
+        completed_at=project.completed_at,
+        abandoned_at=project.abandoned_at,
+        has_drawdown_svg=project.drawdown_svg_path is not None,
+        color_replacements=project.color_replacements,
     )

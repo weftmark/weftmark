@@ -2452,3 +2452,68 @@ async def delete_credential(
         raise HTTPException(status_code=404, detail="Credential not found")
     await db.delete(cred)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Admin: project share slug report
+# ---------------------------------------------------------------------------
+
+
+class AdminSlugRecord(BaseModel):
+    slug: str
+    project_id: uuid.UUID
+    project_name: str
+    project_status: str
+    owner_email: str
+    share_visibility: str
+    share_expires_at: datetime | None
+    created_at: datetime
+
+
+@router.get("/project-slugs", response_model=list[AdminSlugRecord])
+async def list_project_slugs(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[AdminSlugRecord]:
+    rows = await db.scalars(
+        select(Project).where(
+            Project.share_slug.isnot(None),
+            Project.share_visibility != "private",
+            Project.deleted_at.is_(None),
+        )
+    )
+    projects = rows.all()
+    owner_ids = list({p.owner_id for p in projects})
+    owners = {}
+    if owner_ids:
+        user_rows = await db.scalars(select(User).where(User.id.in_(owner_ids)))
+        owners = {u.id: u.email for u in user_rows.all()}
+
+    return [
+        AdminSlugRecord(
+            slug=p.share_slug,
+            project_id=p.id,
+            project_name=p.name,
+            project_status=p.status,
+            owner_email=owners.get(p.owner_id, "unknown"),
+            share_visibility=p.share_visibility,
+            share_expires_at=p.share_expires_at,
+            created_at=p.created_at,
+        )
+        for p in projects
+    ]
+
+
+@router.delete("/project-slugs/{slug}", status_code=204)
+async def admin_revoke_project_slug(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> None:
+    project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
+    if project is None:
+        raise HTTPException(status_code=404, detail="Slug not found")
+    project.share_slug = None
+    project.share_visibility = "private"
+    project.share_expires_at = None
+    await db.commit()
