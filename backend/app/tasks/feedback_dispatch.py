@@ -26,7 +26,7 @@ async def _dispatch(task, feedback_id: str) -> dict:
     from sqlalchemy.orm import selectinload
 
     from app.config import get_settings
-    from app.database import AsyncSessionLocal
+    from app.database import CeleryAsyncSession
     from app.models.feedback import UserFeedback
     from app.services.github_discussions import (
         build_discussion_body,
@@ -37,14 +37,14 @@ async def _dispatch(task, feedback_id: str) -> dict:
     settings = get_settings()
     if not settings.github_feedback_token:
         log.info("feedback_dispatch skipped — no token feedback_id=%s", feedback_id)
-        async with AsyncSessionLocal() as db:
+        async with CeleryAsyncSession() as db:
             row = await db.get(UserFeedback, uuid.UUID(feedback_id))
             if row:
                 row.dispatch_status = "skipped"
                 await db.commit()
         return {"status": "skipped"}
 
-    async with AsyncSessionLocal() as db:
+    async with CeleryAsyncSession() as db:
         row = (
             await db.execute(
                 select(UserFeedback)
@@ -100,13 +100,13 @@ async def _send_emails(feedback_id: str, discussion_url: str, settings) -> None:
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
-    from app.database import AsyncSessionLocal
+    from app.database import CeleryAsyncSession
     from app.models.feedback import UserFeedback
     from app.models.user import User
     from app.services import email as mail_svc
     from app.services.github_discussions import _type_label
 
-    async with AsyncSessionLocal() as db:
+    async with CeleryAsyncSession() as db:
         row = (
             await db.execute(
                 select(UserFeedback)
@@ -154,7 +154,7 @@ async def _retry_failed(limit: int) -> dict:
     from sqlalchemy import or_, select
 
     from app.config import get_settings
-    from app.database import AsyncSessionLocal
+    from app.database import CeleryAsyncSession
     from app.models.feedback import UserFeedback
     from app.services.task_history import record_queued
 
@@ -164,7 +164,7 @@ async def _retry_failed(limit: int) -> dict:
 
     stale_cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
 
-    async with AsyncSessionLocal() as db:
+    async with CeleryAsyncSession() as db:
         rows = (
             (
                 await db.execute(
@@ -210,11 +210,11 @@ async def _purge_deleted(retention_days: int) -> dict:
 
     from sqlalchemy import delete
 
-    from app.database import AsyncSessionLocal
+    from app.database import CeleryAsyncSession
     from app.models.feedback import UserFeedback
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
-    async with AsyncSessionLocal() as db:
+    async with CeleryAsyncSession() as db:
         result = await db.execute(
             delete(UserFeedback).where(
                 UserFeedback.deleted_at.is_not(None),

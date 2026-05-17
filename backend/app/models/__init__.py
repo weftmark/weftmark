@@ -4,6 +4,7 @@ from app.models.base import Base
 from app.models.credential_expiry import CredentialExpiry
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
+from app.models.feedback import UserFeedback
 from app.models.invite import Invite
 from app.models.loom import (
     Loom,
@@ -27,6 +28,7 @@ __all__ = [
     "AuditLog",
     "CredentialExpiry",
     "User",
+    "UserFeedback",
     "UserIdentity",
     "Invite",
     "PendingSignup",
