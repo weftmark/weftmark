@@ -19,6 +19,7 @@ import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button } from "@/components/ui/button";
+import { ZoomablePreviewModal } from "@/components/ui/ZoomablePreviewModal";
 import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
 
 // ---------------------------------------------------------------------------
@@ -119,36 +120,24 @@ function DesignPreviewModal({
   projectId,
   hasDrawdownPreview,
   colorReplacements,
+  draftName,
   onClose,
 }: {
   projectId: string;
   hasDrawdownPreview: boolean;
   colorReplacements: Record<string, string> | null;
+  draftName: string;
   onClose: () => void;
 }) {
   const src = hasDrawdownPreview
     ? projectDrawdownPreviewUrl(projectId)
     : drawdownPreviewUrl(projectId, colorReplacements ?? undefined);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-    >
-      <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={onClose}
-          className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"
-        >
-          Close ✕
-        </button>
-        <AuthedImage
-          src={src}
-          alt="WIF design preview"
-          className="max-h-[80vh] mx-auto block rounded-lg shadow-2xl"
-          style={{ imageRendering: "pixelated" }}
-        />
-      </div>
-    </div>
+    <ZoomablePreviewModal
+      src={src}
+      title={draftName}
+      onClose={onClose}
+    />
   );
 }
 
@@ -1894,6 +1883,7 @@ export function ProjectDetailPage() {
           projectId={project.id}
           hasDrawdownPreview={project.has_drawdown_preview}
           colorReplacements={project.color_replacements}
+          draftName={project.draft_name}
           onClose={() => setShowDesignPreview(false)}
         />
       )}

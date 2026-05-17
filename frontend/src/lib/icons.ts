@@ -21,6 +21,7 @@ import {
   Minimize2,
   Pencil,
   RotateCcw,
+  Scan,
   Scroll,
   Settings,
   ShieldCheck,
@@ -63,6 +64,7 @@ export const AppIcons = {
   zoomIn: ZoomIn,
   zoomOut: ZoomOut,
   zoomReset: RotateCcw,
+  zoomFit: Scan,
 
   // ── Landing page features ─────────────────────────────────────────────────
   designLibrary: Layers,

@@ -109,8 +109,9 @@ function ZoomInput({ zoom, onCommit }: { zoom: number; onCommit: (z: number) => 
 // Drawdown modal (click thumbnail to open)
 // ---------------------------------------------------------------------------
 
-function DrawdownModal({ svgUrl, onClose }: {
+function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
   svgUrl: string;
+  title?: string;
   onClose: () => void;
 }) {
   const [zoom, setZoom] = useState(1);
@@ -161,6 +162,16 @@ function DrawdownModal({ svgUrl, onClose }: {
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+      if (e.key === "0") handleReset();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose]);
 
   function applyTransform(z: number, px: number, py: number) {
     if (!innerRef.current) return;
@@ -277,6 +288,7 @@ function DrawdownModal({ svgUrl, onClose }: {
       >
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
+          <span className="text-sm font-medium truncate flex-1">{title}</span>
           <button className={btnCls} onClick={() => handleZoomChange(Math.max(0.05, +(zoomRef.current - 0.25).toFixed(2)))} title="Zoom out">
             <AppIcons.zoomOut className="h-4 w-4" />
           </button>
@@ -284,12 +296,11 @@ function DrawdownModal({ svgUrl, onClose }: {
           <button className={btnCls} onClick={() => handleZoomChange(Math.min(8, +(zoomRef.current + 0.25).toFixed(2)))} title="Zoom in">
             <AppIcons.zoomIn className="h-4 w-4" />
           </button>
-          <button className={btnCls} onClick={handleReset} title="Fit to window">
-            <AppIcons.zoomReset className="h-3.5 w-3.5" />
+          <button className={btnCls} onClick={handleReset} title="Zoom to fit (0)">
+            <AppIcons.zoomFit className="h-4 w-4" />
           </button>
-          <div className="flex-1" />
           <button
-            className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors ml-1"
             onClick={onClose}
             title="Close"
           >
@@ -1085,6 +1096,7 @@ export function ProjectLandingPage() {
               ? projectDrawdownSvgUrl(project.id)
               : drawdownSvgUrl(project.id, 8)
           }
+          title={project.draft_name}
           onClose={() => setDrawdownOpen(false)}
         />
       )}
