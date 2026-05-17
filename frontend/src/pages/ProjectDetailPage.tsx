@@ -166,8 +166,8 @@ function PickDisplay({
   const weftHex = pick.color ?? null;
   // Scale number size to fill cell: larger font for fewer boxes, smaller for many.
   const cellFontSize = compact
-    ? `${Math.max(10, Math.min(16, Math.floor(96 / count)))}px`
-    : `${Math.max(13, Math.min(28, Math.floor(160 / count)))}px`;
+    ? `${Math.max(10, Math.min(20, Math.floor(110 / count)))}px`
+    : `${Math.max(14, Math.min(36, Math.floor(180 / count)))}px`;
 
   return (
     <div
@@ -210,10 +210,11 @@ function PickDisplay({
               if (colorMode === "strip") {
                 return (
                   <div key={n}
-                    className="rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center font-bold">
-                    <span className="absolute bottom-0 left-0 right-0 h-[20%]"
-                      style={{ backgroundColor: weftHex }} />
-                    <span className="relative text-primary-foreground" style={{ fontSize: cellFontSize }}>{n}</span>
+                    className="rounded-md border-2 overflow-hidden border-primary bg-primary flex flex-col font-bold">
+                    <div className="flex-1 flex items-center justify-center">
+                      <span className="text-primary-foreground" style={{ fontSize: cellFontSize }}>{n}</span>
+                    </div>
+                    <div className="h-[20%] shrink-0" style={{ backgroundColor: weftHex }} />
                   </div>
                 );
               }
