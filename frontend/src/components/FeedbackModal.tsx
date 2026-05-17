@@ -25,7 +25,7 @@ const TYPE_PLACEHOLDERS: Record<SubmissionType, string> = {
 };
 
 function getEnvironment(hostname: string): string {
-  if (hostname.endsWith(".weftmark.com")) return `https://${hostname}`;
+  if (hostname === "weftmark.com" || hostname.endsWith(".weftmark.com")) return `https://${hostname}`;
   return "local instance";
 }
 
