@@ -164,6 +164,10 @@ function PickDisplay({
 }) {
   const count = Math.max(totalCount, 1);
   const weftHex = pick.color ?? null;
+  // Scale number size to fill cell: larger font for fewer boxes, smaller for many.
+  const cellFontSize = compact
+    ? `${Math.max(10, Math.min(16, Math.floor(96 / count)))}px`
+    : `${Math.max(13, Math.min(28, Math.floor(160 / count)))}px`;
 
   return (
     <div
@@ -198,29 +202,30 @@ function PickDisplay({
                 const fg = contrastColor(weftHex);
                 return (
                   <div key={n} style={{ backgroundColor: weftHex, borderColor: fg }}
-                    className="rounded-md border-2 flex items-center justify-center text-[9px] font-bold">
-                    <span style={{ color: fg }}>{n}</span>
+                    className="rounded-md border-2 flex items-center justify-center font-bold">
+                    <span style={{ color: fg, fontSize: cellFontSize }}>{n}</span>
                   </div>
                 );
               }
               if (colorMode === "strip") {
                 return (
                   <div key={n}
-                    className="rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center text-[9px] font-bold">
+                    className="rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center font-bold">
                     <span className="absolute bottom-0 left-0 right-0 h-[20%]"
                       style={{ backgroundColor: weftHex }} />
-                    <span className="relative text-primary-foreground">{n}</span>
+                    <span className="relative text-primary-foreground" style={{ fontSize: cellFontSize }}>{n}</span>
                   </div>
                 );
               }
             }
             return (
               <div key={n}
-                className={`rounded-md border-2 flex items-center justify-center text-[9px] font-bold ${
+                className={`rounded-md border-2 flex items-center justify-center font-bold ${
                   active
                     ? "bg-primary border-primary text-primary-foreground"
                     : "border-border bg-muted/60 text-foreground/70"
-                }`}>
+                }`}
+                style={{ fontSize: cellFontSize }}>
                 {n}
               </div>
             );
@@ -1092,9 +1097,19 @@ export function ProjectDetailPage() {
     setStepping(true);
     try {
       const updated = await jumpProject(id, pick);
-      queryClient.setQueryData<typeof project>(["project", id], (old) =>
-        old ? { ...updated, photos: old.photos } : updated
-      );
+      // Merge only the fields a jump can change — preserves loom/draft metadata
+      // that determines shaft/treadle display count.
+      queryClient.setQueryData<typeof project>(["project", id], (old) => {
+        if (!old) return updated;
+        return {
+          ...old,
+          current_pick: updated.current_pick,
+          current_item: updated.current_item,
+          total_picks: updated.total_picks,
+          num_items: updated.num_items,
+          status: updated.status,
+        };
+      });
     } finally {
       setStepping(false);
     }
@@ -1202,9 +1217,17 @@ export function ProjectDetailPage() {
     setActionLoading(true);
     try {
       const updated = await jumpItem(id, item);
-      queryClient.setQueryData<typeof project>(["project", id], (old) =>
-        old ? { ...updated, photos: old.photos } : updated
-      );
+      queryClient.setQueryData<typeof project>(["project", id], (old) => {
+        if (!old) return updated;
+        return {
+          ...old,
+          current_pick: updated.current_pick,
+          current_item: updated.current_item,
+          total_picks: updated.total_picks,
+          num_items: updated.num_items,
+          status: updated.status,
+        };
+      });
     } finally { setActionLoading(false); }
   }, [id, queryClient]);
 
@@ -2017,11 +2040,17 @@ export function ProjectDetailPage() {
               {/* Trailing unused toggle — only shown when there are trailing boxes */}
               {trailingUnused > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Treadle display</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {project.project_type === "lift" ? "Shaft display" : "Treadle display"}
+                  </p>
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-sm">Hide trailing unused</span>
-                      <p className="text-xs text-muted-foreground">{trailingUnused} never-used trailing {trailingUnused === 1 ? "box" : "boxes"}</p>
+                      <span className="text-sm">
+                        Hide unused {project.project_type === "lift" ? "shafts" : "treadles"}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        {trailingUnused} unused trailing {trailingUnused === 1 ? (project.project_type === "lift" ? "shaft" : "treadle") : (project.project_type === "lift" ? "shafts" : "treadles")}
+                      </p>
                     </div>
                     <button
                       role="switch"
