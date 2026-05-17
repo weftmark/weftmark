@@ -6,6 +6,7 @@ import { AppIcons } from "@/lib/icons";
 import { useAuth } from "@/hooks/useAuth";
 import {
   submitFeedback,
+  getFeedbackStatus,
   SUBMISSION_TYPE_LABELS,
   type SubmissionType,
   type FeedbackRecord,
@@ -246,19 +247,62 @@ export function FeedbackModal({ onClose }: Props) {
 }
 
 function SuccessView({ record, onClose }: { record: FeedbackRecord; onClose: () => void }) {
+  const { user } = useAuth();
+
+  const [pollDispatchStatus, setPollDispatchStatus] = useState<string>(record.dispatch_status);
+  const [pollDiscussionUrl, setPollDiscussionUrl] = useState<string | null>(record.github_discussion_url);
+  const [timedOut, setTimedOut] = useState(false);
+
+  const canPoll = !!user && pollDispatchStatus === "pending";
+
+  useEffect(() => {
+    if (!canPoll) return;
+
+    const TIMEOUT_MS = 30_000;
+    const INTERVAL_MS = 2_500;
+    const startTime = Date.now();
+
+    const interval = setInterval(async () => {
+      if (Date.now() - startTime >= TIMEOUT_MS) {
+        clearInterval(interval);
+        setTimedOut(true);
+        return;
+      }
+      try {
+        const s = await getFeedbackStatus(record.id);
+        if (s.dispatch_status !== "pending") {
+          clearInterval(interval);
+          setPollDispatchStatus(s.dispatch_status);
+          setPollDiscussionUrl(s.github_discussion_url);
+        }
+      } catch {
+        // ignore transient poll errors
+      }
+    }, INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [canPoll, record.id]);
+
+  const typeLabel = SUBMISSION_TYPE_LABELS[record.submission_type as SubmissionType] ?? "feedback";
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-foreground">
-        Thank you — your {SUBMISSION_TYPE_LABELS[record.submission_type as SubmissionType] ?? "feedback"} was received.
+        Thank you — your {typeLabel} was received.
       </p>
 
-      {record.github_discussion_url ? (
+      {pollDispatchStatus === "pending" && !timedOut ? (
+        <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+          <AppIcons.spinner className="h-4 w-4 animate-spin shrink-0" />
+          <span>Creating your GitHub Discussion thread…</span>
+        </div>
+      ) : pollDispatchStatus === "sent" && pollDiscussionUrl ? (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
             A discussion thread has been created. You can follow progress and attach screenshots there:
           </p>
           <a
-            href={record.github_discussion_url}
+            href={pollDiscussionUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
@@ -270,7 +314,10 @@ function SuccessView({ record, onClose }: { record: FeedbackRecord; onClose: () 
       ) : (
         <p className="text-sm text-muted-foreground">
           Your submission is stored and will be reviewed by the team.
-          {record.dispatch_status === "pending" && " A GitHub Discussion link will be emailed to you shortly."}
+          {(pollDispatchStatus === "skipped" || timedOut) &&
+            " No public Discussion will be created, but the team will see your message."}
+          {pollDispatchStatus === "failed" &&
+            " The Discussion thread couldn't be created right now — the team will still see your submission."}
         </p>
       )}
 
