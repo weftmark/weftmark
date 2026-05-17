@@ -125,24 +125,29 @@ async def test_share_with_expiry(auth_client: AsyncClient, db_session: AsyncSess
 
     resp = await auth_client.patch(
         f"/api/projects/{project.id}/share",
-        json={"visibility": "public", "expires_at": expires},
+        json={"visibility": "link", "expires_at": expires},
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["share_visibility"] == "public"
+    assert data["share_visibility"] == "link"
     assert data["share_expires_at"] is not None
 
 
 @pytest.mark.asyncio
 async def test_share_slug_stable_on_re_patch(auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-    """Slug should not change when visibility is updated on an already-shared project."""
+    """Slug should not change when expiry is updated on an already-shared project."""
     draft = await _insert_draft(db_session, test_user)
     project = await _insert_project(db_session, test_user, draft)
 
     r1 = await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})
+    assert r1.status_code == 200
     slug1 = r1.json()["share_slug"]
 
-    r2 = await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "public"})
+    expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    r2 = await auth_client.patch(
+        f"/api/projects/{project.id}/share", json={"visibility": "link", "expires_at": expires}
+    )
+    assert r2.status_code == 200
     slug2 = r2.json()["share_slug"]
 
     assert slug1 == slug2
