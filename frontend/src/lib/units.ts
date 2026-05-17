@@ -27,15 +27,15 @@ export function displayLength(
   return formatLength(converted, displayUnit);
 }
 
-/** Format an approximate yarn/weft length stored in cm.
+/** Format an approximate yarn/warp length stored in cm.
  *  Automatically picks a human-readable unit:
- *  metric  — rounds to nearest 10 cm; ≥100 cm shown in metres (e.g. "1.7m", "80m")
- *  imperial — rounds to nearest 6 in;  ≥24 in shown in feet  (e.g. "26 ft", "5.5 ft")
+ *  metric  — rounds to nearest 10 cm; ≥1000 cm shown in metres (e.g. "12.5m", "80cm")
+ *  imperial — rounds to nearest 6 in;  ≥100 in shown in yards  (e.g. "3.5 yd", "72 in")
  */
 export function formatApproxLength(cm: number, unit: LengthUnit): string {
   if (unit === "cm") {
     const rounded = Math.round(cm / 10) * 10;
-    if (rounded >= 100) {
+    if (rounded >= 1000) {
       const m = rounded / 100;
       return m % 1 === 0 ? `${m}m` : `${m.toFixed(1)}m`;
     }
@@ -43,9 +43,9 @@ export function formatApproxLength(cm: number, unit: LengthUnit): string {
   } else {
     const inches = cm / CM_PER_IN;
     const rounded = Math.round(inches / 6) * 6;
-    if (rounded >= 24) {
-      const ft = rounded / 12;
-      return ft % 1 === 0 ? `${ft} ft` : `${ft.toFixed(1)} ft`;
+    if (rounded >= 100) {
+      const yd = rounded / 36;
+      return yd % 1 === 0 ? `${yd} yd` : `${yd.toFixed(1)} yd`;
     }
     return `${rounded} in`;
   }

@@ -180,6 +180,7 @@ class WarpingPlanEndEntry(BaseModel):
 
 class WarpingPlanColorRun(BaseModel):
     color: str | None
+    color_name: str | None = None
     start_end: int
     end_end: int
     count: int
@@ -1387,17 +1388,27 @@ def _compute_color_runs(entries: list[dict]) -> list[WarpingPlanColorRun]:
         return []
     runs: list[WarpingPlanColorRun] = []
     cur_color = entries[0]["color"]
+    cur_name = entries[0].get("color_name")
     start = entries[0]["end"]
     count = 1
     for entry in entries[1:]:
         if entry["color"] == cur_color:
             count += 1
         else:
-            runs.append(WarpingPlanColorRun(color=cur_color, start_end=start, end_end=start + count - 1, count=count))
+            runs.append(
+                WarpingPlanColorRun(
+                    color=cur_color, color_name=cur_name, start_end=start, end_end=start + count - 1, count=count
+                )
+            )
             cur_color = entry["color"]
+            cur_name = entry.get("color_name")
             start = entry["end"]
             count = 1
-    runs.append(WarpingPlanColorRun(color=cur_color, start_end=start, end_end=start + count - 1, count=count))
+    runs.append(
+        WarpingPlanColorRun(
+            color=cur_color, color_name=cur_name, start_end=start, end_end=start + count - 1, count=count
+        )
+    )
     return runs
 
 
@@ -1431,7 +1442,12 @@ async def get_warping_plan(
             try:
                 t_data = await asyncio.to_thread(wif_parser.parse_threading, wif_bytes)
                 raw_entries = [
-                    {"end": i + 1, "shafts": shafts, "color": t_data.warp_colors[i]}
+                    {
+                        "end": i + 1,
+                        "shafts": shafts,
+                        "color": t_data.warp_colors[i],
+                        "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,
+                    }
                     for i, shafts in enumerate(t_data.threading)
                 ]
                 threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]

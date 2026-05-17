@@ -293,6 +293,7 @@ class ThreadingData:
     warp_thread_count: int
     threading: list[list[int]]  # 0-indexed by end; each inner list = shaft numbers
     warp_colors: list[str | None]  # hex per end, None if no color data
+    color_names: dict[str, str]  # hex → name (empty if WIF has no color names)
 
 
 def parse_threading(wif_bytes: bytes) -> ThreadingData:
@@ -346,7 +347,12 @@ def parse_threading(wif_bytes: bytes) -> ThreadingData:
         colors.get(warp_color_map[i]) if i in warp_color_map else default_warp_color for i in range(1, max_end + 1)
     ]
 
-    return ThreadingData(warp_thread_count=max_end, threading=threading, warp_colors=warp_colors)
+    name_table = _color_name_table(config)
+    color_names: dict[str, str] = {hex_val: name for idx, name in name_table.items() if (hex_val := colors.get(idx))}
+
+    return ThreadingData(
+        warp_thread_count=max_end, threading=threading, warp_colors=warp_colors, color_names=color_names
+    )
 
 
 @dataclass
@@ -421,15 +427,23 @@ def _color_scale(config: RawConfigParser) -> int:
 
 
 def _color_table(config: RawConfigParser, scale: int) -> dict[int, str]:
-    """Parse [COLOR TABLE] into {index: '#rrggbb'}, scaling from `scale` to 0-255."""
+    """Parse [COLOR TABLE] into {index: '#rrggbb'}, scaling from `scale` to 0-255.
+
+    Handles optional non-numeric name at the end (e.g. "255,0,0,Red Rust") by
+    stopping numeric parsing at the first non-integer token.
+    """
     table: dict[int, str] = {}
     if not config.has_section("COLOR TABLE"):
         return table
     for k, v in config.items("COLOR TABLE"):
         try:
             idx = int(k)
-            # Some WIF files use "PaletteIdx,R,G,B" — spec says ignore R,G,B, use table
-            parts = [int(p.strip()) for p in v.split(",")]
+            parts: list[int] = []
+            for p in v.split(","):
+                try:
+                    parts.append(int(p.strip()))
+                except ValueError:
+                    break
             if len(parts) < 3:
                 continue
             r, g, b = parts[:3]
@@ -442,6 +456,27 @@ def _color_table(config: RawConfigParser, scale: int) -> dict[int, str]:
         except (ValueError, ZeroDivisionError):
             continue
     return table
+
+
+def _color_name_table(config: RawConfigParser) -> dict[int, str]:
+    """Extract optional color names from [COLOR TABLE] (first non-numeric token after RGB)."""
+    names: dict[int, str] = {}
+    if not config.has_section("COLOR TABLE"):
+        return names
+    for k, v in config.items("COLOR TABLE"):
+        try:
+            idx = int(k)
+            for p in v.split(","):
+                p = p.strip()
+                try:
+                    int(p)
+                except ValueError:
+                    if p:
+                        names[idx] = p
+                    break
+        except (ValueError, IndexError):
+            continue
+    return names
 
 
 def parse_picks(wif_bytes: bytes, project_type: str) -> PickData:

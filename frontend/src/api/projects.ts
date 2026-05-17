@@ -143,6 +143,7 @@ export interface WarpingPlanEndEntry {
 
 export interface WarpingPlanColorRun {
   color: string | null;
+  color_name: string | null;
   start_end: number;
   end_end: number;
   count: number;

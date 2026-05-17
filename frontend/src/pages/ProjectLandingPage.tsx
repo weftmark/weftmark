@@ -404,7 +404,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
             to={`/projects/${projectId}/warping-plan`}
             className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
           >
-            View full warping plan
+            View Weave Plan
           </Link>
           <Button
             size="sm"
@@ -1176,7 +1176,7 @@ export function ProjectLandingPage() {
           to={`/projects/${project.id}/warping-plan`}
           className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
         >
-          Warping plan
+          Weave Plan
         </Link>
         {isActive && (
           <Link
