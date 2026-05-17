@@ -189,12 +189,11 @@ export function FeedbackModal({ onClose }: Props) {
                   />
                   <span className="text-sm">Submit anonymously</span>
                 </label>
-                {isAnonymous && (
-                  <p className="text-xs text-muted-foreground pl-6">
-                    Anonymous submissions may be closed without action if they lack
-                    enough detail to investigate.
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground pl-6">
+                  {isAnonymous
+                    ? "Your name won't appear on the GitHub Discussion, but admins can still see who submitted. You'll see this in your feedback history."
+                    : "Your display name will appear on the GitHub Discussion thread."}
+                </p>
               </div>
             )}
 

@@ -7,7 +7,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_db, get_optional_user, require_admin
+from app.deps import get_current_user, get_db, get_optional_user, require_admin
 from app.models.feedback import SUBMISSION_TYPES, UserFeedback
 from app.models.user import User
 from app.services.rate_limiter import rate_limit
@@ -142,6 +142,26 @@ def _enqueue_dispatch(feedback_id: str) -> None:
 
     t = dispatch_feedback.delay(feedback_id)
     record_queued(settings, t.id, "app.tasks.feedback_dispatch.dispatch_feedback", "feedback")
+
+
+# ---------------------------------------------------------------------------
+# User feedback history
+# ---------------------------------------------------------------------------
+
+
+@router.get("/api/feedback/mine")
+async def list_my_feedback(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[FeedbackResponse]:
+    q = (
+        select(UserFeedback)
+        .where(UserFeedback.user_id == current_user.id)
+        .where(UserFeedback.deleted_at.is_(None))
+        .order_by(UserFeedback.created_at.desc())
+    )
+    rows = (await db.execute(q)).scalars().all()
+    return [_serialize(r) for r in rows]
 
 
 # ---------------------------------------------------------------------------

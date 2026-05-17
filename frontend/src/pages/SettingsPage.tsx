@@ -4,10 +4,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
 import { listDrafts } from "@/api/drafts";
+import { listMyFeedback, SUBMISSION_TYPE_LABELS, type FeedbackRecord } from "@/api/feedback";
 import { Button } from "@/components/ui/button";
 import { EulaContent } from "@/components/EulaContent";
+import { AppIcons } from "@/lib/icons";
 
-type Section = "appearance" | "preferences" | "privacy" | "terms" | "account";
+type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history";
 
 export function SettingsPage() {
   const { user, refetch } = useAuth();
@@ -416,6 +418,9 @@ export function SettingsPage() {
               </Section>
             )}
 
+            {/* ── Feedback history ── */}
+            {activeSection === "feedback-history" && <FeedbackHistorySection />}
+
             {/* ── Account ── */}
             {activeSection === "account" && (
               <Section title="Account management">
@@ -490,6 +495,89 @@ export function SettingsPage() {
             )}
         </div>
     </div>
+  );
+}
+
+const DISPATCH_BADGE: Record<string, string> = {
+  pending: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  sent: "bg-green-500/10 text-green-700 dark:text-green-400",
+  skipped: "bg-muted text-muted-foreground",
+  failed: "bg-destructive/10 text-destructive",
+};
+
+function FeedbackHistorySection() {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const { data: submissions = [], isLoading } = useQuery({
+    queryKey: ["feedback", "mine"],
+    queryFn: listMyFeedback,
+  });
+
+  return (
+    <Section title="Feedback history">
+      <p className="text-sm text-muted-foreground">
+        Submissions you've sent, including anonymous ones. Only you can see this list.
+      </p>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : submissions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No submissions yet.</p>
+      ) : (
+        <div className="divide-y divide-border rounded-lg border">
+          {submissions.map((s: FeedbackRecord) => (
+            <div key={s.id} className="px-4 py-3 space-y-1">
+              <button
+                className="w-full text-left space-y-1"
+                onClick={() => setExpanded(expanded === s.id ? null : s.id)}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-medium shrink-0">
+                      {SUBMISSION_TYPE_LABELS[s.submission_type as keyof typeof SUBMISSION_TYPE_LABELS] ?? s.submission_type}
+                    </span>
+                    {s.is_anonymous && (
+                      <span className="text-xs text-muted-foreground shrink-0">(anonymous)</span>
+                    )}
+                    {s.subject && (
+                      <span className="text-sm text-foreground truncate">{s.subject}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DISPATCH_BADGE[s.dispatch_status] ?? ""}`}>
+                      {s.dispatch_status}
+                    </span>
+                    <AppIcons.chevronDown
+                      className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded === s.id ? "rotate-180" : ""}`}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(s.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                </p>
+              </button>
+
+              {expanded === s.id && (
+                <div className="pt-2 space-y-2">
+                  <p className="text-sm whitespace-pre-wrap text-foreground">{s.body}</p>
+                  {s.github_discussion_url && (
+                    <a
+                      href={s.github_discussion_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                    >
+                      <AppIcons.externalLink className="h-3.5 w-3.5" />
+                      View discussion on GitHub
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }
 

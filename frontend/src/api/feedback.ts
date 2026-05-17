@@ -50,6 +50,9 @@ export interface FeedbackPage {
 export const submitFeedback = (payload: SubmitFeedbackPayload) =>
   api.post<FeedbackRecord>("/api/feedback", payload);
 
+export const listMyFeedback = () =>
+  api.get<FeedbackRecord[]>("/api/feedback/mine");
+
 export const listAdminFeedback = (params: {
   page?: number;
   page_size?: number;

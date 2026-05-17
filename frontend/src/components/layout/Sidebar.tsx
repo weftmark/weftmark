@@ -26,6 +26,7 @@ const SETTINGS_SECTIONS = [
   { id: "privacy", label: "Privacy & data" },
   { id: "terms", label: "Terms" },
   { id: "account", label: "Account" },
+  { id: "feedback-history", label: "Feedback history" },
 ];
 
 const ADMIN_SECTIONS = [
