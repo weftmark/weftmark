@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter
@@ -32,6 +32,8 @@ class ReadinessResponse(BaseModel):
     services: list[ReadinessService]
     checked_at: str | None = None
 
+
+_startup_time: datetime = datetime.now(timezone.utc)
 
 _readiness_cache: ReadinessResponse | None = None  # startup snapshot, never refreshed
 _detailed_cache: ReadinessResponse | None = None  # live, refreshed every 5 min
@@ -87,13 +89,20 @@ async def readiness() -> JSONResponse:
 
 @router.get("/health/detailed")
 async def health_detailed() -> JSONResponse:
-    """Live service health — refreshed every 30 s by a background task.
+    """Live service health — refreshed every 5 min by a background task.
 
     Covers PostgreSQL, S3, Clerk API, SMTP, and the Clerk webhook round-trip.
     Returns the same shape as /health/ready with an added checked_at timestamp.
+    During the initial startup window (before first probe), returns 200 with
+    status "starting" and a next_check_at estimate so clients can show a neutral
+    info banner instead of a failure alert.
     """
     if _detailed_cache is None:
-        return JSONResponse({"status": "starting", "services": [], "checked_at": None}, status_code=503)
+        next_check_at = (_startup_time + timedelta(seconds=DETAILED_REFRESH_INTERVAL_S)).isoformat()
+        return JSONResponse(
+            {"status": "starting", "services": [], "checked_at": None, "next_check_at": next_check_at},
+            status_code=200,
+        )
     return JSONResponse(_detailed_cache.model_dump())
 
 
