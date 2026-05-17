@@ -20,6 +20,11 @@ export interface UserSettingsUpdate {
   ai_training_consent?: boolean;
   show_version_numbers?: boolean;
   hide_unused_shafts_treadles?: boolean;
+  tracker_color_mode?: string;
+  tracker_show_weft_color?: boolean;
+  tracker_show_drawdown?: boolean;
+  tracker_show_progress?: boolean;
+  tracker_show_pick_cards?: boolean;
 }
 
 export async function updateSettings(body: UserSettingsUpdate): Promise<User> {
