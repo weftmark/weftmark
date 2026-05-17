@@ -393,6 +393,39 @@ def _digest_s3_html(orphaned_count: int | None, scanned_at: str | None) -> str:
     return html
 
 
+async def send_feedback_user_confirmation(to_email: str, type_label: str, discussion_url: str) -> None:
+    settings = get_settings()
+    txt, html = _render(
+        "feedback_user_confirmation",
+        type_label=type_label,
+        discussion_url=discussion_url,
+    )
+    await _send([to_email], f"Your {settings.app_name} {type_label} was received", txt, html)
+
+
+async def send_feedback_admin_alert(
+    admin_emails: list[str],
+    type_label: str,
+    discussion_url: str,
+    subject: str | None,
+) -> None:
+    settings = get_settings()
+    if not settings.smtp_user or not admin_emails:
+        return
+    admin_url = f"{settings.frontend_url}/admin/feedback"
+    subject_row = f'<p style="margin:0 0 16px;"><strong>Subject:</strong> {subject}</p>' if subject else ""
+    subject_line = f"Subject: {subject}\n\n" if subject else ""
+    txt, html = _render(
+        "feedback_admin_alert",
+        type_label=type_label,
+        discussion_url=discussion_url,
+        admin_url=admin_url,
+        subject_row=subject_row,
+        subject_line=subject_line,
+    )
+    await _send(admin_emails, f"[{settings.app_name}] New {type_label} submitted", txt, html)
+
+
 async def send_admin_digest_email(
     admin_emails: list[str],
     week_start: str,

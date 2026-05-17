@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useClerk } from "@clerk/clerk-react";
 import { AppIcons, type LucideIcon } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { useAuth } from "@/hooks/useAuth";
+import { FeedbackModal } from "@/components/FeedbackModal";
 
 interface NavItem {
   label: string;
@@ -34,6 +36,7 @@ const ADMIN_SECTIONS = [
   { id: "services", label: "Services" },
   { id: "deps", label: "Dependencies" },
   { id: "audit", label: "Audit log" },
+  { id: "feedback", label: "Feedback" },
   { id: "credentials", label: "Credentials" },
   { id: "slugs", label: "Share links" },
   { id: "superuser", label: "Superuser", superuserOnly: true },
@@ -50,6 +53,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   const location = useLocation();
   const { user } = useAuth();
   const { signOut } = useClerk();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   function isActive(href: string, exact = false) {
     if (exact) return location.pathname === href;
@@ -211,6 +215,15 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           )}
 
           <button
+            onClick={() => setFeedbackOpen(true)}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
+            title={desktopCollapsed ? "Send Feedback" : undefined}
+          >
+            <AppIcons.feedback className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <span className={desktopCollapsed ? "lg:hidden" : ""}>Send Feedback</span>
+          </button>
+
+          <button
             onClick={() => signOut()}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-subdued transition-colors hover:bg-muted hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
             title={desktopCollapsed ? "Sign out" : undefined}
@@ -228,6 +241,8 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           </div>
         )}
       </aside>
+
+      {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
     </>
   );
 }

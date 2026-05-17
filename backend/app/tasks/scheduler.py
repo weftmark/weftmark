@@ -127,6 +127,24 @@ REGISTRY: dict[str, dict] = {
         "default_cron": "0 6 * * *",
         "default_config": {"inactive_days": 10},
     },
+    "feedback_retry": {
+        "display_name": "Feedback Dispatch Retry",
+        "description": (
+            "Re-dispatches feedback submissions that failed to post to GitHub Discussions. "
+            "No-op when GITHUB_FEEDBACK_TOKEN is not configured."
+        ),
+        "default_cron": "0 7 * * *",
+        "default_config": {"limit": 20},
+    },
+    "feedback_purge": {
+        "display_name": "Feedback Hard Delete",
+        "description": (
+            "Hard-deletes feedback submissions that have been soft-deleted for longer than "
+            "the configured retention window (default 7 days)."
+        ),
+        "default_cron": "30 4 * * *",
+        "default_config": {"retention_days": 7},
+    },
 }
 
 
@@ -251,6 +269,28 @@ def _dispatch_tile_prune(settings, task=None):
     return t
 
 
+def _dispatch_feedback_retry(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.feedback_dispatch import retry_failed_feedback
+
+    cfg = (task.config or {}) if task else {}
+    limit = int(cfg.get("limit", 20))
+    t = retry_failed_feedback.delay(limit=limit)
+    record_queued(settings, t.id, "app.tasks.feedback_dispatch.retry_failed_feedback", "scheduled:feedback_retry")
+    return t
+
+
+def _dispatch_feedback_purge(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.feedback_dispatch import purge_deleted_feedback
+
+    cfg = (task.config or {}) if task else {}
+    retention_days = int(cfg.get("retention_days", 7))
+    t = purge_deleted_feedback.delay(retention_days=retention_days)
+    record_queued(settings, t.id, "app.tasks.feedback_dispatch.purge_deleted_feedback", "scheduled:feedback_purge")
+    return t
+
+
 DISPATCH_FNS: dict[str, object] = {
     "cve_scan": _dispatch_cve_scan,
     "s3_audit": _dispatch_s3_audit,
@@ -264,6 +304,8 @@ DISPATCH_FNS: dict[str, object] = {
     "credential_expiry_check": _dispatch_credential_expiry_check,
     "admin_digest": _dispatch_admin_digest,
     "tile_prune": _dispatch_tile_prune,
+    "feedback_retry": _dispatch_feedback_retry,
+    "feedback_purge": _dispatch_feedback_purge,
 }
 
 
