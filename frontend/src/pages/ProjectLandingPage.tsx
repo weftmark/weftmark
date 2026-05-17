@@ -6,7 +6,7 @@ import { measurementSystemToUnit, displayLength, formatApproxLength, convertLeng
 import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
-  getWarpingPlan,
+  getWarpingPlan, completeProject, abandonProject,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail,
 } from "@/api/projects";
@@ -949,6 +949,36 @@ export function ProjectLandingPage() {
     },
   });
 
+  const [confirmComplete, setConfirmComplete] = useState(false);
+  const [confirmAbandon, setConfirmAbandon] = useState(false);
+  const [statusActionError, setStatusActionError] = useState<string | null>(null);
+
+  const completeMutation = useMutation({
+    mutationFn: () => completeProject(id!),
+    onSuccess: (updated) => {
+      qc.setQueryData(["project", id], updated);
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setConfirmComplete(false);
+      setStatusActionError(null);
+    },
+    onError: (err: Error) => {
+      setStatusActionError(err.message ?? "Could not mark project complete.");
+    },
+  });
+
+  const abandonMutation = useMutation({
+    mutationFn: () => abandonProject(id!),
+    onSuccess: (updated) => {
+      qc.setQueryData(["project", id], updated);
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setConfirmAbandon(false);
+      setStatusActionError(null);
+    },
+    onError: (err: Error) => {
+      setStatusActionError(err.message ?? "Could not abandon project.");
+    },
+  });
+
   const progress = useMemo(() => {
     if (!project) return null;
     const done = project.current_pick - 1;
@@ -1183,33 +1213,79 @@ export function ProjectLandingPage() {
       />
 
       {/* Actions */}
-      <section className="flex flex-wrap gap-2 pt-2 border-t border-border">
-        <Button
-          variant="destructive"
-          onClick={() => {
-            if (confirm("Delete this project? This cannot be undone.")) {
-              deleteMutation.mutate();
-            }
-          }}
-          disabled={deleteMutation.isPending}
-        >
-          Delete
-        </Button>
-        <Link
-          to={`/projects/${project.id}/warping-plan`}
-          className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
-        >
-          Weave Plan
-        </Link>
-        {isActive && (
-          <Link
-            to={`/projects/${project.id}/track`}
-            className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
-          >
-            <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
-            {project.status === "created" ? "Start Weaving" : "Track"}
-          </Link>
+      <section className="space-y-3 pt-2 border-t border-border">
+        {/* Complete / Abandon inline confirmations */}
+        {confirmComplete && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+            <span className="flex-1 text-muted-foreground">Mark this project as completed?</span>
+            <Button size="sm" variant="success" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
+              Confirm
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setConfirmComplete(false); setStatusActionError(null); }} disabled={completeMutation.isPending}>
+              Cancel
+            </Button>
+          </div>
         )}
+        {confirmAbandon && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+            <span className="flex-1 text-muted-foreground">Abandon this project?</span>
+            <Button size="sm" variant="destructive" onClick={() => abandonMutation.mutate()} disabled={abandonMutation.isPending}>
+              Confirm
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setConfirmAbandon(false); setStatusActionError(null); }} disabled={abandonMutation.isPending}>
+              Cancel
+            </Button>
+          </div>
+        )}
+        {statusActionError && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{statusActionError}</p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="destructive"
+            onClick={() => {
+              if (confirm("Delete this project? This cannot be undone.")) {
+                deleteMutation.mutate();
+              }
+            }}
+            disabled={deleteMutation.isPending}
+          >
+            Delete
+          </Button>
+          {(project.status === "active" || project.status === "created") && !confirmAbandon && (
+            <Button
+              variant="outline"
+              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => { setConfirmAbandon(true); setConfirmComplete(false); setStatusActionError(null); }}
+            >
+              Abandon
+            </Button>
+          )}
+          {project.status === "active" && !confirmComplete && (
+            <Button
+              variant="outline"
+              className="border-green-600 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400 dark:border-green-500 dark:hover:bg-green-600 dark:hover:text-white"
+              onClick={() => { setConfirmComplete(true); setConfirmAbandon(false); setStatusActionError(null); }}
+            >
+              Mark Complete
+            </Button>
+          )}
+          <Link
+            to={`/projects/${project.id}/warping-plan`}
+            className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
+          >
+            Weave Plan
+          </Link>
+          {isActive && (
+            <Link
+              to={`/projects/${project.id}/track`}
+              className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
+            >
+              <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
+              {project.status === "created" ? "Start Weaving" : "Track"}
+            </Link>
+          )}
+        </div>
       </section>
 
       {/* Drawdown modal */}
