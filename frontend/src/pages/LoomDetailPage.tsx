@@ -461,7 +461,7 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
           placeholder="e.g. Second warp beam"
           disabled={saving}
         />
-        <Button size="sm" variant="outline" type="submit" disabled={saving || !input.trim()}>
+        <Button size="sm" type="submit" disabled={saving || !input.trim()}>
           Add
         </Button>
       </form>
@@ -594,7 +594,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
             disabled={saving}
           />
         </div>
-        <Button size="sm" variant="outline" type="submit" disabled={saving || !dentsInput}>
+        <Button size="sm" type="submit" disabled={saving || !dentsInput}>
           Add reed
         </Button>
       </form>
