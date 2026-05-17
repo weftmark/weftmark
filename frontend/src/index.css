@@ -97,3 +97,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Force light-mode rendering for EULA HTML (always light-authored, may contain inline styles) */
+.eula-content {
+  color-scheme: light;
+  background-color: #ffffff;
+  color: hsl(20 10% 10%);
+}
