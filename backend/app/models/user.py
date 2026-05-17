@@ -37,3 +37,8 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     clerk_errored: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     show_version_numbers: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     hide_unused_shafts_treadles: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    tracker_color_mode: Mapped[str] = mapped_column(String(10), default="strip", nullable=False)
+    tracker_show_weft_color: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    tracker_show_drawdown: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    tracker_show_progress: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    tracker_show_pick_cards: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

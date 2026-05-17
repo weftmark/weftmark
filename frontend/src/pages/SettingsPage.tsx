@@ -8,6 +8,7 @@ import { listMyFeedback, SUBMISSION_TYPE_LABELS, type FeedbackRecord } from "@/a
 import { Button } from "@/components/ui/button";
 import { EulaContent } from "@/components/EulaContent";
 import { AppIcons } from "@/lib/icons";
+import { TrackerStylePreview, TrackerLivePreview } from "@/components/TrackerStylePreview";
 
 type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history";
 
@@ -34,7 +35,14 @@ export function SettingsPage() {
   // Form state mirrors user fields
   const [displayName, setDisplayName] = useState(user?.display_name ?? "");
   const [theme, setTheme] = useState(user?.theme ?? "light");
-  const [activityTheme, setActivityTheme] = useState(user?.activity_theme ?? "default");
+  const [activityTheme, setActivityTheme] = useState<"default" | "compact" | "high_contrast">(
+    (user?.activity_theme as "default" | "compact" | "high_contrast") ?? "default"
+  );
+  const [trackerColorMode, setTrackerColorMode] = useState(user?.tracker_color_mode ?? "strip");
+  const [trackerShowWeftColor, setTrackerShowWeftColor] = useState(user?.tracker_show_weft_color ?? true);
+  const [trackerShowDrawdown, setTrackerShowDrawdown] = useState(user?.tracker_show_drawdown ?? true);
+  const [trackerShowProgress, setTrackerShowProgress] = useState(user?.tracker_show_progress ?? true);
+  const [trackerShowPickCards, setTrackerShowPickCards] = useState(user?.tracker_show_pick_cards ?? true);
   const [showVersionNumbers, setShowVersionNumbers] = useState(user?.show_version_numbers ?? true);
   const [hideUnusedShaftsTreadles, setHideUnusedShaftsTreadles] = useState(user?.hide_unused_shafts_treadles ?? false);
   const [idleTimeout, setIdleTimeout] = useState(user?.idle_timeout_minutes ?? 30);
@@ -127,6 +135,7 @@ export function SettingsPage() {
 
             {/* ── Appearance ── */}
             {activeSection === "appearance" && (
+              <>
               <Section title="Appearance">
                 <Field label="Theme">
                   <div className="flex gap-2">
@@ -150,48 +159,98 @@ export function SettingsPage() {
                 </Field>
 
                 <Field label="Activity tracker style">
-                  <select
-                    value={activityTheme}
-                    onChange={(e) => {
-                      setActivityTheme(e.target.value);
-                      save({ activity_theme: e.target.value || null });
-                    }}
-                    className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="default">Default</option>
-                    <option value="compact">Compact</option>
-                    <option value="high_contrast">High contrast</option>
-                  </select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Controls the visual density of the pick-by-pick tracker.
+                  <div className="flex flex-col gap-3 mt-1">
+                    {(["default", "compact", "high_contrast"] as const).map((s) => {
+                      const meta: Record<string, { label: string; desc: string }> = {
+                        default: { label: "Default", desc: "Standard layout with full-size pick cards and drawdown preview." },
+                        compact: { label: "Compact", desc: "Denser layout for tracking-heavy sessions with less vertical space." },
+                        high_contrast: { label: "High contrast", desc: "Higher visual contrast for easier reading under bright light or for accessibility." },
+                      };
+                      const selected = activityTheme === s;
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => { setActivityTheme(s); save({ activity_theme: s }); }}
+                          className={`rounded-lg border-2 p-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
+                            selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div className="mb-2">
+                            <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
+                              {meta[s].label}
+                              {selected && <span className="ml-2 text-xs font-normal text-primary/70">— active</span>}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{meta[s].desc}</p>
+                          </div>
+                          <TrackerStylePreview style={s} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Style variants will be visually differentiated in a future update.
                   </p>
                 </Field>
 
-                <Field label="Show version numbers">
-                  <div className="flex items-center gap-3">
-                    <button
-                      role="switch"
-                      aria-checked={showVersionNumbers}
-                      onClick={() => {
-                        const next = !showVersionNumbers;
-                        setShowVersionNumbers(next);
-                        save({ show_version_numbers: next });
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        showVersionNumbers ? "bg-primary" : "bg-input"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                          showVersionNumbers ? "translate-x-6" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm">{showVersionNumbers ? "Visible" : "Hidden"}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Show or hide the UI, API, and worker version badge in the bottom-right corner.
+                <Field label="Tracker defaults">
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Default view options when opening the activity tracker. You can still override these per-project in the tracker settings panel.
                   </p>
+
+                  {/* Color mode */}
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Color mode</p>
+                    <div className="inline-flex rounded-md border border-input overflow-hidden text-sm">
+                      {(["theme", "strip", "filled"] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => { setTrackerColorMode(mode); save({ tracker_color_mode: mode }); }}
+                          className={`px-3 py-1.5 capitalize transition-colors ${
+                            trackerColorMode === mode
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-background text-muted-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {mode}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Show/hide toggles */}
+                  <div className="space-y-2.5">
+                    {([
+                      { label: "Progress bar", value: trackerShowProgress, setter: setTrackerShowProgress, key: "tracker_show_progress" as const },
+                      { label: "Drawdown pattern", value: trackerShowDrawdown, setter: setTrackerShowDrawdown, key: "tracker_show_drawdown" as const },
+                      { label: "Weft color bar", value: trackerShowWeftColor, setter: setTrackerShowWeftColor, key: "tracker_show_weft_color" as const },
+                      { label: "Prev/next pick cards", value: trackerShowPickCards, setter: setTrackerShowPickCards, key: "tracker_show_pick_cards" as const },
+                    ] as { label: string; value: boolean; setter: (v: boolean) => void; key: "tracker_show_progress" | "tracker_show_drawdown" | "tracker_show_weft_color" | "tracker_show_pick_cards" }[]).map(({ label, value, setter, key }) => (
+                      <div key={key} className="flex items-center justify-between">
+                        <span className="text-sm">{label}</span>
+                        <button
+                          role="switch"
+                          aria-checked={value}
+                          onClick={() => { setter(!value); save({ [key]: !value }); }}
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"}`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-1"}`} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Live preview */}
+                  <div className="mt-5">
+                    <TrackerLivePreview
+                      style={activityTheme}
+                      colorMode={trackerColorMode}
+                      showProgress={trackerShowProgress}
+                      showDrawdown={trackerShowDrawdown}
+                      showWeftColor={trackerShowWeftColor}
+                      showPickCards={trackerShowPickCards}
+                      hideUnusedShafts={hideUnusedShaftsTreadles}
+                    />
+                  </div>
                 </Field>
 
                 <Field label="Hide unused shafts and treadles">
@@ -222,6 +281,36 @@ export function SettingsPage() {
                   </p>
                 </Field>
               </Section>
+
+              <Section title="Diagnostics">
+                <Field label="Show version numbers">
+                  <div className="flex items-center gap-3">
+                    <button
+                      role="switch"
+                      aria-checked={showVersionNumbers}
+                      onClick={() => {
+                        const next = !showVersionNumbers;
+                        setShowVersionNumbers(next);
+                        save({ show_version_numbers: next });
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        showVersionNumbers ? "bg-primary" : "bg-input"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          showVersionNumbers ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                    <span className="text-sm">{showVersionNumbers ? "Visible" : "Hidden"}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Show or hide the UI, API, and worker version badge in the bottom-right corner.
+                  </p>
+                </Field>
+              </Section>
+              </>
             )}
 
             {/* ── Preferences ── */}

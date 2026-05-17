@@ -40,6 +40,7 @@ _VALID_THEMES = {"light", "dark", "system"}
 _VALID_MEASUREMENT_SYSTEMS = {"metric", "imperial"}
 _VALID_ACTIVITY_THEMES = {"default", "compact", "high_contrast"}
 _VALID_IDLE_TIMEOUTS = {15, 30, 60, 120}
+_VALID_COLOR_MODES = {"theme", "strip", "filled"}
 
 _SESSION_COOKIE = "session"
 
@@ -58,6 +59,11 @@ class UserSettingsUpdate(BaseModel):
     ai_training_consent: bool | None = None
     show_version_numbers: bool | None = None
     hide_unused_shafts_treadles: bool | None = None
+    tracker_color_mode: str | None = None
+    tracker_show_weft_color: bool | None = None
+    tracker_show_drawdown: bool | None = None
+    tracker_show_progress: bool | None = None
+    tracker_show_pick_cards: bool | None = None
 
 
 class EulaAcceptRequest(BaseModel):
@@ -80,6 +86,11 @@ class UserSettingsResponse(BaseModel):
     ai_training_consent: bool
     show_version_numbers: bool
     hide_unused_shafts_treadles: bool
+    tracker_color_mode: str
+    tracker_show_weft_color: bool
+    tracker_show_drawdown: bool
+    tracker_show_progress: bool
+    tracker_show_pick_cards: bool
     eula_accepted_version: str | None
     current_eula_version: str
 
@@ -109,6 +120,11 @@ def _to_response(user: User, current_eula_version: str) -> UserSettingsResponse:
         ai_training_consent=user.ai_training_consent,
         show_version_numbers=user.show_version_numbers,
         hide_unused_shafts_treadles=user.hide_unused_shafts_treadles,
+        tracker_color_mode=user.tracker_color_mode,
+        tracker_show_weft_color=user.tracker_show_weft_color,
+        tracker_show_drawdown=user.tracker_show_drawdown,
+        tracker_show_progress=user.tracker_show_progress,
+        tracker_show_pick_cards=user.tracker_show_pick_cards,
         eula_accepted_version=user.eula_accepted_version,
         current_eula_version=current_eula_version,
     )
@@ -209,6 +225,26 @@ async def update_settings(
 
     if body.hide_unused_shafts_treadles is not None:
         current_user.hide_unused_shafts_treadles = body.hide_unused_shafts_treadles
+
+    if body.tracker_color_mode is not None:
+        if body.tracker_color_mode not in _VALID_COLOR_MODES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"tracker_color_mode must be one of {sorted(_VALID_COLOR_MODES)}",
+            )
+        current_user.tracker_color_mode = body.tracker_color_mode
+
+    if body.tracker_show_weft_color is not None:
+        current_user.tracker_show_weft_color = body.tracker_show_weft_color
+
+    if body.tracker_show_drawdown is not None:
+        current_user.tracker_show_drawdown = body.tracker_show_drawdown
+
+    if body.tracker_show_progress is not None:
+        current_user.tracker_show_progress = body.tracker_show_progress
+
+    if body.tracker_show_pick_cards is not None:
+        current_user.tracker_show_pick_cards = body.tracker_show_pick_cards
 
     if body.ai_training_consent is not None:
         current_user.ai_training_consent = body.ai_training_consent
