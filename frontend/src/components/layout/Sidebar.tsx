@@ -5,6 +5,7 @@ import { AppIcons, type LucideIcon } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { FeedbackModal } from "@/components/FeedbackModal";
+import { OnboardingChecklist } from "@/components/layout/OnboardingChecklist";
 
 interface NavItem {
   label: string;
@@ -123,6 +124,13 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
             <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
           </button>
         </div>
+
+        {/* Onboarding checklist — above primary nav, hidden for superusers */}
+        {!user?.is_superuser && (
+          <div className="shrink-0 pt-2">
+            <OnboardingChecklist collapsed={desktopCollapsed} />
+          </div>
+        )}
 
         {/* Primary nav — hidden for superusers (they only use /admin) */}
         {!user?.is_superuser && (

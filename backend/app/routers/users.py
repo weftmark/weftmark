@@ -64,6 +64,7 @@ class UserSettingsUpdate(BaseModel):
     tracker_show_drawdown: bool | None = None
     tracker_show_progress: bool | None = None
     tracker_show_pick_cards: bool | None = None
+    onboarding_dismissed: bool | None = None
 
 
 class EulaAcceptRequest(BaseModel):
@@ -91,6 +92,7 @@ class UserSettingsResponse(BaseModel):
     tracker_show_drawdown: bool
     tracker_show_progress: bool
     tracker_show_pick_cards: bool
+    onboarding_dismissed: bool
     eula_accepted_version: str | None
     current_eula_version: str
 
@@ -125,6 +127,7 @@ def _to_response(user: User, current_eula_version: str) -> UserSettingsResponse:
         tracker_show_drawdown=user.tracker_show_drawdown,
         tracker_show_progress=user.tracker_show_progress,
         tracker_show_pick_cards=user.tracker_show_pick_cards,
+        onboarding_dismissed=user.onboarding_dismissed,
         eula_accepted_version=user.eula_accepted_version,
         current_eula_version=current_eula_version,
     )
@@ -246,6 +249,9 @@ async def update_settings(
     if body.tracker_show_pick_cards is not None:
         current_user.tracker_show_pick_cards = body.tracker_show_pick_cards
 
+    if body.onboarding_dismissed is not None:
+        current_user.onboarding_dismissed = body.onboarding_dismissed
+
     if body.ai_training_consent is not None:
         current_user.ai_training_consent = body.ai_training_consent
         if not body.ai_training_consent:
@@ -316,6 +322,32 @@ async def data_export(_: User = Depends(get_current_user)) -> dict:
             "It will package your WIF files, photos, and project history into a downloadable archive."
         ),
     }
+
+
+class OnboardingStatusResponse(BaseModel):
+    eula_accepted: bool
+    has_loom: bool
+    has_draft: bool
+    has_project: bool
+
+
+@router.get("/me/onboarding-status", response_model=OnboardingStatusResponse)
+async def get_onboarding_status(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OnboardingStatusResponse:
+    current_version = await get_current_eula_version(db)
+    has_loom = await db.scalar(select(func.count()).select_from(Loom).where(Loom.owner_id == current_user.id)) or 0
+    has_draft = await db.scalar(select(func.count()).select_from(Draft).where(Draft.owner_id == current_user.id)) or 0
+    has_project = (
+        await db.scalar(select(func.count()).select_from(Project).where(Project.owner_id == current_user.id)) or 0
+    )
+    return OnboardingStatusResponse(
+        eula_accepted=current_user.eula_accepted_version == current_version,
+        has_loom=has_loom > 0,
+        has_draft=has_draft > 0,
+        has_project=has_project > 0,
+    )
 
 
 @router.get("/me/activity-heatmap", response_model=ActivityHeatmapResponse)

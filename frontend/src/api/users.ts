@@ -25,6 +25,7 @@ export interface UserSettingsUpdate {
   tracker_show_drawdown?: boolean;
   tracker_show_progress?: boolean;
   tracker_show_pick_cards?: boolean;
+  onboarding_dismissed?: boolean;
 }
 
 export async function updateSettings(body: UserSettingsUpdate): Promise<User> {
@@ -64,4 +65,15 @@ export interface ActivityHeatmapData {
 export function getActivityHeatmap(params?: { year?: number }): Promise<ActivityHeatmapData> {
   const qs = params?.year != null ? `?year=${params.year}` : "";
   return api.get<ActivityHeatmapData>(`/api/users/me/activity-heatmap${qs}`);
+}
+
+export interface OnboardingStatus {
+  eula_accepted: boolean;
+  has_loom: boolean;
+  has_draft: boolean;
+  has_project: boolean;
+}
+
+export function getOnboardingStatus(): Promise<OnboardingStatus> {
+  return api.get<OnboardingStatus>("/api/users/me/onboarding-status");
 }
