@@ -2491,7 +2491,7 @@ async def list_project_slugs(
 
     return [
         AdminSlugRecord(
-            slug=p.share_slug,
+            slug=slug,
             project_id=p.id,
             project_name=p.name,
             project_status=p.status,
@@ -2501,6 +2501,7 @@ async def list_project_slugs(
             created_at=p.created_at,
         )
         for p in projects
+        if (slug := p.share_slug) is not None
     ]
 
 
