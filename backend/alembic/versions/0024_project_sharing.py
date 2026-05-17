@@ -29,13 +29,11 @@ def upgrade() -> None:
         "projects",
         sa.Column("share_expires_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.create_unique_constraint("uq_projects_share_slug", "projects", ["share_slug"])
-    op.create_index("ix_projects_share_slug", "projects", ["share_slug"])
+    op.create_index("ix_projects_share_slug", "projects", ["share_slug"], unique=True)
 
 
 def downgrade() -> None:
     op.drop_index("ix_projects_share_slug", table_name="projects")
-    op.drop_constraint("uq_projects_share_slug", "projects", type_="unique")
     op.drop_column("projects", "share_expires_at")
     op.drop_column("projects", "share_visibility")
     op.drop_column("projects", "share_slug")
