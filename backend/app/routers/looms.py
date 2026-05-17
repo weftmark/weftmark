@@ -145,6 +145,7 @@ class LoomSummary(BaseModel):
 
 class LoomDetail(BaseModel):
     id: uuid.UUID
+    owner_id: uuid.UUID
     loom_type: str
     manufacturer: str
     model_name: str
@@ -167,6 +168,7 @@ class LoomDetail(BaseModel):
     def from_loom(cls, loom: Loom) -> "LoomDetail":
         data = {
             "id": loom.id,
+            "owner_id": loom.owner_id,
             "loom_type": loom.loom_type,
             "manufacturer": loom.manufacturer,
             "model_name": loom.model_name,
@@ -261,10 +263,10 @@ class AddReedRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession) -> Loom:
-    loom = await db.scalar(
+async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession, *, allow_superuser: bool = False) -> Loom:
+    stmt = (
         select(Loom)
-        .where(Loom.id == loom_id, Loom.owner_id == user.id, Loom.deleted_at.is_(None))
+        .where(Loom.id == loom_id, Loom.deleted_at.is_(None))
         .options(
             selectinload(Loom.versions).selectinload(LoomVersion.photos),
             selectinload(Loom.versions).selectinload(LoomVersion.receipts),
@@ -272,15 +274,23 @@ async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession) -> L
             selectinload(Loom.reeds),
         )
     )
+    if not (allow_superuser and user.is_superuser):
+        stmt = stmt.where(Loom.owner_id == user.id)
+    loom = await db.scalar(stmt)
     if loom is None:
         raise HTTPException(status_code=404, detail="Loom not found")
     return loom
 
 
 async def _get_owned_version(
-    loom_id: uuid.UUID, version_id: uuid.UUID, user: User, db: AsyncSession
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    user: User,
+    db: AsyncSession,
+    *,
+    allow_superuser: bool = False,
 ) -> tuple[Loom, LoomVersion]:
-    loom = await _get_owned_loom(loom_id, user, db)
+    loom = await _get_owned_loom(loom_id, user, db, allow_superuser=allow_superuser)
     version = next((v for v in loom.versions if v.id == version_id), None)
     if version is None:
         raise HTTPException(status_code=404, detail="Version not found")
@@ -376,7 +386,7 @@ async def get_loom(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomDetail:
-    loom = await _get_owned_loom(loom_id, current_user, db)
+    loom = await _get_owned_loom(loom_id, current_user, db, allow_superuser=True)
     return LoomDetail.from_loom(loom)
 
 
@@ -456,7 +466,7 @@ async def get_loom_photo(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    loom = await _get_owned_loom(loom_id, current_user, db)
+    loom = await _get_owned_loom(loom_id, current_user, db, allow_superuser=True)
     if not loom.photo_path or not storage.file_exists(loom.photo_path):
         raise HTTPException(status_code=404, detail="No photo")
     data = storage.read_file(loom.photo_path)
@@ -548,7 +558,7 @@ async def get_version_photo(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
     photo = next((p for p in version.photos if p.id == photo_id), None)
     if photo is None or not storage.file_exists(photo.path):
         raise HTTPException(status_code=404, detail="Photo not found")
@@ -617,7 +627,7 @@ async def get_version_receipt(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
     receipt = next((r for r in version.receipts if r.id == receipt_id), None)
     if receipt is None or not storage.file_exists(receipt.path):
         raise HTTPException(status_code=404, detail="Receipt not found")

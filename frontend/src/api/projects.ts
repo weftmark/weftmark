@@ -15,6 +15,7 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 
 export interface ProjectSummary {
   id: string;
+  owner_id: string;
   draft_id: string;
   loom_id: string | null;
   loom_version_id: string | null;

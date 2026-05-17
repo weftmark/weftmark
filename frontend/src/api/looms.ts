@@ -62,6 +62,7 @@ export interface LoomVersion {
 
 export interface Loom {
   id: string;
+  owner_id: string;
   loom_type: LoomType;
   manufacturer: string;
   model_name: string;

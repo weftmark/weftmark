@@ -51,6 +51,7 @@ class ProjectPhotoSchema(BaseModel):
 
 class ProjectSummary(BaseModel):
     id: uuid.UUID
+    owner_id: uuid.UUID
     draft_id: uuid.UUID
     loom_id: uuid.UUID | None
     loom_version_id: uuid.UUID | None
@@ -239,12 +240,14 @@ async def _get_owned_project(
     db: AsyncSession,
     *,
     with_for_update: bool = False,
+    allow_superuser: bool = False,
 ) -> Project:
     stmt = select(Project).where(
         Project.id == project_id,
-        Project.owner_id == user.id,
         Project.deleted_at.is_(None),
     )
+    if not (allow_superuser and user.is_superuser):
+        stmt = stmt.where(Project.owner_id == user.id)
     if with_for_update:
         stmt = stmt.with_for_update()
     project = await db.scalar(stmt)
@@ -453,7 +456,7 @@ async def get_project_drawdown(
     from app.services import rendering
     from app.services.storage import afile_exists, aproject_tile_exists, aread_file, aread_project_tile
 
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
 
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
@@ -565,7 +568,7 @@ async def get_project_drawdown_svg(
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
 
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -621,7 +624,7 @@ async def get_project_drawdown_preview(
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
 
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -666,7 +669,7 @@ async def get_project_drawdown_preview_cached(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Return the pre-rendered drawdown thumbnail PNG for a project, or 404 if not yet generated."""
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     if not project.drawdown_preview_path:
         raise HTTPException(status_code=404, detail="Preview not yet generated")
     data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
@@ -684,7 +687,7 @@ async def get_project_drawdown_svg_cached(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Return the pre-rendered drawdown SVG for a project, or 404 if not yet generated."""
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     if not project.drawdown_svg_path:
         raise HTTPException(status_code=404, detail="SVG not yet generated")
     svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
@@ -705,7 +708,7 @@ async def get_project_drawdown_data(
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
 
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -748,11 +751,14 @@ async def get_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    result = await db.scalars(
+    stmt = (
         select(Project)
-        .where(Project.id == project_id, Project.owner_id == current_user.id, Project.deleted_at.is_(None))
+        .where(Project.id == project_id, Project.deleted_at.is_(None))
         .options(selectinload(Project.photos))
     )
+    if not current_user.is_superuser:
+        stmt = stmt.where(Project.owner_id == current_user.id)
+    result = await db.scalars(stmt)
     project = result.first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -1134,7 +1140,7 @@ async def get_project_metrics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectMetricsResponse:
-    await _get_owned_project(project_id, current_user, db)
+    await _get_owned_project(project_id, current_user, db, allow_superuser=True)
 
     now = datetime.now(timezone.utc)
 
@@ -1279,7 +1285,7 @@ async def get_project_photo(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    await _get_owned_project(project_id, current_user, db)
+    await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     photo = await db.scalar(
         select(ProjectPhoto).where(ProjectPhoto.id == photo_id, ProjectPhoto.project_id == project_id)
     )
@@ -1314,7 +1320,7 @@ async def get_picks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PicksResponse:
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
