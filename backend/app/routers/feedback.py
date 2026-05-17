@@ -165,6 +165,31 @@ async def list_my_feedback(
 
 
 # ---------------------------------------------------------------------------
+# Submitter dispatch-status poll
+# ---------------------------------------------------------------------------
+
+
+class FeedbackStatusResponse(BaseModel):
+    dispatch_status: str
+    github_discussion_url: str | None
+
+
+@router.get("/api/feedback/{feedback_id}/status")
+async def get_feedback_status(
+    feedback_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FeedbackStatusResponse:
+    row = await db.get(UserFeedback, feedback_id)
+    if not row or row.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    return FeedbackStatusResponse(
+        dispatch_status=row.dispatch_status,
+        github_discussion_url=row.github_discussion_url,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Admin endpoints
 # ---------------------------------------------------------------------------
 
