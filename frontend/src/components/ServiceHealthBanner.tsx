@@ -20,7 +20,18 @@ export function ServiceHealthBanner() {
     return () => clearInterval(id);
   }, []);
 
-  if (!readiness || readiness.status === "ok" || readiness.status === "starting") return null;
+  if (!readiness || readiness.status === "ok") return null;
+
+  if (readiness.status === "starting") {
+    const expectedTime = readiness.next_check_at
+      ? new Date(readiness.next_check_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })
+      : null;
+    return (
+      <div className="w-full bg-muted text-muted-foreground text-center text-xs py-1.5 px-4 select-none">
+        System starting{expectedTime ? ` — first health check expected at ${expectedTime}` : "…"}
+      </div>
+    );
+  }
 
   const failed = readiness.services.filter((s) => !s.ok);
   const webhookFailed = failed.find((s) => s.name === "Clerk Webhook");
