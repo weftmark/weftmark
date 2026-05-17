@@ -23,12 +23,16 @@ export function ProtectedRoute({ children, requireAdmin = false }: Props) {
     return <Navigate to="/login" replace />;
   }
 
-  // Superusers live in the admin console but can still access personal settings
+  // Superusers land in the admin console; allow /settings and specific resource
+  // detail pages (/drafts/:id, /looms/:id, /projects/:id) for read-only inspection
   if (
     user?.is_superuser &&
     !requireAdmin &&
     !location.pathname.startsWith("/admin") &&
-    !location.pathname.startsWith("/settings")
+    !location.pathname.startsWith("/settings") &&
+    !location.pathname.startsWith("/drafts/") &&
+    !location.pathname.startsWith("/looms/") &&
+    !location.pathname.startsWith("/projects/")
   ) {
     return <Navigate to="/admin" replace />;
   }

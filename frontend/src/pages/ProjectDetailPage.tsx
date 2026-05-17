@@ -19,6 +19,7 @@ import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button } from "@/components/ui/button";
+import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
 
 // ---------------------------------------------------------------------------
 // Color utilities
@@ -704,11 +705,13 @@ function PhotoGrid({
   photos,
   onUploaded,
   onDeleted,
+  readOnly = false,
 }: {
   projectId: string;
   photos: ProjectPhoto[];
   onUploaded: (p: ProjectPhoto) => void;
   onDeleted: (id: string) => void;
+  readOnly?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -743,7 +746,7 @@ function PhotoGrid({
     <div>
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-medium">Photos <span className="text-muted-foreground font-normal">({photos.length}/10)</span></p>
-        {photos.length < 10 && (
+        {!readOnly && photos.length < 10 && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -764,14 +767,18 @@ function PhotoGrid({
       </div>
       {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
       {photos.length === 0 ? (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50"
-        >
-          Add photos to document your work
-        </button>
+        readOnly ? (
+          <p className="text-sm text-muted-foreground/60 italic">No photos.</p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            Add photos to document your work
+          </button>
+        )
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {photos.map((p) => (
@@ -782,17 +789,19 @@ function PhotoGrid({
                 className="w-full h-full object-cover rounded-md border cursor-pointer"
                 onClick={() => setLightbox(p.id)}
               />
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }}
-                className="absolute top-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
-                aria-label="Delete photo"
-              >
-                ✕
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(p.id); }}
+                  className="absolute top-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white text-xs hover:bg-black/80"
+                  aria-label="Delete photo"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
-          {photos.length < 10 && (
+          {!readOnly && photos.length < 10 && (
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -1307,6 +1316,8 @@ export function ProjectDetailPage() {
   const isActiveTracking = (project.status === "active" || project.status === "created") && !isPlanning;
   const isAbandoned = project.status === "abandoned";
 
+  const isReadOnly = !!user?.is_superuser && project.owner_id !== user.id;
+
   // Badge for planning vs active
   const badgeClasses = isPlanning
     ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
@@ -1317,6 +1328,7 @@ export function ProjectDetailPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {isReadOnly && <SuperuserInspectionBanner />}
       {/* Page header */}
       <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
@@ -1335,7 +1347,9 @@ export function ProjectDetailPage() {
             <Link to={`/projects/${project.id}`} className="text-muted-foreground hover:text-foreground truncate max-w-[12rem]">{project.name}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
-          {editingName ? (
+          {isReadOnly ? (
+            <span className="font-semibold truncate">{project.name}</span>
+          ) : editingName ? (
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -1388,14 +1402,16 @@ export function ProjectDetailPage() {
           >
             View design
           </button>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title="View settings"
-            aria-label="Open view settings"
-          >
-            <AppIcons.settings className="h-4 w-4" />
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="View settings"
+              aria-label="Open view settings"
+            >
+              <AppIcons.settings className="h-4 w-4" />
+            </button>
+          )}
           <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
             {badgeLabel}
           </span>
@@ -1575,7 +1591,7 @@ export function ProjectDetailPage() {
 
         {/* Step controls — active tracking and planning */}
         <div className="w-full px-4 pb-6">
-          {(isActiveTracking || isPlanning) && (
+          {!isReadOnly && (isActiveTracking || isPlanning) && (
             <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8 mb-4">
               {/* Left 1/3 on desktop, below step buttons on mobile */}
               <div className="order-2 lg:order-1 lg:flex lg:justify-center">
@@ -1600,7 +1616,7 @@ export function ProjectDetailPage() {
             </div>
           )}
 
-          {(isActiveTracking || isPlanning) && (
+          {!isReadOnly && (isActiveTracking || isPlanning) && (
             <p className="text-center text-sm text-muted-foreground">
               ← → arrow keys or spacebar to navigate picks
             </p>
@@ -1628,11 +1644,12 @@ export function ProjectDetailPage() {
         {panelOpen && (
           <div className="overflow-y-auto max-h-[55dvh] border-t border-border/50">
             <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0">
-          {!isCompleted && (
+          {(!isCompleted || isReadOnly) && (
             <CollapsibleSection title={`Photos (${project.photos.length}/10)`} defaultOpen={isAbandoned}>
               <PhotoGrid
                 projectId={project.id}
                 photos={project.photos}
+                readOnly={isReadOnly}
                 onUploaded={(p) =>
                   queryClient.setQueryData<typeof project>(["project", id], (old) =>
                     old ? { ...old, photos: [...old.photos, p] } : old
@@ -1654,7 +1671,13 @@ export function ProjectDetailPage() {
           )}
 
           <CollapsibleSection title="Notes" defaultOpen={!!project.notes}>
-            {editingNotes ? (
+            {isReadOnly ? (
+              project.notes ? (
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{project.notes}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground/60 italic">No notes.</p>
+              )
+            ) : editingNotes ? (
               <textarea
                 autoFocus
                 className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
@@ -1729,7 +1752,7 @@ export function ProjectDetailPage() {
           </CollapsibleSection>
 
           {/* Active tracking: complete / abandon */}
-          {isActiveTracking && (
+          {!isReadOnly && isActiveTracking && (
             <CollapsibleSection title="Actions">
               <div className="flex flex-wrap gap-2">
                 {!confirmComplete && !confirmAbandon && (
@@ -1762,7 +1785,7 @@ export function ProjectDetailPage() {
             </CollapsibleSection>
           )}
 
-          {project.status === "abandoned" && (
+          {!isReadOnly && project.status === "abandoned" && (
             <CollapsibleSection title="Actions">
               <div className="space-y-3">
                 {!confirmRestart && !restartConflict && (
@@ -1800,7 +1823,7 @@ export function ProjectDetailPage() {
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Clone project">
+          {!isReadOnly && <CollapsibleSection title="Clone project">
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">Create a new project with the same configuration, starting at pick 1.</p>
               {!confirmClone && !cloneConflict && (
@@ -1835,9 +1858,9 @@ export function ProjectDetailPage() {
                 </div>
               )}
             </div>
-          </CollapsibleSection>
+          </CollapsibleSection>}
 
-          <CollapsibleSection title="Danger zone">
+          {!isReadOnly && <CollapsibleSection title="Danger zone">
             {!confirmDelete ? (
               <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>
                 Delete project
@@ -1860,7 +1883,7 @@ export function ProjectDetailPage() {
                 </Button>
               </div>
             )}
-          </CollapsibleSection>
+          </CollapsibleSection>}
             </div>
           </div>
         )}
