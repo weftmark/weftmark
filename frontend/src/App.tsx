@@ -24,6 +24,7 @@ import { ProjectsPage } from "@/pages/ProjectsPage";
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
 import { ProjectLandingPage } from "@/pages/ProjectLandingPage";
 import { WarpingPlanPage } from "@/pages/WarpingPlanPage";
+import { SharedProjectPage } from "@/pages/SharedProjectPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SignOutPage } from "@/pages/SignOutPage";
@@ -107,6 +108,7 @@ export default function App() {
                   <Route path="/projects/:id" element={<AuthRoute><ProjectLandingPage /></AuthRoute>} />
                   <Route path="/projects/:id/track" element={<AuthRoute><ProjectDetailPage /></AuthRoute>} />
                   <Route path="/projects/:id/warping-plan" element={<AuthRoute><WarpingPlanPage /></AuthRoute>} />
+                  <Route path="/p/:slug" element={<SharedProjectPage />} />
                   <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
                   <Route path="/admin/:section" element={<AuthRoute requireAdmin><AdminPage /></AuthRoute>} />
                   <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />

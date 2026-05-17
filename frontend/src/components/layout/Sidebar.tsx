@@ -35,6 +35,7 @@ const ADMIN_SECTIONS = [
   { id: "deps", label: "Dependencies" },
   { id: "audit", label: "Audit log" },
   { id: "credentials", label: "Credentials" },
+  { id: "slugs", label: "Share links" },
   { id: "superuser", label: "Superuser", superuserOnly: true },
 ];
 

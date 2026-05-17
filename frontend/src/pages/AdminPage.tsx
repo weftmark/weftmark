@@ -43,8 +43,11 @@ import {
   createCredential,
   patchCredential,
   deleteCredential,
+  listProjectSlugs,
+  adminRevokeSlug,
   type CredentialExpiry,
   type CredentialResource,
+  type AdminSlugRecord,
   type ScheduledTask,
   type TaskHistoryItem,
   type AdminUser,
@@ -69,7 +72,7 @@ import { EulaContent } from "@/components/EulaContent";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
 
-type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "credentials" | "superuser";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "credentials" | "superuser" | "slugs";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -157,6 +160,7 @@ export function AdminPage() {
       {tab === "deps" && <DepsTab />}
       {tab === "audit" && <AuditLogTab />}
       {tab === "credentials" && <CredentialsTab />}
+      {tab === "slugs" && <SlugsTab />}
       {tab === "superuser" && <SuperuserTab />}
     </div>
   );
@@ -1637,6 +1641,102 @@ function credentialStatus(daysRemaining: number | null): { label: string; cls: s
   if (daysRemaining <= 7) return { label: "Critical", cls: "bg-destructive/10 text-destructive" };
   if (daysRemaining <= 30) return { label: "Warning", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" };
   return { label: "OK", cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" };
+}
+
+// ---------------------------------------------------------------------------
+// Slugs tab
+// ---------------------------------------------------------------------------
+
+function SlugsTab() {
+  const queryClient = useQueryClient();
+
+  const { data: slugs = [], isLoading } = useQuery({
+    queryKey: ["admin", "project-slugs"],
+    queryFn: listProjectSlugs,
+  });
+
+  const revokeMutation = useMutation({
+    mutationFn: (slug: string) => adminRevokeSlug(slug),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "project-slugs"] }),
+  });
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
+  }
+
+  if (slugs.length === 0) {
+    return <div className="text-sm text-muted-foreground py-8 text-center">No active share links.</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">Active share links</h2>
+        <span className="text-xs text-muted-foreground">{slugs.length} link{slugs.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div className="rounded-lg border border-border overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
+          <thead>
+            <tr className="border-b border-border bg-muted/30">
+              {["Slug", "Project", "Owner", "Visibility", "Status", "Expires", ""].map((h) => (
+                <th key={h} className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {slugs.map((row: AdminSlugRecord) => {
+              const expired = row.share_expires_at ? new Date(row.share_expires_at) <= new Date() : false;
+              return (
+                <tr key={row.slug} className="border-b border-border last:border-0 hover:bg-muted/20">
+                  <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">
+                    <a
+                      href={`/p/${row.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      {row.slug}
+                    </a>
+                  </td>
+                  <td className="px-3 py-2.5 max-w-[200px] truncate">{row.project_name}</td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground">{row.owner_email}</td>
+                  <td className="px-3 py-2.5 text-xs capitalize">{row.share_visibility}</td>
+                  <td className="px-3 py-2.5 text-xs capitalize">{row.project_status}</td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {row.share_expires_at ? (
+                      <span className={expired ? "text-destructive" : ""}>
+                        {new Date(row.share_expires_at).toLocaleDateString()}
+                        {expired && " (expired)"}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Never</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive h-7 px-2"
+                      onClick={() => {
+                        if (confirm(`Revoke share link for "${row.project_name}"?`)) {
+                          revokeMutation.mutate(row.slug);
+                        }
+                      }}
+                      disabled={revokeMutation.isPending}
+                    >
+                      Revoke
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 function CredentialsTab() {

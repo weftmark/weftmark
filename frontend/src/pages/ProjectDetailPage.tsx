@@ -17,6 +17,7 @@ import {
 import { drawdownPreviewUrl, projectDrawdownPreviewUrl } from "@/api/projects";
 import { getAuthToken } from "@/api/client";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
+import { ShareModal } from "@/components/projects/ShareModal";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button } from "@/components/ui/button";
 import { ZoomablePreviewModal } from "@/components/ui/ZoomablePreviewModal";
@@ -1028,6 +1029,7 @@ export function ProjectDetailPage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesInput, setNotesInput] = useState("");
   const [showAssignLoom, setShowAssignLoom] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
@@ -1436,6 +1438,16 @@ export function ProjectDetailPage() {
           </Link>
           {!isReadOnly && (
             <button
+              onClick={() => setShareModalOpen(true)}
+              className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="Share project"
+              aria-label="Share project"
+            >
+              <AppIcons.share className="h-4 w-4" />
+            </button>
+          )}
+          {!isReadOnly && (
+            <button
               onClick={() => setSettingsOpen(true)}
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title="View settings"
@@ -1447,6 +1459,16 @@ export function ProjectDetailPage() {
           <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
             {badgeLabel}
           </span>
+          {!isReadOnly && project.share_slug && project.share_visibility !== "private" && (
+            <button
+              onClick={() => setShareModalOpen(true)}
+              className="rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
+              title="Project is shared — click to manage"
+            >
+              <AppIcons.share className="h-3 w-3" />
+              Shared
+            </button>
+          )}
           {presentModeSupported && (
             <button
               onClick={togglePresentMode}
@@ -1991,6 +2013,18 @@ export function ProjectDetailPage() {
             queryClient.invalidateQueries({ queryKey: ["projects"] });
           }}
           onClose={() => setShowAssignLoom(false)}
+        />
+      )}
+
+      {shareModalOpen && (
+        <ShareModal
+          project={project}
+          onUpdated={(updated) => {
+            queryClient.setQueryData(["project", id], (old: typeof project) =>
+              old ? { ...old, ...updated } : updated
+            );
+          }}
+          onClose={() => setShareModalOpen(false)}
         />
       )}
 

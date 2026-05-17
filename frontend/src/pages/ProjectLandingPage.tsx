@@ -17,6 +17,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
+import { ShareModal } from "@/components/projects/ShareModal";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -839,6 +840,8 @@ function WarpSetupSection({
   );
 }
 
+// ShareModal is imported from @/components/projects/ShareModal
+
 // ---------------------------------------------------------------------------
 // Notes inline editor
 // ---------------------------------------------------------------------------
@@ -924,6 +927,7 @@ export function ProjectLandingPage() {
 
   const [drawdownOpen, setDrawdownOpen] = useState(false);
   const [tieupOpen, setTieupOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -998,6 +1002,16 @@ export function ProjectLandingPage() {
             <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
               {PROJECT_TYPE_LABELS[project.project_type]}
             </span>
+            {project.share_slug && project.share_visibility !== "private" && (
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
+                title="Project is shared — click to manage"
+              >
+                <AppIcons.share className="h-3 w-3" />
+                Shared
+              </button>
+            )}
           </div>
           <h1 className="text-xl font-semibold leading-tight truncate">{project.name}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -1007,6 +1021,15 @@ export function ProjectLandingPage() {
             {project.loom_name && <span> · {project.loom_name}</span>}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={() => setShareModalOpen(true)}
+          title="Share project"
+        >
+          <AppIcons.share className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Preview + specs */}
@@ -1207,6 +1230,14 @@ export function ProjectLandingPage() {
           projectId={project.id}
           draftName={project.draft_name}
           onClose={() => setTieupOpen(false)}
+        />
+      )}
+      {/* Share modal */}
+      {shareModalOpen && (
+        <ShareModal
+          project={project}
+          onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
+          onClose={() => setShareModalOpen(false)}
         />
       )}
     </div>
