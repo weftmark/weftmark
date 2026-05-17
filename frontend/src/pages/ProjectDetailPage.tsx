@@ -91,6 +91,8 @@ function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
     return () => clearInterval(id);
   }, [metrics.current_session_started_at]);
 
+  const avgSec = metrics.avg_pick_dwell_ms != null ? (metrics.avg_pick_dwell_ms / 1000).toFixed(1) : null;
+
   return (
     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
       <dt className="text-muted-foreground">Total woven picks</dt>
@@ -99,6 +101,12 @@ function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
       <dd>{metrics.total_advance_steps}</dd>
       <dt className="text-muted-foreground">Reverses</dt>
       <dd>{metrics.total_reverse_steps}</dd>
+      {avgSec != null && (
+        <>
+          <dt className="text-muted-foreground">Avg pick time</dt>
+          <dd>{avgSec}s</dd>
+        </>
+      )}
       <dt className="text-muted-foreground">Sessions</dt>
       <dd>{metrics.total_sessions}</dd>
       <dt className="text-muted-foreground">Total weaving time</dt>

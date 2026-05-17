@@ -45,6 +45,8 @@ import {
   deleteCredential,
   listProjectSlugs,
   adminRevokeSlug,
+  listProjectSteps,
+  type AdminProjectStep,
   type CredentialExpiry,
   type CredentialResource,
   type AdminSlugRecord,
@@ -1669,7 +1671,8 @@ function SlugsTab() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-8">
+      <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Active share links</h2>
         <span className="text-xs text-muted-foreground">{slugs.length} link{slugs.length !== 1 ? "s" : ""}</span>
@@ -1735,6 +1738,83 @@ function SlugsTab() {
           </tbody>
         </table>
       </div>
+    </div>
+      <StepLogSection />
+    </div>
+  );
+}
+
+function StepLogSection() {
+  const [projectId, setProjectId] = useState("");
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
+
+  const { data: steps, isLoading, isError } = useQuery({
+    queryKey: ["admin", "project-steps", submittedId],
+    queryFn: () => listProjectSteps(submittedId!, 200),
+    enabled: !!submittedId,
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = projectId.trim();
+    if (trimmed) setSubmittedId(trimmed);
+  }
+
+  function formatDwell(ms: number | null) {
+    if (ms == null) return "—";
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  return (
+    <div className="space-y-3 mt-8">
+      <h2 className="text-base font-semibold">Project step log</h2>
+      <form onSubmit={handleSubmit} className="flex gap-2 items-center">
+        <input
+          className="border border-border rounded px-2 py-1 text-sm bg-input flex-1 max-w-sm"
+          placeholder="Project ID (UUID)"
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+        />
+        <Button type="submit" size="sm" variant="secondary">Load</Button>
+      </form>
+      {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
+      {isError && <div className="text-sm text-destructive">Failed to load steps.</div>}
+      {steps && steps.length === 0 && (
+        <div className="text-sm text-muted-foreground">No steps recorded for this project.</div>
+      )}
+      {steps && steps.length > 0 && (
+        <div className="rounded-lg border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                <th className="px-3 py-2 font-medium">Timestamp</th>
+                <th className="px-3 py-2 font-medium">Event</th>
+                <th className="px-3 py-2 font-medium">Pick</th>
+                <th className="px-3 py-2 font-medium">Dwell</th>
+              </tr>
+            </thead>
+            <tbody>
+              {steps.map((s: AdminProjectStep) => (
+                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/20">
+                  <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(s.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <span className={s.event_type === "advance" ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}>
+                      {s.event_type}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 font-mono text-xs">
+                    {s.from_pick} → {s.to_pick}
+                  </td>
+                  <td className="px-3 py-1.5 text-xs text-muted-foreground">{formatDwell(s.dwell_ms)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
