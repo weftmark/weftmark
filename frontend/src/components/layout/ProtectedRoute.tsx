@@ -23,8 +23,13 @@ export function ProtectedRoute({ children, requireAdmin = false }: Props) {
     return <Navigate to="/login" replace />;
   }
 
-  // Superusers only use the admin console — redirect any non-admin route to /admin
-  if (user?.is_superuser && !requireAdmin && location.pathname !== "/admin") {
+  // Superusers live in the admin console but can still access personal settings
+  if (
+    user?.is_superuser &&
+    !requireAdmin &&
+    !location.pathname.startsWith("/admin") &&
+    !location.pathname.startsWith("/settings")
+  ) {
     return <Navigate to="/admin" replace />;
   }
 
