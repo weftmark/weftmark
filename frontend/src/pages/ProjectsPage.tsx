@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listProjects, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
+import { listProjects, projectDrawdownPreviewUrl, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
 import { AppIcons } from "@/lib/icons";
 import { previewUrl } from "@/api/drafts";
 import { AuthedImage } from "@/components/ui/AuthedImage";
@@ -58,7 +58,17 @@ function ProjectCard({ project, onAssign }: {
     : 0;
 
   return (
-    <div className="relative rounded-lg border hover:border-ring transition-colors">
+    <div className="relative rounded-lg border hover:border-ring transition-colors overflow-hidden">
+      {project.has_drawdown_preview && (
+        <div className="w-full h-20 bg-muted overflow-hidden">
+          <AuthedImage
+            src={projectDrawdownPreviewUrl(project.id)}
+            alt=""
+            className="w-full h-full object-cover object-top"
+            style={{ imageRendering: "pixelated" }}
+          />
+        </div>
+      )}
       <Link to={`/projects/${project.id}`} className="block p-4">
         <div className="flex gap-3">
           <div className="shrink-0 mt-0.5">
@@ -145,7 +155,7 @@ function ProjectCard({ project, onAssign }: {
             </button>
             <p className="absolute -top-9 left-0 text-white/70 text-sm truncate max-w-xs">{project.name}</p>
             <AuthedImage
-              src={previewUrl(project.draft_id)}
+              src={project.has_drawdown_preview ? projectDrawdownPreviewUrl(project.id) : previewUrl(project.draft_id)}
               alt="Design preview"
               className="w-full rounded-lg shadow-2xl"
               style={{ imageRendering: "pixelated" }}
