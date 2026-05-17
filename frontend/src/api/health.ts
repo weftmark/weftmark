@@ -10,6 +10,7 @@ export interface ReadinessResponse {
   status: "ok" | "degraded" | "error" | "starting";
   services: ReadinessService[];
   checked_at?: string | null;
+  next_check_at?: string | null;
 }
 
 export async function getHealthReady(): Promise<ReadinessResponse> {
