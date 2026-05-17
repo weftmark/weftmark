@@ -25,7 +25,7 @@ from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
 from app.models.pending_signup import PendingSignup
-from app.models.project import Project, ProjectPhoto
+from app.models.project import Project, ProjectPhoto, ProjectStep
 from app.models.server_event import ServerEvent
 from app.models.user import User
 from app.models.yarn import Yarn
@@ -2518,3 +2518,38 @@ async def admin_revoke_project_slug(
     project.share_visibility = "private"
     project.share_expires_at = None
     await db.commit()
+
+
+class AdminProjectStepRecord(BaseModel):
+    id: uuid.UUID
+    event_type: str
+    from_pick: int
+    to_pick: int
+    dwell_ms: int | None
+    created_at: datetime
+
+
+@router.get("/project-steps", response_model=list[AdminProjectStepRecord])
+async def admin_list_project_steps(
+    project_id: uuid.UUID,
+    limit: int = 200,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[AdminProjectStepRecord]:
+    rows = await db.scalars(
+        select(ProjectStep)
+        .where(ProjectStep.project_id == project_id)
+        .order_by(ProjectStep.created_at.desc())
+        .limit(limit)
+    )
+    return [
+        AdminProjectStepRecord(
+            id=s.id,
+            event_type=s.event_type,
+            from_pick=s.from_pick,
+            to_pick=s.to_pick,
+            dwell_ms=s.dwell_ms,
+            created_at=s.created_at,
+        )
+        for s in rows.all()
+    ]

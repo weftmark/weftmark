@@ -452,3 +452,15 @@ export interface AdminSlugRecord {
 
 export const listProjectSlugs = () => api.get<AdminSlugRecord[]>("/api/admin/project-slugs");
 export const adminRevokeSlug = (slug: string) => api.delete<void>(`/api/admin/project-slugs/${slug}`);
+
+export interface AdminProjectStep {
+  id: string;
+  event_type: string;
+  from_pick: number;
+  to_pick: number;
+  dwell_ms: number | null;
+  created_at: string;
+}
+
+export const listProjectSteps = (projectId: string, limit = 200) =>
+  api.get<AdminProjectStep[]>(`/api/admin/project-steps?project_id=${projectId}&limit=${limit}`);

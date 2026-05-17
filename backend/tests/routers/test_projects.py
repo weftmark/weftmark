@@ -2399,6 +2399,103 @@ class TestProjectMetrics:
         resp = await client.get(f"/api/projects/{project.id}/metrics")
         assert resp.status_code == 401
 
+    async def test_avg_pick_dwell_ms_none_when_no_worked_picks(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
+        assert body["avg_pick_dwell_ms"] is None
+
+    async def test_avg_pick_dwell_ms_computed_correctly(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from app.models.project import ProjectStep
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        db_session.add_all(
+            [
+                ProjectStep(project_id=project.id, event_type="advance", from_pick=1, to_pick=2, dwell_ms=6_000),
+                ProjectStep(project_id=project.id, event_type="advance", from_pick=2, to_pick=3, dwell_ms=10_000),
+            ]
+        )
+        await db_session.commit()
+
+        body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
+        assert body["avg_pick_dwell_ms"] == 8_000
+
+    async def test_avg_pick_dwell_ms_excludes_sub_threshold_and_reverse(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from app.models.project import ProjectStep
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        db_session.add_all(
+            [
+                ProjectStep(project_id=project.id, event_type="advance", from_pick=1, to_pick=2, dwell_ms=8_000),
+                ProjectStep(
+                    project_id=project.id, event_type="advance", from_pick=2, to_pick=3, dwell_ms=500
+                ),  # navigation
+                ProjectStep(
+                    project_id=project.id, event_type="reverse", from_pick=3, to_pick=2, dwell_ms=12_000
+                ),  # reverse
+            ]
+        )
+        await db_session.commit()
+
+        body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
+        assert body["avg_pick_dwell_ms"] == 8_000
+
+    async def test_session_step_count(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        from app.models.project import ProjectStep, WeaveSession
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+
+        t0 = datetime.now(timezone.utc) - timedelta(minutes=10)
+        t1 = datetime.now(timezone.utc) - timedelta(minutes=5)
+        t2 = datetime.now(timezone.utc) - timedelta(minutes=2)
+
+        sess = WeaveSession(project_id=project.id, started_at=t0, ended_at=t1)
+        db_session.add(sess)
+        await db_session.flush()
+
+        # 3 steps inside the session window, 1 after
+        db_session.add_all(
+            [
+                ProjectStep(
+                    project_id=project.id,
+                    event_type="advance",
+                    from_pick=1,
+                    to_pick=2,
+                    created_at=t0 + timedelta(seconds=10),
+                ),
+                ProjectStep(
+                    project_id=project.id,
+                    event_type="advance",
+                    from_pick=2,
+                    to_pick=3,
+                    created_at=t0 + timedelta(seconds=20),
+                ),
+                ProjectStep(
+                    project_id=project.id,
+                    event_type="reverse",
+                    from_pick=3,
+                    to_pick=2,
+                    created_at=t0 + timedelta(seconds=30),
+                ),
+                ProjectStep(
+                    project_id=project.id, event_type="advance", from_pick=2, to_pick=3, created_at=t2
+                ),  # outside session
+            ]
+        )
+        await db_session.commit()
+
+        body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
+        assert body["sessions"][0]["step_count"] == 3
+
 
 # ---------------------------------------------------------------------------
 # GET /api/projects/{id}/drawdown/svg

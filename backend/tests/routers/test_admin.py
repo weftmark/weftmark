@@ -1398,3 +1398,115 @@ class TestPatchScheduledTask:
         resp = await superuser_client.patch("/api/admin/scheduled-tasks/cve_scan", json={"enabled": True})
         assert resp.json()["cron"] == "0 3 * * *"
         assert resp.json()["enabled"] is True
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/project-steps
+# ---------------------------------------------------------------------------
+
+
+class TestAdminProjectSteps:
+    async def _insert_project(self, db: AsyncSession, owner: User) -> Project:
+        import uuid as _uuid
+
+        from app.models.draft import Draft as _Draft
+
+        draft = _Draft(
+            id=_uuid.uuid4(),
+            owner_id=owner.id,
+            name="Step Log Test Draft",
+            wif_filename="t.wif",
+            wif_path="drafts/t.wif",
+            has_treadling=True,
+            has_liftplan=True,
+            num_shafts=4,
+            num_treadles=4,
+            weft_threads=2,
+        )
+        db.add(draft)
+        project = Project(
+            owner_id=owner.id,
+            draft_id=draft.id,
+            name="Step Log Test Project",
+            project_type="treadle",
+            status="active",
+            current_pick=3,
+            total_picks=10,
+        )
+        db.add(project)
+        await db.commit()
+        return project
+
+    async def test_returns_200(self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User):
+        project = await self._insert_project(db_session, admin_user)
+        resp = await admin_client.get(f"/api/admin/project-steps?project_id={project.id}")
+        assert resp.status_code == 200
+
+    async def test_returns_steps_for_project(
+        self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        from app.models.project import ProjectStep
+
+        project = await self._insert_project(db_session, admin_user)
+        db_session.add_all(
+            [
+                ProjectStep(project_id=project.id, event_type="advance", from_pick=1, to_pick=2, dwell_ms=5_000),
+                ProjectStep(project_id=project.id, event_type="advance", from_pick=2, to_pick=3, dwell_ms=6_000),
+            ]
+        )
+        await db_session.commit()
+
+        resp = await admin_client.get(f"/api/admin/project-steps?project_id={project.id}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["event_type"] in ("advance", "reverse")
+        assert "dwell_ms" in data[0]
+        assert "created_at" in data[0]
+
+    async def test_most_recent_first(self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User):
+        from datetime import datetime, timedelta, timezone
+
+        from app.models.project import ProjectStep
+
+        project = await self._insert_project(db_session, admin_user)
+        now = datetime.now(timezone.utc)
+        db_session.add_all(
+            [
+                ProjectStep(
+                    project_id=project.id,
+                    event_type="advance",
+                    from_pick=1,
+                    to_pick=2,
+                    dwell_ms=5_000,
+                    created_at=now - timedelta(seconds=10),
+                ),
+                ProjectStep(
+                    project_id=project.id,
+                    event_type="advance",
+                    from_pick=2,
+                    to_pick=3,
+                    dwell_ms=6_000,
+                    created_at=now,
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        resp = await admin_client.get(f"/api/admin/project-steps?project_id={project.id}")
+        data = resp.json()
+        assert data[0]["to_pick"] == 3  # most recent first
+
+    async def test_missing_project_id_returns_422(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/project-steps")
+        assert resp.status_code == 422
+
+    async def test_non_admin_returns_403(self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User):
+        project = await self._insert_project(db_session, admin_user)
+        resp = await auth_client.get(f"/api/admin/project-steps?project_id={project.id}")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, admin_user: User):
+        project = await self._insert_project(db_session, admin_user)
+        resp = await client.get(f"/api/admin/project-steps?project_id={project.id}")
+        assert resp.status_code == 401

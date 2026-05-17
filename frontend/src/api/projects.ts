@@ -223,6 +223,7 @@ export interface SessionInfo {
   started_at: string;
   ended_at: string | null;
   duration_ms: number;
+  step_count: number;
 }
 
 export interface ProjectMetrics {
@@ -232,6 +233,7 @@ export interface ProjectMetrics {
   total_advance_steps: number;
   total_reverse_steps: number;
   total_worked_picks: number;
+  avg_pick_dwell_ms: number | null;
   sessions: SessionInfo[];
 }
 

@@ -217,6 +217,7 @@ class SessionInfo(BaseModel):
     started_at: datetime
     ended_at: datetime | None
     duration_ms: int
+    step_count: int
 
 
 class ProjectMetricsResponse(BaseModel):
@@ -226,6 +227,7 @@ class ProjectMetricsResponse(BaseModel):
     total_advance_steps: int
     total_reverse_steps: int
     total_worked_picks: int
+    avg_pick_dwell_ms: int | None
     sessions: list[SessionInfo]
 
 
@@ -1253,7 +1255,14 @@ async def get_project_metrics(
 
     total_advance = sum(1 for s in steps if s.event_type == "advance")
     total_reverse = sum(1 for s in steps if s.event_type == "reverse")
-    total_worked = sum(1 for s in steps if s.dwell_ms is not None and s.dwell_ms >= _WORKED_PICK_THRESHOLD_MS)
+
+    worked_dwells = [
+        s.dwell_ms
+        for s in steps
+        if s.event_type == "advance" and s.dwell_ms is not None and s.dwell_ms >= _WORKED_PICK_THRESHOLD_MS
+    ]
+    total_worked = len(worked_dwells)
+    avg_pick_dwell_ms = int(sum(worked_dwells) / len(worked_dwells)) if worked_dwells else None
 
     total_session_ms = 0
     session_infos: list[SessionInfo] = []
@@ -1262,8 +1271,15 @@ async def get_project_metrics(
         end = sess.ended_at or now
         duration_ms = int((end - sess.started_at).total_seconds() * 1_000)
         total_session_ms += duration_ms
+        step_count = sum(1 for s in steps if sess.started_at <= s.created_at <= end)
         session_infos.append(
-            SessionInfo(id=sess.id, started_at=sess.started_at, ended_at=sess.ended_at, duration_ms=duration_ms)
+            SessionInfo(
+                id=sess.id,
+                started_at=sess.started_at,
+                ended_at=sess.ended_at,
+                duration_ms=duration_ms,
+                step_count=step_count,
+            )
         )
         if sess.ended_at is None:
             current_session_started_at = sess.started_at
@@ -1275,6 +1291,7 @@ async def get_project_metrics(
         total_advance_steps=total_advance,
         total_reverse_steps=total_reverse,
         total_worked_picks=total_worked,
+        avg_pick_dwell_ms=avg_pick_dwell_ms,
         sessions=session_infos,
     )
 
