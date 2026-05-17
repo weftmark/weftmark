@@ -553,7 +553,7 @@ function FeedbackHistorySection() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(s.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                  {new Date(s.created_at).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                 </p>
               </button>
 

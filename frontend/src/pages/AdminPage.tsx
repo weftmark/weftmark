@@ -73,6 +73,7 @@ import {
   listAdminFeedback,
   softDeleteFeedback,
   recoverFeedback,
+  retryFeedbackDispatch,
   SUBMISSION_TYPE_LABELS,
   type FeedbackRecord,
   type SubmissionType,
@@ -1858,6 +1859,14 @@ function FeedbackTab() {
     },
   });
 
+  const retryMutation = useMutation({
+    mutationFn: (id: string) => retryFeedbackDispatch(id),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "feedback"] });
+      setDetail(updated);
+    },
+  });
+
   const recoverMutation = useMutation({
     mutationFn: (id: string) => recoverFeedback(id),
     onSuccess: (updated) => {
@@ -1992,7 +2001,18 @@ function FeedbackTab() {
               )}
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 flex-wrap">
+              {/* Retry dispatch: shown for failed or pending submissions */}
+              {!detail.deleted_at && (detail.dispatch_status === "failed" || detail.dispatch_status === "pending") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={retryMutation.isPending}
+                  onClick={() => retryMutation.mutate(detail.id)}
+                >
+                  {retryMutation.isPending ? "Retrying…" : "Retry dispatch"}
+                </Button>
+              )}
               {detail.deleted_at ? (
                 <Button
                   variant="outline"

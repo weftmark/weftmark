@@ -78,3 +78,6 @@ export const softDeleteFeedback = (id: string) =>
 
 export const recoverFeedback = (id: string) =>
   api.post<FeedbackRecord>(`/api/admin/feedback/${id}/recover`, {});
+
+export const retryFeedbackDispatch = (id: string) =>
+  api.post<FeedbackRecord>(`/api/admin/feedback/${id}/retry-dispatch`, {});

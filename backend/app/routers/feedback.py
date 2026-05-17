@@ -239,6 +239,25 @@ async def soft_delete_feedback(
     return _serialize(row)
 
 
+@router.post("/api/admin/feedback/{feedback_id}/retry-dispatch")
+async def retry_feedback_dispatch(
+    feedback_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_admin),
+) -> FeedbackResponse:
+    row = await db.get(UserFeedback, feedback_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    if row.dispatch_status not in ("pending", "failed"):
+        raise HTTPException(status_code=400, detail=f"Cannot retry dispatch with status '{row.dispatch_status}'")
+    row.dispatch_status = "pending"
+    row.dispatch_error = None
+    await db.commit()
+    await db.refresh(row)
+    _enqueue_dispatch(str(row.id))
+    return _serialize(row, include_user_email=True)
+
+
 @router.post("/api/admin/feedback/{feedback_id}/recover")
 async def recover_feedback(
     feedback_id: uuid.UUID,

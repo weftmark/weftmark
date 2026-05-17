@@ -227,14 +227,24 @@ def _run_startup_sweeps(sender=None, **kwargs):
             return
 
         from app.services.task_history import record_queued
-        from app.tasks.feedback_dispatch import retry_failed_feedback
-        from app.tasks.maintenance import retry_failed_previews
 
-        t1 = retry_failed_feedback.delay()
+        # send_task dispatches by name without a local registry lookup, avoiding
+        # NotRegistered races during worker_ready when some include modules may not
+        # yet be visible to the signal handler's app instance. countdown=15 gives
+        # pool processes time to finish initializing before executing.
+        t1 = celery_app.send_task(
+            "app.tasks.feedback_dispatch.retry_failed_feedback",
+            kwargs={"limit": 20},
+            countdown=15,
+        )
         record_queued(settings, t1.id, "app.tasks.feedback_dispatch.retry_failed_feedback", "startup:feedback_retry")
         log.info("startup_sweep feedback_retry task_id=%s", t1.id)
 
-        t2 = retry_failed_previews.delay()
+        t2 = celery_app.send_task(
+            "app.tasks.maintenance.retry_failed_previews",
+            kwargs={"limit": 50},
+            countdown=15,
+        )
         record_queued(settings, t2.id, "app.tasks.maintenance.retry_failed_previews", "startup:preview_retry")
         log.info("startup_sweep preview_retry task_id=%s", t2.id)
     except Exception:
