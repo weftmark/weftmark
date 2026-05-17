@@ -6,9 +6,11 @@ import { measurementSystemToUnit, displayLength, formatApproxLength, convertLeng
 import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
+  getWarpingPlan,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail,
 } from "@/api/projects";
+import { TieUpDiagram } from "@/components/TieUpDiagram";
 import { previewUrl } from "@/api/drafts";
 import { getAuthToken } from "@/api/client";
 import { AuthedImage } from "@/components/ui/AuthedImage";
@@ -333,6 +335,87 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
             style={{ transformOrigin: "0 0", display: "inline-block", willChange: "transform" }}
             dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
           />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tie-up modal
+// ---------------------------------------------------------------------------
+
+function TieUpModal({ projectId, draftName, onClose }: {
+  projectId: string;
+  draftName: string;
+  onClose: () => void;
+}) {
+  const { data: plan, isLoading } = useQuery({
+    queryKey: ["warping-plan", projectId],
+    queryFn: () => getWarpingPlan(projectId),
+  });
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-lg w-full max-h-[80vh]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h2 className="font-semibold text-sm">Treadle Tie-Up — {draftName}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+            <AppIcons.close className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-5">
+          {isLoading && (
+            <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
+              <AppIcons.spinner className="h-4 w-4 animate-spin mr-2" /> Loading…
+            </div>
+          )}
+          {plan && !plan.has_tieup && (
+            <p className="text-sm text-muted-foreground italic">
+              Tie-up data not available — this WIF file does not contain a [TIEUP] section.
+            </p>
+          )}
+          {plan?.has_tieup && plan.tieup && plan.tieup_num_shafts && plan.tieup_num_treadles && (
+            <>
+              <p className="text-xs text-muted-foreground mb-4">
+                Columns = treadles · Rows = shafts · Filled = connected
+              </p>
+              <div className="overflow-x-auto">
+                <TieUpDiagram
+                  tieup={plan.tieup}
+                  numShafts={plan.tieup_num_shafts}
+                  numTreadles={plan.tieup_num_treadles}
+                />
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
+          <Link
+            to={`/projects/${projectId}/warping-plan`}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            View Weave Plan
+          </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              window.open(`/projects/${projectId}/warping-plan`, "_blank");
+            }}
+          >
+            <AppIcons.print className="h-4 w-4 mr-1.5" />
+            Print / Save PDF
+          </Button>
         </div>
       </div>
     </div>
@@ -840,6 +923,7 @@ export function ProjectLandingPage() {
   const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
 
   const [drawdownOpen, setDrawdownOpen] = useState(false);
+  const [tieupOpen, setTieupOpen] = useState(false);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -927,17 +1011,28 @@ export function ProjectLandingPage() {
 
       {/* Preview + specs */}
       <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
-        <button
-          className="rounded-lg overflow-hidden border border-border bg-muted/20 flex-shrink-0 hover:border-ring transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
-          onClick={() => setDrawdownOpen(true)}
-          title="Click to view full drawdown"
-        >
-          <AuthedImage
-            src={previewUrl(project.draft_id)}
-            alt="Draft preview"
-            className="h-36 w-36 object-contain"
-          />
-        </button>
+        <div className="flex flex-col gap-1.5 flex-shrink-0">
+          <button
+            className="rounded-lg overflow-hidden border border-border bg-muted/20 hover:border-ring transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+            onClick={() => setDrawdownOpen(true)}
+            title="Click to view full drawdown"
+          >
+            <AuthedImage
+              src={previewUrl(project.draft_id)}
+              alt="Draft preview"
+              className="h-36 w-36 object-contain"
+            />
+          </button>
+          {project.project_type === "treadle" && (
+            <button
+              className="text-xs text-center text-muted-foreground hover:text-foreground py-0.5 border border-border/50 rounded hover:border-border transition-colors"
+              onClick={() => setTieupOpen(true)}
+              title="View treadle tie-up diagram"
+            >
+              Tie-up
+            </button>
+          )}
+        </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm pt-1">
           {project.draft_num_shafts != null && (
             <>
@@ -1077,10 +1172,16 @@ export function ProjectLandingPage() {
         >
           Delete
         </Button>
+        <Link
+          to={`/projects/${project.id}/warping-plan`}
+          className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
+        >
+          Weave Plan
+        </Link>
         {isActive && (
           <Link
             to={`/projects/${project.id}/track`}
-            className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }), "ml-auto")}
+            className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
           >
             <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
             {project.status === "created" ? "Start Weaving" : "Track"}
@@ -1098,6 +1199,14 @@ export function ProjectLandingPage() {
           }
           title={project.draft_name}
           onClose={() => setDrawdownOpen(false)}
+        />
+      )}
+      {/* Tie-up modal */}
+      {tieupOpen && (
+        <TieUpModal
+          projectId={project.id}
+          draftName={project.draft_name}
+          onClose={() => setTieupOpen(false)}
         />
       )}
     </div>

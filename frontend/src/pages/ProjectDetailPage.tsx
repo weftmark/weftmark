@@ -174,14 +174,16 @@ function PickDisplay({
       }`}
       style={compact ? undefined : { maxWidth: `${Math.min(count * 80 + 80, 720)}px` }}
     >
-      {/* Activity type icon — centered vertically */}
-      <div className="shrink-0 flex items-center text-primary/50">
-        {projectType === "lift" ? (
-          <AppIcons.lift className={compact ? "h-5 w-5" : "h-8 w-8"} strokeWidth={1.5} />
-        ) : (
-          <AppIcons.treadle className={compact ? "h-5 w-5" : "h-8 w-8"} strokeWidth={1.5} />
-        )}
-      </div>
+      {/* Activity type icon — centered vertically; omitted on compact prev/next cards */}
+      {!compact && (
+        <div className="shrink-0 flex items-center text-primary/50">
+          {projectType === "lift" ? (
+            <AppIcons.lift className="h-8 w-8" strokeWidth={1.5} />
+          ) : (
+            <AppIcons.treadle className="h-8 w-8" strokeWidth={1.5} />
+          )}
+        </div>
+      )}
 
       {/* Box grid + optional weft bar — fills remaining height */}
       <div className="flex-1 flex flex-col gap-2 min-h-0">
@@ -1010,7 +1012,7 @@ export function ProjectDetailPage() {
     () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
   );
   const [showPickCards, setShowPickCards] = useState(
-    () => localStorage.getItem("proj-view:showPickCards") === "true"
+    () => localStorage.getItem("proj-view:showPickCards") !== "false"
   );
   const [panelOpen, setPanelOpen] = useState(
     () => localStorage.getItem("proj-view:panelOpen") === "true"
@@ -1402,6 +1404,13 @@ export function ProjectDetailPage() {
           >
             View design
           </button>
+          <Link
+            to={`/projects/${project.id}/warping-plan`}
+            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hidden sm:inline-flex items-center gap-1"
+            title="View printable weave plan"
+          >
+            Weave Plan
+          </Link>
           {!isReadOnly && (
             <button
               onClick={() => setSettingsOpen(true)}

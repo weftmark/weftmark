@@ -172,6 +172,41 @@ class PicksResponse(BaseModel):
     has_weft_colors: bool
 
 
+class WarpingPlanEndEntry(BaseModel):
+    end: int
+    shafts: list[int]
+    color: str | None
+
+
+class WarpingPlanColorRun(BaseModel):
+    color: str | None
+    color_name: str | None = None
+    start_end: int
+    end_end: int
+    count: int
+
+
+class WarpingPlanResponse(BaseModel):
+    project_id: uuid.UUID
+    draft_name: str
+    project_type: str
+    warp_threads: int | None
+    total_picks: int | None
+    num_shafts: int | None
+    num_treadles: int | None
+    warp_color_summary: list[dict]
+    weft_color_summary: list[dict]
+    threading: list[WarpingPlanEndEntry] | None
+    warp_color_runs: list[WarpingPlanColorRun] | None
+    warp_length_cm: float | None
+    epi: float | None
+    has_threading: bool
+    tieup: list[list[int]] | None = None
+    tieup_num_shafts: int | None = None
+    tieup_num_treadles: int | None = None
+    has_tieup: bool = False
+
+
 class SessionInfo(BaseModel):
     id: uuid.UUID
     started_at: datetime
@@ -1345,4 +1380,105 @@ async def get_picks(
         total_picks=pick_data.total_picks,
         picks=pick_rows,
         has_weft_colors=any(p.color is not None for p in pick_rows),
+    )
+
+
+def _compute_color_runs(entries: list[dict]) -> list[WarpingPlanColorRun]:
+    if not entries:
+        return []
+    runs: list[WarpingPlanColorRun] = []
+    cur_color = entries[0]["color"]
+    cur_name = entries[0].get("color_name")
+    start = entries[0]["end"]
+    count = 1
+    for entry in entries[1:]:
+        if entry["color"] == cur_color:
+            count += 1
+        else:
+            runs.append(
+                WarpingPlanColorRun(
+                    color=cur_color, color_name=cur_name, start_end=start, end_end=start + count - 1, count=count
+                )
+            )
+            cur_color = entry["color"]
+            cur_name = entry.get("color_name")
+            start = entry["end"]
+            count = 1
+    runs.append(
+        WarpingPlanColorRun(
+            color=cur_color, color_name=cur_name, start_end=start, end_end=start + count - 1, count=count
+        )
+    )
+    return runs
+
+
+@router.get("/{project_id}/warping-plan", response_model=WarpingPlanResponse)
+async def get_warping_plan(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> WarpingPlanResponse:
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
+    draft = await db.get(Draft, project.draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    epi: float | None = draft.epi_override
+    if epi is None and draft.wif_measurements:
+        spacing = draft.wif_measurements.get("warp_spacing")
+        if spacing and spacing > 0:
+            epi = round(2.54 / spacing, 1)
+
+    threading_entries: list[WarpingPlanEndEntry] | None = None
+    warp_color_runs: list[WarpingPlanColorRun] | None = None
+    tieup_data: list[list[int]] | None = None
+    tieup_num_shafts: int | None = None
+    tieup_num_treadles: int | None = None
+
+    wif_path = await _wif_path_for_project(draft, project.project_type)
+    if wif_path and await storage.afile_exists(wif_path):
+        wif_bytes = await storage.aread_file(wif_path)
+        if draft.has_threading:
+            try:
+                t_data = await asyncio.to_thread(wif_parser.parse_threading, wif_bytes)
+                raw_entries = [
+                    {
+                        "end": i + 1,
+                        "shafts": shafts,
+                        "color": t_data.warp_colors[i],
+                        "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,
+                    }
+                    for i, shafts in enumerate(t_data.threading)
+                ]
+                threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]
+                warp_color_runs = _compute_color_runs(raw_entries)
+            except ValueError:
+                pass
+        try:
+            tu = await asyncio.to_thread(wif_parser.parse_tieup, wif_bytes)
+            tieup_data = tu.tieup
+            tieup_num_shafts = tu.num_shafts
+            tieup_num_treadles = tu.num_treadles
+        except ValueError:
+            pass
+
+    return WarpingPlanResponse(
+        project_id=project.id,
+        draft_name=draft.name,
+        project_type=project.project_type,
+        warp_threads=draft.warp_threads,
+        total_picks=draft.weft_threads,
+        num_shafts=draft.effective_num_shafts or draft.num_shafts,
+        num_treadles=draft.effective_num_treadles or draft.num_treadles,
+        warp_color_summary=draft.warp_color_stats or [],
+        weft_color_summary=draft.weft_color_stats or [],
+        threading=threading_entries,
+        warp_color_runs=warp_color_runs,
+        warp_length_cm=draft.warp_length_cm,
+        epi=epi,
+        has_threading=bool(draft.has_threading),
+        tieup=tieup_data,
+        tieup_num_shafts=tieup_num_shafts,
+        tieup_num_treadles=tieup_num_treadles,
+        has_tieup=tieup_data is not None,
     )
