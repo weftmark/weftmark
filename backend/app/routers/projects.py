@@ -277,6 +277,7 @@ def _to_detail(
 ) -> ProjectDetail:
     return ProjectDetail(
         id=project.id,
+        owner_id=project.owner_id,
         draft_id=project.draft_id,
         loom_id=project.loom_id,
         loom_version_id=project.loom_version_id,
