@@ -128,6 +128,26 @@ class AdminDbInfoResponse(BaseModel):
     last_migrated_at: str | None
 
 
+class StorageReportFile(BaseModel):
+    entity_type: str
+    entity_id: uuid.UUID
+    filename: str
+    s3_key: str
+    size_bytes: int | None
+    s3_verified: bool
+    exists_in_s3: bool | None
+
+
+class UserStorageReportResponse(BaseModel):
+    user_id: uuid.UUID
+    email: str
+    display_name: str | None
+    files: list[StorageReportFile]
+    total_bytes: int
+    file_count: int
+    missing_from_s3_count: int
+
+
 class ServicePermCheck(BaseModel):
     name: str
     status: Literal["ok", "error"]
@@ -756,6 +776,35 @@ async def delete_user(
     log.info("admin_delete_initiated user_id=%s by=%s", user_id, requesting_user.email)
 
     return {"status": "pending", "user_id": str(user_id)}
+
+
+@router.get("/users/{user_id}/storage-report", response_model=UserStorageReportResponse)
+async def get_user_storage_report(
+    user_id: uuid.UUID,
+    verify_s3: bool = False,
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> UserStorageReportResponse:
+    from app.services.storage_quota import get_user_files_report
+
+    user = await db.scalar(select(User).where(User.id == user_id))
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    raw_files = await get_user_files_report(db, user_id, verify_s3=verify_s3)
+    files = [StorageReportFile(**f) for f in raw_files]
+    total_bytes = sum(f.size_bytes for f in files if f.size_bytes is not None)
+    missing = sum(1 for f in files if f.exists_in_s3 is False)
+
+    return UserStorageReportResponse(
+        user_id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        files=files,
+        total_bytes=total_bytes,
+        file_count=len(files),
+        missing_from_s3_count=missing,
+    )
 
 
 # ---------------------------------------------------------------------------
