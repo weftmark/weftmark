@@ -54,6 +54,7 @@ def _content_disposition(filename: str) -> str:
 
 class DraftSummary(BaseModel):
     id: uuid.UUID
+    owner_id: uuid.UUID
     name: str
     description: str | None
     wif_filename: str
@@ -211,7 +212,7 @@ async def get_draft(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
-    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -226,7 +227,7 @@ async def get_preview(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not await storage.afile_exists(draft.preview_path):
         raise HTTPException(status_code=404, detail="Preview not available")
     png = await storage.aread_file(draft.preview_path)  # type: ignore[arg-type]
@@ -239,7 +240,7 @@ async def get_drawdown_preview(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.drawdown_preview_path or not await storage.afile_exists(draft.drawdown_preview_path):
         raise HTTPException(status_code=404, detail="Drawdown preview not available")
     png = await storage.aread_drawdown_preview(draft.drawdown_preview_path)
@@ -252,7 +253,7 @@ async def get_preview_svg(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_path:
         raise HTTPException(status_code=404, detail="No WIF file for this draft")
     wif_bytes = await storage.aread_file(draft.wif_path)
@@ -278,7 +279,7 @@ async def get_drawdown(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
 
     effective_shafts = draft.effective_num_shafts if hide_unused_shafts_treadles else None
     effective_treadles = draft.effective_num_treadles if hide_unused_shafts_treadles else None
@@ -450,7 +451,7 @@ async def download_wif(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_path or not await storage.afile_exists(draft.wif_path):
         raise HTTPException(status_code=404, detail="WIF file not available for this draft")
     wif_bytes = await storage.aread_file(draft.wif_path)
@@ -473,7 +474,7 @@ async def download_wif_modified(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_modified_path or not await storage.afile_exists(draft.wif_modified_path):
         raise HTTPException(status_code=404, detail="No modified WIF file for this draft")
     wif_bytes = await storage.aread_file(draft.wif_modified_path)
@@ -687,14 +688,13 @@ def _draft_detail_data(draft: Draft) -> dict:
     return data
 
 
-async def _get_owned_draft(draft_id: uuid.UUID, user: User, db: AsyncSession) -> Draft:
-    draft = await db.scalar(
-        select(Draft).where(
-            Draft.id == draft_id,
-            Draft.owner_id == user.id,
-            Draft.deleted_at.is_(None),
-        )
-    )
+async def _get_owned_draft(
+    draft_id: uuid.UUID, user: User, db: AsyncSession, *, allow_superuser: bool = False
+) -> Draft:
+    stmt = select(Draft).where(Draft.id == draft_id, Draft.deleted_at.is_(None))
+    if not (allow_superuser and user.is_superuser):
+        stmt = stmt.where(Draft.owner_id == user.id)
+    draft = await db.scalar(stmt)
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
     return draft

@@ -12,6 +12,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, convertLength, formatLength, formatApproxLength } from "@/lib/units";
 import { nearestColorName } from "@/lib/colorName";
+import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
 
 export function DraftDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -149,8 +150,12 @@ export function DraftDetailPage() {
     epiFromWidthAndCount != null ? "calculated" :
     null;
 
+  const isReadOnly = !!user?.is_superuser && draft.owner_id !== user.id;
+
   return (
-    <div className="p-6 max-w-5xl mx-auto w-full space-y-6">
+    <div className="max-w-5xl mx-auto w-full">
+      {isReadOnly && <SuperuserInspectionBanner />}
+      <div className="p-6 space-y-6">
       <div className="flex items-center gap-2 text-sm">
         <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
         <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -687,7 +692,7 @@ export function DraftDetailPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-semibold">Projects</h2>
                 <div className="flex items-center gap-3">
-                  <Button size="sm" onClick={() => setShowCreateProject(true)}>New project</Button>
+                  {!isReadOnly && <Button size="sm" onClick={() => setShowCreateProject(true)}>New project</Button>}
                   <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
                     All projects →
                   </Link>
@@ -733,7 +738,7 @@ export function DraftDetailPage() {
         </div>
 
         {/* Danger zone */}
-        <div className="border-t pt-4">
+        {!isReadOnly && <div className="border-t pt-4">
           <button
             type="button"
             onClick={() => setShowDangerZone((v) => !v)}
@@ -776,7 +781,7 @@ export function DraftDetailPage() {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
       {showCreateProject && (
         <CreateProjectModal
@@ -800,6 +805,7 @@ export function DraftDetailPage() {
           onClose={() => setShowPreviewModal(false)}
         />
       )}
+      </div>
     </div>
   );
 }
