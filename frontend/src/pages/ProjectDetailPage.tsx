@@ -1402,6 +1402,13 @@ export function ProjectDetailPage() {
           >
             View design
           </button>
+          <Link
+            to={`/projects/${project.id}/warping-plan`}
+            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hidden sm:inline-flex items-center gap-1"
+            title="View printable warping plan"
+          >
+            Warping plan
+          </Link>
           {!isReadOnly && (
             <button
               onClick={() => setSettingsOpen(true)}

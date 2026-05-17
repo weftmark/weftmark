@@ -289,6 +289,121 @@ def extract_weft_color_stats(wif_bytes: bytes) -> list[dict]:
 
 
 @dataclass
+class ThreadingData:
+    warp_thread_count: int
+    threading: list[list[int]]  # 0-indexed by end; each inner list = shaft numbers
+    warp_colors: list[str | None]  # hex per end, None if no color data
+
+
+def parse_threading(wif_bytes: bytes) -> ThreadingData:
+    """Parse [THREADING] section and per-end warp colors.
+
+    Returns per-end shaft assignments with optional hex color per end.
+    Raises ValueError if [THREADING] section is absent.
+    Never raises for color parsing failures (color defaults to None).
+    """
+    try:
+        text = wif_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        text = wif_bytes.decode("latin-1")
+
+    config = RawConfigParser()
+    config.optionxform = str
+    config.read_string(text)
+
+    if not config.has_section("THREADING"):
+        raise ValueError("WIF file has no [THREADING] section")
+
+    raw = dict(config.items("THREADING"))
+    max_end = max(int(k) for k in raw)
+
+    threading: list[list[int]] = []
+    for i in range(1, max_end + 1):
+        val = raw.get(str(i), "")
+        shafts = [int(x.strip()) for x in val.split(",") if x.strip()] if val.strip() else []
+        threading.append(shafts)
+
+    scale = _color_scale(config)
+    colors = _color_table(config, scale)
+
+    default_warp_color: str | None = None
+    if config.has_section("WARP"):
+        try:
+            default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
+            default_warp_color = colors.get(default_idx)
+        except Exception:
+            pass
+
+    warp_color_map: dict[int, int] = {}
+    if config.has_section("WARP COLORS"):
+        for k, v in config.items("WARP COLORS"):
+            try:
+                warp_color_map[int(k)] = int(v.split(",")[0].strip())
+            except ValueError:
+                continue
+
+    warp_colors: list[str | None] = [
+        colors.get(warp_color_map[i]) if i in warp_color_map else default_warp_color for i in range(1, max_end + 1)
+    ]
+
+    return ThreadingData(warp_thread_count=max_end, threading=threading, warp_colors=warp_colors)
+
+
+@dataclass
+class TieUpData:
+    num_treadles: int
+    num_shafts: int
+    tieup: list[list[int]]  # 0-indexed by treadle; each inner list = 1-based shaft numbers
+
+
+def parse_tieup(wif_bytes: bytes) -> TieUpData:
+    """Parse [TIEUP] section from WIF bytes.
+
+    Returns treadle→shaft mapping as a 0-indexed list.
+    Raises ValueError if [TIEUP] section is absent.
+    """
+    try:
+        text = wif_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        text = wif_bytes.decode("latin-1")
+
+    config = RawConfigParser()
+    config.optionxform = str
+    config.read_string(text)
+
+    if not config.has_section("TIEUP"):
+        raise ValueError("WIF file has no [TIEUP] section")
+
+    raw = dict(config.items("TIEUP"))
+    if not raw:
+        raise ValueError("WIF [TIEUP] section is empty")
+
+    max_treadle = max(int(k) for k in raw)
+    num_treadles = max_treadle
+    num_shafts = 0
+
+    if config.has_section("WIF"):
+        try:
+            num_shafts = int(config.get("WIF", "Shafts").strip())
+        except Exception:
+            pass
+        try:
+            num_treadles = max(num_treadles, int(config.get("WIF", "Treadles").strip()))
+        except Exception:
+            pass
+
+    tieup: list[list[int]] = []
+    for i in range(1, num_treadles + 1):
+        val = raw.get(str(i), "")
+        shafts = sorted(int(s.strip()) for s in val.split(",") if s.strip()) if val.strip() else []
+        tieup.append(shafts)
+        if shafts:
+            num_shafts = max(num_shafts, max(shafts))
+
+    return TieUpData(num_treadles=num_treadles, num_shafts=num_shafts, tieup=tieup)
+
+
+@dataclass
 class PickData:
     project_type: str  # "treadle" | "lift"
     total_picks: int

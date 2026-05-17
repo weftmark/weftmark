@@ -135,6 +135,46 @@ export interface PicksResponse {
   has_weft_colors: boolean;
 }
 
+export interface WarpingPlanEndEntry {
+  end: number;
+  shafts: number[];
+  color: string | null;
+}
+
+export interface WarpingPlanColorRun {
+  color: string | null;
+  start_end: number;
+  end_end: number;
+  count: number;
+}
+
+export interface ColorStat {
+  hex: string;
+  count: number;
+  percentage: number;
+}
+
+export interface WarpingPlan {
+  project_id: string;
+  draft_name: string;
+  project_type: ProjectType;
+  warp_threads: number | null;
+  total_picks: number | null;
+  num_shafts: number | null;
+  num_treadles: number | null;
+  warp_color_summary: ColorStat[];
+  weft_color_summary: ColorStat[];
+  threading: WarpingPlanEndEntry[] | null;
+  warp_color_runs: WarpingPlanColorRun[] | null;
+  warp_length_cm: number | null;
+  epi: number | null;
+  has_threading: boolean;
+  tieup: number[][] | null;
+  tieup_num_shafts: number | null;
+  tieup_num_treadles: number | null;
+  has_tieup: boolean;
+}
+
 export interface SessionInfo {
   id: string;
   started_at: string;
@@ -336,6 +376,10 @@ export function getProjectPicks(id: string): Promise<PicksResponse> {
 
 export function getProjectMetrics(id: string): Promise<ProjectMetrics> {
   return req(`/api/projects/${id}/metrics`);
+}
+
+export function getWarpingPlan(id: string): Promise<WarpingPlan> {
+  return req(`/api/projects/${id}/warping-plan`);
 }
 
 export function projectPhotoUrl(projectId: string, photoId: string): string {
