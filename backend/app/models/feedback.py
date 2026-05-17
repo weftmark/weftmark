@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +12,10 @@ DISPATCH_STATUSES = ("pending", "sent", "failed", "skipped")
 
 class UserFeedback(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "user_feedback"
+    __table_args__ = (
+        Index("ix_user_feedback_created_at", "created_at"),
+        Index("ix_user_feedback_dispatch_status", "dispatch_status"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # Null when submitted anonymously or by an unauthenticated user
