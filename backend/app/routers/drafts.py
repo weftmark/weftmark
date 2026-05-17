@@ -474,7 +474,7 @@ async def download_wif_modified(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_modified_path or not await storage.afile_exists(draft.wif_modified_path):
         raise HTTPException(status_code=404, detail="No modified WIF file for this draft")
     wif_bytes = await storage.aread_file(draft.wif_modified_path)
