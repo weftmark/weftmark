@@ -153,32 +153,40 @@ function PickDisplay({
   projectType,
   colorMode,
   showWeftColor,
+  compact = false,
 }: {
   pick: PickRow;
   totalCount: number;
   projectType: string;
   colorMode: ColorMode;
   showWeftColor: boolean;
+  compact?: boolean;
 }) {
   const count = Math.max(totalCount, 1);
   const weftHex = pick.color ?? null;
 
   return (
-    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 dark:bg-primary/10 px-4 py-4 h-28 flex items-stretch gap-4 mx-auto w-full"
-      style={{ maxWidth: `${Math.min(count * 80 + 80, 720)}px` }}>
+    <div
+      className={`rounded-xl bg-primary/5 dark:bg-primary/10 px-4 py-4 flex items-stretch gap-4 mx-auto w-full ${
+        compact
+          ? "border border-primary/20 h-20 opacity-75"
+          : "border-2 border-primary/30 h-28"
+      }`}
+      style={compact ? undefined : { maxWidth: `${Math.min(count * 80 + 80, 720)}px` }}
+    >
       {/* Activity type icon — centered vertically */}
       <div className="shrink-0 flex items-center text-primary/50">
         {projectType === "lift" ? (
-          <AppIcons.lift className="h-8 w-8" strokeWidth={1.5} />
+          <AppIcons.lift className={compact ? "h-5 w-5" : "h-8 w-8"} strokeWidth={1.5} />
         ) : (
-          <AppIcons.treadle className="h-8 w-8" strokeWidth={1.5} />
+          <AppIcons.treadle className={compact ? "h-5 w-5" : "h-8 w-8"} strokeWidth={1.5} />
         )}
       </div>
 
       {/* Box grid + optional weft bar — fills remaining height */}
       <div className="flex-1 flex flex-col gap-2 min-h-0">
         <div
-          className="flex-1 grid gap-1.5 min-h-0"
+          className="flex-1 grid gap-1 min-h-0"
           style={{ gridTemplateColumns: `repeat(${count}, 1fr)` }}
         >
           {Array.from({ length: count }, (_, i) => i + 1).map((n) => {
@@ -188,7 +196,7 @@ function PickDisplay({
                 const fg = contrastColor(weftHex);
                 return (
                   <div key={n} style={{ backgroundColor: weftHex, borderColor: fg }}
-                    className="rounded-md border-2 flex items-center justify-center text-xs font-bold">
+                    className="rounded-md border-2 flex items-center justify-center text-[9px] font-bold">
                     <span style={{ color: fg }}>{n}</span>
                   </div>
                 );
@@ -196,7 +204,7 @@ function PickDisplay({
               if (colorMode === "strip") {
                 return (
                   <div key={n}
-                    className="rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center text-xs font-bold">
+                    className="rounded-md border-2 relative overflow-hidden border-primary bg-primary flex items-center justify-center text-[9px] font-bold">
                     <span className="absolute bottom-0 left-0 right-0 h-[20%]"
                       style={{ backgroundColor: weftHex }} />
                     <span className="relative text-primary-foreground">{n}</span>
@@ -206,7 +214,7 @@ function PickDisplay({
             }
             return (
               <div key={n}
-                className={`rounded-md border-2 flex items-center justify-center text-xs font-bold ${
+                className={`rounded-md border-2 flex items-center justify-center text-[9px] font-bold ${
                   active
                     ? "bg-primary border-primary text-primary-foreground"
                     : "border-border bg-muted/60 text-foreground/70"
@@ -217,7 +225,7 @@ function PickDisplay({
           })}
         </div>
 
-        {showWeftColor && weftHex && (
+        {!compact && showWeftColor && weftHex && (
           <div
             className="h-6 w-full shrink-0 rounded-md flex items-center justify-center text-xs font-semibold uppercase tracking-wider"
             style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
@@ -1001,6 +1009,9 @@ export function ProjectDetailPage() {
   const [hideTrailingUnused, setHideTrailingUnused] = useState(
     () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
   );
+  const [showPickCards, setShowPickCards] = useState(
+    () => localStorage.getItem("proj-view:showPickCards") === "true"
+  );
   const [panelOpen, setPanelOpen] = useState(
     () => localStorage.getItem("proj-view:panelOpen") === "true"
   );
@@ -1537,13 +1548,58 @@ export function ProjectDetailPage() {
               )}
             </div>
           ) : picksData ? (
-            <PickDisplay
-              pick={picksData.picks[currentPickIndex]}
-              totalCount={displayCount}
-              projectType={project.project_type}
-              colorMode={colorMode}
-              showWeftColor={showWeftColor}
-            />
+            showPickCards ? (
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr] gap-3 items-center w-full">
+                {/* Prev pick card — desktop only */}
+                <div className="hidden md:block">
+                  {currentPickIndex > 0 ? (
+                    <div>
+                      <p className="text-xs text-muted-foreground text-center mb-1.5">← Pick {picksData.picks[currentPickIndex - 1].pick}</p>
+                      <PickDisplay
+                        pick={picksData.picks[currentPickIndex - 1]}
+                        totalCount={displayCount}
+                        projectType={project.project_type}
+                        colorMode={colorMode}
+                        showWeftColor={false}
+                        compact
+                      />
+                    </div>
+                  ) : <div className="h-20" />}
+                </div>
+                {/* Current pick */}
+                <PickDisplay
+                  pick={picksData.picks[currentPickIndex]}
+                  totalCount={displayCount}
+                  projectType={project.project_type}
+                  colorMode={colorMode}
+                  showWeftColor={showWeftColor}
+                />
+                {/* Next pick card — desktop only */}
+                <div className="hidden md:block">
+                  {currentPickIndex < picksData.picks.length - 1 ? (
+                    <div>
+                      <p className="text-xs text-muted-foreground text-center mb-1.5">Pick {picksData.picks[currentPickIndex + 1].pick} →</p>
+                      <PickDisplay
+                        pick={picksData.picks[currentPickIndex + 1]}
+                        totalCount={displayCount}
+                        projectType={project.project_type}
+                        colorMode={colorMode}
+                        showWeftColor={false}
+                        compact
+                      />
+                    </div>
+                  ) : <div className="h-20" />}
+                </div>
+              </div>
+            ) : (
+              <PickDisplay
+                pick={picksData.picks[currentPickIndex]}
+                totalCount={displayCount}
+                projectType={project.project_type}
+                colorMode={colorMode}
+                showWeftColor={showWeftColor}
+              />
+            )
           ) : (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-sm text-muted-foreground">Pick data loading…</p>
@@ -1933,6 +1989,7 @@ export function ProjectDetailPage() {
                   { label: "Progress bar", value: showProgress, key: "proj-view:showProgress", setter: setShowProgress },
                   { label: "Drawdown pattern", value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
                   { label: "Weft color", value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
+                  { label: "Prev/next pick cards", value: showPickCards, key: "proj-view:showPickCards", setter: setShowPickCards },
                 ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void }[]).map(({ label, value, key, setter }) => (
                   <div key={label} className="flex items-center justify-between">
                     <span className="text-sm">{label}</span>
