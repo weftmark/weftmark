@@ -166,8 +166,8 @@ function PickDisplay({
   const weftHex = pick.color ?? null;
   // Scale number size to fill cell: larger font for fewer boxes, smaller for many.
   const cellFontSize = compact
-    ? `${Math.max(10, Math.min(20, Math.floor(110 / count)))}px`
-    : `${Math.max(14, Math.min(36, Math.floor(180 / count)))}px`;
+    ? `${Math.max(11, Math.min(32, Math.floor(160 / count)))}px`
+    : `${Math.max(14, Math.min(44, Math.floor(210 / count)))}px`;
 
   return (
     <div
