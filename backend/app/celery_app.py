@@ -23,6 +23,7 @@ def _make_celery() -> Celery:
         include=[
             "app.tasks.deletion",
             "app.tasks.email_task",
+            "app.tasks.feedback_dispatch",
             "app.tasks.geo",
             "app.tasks.maintenance",
             "app.tasks.metrics",
