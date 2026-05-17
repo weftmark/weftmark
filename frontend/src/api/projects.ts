@@ -452,7 +452,7 @@ export function setProjectColorReplacements(
 
 export function updateProjectShare(
   id: string,
-  visibility: "link" | "public",
+  visibility: "link",
   expiresAt?: string | null,
 ): Promise<ProjectDetail> {
   return req(`/api/projects/${id}/share`, {

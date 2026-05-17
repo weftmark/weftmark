@@ -230,7 +230,7 @@ class ProjectMetricsResponse(BaseModel):
 
 
 class ShareProjectRequest(BaseModel):
-    visibility: str  # "link" | "public"
+    visibility: str  # "link"
     expires_at: datetime | None = None
 
 
@@ -1559,8 +1559,8 @@ async def update_project_share(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    if body.visibility not in ("link", "public"):
-        raise HTTPException(status_code=400, detail="visibility must be 'link' or 'public'")
+    if body.visibility != "link":
+        raise HTTPException(status_code=400, detail="visibility must be 'link'")
 
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     draft = await db.get(Draft, project.draft_id)
