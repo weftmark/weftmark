@@ -57,7 +57,7 @@ import app.routers.auth as _auth_mod  # noqa: E402
 
 _auth_mod.load_oidc_metadata = AsyncMock(return_value=None)
 
-from app.deps import get_current_user, get_db  # noqa: E402
+from app.deps import get_current_user, get_db, get_optional_user  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.base import Base  # noqa: E402
 from app.models.user import User  # noqa: E402
@@ -251,8 +251,12 @@ async def auth_client(db_session: AsyncSession, test_user: User) -> AsyncGenerat
     async def _override_get_current_user() -> User:
         return test_user
 
+    async def _override_get_optional_user() -> User | None:
+        return test_user
+
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _override_get_current_user
+    app.dependency_overrides[get_optional_user] = _override_get_optional_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
@@ -266,8 +270,12 @@ async def admin_client(db_session: AsyncSession, admin_user: User) -> AsyncGener
     async def _override_get_current_user() -> User:
         return admin_user
 
+    async def _override_get_optional_user() -> User | None:
+        return admin_user
+
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _override_get_current_user
+    app.dependency_overrides[get_optional_user] = _override_get_optional_user
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
@@ -350,15 +358,18 @@ def bypass_rate_limits():
     from app.main import app
     from app.routers.auth import _invite_rate_limit
     from app.routers.drafts import _upload_rate_limit
+    from app.routers.feedback import _submit_limit
 
     async def _noop() -> None:
         pass
 
     app.dependency_overrides[_invite_rate_limit] = _noop
     app.dependency_overrides[_upload_rate_limit] = _noop
+    app.dependency_overrides[_submit_limit] = _noop
     yield
     # Client fixtures call dependency_overrides.clear() after each test,
     # so these are cleaned up automatically when a client fixture is used.
     # For tests without a client fixture, clean up here.
     app.dependency_overrides.pop(_invite_rate_limit, None)
     app.dependency_overrides.pop(_upload_rate_limit, None)
+    app.dependency_overrides.pop(_submit_limit, None)

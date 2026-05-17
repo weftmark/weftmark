@@ -1,0 +1,8 @@
+New {type_label} Submitted
+
+A user has submitted a {type_label} via the in-app feedback form.
+A GitHub Discussion has been created automatically.
+
+{subject_line}View Discussion: {discussion_url}
+
+Review all submissions in the Admin Console: {admin_url}

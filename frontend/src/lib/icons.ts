@@ -22,6 +22,7 @@ import {
   LogOut,
   Maximize2,
   Menu,
+  MessageSquare,
   Minimize2,
   Pencil,
   Printer,
@@ -57,6 +58,7 @@ export const AppIcons = {
   settings: Settings,
   admin: ShieldCheck,
   logout: LogOut,
+  feedback: MessageSquare,
 
   // ── UI chrome ─────────────────────────────────────────────────────────────
   edit: Pencil,

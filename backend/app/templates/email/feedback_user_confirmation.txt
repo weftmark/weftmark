@@ -1,0 +1,9 @@
+Thank you for submitting your {type_label} to {app_name}.
+
+A Discussion thread has been created on GitHub where you can track any response and attach screenshots or additional context:
+
+{discussion_url}
+
+Please note: {app_name} is a hobby project, not a business. Responses may be slow or limited. We appreciate your patience and your feedback!
+
+If you did not submit this feedback, you can safely ignore this email.
