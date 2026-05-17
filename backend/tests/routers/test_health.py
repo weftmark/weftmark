@@ -74,11 +74,14 @@ class TestHealthReady:
 
 
 class TestHealthDetailed:
-    async def test_returns_503_when_cache_empty(self, client: AsyncClient):
+    async def test_returns_200_with_starting_when_cache_empty(self, client: AsyncClient):
         health_module._detailed_cache = None
         resp = await client.get("/health/detailed")
-        assert resp.status_code == 503
-        assert resp.json()["status"] == "starting"
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "starting"
+        assert "next_check_at" in body
+        assert body["next_check_at"] is not None
 
     async def test_returns_200_when_cache_populated(self, client: AsyncClient):
         health_module._detailed_cache = ReadinessResponse(
