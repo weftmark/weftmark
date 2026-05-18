@@ -21,7 +21,7 @@ const COSTS: CostRow[] = [
   },
   {
     service: "Claude Max ×5",
-    description: "AI-assisted development — the primary tool used to build and maintain weftmark.",
+    description: "AI-assisted development — makes it possible for one person to manage system complexity and ship features alongside a full-time job and family.",
     tier: "Max ×5 subscription",
     monthlyCost: "~$100",
     status: "paid",
@@ -102,8 +102,10 @@ export function CostsPage() {
             </p>
             <p className="text-stone-600 leading-relaxed">
               Almost all infrastructure runs on free tiers. The meaningful recurring cost is the Claude
-              subscription used to build and maintain the platform — AI assistance is the only way a
-              solo developer can ship features at a pace that keeps the app useful.
+              subscription used to build and maintain the platform. weftmark is built and maintained
+              by one person, around a full-time job and family — AI assistance is what makes it
+              possible to manage the complexity of the system, keep up with bugs, and ship new
+              features without it becoming a second job in itself.
             </p>
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 text-sm font-medium text-amber-900">
               Approximate monthly cost: ~$120 / month
