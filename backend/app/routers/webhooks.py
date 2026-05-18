@@ -1,11 +1,7 @@
-"""Dedicated webhook ingress — replaces /auth/clerk/webhook.
+"""Webhook ingress.
 
 POST /webhooks/clerk  — Clerk user lifecycle events (user.created, user.updated,
                         user.deleted, session.created, session.ended, webhook.test)
-
-Migration: during the Clerk dual-registration window both /auth/clerk/webhook and
-/webhooks/clerk are active. Once delivery on /webhooks/clerk is confirmed in the
-Clerk dashboard, decommission /auth/clerk/webhook in a follow-up PR.
 """
 
 from fastapi import APIRouter, Depends, Request

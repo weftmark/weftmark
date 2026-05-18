@@ -1,9 +1,8 @@
 """Authentication via Clerk.
 
 Routes:
-  POST /auth/clerk/webhook  — Clerk webhook: user.created / user.deleted / session.created / session.ended
-  POST /auth/logout         — no-op (Clerk manages sessions client-side)
-  GET  /auth/me             — return current user profile
+  POST /auth/logout  — no-op (Clerk manages sessions client-side)
+  GET  /auth/me      — return current user profile
 
 Invite management (admin only):
   POST   /auth/invite         — create invite + pre-create User record + send email
@@ -107,12 +106,6 @@ async def _handle_clerk_webhook(request: Request, db: AsyncSession) -> dict:
 
     log.info("webhook_processed event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
     return {"status": "ok"}
-
-
-@router.post("/clerk/webhook", status_code=200)
-async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
-    """Legacy path — kept active during Clerk dual-registration migration. Use /webhooks/clerk."""
-    return await _handle_clerk_webhook(request, db)
 
 
 async def _handle_user_created(db: AsyncSession, data: dict) -> None:
