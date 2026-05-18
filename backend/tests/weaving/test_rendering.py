@@ -1,6 +1,6 @@
 """Independent tests for the PNG rendering pipeline.
 
-Run standalone: pytest backend/app/weaving/tests/test_rendering.py
+Collected by CI via testpaths = tests in pytest.ini.
 No WeftMark fixtures, database, or Celery stack required.
 Requires the font file at backend/app/weaving/data/Arial.ttf.
 """
