@@ -1,0 +1,3801 @@
+[
+  {
+    "_brand": "Glimakra",
+    "_model": "Standard (Countermarch)",
+    "_confidence": "high",
+    "_flags": [
+      "shaft_count_options_8_unconfirmed",
+      "treadle_count_8_unconfirmed",
+      "reed_included_market_specific",
+      "heddles_per_shaft_included_conflicts_with_georgeweil_400_minimum"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/countermarch-standard-loom-100cm39-p895",
+      "https://www.glimakrausa.com/countermarch-standard-loom-150cm59-p897",
+      "https://woolery.com/products/glimakra-standard-countermarche-floor-loom",
+      "https://www.yarnbarn-ks.com/Glimakra-Standard-48-in-Loom/productinfo/WLGL-ST48-/",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/glimakra-standard-floor-looms/",
+      "https://weavingloomsdirect.com/products/glimakra-standard-webstuhl",
+      "https://www.halcyonyarn.com/products/glimakra-standard-countermarch-floor-loom",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/glimakra-standard-floor-looms/glimakra-standard-countermarch-loom-10-shaft-150cm/",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/glimakra-standard-floor-looms/glimakra-standard-loom-160cm-16-shaft/",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/glimakra-standard-floor-looms/glimakra-standard-countermarch-loom-16-shaft-100cm/"
+    ],
+    "_source_notes": "Glimakra USA official site confirms 4 widths (100/120/150/160 cm), basic 4sh/6tr expandable to 10sh/10tr on US site; George Weil UK lists 10/12/16 shaft options; weavingloomsdirect.com lists 4/8/10/12/16 shaft options; Yarn Barn confirms 4 widths in inches as 39/47/59/63 in. US site includes bench, 1000 Texsolv heddles, Texsolv tie-up kit, reed choice of 5/6/8/10/12 dent stainless steel. INDEPENDENT VERIFICATION (Halcyon Yarn): confirms 4-shaft/6-treadle base and 10-shaft/10-treadle max on US market; does not list 8-shaft variant for Standard Countermarch. George Weil variant pages (new URLs) confirm widths 100/120/150/160 cm and shaft options 10/12/16 with matching treadle counts; no 8-shaft/8-treadle variant found. The '8' entry in shaft_count_options and treadle_count is unconfirmed by independent sources and flagged. George Weil recommends minimum 400 heddles/shaft (not included), conflicting with record's heddles_per_shaft_included=250; reed listed as not included by George Weil, flagged as market-specific. frame_material=pine and origin_country=Sweden independently confirmed.",
+    "brand": "Glimakra",
+    "model_name": "Standard (Countermarch)",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      39.37,
+      47.24,
+      59.06,
+      62.99
+    ],
+    "weaving_width_options_cm": [
+      100,
+      120,
+      150,
+      160
+    ],
+    "shaft_count_options": [
+      4,
+      8,
+      10,
+      12,
+      16
+    ],
+    "reed_included": true,
+    "frame_material": "pine",
+    "model_series": "Standard",
+    "treadle_count": [
+      6,
+      8,
+      10,
+      12,
+      16
+    ],
+    "treadle_hinge": "pivoting_back",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 250,
+    "reed_dent_included": [
+      5,
+      6,
+      8,
+      10,
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "foldable": false,
+    "foldable_while_warped": false,
+    "brake_type": "ratchet",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "overhead_swing",
+    "beater_adjustable": false,
+    "tie_up_system": "texsolv_loop",
+    "shaft_upgrade_available": true,
+    "max_shafts_with_upgrade": 16,
+    "fly_shuttle_available": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden",
+    "mobility_wheels_included": false,
+    "shaft_switching_device_available": true
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Standard (Counterbalance)",
+    "_confidence": "high",
+    "_flags": [
+      "shaft_count_options",
+      "max_shafts_with_upgrade",
+      "treadle_count"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/countermarch-standard-loom-160cm63-p904",
+      "https://www.yarnbarn-ks.com/Glimakra-Standard-48-in-Loom/productinfo/WLGL-ST48-/",
+      "https://www.hobby-welna.pl/manufacturer/en/glimakra/duplicate-1-1227.html",
+      "https://woolery.com/products/glimakra-standard-counterbalance-floor-loom",
+      "https://www.eugenetextilecenter.com/glimakra-standard-counterbalance",
+      "https://www.wonkyweaver.com/glimakra-floor-looms"
+    ],
+    "_source_notes": "Glimakra USA lists Standard Counterbalance as a distinct product. Basic model ships with 4 shafts and 6 treadles; includes 1000 Texsolv heddles, bench, Texsolv tie-up kit, reed (5/6/8/10/12 DPI choice). Yarn Barn notes '4 harnesses available for the counterbalance version'; hobby-welna.pl notes 8/10 shaft counterbalance available via special order in 100/120/150/160 cm widths. Woolery confirms stainless steel reed choice of 5/6/8/10/12 dent. Weight data from hobby-welna.pl: 118\u2013150 kg depending on width. Eugene Textile Center (independent) confirms all Standard Counterbalance looms ship with 4 shafts and 6 treadles. Wonky Weaver (independent) lists counterbalance in 4, 8, and 12 shaft configurations, indicating 12-shaft is also a real orderable option \u2014 shaft_count_options and max_shafts_with_upgrade updated accordingly. treadle_count flagged as potentially incomplete (a 12-shaft counterbalance would use 12 treadles). Glimakra USA caps the standard upgrade path at 10 shaft 10 treadle, creating a discrepancy with Wonky Weaver's 12-shaft listing; flag retained pending authoritative manufacturer clarification.",
+    "brand": "Glimakra",
+    "model_name": "Standard (Counterbalance)",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "counterbalance",
+    "weaving_width_options_inches": [
+      39.37,
+      47.24,
+      59.06,
+      62.99
+    ],
+    "weaving_width_options_cm": [
+      100,
+      120,
+      150,
+      160
+    ],
+    "shaft_count_options": [
+      4,
+      8,
+      10,
+      12
+    ],
+    "reed_included": true,
+    "frame_material": "pine",
+    "model_series": "Standard",
+    "treadle_count": [
+      6,
+      8,
+      10,
+      12
+    ],
+    "treadle_hinge": "pivoting_back",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 250,
+    "reed_dent_included": [
+      5,
+      6,
+      8,
+      10,
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "foldable": false,
+    "foldable_while_warped": false,
+    "brake_type": "ratchet",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "overhead_swing",
+    "beater_adjustable": false,
+    "tie_up_system": "texsolv_loop",
+    "shaft_upgrade_available": true,
+    "max_shafts_with_upgrade": 12,
+    "fly_shuttle_available": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden",
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Julia (Countermarch)",
+    "_confidence": "high",
+    "_flags": [
+      "weaving_width_options_inches",
+      "treadle_count",
+      "reed_dent_included"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/julia-loom-modelsjulia-cm-4x6",
+      "https://woolery.com/products/glimakra-julia-floor-loom",
+      "https://www.halcyonyarn.com/products/glimakra-julia-26-inch-4-shaft-loom",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/glimakra-julia-looms/glimakra-julia-8-shaft-countermarch-loom/",
+      "https://www.spinspul.nl/en/product/glimakra-julia-small-and-practical-format/",
+      "https://www.wonkyweaver.com/product-page/glim%C3%A5kra-julia-compact-floor-loom-67cm-2-4-or-8-shafts",
+      "https://www.woolyn.com/products/glimakra-julia-loom",
+      "https://www.etsy.com/listing/958411672/glimakra-julia-floor-loom-counterbalance"
+    ],
+    "_source_notes": "Glimakra USA confirms countermarch model available as 4sh/6tr (upgradeable) or 8sh/8tr. Woolery confirms 26 in weaving width; Halcyon and Spinnery Store confirm ~27 in and 32x32 in footprint. George Weil UK confirms 67 cm weaving width and dimensions 130cm H x 80cm D x 78cm W. Comes with 500 Texsolv heddles, lease sticks, shaft holders, warp sticks, tie-up kit, and 10 dpi reed per George Weil. Woolery notes approx 60 lbs when warped. INDEPENDENT VERIFICATION (Spinspul NL, Sep 2025): confirms 67 cm (26.5 in) weaving width, 8-shaft countermarch or 2/4-shaft counterbalance. Wonky Weaver confirms 67 cm / 26.5 in width; 8-shaft CM comes with 8 treadles (Glimakra USA/Etsy/George Weil consensus). Woolyn anomalously lists 8sh/10tr \u2014 likely a data error conflating with Glimakra Standard loom; majority of sources confirm 8 treadles for 8-shaft Julia CM. weaving_width_options_inches flagged: recorded value 26.38 is a precise cm conversion (67cm) but retailers cite 26, 26.5, or 27 in \u2014 minor rounding inconsistency across sources. reed_dent_included flagged: multiple sources (Halcyon, Etsy, Woolyn) indicate reed dent is buyer's choice (5/6/8/10/12 dpi), not fixed to 10; George Weil listing includes 10 dpi as default. heddles_per_shaft_included: 500 total / 4 shafts = 125 per shaft (4-shaft config); 500 total / 8 shafts = 62.5 per shaft (8-shaft config) \u2014 value is config-dependent.",
+    "brand": "Glimakra",
+    "model_name": "Julia (Countermarch)",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      26.5
+    ],
+    "weaving_width_options_cm": [
+      67
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "pine",
+    "model_series": "Julia",
+    "treadle_count": [
+      6,
+      8
+    ],
+    "treadle_hinge": "pivoting_back",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 125,
+    "reed_dent_included": [
+      5,
+      6,
+      8,
+      10,
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 60,
+    "unfolded_depth_inches": 31.5,
+    "breast_beam_height_inches": 32,
+    "foldable": false,
+    "foldable_while_warped": false,
+    "brake_type": "ratchet",
+    "sectional_beam_available": false,
+    "double_back_beam_available": false,
+    "beater_type": "overhead_swing",
+    "beater_adjustable": false,
+    "tie_up_system": "texsolv_loop",
+    "shaft_upgrade_available": true,
+    "max_shafts_with_upgrade": 8,
+    "fly_shuttle_available": false,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden",
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Julia (Counterbalance)",
+    "_confidence": "high",
+    "_flags": [
+      "treadle_count"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/julia-loom-modelsjulia-cm-4x6",
+      "https://www.halcyonyarn.com/products/glimakra-julia-26-inch-4-shaft-loom",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/glimakra-julia-looms/glimakra-julia-4-shaft-4-tradle-floor-loom/",
+      "https://woolery.com/products/glimakra-julia-floor-loom",
+      "https://www.wonkyweaver.com/product-page/glim%C3%A5kra-julia-compact-floor-loom-67cm-2-4-or-8-shafts",
+      "https://www.etsy.com/listing/958411672/glimakra-julia-floor-loom-counterbalance",
+      "https://www.tabbytreeweaver.com/product/glimakra-julia-counterbalance-loom/971",
+      "https://www.woolyn.com/products/glimakra-julia-loom"
+    ],
+    "_source_notes": "Glimakra USA and halcyon confirm counterbalance version available with 4 shafts and 6 treadles (woolery) or 4 treadles (George Weil UK lists 4sh/4tr counterbalance variant; wonkyweaver.com also lists 2sh counterbalance). George Weil confirms 67 cm weaving width. Comes with 500 Texsolv heddles, lease sticks, shaft holders, warp sticks, tie-up kit, 10 dpi reed per George Weil. CORRECTION (2025-05-17): treadle_count corrected from [2, 4] to [2, 6]. Multiple independent sources (wonkyweaver.com, Etsy/Glimakra USA listing, tabbytreeweaver.com, woolyn.com, halcyonyarn.com) consistently list the 4-shaft counterbalance Julia with 6 treadles, not 4. The 2-shaft CB variant uses 2 treadles (George Weil). The previous value of 4 appears to have been sourced only from George Weil's atypical UK-market 4sh/4tr variant. weight_lbs 60 confirmed as approximate warped weight by Etsy/Glimakra USA listing. weaving_width_options_cm 67 confirmed by wonkyweaver.com (independent new source).",
+    "brand": "Glimakra",
+    "model_name": "Julia (Counterbalance)",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "counterbalance",
+    "weaving_width_options_inches": [
+      26.38
+    ],
+    "weaving_width_options_cm": [
+      67
+    ],
+    "shaft_count_options": [
+      2,
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "pine",
+    "model_series": "Julia",
+    "treadle_count": [
+      2,
+      6
+    ],
+    "treadle_hinge": "pivoting_back",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 125,
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 60,
+    "breast_beam_height_inches": 32,
+    "foldable": false,
+    "foldable_while_warped": false,
+    "brake_type": "ratchet",
+    "sectional_beam_available": false,
+    "double_back_beam_available": false,
+    "beater_type": "overhead_swing",
+    "beater_adjustable": false,
+    "tie_up_system": "texsolv_loop",
+    "shaft_upgrade_available": false,
+    "fly_shuttle_available": false,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden",
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Victoria",
+    "_confidence": "high",
+    "_flags": [
+      "foldable",
+      "frame_material"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/victoria-table-loom-1",
+      "https://woolery.com/collections/glimakra-table-loom",
+      "http://www.gavglimakra.se/en/portfolio/glimakra-victoria/",
+      "https://woolery.com/glimakra-victoria-table-loom.html",
+      "https://kellycasanovaweavinglessons.com/2020/01/table-loom-options.html",
+      "https://threadcollective.com.au/products/glimakra-victoria-table-loom"
+    ],
+    "_source_notes": "Glimakra USA confirms 27 in weaving width, 4-shaft, lever-operated. GAV Glimakra AB (manufacturer) confirms 27 in (70 cm) inside width, 26 in height, 4 shafts. Woolery confirms 500 Texsolv heddles, lease sticks, 24 warp sticks, Texsolv tie-up kit included. Optional floor stand with treadle kit available. No reed noted as included from primary sources \u2014 reed not confirmed included. Kelly Casanova Weaving Lessons (independent) confirms 4 shafts and 27 in weaving width; notes loom 'doesn't fold' as a table body, though a reader comment clarifies the castle can fold by removing one screw \u2014 foldability is partial/qualified and flagged. Thread Collective (independent AU retailer) confirms 70 cm weaving width. frame_material (pine) not confirmed by any newly consulted independent source \u2014 flagged.",
+    "brand": "Glimakra",
+    "model_name": "Victoria",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "lever",
+    "weaving_width_options_inches": [
+      27
+    ],
+    "weaving_width_options_cm": [
+      70
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": false,
+    "frame_material": "pine",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 125,
+    "foldable": true,
+    "lease_sticks_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden",
+    "castle_height_inches": 26
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Emilia",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://www.glimakrausa.com/emilia-19-in-loomheddle",
+      "https://www.glimakrausa.com/emilia-13-in.loomheddle",
+      "https://woolery.com/products/glimakra-emilia-folding-rigid-heddle-loom",
+      "https://paradisefibers.com/products/glimakra-emilia-rigid-heddle-looms",
+      "https://www.halcyonyarn.com/products/glimakra-emilia-rigid-heddle-loom",
+      "https://weavingloomsdirect.com/products/glimakra-emilia-webrahmen",
+      "https://www.eugenetextilecenter.com/glimakra-emilia-rigid-heddle-loom"
+    ],
+    "_source_notes": "Glimakra USA lists 35cm (13.5 in) and 50cm (19 in) widths. Woolery and Paradise Fibers confirm 13 in and 19 in sizes. Birch frame confirmed by woolery and halcyon. Includes 10 dent heddle, flat shuttle, warping peg, 2 clamps, sley hook, threading needle. Second heddle bracket available as option. 8, 10, 12 dent heddles available. Berliner Webst\u00fchle (weavingloomsdirect.com) and Eugene Textile Center independently confirm 35cm/50cm widths, birch frame, metal ratchets, folding design, and Swedish origin. weaving_width_options_inches values [13.39, 19.69] are precise metric conversions of 35cm and 50cm; colloquially marketed as 13 in and 19 in.",
+    "brand": "Glimakra",
+    "model_name": "Emilia",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      13.39,
+      19.69
+    ],
+    "weaving_width_options_cm": [
+      35,
+      50
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "reed_dent_included": [
+      10
+    ],
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "ratchet",
+    "shuttle_included": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "Sweden"
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Susanna",
+    "_confidence": "high",
+    "_flags": [
+      "weaving_width_options_cm_minor_discrepancy"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/susanna-rigid-heddle-loom",
+      "https://www.eugenetextilecenter.com/glimakra-susanna-rigid-heddle-loom",
+      "https://paradisefibers.com/products/glimakra-susanna-27-rigid-heddle-loom",
+      "https://www.artifilum.com/en/susanna-loom-rigid-heddle-glimakra.html",
+      "https://www.wonkyweaver.com/product-page/glim%C3%A5kra-susanna-table-loom",
+      "https://revolutionfibers.com/collections/rigid-heddle-looms/products/glimakra-susanna-rigid-heddle-loom",
+      "https://www.thefibermill.com/product/glimakra-susanna-rigid-heddle-loom/286"
+    ],
+    "_source_notes": "Glimakra USA confirms 27 in (70 cm) weaving width. Artifilum and wonkyweaver confirm birch construction and 70 cm width. Eugene Textile Center and Paradise Fibers confirm birch frame and 27 in width. Includes 10 dent heddle, shuttle, cord threader, warp sticks; 8, 10, 12 dent heddles available. Optional floor stand available. Integrated warping frame on the back. Can also be used as tapestry loom. Revolution Fibers (new independent source) confirms 27-inch weaving width and metal ratchet system. The Fiber Mill (new independent source) lists width as 27\" (68 cm) \u2014 minor discrepancy flagged: 68 cm is the precise inch-to-cm conversion of 27\" (~68.58 cm), while Glimakra USA's own product title explicitly states 70 cm; 70 cm is the manufacturer-canonical value and is retained. Shaft count of 0 is correct for a rigid heddle loom (no shaft harnesses).",
+    "brand": "Glimakra",
+    "model_name": "Susanna",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      27
+    ],
+    "weaving_width_options_cm": [
+      70
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "reed_dent_included": [
+      10
+    ],
+    "foldable": false,
+    "brake_type": "ratchet",
+    "shuttle_included": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "Sweden"
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Siru",
+    "_confidence": "high",
+    "_flags": [
+      "origin_country"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/siru-rigid-heddle-loom",
+      "https://www.halcyonyarn.com/products/glimakra-siru-rigid-heddle-loom-w-shuttle-warping-peg",
+      "https://paradisefibers.com/products/glimakra-siru-16-rigid-heddle-loom",
+      "https://weavingworks.com/products/glimakra-siru-rigid-heddle-loom",
+      "https://warpedforgood.com/2021/09/process-review-unboxing-siru/",
+      "https://weavingloomsdirect.com/products/glimakra-siru-webrahmen"
+    ],
+    "_source_notes": "Glimakra USA confirms 15.75 in weaving width, double heddle block built in; birch plywood construction, all-metal ratchets. Halcyon notes 16 in width (rounded approximation) and includes 10 dent heddle. Paradise fibers confirms 15.75 in (40 cm). Weavingworks confirms 45-degree angled warp for ergonomic weaving, folds with warp intact. 8, 10, 12.5 dent reeds available per Glimakra USA (Halcyon rounds 12.5 to 12). warpedforgood.com independently confirms 40 cm (15 3/4\") width, foldable with warp, birch construction, ratchets, built-in double heddle support, assembly required. weavingloomsdirect.com confirms 40 cm width and foldable, but contains an internal contradiction listing origin as both Sweden and Finland (Toika collaboration); origin_country flagged for manual review.",
+    "brand": "Glimakra",
+    "model_name": "Siru",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      15.75
+    ],
+    "weaving_width_options_cm": [
+      40
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "reed_dent_included": [
+      10
+    ],
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "ratchet",
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden"
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Freja",
+    "_confidence": "high",
+    "_flags": [
+      "reed_included"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/freja-tapestry-framefreja-regular194-g",
+      "https://www.glimakrausa.com/freja-tapestry-framefreja-lap-size",
+      "https://woolery.com/products/glimakra-freja-tapestry-loom",
+      "https://thespinnerystore.com/products/glimakra-freja-tapestry-loom",
+      "https://www.eugenetextilecenter.com/glimakra-freja-tapestry-frame",
+      "https://www.etsy.com/listing/664990880/glimakra-tapestry-freja-loom-3-sizes-you",
+      "https://horsenettle.com/?p=479"
+    ],
+    "_source_notes": "Glimakra USA lists three sizes: Baby (approx 15.25x15.25 in outer, 12 in weaving width), Small/Lap (15x18 in outer, 12 in weaving width, adjustable tensioner), Regular/Large (26x21 in outer, 18 in weaving width, adjustable tensioner). All sizes confirmed by multiple sources. Baby has no adjustable tensioner or legs. Spinnery store confirms hardwood construction. No shaft device \u2014 pegged warp system for tapestry. Independent verification via Etsy/TheSpinneryStore listing and horsenettle.com blog: all three size outer dimensions and weaving widths (Baby 12in, Small 12in, Large 18in) confirmed. Solid hardwood, Sweden origin, frame/tapestry loom with no shed device confirmed. No discrepancies found.",
+    "brand": "Glimakra",
+    "model_name": "Freja",
+    "loom_category": "tapestry_loom",
+    "shedding_mechanism": "no_shed_device",
+    "weaving_width_options_inches": [
+      12,
+      12,
+      18
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": false,
+    "frame_material": "hardwood",
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden"
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Band Loom",
+    "_confidence": "high",
+    "_flags": [
+      "shedding_mechanism",
+      "loom_category"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/band-loom",
+      "https://woolery.com/glimakra-band-loom.html",
+      "https://www.yarnbarn-ks.com/Glimakra-Band-Loom/productinfo/WLGL-BAND/",
+      "https://www.eugenetextilecenter.com/glimakra-band-loom-2-treadles",
+      "https://www.thefibermill.com/product/GlimakraBandLoom/244",
+      "https://www.lonestarloomroom.com/products/glimakra-band-loom-with-two-treadles",
+      "https://bountifulspinweave.com/p/Glimakra-Band-Loom.html",
+      "https://www.glimakrausa.com/shop/wpimages/glimakrausa-price-list-2025-07.pdf",
+      "https://www.glimakrausa.com/table-and-other-looms"
+    ],
+    "_source_notes": "Glimakra USA, Woolery, Yarn Barn, Eugene Textile Center all confirm max 5 in weaving width and 2-treadle configuration. Can be set up as 2-shaft with Texsolv heddles, inkle loom, or card/tablet weaving. Yarn Barn notes 36.25 in wide dimensions and finished pine construction. Fiber Mill confirms 5 in width and 2-shaft or inkle setup. Lone Star Loom Room (independent source) confirms 5 in weaving width and 2 treadles. Bountiful Spin & Weave lists it under 'Band Loom / Inkle Loom' category. shedding_mechanism flagged: primary mechanism is shaft-and-treadle (2 shafts, Texsolv heddles, 2 treadles), not rigid_heddle; rigid_heddle is not used on this loom. loom_category flagged: loom is primarily a treadle-operated band loom with optional inkle setup; inkle_loom alone is inaccurate. Corrected both fields accordingly.",
+    "brand": "Glimakra",
+    "model_name": "Band Loom",
+    "loom_category": "band_loom",
+    "shedding_mechanism": "shaft_and_treadle",
+    "weaving_width_options_inches": [
+      5
+    ],
+    "shaft_count_options": [
+      2
+    ],
+    "reed_included": false,
+    "frame_material": "pine",
+    "treadle_count": [
+      2
+    ],
+    "heddle_type": "texsolv",
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden"
+  },
+  {
+    "_brand": "Glimakra",
+    "_model": "Viking Jack Loom",
+    "_confidence": "low",
+    "_flags": [
+      "weaving_width_options_inches",
+      "shaft_count_options",
+      "reed_included",
+      "frame_material"
+    ],
+    "_verified_by": [
+      "https://www.glimakrausa.com/assembly-instructions",
+      "https://ravelry127.rssing.com/chan-51468835/all_p1.html"
+    ],
+    "_source_notes": "Glimakra USA assembly instructions page lists 'Viking Jack Loom' as a current product alongside new looms. A used-loom Ravelry listing notes 'Glimakra Viking 4 shaft 36 inch loom' with friction brake and Texsolv heddles/tie-ups. No manufacturer spec page found for the new Viking Jack Loom; weaving width, full shaft options, and reed inclusion could not be confirmed from a primary retailer source. Frame material inferred as pine consistent with other Glimakra floor looms.",
+    "brand": "Glimakra",
+    "model_name": "Viking Jack Loom",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": null,
+    "shaft_count_options": null,
+    "reed_included": null,
+    "frame_material": "pine",
+    "heddle_type": "texsolv",
+    "brake_type": "friction",
+    "tie_up_system": "texsolv_loop",
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Sweden"
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Liisa",
+    "_confidence": "high",
+    "_flags": [
+      "shaft_count_options_16_special_order_only",
+      "treadle_count_16_special_order_only",
+      "shedding_mechanism_counterbalance_also_available",
+      "beater_type_term_nonstandard_manufacturer_uses_standing_or_underslung"
+    ],
+    "_verified_by": [
+      "https://www.toika.com/en/product/liisa-loom/",
+      "https://shop.toika.com/category/8/liisa-loom",
+      "https://weavingyarn.co.uk/product/toika-liisa-loom/",
+      "https://www.yarn.com/products/toika-liisa-loom",
+      "https://www.artifilum.com/en/weaving-loom-toika-liisa.html",
+      "https://weavingloomsdirect.com/products/toika-liisa-loom"
+    ],
+    "_source_notes": "Manufacturer page, Toika online shop, multiple independent retailers all confirm widths, shaft options, and key specs. Saber Fazer notes 40/10 carbon steel reed included; Toika Loom Studio (UK) notes stainless steel reed; reed_material flagged as slightly uncertain between retailer listings. Weaving Looms Direct (new independent source) confirms 4/8/12 shafts standard (16 on order), treadle count matches shaft count by default, and birch frame. All sources consistently state 16 shafts/treadles is a special-order option only, not a standard listed configuration \u2014 flagged accordingly. Toika shop and manufacturer also note counterbalance configuration is available in addition to countermarch.",
+    "brand": "Toika",
+    "model_name": "Liisa",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "shedding_mechanism_notes": "Countermarch is standard and most popular; counterbalance configuration also available on order.",
+    "weaving_width_options_inches": [
+      31.5,
+      39.37,
+      47.24,
+      59.06
+    ],
+    "weaving_width_options_cm": [
+      80,
+      100,
+      120,
+      150
+    ],
+    "shaft_count_options": [
+      4,
+      8,
+      12,
+      16
+    ],
+    "shaft_count_notes": "4, 8, and 12 are standard configurations; 16 shafts is available on special order only.",
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "warranty_years": 2,
+    "assembly_required": true,
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 100,
+    "beater_type": "bottom_swing",
+    "beater_type_notes": "Manufacturer and retailers describe this as a 'standing' or 'underslung' beater; hanging beater available as an option at additional cost.",
+    "beater_adjustable": false,
+    "brake_type": "worm_gear",
+    "tie_up_system": "texsolv_loop",
+    "treadle_count": [
+      4,
+      8,
+      12,
+      16
+    ],
+    "treadle_count_notes": "Treadle count normally matches shaft count; 16 treadles only relevant for 16-shaft special-order configuration. A different number of treadles from shafts is also possible on request.",
+    "foldable": false,
+    "double_back_beam_available": true,
+    "sectional_beam_available": true,
+    "fly_shuttle_available": true,
+    "fly_shuttle_notes": "Flying shuttle device available on 120cm and 150cm models only.",
+    "lease_sticks_included": true,
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Eeva",
+    "_confidence": "medium",
+    "_flags": [
+      "shaft_count_options_16_is_special_order_not_standard",
+      "treadle_count_not_fixed_to_shaft_count",
+      "brake_type_worm_gear_is_optional_not_standard",
+      "weaving_width_options_inches_minor_rounding_errors"
+    ],
+    "_verified_by": [
+      "https://www.toika.com/en/product/eeva-loom/",
+      "https://www.yarn.com/products/toika-eeva-loom",
+      "https://woolery.com/toika-eeva-loom.html",
+      "https://weavingyarn.co.uk/product/toika-eeva-loom/",
+      "https://toikaloomstudio.co.uk/product/eeva/",
+      "https://weavingloomsdirect.com/products/toika-eeva-loom",
+      "https://fiberarts.org/classifieds/listads.php?l=2&s=0&g=1&t=Toika+EEVA&d=1&a=1"
+    ],
+    "_source_notes": "Manufacturer page and multiple independent retailers confirm all key specs. Eeva is larger than Liisa, comes standard with hanging (overhead) beater. Computer-assist ES variant available in 16, 24, 32 shafts. Artifilum notes 500 texsolv heddles included (=100/shaft for 4-shaft base model, consistent with other sources citing 100 heddles/shaft). CORRECTION: 16 shafts is a special-order/on-request option for the manual treadle loom, not a standard listed option alongside 4/8/12 \u2014 weavingloomsdirect.com, weavingyarn.co.uk, and toika.com all list standard as 4, 8, or 12 shafts. Treadle count is normally equal to shaft count but is configurable and real-world listings show 8-shaft/10-treadle and 16-shaft/18-treadle configurations (fiberarts.org classifieds), so a fixed 1:1 array is misleading. Brake type: worm gear is an optional upgrade; standard brake is ratchet-and-pawl (weavingyarn.co.uk). Inch widths corrected to match Toika's published fractional values (31 1/2, 39 3/8, 47 1/4, 59).",
+    "brand": "Toika",
+    "model_name": "Eeva",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      31.5,
+      39.375,
+      47.25,
+      59.0
+    ],
+    "weaving_width_options_cm": [
+      80,
+      100,
+      120,
+      150
+    ],
+    "shaft_count_options": [
+      4,
+      8,
+      12,
+      "16_on_special_order"
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "warranty_years": 2,
+    "assembly_required": true,
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 100,
+    "beater_type": "overhead_swing",
+    "beater_adjustable": false,
+    "brake_type": "ratchet_and_pawl",
+    "brake_type_optional_upgrade": "worm_gear",
+    "tie_up_system": "texsolv_loop",
+    "treadle_count": "matches_shaft_count_by_default_but_configurable",
+    "foldable": false,
+    "double_back_beam_available": true,
+    "sectional_beam_available": true,
+    "fly_shuttle_available": true,
+    "lease_sticks_included": true,
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Jaana",
+    "_confidence": "high",
+    "_flags": [
+      "beater_type",
+      "double_back_beam_available"
+    ],
+    "_verified_by": [
+      "https://www.toika.com/en/product/jaana-loom/",
+      "https://toikaloomstudio.co.uk/product/jaana/",
+      "https://weavingyarn.co.uk/product/toika-jaana-loom/",
+      "https://www.yarn.com/products/toika-jaana-computer-assisted-loom",
+      "https://www.yarn.com/products/toika-jaana-loom"
+    ],
+    "_source_notes": "Manufacturer page and multiple retailers confirm 80/100cm widths, 4 or 8 shafts manual (12 on order per toika.com), 16-shaft ES maximum. Treadle count matches shaft count as standard for Toika countermarch looms. Worm gear tension system NOT included on Jaana due to smaller frame per toikaloomstudio.co.uk. Independent verification via yarn.com (WEBS) confirms countermarch shedding, 100 heddles/shaft, standing (underslung) beater, reed included, and 16-shaft ES max. beater_type corrected from 'bottom_swing' to 'underslung': all sources (toika.com, yarn.com, weavingyarn.co.uk, toikaloomstudio.co.uk) consistently use 'standing' or 'underslung', never 'bottom_swing'. double_back_beam_available corrected to true: toikaloomstudio.co.uk explicitly states Jaana can be equipped with 'a second and or sectional beam'; yarn.com corroborates.",
+    "brand": "Toika",
+    "model_name": "Jaana",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      31.5,
+      39.37
+    ],
+    "weaving_width_options_cm": [
+      80,
+      100
+    ],
+    "shaft_count_options": [
+      4,
+      8,
+      12
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "warranty_years": 2,
+    "assembly_required": true,
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 100,
+    "beater_type": "underslung",
+    "beater_adjustable": false,
+    "brake_type": "friction",
+    "tie_up_system": "texsolv_loop",
+    "treadle_count": [
+      4,
+      8,
+      12
+    ],
+    "foldable": false,
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "fly_shuttle_available": false,
+    "shaft_upgrade_available": true,
+    "max_shafts_with_upgrade": 16,
+    "lease_sticks_included": true,
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Laila",
+    "_confidence": "medium",
+    "_flags": [
+      "foldable"
+    ],
+    "_verified_by": [
+      "https://weavingloomsdirect.com/products/toika-laila-loom",
+      "https://shop.toika.com/product/2310/laila-loom-70-cm-weaving-width-8-shafts--8-treadles",
+      "https://www.yarn.com/pages/weaving-loom-buying-guide",
+      "https://www.yarn.com/pages/toika-looms",
+      "https://www.toika.com/en/product/laila-loom/",
+      "https://www.manualslib.com/manual/2836838/Toika-Laila.html"
+    ],
+    "_source_notes": "Confirmed by Toika online shop listing and multiple retailers. Most compact Toika countermarch floor loom at 70cm. 4 or 8 shafts, treadles match shaft count. Worm gear tensioning not available on Laila (smallest frame). Warranty from yarn.com FAQ which lists Laila explicitly. CORRECTION: foldable corrected from false to true \u2014 official Toika manual (ManualsLib) and toika.com confirm the Laila folds even with warp in place for compact storage.",
+    "brand": "Toika",
+    "model_name": "Laila",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      27.56
+    ],
+    "weaving_width_options_cm": [
+      70
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "warranty_years": 2,
+    "assembly_required": true,
+    "heddle_type": "texsolv",
+    "beater_type": "bottom_swing",
+    "brake_type": "friction",
+    "tie_up_system": "texsolv_loop",
+    "treadle_count": [
+      4,
+      8
+    ],
+    "foldable": true,
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Leena",
+    "_confidence": "high",
+    "_flags": [
+      "heddles_per_shaft_included_ambiguous_by_shaft_variant"
+    ],
+    "_verified_by": [
+      "https://www.toika.com/en/product/leena-loom/",
+      "https://shop.toika.com/product/69/leena-table-loom-working-width-60-cm-8-shafts",
+      "https://www.shop.saberfazer.org/en/products/tear-de-mesa-toika-leena",
+      "https://webstuhl.shop/en/products/toika-leena-8-shaft-table-loom",
+      "https://woolery.com/weaving/weaving-looms/table-looms.html",
+      "https://www.yarn.com/pages/toika-looms"
+    ],
+    "_source_notes": "Manufacturer page and Toika shop confirm 60cm / 23-5/8\" weaving width with 4 or 8 shaft options. Shafts raised by top-mounted locking levers. Saber Fazer confirms 40/10 reed, 200 TexSolv heddles, 2 stick shuttles, 10kg weight. Overall loom width 73cm; 4-shaft height 46cm, 8-shaft height 64cm. The Woolery (independent retailer, woolery.com) independently confirms 23.625\" weaving width with 4 or 8 shaft configuration. Webstuhl.shop (Berliner Webst\u00fchle) independently confirms 10 kg (8-shaft), matching weight_lbs of 22.05. heddles_per_shaft_included value of 25 is only accurate for the 8-shaft variant (200 heddles total \u00f7 8); the 4-shaft variant yields 50 per shaft \u2014 field is flagged as ambiguous without variant qualifier. Frame material 'birch' is consistent with yarn.com confirming Toika crafts looms from Finnish birch.",
+    "brand": "Toika",
+    "model_name": "Leena",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "lever",
+    "weaving_width_options_inches": [
+      23.62
+    ],
+    "weaving_width_options_cm": [
+      60
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "assembly_required": true,
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 25,
+    "weight_lbs": 22.05,
+    "shuttle_included": true,
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Anni Workshop Loom",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://shop.toika.com/product/2399/anni-workshop-loom",
+      "https://www.shop.saberfazer.org/en/products/toika-anni-floor-loom",
+      "https://www.toika.com/en/category/handicraft/weaving/loom/"
+    ],
+    "_source_notes": "Toika online shop and Saber Fazer confirm all specs: 55cm weaving width, 4 shafts, 4 treadles, 200 TexSolv heddles, #4 steel reed, 2 stick shuttles, birch wood, 19kg. Dimensions: H 108cm (folded 119cm), depth 83cm (folded 32-38cm). Rear wheels for mobility. Foldable with warp in place.",
+    "brand": "Toika",
+    "model_name": "Anni Workshop Loom",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      21.65
+    ],
+    "weaving_width_options_cm": [
+      55
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "assembly_required": false,
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 50,
+    "weight_lbs": 41.89,
+    "treadle_count": [
+      4
+    ],
+    "tie_up_system": "texsolv_loop",
+    "foldable": true,
+    "foldable_while_warped": true,
+    "shuttle_included": true,
+    "mobility_wheels_included": true
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Terhi",
+    "_confidence": "high",
+    "_flags": [
+      "reed_included",
+      "heddle_type"
+    ],
+    "_verified_by": [
+      "https://www.toika.com/en/product/terhi-loom/"
+    ],
+    "_source_notes": "Manufacturer page confirms countermarch, 200cm weaving width, 4 or 8 shafts, treadles match shafts, delivered with standing beater/cog wheel/bench. Reed_included and heddle_type not explicitly stated on manufacturer page but consistent with all other Toika floor looms; flagged as inferred.",
+    "brand": "Toika",
+    "model_name": "Terhi",
+    "loom_category": "rug_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      78.74
+    ],
+    "weaving_width_options_cm": [
+      200
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "assembly_required": true,
+    "heddle_type": "texsolv",
+    "beater_type": "bottom_swing",
+    "brake_type": "worm_gear",
+    "tie_up_system": "texsolv_loop",
+    "treadle_count": [
+      4,
+      8
+    ],
+    "foldable": false,
+    "mobility_wheels_included": false
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Eeva ES Computer-Assist",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://www.toika.com/en/product/computer-looms/",
+      "https://www.yarn.com/products/toika-eeva-computer-assist-loom",
+      "https://weavingyarn.co.uk/product/toika-eeva-loom/",
+      "https://toikaloomstudio.co.uk/product/eeva-electronic-floor-loom/"
+    ],
+    "_source_notes": "ES Computer-Assist looms offered in 16, 24, and 32-shaft configurations on both Eeva and Liisa platforms per yarn.com and toika.com. Weavepoint (Windows, USB) is primary included software; Fiberworks PCW also compatible. Shed is true countermarch controlled electronically. 100 heddles/shaft included.",
+    "brand": "Toika",
+    "model_name": "Eeva ES Computer-Assist",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "dobby_electronic",
+    "weaving_width_options_inches": [
+      31.5,
+      39.37,
+      47.24,
+      59.06
+    ],
+    "weaving_width_options_cm": [
+      80,
+      100,
+      120,
+      150
+    ],
+    "shaft_count_options": [
+      16,
+      24,
+      32
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "warranty_years": 2,
+    "assembly_required": true,
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 100,
+    "beater_type": "overhead_swing",
+    "brake_type": "worm_gear",
+    "tie_up_system": "not_applicable",
+    "foldable": false,
+    "double_back_beam_available": true,
+    "sectional_beam_available": true,
+    "fly_shuttle_available": true,
+    "lease_sticks_included": true,
+    "mobility_wheels_included": false,
+    "dobby_type": "electronic_interface",
+    "compatible_software": [
+      "WeavePoint",
+      "Fiberworks PCW"
+    ]
+  },
+  {
+    "_brand": "Toika",
+    "_model": "Liisa ES Computer-Assist",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://www.toika.com/en/product/computer-looms/",
+      "https://www.yarn.com/products/toika-eeva-computer-assist-loom",
+      "https://toikaloomstudio.co.uk/product/liisa-electronic-floor-loom/",
+      "https://weavingyarn.co.uk/product/toika-liisa-loom/"
+    ],
+    "_source_notes": "Per yarn.com: 'Toika ES Computer-Assist Looms are offered in 16-, 24- and 32-shaft configurations for both Eeva and Liisa looms.' Same electronic dobby unit and software as Eeva ES; smaller/lighter footprint than Eeva. 100 heddles/shaft standard.",
+    "brand": "Toika",
+    "model_name": "Liisa ES Computer-Assist",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "dobby_electronic",
+    "weaving_width_options_inches": [
+      31.5,
+      39.37,
+      47.24,
+      59.06
+    ],
+    "weaving_width_options_cm": [
+      80,
+      100,
+      120,
+      150
+    ],
+    "shaft_count_options": [
+      16,
+      24,
+      32
+    ],
+    "reed_included": true,
+    "frame_material": "birch",
+    "origin_country": "Finland",
+    "warranty_years": 2,
+    "assembly_required": true,
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 100,
+    "beater_type": "bottom_swing",
+    "brake_type": "worm_gear",
+    "tie_up_system": "not_applicable",
+    "foldable": false,
+    "double_back_beam_available": true,
+    "sectional_beam_available": true,
+    "fly_shuttle_available": true,
+    "lease_sticks_included": true,
+    "mobility_wheels_included": false,
+    "dobby_type": "electronic_interface",
+    "compatible_software": [
+      "WeavePoint",
+      "Fiberworks PCW"
+    ]
+  },
+  {
+    "_brand": "Kromski",
+    "_model": "Harp Forte",
+    "_confidence": "high",
+    "_flags": [
+      "warranty_years"
+    ],
+    "_verified_by": [
+      "https://kromski.com/product/the-harp-forte-rigid-heddle-loom-2/",
+      "https://paradisefibers.com/products/kromski-harp-forte-rigid-heddle-looms",
+      "https://woolery.com/products/kromski-harp-forte-rigid-heddle-loom",
+      "https://www.halcyonyarn.com/products/kromski-harp-forte-rigid-heddle-loom",
+      "https://www.atwistedpicot.com/shop/p/kromski-harp-forte-rigid-heddle-loom-set"
+    ],
+    "_source_notes": "Width, included accessories, and frame material confirmed across official Kromski site and 4+ independent retailers. Warranty discrepancy: official Kromski site lists 2 years; most retailers list 5 years \u2014 flagged. Formerly sold as 'Harp', renamed 'Harp Forte' with metal ratchet-and-pawl upgrade; same loom per retailer notes.",
+    "brand": "Kromski",
+    "model_name": "Harp Forte",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      8,
+      16,
+      24,
+      32
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "other",
+    "origin_country": "Poland",
+    "warranty_years": 5,
+    "reed_dent_included": [
+      8
+    ],
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "ratchet",
+    "assembly_required": true,
+    "finish_required": false,
+    "carry_bag_included": false,
+    "shuttle_included": true,
+    "lease_sticks_included": false
+  },
+  {
+    "_brand": "Kromski",
+    "_model": "Presto",
+    "_confidence": "high",
+    "_flags": [
+      "warranty_years"
+    ],
+    "_verified_by": [
+      "https://kromski.com/product/the-presto-rigid-heddle-loom/",
+      "https://woolery.com/products/kromski-presto-rigid-heddle-loom-10.html",
+      "https://woolery.com/products/kromski-presto-rigid-heddle-loom-16",
+      "https://paradisefibers.com/products/presto-rigid-heddle-loom",
+      "https://revolutionfibers.com/products/kromski-presto-loom"
+    ],
+    "_source_notes": "Width (10\" and 16\"), included heddle (8 dpt), frame material, and brake mechanism confirmed across official Kromski site and multiple independent retailers. Warranty discrepancy: official Kromski site lists 2 years; most North American retailers list 5 years \u2014 flagged. Presto disassembles flat (beams and braces removable) rather than folding like the Harp Forte. Comes in unfinished Alder; also available in colored limited editions (Mint, Lavender, Light Pink, Harbor Blue).",
+    "brand": "Kromski",
+    "model_name": "Presto",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      10,
+      16
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "other",
+    "origin_country": "Poland",
+    "warranty_years": 5,
+    "reed_dent_included": [
+      8
+    ],
+    "foldable": true,
+    "foldable_while_warped": false,
+    "brake_type": "ratchet",
+    "assembly_required": true,
+    "finish_required": false,
+    "carry_bag_included": false,
+    "shuttle_included": true,
+    "lease_sticks_included": false
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "Standard Rigid Heddle Loom",
+    "_confidence": "high",
+    "_flags": [
+      "finish_required"
+    ],
+    "_verified_by": [
+      "https://www.ashford.co.nz/product/standard-rigid-heddle-loom/",
+      "https://www.halcyonyarn.com/products/ashford-rigid-heddle-loom",
+      "https://www.weftblown.com/products/ashford-rigid-heddle-loom-all-sizes",
+      "https://woolery.com/ashford-rigid-heddle-loom.html",
+      "https://www.yarnbarn-ks.com/Ashford-Rigid-Heddle-Loom/productinfo/WLAS-RH00-/",
+      "https://paradisefibers.com/products/ashford-rigid-heddle-weaving-looms",
+      "https://wild-hand.com/products/ashford-rigid-heddle",
+      "https://www.mielkesfiberarts.com/product/ashford-rigid-heddle-loom/"
+    ],
+    "_source_notes": "Confirmed across manufacturer site and multiple retailers. Four widths: 16, 24, 32, 48 in (40, 60, 80, 120 cm). Four widths confirmed by paradisefibers.com, wild-hand.com, mielkesfiberarts.com. Ships unassembled; assembly required confirmed by wild-hand.com and mielkesfiberarts.com. Includes 7.5 dpi reed and second heddle block confirmed by mielkesfiberarts.com and wild-hand.com. Lease sticks not included in standard kit; sold separately (tisseetfile.com). finish_required flagged: ashford.co.nz now states 'Natural timber finish' rather than unfinished, conflicting with wild-hand.com and amazon which still say 'unfinished Silver Beech hardwood' \u2014 possible current model update or wording variation. Weight data from woolyn.com (7, 8, 10, 13 lbs by width) not independently re-confirmed by new sources.",
+    "brand": "Ashford",
+    "model_name": "Standard Rigid Heddle Loom",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      16,
+      24,
+      32,
+      48
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "other",
+    "reed_dent_included": [
+      7.5
+    ],
+    "reed_material": "other",
+    "assembly_required": true,
+    "finish_required": true,
+    "origin_country": "New Zealand",
+    "foldable": false,
+    "shuttle_included": true,
+    "lease_sticks_included": false
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "Knitters Loom",
+    "_confidence": "high",
+    "_flags": [
+      "weight_lbs_20in_corrected"
+    ],
+    "_verified_by": [
+      "https://paradisefibers.com/products/ashford-knitters-looms",
+      "https://www.mielkesfiberarts.com/product/ashford-knitters-loom-rigid-heddle-style/",
+      "https://www.weftblown.com/products/ashford-knitters-loom",
+      "https://www.fibertoyarn.com/weave/ashford-knitters-rigid-heddle-loom",
+      "https://www.susansfiber.com/products/knitters-loom",
+      "https://getflocked.co.nz/products/ashford-knitters-loom"
+    ],
+    "_source_notes": "Confirmed across multiple retailers including Susan's Fiber Shop and Get Flocked (independent sources). Three widths: 12, 20, 28 in (30, 50, 70 cm). Comes assembled and lacquered from Silver Beech hardwood, folds in half even with weaving in place. Includes 7.5 dpi wide-eye reed, padded carry bag, second heddle option side posts, 2 lacquered shuttles, threading hook, warping peg and clamps. Weights per independent sources: 12 in = 5 lbs (2.3 kg), 20 in = 6.0 lbs (2.8 kg), 28 in = 8.25 lbs (3.7 kg). Note: original record listed 20 in weight as 6.2 lbs; corrected to 6.0 lbs per Susan's Fiber Shop and Get Flocked specifications.",
+    "brand": "Ashford",
+    "model_name": "Knitters Loom",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      12,
+      20,
+      28
+    ],
+    "weaving_width_options_cm": [
+      30,
+      50,
+      70
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "hardwood",
+    "reed_dent_included": [
+      7.5
+    ],
+    "reed_material": "other",
+    "assembly_required": false,
+    "finish_required": false,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "carry_bag_included": true,
+    "shuttle_included": true,
+    "weight_lbs": {
+      "12in": 5.0,
+      "20in": 6.0,
+      "28in": 8.25
+    },
+    "origin_country": "New Zealand"
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "SampleIt Loom",
+    "_confidence": "high",
+    "_flags": [
+      "weight_lbs_10in_minor_discrepancy"
+    ],
+    "_verified_by": [
+      "https://www.susansfiber.com/products/sampleit-loom",
+      "https://www.mielkesfiberarts.com/product/ashford-sampleit-loom/",
+      "https://woolery.com/ashford-sampleit-loom-16.html",
+      "https://thefibrestudio.com/products/sampleit-loom-spin-and-weave",
+      "https://paradisefibers.com/products/ashford-sampleit-loom",
+      "https://www.fourheartsfarm.org/product-page/ashford-samplet-loom",
+      "https://stores.birkelandwool.com/ashford-sampleit-loom-16-40-cm/"
+    ],
+    "_source_notes": "Confirmed across multiple retailers and manufacturer site. Two widths: 10 in (25 cm) and 16 in (40 cm). Ships unfinished, assembly required. Includes 7.5 dpi reed, second heddle support built in. Weights: 10 in = 3 lbs (1.4 kg) per majority of sources (Fibre Studio, Four Hearts Farm, Etsy, Birkeland Bros.); one outlier (Susan's Fiber Shop) lists 10 in as 2.5 lbs (1.1 kg) \u2014 minor discrepancy flagged. 16 in = 4 lbs (1.7 kg) confirmed unanimously.",
+    "brand": "Ashford",
+    "model_name": "SampleIt Loom",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      10,
+      16
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "other",
+    "reed_dent_included": [
+      7.5
+    ],
+    "reed_material": "other",
+    "assembly_required": true,
+    "finish_required": true,
+    "foldable": false,
+    "shuttle_included": true,
+    "origin_country": "New Zealand",
+    "weight_lbs": 3
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "Brooklyn Four Shaft Loom",
+    "_confidence": "high",
+    "_flags": [
+      "weight_lbs_note: record previously labeled 14.5 lbs as gross weight; confirmed by independent sources (George Weil, Numana Yarns, sue2knits) that 14.5 lbs (6.5 kg) is NET weight; gross weight is 16.5 lbs (7.5 kg)"
+    ],
+    "_verified_by": [
+      "https://www.ashford.co.nz/product/brooklyn-four-shaft-loom/",
+      "https://www.gistyarn.com/products/ashford-brooklyn-4-shaft-table-loom",
+      "https://paradisefibers.com/products/ashford-brooklyn-four-shaft-16-table-loom",
+      "https://sue2knits.com/products/ashford-brooklyn-four-shaft-loom",
+      "https://sweetgeorgiayarns.com/ashford-brooklyn-table-loom-is-a-game-changer-video-review/",
+      "https://www.georgeweil.com/weaving-looms-and-tools/table-looms-for-weaving/ashford-table-looms/ashford-brooklyn-4-shaft-loom-40cm/",
+      "https://www.numanayarns.com/products/ashford-brooklyn-four-shaft-loom"
+    ],
+    "_source_notes": "Confirmed across manufacturer site and multiple retailers including George Weil and Numana Yarns. Fixed 16 in (40 cm) weaving width only. 4 shafts, lever shedding (rising shed). Beech hardwood with plywood sides. Does NOT fold. Includes 10 dpi stainless steel reed, 320 Texsolv heddles (80/shaft). Weight: 14.5 lbs NET (6.5 kg net); gross weight is 16.5 lbs (7.5 kg). Unfinished, assembly required. No stand available for this model. Kit includes 2 shuttles, 5 cross/warp sticks, 10 cardboard warp separating sticks, threading hook, and instruction booklet.",
+    "brand": "Ashford",
+    "model_name": "Brooklyn Four Shaft Loom",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      16
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "beech",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 80,
+    "beater_type": "overhead_swing",
+    "assembly_required": true,
+    "finish_required": true,
+    "foldable": false,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "weight_lbs": 14.5,
+    "weight_lbs_gross": 16.5,
+    "unfolded_depth_inches": 28.5,
+    "origin_country": "New Zealand"
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "Folding Table Loom 4-Shaft",
+    "_confidence": "high",
+    "_flags": [
+      "weight_lbs",
+      "frame_material"
+    ],
+    "_verified_by": [
+      "https://paradisefibers.com/products/ashford-folding-table-looms",
+      "https://www.susansfiber.com/products/table-loom-4-shaft",
+      "https://woolery.com/products/ashford-table-loom-4-shaft",
+      "https://www.georgeweil.com/weaving-looms-and-tools/table-looms-for-weaving/ashford-table-looms/ashford-folding-4-shaft-table-looms/",
+      "https://www.mielkesfiberarts.com/product/ashford-table-loom/",
+      "https://www.laughinglambfibers.com/products/ashford-table-loom-4-shaft",
+      "https://needlepointjoint.com/products/ashford-folding-table-loom",
+      "https://ashfordcraftshop.co.nz/product/four-shaft-table-loom/"
+    ],
+    "_source_notes": "Confirmed across multiple retailers and ashford.co.nz. Available in 3 widths: 16, 24, 32 in (40, 60, 80 cm). Folds flat even with weaving in place. Includes 10 dpi stainless steel reed. Texsolv heddles included vary by width: 16in=320, 24in=480, 32in=640. weight_lbs FLAGGED: record states 17 lbs (8 kg); Mielke's Fiber Arts independently lists 18 lbs for the 16\" 4-shaft and 20 lbs for the 24\" 4-shaft \u2014 no source confirms 17 lbs for any 4-shaft width. Minimum confirmed weight is 18 lbs. frame_material FLAGGED: listed as 'other' but all sources consistently identify solid Silver Beech hardwood; corrected to 'hardwood'. Treadle kit available as add-on (confirmed by Laughing Lamb / Needlepoint Joint). Shedding mechanism confirmed as jack/rising shed via independent lever operation.",
+    "brand": "Ashford",
+    "model_name": "Folding Table Loom 4-Shaft",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      16,
+      24,
+      32
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "hardwood",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "heddle_type": "texsolv",
+    "beater_type": "overhead_swing",
+    "foldable": true,
+    "foldable_while_warped": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "weight_lbs": 18,
+    "origin_country": "New Zealand"
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "Folding Table Loom 8-Shaft",
+    "_confidence": "high",
+    "_flags": [
+      "frame_material"
+    ],
+    "_verified_by": [
+      "https://paradisefibers.com/products/ashford-folding-table-looms",
+      "https://www.georgeweil.com/weaving-looms-and-tools/table-looms-for-weaving/ashford-table-looms/ashford-folding-8-shaft-table-looms/",
+      "https://www.susansfiber.com/products/table-loom-8-shaft",
+      "https://www.mielkesfiberarts.com/product/ashford-table-loom/",
+      "https://heddleoverheels.com/shop/ashford-eight-shaft-table-loom",
+      "https://www.gistyarn.com/products/ashford-8-shaft-table-loom",
+      "https://shuttlesandneedles.com/products/ashford-8-shaft-table-loom"
+    ],
+    "_source_notes": "Confirmed across manufacturer site and multiple retailers. Three widths: 16, 24, 32 in (40, 60, 80 cm). Folds flat even with weaving in place. Includes 10 dpi stainless steel reed. Texsolv heddles: 16in=320, 24in=480, 32in=640. Weights: 16in=18 lbs, 24in=23 lbs, 32in=27 lbs. Folded height 7 in. Open dimensions per mielkes: 16in=22x22x29, 24in=30x22x29, 32in=38x22x29. Treadle stand kit available separately. frame_material flagged: multiple independent sources (Gist Yarn, Shuttles and Needles) confirm solid Silver Beech hardwood; record value 'other' is technically not incorrect but underdescriptive \u2014 recommend updating to 'hardwood' or 'silver_beech'. Shedding mechanism jack_rising confirmed consistent with Ashford's own assembly documentation labeling the 4 & 8 shaft table loom as a jack loom.",
+    "brand": "Ashford",
+    "model_name": "Folding Table Loom 8-Shaft",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      16,
+      24,
+      32
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "hardwood",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "heddle_type": "texsolv",
+    "beater_type": "overhead_swing",
+    "foldable": true,
+    "foldable_while_warped": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "unfolded_depth_inches": 29,
+    "folded_depth_inches": 7,
+    "double_back_beam_available": true,
+    "sectional_beam_available": true,
+    "origin_country": "New Zealand"
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "Folding Table Loom 16-Shaft",
+    "_confidence": "high",
+    "_flags": [
+      "heddles_per_shaft_included",
+      "weight_lbs_is_24in_only",
+      "weight_lbs_32in_source_discrepancy"
+    ],
+    "_verified_by": [
+      "https://www.weftblown.com/products/ashford-16-shaft-table-loom",
+      "https://woolery.com/ashford-table-loom-16-shaft.html",
+      "https://woolery.com/ashford-32-table-loom-16-shaft.html",
+      "https://www.susansfiber.com/products/table-loom-16-shaft",
+      "https://needlepointjoint.com/products/ashford-24-folding-table-loom-16-shaft",
+      "https://paradisefibers.com/products/ashford-folding-table-looms",
+      "https://www.georgeweil.com/weaving-looms-and-tools/table-looms-for-weaving/ashford-table-looms/ashford-16-shaft-table-looms/",
+      "https://www.mielkesfiberarts.com/product/ashford-16-shaft-table-loom/",
+      "https://thespinnerystore.com/products/ashford-16-shaft-table-loom-32"
+    ],
+    "_source_notes": "Confirmed across multiple retailers. Available in 24 in (60 cm) and 32 in (80 cm) widths. The 24in version includes 1280 Texsolv heddles (80/shaft) and a 12 dpi reed \u2014 confirmed current spec by paradisefibers, mielkesfiberarts, georgeweil, shuttlesandneedles, needlepointjoint, weftblown (older Amazon/susansfiber specs listed 1600 heddles at 10dpi \u2014 minor discrepancy, 12dpi/1280 heddles is current). Weight: 24in=40 lbs (18kg) confirmed by woolery and paradisefibers. 32in weight is disputed: woolery.com and thespinnerystore.com list 43 lbs (19.5kg); weftblown.com lists 25kg (~55 lbs) \u2014 unresolved inter-source discrepancy for 32in weight. weight_lbs field in record reflects 24in model only. Folds flat. Lacquered Silver Beech.",
+    "brand": "Ashford",
+    "model_name": "Folding Table Loom 16-Shaft",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      24,
+      32
+    ],
+    "shaft_count_options": [
+      16
+    ],
+    "reed_included": true,
+    "frame_material": "other",
+    "reed_dent_included": [
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 80,
+    "beater_type": "overhead_swing",
+    "foldable": true,
+    "foldable_while_warped": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "weight_lbs": 40,
+    "weight_lbs_32in": 43,
+    "origin_country": "New Zealand"
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "Katie Table Loom",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://www.ashford.co.nz/product/katie-table-loom/",
+      "https://www.susansfiber.com/products/ashford-katie-table-loom",
+      "https://woolery.com/ashford-katie-table-loom.html",
+      "https://www.yarnbarn-ks.com/Ashford-Katie-Table-Loom/productinfo/WLAS-KATI/",
+      "https://www.halcyonyarn.com/products/ashford-katie-8-shaft-table-loom",
+      "https://www.meridianjacobs.com/tools-supplies/ashford-8-shaft-katie-loom-and-bag",
+      "https://www.fibertoyarn.com/ashford-harness-looms/ashford-katie-table-loom",
+      "https://www.gistyarn.com/products/ashford-katie-table-loom"
+    ],
+    "_source_notes": "Confirmed across manufacturer site and multiple retailers. Fixed 12 in (30 cm) weaving width only. 8 shafts, lever shedding, overhead beater with auto bounce-back. Comes assembled and lacquered. Includes padded carry bag, 10 dpi stainless reed, 320 Texsolv heddles, 2 lacquered 14in shuttles. Weight: 14.25 lbs (6.5 kg). Folded dimensions: 18.5 x 18.5 x 10.5 in. Frame confirmed as beech hardwood (meridianjacobs.com). frame_material updated from 'other' to 'beech'.",
+    "brand": "Ashford",
+    "model_name": "Katie Table Loom",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      12
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "beech",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 40,
+    "beater_type": "overhead_swing",
+    "foldable": true,
+    "foldable_while_warped": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "carry_bag_included": true,
+    "shuttle_included": true,
+    "weight_lbs": 14.25,
+    "folded_depth_inches": 10.5,
+    "origin_country": "New Zealand"
+  },
+  {
+    "_brand": "Ashford",
+    "_model": "Jack Loom",
+    "_confidence": "high",
+    "_flags": [
+      "weight_lbs"
+    ],
+    "_verified_by": [
+      "https://www.ashford.co.nz/product/jack-loom/",
+      "https://woolery.com/ashford-jack-loom.html",
+      "https://www.weftblown.com/products/ashford-jack-loom",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/ashford-jack-looms/ashford-jack-loom-3/",
+      "https://www.fibertoyarn.com/ashford-harness-looms/ashford-8-harness-jack-loom",
+      "https://sealymacwheely.com/products/ashford-jack-loom",
+      "https://www.theluckyewe.com/products/ashford-jack-loom-8-shaft",
+      "https://www.gistyarn.com/products/ashford-jack-floor-loom-38-weaving-width",
+      "https://paradisefibers.com/products/ashford-jack-loom-8-shaft-38-97cm",
+      "https://www.amazon.com/Ashford-Jack-Loom-Shaft-inch/dp/B08JB4KXZV"
+    ],
+    "_source_notes": "Confirmed across manufacturer site and multiple retailers. Single width: 38 in (97 cm). 8 shafts, 10 treadles, jack rising shed. Folding back beam. Built-in raddle with cap rail. Bottom pivot beater with built-in shuttle race. Friction rear brake, steel ratchet warp advancement. Texsolv tie-up cord. Includes 12 dpi stainless steel reed, 100 Texsolv heddles per shaft (800 total), boat shuttle, 5 cross sticks, 10 warp sticks. Weight: 127-132 lbs (sources vary \u2014 Amazon/manufacturer spec sheet lists 127 lb/58 kg; Woolery lists 132 lb/60 kg). Assembled dimensions per weavingloomsdirect: W 115 cm x D 98.5 cm x H 110 cm. weight_lbs flagged due to sourced discrepancy between 127 lb (Amazon, 58 kg) and 132 lb (Woolery, 60 kg).",
+    "brand": "Ashford",
+    "model_name": "Jack Loom",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      38
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "other",
+    "treadle_count": [
+      10
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 100,
+    "reed_dent_included": [
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "beater_type": "bottom_swing",
+    "beater_adjustable": false,
+    "brake_type": "friction",
+    "tie_up_system": "texsolv_loop",
+    "raddle_included": true,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "weight_lbs": 127,
+    "unfolded_depth_inches": 38.8,
+    "mobility_wheels_included": false,
+    "origin_country": "New Zealand"
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Spring II",
+    "_confidence": "high",
+    "_flags": [
+      "treadle_hinge",
+      "weaving_width_options_inches",
+      "heddles_per_shaft_included",
+      "weight_lbs"
+    ],
+    "_verified_by": [
+      "https://www.louet.nl/en/spring-ii",
+      "https://www.eugenetextilecenter.com/spring-treadle-floor-looms",
+      "https://woolery.com/products/louet-spring-ii-floor-loom",
+      "https://louet.zendesk.com/hc/en-us/articles/1500008968502-Spring-2-relevant-measurements-and-information",
+      "https://louet-inc.odoo.com/floor-looms",
+      "https://www.tisseetfile.com/en/products/louet-metier-spring-ii",
+      "https://loftyfiber.com/products/louet-spring-loom",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/louet-spring-floor-looms/louet-spring-loom-90cm-8-shaft/",
+      "https://revolutionfibers.com/products/louet-spring-ii-floor-loom",
+      "https://www.yarnbarn-ks.com/Louet-Spring-II-Loom/productinfo/WLLU-SPRI-/",
+      "https://www.pacificwoolandfiber.com/louet-spring-loom.html"
+    ],
+    "_source_notes": "Spring II (Spring 2) launched 2020 replacing Spring I. Widths and shaft counts confirmed across louet.nl, Eugene Textile Center, Woolery, and Louet support helpdesk. Treadle counts 10 (8-shaft) and 14 (12-shaft) confirmed from multiple retailers. treadle_hinge corrected to front_hinged per Louet Zendesk helpdesk (treadles hinge on foot rail at front of loom); original value 'back_hinged' was incorrect. weaving_width_options_inches corrected to [35.375, 43.25] per consistent retailer listings (35 3/8\" and 43 1/4\"); original values [35.43, 43.31] were imprecise. heddles_per_shaft_included corrected to 100: sources confirm 800 heddles total for 8-shaft 90cm model (800/8=100) and 1200 for 110cm (1200/12=100); original value of 75 was incorrect. weight_lbs populated from multiple independent sources: Spring 90 = 95 lb (43 kg), Spring 110 = 110 lb (50 kg) per loftyfiber, revolutionfibers, and Eugene Textile Center; George Weil lists higher values (70kg/90cm) which may include packaging. Weight is width-dependent; 95 recorded as base (90cm) value with flag retained for range ambiguity. Beater hinge type bottom-swing/floor-hinged confirmed from eugenetextilecenter and janestaffordtextiles. Folded depth 72cm (28.3in) confirmed from Halcyon Yarn.",
+    "brand": "Louet",
+    "model_name": "Spring II",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      35.375,
+      43.25
+    ],
+    "weaving_width_options_cm": [
+      90,
+      110
+    ],
+    "shaft_count_options": [
+      8,
+      12
+    ],
+    "reed_included": true,
+    "frame_material": "beech",
+    "model_series": "Spring",
+    "treadle_count": [
+      10,
+      14
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 100,
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 95,
+    "unfolded_depth_inches": 37.0,
+    "folded_depth_inches": 28.35,
+    "castle_height_inches": 45.25,
+    "breast_beam_height_inches": null,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "floating_breast_beam": true,
+    "beater_type": "bottom_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "texsolv_loop",
+    "shaft_upgrade_available": true,
+    "raddle_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "mobility_wheels_included": false,
+    "fly_shuttle_available": true,
+    "max_shafts_with_upgrade": 12,
+    "lease_sticks_included": true
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Delta",
+    "_confidence": "high",
+    "_flags": [
+      "weaving_width_options_inches__minor_rounding_discrepancy",
+      "folded_depth_inches__minor_rounding_discrepancy",
+      "weight_lbs__specific_to_Delta_110_8shaft_only"
+    ],
+    "_verified_by": [
+      "https://www.louet.nl/en/delta",
+      "https://woolery.com/products/louet-delta-floor-loom",
+      "https://louet.zendesk.com/hc/en-us/articles/1500000756882-Delta-relevant-measurements-and-information",
+      "https://janestaffordtextiles.com/product/louet-delta-floor-loom-110-43-5-8-shaft/",
+      "https://louet-inc.odoo.com/floor-looms",
+      "https://loftyfiber.com/products/louet-delta-loom",
+      "https://www.tabbytreeweaver.com/product/louet-delta-floor-loom/637",
+      "https://www.villagespinweave.com/Louet-Delta-110-130-43-51-Floor-Loom.aspx",
+      "https://www.manualslib.com/manual/1546252/Louet-Delta.html",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/louet-delta-floor-looms/louet-delta-loom-130cm-12-shaft/"
+    ],
+    "_source_notes": "Width/shaft options confirmed from louet.nl and multiple US/CA retailers. Treadle counts per Louet assembly manual (ManualsLib): 10 treadles for 8-shaft confirmed explicitly; 12-shaft = 14 treadles confirmed via extension accessory adding 4 treadles (Louet helpdesk, Tabby Tree). Breast beam height 37.5 in from Louet support helpdesk and Halcyon. Weight confirmed from Louet support helpdesk and Tabby Tree Fiber Arts (Delta 110-8: 194 lb / 88 kg; note this is model-variant-specific). Delta 110 unfolded depth 39.375 in confirmed by multiple sources; folded depth 76 cm = 29.92 in (record value is mathematically correct metric conversion; most English-language sources round to 30 in). weaving_width_options_inches [43.31, 51.18] are direct metric conversions of 110 cm and 130 cm; retailers variously cite 43 1/4 (43.25) or 43 3/8 (43.375) \u2014 minor rounding discrepancy, values not incorrect. Delta made of ash confirmed from loftyfiber, tabbytreeweaver, georgeweil, villagespinweave.",
+    "brand": "Louet",
+    "model_name": "Delta",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      43.31,
+      51.18
+    ],
+    "weaving_width_options_cm": [
+      110,
+      130
+    ],
+    "shaft_count_options": [
+      8,
+      12
+    ],
+    "reed_included": true,
+    "frame_material": "ash",
+    "treadle_count": [
+      10,
+      14
+    ],
+    "treadle_hinge": "back_hinged",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 150,
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 194.0,
+    "unfolded_depth_inches": 39.38,
+    "folded_depth_inches": 29.92,
+    "castle_height_inches": 50.38,
+    "breast_beam_height_inches": 37.5,
+    "foldable": true,
+    "foldable_while_warped": false,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "floating_breast_beam": true,
+    "beater_type": "bottom_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "texsolv_loop",
+    "shaft_upgrade_available": true,
+    "raddle_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "mobility_wheels_included": false,
+    "fly_shuttle_available": true,
+    "max_shafts_with_upgrade": 12,
+    "lease_sticks_included": true
+  },
+  {
+    "_brand": "Louet",
+    "_model": "David III",
+    "_confidence": "high",
+    "_flags": [
+      "beater_type",
+      "floating_breast_beam"
+    ],
+    "_verified_by": [
+      "https://www.louet.nl/en/david-iii",
+      "https://woolery.com/louet-david-iii-floor-loom.html",
+      "https://www.halcyonyarn.com/products/louet-david-3-8-shaft-floor-loom",
+      "https://louet-inc.odoo.com/floor-looms",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/louet-david-floor-looms/louet-david-3-loom-110cm-8-harnesses/",
+      "https://www.villagespinweave.com/Louet-David-III-8-Shaft-Floor-Loom.aspx",
+      "https://paradisefibers.com/products/louet-david-floor-looms",
+      "https://www.lonestarloomroom.com/products/david-loom",
+      "https://www.tisseetfile.com/en-us/products/metier-a-tisser-david-3-louet",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/louet-david-floor-looms/louet-david-loom-70cm-8-shaft/",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/louet-david-floor-looms/louet-david-loom-8-shaft-90cm/"
+    ],
+    "_source_notes": "8-shaft only confirmed from louet.nl and all retailers. Three weaving widths 70/90/110 cm confirmed from louet.nl and louet-inc.odoo.com. Sinking shed / jack_sinking mechanism confirmed from louet.nl ('sinking shed'), Halcyon Yarn, tisseetfile. Weight 66 lb (70cm) and 77 lb (90cm) confirmed from Woolery and Paradise Fibers. Folded depth 34 in from louet.nl and Lone Star Loom Room. George Weil gives 110cm weight/dims. Treadle count 10 from tisseetfile.com/en-us and Lone Star Loom Room. Reed 10 dent stainless and 800 Texsolv heddles (100/shaft) confirmed George Weil (110cm) and Lone Star Loom Room. beater_type 'bottom_swing' flagged: louet.nl David III page explicitly states 'standing beater' for this generation; value likely incorrect for David III. floating_breast_beam flagged: louet-inc.odoo.com references floating breast beam arms as a feature, contradicting false value in record.",
+    "brand": "Louet",
+    "model_name": "David III",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_sinking",
+    "weaving_width_options_inches": [
+      27.56,
+      35.43,
+      43.31
+    ],
+    "weaving_width_options_cm": [
+      70,
+      90,
+      110
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "beech",
+    "treadle_count": [
+      10
+    ],
+    "treadle_hinge": "back_hinged",
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 100,
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 66.0,
+    "unfolded_depth_inches": 33.46,
+    "folded_depth_inches": 34.0,
+    "castle_height_inches": 50.0,
+    "foldable": true,
+    "foldable_while_warped": false,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "floating_breast_beam": false,
+    "beater_type": "bottom_swing",
+    "beater_adjustable": false,
+    "tie_up_system": "texsolv_loop",
+    "shaft_upgrade_available": false,
+    "raddle_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "mobility_wheels_included": false,
+    "fly_shuttle_available": true,
+    "lease_sticks_included": true
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Octado",
+    "_confidence": "high",
+    "_flags": [
+      "weaving_width_options_inches",
+      "shedding_mechanism",
+      "dobby_type",
+      "double_back_beam_available",
+      "weight_lbs"
+    ],
+    "_verified_by": [
+      "https://www.louet.nl/en/octado",
+      "https://woolery.com/louet-octado-floor-loom.html",
+      "https://www.louetdobby.com/dobby-looms/octado-1",
+      "https://louet-inc.odoo.com/dobby-looms",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/louet-octado-floor-looms/louet-octado-loom-70cm-8-shaft-mechanical/",
+      "https://paradisefibers.com/products/louet-dobby-loom-octado-70-90-110",
+      "https://janestaffordtextiles.com/product/louet-octado-floor-loom-110-cm-43/",
+      "https://thespinnerystore.com/products/louet-octado-loom-8-shaft",
+      "https://revolutionfibers.com/products/louet-octado-floor-loom"
+    ],
+    "_source_notes": "8 shafts only, 70/90/110 cm widths confirmed from louet.nl and Woolery and louetdobby.com. Countermarch shed confirmed from louet.nl: 'back beem rises resulting in a large shed'. Weights from louetdobby.com: 70=99 lb, 90=106 lb, 110=117 lb. Dobby options mechanical or electronic confirmed from multiple sources. Reed 10 dent stainless, 600/800/1200 heddles confirmed from georgeweil and loftyfiber. Made of beech confirmed from louet.nl. CORRECTIONS (independent verification): weaving_width_options_inches corrected from [27.56, 35.43, 43.31] to [27.75, 35.38, 43.25] \u2014 multiple independent sources (paradisefibers.com, janestaffordtextiles.com, thespinnerystore.com) consistently publish 27 3/4\", 35 3/8\", 43 1/4\" as Louet's own inch equivalents, not the direct cm-to-inch decimal conversion. shedding_mechanism flagged: value 'dobby_mechanical' is inconsistent with dobby_type 'electronic_interface'; the loom's underlying mechanism is countermarch with selectable mechanical or electronic dobby \u2014 corrected shedding_mechanism to 'countermarch_dobby' and dobby_type to 'mechanical_or_electronic'. double_back_beam_available flagged: paradisefibers.com accessory list includes 'Second warp beam with back beam', suggesting a second warp beam IS available as an option; corrected to true. weight_lbs flagged as weight of 110cm model only (53 kg / 117 lb per paradisefibers.com); lighter widths are 99 lb (70cm) and 106 lb (90cm).",
+    "brand": "Louet",
+    "model_name": "Octado",
+    "loom_category": "dobby_floor_loom",
+    "shedding_mechanism": "countermarch_dobby",
+    "weaving_width_options_inches": [
+      27.75,
+      35.38,
+      43.25
+    ],
+    "weaving_width_options_cm": [
+      70,
+      90,
+      110
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "beech",
+    "treadle_hinge": "not_applicable",
+    "heddle_type": "texsolv",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 117.0,
+    "castle_height_inches": null,
+    "floating_breast_beam": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "bottom_swing",
+    "beater_adjustable": false,
+    "tie_up_system": "not_applicable",
+    "shaft_upgrade_available": false,
+    "raddle_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "mobility_wheels_included": false,
+    "fly_shuttle_available": true,
+    "lease_sticks_included": true,
+    "dobby_type": "mechanical_or_electronic",
+    "compatible_software": [
+      "Fiberworks PCW",
+      "Patternland",
+      "PixieLoom",
+      "Weavemaker",
+      "Pro Weave",
+      "Weave It",
+      "WeavePoint"
+    ]
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Megado",
+    "_confidence": "high",
+    "_flags": [
+      "shedding_mechanism_incomplete_also_available_as_mechanical_dobby",
+      "compatible_software_PixieLoom_unconfirmed_by_independent_sources",
+      "double_back_beam_available_may_be_true_second_warp_beam_listed_as_accessory"
+    ],
+    "_verified_by": [
+      "https://www.louet.nl/en/megado",
+      "https://louet-inc.odoo.com/dobby-looms",
+      "https://www.louetdobby.com/dobby-looms/megado-1",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/louet-megado-floor-looms/louet-megado-loom-32-shaft-electronic-dobby-2-2/",
+      "https://www.yarnorama.com/products/megado-loom",
+      "https://www.eugenetextilecenter.com/megado-dobby-looms",
+      "https://janestaffordtextiles.com/product/louet-megado-floor-loom-110-cm-43-16-shaft/",
+      "https://www.shop.saberfazer.org/en/products/louet-megado-loom",
+      "https://www.wonkyweaver.com/product-page/louet-megan-32-shaft-electronic-dobby-2-0-available-in-5-widths",
+      "https://loftyfiber.com/products/louet-megado-loom"
+    ],
+    "_source_notes": "16 and 32 shafts confirmed from louet.nl and louet-inc.odoo.com; independently reconfirmed by eugenetextilecenter.com, janestaffordtextiles.com, saberfazer.org, wonkyweaver.com, loftyfiber.com. Five widths 40/70/90/110/130 cm confirmed from louet-inc.odoo.com and louet.nl; independently reconfirmed by eugenetextilecenter.com, wonkyweaver.com, loftyfiber.com, janestaffordtextiles.com, saberfazer.org. Ash wood confirmed from Jane Stafford, louet-inc, georgeweil; independently reconfirmed by loftyfiber.com, wonkyweaver.com. Weights: Megado 70=152 lb (16-shaft), 110=185 lb (16-shaft), 130=203 lb (16-shaft); add 29 lb for 32-shaft, confirmed louetdobby.com and georgeweil; independently reconfirmed by eugenetextilecenter.com. Dobby 2.0 electronic: WiFi/tablet connection confirmed from louetdobby.com and janestaffordtextiles; independently reconfirmed by wonkyweaver.com and saberfazer.org. Mechanical dobby includes 60 program bars confirmed louetdobby.com; independently reconfirmed by eugenetextilecenter.com. NOTE: shedding_mechanism set to dobby_electronic only, but all independent sources confirm both mechanical and electronic dobby options are available \u2014 this field is incomplete. PixieLoom not listed in compatible software by eugenetextilecenter.com, janestaffordtextiles.com, or saberfazer.org; only confirmed by georgeweil (already in _verified_by). Second warp beam (double back beam) listed as available accessory by eugenetextilecenter.com, suggesting double_back_beam_available may warrant review.",
+    "brand": "Louet",
+    "model_name": "Megado",
+    "loom_category": "dobby_floor_loom",
+    "shedding_mechanism": "dobby_electronic_or_mechanical",
+    "weaving_width_options_inches": [
+      15.75,
+      27.56,
+      35.43,
+      43.31,
+      51.18
+    ],
+    "weaving_width_options_cm": [
+      40,
+      70,
+      90,
+      110,
+      130
+    ],
+    "shaft_count_options": [
+      16,
+      32
+    ],
+    "reed_included": true,
+    "frame_material": "ash",
+    "treadle_hinge": "not_applicable",
+    "heddle_type": "texsolv",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 185.0,
+    "unfolded_depth_inches": 50.0,
+    "castle_height_inches": 51.63,
+    "floating_breast_beam": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": false,
+    "beater_type": "bottom_swing",
+    "beater_adjustable": false,
+    "tie_up_system": "not_applicable",
+    "shaft_upgrade_available": false,
+    "raddle_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "mobility_wheels_included": false,
+    "fly_shuttle_available": true,
+    "lease_sticks_included": true,
+    "dobby_type": "electronic_wifi_tablet",
+    "compatible_software": [
+      "Fiberworks PCW",
+      "Patternland",
+      "PixieLoom",
+      "Weavemaker",
+      "Pro Weave",
+      "Weave It",
+      "WeavePoint",
+      "Winweef"
+    ]
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Jane",
+    "_confidence": "medium",
+    "_flags": [
+      "weaving_width_options_cm_40cm_not_available_in_16shaft_or_expandable",
+      "weaving_width_options_inches_15.75_not_available_in_16shaft_or_expandable",
+      "weight_lbs_ambiguous_model_and_shaft_version_not_specified",
+      "folded_depth_inches_only_correct_for_8shaft_versions_16shaft_folds_to_21cm_8.25in"
+    ],
+    "_verified_by": [
+      "https://www.louet.nl/en/weven",
+      "https://woolery.com/products/louet-jane-table-loom-8-shaft-expandable",
+      "https://www.eugenetextilecenter.com/jane-table-looms",
+      "https://louet-inc.odoo.com/table-looms",
+      "https://www.georgeweil.com/weaving-looms-and-tools/table-looms-for-weaving/louet-jane-table-looms/louet-jane-16-shaft-table-loom-50cm/",
+      "https://www.louet.nl/en/shop/jane-table-loom-8-or-16-shafts-45394",
+      "https://www.lonestarloomroom.com/products/jane-table-loom",
+      "https://louet.zendesk.com/hc/en-us/articles/1500009059641-Jane-8-relevant-measurements-and-information",
+      "https://www.yarnbarn-ks.com/Louet-Jane-Table-Loom/productinfo/WLLU-JANE-/",
+      "https://www.georgeweil.com/weaving-looms-and-tools/table-looms-for-weaving/louet-jane-table-looms/louet-jane-8-shaft-table-loom-90cm-expandable/"
+    ],
+    "_source_notes": "Widths 40/50/70/90 cm confirmed from eugenetextilecenter, loftyfiber, louet-inc. Note: 40cm only available in non-expandable 8-shaft version per tisseetfile and considered-cloth. Shaft options 8 or 16 confirmed from woolery, loftyfiber, georgeweil, louet.nl. 8-shaft expandable to 16 with conversion kit since 2024 (louet.nl). Weights vary by model and shaft count: per official Louet helpdesk (louet.zendesk.com), Jane 70-8 = 12 kg (26.5 lb); per lonestarloomroom, Jane 70 expandable = 14 kg (31 lb); per yarnbarn-ks, Jane 16-70 = 30 lb. Record weight_lbs=30.0 matches Jane 16-70 only. Folded height: 8-shaft versions fold to 14 cm (5.51 in) confirmed by louet.zendesk, georgeweil, lonestarloomroom; 16-shaft version folds to 21 cm (8.25 in) confirmed by louet.nl and georgeweil. record folded_depth_inches=5.51 is correct only for 8-shaft versions. Made of lacquered beech confirmed from multiple sources. Reed 10 dent stainless confirmed from georgeweil.",
+    "brand": "Louet",
+    "model_name": "Jane",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "lever",
+    "weaving_width_options_inches": [
+      15.75,
+      19.69,
+      27.56,
+      35.43
+    ],
+    "weaving_width_options_cm": [
+      40,
+      50,
+      70,
+      90
+    ],
+    "shaft_count_options": [
+      8,
+      16
+    ],
+    "reed_included": true,
+    "frame_material": "beech",
+    "heddle_type": "texsolv",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 30.0,
+    "beater_type": "overhead_swing",
+    "beater_adjustable": false,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "folded_depth_inches": 5.51,
+    "shaft_upgrade_available": true,
+    "raddle_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "double_back_beam_available": true,
+    "lease_sticks_included": true,
+    "max_shafts_with_upgrade": 16
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Erica",
+    "_confidence": "high",
+    "_flags": [
+      "shaft_count_options_incomplete_missing_3",
+      "weight_lbs_null_variant_specific_values_available"
+    ],
+    "_verified_by": [
+      "https://www.mielkesfiberarts.com/product/erica-weaving-loom-louet/",
+      "https://www.georgeweil.com/weaving-looms-and-tools/table-looms-for-weaving/louet-erica-table-looms/louet-erica-table-loom-30cm-2-shafts/",
+      "https://www.yarn.com/products/louet-erica-table-loom",
+      "https://loftyfiber.com/products/copy-of-erica-table-loom-erica-30-and-erica-50",
+      "https://nwyarns.com/products/louet-erica-table-loom",
+      "https://www.woolyn.com/products/louet-erica-loom",
+      "https://janestaffordtextiles.com/product/louet-erica-table-loom/",
+      "https://threadcollective.com.au/products/louet-erica-table-loom"
+    ],
+    "_source_notes": "Widths 30 and 50 cm confirmed from mielkesfiberarts, georgeweil, webs.com (yarn.com). Shaft options 2 or 4 (2 standard, expandable to 4) confirmed from multiple sources. Made of unlacquered beech and laminated birch per yarn.com and thespinnerystore. Folded 16 cm per yarn.com. Reed 10 dent stainless, 200 Texsolv heddles confirmed from georgeweil and loftyfiber. INDEPENDENT VERIFICATION (nwyarns.com, woolyn.com, janestaffordtextiles.com, threadcollective.com.au): All key specs confirmed. shaft_count_options flagged as incomplete \u2014 3 shafts is also a valid purchasable configuration per nwyarns.com ('each accommodates 2, 3 or 4 harnesses') and woolyn.com. weight_lbs flagged as null but variant-specific weights available per janestaffordtextiles.com: Erica 30 2-shaft = 7.7 lb, Erica 50 2-shaft = 11 lb, Erica 50 4-shaft = 13.5 lb per woolyn.com. Lever shedding confirmed by threadcollective.com.au. beater_type bottom_swing confirmed across all sources. max_shafts_with_upgrade=4 confirmed.",
+    "brand": "Louet",
+    "model_name": "Erica",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "lever",
+    "weaving_width_options_inches": [
+      11.75,
+      19.75
+    ],
+    "weaving_width_options_cm": [
+      30,
+      50
+    ],
+    "shaft_count_options": [
+      2,
+      3,
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "beech_and_laminated_birch",
+    "heddle_type": "texsolv",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": null,
+    "beater_type": "bottom_swing",
+    "beater_adjustable": false,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "shaft_upgrade_available": true,
+    "raddle_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "lease_sticks_included": true,
+    "max_shafts_with_upgrade": 4
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Klik",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://louet-inc.odoo.com/table-looms",
+      "https://woolery.com/weaving/weaving-looms/table-looms.html",
+      "https://www.weavinggallery.com/en/table-looms/76-louet-klik.html",
+      "https://revolutionfibers.com/products/louet-klik-table-loom",
+      "https://woolery.com/louet-klik-table-loom.html",
+      "https://www.shop.saberfazer.org/en/products/louet-klik-40-loom",
+      "https://maryberryfiberart.com/louet-looms/"
+    ],
+    "_source_notes": "Weaving width 40 cm (15.75 in) confirmed by woolery.com direct Klik product page and weavinggallery.com. Shaft options 4/8/12/16 confirmed by woolery.com listing and louet-inc accessories page. Mechanism is manual lever (spring-and-click side handles) confirmed by weavinggallery.com and kellycasanova. Reed included resolved to TRUE: weavinggallery.com and saberfazer.org (official Louet Portugal dealer) both explicitly list a stainless steel 40-10 reed as included in the box. Frame material beech confirmed by saberfazer.org ('varnished solid beech'). No weight_lbs field present in record; not applicable. Confidence upgraded to high \u2014 all key fields confirmed by 2+ independent sources, previously flagged fields resolved.",
+    "brand": "Louet",
+    "model_name": "Klik",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "lever",
+    "weaving_width_options_inches": [
+      15.75
+    ],
+    "weaving_width_options_cm": [
+      40
+    ],
+    "shaft_count_options": [
+      4,
+      8,
+      12,
+      16
+    ],
+    "reed_included": true,
+    "frame_material": "beech",
+    "shaft_upgrade_available": true,
+    "foldable": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "max_shafts_with_upgrade": 16
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Magic Dobby",
+    "_confidence": "high",
+    "_flags": [
+      "compatible_software"
+    ],
+    "_verified_by": [
+      "https://www.louet.nl/en/magic-dobby",
+      "https://www.louetdobby.com/dobby-looms/magic-dobby",
+      "https://louet-inc.odoo.com/dobby-looms",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/louet-magic-dobby-looms/louet-magic-dobby-loom-70cm-24-shaft/",
+      "https://www.shop.saberfazer.org/en/products/louet-magic-dobby-70-24-loom",
+      "https://www.villagespinweave.com/Louet-Magic-Dobby-24-Harness-Looms.aspx",
+      "https://www.considered-cloth.com/product-page/louet-magic-dobby-loom",
+      "https://weavingloomsdirect.com/products/louet-magic-dobby",
+      "https://loftyfiber.com/products/louet-magic-24-shaft-dobby-loom"
+    ],
+    "_source_notes": "24 shafts and widths 40/70 cm confirmed from louet.nl and louetdobby.com. Made of lacquered beech confirmed from louet.nl and villagespinweave.com. Dimensions/weights: MD40 58x100x140 cm 25 kg (55 lb), MD70 88x100x140 cm 33 kg (73 lb) confirmed from louetdobby.com and saberfazer; depth 100cm and height 140cm also confirmed by georgeweil.com. Raddle and 10 dent reed included per louet.nl. Mechanical or electronic dobby option. The loom functions as both table loom and floor loom via included floor stand. Foldable confirmed from louet.nl ('front and backbeam can be folded'). Ratchet tension system confirmed by considered-cloth.com and villagespinweave.com. compatible_software flagged: PixieLoom confirmed by considered-cloth.com; WeavePoint listed by louet-inc.odoo.com but absent from record \u2014 field may be incomplete.",
+    "brand": "Louet",
+    "model_name": "Magic Dobby",
+    "loom_category": "dobby_floor_loom",
+    "shedding_mechanism": "dobby_mechanical",
+    "weaving_width_options_inches": [
+      15.75,
+      27.56
+    ],
+    "weaving_width_options_cm": [
+      40,
+      70
+    ],
+    "shaft_count_options": [
+      24
+    ],
+    "reed_included": true,
+    "frame_material": "beech",
+    "treadle_hinge": "not_applicable",
+    "heddle_type": "texsolv",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 73.0,
+    "unfolded_depth_inches": 39.38,
+    "castle_height_inches": 55.12,
+    "foldable": true,
+    "foldable_while_warped": false,
+    "brake_type": "ratchet",
+    "floating_breast_beam": false,
+    "beater_type": "pivoting_floor_hinge",
+    "beater_adjustable": false,
+    "tie_up_system": "not_applicable",
+    "shaft_upgrade_available": false,
+    "raddle_included": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "mobility_wheels_included": false,
+    "lease_sticks_included": true,
+    "dobby_type": "mechanical_program_bar",
+    "compatible_software": [
+      "Fiberworks PCW",
+      "Patternland",
+      "PixieLoom",
+      "Weavemaker",
+      "Pro Weave",
+      "Weave It"
+    ]
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Lisa",
+    "_confidence": "high",
+    "_flags": [
+      "shuttle_included_small_only"
+    ],
+    "_verified_by": [
+      "https://woolery.com/products/louet-lisa-weaving-loom",
+      "https://revolutionfibers.com/products/louet-lisa-frame-weaving-loom-1",
+      "https://www.louet.nl/en/lisa",
+      "https://threadcollective.com.au/products/louet-lisa-tapestry-loom",
+      "https://spincityshop.com/products/louet-lisa-loom",
+      "https://www.wonkyweaver.com/product-page/lou%C3%ABt-lisa-frame-loom-tapestry-loom",
+      "https://www.georgeweil.com/weaving-looms-and-tools/tapestry-weaving-frames/louet-lisa-frame-looms/"
+    ],
+    "_source_notes": "Four sizes confirmed from Woolery, revolutionfibers, threadcollective: Small 20x25 cm, Medium 40x60 cm, Large 50x75 cm, XL 60x90 cm. Weaving widths are the width dimension of the frame (warp width): Small ~7.87 in, Medium ~15.75 in, Large ~19.69 in, XL ~23.62 in. No shafts (frame loom / no shed device). Made of solid beech per threadcollective. Small includes shuttle and shed stick per spincityshop and wonkyweaver; larger sizes do NOT include a shuttle (wonkyweaver explicitly advises purchasing one separately) \u2014 shuttle_included flagged as size-dependent. Assembly required (kit with instructions) confirmed by spincityshop and georgeweil.",
+    "brand": "Louet",
+    "model_name": "Lisa",
+    "loom_category": "tapestry_loom",
+    "shedding_mechanism": "no_shed_device",
+    "weaving_width_options_inches": [
+      7.87,
+      15.75,
+      19.69,
+      23.62
+    ],
+    "weaving_width_options_cm": [
+      20,
+      40,
+      50,
+      60
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": false,
+    "frame_material": "beech",
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands",
+    "shuttle_included": true,
+    "shuttle_included_note": "Shuttle (stick shuttle) included with Small size only; not included with Medium, Large, or XL sizes.",
+    "foldable": false
+  },
+  {
+    "_brand": "Louet",
+    "_model": "Harmony",
+    "_confidence": "high",
+    "_flags": [
+      "frame_material",
+      "heddle_type"
+    ],
+    "_verified_by": [
+      "https://woolery.com/products/louet-harmony-table-loom",
+      "https://www.wonkyweaver.com/product-page/new-louet-harmony-table-loom-loom-only",
+      "https://revolutionfibers.com/collections/louet-weaving-looms/products/louet-harmony-table-loom-terracotta",
+      "https://www.georgeweil.com/weaving-looms-and-tools/table-looms-for-weaving/louet-harmony-table-looms/",
+      "https://weavingloomsdirect.com/products/louet-harmony-8-schaft-tischwebstuhl",
+      "https://thespinnerystore.com/products/new-louet-harmony-loom",
+      "https://loftyfiber.com/products/louet-harmony-loom",
+      "https://nwyarns.com/products/harmony-loom",
+      "https://louet.zendesk.com/hc/en-us/sections/360008488653-Assembly-Instructions"
+    ],
+    "_source_notes": "New model as of 2024-2025. 8 shafts only confirmed from Woolery, Wonky Weaver, Revolution Fibers, Berliner Webst\u00fchle (weavingloomsdirect.com), The Spinnery Store, LoftyFiber, Northwest Yarns. Weaving width 50 cm (19.69 in / approx 20 in) confirmed from Woolery, Revolution Fibers, George Weil, Berliner Webst\u00fchle. Made of beech plywood per Revolution Fibers (multiple listings). Foldable confirmed per George Weil and Revolution Fibers. Reed 10 dent stainless confirmed from Woolery (loom-only and complete set listings). Available in Light Blue and Terracotta colors. Shaft mechanism is lever-actuated (consistent with Louet table loom family). Assembly required confirmed by official Louet helpdesk assembly instructions page. frame_material flagged: record value 'beech' is a simplification \u2014 all sources specify 'beech plywood', not solid beech as used in Jane/Erica/Spring. heddle_type flagged: Harmony-specific heddle type (Texsolv vs. wire) not confirmed by any source found; loom ships with 400 heddles but type unspecified. reed_dent_included flag removed: 10 dent now confirmed by 2+ independent sources.",
+    "brand": "Louet",
+    "model_name": "Harmony",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "lever",
+    "weaving_width_options_inches": [
+      19.69
+    ],
+    "weaving_width_options_cm": [
+      50
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "beech_plywood",
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "foldable": true,
+    "shaft_upgrade_available": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Netherlands"
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Compact",
+    "_confidence": "high",
+    "_flags": [
+      "folded_depth_inches_minor_discrepancy_21in_vs_18in",
+      "weight_lbs_minor_discrepancy_72lbs_vs_84lbs",
+      "reed_material_unverified_carbon_vs_standard_steel"
+    ],
+    "_verified_by": [
+      "https://www.pacificwoolandfiber.com/leclerc-compact-loom.html",
+      "https://woolery.com/leclerc-compact-floor-loom.html",
+      "https://www.eugenetextilecenter.com/compact-24",
+      "https://shop.sweetgeorgiayarns.com/products/leclerc-compact-floor-loom",
+      "https://www.camillavalleyfarm.com/weave/looms.htm",
+      "https://www.aandbfiberworks.com/new-products-2/p/leclerc-compact-24-loom",
+      "https://revolutionfibers.com/products/leclerc-compact-floor-loom",
+      "https://www.tisseetfile.com/en/products/metier-tisser-leclerc-compact",
+      "https://gathertextiles.com/products/compact-24-floor-loom"
+    ],
+    "_source_notes": "Confirmed from manufacturer site (leclerclooms.com), Eugene Textile Center, Pacific Wool and Fiber, Woolery, SweetGeorgia, Revolution Fibers. 4s weight 84 lbs confirmed by Pacific Wool and Eugene Textile Center spec sheet (84 lbs / 38 kg); Revolution Fibers lists ~72 lbs (minor discrepancy, likely approximate or 8s configuration). Folded depth 18\" confirmed by Eugene Textile Center and A&B Fiberworks specs; Revolution Fibers lists 21\" folded (minor discrepancy, flagged). Treadle count [6,10] confirmed by A&B Fiberworks, Tisse et File, Gather Textiles, and Revolution Fibers. Reed described as 'steel' across sources; 'carbon_steel' designation unconfirmed \u2014 flagged. 600 heddles total (150/shaft for 4s) confirmed by Eugene Textile Center and A&B Fiberworks. Raddle not in standard equipment list per A&B Fiberworks, consistent with raddle_included: false.",
+    "brand": "Leclerc",
+    "model_name": "Compact",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      24
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      6,
+      10
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 150,
+    "reed_dent_included": [
+      12
+    ],
+    "reed_material": "steel",
+    "weight_lbs": 84,
+    "unfolded_depth_inches": 35,
+    "folded_depth_inches": 18,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "mobility_wheels_included": true,
+    "shaft_upgrade_available": true,
+    "max_shafts_with_upgrade": 8,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "tie_up_system": "wire_hook",
+    "fly_shuttle_available": false
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Nilus II",
+    "_confidence": "medium",
+    "_flags": [
+      "weaving_width_options_inches_27_not_confirmed_for_nilus_ii",
+      "shedding_mechanism_single_value_incomplete_multi_mechanism_loom",
+      "weight_lbs_136_is_36in_model_only_not_single_loom_spec",
+      "heddles_per_shaft_included_188_likely_incorrect_188_is_60in_weight_lbs",
+      "treadle_hinge_roller_rocker_applies_to_back_hinge_variant_only",
+      "folded_depth_inches_25_conflicts_with_tisseetfile_27.5in_for_nilus_ii"
+    ],
+    "_verified_by": [
+      "https://www.pacificwoolandfiber.com/leclerc-nilus-loom.html",
+      "https://www.camillavalleyfarm.com/weave/nilusii.htm",
+      "https://loftyfiber.com/products/leclerc-nilus-ii-jack-type-back-hinged-treadles",
+      "https://loftyfiber.com/products/leclerc-nilus-ii-countermarch-back-hinged-treadles",
+      "https://halcyonyarn.com/weaving/62103772/leclerc-nilus-ii-72-4_shaft-_-counterbalance-loom",
+      "https://gathertextiles.com/products/nilus-ii-floor-loom-36-45-60",
+      "https://shop.sweetgeorgiayarns.com/products/leclerc-nilus-ii-floor-loom",
+      "https://www.tisseetfile.com/en/products/leclerc-nilus-2-metier-tisser-4-cadres",
+      "https://www.tisseetfile.com/en/products/products-leclerc-nilus-2-metier-tisser-8-cadres",
+      "https://halcyonyarn.com/weaving/62103200/leclerc-nilus-ii_36--8_shaft-loom-back-hinged-treadles",
+      "http://www.leclerclooms.com/cat_leus/US23_26.pdf",
+      "https://www.camillavalleyfarm.com/leclercloomhelp/nilus_vs_nilusii_weaving_loom.htm"
+    ],
+    "_source_notes": "Available in Jack, Jack with Back-Hinge Treadles, Counterbalance, and Countermarch. Nilus II standard widths are 36/45/60/72 per Camilla Valley Farm (nilusii.htm), Tisse et File (4-shaft), Gather Textiles, and SweetGeorgia. The 27in width is specific to the original Nilus model, not the Nilus II \u2014 confirmed by Camilla Valley Farm comparison page (nilus_vs_nilusii). Halcyon Yarn (jack 8-shaft page) lists 27in for the Nilus II but this appears to be a cross-model data error. 72in is counterbalance-only per SweetGeorgia. 4-shaft=6 treadles, 8-shaft=10 treadles confirmed by Camilla Valley Farm nilusii.htm and Loftyfiber countermarch page. Weight 136/154/188 lbs for 36/45/60in confirmed by Halcyon Yarn (62103200). Heddles included are 1000/1200/1500 total (not per shaft) by width 36/45/60 per Loftyfiber and Pacific Wool. heddles_per_shaft_included value of 188 is incorrect \u2014 188 is the weight_lbs of the 60in model. Folded depth: record states 25in, but Tisse et File states 27.5in (70cm) for Nilus II; 25in is associated with the original Nilus \u2014 discrepancy unresolved. Official Leclerc 2023 catalog PDF confirms jack/back-hinge/countermarch variants and 36/45/60 widths for jack models. Frame material solid Canadian maple confirmed by Gather Textiles and SweetGeorgia.",
+    "brand": "Leclerc",
+    "model_name": "Nilus II",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      36,
+      45,
+      60,
+      72
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      6,
+      10
+    ],
+    "treadle_hinge": "roller_rocker",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 188,
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12
+    ],
+    "reed_material": "carbon_steel",
+    "weight_lbs": 136,
+    "unfolded_depth_inches": 38,
+    "folded_depth_inches": 25,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "mobility_wheels_included": false,
+    "shaft_upgrade_available": true,
+    "max_shafts_with_upgrade": 8,
+    "fly_shuttle_available": true,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "tie_up_system": "wire_hook"
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Artisat",
+    "_confidence": "high",
+    "_flags": [
+      "heddles_per_shaft_included"
+    ],
+    "_verified_by": [
+      "https://woolery.com/products/leclerc-artisat-floor-loom",
+      "https://gathertextiles.com/products/leclerc-artisat-floor-loom-36",
+      "https://paradisefibers.com/products/leclerc-artisat-floor-loom",
+      "https://www.pacificwoolandfiber.com/leclerc-artisat-loom.html",
+      "http://www.leclerclooms.com/cat_leus/CAN15_17.pdf",
+      "https://www.tisseetfile.com/en/products/metier-tisser-leclerc-artisat-4-8-cadres",
+      "https://www.artifilum.com/en/artisat-loom-leclerc-loom.html",
+      "https://www.aandbfiberworks.com/new-products-2/p/leclerc-artisat-36",
+      "https://halcyonyarn.com/weaving/62639820/leclerc-artisat-36-4_shaft-6_treadle-floor-loom"
+    ],
+    "_source_notes": "36 in weaving width only. 4s or 8s shaft options. 4s folds to 14 in deep; 8s folds to 17 in (Gather Textiles). 4s weight 95 lbs, 8s weight 135 lbs (Gather Textiles). Stainless steel reed 12 dpi confirmed by leclerclooms.com PDF. Optional double back beam confirmed by artifilum.com. 8s back-hinge treadle version also available as an order option. HEDDLE FLAG: artifilum.com and tisseetfile.com list 1000 total wire heddles included; heddles_per_shaft_included: 250 is accurate only for the 4-shaft model (1000 / 4 = 250). For the 8-shaft model the per-shaft count would be 125 (1000 / 8). Field may need to be split by shaft configuration or clarified as total heddle count.",
+    "brand": "Leclerc",
+    "model_name": "Artisat",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      36
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      6,
+      10
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 250,
+    "reed_dent_included": [
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 95,
+    "unfolded_depth_inches": 32,
+    "folded_depth_inches": 14,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "mobility_wheels_included": false,
+    "shaft_upgrade_available": true,
+    "max_shafts_with_upgrade": 8,
+    "fly_shuttle_available": false,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "tie_up_system": "wire_hook"
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Fanny II",
+    "_confidence": "medium",
+    "_flags": [
+      "unfolded_depth_inches",
+      "foldable_while_warped",
+      "weaving_width_options_inches"
+    ],
+    "_verified_by": [
+      "https://shop.sweetgeorgiayarns.com/products/leclerc-fanny-ii-loom",
+      "https://gathertextiles.com/products/fanny-ii-floor-loom-36-45-60",
+      "https://www.gistyarn.com/products/leclerc-fanny-ii-4-harness-counterbalance-floor-loom",
+      "https://threadcollective.com.au/products/leclerc-fanny-2-loom",
+      "http://www.leclerclooms.com/cat_leus/US19_20.pdf",
+      "https://woolery.com/products/leclerc-fanny-ii-floor-loom",
+      "https://woolery.com/weaving-looms/weaving-looms-by-manufacturer/leclerc-looms/leclerc-floor-looms.html",
+      "https://www.camillavalleyfarm.com/weave/fannyii.htm",
+      "https://www.tisseetfile.com/en/products/leclerc-fanny-2-metier-tisser-plancher-4-cadres"
+    ],
+    "_source_notes": "4-shaft counterbalance only confirmed across all sources. Treadle count of 6 confirmed by The Woolery product page and Gist Yarn. 12-dent carbon steel reed confirmed by The Woolery. Folded depth of 25 inches confirmed by Tisse et File. DISCREPANCY: unfolded_depth_inches recorded as 36.5 in but Tisse et File gives 31.25 in (79 cm) open depth \u2014 flagged for review. DISCREPANCY: foldable_while_warped recorded as false but Tisse et File states the loom folds to 25 in even with a project on the loom \u2014 flagged, likely should be true. DISCREPANCY on 27 in width: Camilla Valley Farm and Tisse et File list 27 in as a standard available width alongside 36/45/60, while SweetGeorgia and The Woolery treat it as special order only \u2014 flagged. Double warp beam confirmed available but Woolery notes it applies to 45 in and wider only. Friction brake confirmed by Tisse et File.",
+    "brand": "Leclerc",
+    "model_name": "Fanny II",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "counterbalance",
+    "weaving_width_options_inches": [
+      27,
+      36,
+      45,
+      60
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      6
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "reed_dent_included": [
+      12
+    ],
+    "reed_material": "carbon_steel",
+    "unfolded_depth_inches": 31.25,
+    "folded_depth_inches": 25,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "mobility_wheels_included": false,
+    "shaft_upgrade_available": false,
+    "fly_shuttle_available": true,
+    "shuttle_included": false,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "tie_up_system": "wire_hook"
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Mira II",
+    "_confidence": "high",
+    "_flags": [
+      "weaving_width_options_inches_27in_unconfirmed_by_most_retailers"
+    ],
+    "_verified_by": [
+      "https://shop.sweetgeorgiayarns.com/products/leclerc-mira-ii-floor-loom",
+      "https://woolery.com/leclerc-mira-ii-floor-loom.html",
+      "https://www.camillavalleyfarm.com/weave/miraii.htm",
+      "https://gathertextiles.com/products/mira-ii-floor-loom-36-45-60",
+      "https://www.tisseetfile.com/en/products/metier-tisser-leclerc-mira-2",
+      "http://www.leclerclooms.com/draw_inst/MIRAII.pdf",
+      "https://www.gistyarn.com/products/leclerc-mira-ii-floor-loom",
+      "https://www.halcyonyarn.com/products/leclerc-mira-ii-4-shaft-counter-balanced-floor-loom",
+      "https://revolutionfibers.com/products/leclerc-mira-ii-floor-loom",
+      "https://bountifulspinweave.com/c/leclerc-looms.html"
+    ],
+    "_source_notes": "4-shaft counterbalance, fixed (non-folding) frame. Camilla Valley Farm lists 27/36/45/60 in widths; most retailers (SweetGeorgia, Woolery, Gather Textiles, Tisse et File, Gist Yarn, Bountiful, Revolution Fibers) list only 36/45/60 in \u2014 27 in width flagged as uncertain/possibly discontinued or special-order. Treadle count of 6 confirmed by official Leclerc MIRA II assembly PDF parts list. Friction brake and ratchet cloth beam confirmed by multiple sources. Fixed frame means loom does not fold. Fly shuttle available. Sectional beam available via optional rake conversion. Solid Canadian maple construction confirmed. Manufactured in Quebec, Canada.",
+    "brand": "Leclerc",
+    "model_name": "Mira II",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "counterbalance",
+    "weaving_width_options_inches": [
+      27,
+      36,
+      45,
+      60
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      6
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12
+    ],
+    "reed_material": "carbon_steel",
+    "foldable": false,
+    "foldable_while_warped": false,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "mobility_wheels_included": false,
+    "shaft_upgrade_available": false,
+    "fly_shuttle_available": true,
+    "shuttle_included": false,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "tie_up_system": "wire_hook"
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Dorothy",
+    "_confidence": "high",
+    "_flags": [
+      "weight_lbs_is_base_model_only",
+      "heddles_per_shaft_included_is_model_dependent",
+      "assembly_required_ambiguous_shaft_box_installation"
+    ],
+    "_verified_by": [
+      "https://www.camillavalleyfarm.com/weave/woolery.com/products/leclerc-dorothy-table-loom",
+      "https://www.pacificwoolandfiber.com/leclerc-dorothy-table-loom.html",
+      "https://gathertextiles.com/products/dorothy-15-table-loom",
+      "https://www.knittingwoolshop.com/product/leclerc-dorothy-table-loom-198149/",
+      "https://revolutionfibers.com/collections/leclerc-looms/products/leclerc-dorothy-table-loom",
+      "https://paradisefibers.com/products/leclerc-dorothy-15-3-4-4-shaft-table-loom",
+      "https://paradisefibers.com/products/leclerc-dorothy-24-4-shaft-table-loom",
+      "https://woolery.com/leclerc-24-dorothy-table-loom-treadle-stand.html",
+      "https://www.halcyonyarn.com/products/leclerc-table-loom-stand-for-dorothy-24-inch-4-shaft-with-side-shelves-6-treadles",
+      "http://www.leclerclooms.com/draw_inst/doroth16.pdf"
+    ],
+    "_source_notes": "Available in 15.75 in and 24 in widths; 4, 8, or 12 shaft configurations confirmed across multiple independent sources including Leclerc's own instruction PDF (doroth16.pdf). 4s folds flat while warped; 8s and 12s require shaft box removal for storage. Weights per knittingwoolshop.com spec table: 15.75in 4s=16 lbs, 15.75in 8s=25 lbs, 24in 4s=22 lbs, 24in 8s=30 lbs \u2014 weight_lbs field records base (15.75in 4s) value only; flagged as model-dependent. Heddles: 15.75in models ship with 400 total wire heddles (100/shaft for 4s); 24in models ship with 400 (Paradise Fibers) or 600 (Woolery) \u2014 heddles_per_shaft_included=100 is accurate for 15.75in 4s baseline but is model-dependent; flagged. 12 dpi stainless steel reed confirmed by Leclerc PDF, Paradise Fibers, Revolution Fibers. Treadle floor stand (6 treadles, 4-shaft 24in only) confirmed by Woolery treadle stand page and Halcyon Yarn. Shaft box installation requires screwing sections to frame per Leclerc PDF \u2014 assembly_required=false may understate minor assembly; flagged. Sectional beam 24in only confirmed. Double warp beam available confirmed by Camilla Valley Farm. Manufactured in Plessisville, QC, Canada confirmed by Leclerc PDF.",
+    "brand": "Leclerc",
+    "model_name": "Dorothy",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "lever",
+    "weaving_width_options_inches": [
+      15.75,
+      24
+    ],
+    "shaft_count_options": [
+      4,
+      8,
+      12
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 100,
+    "reed_dent_included": [
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 16,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "shaft_upgrade_available": true,
+    "max_shafts_with_upgrade": 12,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Voyageur",
+    "_confidence": "high",
+    "_flags": [
+      "weight_lbs",
+      "brake_type",
+      "assembly_required"
+    ],
+    "_verified_by": [
+      "https://www.camillavalleyfarm.com/weave/voyageur.htm",
+      "https://woolery.com/leclerc-voyageur-table-loom.html",
+      "https://gathertextiles.com/products/voyageur-24-4-8-12-or-16-shafts-table-loom",
+      "https://paradisefibers.com/products/leclerc-voyageur-24-table-loom-4-to-16-shaft-options",
+      "https://loftyfiber.com/products/voyageur-15-3-4-8-shaft-table-loom",
+      "https://www.yarnbarn-ks.com/Leclerc-Voyageur-Table-Loom/productinfo/WLLC-VOYT-/",
+      "https://paradisefibers.com/products/leclerc-voyageur-table-loom-15-75-inch-4-shaft",
+      "https://www.gistyarn.com/products/leclerc-24-voyager-table-loom",
+      "https://www.halcyonyarn.com/products/leclerc-voyageur-table-loom"
+    ],
+    "_source_notes": "Three widths: 9.5 in (8s only), 15.75 in (4, 8, 12s), 24 in (4, 8, 12, 16s). 9.5 and 15.75 in come assembled; 24 in requires assembly. 9.5 and 15.75 in use ratchet/pawl warp beam brake; 24 in uses friction brake (confirmed Camilla Valley Farm, Yarn Barn of Kansas). weight_lbs field flagged: 16.5 lbs confirmed only for the 15.75 in 4-shaft model (Paradise Fibers); 15.75 in 8-shaft weighs ~20.5 lbs (LoftyFiber); 24 in 16-shaft weighs 39 lbs (Heritage Spinning). brake_type field flagged: 'friction' is only accurate for the 24 in model; 9.5 and 15.75 in models use ratchet/pawl. assembly_required flagged: only the 24 in model requires assembly; 9.5 and 15.75 in come assembled (Yarn Barn of Kansas, Woolery). Carry bag included across all models confirmed (Yarn Barn of Kansas, Halcyon Yarn, Paradise Fibers). Includes stainless steel 12 dpi reed confirmed by Yarn Barn of Kansas and Gist Yarn. Frame material solid Canadian maple confirmed by Gist Yarn. Sectional beam available for 24 in only (Camilla Valley Farm).",
+    "brand": "Leclerc",
+    "model_name": "Voyageur",
+    "loom_category": "table_loom",
+    "shedding_mechanism": "lever",
+    "weaving_width_options_inches": [
+      9.5,
+      15.75,
+      24
+    ],
+    "shaft_count_options": [
+      4,
+      8,
+      12,
+      16
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "heddle_type": "wire",
+    "reed_dent_included": [
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 16.5,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "model_dependent",
+    "brake_type_by_width": {
+      "9.5_in": "ratchet",
+      "15.75_in": "ratchet",
+      "24_in": "friction"
+    },
+    "sectional_beam_available": true,
+    "double_back_beam_available": false,
+    "assembly_required": true,
+    "assembly_required_note": "Only the 24 in model requires assembly; 9.5 in and 15.75 in models ship pre-assembled.",
+    "finish_required": false,
+    "origin_country": "Canada",
+    "shaft_upgrade_available": false,
+    "carry_bag_included": true,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Bergere",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://www.camillavalleyfarm.com/weave/bergere.htm",
+      "https://gathertextiles.com/products/rigid-heddle-loom-bergere-24-leclerc",
+      "https://woolery.com/leclerc-bergere-rigid-heddle-loom.html",
+      "https://www.halcyonyarn.com/products/leclerc-bergere-rigid-heddle-loom-24-inch",
+      "https://www.knittingwoolshop.com/product/leclerc-bergere-rigid-heddle-loom-198147/",
+      "https://www.softfibers.com/product/leclerc-bergere-rigid-heddle-loom/"
+    ],
+    "_source_notes": "24 in weaving width only. Ships with 6-dent high-impact styrene rigid heddle. Available in single or double heddle configuration. Dimensions confirmed by multiple sources: 26.75 in wide, 20 in deep, 11.5 in high. Ratchet brakes on both beams confirmed by Halcyon Yarn and Camilla Valley Farm. Weight 10 lbs confirmed by multiple sources including softfibers.com. All key fields independently re-confirmed by softfibers.com (Jan 2026).",
+    "brand": "Leclerc",
+    "model_name": "Bergere",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      24
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "heddle_type": "rigid_heddle_bar",
+    "reed_dent_included": [
+      6
+    ],
+    "reed_material": "other",
+    "weight_lbs": 10,
+    "unfolded_depth_inches": 20,
+    "foldable": false,
+    "brake_type": "ratchet",
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Diana",
+    "_confidence": "high",
+    "_flags": [
+      "warranty_years: record value of 2 reflects Camilla Valley Farm retailer extension (1 yr Leclerc + 1 yr CVF); Leclerc manufacturer warranty is 1 year per leclerclooms.com",
+      "reed_material: minor source conflict \u2014 Woolery lists galvanized steel; manufacturer PDF (leclerclooms.com), Revolution Fibers, and Frank Herring all confirm stainless steel 12 dpi; stainless_steel value retained as correct",
+      "lease_sticks_included: manufacturer standard equipment (leclerclooms.com PDF, Frank Herring) does not list lease sticks; Woolery bundle includes them \u2014 value may be retailer-dependent"
+    ],
+    "_verified_by": [
+      "https://www.camillavalleyfarm.com/weave/diana.htm",
+      "https://woolery.com/products/leclerc-diana-24-16-shaft-computer-dobby-loom",
+      "https://gathertextiles.com/products/diana-16-shaft-computer-dobby-loom-24",
+      "https://www.frankherringandsons.com/product/leclerc-diana-24in/",
+      "http://www.leclerclooms.com/16sh.htm",
+      "https://revolutionfibers.com/products/leclerc-diana-computer-dobby-loom",
+      "http://www.leclerclooms.com/draw_inst/diane16s2014.pdf",
+      "http://www.leclerclooms.com/geninfo.htm"
+    ],
+    "_source_notes": "24 in weaving width only, 16 shafts. Functions as table loom or floor loom with 2-treadle base. Computer dobby with electronic interface box. Compatible with Mac and PC. Dimensions from Frank Herring: 28x36x31.5 in open, folds to 28x20x31 in. Stainless steel 12 dpi reed confirmed by manufacturer PDF (leclerclooms.com/draw_inst/diane16s2014.pdf) and Revolution Fibers; Woolery lists galvanized steel \u2014 manufacturer PDF treated as authoritative. Leclerc manufacturer warranty is 1 year (leclerclooms.com/geninfo.htm); 2-year value in record reflects Camilla Valley Farm retailer extension only. Lease sticks not listed in manufacturer standard equipment per PDF or Frank Herring; present in Woolery retailer bundle \u2014 retailer-dependent inclusion.",
+    "brand": "Leclerc",
+    "model_name": "Diana",
+    "loom_category": "dobby_floor_loom",
+    "shedding_mechanism": "dobby_electronic",
+    "weaving_width_options_inches": [
+      24
+    ],
+    "shaft_count_options": [
+      16
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      2
+    ],
+    "treadle_hinge": "back_hinged",
+    "heddle_type": "inserted_eye",
+    "reed_dent_included": [
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "unfolded_depth_inches": 36,
+    "folded_depth_inches": 20,
+    "foldable": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "warranty_years": 1,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "dobby_type": "electronic_interface",
+    "compatible_software": [
+      "Fiberworks PCW",
+      "WeaveMaker",
+      "SwiftWeave",
+      "ProWeave",
+      "Weavebird Loom Driver"
+    ]
+  },
+  {
+    "_brand": "Leclerc",
+    "_model": "Weavebird v2",
+    "_confidence": "high",
+    "_flags": [
+      "weaving_width_options_inches_72_not_on_manufacturer_page",
+      "shedding_mechanism_countermarch_aspect_not_reflected"
+    ],
+    "_verified_by": [
+      "http://www.leclerclooms.com/weavebird.htm",
+      "https://woolery.com/products/leclerc-weavebird-v2-loom",
+      "https://www.camillavalleyfarm.com/weave/weavebird.htm",
+      "https://www.pacificwoolandfiber.com/leclerc-weavebird-loom.html",
+      "https://weavebird.com/",
+      "https://www.halcyonyarn.com/products/leclerc-weavebird-v2-floor-loom"
+    ],
+    "_source_notes": "Available in 27/36/45/60/72 in widths (Woolery and Halcyon Yarn confirm 72 in option; manufacturer page leclerclooms.com lists only 27/36/45/60 \u2014 possible outdated listing) and 16/24/32 shaft configurations. Computer-dobby with countermarch physical shed mechanism (centre-closed dobby + countermarch counterweight system) with 2 back-hinged treadles. Confirmed by manufacturer site and multiple dealers. Stainless steel reed buyer's choice 6/8/10/12 dpi included. 14 versions available per Camilla Valley Farm v2 page (older weavebird.com lists 12 versions for original Weavebird). 2-year manufacturer warranty on all parts including electronics; Camilla Valley Farm extends to 3 years. shedding_mechanism field value 'dobby_electronic' is accurate as a broad category but does not capture the underlying countermarch action documented across all sources.",
+    "brand": "Leclerc",
+    "model_name": "Weavebird v2",
+    "loom_category": "dobby_floor_loom",
+    "shedding_mechanism": "dobby_electronic_countermarch",
+    "weaving_width_options_inches": [
+      27,
+      36,
+      45,
+      60,
+      72
+    ],
+    "shaft_count_options": [
+      16,
+      24,
+      32
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      2
+    ],
+    "treadle_hinge": "back_hinged",
+    "heddle_type": "inserted_eye",
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "foldable": false,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "Canada",
+    "warranty_years": 2,
+    "fly_shuttle_available": true,
+    "shuttle_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "dobby_type": "electronic_interface",
+    "compatible_software": [
+      "Fiberworks PCW",
+      "WeaveMaker",
+      "SwiftWeave",
+      "ProWeave",
+      "Weavebird Loom Driver"
+    ]
+  },
+  {
+    "_brand": "Harrisville Designs",
+    "_model": "Model A4",
+    "_confidence": "high",
+    "_flags": [
+      "reed_dent_included"
+    ],
+    "_verified_by": [
+      "https://harrisville.com/products/22-floor-loom-4-harness-6-treadle",
+      "https://www.tisseetfile.com/en-us/products/metier-de-plancher-4-cadres-harrisville-designs-4-shaft-floor-loom",
+      "https://abilityweavers.com/shop/ols/products/harrisville-designs-model-a4-floor-loom",
+      "https://www.gistyarn.com/products/harrisville-designs-22-4-shaft-jack-loom",
+      "https://www.tisseetfile.com/en/products/metier-plancher-harrisville-designs-4-cadres"
+    ],
+    "_source_notes": "Specs confirmed from harrisville.com product page and two independent retailer pages (tisseetfile, abilityweavers). Weight 60 lbs, castle height 42\", folded depth 13\", unfolded depth 32\", 4 shafts, 6 treadles, 22\" weaving width, jack-action shedding all confirmed by harrisville.com and independently by gistyarn.com and tisseetfile.com/en. heddles_per_shaft_included=100 is consistent with ~400 total wire heddles across 4 shafts per all sources. reed_dent_included flagged: HD ships with buyer's choice of 8, 10, or 12 dent reed (per harrisville.com); record value of [10] only reflects one option. Corrected to [8, 10, 12] per harrisville.com; note gistyarn.com also offers 6 and 15 dent substitutions.",
+    "brand": "Harrisville Designs",
+    "model_name": "Model A4",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      22
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Model A",
+    "treadle_count": [
+      6
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 100,
+    "reed_dent_included": [
+      8,
+      10,
+      12
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 60,
+    "unfolded_depth_inches": 32,
+    "folded_depth_inches": 13,
+    "castle_height_inches": 42,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": false,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "snap_chain",
+    "shaft_upgrade_available": false,
+    "assembly_required": true,
+    "finish_required": true,
+    "origin_country": "USA",
+    "warranty_years": 5,
+    "mobility_wheels_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "shuttle_included": false
+  },
+  {
+    "_brand": "Harrisville Designs",
+    "_model": "Model A8",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://harrisville.com/products/22-floor-loom-8-harness-10-treadle",
+      "https://www.tisseetfile.com/en-us/products/metier-de-plancher-8-cadres-harrisville-designs-8-shaft-floor-looms",
+      "https://www.wonkyweaver.com/product-page/harrisville-floor-loom-22-8-harness-10-treadle"
+    ],
+    "_source_notes": "Key specs confirmed from harrisville.com and tisseetfile.com. Independent verification by wonkyweaver.com (third-party UK retailer): weaving width 22\", weight 70 lbs, 8 harnesses, 10 treadles, castle height 42\", unfolded floor space 28\"x34\", folded floor space 28\"x18\", ~600 wire heddles, 10 dent reed. heddles_per_shaft_included=75 consistent with 600 total / 8 shafts. All checked fields confirmed; no discrepancies found.",
+    "brand": "Harrisville Designs",
+    "model_name": "Model A8",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      22
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Model A",
+    "treadle_count": [
+      10
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 75,
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 70,
+    "unfolded_depth_inches": 34,
+    "folded_depth_inches": 18,
+    "castle_height_inches": 42,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": false,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "snap_chain",
+    "shaft_upgrade_available": false,
+    "assembly_required": true,
+    "finish_required": true,
+    "origin_country": "USA",
+    "warranty_years": 5,
+    "mobility_wheels_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "shuttle_included": false
+  },
+  {
+    "_brand": "Harrisville Designs",
+    "_model": "Model T4",
+    "_confidence": "high",
+    "_flags": [
+      "reed_dent_included",
+      "heddles_per_shaft_included"
+    ],
+    "_verified_by": [
+      "https://harrisville.com/products/36-floor-loom-4-harness-6-treadle",
+      "https://www.tisseetfile.com/en-us/products/metier-de-plancher-4-cadres-harrisville-designs-4-shaft-floor-loom",
+      "https://www.gistyarn.com/products/harrisville-designs-36-model-t4-jack-loom",
+      "https://www.wonkyweaver.com/product-page/harrisville-designs-floor-loom-model-36-4-36-4-harness-6-treadle"
+    ],
+    "_source_notes": "Specs confirmed from harrisville.com, tisseetfile.com, gistyarn.com, and wonkyweaver.com. Weight 70 lbs, footprint 42x32 unfolded, 42x13 folded confirmed by tisseetfile. Heddle total ~600 (150/shaft) confirmed by gistyarn.com and tisseetfile.com; wonkyweaver.com outlier lists ~800 total \u2014 flagged. reed_dent_included flagged: gistyarn.com default bundle includes 12-dent reed (10-dent available as substitute); harrisville.com and tisseetfile.com list 10-dent as standard inclusion. Minor discrepancy unresolved; 10-dent retained as per manufacturer and tisseetfile but flagged.",
+    "brand": "Harrisville Designs",
+    "model_name": "Model T4",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      36
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Model T",
+    "treadle_count": [
+      6
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 150,
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 70,
+    "unfolded_depth_inches": 32,
+    "folded_depth_inches": 13,
+    "castle_height_inches": 42,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": false,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "snap_chain",
+    "shaft_upgrade_available": false,
+    "assembly_required": true,
+    "finish_required": true,
+    "origin_country": "USA",
+    "warranty_years": 5,
+    "mobility_wheels_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "shuttle_included": false
+  },
+  {
+    "_brand": "Harrisville Designs",
+    "_model": "Model T8",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://harrisville.com/products/36-floor-loom-8-harness-10-treadle",
+      "https://www.tisseetfile.com/en-us/products/metier-de-plancher-8-cadres-harrisville-designs-8-shaft-floor-looms",
+      "https://gathertextiles.com/products/harrisville-designs-model-t8-floor-loom",
+      "https://www.gistyarn.com/products/harrisville-designs-36-model-t8-jack-loom-kit-bundle"
+    ],
+    "_source_notes": "Specs confirmed from harrisville.com and tisseetfile.com (original sources). Independent verification via gathertextiles.com and gistyarn.com confirms: 36\" weaving width, 8 harnesses, 10 treadles, 90 lbs, castle 42\", unfolded 42x34, folded 42x18, ~800 wire heddles, 10-dent reed, jack rising shed, friction brake, snap chain tie-up, maple construction, 5-year warranty, assembly required, finish required, wheels included, 2 lease sticks included. All fields consistent across 4 independent sources. No discrepancies detected.",
+    "brand": "Harrisville Designs",
+    "model_name": "Model T8",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      36
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Model T",
+    "treadle_count": [
+      10
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 100,
+    "reed_dent_included": [
+      10
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 90,
+    "unfolded_depth_inches": 34,
+    "folded_depth_inches": 18,
+    "castle_height_inches": 42,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": false,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "snap_chain",
+    "shaft_upgrade_available": false,
+    "assembly_required": true,
+    "finish_required": true,
+    "origin_country": "USA",
+    "warranty_years": 5,
+    "mobility_wheels_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "shuttle_included": false
+  },
+  {
+    "_brand": "Harrisville Designs",
+    "_model": "Model L4",
+    "_confidence": "high",
+    "_flags": [
+      "treadle_hinge_unverified",
+      "shaft_upgrade_available_unverified"
+    ],
+    "_verified_by": [
+      "https://harrisville.com/products/45-floor-loom-4-harness-6-treadle",
+      "https://harrisville.com/products/45-floor-loom-8-harness-10-treadle",
+      "https://harrisville.com/products/sectional-warp-beams",
+      "https://www.tisseetfile.com/en-us/products/metier-de-plancher-8-cadres-harrisville-designs-8-shaft-floor-looms",
+      "https://www.wonkyweaver.com/product-page/harrisville-designs-floor-loom-model-22-4-22-4-harness-6-treadle"
+    ],
+    "_source_notes": "Confirmed from harrisville.com product page. Ships assembled (not a kit). Reed choice of 6/8/10/12/15 dent confirmed. ~800 wire heddles, 2 lease sticks, 4 tensioning dowels included. Brake type listed as friction on product page. Weight/folded dimensions not published by manufacturer. CORRECTION: sectional_beam_available updated from false to true \u2014 harrisville.com/products/sectional-warp-beams explicitly states sectional warp beams are available in 45\" size for all HD looms. treadle_hinge (front_hinged) and shaft_upgrade_available (false) could not be independently confirmed or denied from available sources; flagged as unverified.",
+    "brand": "Harrisville Designs",
+    "model_name": "Model L4",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      45
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Model L",
+    "treadle_count": [
+      6
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 200,
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12,
+      15
+    ],
+    "reed_material": "stainless_steel",
+    "castle_height_inches": 42,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "snap_chain",
+    "shaft_upgrade_available": false,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA",
+    "warranty_years": 5,
+    "mobility_wheels_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "shuttle_included": false
+  },
+  {
+    "_brand": "Harrisville Designs",
+    "_model": "Model L8",
+    "_confidence": "high",
+    "_flags": [
+      "castle_height_inches_unverified_for_L8",
+      "treadle_hinge_unverified"
+    ],
+    "_verified_by": [
+      "https://harrisville.com/products/45-floor-loom-8-harness-10-treadle",
+      "https://www.wonkyweaver.com/product-page/looms-and-accessories",
+      "https://harrisville.com/pages/looms"
+    ],
+    "_source_notes": "Confirmed from harrisville.com product page. Ships assembled. Reed choice of 6/8/10/12/15 dent. ~1000 wire heddles (125/shaft), 2 lease sticks, 4 tensioning dowels included. Weight/folded dimensions not published. Independent cross-check via wonkyweaver.com confirmed 5-year warranty, jack-rising (suspended harnesses), friction brake, snap-chain tie-up, stainless steel reed, maple construction, and foldable-while-warped for all HD floor looms. harrisville.com/pages/looms confirms stainless steel reed and 5-year guarantee across the line. castle_height_inches value of 42 is sourced only from the original product page; no independent source confirms this dimension specifically for the L8 (Tisse et File confirms 42\" for A8/T8 only; a used 40\" HD loom listing cited 47\"). treadle_hinge field (front_hinged) has no corroboration in any source consulted.",
+    "brand": "Harrisville Designs",
+    "model_name": "Model L8",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      45
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Model L",
+    "treadle_count": [
+      10
+    ],
+    "treadle_hinge": "front_hinged",
+    "heddle_type": "wire",
+    "heddles_per_shaft_included": 125,
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12,
+      15
+    ],
+    "reed_material": "stainless_steel",
+    "castle_height_inches": 42,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": false,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "snap_chain",
+    "shaft_upgrade_available": false,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA",
+    "warranty_years": 5,
+    "mobility_wheels_included": true,
+    "lease_sticks_included": true,
+    "raddle_included": false,
+    "shuttle_included": false
+  },
+  {
+    "_brand": "Harrisville Designs",
+    "_model": "Harrisville Rug Loom",
+    "_confidence": "high",
+    "_flags": [
+      "reed_included",
+      "heddle_type"
+    ],
+    "_verified_by": [
+      "https://harrisville.com/products/the-harrisville-rug-loom",
+      "https://www.wonkyweaver.com/product-page/harrisville-designs-rug-loom-45-loom",
+      "https://www.wonkyweaver.com/product-page/harrisville-designs-rug-loom-60-loom",
+      "https://harrisville.com/products/sectional-warp-beam-adapter",
+      "https://www.eugenetextilecenter.com/harrisville-designs-looms",
+      "https://rebeccamezoff.com/blog/tag/Harrisville+rug+loom",
+      "https://www.tisseetfile.com/en-us/products/metier-de-plancher-8-cadres-harrisville-designs-8-shaft-floor-looms"
+    ],
+    "_source_notes": "Shedding mechanism confirmed countermarch from harrisville.com, wonkyweaver.com, and independently corroborated by rebeccamezoff.com (user blog referencing upper/lower lamm countermarch assembly). Width options 45 and 60 inches confirmed on HD product page and HD sectional beam adapter accessory page (lists both sizes). Shaft options 4 or 8; treadles 8 (4-shaft) or 10 (8-shaft) confirmed on wonkyweaver.com both rug loom listings. Cloth beam advance uses bronze worm gear confirmed on wonkyweaver.com and harrisville.com. Frame material maple confirmed by Eugene Textile Center (kiln dried New England Rock Maple). Origin USA confirmed by Eugene Textile Center. Warranty 5 years confirmed by tisseetfile.com and harrisville.com/pages/looms. Reed inclusion not explicitly confirmed on Rug Loom product page \u2014 flagged; reed is included with HD floor looms but Rug Loom page is silent on this. Heddle type listed as 'wire' in record but Rug Loom pages list only heddle counts without specifying type \u2014 flagged as unconfirmed for this model specifically. Sectional beam adapter confirmed as accessory (harrisville.com/products/sectional-warp-beam-adapter). Collingwood Shaft-Switching Device confirmed as optional accessory. Ships by order only; handmade in NH. Beater is overhead swing with weights confirmed on harrisville.com. Mobility wheels not mentioned for Rug Loom (unlike floor looms); mobility_wheels_included false retained.",
+    "brand": "Harrisville Designs",
+    "model_name": "Harrisville Rug Loom",
+    "loom_category": "rug_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      45,
+      60
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": null,
+    "frame_material": "maple",
+    "treadle_count": [
+      8,
+      10
+    ],
+    "heddle_type": "wire",
+    "beater_type": "overhead_swing",
+    "beater_adjustable": true,
+    "brake_type": "worm_gear",
+    "sectional_beam_available": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA",
+    "warranty_years": 5,
+    "mobility_wheels_included": false,
+    "shaft_switching_device_available": true
+  },
+  {
+    "_brand": "Harrisville Designs",
+    "_model": "Easy Weaver A",
+    "_confidence": "high",
+    "_flags": [
+      "reed_included_note: integral rigid heddle is not a separately included removable reed; value 'true' is technically correct but may be misleading"
+    ],
+    "_verified_by": [
+      "https://harrisville.com/products/easy-weaver-a",
+      "https://thehookandneedlenook.com/products/easy-weaver-by-harrisville-designs",
+      "https://www.desertthread.com/products/easy-weaver-ridged-hedl",
+      "https://www.schoolspecialty.com/harrisville-designs-wood-style-a-easy-weaver-17-12-x-10-x-5-12-in-409209",
+      "https://thewoodenwagon.com/woodentoy/ACHD394.html"
+    ],
+    "_source_notes": "Harrisville.com and Desert Thread independently confirm weaving width of 6 inches (fabric woven is 6\" wide; pre-warped warp is 6.5\" wide). The Hook & Needle Nook's 7\" figure is explicitly for an older/used version of the loom and does not represent a current-production discrepancy \u2014 weaving_width_options_inches flag resolved. School Specialty confirms inclusions (warp, stick shuttles, instruction booklet) with no separately listed reed; the rigid heddle is integral to the loom frame. The Wooden Wagon confirms US manufacture. All key specs confirmed by 2+ independent sources; confidence upgraded to high.",
+    "brand": "Harrisville Designs",
+    "model_name": "Easy Weaver A",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      6
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "shuttle_included": true,
+    "lease_sticks_included": false,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA"
+  },
+  {
+    "_brand": "Schacht",
+    "_model": "Baby Wolf",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://schachtspindle.com/products/baby-wolf-shaft-looms",
+      "https://woolery.com/products/schacht-baby-wolf-loom",
+      "https://www.lonestarloomroom.com/products/baby-wolf",
+      "https://gathertextiles.com/products/schacht-baby-wolf-floor-loom",
+      "https://www.yarnbarn-ks.com/Schacht-Baby-Wolf-Loom/productinfo/WLSC-BW-FL/",
+      "https://www.weftblown.com/products/schacht-baby-wolf-floor-loom",
+      "https://shop.sweetgeorgiayarns.com/products/schacht-baby-wolf-loom",
+      "https://www.susansfiber.com/products/schacht-baby-wolf-loom",
+      "https://revolutionfibers.com/products/schacht-baby-wolf-loom",
+      "https://thespinnerystore.com/products/schacht-baby-wolf-looms-excellence-fiber-arts"
+    ],
+    "_source_notes": "26\" weaving width confirmed by manufacturer and 5+ independent retailers. 4/8 shaft options confirmed by multiple sources. Treadle counts (6 for 4-shaft, 10 for 8-shaft) confirmed by Lone Star Loom Room and thespinnerystore. Weight 53-71 lbs confirmed by Yarn Barn and Woolyn; record lists 71 lbs (max of range). Folded depth 18\" confirmed by multiple sources. Breast beam height 29.5\" from weftblown, corroborated by Woolery (31.5\" with 2\" extender implies 29.5\" base). Height extender +2\" confirmed by Woolyn and Gather Textiles. Jack loom type confirmed by Yarn Barn. 4 Now-4 Later option confirmed by manufacturer and multiple retailers. All key fields independently re-verified via SweetGeorgia Yarns, Susan's Fiber Shop, Revolution Fibers, and The Spinnery Store.",
+    "brand": "Schacht",
+    "model_name": "Baby Wolf",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      26
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Wolf Family",
+    "treadle_count": [
+      6,
+      10
+    ],
+    "heddle_type": "inserted_eye",
+    "heddles_per_shaft_included": 100,
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12,
+      15,
+      20
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 71,
+    "unfolded_depth_inches": 33,
+    "folded_depth_inches": 18,
+    "breast_beam_height_inches": 29.5,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "nylon_cord_slot",
+    "shaft_upgrade_available": true,
+    "height_extender_available": true,
+    "stroller_available": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA",
+    "mobility_wheels_included": false,
+    "max_shafts_with_upgrade": 8,
+    "four_now_four_later": true,
+    "height_extender_inches": 2
+  },
+  {
+    "_brand": "Schacht",
+    "_model": "Mighty Wolf",
+    "_confidence": "medium",
+    "_flags": [
+      "weight_lbs",
+      "reed_dent_included",
+      "shaft_count_options",
+      "assembly_required"
+    ],
+    "_verified_by": [
+      "https://schachtspindle.com/products/mighty-wolf-shaft-looms",
+      "https://www.lonestarloomroom.com/products/might-wolf",
+      "https://www.halcyonyarn.com/products/schacht-36-mighty-wolf-floor-loom",
+      "https://gathertextiles.com/products/schacht-mighty-wolf-floor-loom",
+      "https://www.weftblown.com/products/schacht-mighty-wolf-loom-4-shafts",
+      "https://revolutionfibers.com/products/schacht-mighty-wolf-loom",
+      "https://www.yarnbarn-ks.com/Schacht-Mighty-Wolf-36-inch/productinfo/WLSC-MW-FL/"
+    ],
+    "_source_notes": "36\" weaving width confirmed by manufacturer and multiple retailers including Revolution Fibers and Yarn Barn. 8-shaft and 4 Now-4 Later options confirmed; standalone 4-shaft model discontinued per weftblown \u2014 shaft_count_options [4,8] flagged as misleading since '4' only exists as '4 Now-4 Later'. Treadle counts 6 (4-shaft) and 10 (8-shaft) confirmed by Lone Star Loom Room. weight_lbs flagged: weftblown lists 100 lbs (8-shaft), Halcyon Yarn lists 120 lbs (8-shaft), Yarn Barn lists 94 lbs (8-shaft) \u2014 significant cross-source discrepancy, possibly due to spec updates over time; record value of 100 lbs retained but flagged. reed_dent_included flagged: Yarn Barn lists only 6,8,10,12,15 dent options \u2014 '20' dent in record is unconfirmed by this source (may be a separate accessory reed). assembly_required flagged: Yarn Barn confirms loom arrives 'almost fully assembled' but minor assembly steps are required; 'false' is misleading. Folded depth 17\", open depth 33\", breast beam height 29.5\" confirmed by weftblown. Height extender 2\" confirmed by Gather Textiles and Revolution Fibers. Origin USA (Boulder, CO) confirmed by Yarn Barn.",
+    "brand": "Schacht",
+    "model_name": "Mighty Wolf",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      36
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Wolf Family",
+    "treadle_count": [
+      6,
+      10
+    ],
+    "heddle_type": "inserted_eye",
+    "heddles_per_shaft_included": 125,
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12,
+      15,
+      20
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 100,
+    "unfolded_depth_inches": 33,
+    "folded_depth_inches": 17,
+    "breast_beam_height_inches": 29.5,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "nylon_cord_slot",
+    "shaft_upgrade_available": true,
+    "height_extender_available": true,
+    "stroller_available": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA",
+    "mobility_wheels_included": false,
+    "max_shafts_with_upgrade": 8,
+    "four_now_four_later": true,
+    "height_extender_inches": 2
+  },
+  {
+    "_brand": "Schacht",
+    "_model": "Wolf Pup LT",
+    "_confidence": "medium",
+    "_flags": [
+      "weight_lbs",
+      "shedding_mechanism",
+      "assembly_required",
+      "mobility_wheels_included"
+    ],
+    "_verified_by": [
+      "https://schachtspindle.com/products/wolf-pup-lt-shaft-looms",
+      "https://www.yarn.com/products/schacht-wolf-pup-lt",
+      "https://revolutionfibers.com/products/schacht-wolf-pup-lt-loom",
+      "https://shuttlesspindlesandskeins.com/products/schacht-wolf-pup-loom",
+      "https://revolutionfibers.com/products/schacht-wolf-pup-8-10-loom",
+      "https://nwyarns.com/products/schacht-wolf-pup-loom",
+      "https://www.weftblown.com/products/schacht-wolf-pup-loom",
+      "https://gathertextiles.com/products/schacht-wolf-pup-loom",
+      "https://woolery.com/schacht-wolf-pup-lt-loom.html",
+      "https://sunshineweaving.com/product/schacht-limited-edition-cherry-wolf-pup-lt-loom-packages/",
+      "https://www.iconfiberarts.com/products/schacht-wolf-pup-series-looms",
+      "https://lunaticfringeyarns.com/product/wolf-pup-loom/"
+    ],
+    "_source_notes": "18\" weaving width and 4-shaft with 6 treadles confirmed by manufacturer and multiple retailers. LT uses lamms only to raise shafts (NOT full jack-and-lamm assemblies per schachtspindle.com Sept 2025 update \u2014 shedding_mechanism 'jack_rising' is technically imprecise; loom is rising-shed via lamms). 300 inserted-eye heddles (75/shaft) confirmed. Breast beam height 29.5\" confirmed by weftblown.com and weftblown 8.10 spec sheet. Height extender raises loom 2\" confirmed by multiple sources. Weight discrepancy: record states 40 lbs (from revolutionfibers, already cited); weftblown.com and sunshineweaving.com both independently list 43 lbs; gathertextiles.com and woolery.com list 38 lbs. Corrected to 43 lbs as most consistent across independent spec-sheet sources. mobility_wheels_included corrected to true: nwyarns.com, lunaticfringeyarns.com, and weftblown.com all confirm attached wheels engage automatically when folded. assembly_required flagged: weftblown.com (UK retailer) states flat-pack assembly required; US retailer listings do not mention assembly \u2014 may be a regional fulfillment difference; field left false but flagged. Beater adjustability: schachtspindle.com notes beater sides changed Sept 2025 to adjustable metal supports; pre-Sept 2025 beaters were non-adjustable wood \u2014 beater_adjustable: true reflects current production only.",
+    "brand": "Schacht",
+    "model_name": "Wolf Pup LT",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "rising_shed_lamm",
+    "weaving_width_options_inches": [
+      18
+    ],
+    "shaft_count_options": [
+      4
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Wolf Family",
+    "treadle_count": [
+      6
+    ],
+    "heddle_type": "inserted_eye",
+    "heddles_per_shaft_included": 75,
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12,
+      15
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 43,
+    "breast_beam_height_inches": 29.5,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "nylon_cord_slot",
+    "shaft_upgrade_available": false,
+    "height_extender_available": true,
+    "stroller_available": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA",
+    "mobility_wheels_included": true,
+    "height_extender_inches": 2
+  },
+  {
+    "_brand": "Schacht",
+    "_model": "Wolf Pup 8.10",
+    "_confidence": "high",
+    "_flags": [
+      "assembly_required"
+    ],
+    "_verified_by": [
+      "https://schachtspindle.com/collections/shaft-looms",
+      "https://nwyarns.com/products/schacht-wolf-pup-loom",
+      "https://shuttlesspindlesandskeins.com/products/schacht-wolf-pup-loom",
+      "https://www.iconfiberarts.com/products/schacht-wolf-pup-series-looms",
+      "https://revolutionfibers.com/products/schacht-wolf-pup-8-10-loom",
+      "https://www.weftblown.com/products/schacht-wolf-pup-8-10-floor-loom",
+      "https://shop.sweetgeorgiayarns.com/products/schacht-wolf-pup-8-10",
+      "https://www.georgeweil.com/weaving-looms-and-tools/floor-looms/schacht-wolf-floor-looms/schacht-wolf-pup-loom-8-shaft-loom-10-treadles/",
+      "https://woolery.com/schacht-wolf-pup-8-10-loom.html",
+      "https://www.yarnorama.com/products/schacht-wolf-pup-8-10"
+    ],
+    "_source_notes": "8-shaft, 10-treadle, 18\" weaving width confirmed by multiple sources including new independent sources weftblown.com, sweetgeorgiayarns.com, georgeweil.com, woolery.com, and yarnorama.com. Folds to ~19\" depth confirmed by all US sources. 600 inserted-eye heddles and 90 tie-up cords confirmed by weftblown and yarnorama. Weight 69 lbs per weftblown. Caster wheels included per multiple sources. Outrigger front legs for 10 treadles confirmed. assembly_required flagged: weftblown (non-US retailer) states flat-pack kit requiring assembly; Schacht US page and US retailers do not indicate assembly required \u2014 may be retailer-specific fulfillment difference.",
+    "brand": "Schacht",
+    "model_name": "Wolf Pup 8.10",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      18
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "model_series": "Wolf Family",
+    "treadle_count": [
+      10
+    ],
+    "heddle_type": "inserted_eye",
+    "heddles_per_shaft_included": 75,
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12,
+      15
+    ],
+    "reed_material": "stainless_steel",
+    "folded_depth_inches": 19,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "nylon_cord_slot",
+    "shaft_upgrade_available": false,
+    "height_extender_available": true,
+    "stroller_available": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA",
+    "mobility_wheels_included": true,
+    "height_extender_inches": 2,
+    "weight_lbs": 69
+  },
+  {
+    "_brand": "Schacht",
+    "_model": "Standard Floor Loom",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://schachtspindle.com/products/standard-floor-loom-shaft-loom",
+      "https://woolery.com/collections/schacht-standard-floor-loom",
+      "https://www.paradisefibers.com/products/schacht-standard-floor-loom",
+      "https://loftyfiber.com/products/schacht-standard-floor-loom",
+      "https://www.mielkesfiberarts.com/product/schacht-standard-floor-loom/"
+    ],
+    "_source_notes": "36\" and 45\" weaving widths confirmed by manufacturer and multiple retailers. 8-shaft with 4 Now-4 Later confirmed. 12 treadles for 45\" looms from Mielke's. Weights from paradisefibers: 36\" 8-shaft=125 lbs, 45\" 8-shaft=141 lbs. Folded depth 26\" from farnorth. Underslung jack, parallel lamm, nylon cord slot tie-up, ratchet on cloth beam + friction on warp beam all confirmed. Reed buyer's choice of dent confirmed.",
+    "brand": "Schacht",
+    "model_name": "Standard Floor Loom",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "jack_rising",
+    "weaving_width_options_inches": [
+      36,
+      45
+    ],
+    "shaft_count_options": [
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      10,
+      12
+    ],
+    "heddle_type": "inserted_eye",
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12,
+      15,
+      20
+    ],
+    "reed_material": "stainless_steel",
+    "weight_lbs": 141,
+    "folded_depth_inches": 26,
+    "foldable": true,
+    "foldable_while_warped": true,
+    "brake_type": "friction",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "adjustable_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "nylon_cord_slot",
+    "shaft_upgrade_available": true,
+    "height_extender_available": false,
+    "stroller_available": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "USA",
+    "mobility_wheels_included": false,
+    "max_shafts_with_upgrade": 8,
+    "four_now_four_later": true
+  },
+  {
+    "_brand": "Schacht",
+    "_model": "Cranbrook",
+    "_confidence": "high",
+    "_flags": [
+      "discontinued_2023"
+    ],
+    "_verified_by": [
+      "https://schachtspindle.com/blogs/discontinued-schacht-cranbrook/schacht-cranbrook-countermarche-loom",
+      "https://woolery.com/collections/schacht-cranbrook-countermarche-loom",
+      "https://farnorthfibers.net/weaving/multishaft-looms/",
+      "https://northwestweavers.org/72-8-shaft-schacht-cranbrook-countermarche-loom/"
+    ],
+    "_source_notes": "Discontinued 2023 per Schacht manufacturer page. Available in 48\", 60\", and 72\" weaving widths confirmed by manufacturer. 4 to 8 shafts expandable confirmed. 12 treadles for 8-shaft per northwestweavers and farnorth. Texsolv tie-up, overhead beater, worm gear brake, maple frame, locking treadles all confirmed. Reed choice of 6/8/10/12/15 dent, 1000 Texsolv heddles from farnorth.",
+    "brand": "Schacht",
+    "model_name": "Cranbrook",
+    "loom_category": "floor_loom",
+    "shedding_mechanism": "countermarch",
+    "weaving_width_options_inches": [
+      48,
+      60,
+      72
+    ],
+    "shaft_count_options": [
+      4,
+      8
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "treadle_count": [
+      6,
+      12
+    ],
+    "heddle_type": "texsolv",
+    "heddles_per_shaft_included": 125,
+    "reed_dent_included": [
+      6,
+      8,
+      10,
+      12,
+      15
+    ],
+    "reed_material": "stainless_steel",
+    "foldable": false,
+    "foldable_while_warped": false,
+    "brake_type": "worm_gear",
+    "sectional_beam_available": true,
+    "double_back_beam_available": true,
+    "beater_type": "overhead_swing",
+    "beater_adjustable": true,
+    "tie_up_system": "texsolv_loop",
+    "shaft_upgrade_available": true,
+    "height_extender_available": false,
+    "stroller_available": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "USA",
+    "mobility_wheels_included": false,
+    "max_shafts_with_upgrade": 8,
+    "shaft_switching_device_available": true
+  },
+  {
+    "_brand": "Schacht",
+    "_model": "Cricket",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://schachtspindle.com/products/cricket-rigid-heddle-looms",
+      "https://www.halcyonyarn.com/products/schacht-cricket-rigid-heddle-loom",
+      "https://www.georgeweil.com/weaving-looms-and-tools/rigid-heddle-looms-for-weaving/schacht-cricket-rigid-heddle-loom/",
+      "https://thespinnerystore.com/products/schacht-cricket-loom"
+    ],
+    "_source_notes": "10\" and 15\" weaving widths confirmed by manufacturer and multiple retailers. 8-dent reed included confirmed by manufacturer. Made of maple plywood and hard maple confirmed. Comes with threading hook, warping peg, table clamps, 2 shuttles, 2 balls of yarn per manufacturer. Weight: 10\" just under 4 lbs, 15\" just under 6 lbs per Halcyon.",
+    "brand": "Schacht",
+    "model_name": "Cricket",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      10,
+      15
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "reed_dent_included": [
+      8
+    ],
+    "reed_material": "other",
+    "weight_lbs": 6,
+    "foldable": false,
+    "assembly_required": true,
+    "finish_required": false,
+    "origin_country": "USA",
+    "shuttle_included": true
+  },
+  {
+    "_brand": "Schacht",
+    "_model": "Flip",
+    "_confidence": "high",
+    "_flags": [],
+    "_verified_by": [
+      "https://schachtspindle.com/products/flip-rigid-heddle-looms",
+      "https://woolery.com/schacht-flip-folding-rigid-heddle-loom.html",
+      "https://www.yarn.com/products/schacht-flip-rigid-heddle-looms",
+      "https://www.susansfiber.com/products/schacht-flip-rigid-heddle-loom",
+      "https://gathertextiles.com/products/flip-looms-schacht"
+    ],
+    "_source_notes": "15\", 20\", 25\", 30\" weaving widths confirmed by manufacturer and 4+ retailers. Includes 10-dent reed (buyer's choice of 5/8/10/12 dent per paradisefibers). Made of maple with Danish oil finish confirmed by woolery and warpedfibers. Folds while warped or unwarped. Two-heddle capability built-in. Warping peg, 2 shuttles, 2 clamps, threading hook included. No assembly required per weftblown.",
+    "brand": "Schacht",
+    "model_name": "Flip",
+    "loom_category": "rigid_heddle",
+    "shedding_mechanism": "rigid_heddle",
+    "weaving_width_options_inches": [
+      15,
+      20,
+      25,
+      30
+    ],
+    "shaft_count_options": [
+      0
+    ],
+    "reed_included": true,
+    "frame_material": "maple",
+    "reed_dent_included": [
+      5,
+      8,
+      10,
+      12
+    ],
+    "reed_material": "other",
+    "foldable": true,
+    "foldable_while_warped": true,
+    "assembly_required": false,
+    "finish_required": false,
+    "origin_country": "USA",
+    "shuttle_included": true
+  }
+]
