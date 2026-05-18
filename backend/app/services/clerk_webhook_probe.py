@@ -78,7 +78,7 @@ async def run_webhook_probe() -> WebhookProbeResult:
         return WebhookProbeResult("error", message="CLERK_WEBHOOK_SECRET not configured")
 
     base = (settings.webhook_base_url or settings.api_url).rstrip("/")
-    webhook_url = base + "/auth/clerk/webhook"
+    webhook_url = base + "/webhooks/clerk"
     timeout = settings.clerk_webhook_probe_timeout_s
 
     global _pending_event

@@ -955,7 +955,7 @@ def _probe_webhook_info() -> ServiceCheckResult:
     checks: list[ServicePermCheck] = []
 
     base = (settings.webhook_base_url or settings.api_url).rstrip("/")
-    meta = {"url": base + "/auth/clerk/webhook"}
+    meta = {"url": base + "/webhooks/clerk"}
 
     if settings.clerk_webhook_secret and settings.clerk_webhook_secret.startswith("whsec_"):
         checks.append(ServicePermCheck(name="secret", status="ok", message="configured"))
