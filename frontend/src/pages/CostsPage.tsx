@@ -214,7 +214,9 @@ export function CostsPage() {
             <p className="text-stone-600 leading-relaxed">
               All infrastructure services are well within their free tiers today. If weftmark grows
               to the point where paid tiers are needed, costs will be re-evaluated and this page will
-              be updated. No features will be paywalled — the platform stays free to use.
+              be updated. weftmark is free to use and is intended to stay that way — the long-term
+              goal is for the platform to be community-supported through voluntary donations rather
+              than subscriptions or feature gates.
             </p>
           </div>
 
