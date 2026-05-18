@@ -165,7 +165,9 @@ class TestNoNullRows:
         """Drafts that already have wif_colors set are not counted."""
         await _seed_draft(db_session, test_user.id, wif_colors=[1, 2, 3])
 
-        result = _run()
+        with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
+            mock_registry.return_value = [_reparse_registry_entry(lambda: None)]
+            result = _run()
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 

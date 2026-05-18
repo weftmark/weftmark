@@ -1,6 +1,8 @@
 # Test Coverage and Gaps
 
-**Current overall coverage: ~86%** (908 tests, last measured 2026-05-05 v0.85.0 — see History for recent versions)
+**Current overall coverage: 75.52%** (1730 tests, last measured 2026-05-18 — see History for recent versions)
+
+> **Coverage regression note:** The 86% figure from v0.85.0 was measured against the `tests/` directory only. It has since been discovered that `app/weaving/tests/` (self-contained weaving unit tests) was not in `testpaths` and those test files were not being run. The 75.52% reflects all 1730 tests (including `app/weaving/tests/`) against the full `app/` source tree.
 
 > **Note:** Prior measurements (~65%) were significantly undercounted. SQLAlchemy async sessions use greenlets internally; coverage.py lost `sys.settrace` after every `await db.scalar()/commit()` call, causing all post-await lines in every router to appear uncovered. Fixed in commit `47311ca` by adding `[coverage:run] concurrency = greenlet` in `backend/setup.cfg`.
 
@@ -120,3 +122,4 @@ Reassess coverage completeness when:
 | 2026-05-05 | v0.85.0 | ~65.3% | 19 new tests added; new modules covered: `logs.py`, `storage_quota.py`, `wif_modifier.py`; 64.78%→65.3% to clear CI gate |
 | 2026-05-05 | v0.85.0 | 85.93% | Fixed greenlet coverage tracking (`setup.cfg` `concurrency=greenlet`); prior ~65% numbers were systematic undercounts. 908 tests; 7 new auth webhook unit tests added. |
 | 2026-05-15 | v0.145.0 | ~86% | Coverage stable; new features (color replacements, project landing page, reed inventory, tile pre-render) added without regression. |
+| 2026-05-18 | v0.145.x | 75.52% | `itc 75` run: fixed testpaths to include `app/weaving/tests/`; added tests for rendering SVG/drawdown/clip functions, weaving Draft methods, `parse_threading`, `parse_tieup`, `task_history`, and `clerk_auth`. 1730 tests, 0 failures. |

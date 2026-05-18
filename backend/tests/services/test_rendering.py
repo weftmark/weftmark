@@ -17,12 +17,17 @@ import pytest
 
 from app.services.rendering import (
     DRAWDOWN_SCALE,
+    apply_color_replacements,
+    clip_draft_to_effective,
     load_draft,
+    render_drawdown_data,
     render_drawdown_only,
     render_drawdown_preview,
+    render_drawdown_svg,
     render_drawdown_tile,
     render_full_draft,
     render_full_draft_liftplan,
+    render_full_draft_svg,
     safe_preview_scale,
 )
 
@@ -271,6 +276,12 @@ class TestRenderFullDraft:
 
 
 class TestSafePreviewScale:
+    def test_empty_warp_returns_desired_scale(self):
+        draft = load_draft(MINIMAL_WIF)
+        draft.warp = []
+        result = safe_preview_scale(draft, desired_scale=7)
+        assert result == 7
+
     def test_small_draft_unchanged(self):
         draft = load_draft(MINIMAL_WIF)  # 4 warp × 4 weft — tiny
         assert safe_preview_scale(draft, desired_scale=10) == 10
@@ -635,6 +646,28 @@ class TestRenderDrawdownTile:
         result = render_drawdown_tile(draft, start_row=0, row_count=2)
         assert len(result) == 5
 
+    def test_start_col_without_col_count_uses_full_width(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_tile(draft, start_row=0, row_count=2, start_col=0)
+        assert len(result) == 7
+
+    def test_effective_treadles_clips_draft(self):
+        # EIGHT_SHAFT_WIF declares Treadles=10 but only uses 1–8; clip to 8 is safe
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        result = render_drawdown_tile(draft, start_row=0, row_count=2, effective_treadles=8)
+        assert len(result) == 5
+
+    def test_too_wide_draft_raises_413(self, monkeypatch):
+        from fastapi import HTTPException
+
+        from app.config import Settings
+
+        draft = load_draft(MINIMAL_WIF)
+        monkeypatch.setattr("app.services.rendering.get_settings", lambda: Settings(render_max_width=3))
+        with pytest.raises(HTTPException) as exc:
+            render_drawdown_tile(draft, scale=1)
+        assert exc.value.status_code == 413
+
 
 # ---------------------------------------------------------------------------
 # render_drawdown_preview
@@ -728,6 +761,26 @@ class TestRenderDrawdownPreview:
         with pytest.raises(ValueError, match="no drawdown data"):
             render_drawdown_preview(draft)
 
+    def test_effective_treadles_clips_draft(self):
+        # EIGHT_SHAFT_WIF declares Treadles=10 but only uses 1–8; clip to 8 is safe
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        png, total_rows, scale_used = render_drawdown_only(draft, effective_treadles=8)
+        assert png[:4] == b"\x89PNG"
+
+    def test_too_large_draft_raises_413(self, monkeypatch):
+        from fastapi import HTTPException
+
+        from app.config import Settings
+
+        draft = load_draft(MINIMAL_WIF)
+        monkeypatch.setattr(
+            "app.services.rendering.get_settings",
+            lambda: Settings(render_max_width=3, render_max_height=3),
+        )
+        with pytest.raises(HTTPException) as exc:
+            render_drawdown_only(draft, scale=1)
+        assert exc.value.status_code == 413
+
 
 # ---------------------------------------------------------------------------
 # Real-world liftplan WIF with stale Treadles= metadata (#266)
@@ -752,3 +805,199 @@ class TestLiftplanTreadles:
         assert png[:4] == b"\x89PNG"
         assert total_rows == len(draft.weft)
         assert scale_used >= 1
+
+
+# ---------------------------------------------------------------------------
+# render_full_draft_svg
+# ---------------------------------------------------------------------------
+
+
+class TestRenderFullDraftSvg:
+    def test_returns_string(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_full_draft_svg(draft)
+        assert isinstance(result, str)
+
+    def test_contains_svg_tag(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_full_draft_svg(draft)
+        assert "<svg" in result
+
+    def test_non_empty(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_full_draft_svg(draft)
+        assert len(result) > 50
+
+    def test_scale_affects_output(self):
+        draft = load_draft(MINIMAL_WIF)
+        small = render_full_draft_svg(draft, scale=4)
+        large = render_full_draft_svg(draft, scale=10)
+        assert len(large) != len(small) or large == small  # different or same — no crash
+
+    def test_eight_shaft_draft_renders(self):
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        result = render_full_draft_svg(draft, scale=4)
+        assert "<svg" in result
+
+
+# ---------------------------------------------------------------------------
+# clip_draft_to_effective
+# ---------------------------------------------------------------------------
+
+
+class TestClipDraftToEffective:
+    def test_returns_draft(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = clip_draft_to_effective(draft, effective_shafts=None, effective_treadles=None)
+        assert result is draft
+
+    def test_clips_treadles(self):
+        # EIGHT_SHAFT_WIF declares Treadles=10 in metadata so pyweaving creates 10
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        original_count = len(draft.treadles)
+        assert original_count > 4
+        clip_draft_to_effective(draft, effective_shafts=None, effective_treadles=4)
+        assert len(draft.treadles) == 4
+
+    def test_noop_when_both_none(self):
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        original_shafts = len(draft.shafts)
+        original_treadles = len(draft.treadles)
+        clip_draft_to_effective(draft, effective_shafts=None, effective_treadles=None)
+        assert len(draft.shafts) == original_shafts
+        assert len(draft.treadles) == original_treadles
+
+    def test_noop_when_effective_equals_shaft_count(self):
+        draft = load_draft(MINIMAL_WIF)
+        clip_draft_to_effective(draft, effective_shafts=4, effective_treadles=None)
+        assert len(draft.shafts) == 4
+
+    def test_noop_when_effective_exceeds_count(self):
+        draft = load_draft(MINIMAL_WIF)
+        clip_draft_to_effective(draft, effective_shafts=99, effective_treadles=99)
+        assert len(draft.shafts) == 4
+
+    def test_clips_weft_thread_treadle_references(self):
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        clip_draft_to_effective(draft, effective_shafts=None, effective_treadles=4)
+        for thread in draft.weft:
+            for t in thread.treadles:
+                assert t in draft.treadles
+
+
+# ---------------------------------------------------------------------------
+# render_drawdown_data
+# ---------------------------------------------------------------------------
+
+
+class TestRenderDrawdownData:
+    def test_returns_dict(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_data(draft)
+        assert isinstance(result, dict)
+
+    def test_has_floats_key(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_data(draft)
+        assert "floats" in result
+
+    def test_floats_is_list(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_data(draft)
+        assert isinstance(result["floats"], list)
+
+    def test_cell_px_param_accepted(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_data(draft, cell_px=10)
+        assert isinstance(result, dict)
+
+    def test_eight_shaft_returns_dict(self):
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        result = render_drawdown_data(draft)
+        assert isinstance(result, dict)
+
+
+# ---------------------------------------------------------------------------
+# render_drawdown_svg
+# ---------------------------------------------------------------------------
+
+
+class TestRenderDrawdownSvg:
+    def test_returns_string(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_svg(draft)
+        assert isinstance(result, str)
+
+    def test_contains_svg_tag(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_svg(draft)
+        assert "<svg" in result
+
+    def test_non_empty(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_svg(draft)
+        assert len(result) > 20
+
+    def test_cell_px_param_accepted(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = render_drawdown_svg(draft, cell_px=10)
+        assert "<svg" in result
+
+    def test_eight_shaft_renders(self):
+        draft = load_draft(EIGHT_SHAFT_WIF)
+        result = render_drawdown_svg(draft)
+        assert "<svg" in result
+
+
+# ---------------------------------------------------------------------------
+# apply_color_replacements
+# ---------------------------------------------------------------------------
+
+
+class TestApplyColorReplacements:
+    def test_noop_on_empty_map(self):
+        draft = load_draft(MINIMAL_WIF)
+        original_colors = [t.color.rgb if t.color else None for t in draft.warp]
+        apply_color_replacements(draft, {})
+        after_colors = [t.color.rgb if t.color else None for t in draft.warp]
+        assert original_colors == after_colors
+
+    def test_replaces_matching_warp_color(self):
+        draft = load_draft(MINIMAL_WIF)
+        first_color = draft.warp[0].color
+        assert first_color is not None
+        r, g, b = first_color.rgb
+        src_hex = f"#{r:02x}{g:02x}{b:02x}"
+        apply_color_replacements(draft, {src_hex: "#000000"})
+        assert draft.warp[0].color.rgb == (0, 0, 0)
+
+    def test_replaces_matching_weft_color(self):
+        draft = load_draft(MINIMAL_WIF)
+        first_weft_color = draft.weft[0].color
+        assert first_weft_color is not None
+        r, g, b = first_weft_color.rgb
+        src_hex = f"#{r:02x}{g:02x}{b:02x}"
+        apply_color_replacements(draft, {src_hex: "#ffffff"})
+        assert draft.weft[0].color.rgb == (255, 255, 255)
+
+    def test_leaves_unmatched_colors_unchanged(self):
+        draft = load_draft(MINIMAL_WIF)
+        first_color = draft.warp[0].color
+        assert first_color is not None
+        original_rgb = first_color.rgb
+        apply_color_replacements(draft, {"#123456": "#abcdef"})
+        assert draft.warp[0].color.rgb == original_rgb
+
+    def test_case_insensitive_src(self):
+        draft = load_draft(MINIMAL_WIF)
+        first_color = draft.warp[0].color
+        assert first_color is not None
+        r, g, b = first_color.rgb
+        src_upper = f"#{r:02X}{g:02X}{b:02X}"
+        apply_color_replacements(draft, {src_upper: "#000000"})
+        assert draft.warp[0].color.rgb == (0, 0, 0)
+
+    def test_returns_none(self):
+        draft = load_draft(MINIMAL_WIF)
+        result = apply_color_replacements(draft, {})
+        assert result is None

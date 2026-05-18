@@ -9,12 +9,16 @@ import pytest
 
 from app.services.wif_parser import (
     PickData,
+    ThreadingData,
+    TieUpData,
     compute_liftplan,
     extract_colors,
     extract_measurements,
     extract_warp_color_stats,
     extract_weft_color_stats,
     parse_picks,
+    parse_threading,
+    parse_tieup,
 )
 
 # ---------------------------------------------------------------------------
@@ -506,6 +510,127 @@ Version=1.1
         assert "[TREADLING]" in text
         assert "[TIEUP]" in text
         assert "[WIF]" in text
+
+
+# ---------------------------------------------------------------------------
+# parse_threading
+# ---------------------------------------------------------------------------
+
+_THREADING_WIF = b"""[WIF]
+Version=1.1
+[CONTENTS]
+THREADING=true
+TIEUP=true
+TREADLING=true
+COLOR TABLE=true
+COLOR PALETTE=true
+[WEAVING]
+Shafts=4
+Treadles=4
+[WARP]
+Threads=4
+Units=Inches
+Color=1
+[WEFT]
+Threads=4
+Units=Inches
+Color=2
+[COLOR PALETTE]
+Range=0,255
+Form=Decimal
+[COLOR TABLE]
+1=200,50,50
+2=50,50,200
+[THREADING]
+1=1
+2=2
+3=3
+4=4
+[TIEUP]
+1=1
+2=2
+3=3
+4=4
+[TREADLING]
+1=1
+2=2
+3=3
+4=4
+"""
+
+
+class TestParseThreading:
+    def test_returns_threading_data(self):
+        result = parse_threading(_THREADING_WIF)
+        assert isinstance(result, ThreadingData)
+
+    def test_warp_thread_count(self):
+        result = parse_threading(_THREADING_WIF)
+        assert result.warp_thread_count == 4
+
+    def test_threading_list_length(self):
+        result = parse_threading(_THREADING_WIF)
+        assert len(result.threading) == 4
+
+    def test_threading_shafts_correct(self):
+        result = parse_threading(_THREADING_WIF)
+        assert result.threading[0] == [1]
+        assert result.threading[1] == [2]
+
+    def test_warp_colors_list_length(self):
+        result = parse_threading(_THREADING_WIF)
+        assert len(result.warp_colors) == 4
+
+    def test_warp_color_is_hex(self):
+        result = parse_threading(_THREADING_WIF)
+        assert result.warp_colors[0] is not None
+        assert result.warp_colors[0].startswith("#")
+
+    def test_raises_without_threading_section(self):
+        wif = b"[WIF]\nVersion=1.1\n"
+        with pytest.raises(ValueError, match="THREADING"):
+            parse_threading(wif)
+
+    def test_latin1_encoding_fallback(self):
+        text = _THREADING_WIF.decode("utf-8").replace("TestSuite", "Caf\xe9Loom")
+        latin1_bytes = text.encode("latin-1")
+        result = parse_threading(latin1_bytes)
+        assert result.warp_thread_count == 4
+
+
+# ---------------------------------------------------------------------------
+# parse_tieup
+# ---------------------------------------------------------------------------
+
+
+class TestParseTieup:
+    def test_returns_tieup_data(self):
+        result = parse_tieup(_THREADING_WIF)
+        assert isinstance(result, TieUpData)
+
+    def test_num_treadles(self):
+        result = parse_tieup(_THREADING_WIF)
+        assert result.num_treadles == 4
+
+    def test_tieup_list_length(self):
+        result = parse_tieup(_THREADING_WIF)
+        assert len(result.tieup) == 4
+
+    def test_tieup_shaft_mapping(self):
+        result = parse_tieup(_THREADING_WIF)
+        assert result.tieup[0] == [1]
+        assert result.tieup[1] == [2]
+
+    def test_raises_without_tieup_section(self):
+        wif = b"[WIF]\nVersion=1.1\n"
+        with pytest.raises(ValueError, match="TIEUP"):
+            parse_tieup(wif)
+
+    def test_latin1_encoding_fallback(self):
+        text = _THREADING_WIF.decode("utf-8").replace("TestSuite", "Caf\xe9Loom")
+        latin1_bytes = text.encode("latin-1")
+        result = parse_tieup(latin1_bytes)
+        assert result.num_treadles == 4
 
     def test_output_parseable_as_liftplan(self):
         """The generated liftplan should be readable by parse_picks."""
