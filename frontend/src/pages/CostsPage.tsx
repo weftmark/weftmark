@@ -8,7 +8,9 @@ interface CostRow {
   description: string;
   tier: string;
   monthlyCost: string;
-  status: "free" | "paid" | "donation";
+  status: "free" | "paid" | "donation" | "goal";
+  nextTier?: string;
+  note?: string;
 }
 
 const COSTS: CostRow[] = [
@@ -18,6 +20,15 @@ const COSTS: CostRow[] = [
     tier: "Equipment owner donation",
     monthlyCost: "$0",
     status: "donation",
+    note: "Goal: donate $100/yr to the hosting owner as a thank-you.",
+  },
+  {
+    service: "Domain registration",
+    description: "weftmark.com domain name — annual renewal.",
+    tier: "Annual renewal",
+    monthlyCost: "~$1",
+    status: "paid",
+    note: "Billed ~$12/yr.",
   },
   {
     service: "Claude Max ×5",
@@ -39,6 +50,7 @@ const COSTS: CostRow[] = [
     tier: "Free (100 CU-hr/mo, 0.5 GB)",
     monthlyCost: "$0",
     status: "free",
+    nextTier: "Launch plan: ~$19/mo",
   },
   {
     service: "SMTP2Go (Email)",
@@ -46,13 +58,15 @@ const COSTS: CostRow[] = [
     tier: "Free (1,000 emails/mo)",
     monthlyCost: "$0",
     status: "free",
+    nextTier: "Starter: $10/mo (10k emails/mo)",
   },
   {
     service: "Cloudflare R2 (Storage)",
     description: "Object storage for drawdown images, WIF files, and project photos.",
-    tier: "Free (10 GB, 10M reads/mo)",
+    tier: "Free (10 GB, 1M writes, 10M reads/mo)",
     monthlyCost: "$0",
     status: "free",
+    nextTier: "$0.015/GB + $4.50/M write ops above free tier",
   },
   {
     service: "Clerk (Authentication)",
@@ -60,6 +74,7 @@ const COSTS: CostRow[] = [
     tier: "Free (50,000 MAU)",
     monthlyCost: "$0",
     status: "free",
+    nextTier: "Pro: $20/mo + $0.02/MAU over limit",
   },
 ];
 
@@ -67,12 +82,14 @@ const STATUS_BADGE: Record<CostRow["status"], string> = {
   free: "bg-green-100 text-green-800",
   paid: "bg-amber-100 text-amber-800",
   donation: "bg-blue-100 text-blue-800",
+  goal: "bg-purple-100 text-purple-800",
 };
 
 const STATUS_LABEL: Record<CostRow["status"], string> = {
   free: "Free tier",
   paid: "Paid",
   donation: "Donated",
+  goal: "Goal",
 };
 
 // Replace with the actual GitHub Sponsors URL once approved.
@@ -108,7 +125,7 @@ export function CostsPage() {
               features without it becoming a second job in itself.
             </p>
             <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-1.5 text-sm font-medium text-amber-900">
-              Approximate monthly cost: ~$120 / month
+              Approximate monthly cost: ~$121 / month
             </div>
           </div>
 
@@ -131,12 +148,23 @@ export function CostsPage() {
                       <td className="px-4 py-3 font-medium align-top">
                         <div>{row.service}</div>
                         <div className="mt-1 sm:hidden text-xs text-stone-500 font-normal">{row.description}</div>
+                        {row.note && <div className="mt-1 sm:hidden text-xs text-stone-400 italic">{row.note}</div>}
                         <span className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[row.status]}`}>
                           {STATUS_LABEL[row.status]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-stone-600 hidden sm:table-cell align-top">{row.description}</td>
-                      <td className="px-4 py-3 text-stone-600 align-top">{row.tier}</td>
+                      <td className="px-4 py-3 text-stone-600 hidden sm:table-cell align-top">
+                        <div>{row.description}</div>
+                        {row.note && <div className="mt-1 text-xs text-stone-400 italic">{row.note}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-stone-600 align-top">
+                        <div>{row.tier}</div>
+                        {row.nextTier && (
+                          <div className="mt-1 text-xs text-stone-400">
+                            Next: {row.nextTier}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right font-mono font-semibold align-top">{row.monthlyCost}</td>
                     </tr>
                   ))}
@@ -145,7 +173,7 @@ export function CostsPage() {
                   <tr className="border-t-2 border-stone-300 bg-stone-50">
                     <td colSpan={3} className="px-4 py-3 text-sm font-medium text-right hidden sm:table-cell">Total (approximate)</td>
                     <td colSpan={2} className="px-4 py-3 text-sm font-medium sm:hidden">Total</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold">~$120 / mo</td>
+                    <td className="px-4 py-3 text-right font-mono font-bold">~$121 / mo</td>
                   </tr>
                 </tfoot>
               </table>
