@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.deps import get_db
 from app.models.user import User
 
-router = APIRouter(prefix="/system", tags=["system"])
+router = APIRouter(prefix="/api/system", tags=["system"])
 
 
 @router.get("/status")

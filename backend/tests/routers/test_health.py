@@ -26,19 +26,19 @@ def reset_health_state():
 
 class TestHealth:
     async def test_returns_200(self, client: AsyncClient):
-        resp = await client.get("/health")
+        resp = await client.get("/api/health")
         assert resp.status_code == 200
 
     async def test_status_is_ok(self, client: AsyncClient):
-        resp = await client.get("/health")
+        resp = await client.get("/api/health")
         assert resp.json()["status"] == "ok"
 
     async def test_returns_version(self, client: AsyncClient):
-        resp = await client.get("/health")
+        resp = await client.get("/api/health")
         assert resp.json()["version"] == VERSION
 
     async def test_response_schema(self, client: AsyncClient):
-        resp = await client.get("/health")
+        resp = await client.get("/api/health")
         body = resp.json()
         assert "status" in body
         assert "version" in body
@@ -47,13 +47,13 @@ class TestHealth:
 class TestHealthReady:
     async def test_returns_503_when_cache_empty(self, client: AsyncClient):
         health_module._readiness_cache = None
-        resp = await client.get("/health/ready")
+        resp = await client.get("/api/health/ready")
         assert resp.status_code == 503
         assert resp.json()["status"] == "starting"
 
     async def test_returns_200_when_ok(self, client: AsyncClient):
         health_module._readiness_cache = ReadinessResponse(status="ok", services=[])
-        resp = await client.get("/health/ready")
+        resp = await client.get("/api/health/ready")
         assert resp.status_code == 200
 
     async def test_returns_503_when_error(self, client: AsyncClient):
@@ -61,7 +61,7 @@ class TestHealthReady:
             status="error",
             services=[ReadinessService(name="postgres", ok=False, critical=True)],
         )
-        resp = await client.get("/health/ready")
+        resp = await client.get("/api/health/ready")
         assert resp.status_code == 503
 
     async def test_returns_200_when_degraded(self, client: AsyncClient):
@@ -69,14 +69,14 @@ class TestHealthReady:
             status="degraded",
             services=[ReadinessService(name="SMTP", ok=False, critical=False)],
         )
-        resp = await client.get("/health/ready")
+        resp = await client.get("/api/health/ready")
         assert resp.status_code == 200
 
 
 class TestHealthDetailed:
     async def test_returns_200_with_starting_when_cache_empty(self, client: AsyncClient):
         health_module._detailed_cache = None
-        resp = await client.get("/health/detailed")
+        resp = await client.get("/api/health/detailed")
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "starting"
@@ -89,7 +89,7 @@ class TestHealthDetailed:
             services=[ReadinessService(name="PostgreSQL", ok=True, critical=True)],
             checked_at="2026-01-01T00:00:00+00:00",
         )
-        resp = await client.get("/health/detailed")
+        resp = await client.get("/api/health/detailed")
         assert resp.status_code == 200
 
     async def test_returns_cached_status(self, client: AsyncClient):
@@ -98,7 +98,7 @@ class TestHealthDetailed:
             services=[ReadinessService(name="Clerk Webhook", ok=False, critical=False, message="timeout")],
             checked_at="2026-01-01T00:00:00+00:00",
         )
-        body = (await client.get("/health/detailed")).json()
+        body = (await client.get("/api/health/detailed")).json()
         assert body["status"] == "degraded"
         assert body["checked_at"] == "2026-01-01T00:00:00+00:00"
 
@@ -111,14 +111,14 @@ class TestHealthDetailed:
             ],
             checked_at="2026-01-01T00:00:00+00:00",
         )
-        body = (await client.get("/health/detailed")).json()
+        body = (await client.get("/api/health/detailed")).json()
         names = [s["name"] for s in body["services"]]
         assert "PostgreSQL" in names
         assert "Clerk Webhook" in names
 
     async def test_detailed_returns_200_even_when_degraded(self, client: AsyncClient):
         health_module._detailed_cache = ReadinessResponse(status="degraded", services=[])
-        resp = await client.get("/health/detailed")
+        resp = await client.get("/api/health/detailed")
         assert resp.status_code == 200
 
     async def test_detailed_returns_200_even_when_error(self, client: AsyncClient):
@@ -126,7 +126,7 @@ class TestHealthDetailed:
             status="error",
             services=[ReadinessService(name="PostgreSQL", ok=False, critical=True)],
         )
-        resp = await client.get("/health/detailed")
+        resp = await client.get("/api/health/detailed")
         assert resp.status_code == 200
 
 

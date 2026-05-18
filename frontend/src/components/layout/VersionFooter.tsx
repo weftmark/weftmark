@@ -14,7 +14,7 @@ interface HealthResponse {
 export function VersionBadge() {
   const { data } = useQuery<HealthResponse>({
     queryKey: ["health"],
-    queryFn: () => api.get<HealthResponse>("/health"),
+    queryFn: () => api.get<HealthResponse>("/api/health"),
     staleTime: Infinity,
     retry: false,
   });

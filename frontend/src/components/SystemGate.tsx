@@ -7,7 +7,7 @@ export function SystemGate({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
 
   useEffect(() => {
-    fetch("/system/status")
+    fetch("/api/system/status")
       .then((res) => res.json())
       .then((data: { initialized: boolean }) => {
         setStatus(data.initialized ? "initialized" : "uninitialized");
