@@ -12,6 +12,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, convertLength, formatLength, formatApproxLength } from "@/lib/units";
 import { nearestColorName } from "@/lib/colorName";
+import { getReedRecommendation } from "@/lib/reedRecommendation";
 import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
 
 export function DraftDetailPage() {
@@ -481,6 +482,36 @@ export function DraftDetailPage() {
                     </div>
                   )}
                 </dd>
+
+                {resolvedEpi != null && (() => {
+                  const rec = getReedRecommendation(resolvedEpi);
+                  return (
+                    <>
+                      <dt className="text-muted-foreground">Reed</dt>
+                      <dd>
+                        {rec.matches.length > 0 ? (
+                          <ul className="space-y-0.5">
+                            {rec.matches.map((m) => (
+                              <li key={m.dents} className="text-sm">
+                                {m.dents}-dent, {m.threadsPerDent} per dent
+                                {m.threadsPerDent === 1 && (
+                                  <span className="ml-1 text-xs text-muted-foreground">(ideal)</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : rec.nearest ? (
+                          <p className="text-sm text-muted-foreground">
+                            No standard reed matches {resolvedEpi} EPI exactly.
+                            Nearest clean setts: {rec.nearest[0]} or {rec.nearest[1]} EPI.
+                          </p>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">No standard reed match found.</span>
+                        )}
+                      </dd>
+                    </>
+                  );
+                })()}
               </dl>
 
               {draft.wif_colors && draft.wif_colors.length > 0 && (() => {
