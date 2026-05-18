@@ -185,6 +185,127 @@ class TestPurgeStorage:
         await _purge_storage(db_session, test_user.id, mock_storage)
         mock_storage._delete.assert_not_called()
 
+    async def test_deletes_project_photo(self, db_session, test_user):
+        from app.models.draft import Draft
+        from app.models.project import Project, ProjectPhoto
+        from app.tasks.deletion import _purge_storage
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Photo Draft",
+            wif_filename="photo.wif",
+            wif_path="drafts/photo.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Photo Project",
+            project_type="treadle",
+            total_picks=4,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        photo = ProjectPhoto(
+            id=uuid.uuid4(),
+            project_id=project.id,
+            file_path="projects/photo.jpg",
+            filename="photo.jpg",
+        )
+        db_session.add(photo)
+        await db_session.commit()
+
+        mock_storage = MagicMock()
+        mock_storage.delete_project_tiles = MagicMock(return_value=0)
+        await _purge_storage(db_session, test_user.id, mock_storage)
+
+        called_paths = [c.args[0] for c in mock_storage._delete.call_args_list]
+        assert "projects/photo.jpg" in called_paths
+
+    async def test_delete_project_tiles_exception_swallowed(self, db_session, test_user):
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.deletion import _purge_storage
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Tiles Draft",
+            wif_filename="tiles.wif",
+            wif_path="drafts/tiles.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Tiles Project",
+            project_type="treadle",
+            total_picks=4,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        mock_storage = MagicMock()
+        mock_storage.delete_project_tiles = MagicMock(side_effect=RuntimeError("s3 gone"))
+        await _purge_storage(db_session, test_user.id, mock_storage)  # must not raise
+
+    async def test_deletes_loom_version_photo_and_receipt(self, db_session, test_user):
+        from datetime import date
+
+        from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt
+        from app.tasks.deletion import _purge_storage
+
+        loom = Loom(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            loom_type="floor",
+            manufacturer="Acme",
+            model_name="VersionedLoom",
+        )
+        db_session.add(loom)
+        await db_session.flush()
+
+        version = LoomVersion(
+            id=uuid.uuid4(),
+            loom_id=loom.id,
+            version_number=1,
+            effective_date=date.today(),
+        )
+        db_session.add(version)
+        await db_session.flush()
+
+        photo = LoomVersionPhoto(
+            id=uuid.uuid4(),
+            loom_version_id=version.id,
+            filename="loom.jpg",
+            path="loom-versions/loom.jpg",
+        )
+        receipt = LoomVersionReceipt(
+            id=uuid.uuid4(),
+            loom_version_id=version.id,
+            filename="receipt.pdf",
+            path="loom-versions/receipt.pdf",
+        )
+        db_session.add(photo)
+        db_session.add(receipt)
+        await db_session.commit()
+
+        mock_storage = MagicMock()
+        mock_storage.delete_project_tiles = MagicMock(return_value=0)
+        await _purge_storage(db_session, test_user.id, mock_storage)
+
+        called_paths = [c.args[0] for c in mock_storage._delete.call_args_list]
+        assert "loom-versions/loom.jpg" in called_paths
+        assert "loom-versions/receipt.pdf" in called_paths
+
 
 # ---------------------------------------------------------------------------
 # TestNotifyHelpers — _notify_admins_complete / _notify_stalled
