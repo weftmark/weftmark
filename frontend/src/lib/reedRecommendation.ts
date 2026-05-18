@@ -50,3 +50,35 @@ export function getReedRecommendation(epi: number): ReedRecommendation {
     nearest: lower != null && upper != null ? [lower, upper] : null,
   };
 }
+
+/**
+ * Bresenham distribution — spreads `epiInt` threads across `dents` dents as
+ * evenly as possible. Returns an array of length `dents` where each element
+ * is the thread count for that dent. Sums to `epiInt`.
+ */
+export function buildDentPattern(epi: number, dents: number): number[] {
+  const epiInt = Math.round(epi);
+  const pattern: number[] = [];
+  for (let i = 0; i < dents; i++) {
+    pattern.push(Math.floor(((i + 1) * epiInt) / dents) - Math.floor((i * epiInt) / dents));
+  }
+  return pattern;
+}
+
+/**
+ * Finds the nearest common-dent reed that gives a clean multiple for `epi`,
+ * searching within `allDents` (loom reeds + common dents). Returns the dent
+ * count, or null if none found.
+ */
+export function nearestCleanDent(epi: number, allDents: number[]): number | null {
+  const epiInt = Math.round(epi);
+  const sorted = [...allDents].sort((a, b) => {
+    const aClean = epiInt % a === 0;
+    const bClean = epiInt % b === 0;
+    if (aClean && !bClean) return -1;
+    if (!aClean && bClean) return 1;
+    return a - b;
+  });
+  const clean = sorted.find((d) => epiInt % d === 0);
+  return clean ?? null;
+}

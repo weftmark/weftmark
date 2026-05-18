@@ -106,6 +106,8 @@ class ProjectDetail(ProjectSummary):
     loom_warp_waste_allowance: Decimal | None = None
     loom_warp_waste_unit: str | None = None
     loom_resolved_version_id: uuid.UUID | None = None
+    loom_reeds: list[dict] = []
+    reed_dents_per_inch: float | None = None
     photos: list[ProjectPhotoSchema] = []
 
 
@@ -143,6 +145,10 @@ class ColorReplacementsRequest(BaseModel):
 class AssignLoomRequest(BaseModel):
     loom_id: uuid.UUID
     loom_version_id: uuid.UUID | None = None
+
+
+class SetReedRequest(BaseModel):
+    reed_dents_per_inch: float | None
 
 
 class JumpRequest(BaseModel):
@@ -371,6 +377,7 @@ def _to_detail(
     loom: Loom | None,
     photos: list[ProjectPhoto] | None = None,
     loom_version: LoomVersion | None = None,
+    loom_reeds: list[dict] | None = None,
 ) -> ProjectDetail:
     return ProjectDetail(
         id=project.id,
@@ -421,6 +428,8 @@ def _to_detail(
         share_slug=project.share_slug,
         share_visibility=project.share_visibility,
         share_expires_at=project.share_expires_at,
+        reed_dents_per_inch=project.reed_dents_per_inch,
+        loom_reeds=loom_reeds or [],
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
     )
 
@@ -864,11 +873,20 @@ async def get_project(
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     draft = await db.get(Draft, project.draft_id)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_reeds: list[dict] = []
+    if project.loom_id:
+        loom_stmt = select(Loom).where(Loom.id == project.loom_id).options(selectinload(Loom.reeds))
+        loom = (await db.scalars(loom_stmt)).first()
+        if loom:
+            loom_reeds = [{"id": str(r.id), "dents_per_inch": r.dents_per_inch} for r in loom.reeds]
+    else:
+        loom = None
     loom_version = await _resolve_loom_version(project, db)
     if draft is not None and draft.drawdown_preview_path is None:
         generate_drawdown_preview.delay(str(draft.id))
-    return _to_detail(project, draft, loom, photos=list(project.photos), loom_version=loom_version)  # type: ignore[arg-type]
+    return _to_detail(
+        project, draft, loom, photos=list(project.photos), loom_version=loom_version, loom_reeds=loom_reeds
+    )  # type: ignore[arg-type]
 
 
 @router.patch("/{project_id}", response_model=ProjectDetail)
@@ -953,6 +971,32 @@ async def update_warp_setup(
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
     loom_version = await _resolve_loom_version(project, db)
     return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+
+
+@router.patch("/{project_id}/reed", response_model=ProjectDetail)
+async def set_reed(
+    project_id: uuid.UUID,
+    body: SetReedRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    if body.reed_dents_per_inch is not None and body.reed_dents_per_inch <= 0:
+        raise HTTPException(status_code=400, detail="reed_dents_per_inch must be positive")
+    project = await _get_owned_project(project_id, current_user, db)
+    project.reed_dents_per_inch = body.reed_dents_per_inch
+    await db.commit()
+    await db.refresh(project)
+    draft = await db.get(Draft, project.draft_id)
+    loom_reeds: list[dict] = []
+    if project.loom_id:
+        loom_stmt = select(Loom).where(Loom.id == project.loom_id).options(selectinload(Loom.reeds))
+        loom = (await db.scalars(loom_stmt)).first()
+        if loom:
+            loom_reeds = [{"id": str(r.id), "dents_per_inch": r.dents_per_inch} for r in loom.reeds]
+    else:
+        loom = None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, draft, loom, loom_version=loom_version, loom_reeds=loom_reeds)  # type: ignore[arg-type]
 
 
 @router.post("/{project_id}/assign-loom", response_model=ProjectDetail)
