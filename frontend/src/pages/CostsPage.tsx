@@ -138,7 +138,8 @@ export function CostsPage() {
                   <tr className="border-b border-stone-200 bg-stone-100 text-left text-xs uppercase tracking-wide text-stone-500">
                     <th className="px-4 py-3">Service</th>
                     <th className="px-4 py-3 hidden sm:table-cell">What it does</th>
-                    <th className="px-4 py-3">Tier</th>
+                    <th className="px-4 py-3">Current tier</th>
+                    <th className="px-4 py-3 hidden md:table-cell">Next tier</th>
                     <th className="px-4 py-3 text-right">Cost / mo</th>
                   </tr>
                 </thead>
@@ -157,13 +158,9 @@ export function CostsPage() {
                         <div>{row.description}</div>
                         {row.note && <div className="mt-1 text-xs text-stone-400 italic">{row.note}</div>}
                       </td>
-                      <td className="px-4 py-3 text-stone-600 align-top">
-                        <div>{row.tier}</div>
-                        {row.nextTier && (
-                          <div className="mt-1 text-xs text-stone-400">
-                            Next: {row.nextTier}
-                          </div>
-                        )}
+                      <td className="px-4 py-3 text-stone-600 align-top">{row.tier}</td>
+                      <td className="px-4 py-3 text-stone-500 hidden md:table-cell align-top">
+                        {row.nextTier ?? <span className="text-stone-300">—</span>}
                       </td>
                       <td className="px-4 py-3 text-right font-mono font-semibold align-top">{row.monthlyCost}</td>
                     </tr>
@@ -171,7 +168,8 @@ export function CostsPage() {
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-stone-300 bg-stone-50">
-                    <td colSpan={3} className="px-4 py-3 text-sm font-medium text-right hidden sm:table-cell">Total (approximate)</td>
+                    <td colSpan={4} className="px-4 py-3 text-sm font-medium text-right hidden md:table-cell">Total (approximate)</td>
+                    <td colSpan={3} className="px-4 py-3 text-sm font-medium text-right hidden sm:table-cell md:hidden">Total (approximate)</td>
                     <td colSpan={2} className="px-4 py-3 text-sm font-medium sm:hidden">Total</td>
                     <td className="px-4 py-3 text-right font-mono font-bold">~$121 / mo</td>
                   </tr>
