@@ -126,6 +126,13 @@ export function FeedbackModal({ onClose }: Props) {
 
         {submitted ? (
           <SuccessView record={submitted} onClose={onClose} />
+        ) : !user ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Please sign in to submit feedback.</p>
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" onClick={onClose}>Close</Button>
+            </div>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Type selector */}

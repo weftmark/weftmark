@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -66,6 +66,7 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     hide_unused_shafts_treadles: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     color_replacements: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    reed_dents_per_inch: Mapped[float | None] = mapped_column(Float, nullable=True)
     drawdown_preview_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     drawdown_svg_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 

@@ -141,6 +141,8 @@ export interface ProjectDetail extends ProjectSummary {
   loom_warp_waste_allowance: string | null;
   loom_warp_waste_unit: string | null;
   loom_resolved_version_id: string | null;
+  loom_reeds: { id: string; dents_per_inch: number }[];
+  reed_dents_per_inch: number | null;
   photos: ProjectPhoto[];
 }
 
@@ -413,6 +415,13 @@ export function assignLoom(id: string, loomId: string, loomVersionId?: string): 
 
 export function deleteProject(id: string): Promise<void> {
   return req(`/api/projects/${id}`, { method: "DELETE" });
+}
+
+export function setProjectReed(id: string, reedDentsPerInch: number | null): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/reed`, {
+    method: "PATCH",
+    body: JSON.stringify({ reed_dents_per_inch: reedDentsPerInch }),
+  });
 }
 
 export function getProjectPicks(id: string): Promise<PicksResponse> {
