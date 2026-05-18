@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -1510,3 +1510,454 @@ class TestAdminProjectSteps:
         project = await self._insert_project(db_session, admin_user)
         resp = await client.get(f"/api/admin/project-steps?project_id={project.id}")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/audit-log
+# ---------------------------------------------------------------------------
+
+
+class TestAuditLog:
+    async def test_returns_200(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/audit-log")
+        assert resp.status_code == 200
+
+    async def test_response_structure(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/audit-log")).json()
+        assert "items" in data
+        assert "total" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "pages" in data
+
+    async def test_filter_by_event_type(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/audit-log?event_type=user.banned")
+        assert resp.status_code == 200
+
+    async def test_filter_by_q(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/audit-log?q=admin")
+        assert resp.status_code == 200
+
+    async def test_custom_page_size(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/audit-log?page=1&page_size=10")).json()
+        assert data["page"] == 1
+        assert data["page_size"] == 10
+
+    async def test_non_admin_returns_403(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/audit-log")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/api/admin/audit-log")
+        assert resp.status_code == 401
+
+    async def test_entries_have_expected_fields(
+        self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        from app.services.audit import write_audit_log
+
+        await write_audit_log(db_session, event_type="test.event", actor=admin_user)
+        await db_session.commit()
+
+        data = (await admin_client.get("/api/admin/audit-log")).json()
+        if data["items"]:
+            entry = data["items"][0]
+            for field in ("id", "event_type", "created_at"):
+                assert field in entry
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/server-events
+# ---------------------------------------------------------------------------
+
+
+class TestServerEvents:
+    async def test_returns_200(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/server-events")
+        assert resp.status_code == 200
+
+    async def test_response_structure(self, admin_client: AsyncClient):
+        data = (await admin_client.get("/api/admin/server-events")).json()
+        assert "items" in data
+        assert "total" in data
+        assert "pages" in data
+
+    async def test_filter_by_event_type(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/server-events?event_type=backup.start")
+        assert resp.status_code == 200
+
+    async def test_non_admin_returns_403(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/server-events")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/api/admin/server-events")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET/POST/PATCH/DELETE /api/admin/credentials
+# ---------------------------------------------------------------------------
+
+
+class TestCredentials:
+    async def test_list_returns_200(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/credentials")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    async def test_list_non_admin_returns_403(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/credentials")
+        assert resp.status_code == 403
+
+    async def test_create_credential_returns_201(self, superuser_client: AsyncClient, superuser_user: User):
+        payload = {"name": "Test SMTP Key", "resource": "smtp", "notes": "expires soon"}
+        resp = await superuser_client.post("/api/admin/credentials", json=payload)
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["name"] == "Test SMTP Key"
+        assert data["resource"] == "smtp"
+        assert "id" in data
+        assert "days_remaining" in data
+
+    async def test_create_invalid_resource_returns_422(self, superuser_client: AsyncClient, superuser_user: User):
+        payload = {"name": "Bad Key", "resource": "invalid_resource"}
+        resp = await superuser_client.post("/api/admin/credentials", json=payload)
+        assert resp.status_code == 422
+
+    async def test_create_requires_superuser(self, admin_client: AsyncClient, admin_user: User):
+        resp = await admin_client.post("/api/admin/credentials", json={"name": "X", "resource": "s3"})
+        assert resp.status_code == 403
+
+    async def test_patch_credential(self, superuser_client: AsyncClient, superuser_user: User):
+        create_resp = await superuser_client.post(
+            "/api/admin/credentials", json={"name": "Patchable", "resource": "clerk"}
+        )
+        cred_id = create_resp.json()["id"]
+        resp = await superuser_client.patch(f"/api/admin/credentials/{cred_id}", json={"name": "Updated Name"})
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Updated Name"
+
+    async def test_patch_invalid_resource_returns_422(self, superuser_client: AsyncClient, superuser_user: User):
+        create_resp = await superuser_client.post("/api/admin/credentials", json={"name": "PatchBad", "resource": "s3"})
+        cred_id = create_resp.json()["id"]
+        resp = await superuser_client.patch(f"/api/admin/credentials/{cred_id}", json={"resource": "bad_resource"})
+        assert resp.status_code == 422
+
+    async def test_patch_nonexistent_returns_404(self, superuser_client: AsyncClient, superuser_user: User):
+        resp = await superuser_client.patch(f"/api/admin/credentials/{uuid.uuid4()}", json={"name": "X"})
+        assert resp.status_code == 404
+
+    async def test_delete_credential_returns_204(self, superuser_client: AsyncClient, superuser_user: User):
+        create_resp = await superuser_client.post(
+            "/api/admin/credentials", json={"name": "Deletable", "resource": "postgres"}
+        )
+        cred_id = create_resp.json()["id"]
+        resp = await superuser_client.delete(f"/api/admin/credentials/{cred_id}")
+        assert resp.status_code == 204
+
+    async def test_delete_nonexistent_returns_404(self, superuser_client: AsyncClient, superuser_user: User):
+        resp = await superuser_client.delete(f"/api/admin/credentials/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    async def test_delete_requires_superuser(self, admin_client: AsyncClient, admin_user: User):
+        resp = await admin_client.delete(f"/api/admin/credentials/{uuid.uuid4()}")
+        assert resp.status_code == 403
+
+    async def test_credential_with_expires_on_has_days_remaining(
+        self, superuser_client: AsyncClient, superuser_user: User
+    ):
+        from datetime import date, timedelta
+
+        future = (date.today() + timedelta(days=30)).isoformat()
+        resp = await superuser_client.post(
+            "/api/admin/credentials", json={"name": "Expiring", "resource": "app", "expires_on": future}
+        )
+        assert resp.status_code == 201
+        assert resp.json()["days_remaining"] is not None
+        assert resp.json()["days_remaining"] >= 29
+
+
+# ---------------------------------------------------------------------------
+# GET/DELETE /api/admin/project-slugs
+# ---------------------------------------------------------------------------
+
+
+class TestProjectSlugs:
+    async def _create_shared_project(self, db: AsyncSession, owner: User) -> "Project":
+        from app.models.draft import Draft
+
+        draft = Draft(
+            owner_id=owner.id,
+            name="Slug Test Draft",
+            wif_filename="slug.wif",
+            wif_path="drafts/slug.wif",
+        )
+        db.add(draft)
+        await db.flush()
+        proj = Project(
+            owner_id=owner.id,
+            draft_id=draft.id,
+            name="Slug Test Project",
+            project_type="treadle",
+            total_picks=10,
+            share_slug=f"slug-{uuid.uuid4().hex[:8]}",
+            share_visibility="public",
+        )
+        db.add(proj)
+        await db.commit()
+        await db.refresh(proj)
+        return proj
+
+    async def test_list_returns_200(self, admin_client: AsyncClient, admin_user: User):
+        resp = await admin_client.get("/api/admin/project-slugs")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    async def test_list_includes_shared_project(
+        self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        proj = await self._create_shared_project(db_session, admin_user)
+        resp = await admin_client.get("/api/admin/project-slugs")
+        slugs = [r["slug"] for r in resp.json()]
+        assert proj.share_slug in slugs
+
+    async def test_list_non_admin_returns_403(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/project-slugs")
+        assert resp.status_code == 403
+
+    async def test_revoke_slug_returns_204(self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User):
+        proj = await self._create_shared_project(db_session, admin_user)
+        resp = await admin_client.delete(f"/api/admin/project-slugs/{proj.share_slug}")
+        assert resp.status_code == 204
+
+    async def test_revoke_clears_slug_and_visibility(
+        self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        proj = await self._create_shared_project(db_session, admin_user)
+        slug = proj.share_slug
+        await admin_client.delete(f"/api/admin/project-slugs/{slug}")
+        await db_session.refresh(proj)
+        assert proj.share_slug is None
+        assert proj.share_visibility == "private"
+
+    async def test_revoke_nonexistent_slug_returns_404(self, admin_client: AsyncClient, admin_user: User):
+        resp = await admin_client.delete("/api/admin/project-slugs/nonexistent-slug-xyz")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/task-history and POST /api/admin/tasks/{task_id}/revoke
+# ---------------------------------------------------------------------------
+
+
+class TestTaskHistory:
+    async def test_returns_200(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/task-history")
+        assert resp.status_code == 200
+
+    async def test_response_structure(self, superuser_client: AsyncClient):
+        data = (await superuser_client.get("/api/admin/task-history")).json()
+        assert "items" in data
+        assert "total" in data
+        assert "pages" in data
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/task-history")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get("/api/admin/task-history")
+        assert resp.status_code == 401
+
+
+class TestRevokeTask:
+    async def test_returns_200_and_revoked_status(self, superuser_client: AsyncClient):
+        fake_task_id = str(uuid.uuid4())
+        with (
+            patch("app.celery_app.celery_app") as mock_celery,
+            patch("app.services.task_history.record_completed", return_value=None),
+        ):
+            mock_celery.control.revoke = MagicMock()
+            resp = await superuser_client.post(f"/api/admin/tasks/{fake_task_id}/revoke")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "revoked"
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.post(f"/api/admin/tasks/{uuid.uuid4()}/revoke")
+        assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/purge-soft-deleted
+# ---------------------------------------------------------------------------
+
+
+class TestPurgeSoftDeleted:
+    async def test_returns_200_and_queued_status(self, superuser_client: AsyncClient):
+        with (
+            patch("app.tasks.purge.purge_soft_deleted_records") as mock_task,
+            patch("app.services.task_history.record_queued", return_value=None),
+        ):
+            mock_task.delay.return_value = MagicMock(id="fake-task-id")
+            resp = await superuser_client.post("/api/admin/purge-soft-deleted")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "queued"
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/admin/purge-soft-deleted")
+        assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/worker-status
+# ---------------------------------------------------------------------------
+
+
+class TestWorkerStatus:
+    async def test_returns_200(self, superuser_client: AsyncClient):
+        with patch("app.celery_app.celery_app") as mock_celery:
+            inspector = MagicMock()
+            inspector.active.return_value = {}
+            inspector.reserved.return_value = {}
+            inspector.stats.return_value = {}
+            mock_celery.control.inspect.return_value = inspector
+            resp = await superuser_client.get("/api/admin/worker-status")
+        assert resp.status_code == 200
+
+    async def test_response_has_workers_and_queues(self, superuser_client: AsyncClient):
+        with patch("app.celery_app.celery_app") as mock_celery:
+            inspector = MagicMock()
+            inspector.active.return_value = {}
+            inspector.reserved.return_value = {}
+            inspector.stats.return_value = {}
+            mock_celery.control.inspect.return_value = inspector
+            data = (await superuser_client.get("/api/admin/worker-status")).json()
+        assert "workers" in data
+        assert "queues" in data
+        assert "api_version" in data
+
+    async def test_no_workers_returns_offline_entry(self, superuser_client: AsyncClient):
+        with patch("app.celery_app.celery_app") as mock_celery:
+            inspector = MagicMock()
+            inspector.active.return_value = {}
+            inspector.reserved.return_value = {}
+            inspector.stats.return_value = {}
+            mock_celery.control.inspect.return_value = inspector
+            data = (await superuser_client.get("/api/admin/worker-status")).json()
+        assert any(w["status"] == "offline" for w in data["workers"])
+
+    async def test_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/worker-status")
+        assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/s3-audit/scan and GET /api/admin/s3-audit/task/{task_id}
+# ---------------------------------------------------------------------------
+
+
+class TestS3Audit:
+    async def test_scan_returns_202_with_task_id(self, superuser_client: AsyncClient, superuser_user: User):
+        with (
+            patch("app.tasks.s3_audit.run_s3_orphan_scan") as mock_task,
+            patch("app.services.task_history.record_queued", return_value=None),
+        ):
+            mock_task.delay.return_value = MagicMock(id="s3-task-abc")
+            resp = await superuser_client.post("/api/admin/s3-audit/scan")
+        assert resp.status_code == 202
+        assert resp.json()["task_id"] == "s3-task-abc"
+
+    async def test_scan_requires_superuser(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/admin/s3-audit/scan")
+        assert resp.status_code == 403
+
+    async def test_task_pending_state(self, superuser_client: AsyncClient, superuser_user: User):
+        with patch("celery.result.AsyncResult") as mock_result_cls:
+            mock_result_cls.return_value.state = "PENDING"
+            resp = await superuser_client.get("/api/admin/s3-audit/task/fake-task-id")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "pending"
+
+    async def test_task_running_state(self, superuser_client: AsyncClient, superuser_user: User):
+        with patch("celery.result.AsyncResult") as mock_result_cls:
+            mock_result_cls.return_value.state = "STARTED"
+            resp = await superuser_client.get("/api/admin/s3-audit/task/fake-task-id")
+        assert resp.json()["status"] == "running"
+
+    async def test_task_failed_state(self, superuser_client: AsyncClient, superuser_user: User):
+        with patch("celery.result.AsyncResult") as mock_result_cls:
+            mock_result_cls.return_value.state = "FAILURE"
+            mock_result_cls.return_value.result = RuntimeError("s3 gone")
+            resp = await superuser_client.get("/api/admin/s3-audit/task/fake-task-id")
+        assert resp.json()["status"] == "failed"
+
+    async def test_summary_returns_200(self, superuser_client: AsyncClient, superuser_user: User):
+        with patch("redis.from_url") as mock_from_url:
+            mock_client = MagicMock()
+            mock_from_url.return_value = mock_client
+            mock_client.get.return_value = None
+            resp = await superuser_client.get("/api/admin/s3-audit/summary")
+        assert resp.status_code == 200
+
+    async def test_summary_requires_superuser(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/s3-audit/summary")
+        assert resp.status_code == 403
+
+    async def test_cleanup_returns_deleted_count(self, superuser_client: AsyncClient, superuser_user: User):
+        with patch("app.services.storage._delete", MagicMock()):
+            resp = await superuser_client.post(
+                "/api/admin/s3-audit/cleanup", json={"keys": ["orphan/file1.jpg", "orphan/file2.jpg"]}
+            )
+        assert resp.status_code == 200
+        assert resp.json()["deleted"] == 2
+
+    async def test_cleanup_empty_keys_returns_zero(self, superuser_client: AsyncClient, superuser_user: User):
+        resp = await superuser_client.post("/api/admin/s3-audit/cleanup", json={"keys": []})
+        assert resp.status_code == 200
+        assert resp.json()["deleted"] == 0
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/cve-scan/start and GET /api/admin/cve-scan/task/{task_id}
+# ---------------------------------------------------------------------------
+
+
+class TestCveScan:
+    async def test_start_returns_202_with_task_id(self, superuser_client: AsyncClient, superuser_user: User):
+        with (
+            patch("app.tasks.cve_scan.run_cve_scan") as mock_task,
+            patch("app.services.task_history.record_queued", return_value=None),
+        ):
+            mock_task.delay.return_value = MagicMock(id="cve-task-abc")
+            resp = await superuser_client.post("/api/admin/cve-scan/start", json={"frontend_deps": {}})
+        assert resp.status_code == 202
+        assert resp.json()["task_id"] == "cve-task-abc"
+
+    async def test_start_requires_superuser(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/admin/cve-scan/start", json={"frontend_deps": {}})
+        assert resp.status_code == 403
+
+    async def test_task_pending_state(self, superuser_client: AsyncClient, superuser_user: User):
+        with patch("celery.result.AsyncResult") as mock_result_cls:
+            mock_result_cls.return_value.state = "PENDING"
+            resp = await superuser_client.get("/api/admin/cve-scan/task/fake-cve-id")
+        assert resp.json()["status"] == "pending"
+
+    async def test_task_running_state(self, superuser_client: AsyncClient, superuser_user: User):
+        with patch("celery.result.AsyncResult") as mock_result_cls:
+            mock_result_cls.return_value.state = "STARTED"
+            resp = await superuser_client.get("/api/admin/cve-scan/task/fake-cve-id")
+        assert resp.json()["status"] == "running"
+
+    async def test_summary_returns_200(self, superuser_client: AsyncClient, superuser_user: User):
+        with patch("redis.from_url") as mock_from_url:
+            mock_client = MagicMock()
+            mock_from_url.return_value = mock_client
+            mock_client.get.return_value = None
+            resp = await superuser_client.get("/api/admin/cve-scan/summary")
+        assert resp.status_code == 200
+
+    async def test_summary_requires_superuser(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/cve-scan/summary")
+        assert resp.status_code == 403
