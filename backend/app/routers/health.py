@@ -13,7 +13,7 @@ from app.celery_app import WORKER_VERSION_KEY
 from app.config import get_settings
 from app.version import VERSION
 
-router = APIRouter(tags=["health"])
+router = APIRouter(prefix="/api", tags=["health"])
 log = logging.getLogger(__name__)
 
 DETAILED_REFRESH_INTERVAL_S = 300  # 5 minutes steady-state poll

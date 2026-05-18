@@ -14,11 +14,11 @@ export interface ReadinessResponse {
 }
 
 export async function getHealthReady(): Promise<ReadinessResponse> {
-  const res = await fetch("/health/ready");
+  const res = await fetch("/api/health/ready");
   return res.json() as Promise<ReadinessResponse>;
 }
 
 export async function getHealthDetailed(): Promise<ReadinessResponse> {
-  const res = await fetch("/health/detailed");
+  const res = await fetch("/api/health/detailed");
   return res.json() as Promise<ReadinessResponse>;
 }
