@@ -58,9 +58,8 @@ _invite_rate_limit = rate_limit("invite", max_requests=20, window_seconds=3600)
 # ---------------------------------------------------------------------------
 
 
-@router.post("/clerk/webhook", status_code=200)
-async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
-    """Receive and process Clerk user lifecycle events."""
+async def _handle_clerk_webhook(request: Request, db: AsyncSession) -> dict:
+    """Core Clerk webhook processing — shared by /auth/clerk/webhook and /webhooks/clerk."""
     from svix.webhooks import Webhook, WebhookVerificationError
 
     payload = await request.body()
@@ -108,6 +107,12 @@ async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) ->
 
     log.info("webhook_processed event_type=%s clerk_user_id=%s", event_type, clerk_user_id)
     return {"status": "ok"}
+
+
+@router.post("/clerk/webhook", status_code=200)
+async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
+    """Legacy path — kept active during Clerk dual-registration migration. Use /webhooks/clerk."""
+    return await _handle_clerk_webhook(request, db)
 
 
 async def _handle_user_created(db: AsyncSession, data: dict) -> None:
