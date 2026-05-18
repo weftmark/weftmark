@@ -14,6 +14,7 @@ import { LandingPage } from "@/pages/LandingPage";
 import { AboutPage } from "@/pages/AboutPage";
 import { PrivacyPage } from "@/pages/PrivacyPage";
 import { TermsPage } from "@/pages/TermsPage";
+import { CostsPage } from "@/pages/CostsPage";
 import { DraftsPage } from "@/pages/DraftsPage";
 import { DraftDetailPage } from "@/pages/DraftDetailPage";
 import { LoomsPage } from "@/pages/LoomsPage";
@@ -96,6 +97,7 @@ export default function App() {
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
+                  <Route path="/costs" element={<CostsPage />} />
                   <Route path="/" element={<RootRoute />} />
                   <Route path="/home" element={<AuthRoute><DashboardPage /></AuthRoute>} />
                   <Route path="/drafts" element={<AuthRoute><DraftsPage /></AuthRoute>} />

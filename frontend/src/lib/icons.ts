@@ -17,6 +17,7 @@ import {
   FileDown,
   FolderOpen,
   Footprints,
+  Heart,
   LayoutDashboard,
   Layers,
   Loader2,
@@ -61,6 +62,7 @@ export const AppIcons = {
   logout: LogOut,
   feedback: MessageSquare,
   onboarding: ListChecks,
+  support: Heart,
 
   // ── UI chrome ─────────────────────────────────────────────────────────────
   edit: Pencil,
