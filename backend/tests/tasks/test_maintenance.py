@@ -1020,3 +1020,431 @@ class TestPruneInactiveProjectTiles:
 
         mock_del.assert_called_once_with(project.id)
         assert result["pruned_projects"] == 1
+
+
+# ---------------------------------------------------------------------------
+# prune_server_event_log
+# ---------------------------------------------------------------------------
+
+
+class TestPruneServerEventLog:
+    def test_returns_result_keys(self):
+        from app.tasks.maintenance import prune_server_event_log
+
+        result = prune_server_event_log.run.__func__(_make_task(), max_age_days=9999, max_entries=1000)
+        assert "deleted_age" in result
+        assert "deleted_overflow" in result
+
+    def test_zero_when_nothing_old(self):
+        from app.tasks.maintenance import prune_server_event_log
+
+        result = prune_server_event_log.run.__func__(_make_task(), max_age_days=9999, max_entries=9999)
+        assert result["deleted_age"] == 0
+        assert result["deleted_overflow"] == 0
+
+    @pytest.mark.asyncio
+    async def test_deletes_old_events(self, db_session):
+        from sqlalchemy import select
+
+        from app.models.server_event import ServerEvent
+        from app.tasks.maintenance import prune_server_event_log
+
+        old_evt = ServerEvent(
+            event_type="health.check",
+            severity="info",
+            status="closed",
+            started_at=_ago(days=60),
+            ended_at=_ago(days=60),
+            app_version="0.0.1",
+            message="old event",
+            details={},
+        )
+        db_session.add(old_evt)
+        await db_session.commit()
+
+        result = prune_server_event_log.run.__func__(_make_task(), max_age_days=30, max_entries=9999)
+        assert result["deleted_age"] >= 1
+
+        remaining = (await db_session.scalars(select(ServerEvent))).all()
+        assert all(e.message != "old event" for e in remaining)
+
+    @pytest.mark.asyncio
+    async def test_keeps_recent_events(self, db_session):
+        from sqlalchemy import select
+
+        from app.models.server_event import ServerEvent
+        from app.tasks.maintenance import prune_server_event_log
+
+        recent = ServerEvent(
+            event_type="health.check",
+            severity="info",
+            status="closed",
+            started_at=_ago(hours=1),
+            ended_at=_ago(hours=1),
+            app_version="0.0.1",
+            message="recent event",
+            details={},
+        )
+        db_session.add(recent)
+        await db_session.commit()
+
+        result = prune_server_event_log.run.__func__(_make_task(), max_age_days=30, max_entries=9999)
+        assert result["deleted_age"] == 0
+
+        remaining = (await db_session.scalars(select(ServerEvent))).all()
+        assert any(e.message == "recent event" for e in remaining)
+
+    @pytest.mark.asyncio
+    async def test_overflow_prunes_oldest_first(self, db_session):
+        from sqlalchemy import select
+
+        from app.models.server_event import ServerEvent
+        from app.tasks.maintenance import prune_server_event_log
+
+        for i in range(5):
+            evt = ServerEvent(
+                event_type="health.check",
+                severity="info",
+                status="closed",
+                started_at=_ago(hours=5 - i),
+                ended_at=_ago(hours=5 - i),
+                app_version="0.0.1",
+                message=f"overflow_event_{i}",
+                details={},
+            )
+            db_session.add(evt)
+        await db_session.commit()
+
+        result = prune_server_event_log.run.__func__(_make_task(), max_age_days=9999, max_entries=3)
+        assert result["deleted_overflow"] == 2
+
+        remaining = (await db_session.scalars(select(ServerEvent))).all()
+        assert len(remaining) == 3
+
+
+# ---------------------------------------------------------------------------
+# _fmt_bytes and _fmt_delta
+# ---------------------------------------------------------------------------
+
+
+class TestFmtBytes:
+    def test_bytes(self):
+        from app.tasks.maintenance import _fmt_bytes
+
+        assert _fmt_bytes(500) == "500 B"
+
+    def test_kilobytes(self):
+        from app.tasks.maintenance import _fmt_bytes
+
+        assert "KB" in _fmt_bytes(2048)
+
+    def test_megabytes(self):
+        from app.tasks.maintenance import _fmt_bytes
+
+        assert "MB" in _fmt_bytes(2 * 1024 * 1024)
+
+    def test_gigabytes(self):
+        from app.tasks.maintenance import _fmt_bytes
+
+        assert "GB" in _fmt_bytes(2 * 1024 * 1024 * 1024)
+
+
+class TestFmtDelta:
+    def test_positive_delta(self):
+        from app.tasks.maintenance import _fmt_delta
+
+        result = _fmt_delta(1024)
+        assert result.startswith("+")
+
+    def test_negative_delta(self):
+        from app.tasks.maintenance import _fmt_delta
+
+        result = _fmt_delta(-1024)
+        assert result.startswith("-")
+
+
+# ---------------------------------------------------------------------------
+# _send_credential_alerts (the inner async helper)
+# ---------------------------------------------------------------------------
+
+
+class TestSendCredentialAlerts:
+    @pytest.mark.asyncio
+    async def test_sends_to_superusers_and_admins(self):
+        from unittest.mock import AsyncMock, patch
+
+        from app.tasks.maintenance import _send_credential_alerts
+
+        with (
+            patch("app.services.email.send_credential_expiring_superuser", new_callable=AsyncMock) as mock_su,
+            patch("app.services.email.send_credential_expiring_admin", new_callable=AsyncMock) as mock_adm,
+        ):
+            await _send_credential_alerts(
+                superuser_emails=["su@test.com"],
+                admin_emails=["admin@test.com"],
+                credential_name="Test Cred",
+                resource="test-resource",
+                days_remaining=5,
+                expires_on="2026-06-01",
+            )
+
+        mock_su.assert_called_once()
+        mock_adm.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_passes_correct_credential_name(self):
+        from unittest.mock import AsyncMock, patch
+
+        from app.tasks.maintenance import _send_credential_alerts
+
+        with (
+            patch("app.services.email.send_credential_expiring_superuser", new_callable=AsyncMock) as mock_su,
+            patch("app.services.email.send_credential_expiring_admin", new_callable=AsyncMock),
+        ):
+            await _send_credential_alerts(
+                superuser_emails=["su@test.com"],
+                admin_emails=[],
+                credential_name="My API Key",
+                resource="some-service",
+                days_remaining=3,
+                expires_on="2026-07-01",
+            )
+        call_kwargs = mock_su.call_args.kwargs
+        assert call_kwargs["credential_name"] == "My API Key"
+
+
+# ---------------------------------------------------------------------------
+# send_admin_digest — Redis-populated CVE/S3 branches
+# ---------------------------------------------------------------------------
+
+
+class TestSendAdminDigestRedisBranches:
+    @pytest.mark.asyncio
+    async def test_cve_data_from_redis_used(self, db_session):
+        import json
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from app.models.user import User
+        from app.tasks.cve_scan import CVE_SUMMARY_KEY
+        from app.tasks.maintenance import send_admin_digest
+
+        admin = User(
+            id=uuid.uuid4(),
+            email=f"admin-{uuid.uuid4().hex[:8]}@example.test",
+            display_name="Admin",
+            is_admin=True,
+            is_active=True,
+        )
+        db_session.add(admin)
+        await db_session.commit()
+
+        cve_data = json.dumps({"finding_count": 3, "scanned_at": "2026-05-18T02:00:00"})
+
+        mock_client = MagicMock()
+
+        def _redis_get(key):
+            if key == CVE_SUMMARY_KEY:
+                return cve_data.encode()
+            return None
+
+        mock_client.get.side_effect = _redis_get
+
+        with (
+            patch("app.tasks.maintenance._send_admin_digest_email", new_callable=AsyncMock) as mock_send,
+            patch("redis.from_url", return_value=mock_client),
+        ):
+            result = send_admin_digest.run.__func__(_make_task())
+
+        assert result["sent"] == 1
+        call_kwargs = mock_send.call_args.kwargs
+        assert call_kwargs["cve_finding_count"] == 3
+
+    @pytest.mark.asyncio
+    async def test_s3_data_from_redis_used(self, db_session):
+        import json
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from app.models.user import User
+        from app.tasks.maintenance import send_admin_digest
+        from app.tasks.s3_audit import S3_AUDIT_SUMMARY_KEY
+
+        admin = User(
+            id=uuid.uuid4(),
+            email=f"admin-{uuid.uuid4().hex[:8]}@example.test",
+            display_name="Admin",
+            is_admin=True,
+            is_active=True,
+        )
+        db_session.add(admin)
+        await db_session.commit()
+
+        s3_data = json.dumps({"orphaned_count": 5, "scanned_at": "2026-05-18T03:00:00", "not_applicable": False})
+
+        mock_client = MagicMock()
+
+        def _redis_get(key):
+            if key == S3_AUDIT_SUMMARY_KEY:
+                return s3_data.encode()
+            return None
+
+        mock_client.get.side_effect = _redis_get
+
+        with (
+            patch("app.tasks.maintenance._send_admin_digest_email", new_callable=AsyncMock) as mock_send,
+            patch("redis.from_url", return_value=mock_client),
+        ):
+            result = send_admin_digest.run.__func__(_make_task())
+
+        assert result["sent"] == 1
+        call_kwargs = mock_send.call_args.kwargs
+        assert call_kwargs["s3_orphaned_count"] == 5
+
+
+# ---------------------------------------------------------------------------
+# _send_admin_digest_email — async email helper
+# ---------------------------------------------------------------------------
+
+
+class TestSendAdminDigestEmail:
+    @pytest.mark.asyncio
+    async def test_calls_email_service(self):
+        from app.tasks.maintenance import _send_admin_digest_email
+
+        with patch("app.services.email.send_admin_digest_email", new=AsyncMock()) as mock_send:
+            await _send_admin_digest_email(
+                admin_emails=["admin@test.com"],
+                week_start="2026-01-01",
+                week_end="2026-01-07",
+                new_users=5,
+                pending_signups=2,
+                new_drafts=10,
+                new_projects=3,
+                new_looms=1,
+                storage_str="1.5 GB",
+                storage_delta_str="+100 MB",
+                cve_finding_count=0,
+                cve_scanned_at=None,
+                s3_orphaned_count=None,
+                s3_scanned_at=None,
+            )
+
+        mock_send.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_passes_admin_emails_through(self):
+        from app.tasks.maintenance import _send_admin_digest_email
+
+        with patch("app.services.email.send_admin_digest_email", new=AsyncMock()) as mock_send:
+            await _send_admin_digest_email(
+                admin_emails=["a@test.com", "b@test.com"],
+                week_start="2026-01-01",
+                week_end="2026-01-07",
+                new_users=0,
+                pending_signups=0,
+                new_drafts=0,
+                new_projects=0,
+                new_looms=0,
+                storage_str="0 B",
+                storage_delta_str=None,
+                cve_finding_count=None,
+                cve_scanned_at=None,
+                s3_orphaned_count=None,
+                s3_scanned_at=None,
+            )
+
+        call_kwargs = mock_send.call_args.kwargs
+        assert call_kwargs["admin_emails"] == ["a@test.com", "b@test.com"]
+
+
+# ---------------------------------------------------------------------------
+# expire_project_slugs — revoke expired share slugs
+# ---------------------------------------------------------------------------
+
+
+class TestExpireProjectSlugs:
+    def test_returns_revoked_key(self):
+        from app.tasks.maintenance import expire_project_slugs
+
+        result = expire_project_slugs.run.__func__(_make_task())
+        assert "revoked" in result
+
+    def test_zero_when_no_expired_slugs(self):
+        from app.tasks.maintenance import expire_project_slugs
+
+        result = expire_project_slugs.run.__func__(_make_task())
+        assert result["revoked"] == 0
+
+    @pytest.mark.asyncio
+    async def test_revokes_expired_project_slug(self, db_session, test_user):
+
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import expire_project_slugs
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Slug Draft",
+            wif_filename="slug.wif",
+            wif_path="drafts/slug.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Shared Project",
+            project_type="weave",
+            total_picks=4,
+            share_slug="test-slug-expired",
+            share_visibility="public",
+            share_expires_at=_ago(days=1),
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        result = expire_project_slugs.run.__func__(_make_task())
+        assert result["revoked"] >= 1
+
+        await db_session.refresh(project)
+        assert project.share_slug is None
+        assert project.share_visibility == "private"
+
+    @pytest.mark.asyncio
+    async def test_preserves_non_expired_slug(self, db_session, test_user):
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import expire_project_slugs
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Future Draft",
+            wif_filename="future.wif",
+            wif_path="drafts/future.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        future_time = datetime.now(timezone.utc) + timedelta(days=7)
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Future Shared",
+            project_type="weave",
+            total_picks=4,
+            share_slug="not-yet-expired",
+            share_visibility="public",
+            share_expires_at=future_time,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        result = expire_project_slugs.run.__func__(_make_task())
+        assert result["revoked"] == 0
+
+        await db_session.refresh(project)
+        assert project.share_slug == "not-yet-expired"
