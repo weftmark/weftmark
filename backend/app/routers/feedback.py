@@ -12,7 +12,8 @@ from app.models.feedback import SUBMISSION_TYPES, UserFeedback
 from app.models.user import User
 from app.services.rate_limiter import rate_limit
 
-router = APIRouter(tags=["feedback"])
+router = APIRouter(prefix="/api/feedback", tags=["feedback"])
+admin_router = APIRouter(prefix="/api/admin/feedback", tags=["feedback"])
 
 _submit_limit = rate_limit("feedback_submit", max_requests=5, window_seconds=3600)
 
@@ -101,7 +102,7 @@ def _serialize(row: UserFeedback, include_user_email: bool = False) -> FeedbackR
 # ---------------------------------------------------------------------------
 
 
-@router.post("/api/feedback", status_code=201)
+@router.post("", status_code=201)
 async def submit_feedback(
     body: SubmitFeedbackRequest,
     db: AsyncSession = Depends(get_db),
@@ -149,7 +150,7 @@ def _enqueue_dispatch(feedback_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/api/feedback/mine")
+@router.get("/mine")
 async def list_my_feedback(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -174,7 +175,7 @@ class FeedbackStatusResponse(BaseModel):
     github_discussion_url: str | None
 
 
-@router.get("/api/feedback/{feedback_id}/status")
+@router.get("/{feedback_id}/status")
 async def get_feedback_status(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -194,7 +195,7 @@ async def get_feedback_status(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/api/admin/feedback")
+@admin_router.get("")
 async def list_feedback(
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
@@ -231,7 +232,7 @@ async def list_feedback(
     )
 
 
-@router.get("/api/admin/feedback/{feedback_id}")
+@admin_router.get("/{feedback_id}")
 async def get_feedback_detail(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -249,7 +250,7 @@ async def get_feedback_detail(
     return _serialize(row, include_user_email=True)
 
 
-@router.delete("/api/admin/feedback/{feedback_id}")
+@admin_router.delete("/{feedback_id}")
 async def soft_delete_feedback(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -264,7 +265,7 @@ async def soft_delete_feedback(
     return _serialize(row)
 
 
-@router.post("/api/admin/feedback/{feedback_id}/retry-dispatch")
+@admin_router.post("/{feedback_id}/retry-dispatch")
 async def retry_feedback_dispatch(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -283,7 +284,7 @@ async def retry_feedback_dispatch(
     return _serialize(row, include_user_email=True)
 
 
-@router.post("/api/admin/feedback/{feedback_id}/recover")
+@admin_router.post("/{feedback_id}/recover")
 async def recover_feedback(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
