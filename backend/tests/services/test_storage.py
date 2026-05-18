@@ -453,3 +453,340 @@ class TestAsyncWrappers:
         data = b"\x89PNG\r\n\x1a\n"
         key = await storage.asave_drawdown_preview(data)
         assert storage.read_drawdown_preview(key) == data
+
+
+# ---------------------------------------------------------------------------
+# Local backend primitives — cover lines 50-52, 59, 67-69, 83
+# ---------------------------------------------------------------------------
+
+
+class TestLocalBackendPrimitives:
+    @pytest.fixture(autouse=True)
+    def _local_mode(self, monkeypatch):
+        monkeypatch.setattr(storage.settings, "storage_backend", "local")
+
+    def test_put_writes_bytes_to_disk(self, tmp_path):
+        result = _real_put("test/file.wif", b"hello local")
+        assert result == "test/file.wif"
+        assert (tmp_path / "test" / "file.wif").read_bytes() == b"hello local"
+
+    def test_put_creates_missing_parent_dirs(self, tmp_path):
+        _real_put("a/b/c/deep.wif", b"deep")
+        assert (tmp_path / "a" / "b" / "c" / "deep.wif").exists()
+
+    def test_get_reads_bytes_from_disk(self, tmp_path):
+        (tmp_path / "read_me.txt").write_bytes(b"file content")
+        assert _real_get("read_me.txt") == b"file content"
+
+    def test_delete_removes_existing_file(self, tmp_path):
+        (tmp_path / "remove_me.wif").write_bytes(b"x")
+        _real_delete("remove_me.wif")
+        assert not (tmp_path / "remove_me.wif").exists()
+
+    def test_delete_missing_file_is_silent(self):
+        _real_delete("not/there/file.wif")
+
+    def test_exists_returns_true_for_existing_file(self, tmp_path):
+        (tmp_path / "present.wif").write_bytes(b"y")
+        assert _real_exists("present.wif") is True
+
+    def test_exists_returns_false_for_missing_file(self):
+        assert _real_exists("absent/file.wif") is False
+
+
+# ---------------------------------------------------------------------------
+# Drawdown tile functions — cover lines 138, 142, 146, 150, 154
+# ---------------------------------------------------------------------------
+
+
+class TestDrawdownTileFunctions:
+    @pytest.fixture(autouse=True)
+    def _local_mode(self, monkeypatch):
+        monkeypatch.setattr(storage.settings, "storage_backend", "local")
+
+    def test_drawdown_tile_path_format(self):
+        did = _pid()
+        path = storage.drawdown_tile_path(did, 2, 100)
+        assert path == f"drafts/{did}/tiles/s2/t100.png"
+
+    def test_save_and_tile_exists_true(self):
+        did = _pid()
+        storage.save_drawdown_tile(did, 1, 0, b"PNG")
+        assert storage.drawdown_tile_exists(did, 1, 0) is True
+
+    def test_tile_not_exists_before_save(self):
+        assert storage.drawdown_tile_exists(_pid(), 1, 0) is False
+
+    def test_save_and_read_round_trip(self):
+        did = _pid()
+        storage.save_drawdown_tile(did, 2, 50, b"TILE DATA")
+        assert storage.read_drawdown_tile(did, 2, 50) == b"TILE DATA"
+
+    async def test_adrawdown_tile_exists_true(self):
+        did = _pid()
+        storage.save_drawdown_tile(did, 1, 0, b"PNG")
+        assert await storage.adrawdown_tile_exists(did, 1, 0) is True
+
+    async def test_adrawdown_tile_exists_false(self):
+        assert await storage.adrawdown_tile_exists(_pid(), 1, 0) is False
+
+    async def test_aread_drawdown_tile_round_trip(self):
+        did = _pid()
+        storage.save_drawdown_tile(did, 1, 0, b"ASYNC READ")
+        assert await storage.aread_drawdown_tile(did, 1, 0) == b"ASYNC READ"
+
+    async def test_asave_drawdown_tile_round_trip(self):
+        did = _pid()
+        await storage.asave_drawdown_tile(did, 1, 0, b"ASYNC SAVE")
+        assert storage.read_drawdown_tile(did, 1, 0) == b"ASYNC SAVE"
+
+
+# ---------------------------------------------------------------------------
+# Project tile functions — cover lines 170-187
+# ---------------------------------------------------------------------------
+
+
+class TestProjectTileFunctions:
+    @pytest.fixture(autouse=True)
+    def _local_mode(self, monkeypatch):
+        monkeypatch.setattr(storage.settings, "storage_backend", "local")
+
+    def test_project_tile_path_format(self):
+        pid = _pid()
+        path = storage.project_tile_path(pid, 2, 100)
+        assert path == f"projects/{pid}/tiles/s2/r100.png"
+
+    def test_save_and_tile_exists_true(self):
+        pid = _pid()
+        storage.save_project_tile(pid, 1, 0, b"PNG")
+        assert storage.project_tile_exists(pid, 1, 0) is True
+
+    def test_tile_not_exists_before_save(self):
+        assert storage.project_tile_exists(_pid(), 1, 0) is False
+
+    def test_save_and_read_round_trip(self):
+        pid = _pid()
+        storage.save_project_tile(pid, 2, 50, b"TILE DATA")
+        assert storage.read_project_tile(pid, 2, 50) == b"TILE DATA"
+
+    async def test_aproject_tile_exists_true(self):
+        pid = _pid()
+        storage.save_project_tile(pid, 1, 0, b"PNG")
+        assert await storage.aproject_tile_exists(pid, 1, 0) is True
+
+    async def test_aproject_tile_exists_false(self):
+        assert await storage.aproject_tile_exists(_pid(), 1, 0) is False
+
+    async def test_aread_project_tile_round_trip(self):
+        pid = _pid()
+        storage.save_project_tile(pid, 1, 0, b"ASYNC READ")
+        assert await storage.aread_project_tile(pid, 1, 0) == b"ASYNC READ"
+
+    async def test_asave_project_tile_round_trip(self):
+        pid = _pid()
+        await storage.asave_project_tile(pid, 1, 0, b"ASYNC SAVE")
+        assert storage.read_project_tile(pid, 1, 0) == b"ASYNC SAVE"
+
+
+# ---------------------------------------------------------------------------
+# Project drawdown preview and SVG — cover lines 190-211
+# ---------------------------------------------------------------------------
+
+
+class TestProjectDrawdownAndSvg:
+    @pytest.fixture(autouse=True)
+    def _local_mode(self, monkeypatch):
+        monkeypatch.setattr(storage.settings, "storage_backend", "local")
+
+    def test_save_project_drawdown_preview_returns_path(self):
+        rel = storage.save_project_drawdown_preview(b"\x89PNG")
+        assert rel.startswith("projects/") and rel.endswith(".png")
+
+    def test_project_drawdown_preview_round_trip(self):
+        data = b"\x89PNG\r\n\x1a\n"
+        rel = storage.save_project_drawdown_preview(data)
+        assert storage.read_project_drawdown_preview(rel) == data
+
+    def test_project_drawdown_preview_exists_true(self):
+        rel = storage.save_project_drawdown_preview(b"img")
+        assert storage.project_drawdown_preview_exists(rel) is True
+
+    def test_project_drawdown_preview_exists_false_for_none(self):
+        assert storage.project_drawdown_preview_exists(None) is False
+
+    def test_project_drawdown_preview_exists_false_for_missing(self):
+        assert storage.project_drawdown_preview_exists("projects/no.png") is False
+
+    def test_save_project_drawdown_svg_returns_path(self):
+        rel = storage.save_project_drawdown_svg("<svg/>")
+        assert rel.startswith("projects/") and rel.endswith(".svg")
+
+    def test_project_drawdown_svg_round_trip(self):
+        data = "<svg><rect/></svg>"
+        rel = storage.save_project_drawdown_svg(data)
+        assert storage.read_project_drawdown_svg(rel) == data
+
+    def test_project_drawdown_svg_exists_true(self):
+        rel = storage.save_project_drawdown_svg("<svg/>")
+        assert storage.project_drawdown_svg_exists(rel) is True
+
+    def test_project_drawdown_svg_exists_false_for_none(self):
+        assert storage.project_drawdown_svg_exists(None) is False
+
+
+# ---------------------------------------------------------------------------
+# delete_project_tiles — cover lines 216-236
+#
+# Note: conftest mock_storage replaces _put/_get/_delete/_exists with an
+# in-memory dict, so delete_project_tiles (which checks the real filesystem
+# in local mode) must be seeded with _real_put (captured before the mock runs).
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteProjectTiles:
+    @pytest.fixture(autouse=True)
+    def _local_mode(self, monkeypatch):
+        monkeypatch.setattr(storage.settings, "storage_backend", "local")
+
+    def test_local_returns_zero_when_no_tiles(self):
+        assert storage.delete_project_tiles(_pid()) == 0
+
+    def test_local_deletes_tiles_and_returns_count(self):
+        pid = _pid()
+        _real_put(storage.project_tile_path(pid, 1, 0), b"a")
+        _real_put(storage.project_tile_path(pid, 1, 50), b"b")
+        _real_put(storage.project_tile_path(pid, 2, 0), b"c")
+        count = storage.delete_project_tiles(pid)
+        assert count == 3
+
+    def test_local_only_deletes_target_project_tiles(self, tmp_path):
+        pid1, pid2 = _pid(), _pid()
+        _real_put(storage.project_tile_path(pid1, 1, 0), b"p1")
+        _real_put(storage.project_tile_path(pid2, 1, 0), b"p2")
+        storage.delete_project_tiles(pid1)
+        assert (tmp_path / storage.project_tile_path(pid2, 1, 0)).exists()
+
+    def test_s3_path_uses_paginator_and_delete_objects(self, monkeypatch):
+        mock_client = MagicMock()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [{"Contents": [{"Key": "projects/x/tiles/s1/r0.png"}]}]
+        mock_client.get_paginator.return_value = paginator
+        monkeypatch.setattr(storage, "_s3_client", mock_client)
+        monkeypatch.setattr(storage.settings, "storage_backend", "s3")
+        monkeypatch.setattr(storage.settings, "s3_bucket_name", "test-bucket")
+
+        count = storage.delete_project_tiles(_pid())
+        assert count == 1
+        mock_client.delete_objects.assert_called_once()
+
+    def test_s3_empty_page_skips_delete_objects(self, monkeypatch):
+        mock_client = MagicMock()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [{}]
+        mock_client.get_paginator.return_value = paginator
+        monkeypatch.setattr(storage, "_s3_client", mock_client)
+        monkeypatch.setattr(storage.settings, "storage_backend", "s3")
+        monkeypatch.setattr(storage.settings, "s3_bucket_name", "test-bucket")
+
+        count = storage.delete_project_tiles(_pid())
+        assert count == 0
+        mock_client.delete_objects.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# copy_file — cover lines 321-322
+# ---------------------------------------------------------------------------
+
+
+class TestCopyFile:
+    @pytest.fixture(autouse=True)
+    def _local_mode(self, monkeypatch):
+        monkeypatch.setattr(storage.settings, "storage_backend", "local")
+
+    def test_copy_creates_new_key_with_same_content(self):
+        pid = _pid()
+        old_key = storage.save_wif(pid, "original.wif", b"COPY ME")
+        new_key = f"drafts/{uuid.uuid4()}.wif"
+        result = storage.copy_file(old_key, new_key)
+        assert result == new_key
+        assert storage.read_wif(new_key) == b"COPY ME"
+
+    def test_copy_does_not_remove_original(self):
+        pid = _pid()
+        old_key = storage.save_wif(pid, "original.wif", b"ORIGINAL")
+        storage.copy_file(old_key, f"drafts/{uuid.uuid4()}.wif")
+        assert storage.read_wif(old_key) == b"ORIGINAL"
+
+
+# ---------------------------------------------------------------------------
+# Additional async wrappers — cover lines 345, 365, 369, 375, 379, 385, 389,
+# 393, 397, 401, 405, 409, 413, 417, 421
+# ---------------------------------------------------------------------------
+
+
+class TestAsyncWrappersExtended:
+    @pytest.fixture(autouse=True)
+    def _local_mode(self, monkeypatch):
+        monkeypatch.setattr(storage.settings, "storage_backend", "local")
+
+    async def test_asave_preview_creates_file(self):
+        key = await storage.asave_preview(_pid(), b"\x89PNG")
+        assert storage.preview_exists(key) is True
+
+    async def test_asave_loom_photo_round_trip(self):
+        key = await storage.asave_loom_photo(_pid(), ".jpg", b"JPEG")
+        assert storage.file_exists(key) is True
+
+    async def test_adelete_loom_photo_removes_file(self):
+        key = await storage.asave_loom_photo(_pid(), ".jpg", b"JPEG")
+        await storage.adelete_loom_photo(key)
+        assert storage.file_exists(key) is False
+
+    async def test_asave_version_photo_round_trip(self):
+        key = await storage.asave_version_photo(_pid(), _pid(), _pid(), ".jpg", b"PHOTO")
+        assert storage.file_exists(key) is True
+
+    async def test_adelete_version_photo_removes_file(self):
+        key = await storage.asave_version_photo(_pid(), _pid(), _pid(), ".jpg", b"PHOTO")
+        await storage.adelete_version_photo(key)
+        assert storage.file_exists(key) is False
+
+    async def test_asave_version_receipt_round_trip(self):
+        key = await storage.asave_version_receipt(_pid(), _pid(), _pid(), ".pdf", b"PDF")
+        assert storage.file_exists(key) is True
+
+    async def test_adelete_version_receipt_removes_file(self):
+        key = await storage.asave_version_receipt(_pid(), _pid(), _pid(), ".pdf", b"PDF")
+        await storage.adelete_version_receipt(key)
+        assert storage.file_exists(key) is False
+
+    async def test_asave_yarn_photo_round_trip(self):
+        key = await storage.asave_yarn_photo(_pid(), ".jpg", b"YARN")
+        assert storage.file_exists(key) is True
+
+    async def test_adelete_yarn_photo_removes_file(self):
+        key = await storage.asave_yarn_photo(_pid(), ".jpg", b"YARN")
+        await storage.adelete_yarn_photo(key)
+        assert storage.file_exists(key) is False
+
+    async def test_asave_project_drawdown_preview_round_trip(self):
+        key = await storage.asave_project_drawdown_preview(b"\x89PNG")
+        assert await storage.aread_project_drawdown_preview(key) == b"\x89PNG"
+
+    async def test_aproject_drawdown_preview_exists_true(self):
+        key = await storage.asave_project_drawdown_preview(b"img")
+        assert await storage.aproject_drawdown_preview_exists(key) is True
+
+    async def test_aproject_drawdown_preview_exists_false_for_none(self):
+        assert await storage.aproject_drawdown_preview_exists(None) is False
+
+    async def test_asave_project_drawdown_svg_round_trip(self):
+        key = await storage.asave_project_drawdown_svg("<svg/>")
+        assert await storage.aread_project_drawdown_svg(key) == "<svg/>"
+
+    async def test_aproject_drawdown_svg_exists_true(self):
+        key = await storage.asave_project_drawdown_svg("<svg/>")
+        assert await storage.aproject_drawdown_svg_exists(key) is True
+
+    async def test_aproject_drawdown_svg_exists_false_for_none(self):
+        assert await storage.aproject_drawdown_svg_exists(None) is False
