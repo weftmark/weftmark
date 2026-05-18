@@ -7,7 +7,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.deps import get_current_user, get_db, get_optional_user, require_admin
+from app.deps import get_current_user, get_db, require_admin
 from app.models.feedback import SUBMISSION_TYPES, UserFeedback
 from app.models.user import User
 from app.services.rate_limiter import rate_limit
@@ -97,7 +97,7 @@ def _serialize(row: UserFeedback, include_user_email: bool = False) -> FeedbackR
 
 
 # ---------------------------------------------------------------------------
-# Submit feedback (auth optional)
+# Submit feedback (auth required)
 # ---------------------------------------------------------------------------
 
 
@@ -105,7 +105,7 @@ def _serialize(row: UserFeedback, include_user_email: bool = False) -> FeedbackR
 async def submit_feedback(
     body: SubmitFeedbackRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User = Depends(get_current_user),
     _rl: None = Depends(_submit_limit),
 ) -> FeedbackResponse:
     from app.config import get_settings
@@ -113,7 +113,7 @@ async def submit_feedback(
     has_token = bool(get_settings().github_feedback_token)
     row = UserFeedback(
         id=uuid.uuid4(),
-        user_id=current_user.id if current_user else None,
+        user_id=current_user.id,
         submission_type=body.submission_type,
         is_anonymous=body.is_anonymous,
         subject=body.subject,
