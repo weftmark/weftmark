@@ -232,6 +232,16 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
             <span className={desktopCollapsed ? "lg:hidden" : ""}>Send Feedback</span>
           </button>
 
+          <Link
+            to="/costs"
+            onClick={onClose}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
+            title={desktopCollapsed ? "Support WeftMark" : undefined}
+          >
+            <AppIcons.support className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+            <span className={desktopCollapsed ? "lg:hidden" : ""}>Support WeftMark</span>
+          </Link>
+
           <button
             onClick={() => signOut()}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-subdued transition-colors hover:bg-muted hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
