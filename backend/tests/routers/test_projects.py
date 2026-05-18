@@ -2810,3 +2810,188 @@ class TestSetColorReplacements:
         body = {"color_replacements": {"#ff0000": "#0000ff"}}
         resp = await auth_client.patch(f"/api/projects/{uuid.uuid4()}/color-replacements", json=body)
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestProjectTypeValidation — error branches for treadle/lift type checks
+# ---------------------------------------------------------------------------
+
+
+class TestProjectTypeValidation:
+    async def _insert_draft_flags(
+        self, db_session: AsyncSession, owner: User, *, has_treadling: bool, has_liftplan: bool
+    ) -> Draft:
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=owner.id,
+            name="Flag Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=has_treadling,
+            has_liftplan=has_liftplan,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+        return draft
+
+    async def test_treadle_type_rejected_when_no_treadling(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._insert_draft_flags(db_session, test_user, has_treadling=False, has_liftplan=True)
+        resp = await auth_client.post(
+            "/api/projects", json={"name": "p", "draft_id": str(draft.id), "project_type": "treadle"}
+        )
+        assert resp.status_code == 400
+        assert "TREADLING" in resp.json()["detail"]
+
+    async def test_lift_type_rejected_when_no_liftplan(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await self._insert_draft_flags(db_session, test_user, has_treadling=True, has_liftplan=False)
+        resp = await auth_client.post(
+            "/api/projects", json={"name": "p", "draft_id": str(draft.id), "project_type": "lift"}
+        )
+        assert resp.status_code == 400
+        assert "LIFTPLAN" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# TestUpdateWarpSetup — PATCH /{project_id}/warp-setup
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateWarpSetup:
+    async def test_updates_num_items_when_created(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.status = "created"
+        await db_session.commit()
+        resp = await auth_client.patch(f"/api/projects/{project.id}/warp-setup", json={"num_items": 3})
+        assert resp.status_code == 200
+        assert resp.json()["num_items"] == 3
+
+    async def test_num_items_rejected_when_active(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/warp-setup", json={"num_items": 3})
+        assert resp.status_code == 400
+
+    async def test_updates_finished_length(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(
+            f"/api/projects/{project.id}/warp-setup", json={"finished_length_per_item": 100.0}
+        )
+        assert resp.status_code == 200
+        assert float(resp.json()["finished_length_per_item"]) == 100.0
+
+    async def test_updates_waste_between_items(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/warp-setup", json={"waste_between_items": 5.0})
+        assert resp.status_code == 200
+
+    async def test_updates_warp_waste_allowance(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/warp-setup", json={"warp_waste_allowance": 20.0})
+        assert resp.status_code == 200
+
+    async def test_updates_length_unit(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/warp-setup", json={"length_unit": "in"})
+        assert resp.status_code == 200
+
+    async def test_empty_body_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/warp-setup", json={})
+        assert resp.status_code == 400
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.patch(f"/api/projects/{project.id}/warp-setup", json={"num_items": 2})
+        assert resp.status_code == 401
+
+    async def test_unknown_project_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(f"/api/projects/{uuid.uuid4()}/warp-setup", json={"num_items": 2})
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestSetReed — PATCH /{project_id}/reed
+# ---------------------------------------------------------------------------
+
+
+class TestSetReed:
+    async def test_sets_reed_dents(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/reed", json={"reed_dents_per_inch": 12.0})
+        assert resp.status_code == 200
+        assert resp.json()["reed_dents_per_inch"] == 12.0
+
+    async def test_clears_reed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/reed", json={"reed_dents_per_inch": None})
+        assert resp.status_code == 200
+        assert resp.json()["reed_dents_per_inch"] is None
+
+    async def test_negative_dents_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/reed", json={"reed_dents_per_inch": -1.0})
+        assert resp.status_code == 400
+
+    async def test_zero_dents_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/reed", json={"reed_dents_per_inch": 0.0})
+        assert resp.status_code == 400
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.patch(f"/api/projects/{project.id}/reed", json={"reed_dents_per_inch": 12.0})
+        assert resp.status_code == 401
+
+    async def test_unknown_project_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(f"/api/projects/{uuid.uuid4()}/reed", json={"reed_dents_per_inch": 12.0})
+        assert resp.status_code == 404
+
+    async def test_drawdown_preview_cached_404_when_missing(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.drawdown_preview_path = None
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown_preview")
+        assert resp.status_code == 404
+
+    async def test_drawdown_svg_cached_404_when_missing(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.drawdown_svg_path = None
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown_svg")
+        assert resp.status_code == 404

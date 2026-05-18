@@ -1,0 +1,63 @@
+{
+  "passed": true,
+  "timestamp": "2026-05-17T05:30:38.818355+00:00",
+  "schema_version": "1.0",
+  "total_fields": 49,
+  "core_count": 8,
+  "common_count": 35,
+  "conditional_count": 6,
+  "checks": [
+    {
+      "rule": "structure_check",
+      "passed": true,
+      "detail": "All required top-level keys present"
+    },
+    {
+      "rule": "required_core_fields",
+      "passed": true,
+      "detail": "All 8 required core fields present"
+    },
+    {
+      "rule": "category_completeness",
+      "passed": true,
+      "detail": "All fields have valid category"
+    },
+    {
+      "rule": "type_validity",
+      "passed": true,
+      "detail": "All fields have valid type"
+    },
+    {
+      "rule": "enum_completeness",
+      "passed": true,
+      "detail": "All enum fields have enum_values"
+    },
+    {
+      "rule": "conditional_documentation",
+      "passed": true,
+      "detail": "All conditional fields have condition string"
+    },
+    {
+      "rule": "description_coverage",
+      "passed": true,
+      "detail": "All fields have description"
+    },
+    {
+      "rule": "minimum_field_count",
+      "passed": true,
+      "detail": "49 fields (minimum 30)"
+    },
+    {
+      "rule": "conditional_proportion",
+      "passed": true,
+      "detail": "6 conditional fields (minimum 4)"
+    },
+    {
+      "rule": "no_duplicate_field_names",
+      "passed": true,
+      "detail": "No duplicate field names"
+    }
+  ],
+  "failures": [],
+  "warnings": []
+}
