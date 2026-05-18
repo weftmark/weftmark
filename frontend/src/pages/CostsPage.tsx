@@ -24,11 +24,11 @@ const COSTS: CostRow[] = [
   },
   {
     service: "Domain registration",
-    description: "weftmark.com domain name — annual renewal.",
-    tier: "Annual renewal",
+    description: "weftmark.com domain name — registered and renewed through Cloudflare Registrar at cost.",
+    tier: "Cloudflare Registrar",
     monthlyCost: "~$1",
     status: "paid",
-    note: "Billed ~$12/yr.",
+    note: "Billed ~$9.15/yr (at-cost, no Cloudflare markup).",
   },
   {
     service: "Claude Max ×5",
