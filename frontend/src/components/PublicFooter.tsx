@@ -12,7 +12,7 @@ export function PublicFooter() {
           <span className="text-muted-foreground">Contact</span>
         </nav>
         <Link to="/costs" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-          ♥ Support WeftMark
+          ♥ Support weftmark
         </Link>
       </div>
     </footer>
