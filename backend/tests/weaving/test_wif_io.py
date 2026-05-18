@@ -6,6 +6,7 @@ No WeftMark fixtures, database, or Celery stack required.
 
 import os
 import tempfile
+from configparser import RawConfigParser
 from pathlib import Path
 
 from app.weaving import Draft
@@ -95,3 +96,254 @@ class TestWIFWriter:
         d = self._make_draft()
         restored = self._round_trip(d)
         assert restored.all_threads_attached()
+
+
+def _write_temp_wif(content: str) -> str:
+    """Write WIF content to a temp file and return its path."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".wif", delete=False, encoding="utf-8") as f:
+        f.write(content)
+        return f.name
+
+
+# ---------------------------------------------------------------------------
+# TestWIFReaderEdgeCases — cover paths not exercised by the plain_weave fixture
+# ---------------------------------------------------------------------------
+
+
+_WIF_NO_PER_THREAD_COLORS = """\
+[WIF]
+Version=1.1
+Date=Jan 01, 2024
+
+[CONTENTS]
+COLOR TABLE=1
+WARP=1
+WEFT=1
+THREADING=1
+TREADLING=1
+TIEUP=1
+WEAVING=1
+
+[COLOR TABLE]
+1=0,0,0
+2=255,255,255
+
+[WEAVING]
+Rising Shed=true
+Shafts=4
+Treadles=2
+
+[WARP]
+Threads=2
+Units=Inches
+Color=1
+
+[WEFT]
+Threads=2
+Units=Inches
+Color=2
+
+[THREADING]
+1=1
+2=2
+
+[TREADLING]
+1=1
+2=2
+
+[TIEUP]
+1=1
+2=2
+"""
+
+_WIF_LIFTPLAN = """\
+[WIF]
+Version=1.1
+Date=Jan 01, 2024
+
+[CONTENTS]
+COLOR TABLE=1
+WARP=1
+WEFT=1
+THREADING=1
+LIFTPLAN=1
+WEAVING=1
+
+[COLOR TABLE]
+1=0,0,0
+2=255,255,255
+
+[WEAVING]
+Rising Shed=true
+Shafts=4
+Treadles=0
+
+[WARP]
+Threads=2
+Units=Inches
+Color=1
+
+[WEFT]
+Threads=2
+Units=Inches
+Color=2
+
+[THREADING]
+1=1
+2=2
+
+[LIFTPLAN]
+1=1,3
+2=2,4
+"""
+
+_WIF_NO_COLOR_PALETTE = """\
+[WIF]
+Version=1.1
+Date=Jan 01, 2024
+
+[CONTENTS]
+COLOR TABLE=1
+WARP=1
+WEFT=1
+THREADING=1
+TREADLING=1
+TIEUP=1
+WEAVING=1
+
+[COLOR TABLE]
+1=0,0,0
+2=255,255,255
+
+[WEAVING]
+Rising Shed=true
+Shafts=2
+Treadles=2
+
+[WARP]
+Threads=2
+Units=Inches
+Color=1
+
+[WEFT]
+Threads=2
+Units=Inches
+Color=2
+
+[THREADING]
+1=1
+2=2
+
+[TREADLING]
+1=1
+2=2
+
+[TIEUP]
+1=1
+2=2
+"""
+
+
+class TestWIFReaderEdgeCases:
+    def test_reads_without_per_thread_colors(self):
+        path = _write_temp_wif(_WIF_NO_PER_THREAD_COLORS)
+        try:
+            draft = WIFReader(path).read()
+            assert len(draft.warp) == 2
+            assert draft.warp[0].color is not None
+        finally:
+            os.unlink(path)
+
+    def test_reads_liftplan_draft(self):
+        path = _write_temp_wif(_WIF_LIFTPLAN)
+        try:
+            draft = WIFReader(path).read()
+            assert draft.liftplan is True
+            assert len(draft.weft) == 2
+            assert len(draft.weft[0].shafts) > 0
+        finally:
+            os.unlink(path)
+
+    def test_reads_without_color_palette_section(self):
+        path = _write_temp_wif(_WIF_NO_COLOR_PALETTE)
+        try:
+            draft = WIFReader(path).read()
+            assert len(draft.warp) == 2
+        finally:
+            os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# TestWIFWriterEdgeCases — cover write_liftplan, notes, and liftplan roundtrip
+# ---------------------------------------------------------------------------
+
+
+class TestWIFWriterEdgeCases:
+    def _make_liftplan_draft(self) -> Draft:
+        d = Draft(num_shafts=4, num_treadles=0)
+        for ii in range(4):
+            d.add_warp_thread(color=(0, 0, 0), shaft=ii % 4)
+            d.add_weft_thread(color=(255, 255, 255), shafts=[ii % 4])
+        return d
+
+    def test_writes_liftplan_draft(self):
+        d = self._make_liftplan_draft()
+        with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as f:
+            path = f.name
+        try:
+            WIFWriter(d).write(path)
+            config = RawConfigParser()
+            config.read(path)
+            assert config.has_section("LIFTPLAN")
+        finally:
+            os.unlink(path)
+
+    def test_liftplan_roundtrip_weft_count(self):
+        d = self._make_liftplan_draft()
+        with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as f:
+            path = f.name
+        try:
+            WIFWriter(d).write(path)
+            restored = WIFReader(path).read()
+            assert len(restored.weft) == len(d.weft)
+        finally:
+            os.unlink(path)
+
+    def test_writes_notes_when_set(self):
+        d = Draft(num_shafts=4, num_treadles=2)
+        d.notes = "Line one\nLine two"
+        d.treadles[0].shafts = {d.shafts[0]}
+        d.treadles[1].shafts = {d.shafts[1]}
+        for ii in range(2):
+            d.add_warp_thread(color=(0, 0, 0), shaft=ii % 2)
+            d.add_weft_thread(color=(255, 255, 255), treadles=[ii % 2])
+
+        with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as f:
+            path = f.name
+        try:
+            WIFWriter(d).write(path)
+            config = RawConfigParser()
+            config.read(path)
+            assert config.has_section("NOTES")
+        finally:
+            os.unlink(path)
+
+    def test_explicit_liftplan_flag_uses_liftplan_section(self):
+        """write(liftplan=True) on a treadle draft still emits LIFTPLAN."""
+        d = Draft(num_shafts=4, num_treadles=2)
+        d.treadles[0].shafts = {d.shafts[0], d.shafts[2]}
+        d.treadles[1].shafts = {d.shafts[1], d.shafts[3]}
+        for ii in range(4):
+            d.add_warp_thread(color=(0, 0, 0), shaft=ii % 4)
+            d.add_weft_thread(color=(255, 255, 255), treadles=[ii % 2])
+
+        with tempfile.NamedTemporaryFile(suffix=".wif", delete=False) as f:
+            path = f.name
+        try:
+            WIFWriter(d).write(path, liftplan=True)
+            config = RawConfigParser()
+            config.read(path)
+            assert config.has_section("LIFTPLAN")
+            assert not config.has_section("TREADLING")
+        finally:
+            os.unlink(path)
