@@ -9,7 +9,7 @@ export function VersionGate({ children }: { children: React.ReactNode }) {
   const [workerVersion, setWorkerVersion] = useState<string | undefined>();
 
   useEffect(() => {
-    fetch("/health")
+    fetch("/api/health")
       .then((res) => res.json())
       .then((data: { version: string; worker_version?: string | null }) => {
         setBackendVersion(data.version);

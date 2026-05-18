@@ -1133,7 +1133,7 @@ class TestAdminServices:
         data = (await admin_client.get("/api/admin/services")).json()
         wh = next(s for s in data if s["service"] == "Clerk Webhook")
         assert "url" in wh["meta"]
-        assert wh["meta"]["url"].endswith("/auth/clerk/webhook")
+        assert wh["meta"]["url"].endswith("/webhooks/clerk")
 
     async def test_webhook_service_cf_disabled_by_default(self, admin_client: AsyncClient):
         data = (await admin_client.get("/api/admin/services")).json()

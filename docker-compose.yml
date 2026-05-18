@@ -50,7 +50,7 @@ services:
 
   # ----------------------------------------------------------
   # Frontend — React application served via nginx
-  # Proxies /api/, /auth/, and /health to the backend over the
+  # Proxies /api/ and /auth/ to the backend over the
   # public network.  Traefik routing is added via override file
   # in the orchestration repo (docker-compose.override.yml).
   # ----------------------------------------------------------
@@ -134,7 +134,7 @@ services:
         condition: service_healthy
         required: false
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 10s
       timeout: 5s
       retries: 5

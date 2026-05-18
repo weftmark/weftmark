@@ -30,6 +30,7 @@ from app.routers import (  # noqa: E402
     projects,
     system,
     users,
+    webhooks,
     yarn,
 )
 from app.telemetry import configure_telemetry  # noqa: E402
@@ -227,6 +228,7 @@ app.include_router(logs.router)
 if settings.app_env == "dev":
     app.include_router(dev.router)
 app.include_router(auth.router)
+app.include_router(webhooks.router)
 app.include_router(users.eula_router)
 app.include_router(users.router)
 app.include_router(drafts.router)
@@ -235,4 +237,5 @@ app.include_router(yarn.router)
 app.include_router(projects.router)
 app.include_router(projects.share_router)
 app.include_router(feedback.router)
+app.include_router(feedback.admin_router)
 app.include_router(admin.router)

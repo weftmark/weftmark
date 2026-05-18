@@ -1,9 +1,8 @@
 """Authentication via Clerk.
 
 Routes:
-  POST /auth/clerk/webhook  — Clerk webhook: user.created / user.deleted / session.created / session.ended
-  POST /auth/logout         — no-op (Clerk manages sessions client-side)
-  GET  /auth/me             — return current user profile
+  POST /auth/logout  — no-op (Clerk manages sessions client-side)
+  GET  /auth/me      — return current user profile
 
 Invite management (admin only):
   POST   /auth/invite         — create invite + pre-create User record + send email
@@ -58,9 +57,8 @@ _invite_rate_limit = rate_limit("invite", max_requests=20, window_seconds=3600)
 # ---------------------------------------------------------------------------
 
 
-@router.post("/clerk/webhook", status_code=200)
-async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
-    """Receive and process Clerk user lifecycle events."""
+async def _handle_clerk_webhook(request: Request, db: AsyncSession) -> dict:
+    """Core Clerk webhook processing — shared by /auth/clerk/webhook and /webhooks/clerk."""
     from svix.webhooks import Webhook, WebhookVerificationError
 
     payload = await request.body()

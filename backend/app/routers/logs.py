@@ -13,7 +13,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 log = logging.getLogger("frontend")
-router = APIRouter(tags=["logs"])
+router = APIRouter(prefix="/api/logs", tags=["logs"])
 
 _MAX_EVENTS_PER_REQUEST = 50
 
@@ -24,7 +24,7 @@ class ClientLogEvent(BaseModel):
     context: dict | None = None
 
 
-@router.post("/api/logs", status_code=204)
+@router.post("", status_code=204)
 async def ingest_client_logs(
     events: Annotated[list[ClientLogEvent], Field(max_length=_MAX_EVENTS_PER_REQUEST)],
     request: Request,
