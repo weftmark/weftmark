@@ -55,6 +55,9 @@ export interface LoomReed {
 
 export interface LoomVersion {
   id: string;
+  loom_reference_id: string | null;
+  loom_reference_brand: string | null;
+  loom_reference_model_name: string | null;
   version_number: number;
   name: string | null;
   effective_date: string;
@@ -80,6 +83,8 @@ export interface Loom {
   model_name: string;
   serial_number: string | null;
   loom_reference_id: string | null;
+  loom_reference_brand: string | null;
+  loom_reference_model_name: string | null;
   supports_lift_tracking: boolean;
   supports_treadle_tracking: boolean;
   notes: string | null;
@@ -457,8 +462,12 @@ export function getLoomCatalogEntry(id: string): Promise<LoomReferenceDetail> {
   return fetch(`/api/loom-catalog/${id}`).then((r) => r.json());
 }
 
-export function linkLoomReference(loomId: string, referenceId: string | null): Promise<LoomDetail> {
-  return req(`/api/looms/${loomId}/link-reference`, {
+export function linkVersionReference(
+  loomId: string,
+  versionId: string,
+  referenceId: string | null,
+): Promise<LoomDetail> {
+  return req(`/api/looms/${loomId}/versions/${versionId}/link-reference`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ loom_reference_id: referenceId }),
