@@ -141,27 +141,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared/LICENSE"
   },
-  "@emnapi/core@1.10.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/toyobayashi/emnapi",
-    "publisher": "toyobayashi",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/core",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/core/LICENSE"
-  },
-  "@emnapi/runtime@1.10.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/toyobayashi/emnapi",
-    "publisher": "toyobayashi",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/runtime",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/runtime/LICENSE"
-  },
-  "@emnapi/wasi-threads@1.2.1": {
-    "licenses": "MIT",
-    "repository": "https://github.com/toyobayashi/emnapi",
-    "publisher": "toyobayashi",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/wasi-threads",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/wasi-threads/LICENSE"
-  },
   "@eslint-community/eslint-utils@4.9.1": {
     "licenses": "MIT",
     "repository": "https://github.com/eslint-community/eslint-utils",
@@ -285,13 +264,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@jridgewell/trace-mapping",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@jridgewell/trace-mapping/LICENSE"
   },
-  "@napi-rs/wasm-runtime@1.1.4": {
-    "licenses": "MIT",
-    "repository": "https://github.com/napi-rs/napi-rs",
-    "publisher": "LongYinan",
-    "url": "https://github.com/Brooooooklyn",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@napi-rs/wasm-runtime"
-  },
   "@oxc-project/types@0.129.0": {
     "licenses": "MIT",
     "repository": "https://github.com/oxc-project/oxc",
@@ -367,12 +339,11 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/react-query",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/react-query/LICENSE"
   },
-  "@tybys/wasm-util@0.10.2": {
+  "@types/dompurify@3.0.5": {
     "licenses": "MIT",
-    "repository": "https://github.com/toyobayashi/wasm-util",
-    "publisher": "toyobayashi",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tybys/wasm-util",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tybys/wasm-util/README.md"
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/dompurify",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/dompurify/LICENSE"
   },
   "@types/esrecurse@4.3.1": {
     "licenses": "MIT",
@@ -409,6 +380,12 @@
     "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react/LICENSE"
+  },
+  "@types/trusted-types@2.0.7": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/trusted-types",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/trusted-types/LICENSE"
   },
   "@typescript-eslint/eslint-plugin@8.59.2": {
     "licenses": "MIT",
@@ -622,6 +599,15 @@
     "email": "npm@lovell.info",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/detect-libc",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/detect-libc/LICENSE"
+  },
+  "dompurify@3.4.5": {
+    "licenses": "(MPL-2.0 OR Apache-2.0)",
+    "repository": "https://github.com/cure53/DOMPurify",
+    "publisher": "Dr.-Ing. Mario Heiderich, Cure53",
+    "email": "mario@cure53.de",
+    "url": "https://cure53.de/",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/dompurify",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/dompurify/LICENSE"
   },
   "electron-to-chromium@1.5.343": {
     "licenses": "ISC",
@@ -1322,10 +1308,11 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.134.5": {
+  "weaving-site@0.170.7": {
     "licenses": "UNLICENSED",
     "private": true,
-    "path": "/home/runner/work/weftmark/weftmark/frontend"
+    "path": "/home/runner/work/weftmark/weftmark/frontend",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/README.md"
   },
   "which@2.0.2": {
     "licenses": "ISC",
