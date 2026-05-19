@@ -252,6 +252,10 @@ class AddVersionRequest(BaseModel):
 class UpdateVersionRequest(BaseModel):
     name: str | None = None
     description: str | None = None
+    num_shafts: int | None = None
+    num_treadles: int | None = None
+    weaving_width: Decimal | None = None
+    weaving_width_unit: str | None = None
     warp_waste_allowance: Decimal | None = None
     warp_waste_unit: str | None = None
 

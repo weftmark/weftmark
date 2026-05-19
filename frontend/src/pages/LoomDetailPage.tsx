@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,15 +11,15 @@ import {
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
   uploadVersionReceipt, deleteVersionReceipt, versionReceiptUrl,
   addAccessory, deleteAccessory, updateVersion,
-  addReed, deleteReed, searchLoomCatalog, linkLoomReference,
+  addReed, deleteReed, linkLoomReference,
   type LoomDetail, type LoomVersion, type LoomVersionPhoto,
   type LoomVersionReceipt, type LoomVersionAccessory, type LoomReed,
-  type LoomReferenceSummary,
   LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
 import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
+import { LinkToCatalogModal } from "@/components/looms/LinkToCatalogModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { downloadAuthed } from "@/api/client";
@@ -28,6 +28,43 @@ import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBa
 
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — must match backend MAX_FILE_SIZE
 const MAX_VERSION_PHOTOS = 5;            // must match backend MAX_VERSION_PHOTOS
+const CATALOG_REQUESTS_KEY = "weftmark:catalog_requests_submitted";
+
+function hasSubmittedCatalogRequest(loomId: string): boolean {
+  try {
+    const stored = localStorage.getItem(CATALOG_REQUESTS_KEY);
+    return stored ? (JSON.parse(stored) as string[]).includes(loomId) : false;
+  } catch {
+    return false;
+  }
+}
+
+function markCatalogRequestSubmitted(loomId: string): void {
+  try {
+    const stored = localStorage.getItem(CATALOG_REQUESTS_KEY);
+    const arr: string[] = stored ? JSON.parse(stored) : [];
+    if (!arr.includes(loomId)) {
+      arr.push(loomId);
+      localStorage.setItem(CATALOG_REQUESTS_KEY, JSON.stringify(arr));
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function catalogRequestUrl(loom: LoomDetail): string {
+  const title = encodeURIComponent(
+    `Loom catalog request: ${loom.manufacturer} ${loom.model_name}`,
+  );
+  const body = encodeURIComponent(
+    `## Loom catalog request\n\n` +
+      `**Brand:** ${loom.manufacturer}\n` +
+      `**Model:** ${loom.model_name}\n` +
+      `**Type:** ${LOOM_TYPE_LABELS[loom.loom_type] ?? loom.loom_type}\n\n` +
+      `Please add this loom to the weftmark catalog so other users can find and link it.\n`,
+  );
+  return `https://github.com/weftmark/weftmark/discussions/new?title=${title}&body=${body}`;
+}
 
 // ---------------------------------------------------------------------------
 // Reusable inline confirm
@@ -811,148 +848,6 @@ function VersionCard({
 // Page
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Catalog link section
-// ---------------------------------------------------------------------------
-
-function CatalogLinkSection({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
-  const [expanded, setExpanded] = useState(false);
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState<LoomReferenceSummary[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [selected, setSelected] = useState<LoomReferenceSummary | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showResults, setShowResults] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!search.trim()) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const data = await searchLoomCatalog(search);
-        setResults(data);
-        setShowResults(true);
-      } finally {
-        setSearching(false);
-      }
-    }, 250);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [search]);
-
-  async function handleLink() {
-    if (!selected) return;
-    setSaving(true); setError(null);
-    try {
-      await linkLoomReference(loom.id, selected.id);
-      onChanged();
-      setExpanded(false);
-      setSelected(null);
-      setSearch("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to link");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleUnlink() {
-    setSaving(true); setError(null);
-    try {
-      await linkLoomReference(loom.id, null);
-      onChanged();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to unlink");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (loom.loom_reference_id) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
-          Linked to catalog
-        </span>
-        <button
-          onClick={handleUnlink}
-          disabled={saving}
-          className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-        >
-          {saving ? "Unlinking…" : "Unlink"}
-        </button>
-        {error && <span className="text-xs text-destructive">{error}</span>}
-      </div>
-    );
-  }
-
-  if (!expanded) {
-    return (
-      <button
-        onClick={() => setExpanded(true)}
-        className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-      >
-        Link to loom catalog
-      </button>
-    );
-  }
-
-  return (
-    <div className="rounded-md border border-border p-3 space-y-2 bg-muted/20">
-      <p className="text-xs text-muted-foreground font-medium">Search the loom catalog to link this loom</p>
-      <div className="relative">
-        <input
-          type="search"
-          placeholder="Search brand or model…"
-          value={search}
-          onChange={(e) => { const v = e.target.value; setSearch(v); setSelected(null); if (!v.trim()) { setResults([]); setShowResults(false); } }}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          autoFocus
-        />
-        {searching && (
-          <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">Searching…</span>
-        )}
-        {showResults && results.length > 0 && !selected && (
-          <ul className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-lg overflow-hidden">
-            {results.map((r) => (
-              <li key={r.id}>
-                <button
-                  className="w-full text-left px-3 py-2 hover:bg-accent/50 text-sm"
-                  onClick={() => { setSelected(r); setSearch(`${r.brand} ${r.model_name}`); setShowResults(false); }}
-                >
-                  <span className="font-medium">{r.brand} {r.model_name}</span>
-                  {r.model_series && <span className="ml-1.5 text-xs text-muted-foreground">{r.model_series}</span>}
-                  {r.shaft_count_options && r.shaft_count_options.length > 0 && (
-                    <span className="ml-2 text-xs text-muted-foreground">{r.shaft_count_options.join("/")} shaft</span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {showResults && results.length === 0 && search.trim() && !searching && (
-          <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-lg">
-            No matches found.
-          </div>
-        )}
-      </div>
-
-      {error && <p className="text-xs text-destructive">{error}</p>}
-
-      <div className="flex gap-2 pt-1">
-        <Button size="sm" onClick={handleLink} disabled={!selected || saving}>
-          {saving ? "Linking…" : "Link to catalog"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => { setExpanded(false); setSelected(null); setSearch(""); setError(null); }}>
-          Cancel
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function LoomDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -960,10 +855,15 @@ export function LoomDetailPage() {
   const { user } = useAuthContext();
   const [showAddVersion, setShowAddVersion] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showLinkCatalog, setShowLinkCatalog] = useState(false);
   const [cloneSource, setCloneSource] = useState<LoomVersion | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+  const [requestSubmitted, setRequestSubmitted] = useState(() =>
+    hasSubmittedCatalogRequest(id ?? ""),
+  );
 
   const { data: loom, isLoading, error } = useQuery({
     queryKey: ["loom", id],
@@ -1004,6 +904,17 @@ export function LoomDetailPage() {
     }
   };
 
+  const handleUnlink = async () => {
+    if (!loom) return;
+    setUnlinking(true);
+    try {
+      await linkLoomReference(loom.id, null);
+      invalidate();
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
   if (isLoading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground text-sm">Loading…</p></div>;
   if (error || !loom) return <div className="flex min-h-screen items-center justify-center"><p className="text-destructive text-sm">Loom not found.</p></div>;
 
@@ -1023,6 +934,11 @@ export function LoomDetailPage() {
           <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
         <div className="flex gap-2">
+          {!isReadOnly && (
+            <Button size="sm" variant="outline" onClick={() => setShowLinkCatalog(true)}>
+              Update from catalog
+            </Button>
+          )}
           {!isReadOnly && <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>}
           {!isReadOnly && <Button size="sm" onClick={() => setShowAddVersion(true)}>Add version</Button>}
         </div>
@@ -1049,7 +965,46 @@ export function LoomDetailPage() {
             </div>
           )}
           {loom.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>}
-          {!isReadOnly && <CatalogLinkSection loom={loom} onChanged={invalidate} />}
+          {!isReadOnly && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {loom.loom_reference_id ? (
+                <>
+                  <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
+                    Linked to catalog
+                  </span>
+                  <button
+                    onClick={handleUnlink}
+                    disabled={unlinking}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    {unlinking ? "Unlinking…" : "Unlink"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
+                    Not in catalog
+                  </span>
+                  {requestSubmitted ? (
+                    <span className="text-xs text-muted-foreground italic">Request submitted</span>
+                  ) : (
+                    <a
+                      href={catalogRequestUrl(loom)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => {
+                        markCatalogRequestSubmitted(loom.id);
+                        setRequestSubmitted(true);
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                    >
+                      Submit request to add to catalog
+                    </a>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           {activeProject && (
             <div className="rounded-md border border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-700 px-3 py-2.5 text-sm flex items-center justify-between gap-4">
               <div>
@@ -1134,6 +1089,9 @@ export function LoomDetailPage() {
       )}
       {showEdit && (
         <EditLoomModal loom={loom} onSuccess={handleEditSaved} onClose={() => setShowEdit(false)} />
+      )}
+      {showLinkCatalog && (
+        <LinkToCatalogModal loom={loom} onSuccess={() => { setShowLinkCatalog(false); invalidate(); }} onClose={() => setShowLinkCatalog(false)} />
       )}
       {cloneSource && (
         <CloneVersionModal loomId={loom.id} source={cloneSource} onSuccess={handleCloned} onClose={() => setCloneSource(null)} />

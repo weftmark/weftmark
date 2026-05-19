@@ -144,6 +144,10 @@ export interface AddVersionPayload {
 export interface UpdateVersionPayload {
   name?: string;
   description?: string;
+  num_shafts?: number;
+  num_treadles?: number;
+  weaving_width?: number;
+  weaving_width_unit?: string;
   warp_waste_allowance?: number | null;
   warp_waste_unit?: string;
 }
