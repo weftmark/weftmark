@@ -74,13 +74,14 @@ class TestVerifySessionToken:
         mock_signing_key.key = "fake-key"
         mock_client.get_signing_key_from_jwt.return_value = mock_signing_key
 
-        payload = {"sub": "user_abc", "azp": "pk_test_other_app"}
+        # Clerk azp is the frontend origin URL; wrong origin must be rejected
+        payload = {"sub": "user_abc", "azp": "https://other.example.com"}
         with patch("app.services.clerk_auth._jwks_client", return_value=mock_client):
             with patch("app.services.clerk_auth.jwt.decode", return_value=payload):
                 result = verify_session_token(
                     "fake.jwt.token",
                     "https://example.com/.well-known/jwks.json",
-                    expected_azp="pk_test_this_app",
+                    expected_azp="https://app.example.com",
                 )
 
         assert result is None
@@ -91,13 +92,14 @@ class TestVerifySessionToken:
         mock_signing_key.key = "fake-key"
         mock_client.get_signing_key_from_jwt.return_value = mock_signing_key
 
-        payload = {"sub": "user_abc", "azp": "pk_test_this_app"}
+        # Clerk azp is the frontend origin URL; correct origin must be accepted
+        payload = {"sub": "user_abc", "azp": "https://app.example.com"}
         with patch("app.services.clerk_auth._jwks_client", return_value=mock_client):
             with patch("app.services.clerk_auth.jwt.decode", return_value=payload):
                 result = verify_session_token(
                     "fake.jwt.token",
                     "https://example.com/.well-known/jwks.json",
-                    expected_azp="pk_test_this_app",
+                    expected_azp="https://app.example.com",
                 )
 
         assert result == "user_abc"
