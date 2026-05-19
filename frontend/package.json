@@ -1,7 +1,7 @@
 {
   "name": "weaving-site",
   "private": true,
-  "version": "0.170.4",
+  "version": "0.170.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
