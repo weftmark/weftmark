@@ -440,26 +440,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   {showsTreadles(loomType) && (
                     <div>
                       <label className="mb-1 block text-sm font-medium">Treadles</label>
-                      {treadleOptions && treadleOptions.length > 1 ? (
-                        <select
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                          value={numTreadles}
-                          onChange={(e) => {
-                            setNumTreadles(e.target.value);
-                            setTreadlesManuallySet(true);
-                          }}
-                        >
-                          {treadleOptions.map((t) => (
-                            <option key={t} value={String(t)}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-foreground">
-                          {numTreadles}
-                        </p>
-                      )}
+                      <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-foreground">
+                        {numTreadles}
+                      </p>
                     </div>
                   )}
                 </div>

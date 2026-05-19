@@ -29,8 +29,8 @@ class LoomReferenceSchema(BaseModel):
     model_series: str | None
     loom_category: str
     shedding_mechanism: str | None
-    shaft_count_options: list[int] | None
-    treadle_count: list[int] | None
+    shaft_count_options: list[float] | None
+    treadle_count: list[float] | None
     weaving_width_options_inches: list[float] | None
     weaving_width_options_cm: list[float] | None
     frame_material: str | None
@@ -42,7 +42,7 @@ class LoomReferenceSchema(BaseModel):
     castle_height_inches: Decimal | None
     breast_beam_height_inches: Decimal | None
     reed_included: bool | None
-    reed_dent_included: list[int] | None
+    reed_dent_included: list[float] | None
     reed_material: str | None
     heddle_type: str | None
     heddles_per_shaft_included: Decimal | None
@@ -84,8 +84,8 @@ class LoomReferenceSummary(BaseModel):
     model_series: str | None
     loom_category: str
     shedding_mechanism: str | None
-    shaft_count_options: list[int] | None
-    treadle_count: list[int] | None
+    shaft_count_options: list[float] | None
+    treadle_count: list[float] | None
     weaving_width_options_inches: list[float] | None
     weaving_width_options_cm: list[float] | None
     foldable: bool | None
@@ -100,8 +100,8 @@ class CreateLoomReferenceRequest(BaseModel):
     model_series: str | None = None
     loom_category: str
     shedding_mechanism: str | None = None
-    shaft_count_options: list[int] | None = None
-    treadle_count: list[int] | None = None
+    shaft_count_options: list[float] | None = None
+    treadle_count: list[float] | None = None
     weaving_width_options_inches: list[float] | None = None
     weaving_width_options_cm: list[float] | None = None
     frame_material: str | None = None
@@ -113,7 +113,7 @@ class CreateLoomReferenceRequest(BaseModel):
     castle_height_inches: Decimal | None = None
     breast_beam_height_inches: Decimal | None = None
     reed_included: bool | None = None
-    reed_dent_included: list[int] | None = None
+    reed_dent_included: list[float] | None = None
     reed_material: str | None = None
     heddle_type: str | None = None
     heddles_per_shaft_included: Decimal | None = None
@@ -152,8 +152,8 @@ class UpdateLoomReferenceRequest(BaseModel):
     model_series: str | None = None
     loom_category: str | None = None
     shedding_mechanism: str | None = None
-    shaft_count_options: list[int] | None = None
-    treadle_count: list[int] | None = None
+    shaft_count_options: list[float] | None = None
+    treadle_count: list[float] | None = None
     weaving_width_options_inches: list[float] | None = None
     weaving_width_options_cm: list[float] | None = None
     frame_material: str | None = None
@@ -165,7 +165,7 @@ class UpdateLoomReferenceRequest(BaseModel):
     castle_height_inches: Decimal | None = None
     breast_beam_height_inches: Decimal | None = None
     reed_included: bool | None = None
-    reed_dent_included: list[int] | None = None
+    reed_dent_included: list[float] | None = None
     reed_material: str | None = None
     heddle_type: str | None = None
     heddles_per_shaft_included: Decimal | None = None
