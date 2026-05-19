@@ -17,18 +17,32 @@ interface Props {
   onClose: () => void;
 }
 
-const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const today = () =>
+  new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
 
 const ALL_LOOM_TYPES: LoomType[] = [
-  "floor_loom", "table_loom", "rigid_heddle", "inkle",
-  "dobby_floor_loom", "tapestry_loom", "rug_loom", "frame_loom", "other",
+  "floor_loom",
+  "table_loom",
+  "rigid_heddle",
+  "inkle",
+  "dobby_floor_loom",
+  "tapestry_loom",
+  "rug_loom",
+  "frame_loom",
+  "other",
 ];
 
 function showsShafts(t: LoomType) {
   return ["floor_loom", "table_loom", "dobby_floor_loom", "other"].includes(t);
 }
-function showsTreadles(t: LoomType) { return t === "floor_loom" || t === "dobby_floor_loom"; }
-function showsHeddles(t: LoomType) { return t === "rigid_heddle" || t === "other"; }
+function showsTreadles(t: LoomType) {
+  return t === "floor_loom" || t === "dobby_floor_loom";
+}
+function showsHeddles(t: LoomType) {
+  return t === "rigid_heddle" || t === "other";
+}
 
 function categoryToLoomType(cat: string): LoomType {
   const map: Record<string, LoomType> = {
@@ -44,17 +58,48 @@ function categoryToLoomType(cat: string): LoomType {
   return map[cat] ?? "other";
 }
 
+interface WidthOption {
+  label: string;
+  value: string;
+  unit: "cm" | "in";
+}
+
+function buildWidthOptions(ref: LoomReferenceSummary): WidthOption[] {
+  const cm = ref.weaving_width_options_cm;
+  const inches = ref.weaving_width_options_inches;
+  if (!cm?.length && !inches?.length) return [];
+
+  if (cm?.length) {
+    const inArr =
+      inches?.length === cm.length
+        ? inches
+        : cm.map((c) => Math.round((c / 2.54) * 10) / 10);
+    return cm.map((c, i) => ({
+      label: `${c} cm (${inArr[i]} in)`,
+      value: String(c),
+      unit: "cm",
+    }));
+  }
+  // Only inches available — convert to cm for display
+  const cmArr = inches!.map((i) => Math.round(i * 2.54 * 10) / 10);
+  return inches!.map((inch, i) => ({
+    label: `${inch} in (${cmArr[i]} cm)`,
+    value: String(inch),
+    unit: "in",
+  }));
+}
+
 export function NewLoomModal({ onSuccess, onClose }: Props) {
   const { user } = useAuthContext();
   const defaultUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
-  const useInches = defaultUnit === "in";
 
-  // Catalog search state
+  // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<LoomReferenceSummary[]>([]);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [selectedRef, setSelectedRef] = useState<LoomReferenceSummary | null>(null);
+  const [manualMode, setManualMode] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -77,12 +122,14 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // When a ref is selected: available shaft/width options for pickers
+  // Derived catalog option lists
   const shaftOptions = selectedRef?.shaft_count_options ?? null;
-  const widthOptionsIn = selectedRef?.weaving_width_options_inches ?? null;
-  const widthOptionsCm = selectedRef?.weaving_width_options_cm ?? null;
-  const activeWidthOptions = useInches ? widthOptionsIn : (widthOptionsCm ?? widthOptionsIn);
   const treadleOptions = selectedRef?.treadle_count ?? null;
+  const widthOptions = selectedRef ? buildWidthOptions(selectedRef) : [];
+
+  const mode = selectedRef ? "catalog" : manualMode ? "manual" : "searching";
+  const showForm = mode === "catalog" || mode === "manual";
+  const isUnsupported = !SUPPORTED_LOOM_TYPES.has(loomType);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -111,12 +158,13 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
         setSearching(false);
       }
     }, 250);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [searchQuery]);
 
   const applyReference = (ref: LoomReferenceSummary) => {
     setSelectedRef(ref);
-    setSearchQuery(`${ref.brand} ${ref.model_name}`);
     setShowResults(false);
     setManufacturer(ref.brand);
     setModelName(ref.model_name);
@@ -125,7 +173,6 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
     setAcknowledged(false);
     setTreadlesManuallySet(false);
 
-    // Pre-fill shaft/treadle: pick first option from arrays
     if (ref.shaft_count_options?.length) {
       const first = String(ref.shaft_count_options[0]);
       setNumShafts(first);
@@ -137,16 +184,13 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
       }
     }
 
-    // Pre-fill width: pick first option
-    if (useInches && ref.weaving_width_options_inches?.length) {
-      setWeavingWidth(String(ref.weaving_width_options_inches[0]));
-      setWeavingWidthUnit("in");
-    } else if (!useInches && ref.weaving_width_options_cm?.length) {
-      setWeavingWidth(String(ref.weaving_width_options_cm[0]));
-      setWeavingWidthUnit("cm");
-    } else if (ref.weaving_width_options_inches?.length) {
-      setWeavingWidth(String(ref.weaving_width_options_inches[0]));
-      setWeavingWidthUnit("in");
+    const opts = buildWidthOptions(ref);
+    if (opts.length) {
+      setWeavingWidth(opts[0].value);
+      setWeavingWidthUnit(opts[0].unit);
+    } else {
+      setWeavingWidth("");
+      setWeavingWidthUnit(defaultUnit);
     }
   };
 
@@ -159,6 +203,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
     setNumShafts("4");
     setNumTreadles("6");
     setWeavingWidth("");
+    setWeavingWidthUnit(defaultUnit);
     setAcknowledged(false);
     setTreadlesManuallySet(false);
   };
@@ -196,8 +241,6 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
     }
   };
 
-  const isUnsupported = !SUPPORTED_LOOM_TYPES.has(loomType);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -211,9 +254,14 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
         loom_reference_id: selectedRef?.id,
         notes: notes || undefined,
         effective_date: effectiveDate,
-        num_shafts: showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
-        num_treadles: showsTreadles(loomType) && numTreadles !== "" ? parseInt(numTreadles, 10) : undefined,
-        num_heddles: showsHeddles(loomType) && numHeddles ? parseInt(numHeddles, 10) : undefined,
+        num_shafts:
+          showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
+        num_treadles:
+          showsTreadles(loomType) && numTreadles !== ""
+            ? parseInt(numTreadles, 10)
+            : undefined,
+        num_heddles:
+          showsHeddles(loomType) && numHeddles ? parseInt(numHeddles, 10) : undefined,
         weaving_width: weavingWidth ? parseFloat(weavingWidth) : undefined,
         weaving_width_unit: weavingWidthUnit,
         warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
@@ -235,182 +283,194 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Catalog typeahead */}
-          <div ref={searchRef} className="relative">
-            <label className="mb-1 block text-sm font-medium">
-              Find your loom{" "}
-              <span className="font-normal text-muted-foreground">(optional — start typing brand or model)</span>
-            </label>
-            <input
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              value={searchQuery}
-              onChange={(e) => { const v = e.target.value; setSearchQuery(v); if (selectedRef) setSelectedRef(null); if (!v.trim() || v.length < 2) { setSearchResults([]); setShowResults(false); } }}
-              placeholder="Schacht Baby Wolf, Ashford Jack Loom…"
-              autoComplete="off"
-            />
-            {searching && (
-              <p className="mt-1 text-xs text-muted-foreground">Searching…</p>
-            )}
-            {showResults && searchResults.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-56 overflow-y-auto">
-                {searchResults.map((r) => (
+          {/* ── Search (visible in search and catalog modes) ── */}
+          {mode !== "manual" && (
+            <div ref={searchRef} className="relative">
+              <label className="mb-1 block text-sm font-medium">Find your loom</label>
+              <input
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                value={searchQuery}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSearchQuery(v);
+                  if (selectedRef) clearReference();
+                  if (!v.trim() || v.length < 2) {
+                    setSearchResults([]);
+                    setShowResults(false);
+                  }
+                }}
+                placeholder="Schacht Baby Wolf, Louet Spring…"
+                autoComplete="off"
+              />
+              {searching && (
+                <p className="mt-1 text-xs text-muted-foreground">Searching…</p>
+              )}
+              {showResults && searchResults.length > 0 && (
+                <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-56 overflow-y-auto">
+                  {searchResults.map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground flex flex-col"
+                      onMouseDown={() => applyReference(r)}
+                    >
+                      <span className="font-medium">
+                        {r.brand} {r.model_name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {LOOM_TYPE_LABELS[categoryToLoomType(r.loom_category)]}
+                        {r.shaft_count_options?.length
+                          ? ` · ${r.shaft_count_options.join("/")} shafts`
+                          : ""}
+                        {r.origin_country ? ` · ${r.origin_country}` : ""}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showResults &&
+                searchResults.length === 0 &&
+                !searching &&
+                searchQuery.length >= 2 && (
+                  <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md px-3 py-2">
+                    <p className="text-sm text-muted-foreground">No results.</p>
+                  </div>
+                )}
+              {mode === "searching" && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Not in the catalog?{" "}
                   <button
-                    key={r.id}
                     type="button"
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground flex flex-col"
-                    onMouseDown={() => applyReference(r)}
+                    className="underline hover:text-foreground"
+                    onClick={() => setManualMode(true)}
                   >
-                    <span className="font-medium">{r.brand} {r.model_name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {r.loom_category.replace(/_/g, " ")}
-                      {r.shaft_count_options?.length ? ` · ${r.shaft_count_options.join("/")} shafts` : ""}
-                      {r.origin_country ? ` · ${r.origin_country}` : ""}
-                    </span>
+                    Enter details manually
                   </button>
-                ))}
-              </div>
-            )}
-            {showResults && searchResults.length === 0 && !searching && searchQuery.length >= 2 && (
-              <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md px-3 py-2">
-                <p className="text-sm text-muted-foreground">No results — enter details manually below.</p>
-              </div>
-            )}
-          </div>
+                </p>
+              )}
+            </div>
+          )}
 
-          {selectedRef && (
-            <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-              <span className="text-muted-foreground">
-                Linked to catalog: <span className="font-medium text-foreground">{selectedRef.brand} {selectedRef.model_name}</span>
-              </span>
-              <button type="button" className="text-xs text-muted-foreground hover:text-foreground ml-2" onClick={clearReference}>
-                Clear
+          {/* ── Manual mode banner ── */}
+          {mode === "manual" && (
+            <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Entering details manually</span>
+              <button
+                type="button"
+                className="text-xs underline text-muted-foreground hover:text-foreground"
+                onClick={() => setManualMode(false)}
+              >
+                Search catalog
               </button>
             </div>
           )}
 
-          {/* Loom type */}
-          <div>
-            <label className="mb-1 block text-sm font-medium">Loom type</label>
-            <select
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              value={loomType}
-              onChange={(e) => handleTypeChange(e.target.value as LoomType)}
-            >
-              {ALL_LOOM_TYPES.map((t) => (
-                <option key={t} value={t}>{LOOM_TYPE_LABELS[t]}</option>
-              ))}
-            </select>
-          </div>
+          {/* ── CATALOG MODE: fixed identity + pickers ── */}
+          {mode === "catalog" && (
+            <>
+              <div className="rounded-md border bg-muted/30 px-3 py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {selectedRef!.brand} {selectedRef!.model_name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {LOOM_TYPE_LABELS[loomType]}
+                      {selectedRef!.origin_country
+                        ? ` · ${selectedRef!.origin_country}`
+                        : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearReference}
+                    className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Change
+                  </button>
+                </div>
+              </div>
 
-          {/* Unsupported type warning + acknowledgement */}
-          {isUnsupported && (
-            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
-              <p className="font-medium text-copper-on-subtle">Project tracking not supported</p>
-              <p className="text-xs text-copper-on-subtle">
-                This loom type is not currently supported for project tracking. You can save it for documentation
-                and it will be available if support is added later.
-              </p>
-              <label className="flex items-center gap-2 text-xs text-copper-on-subtle cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={acknowledged}
-                  onChange={(e) => setAcknowledged(e.target.checked)}
-                />
-                I understand this loom cannot be used for project tracking
-              </label>
-            </div>
-          )}
-
-          {/* Identity */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Manufacturer</label>
-              <input
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                value={manufacturer}
-                onChange={(e) => setManufacturer(e.target.value)}
-                placeholder="Ashford"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Model</label>
-              <input
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                value={modelName}
-                onChange={(e) => setModelName(e.target.value)}
-                placeholder="Table Loom 8"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Serial number (optional)</label>
-            <input
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              value={serialNumber}
-              onChange={(e) => setSerialNumber(e.target.value)}
-              placeholder="SN-12345"
-            />
-          </div>
-
-          {/* Initial configuration */}
-          <div>
-            <label className="mb-1 block text-sm font-medium">Configuration as of</label>
-            <input
-              type="date"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              value={effectiveDate}
-              onChange={(e) => setEffectiveDate(e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Type-specific spec fields */}
-          {(showsShafts(loomType) || showsTreadles(loomType) || showsHeddles(loomType)) && (
-            <div className="grid grid-cols-2 gap-3">
-              {showsShafts(loomType) && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Shafts</label>
-                  {shaftOptions && shaftOptions.length > 1 ? (
-                    <select
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      value={numShafts}
-                      onChange={(e) => handleShaftOptionChange(e.target.value)}
-                    >
-                      {shaftOptions.map((s) => (
-                        <option key={s} value={String(s)}>{s}</option>
-                      ))}
-                    </select>
-                  ) : (
+              {isUnsupported && (
+                <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+                  <p className="font-medium text-copper-on-subtle">
+                    Project tracking not supported
+                  </p>
+                  <p className="text-xs text-copper-on-subtle">
+                    This loom type is not currently supported for project tracking. You
+                    can save it for documentation and it will be available if support is
+                    added later.
+                  </p>
+                  <label className="flex items-center gap-2 text-xs text-copper-on-subtle cursor-pointer">
                     <input
-                      type="number"
-                      min={1}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      value={numShafts}
-                      onChange={(e) => handleShaftsManual(e.target.value)}
-                      required={loomType !== "other" && loomType !== "dobby_floor_loom"}
+                      type="checkbox"
+                      checked={acknowledged}
+                      onChange={(e) => setAcknowledged(e.target.checked)}
                     />
+                    I understand this loom cannot be used for project tracking
+                  </label>
+                </div>
+              )}
+
+              {/* Shafts + Treadles */}
+              {(showsShafts(loomType) || showsTreadles(loomType)) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {showsShafts(loomType) && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Shafts</label>
+                      {shaftOptions && shaftOptions.length > 1 ? (
+                        <select
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          value={numShafts}
+                          onChange={(e) => handleShaftOptionChange(e.target.value)}
+                        >
+                          {shaftOptions.map((s) => (
+                            <option key={s} value={String(s)}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-foreground">
+                          {shaftOptions?.[0] ?? numShafts}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {showsTreadles(loomType) && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Treadles</label>
+                      {treadleOptions && treadleOptions.length > 1 ? (
+                        <select
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          value={numTreadles}
+                          onChange={(e) => {
+                            setNumTreadles(e.target.value);
+                            setTreadlesManuallySet(true);
+                          }}
+                        >
+                          {treadleOptions.map((t) => (
+                            <option key={t} value={String(t)}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-foreground">
+                          {numTreadles}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
-              {showsTreadles(loomType) && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Treadles</label>
-                  <input
-                    type="number"
-                    min={0}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={numTreadles}
-                    onChange={(e) => { setNumTreadles(e.target.value); setTreadlesManuallySet(true); }}
-                    required
-                  />
-                </div>
-              )}
+
+              {/* Heddles (rigid heddle / other) */}
               {showsHeddles(loomType) && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Heddles (optional)</label>
+                  <label className="mb-1 block text-sm font-medium">
+                    Heddles (optional)
+                  </label>
                   <input
                     type="number"
                     min={1}
@@ -420,31 +480,173 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   />
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Weaving width */}
-          {loomType !== "inkle" && (
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium">Weaving width (optional)</label>
-                {activeWidthOptions && activeWidthOptions.length > 1 ? (
-                  <div className="flex gap-2">
+              {/* Weaving width — paired cm/in dropdown */}
+              {loomType !== "inkle" && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    Weaving width
+                  </label>
+                  {widthOptions.length > 0 ? (
                     <select
-                      className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       value={weavingWidth}
-                      onChange={(e) => setWeavingWidth(e.target.value)}
+                      onChange={(e) => {
+                        setWeavingWidth(e.target.value);
+                        const opt = widthOptions.find(
+                          (o) => o.value === e.target.value
+                        );
+                        if (opt) setWeavingWidthUnit(opt.unit);
+                      }}
                     >
                       <option value="">— select —</option>
-                      {activeWidthOptions.map((w) => (
-                        <option key={w} value={String(w)}>{w}</option>
+                      {widthOptions.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
                       ))}
                     </select>
-                    <span className="flex items-center px-2 text-sm text-muted-foreground">
-                      {useInches ? "in" : "cm"}
-                    </span>
-                  </div>
-                ) : (
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.1"
+                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={weavingWidth}
+                        onChange={(e) => setWeavingWidth(e.target.value)}
+                        placeholder="60"
+                      />
+                      <select
+                        className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={weavingWidthUnit}
+                        onChange={(e) => setWeavingWidthUnit(e.target.value)}
+                      >
+                        <option value="cm">cm</option>
+                        <option value="in">in</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── MANUAL MODE: all free-text inputs ── */}
+          {mode === "manual" && (
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Loom type</label>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={loomType}
+                  onChange={(e) => handleTypeChange(e.target.value as LoomType)}
+                >
+                  {ALL_LOOM_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {LOOM_TYPE_LABELS[t]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {isUnsupported && (
+                <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+                  <p className="font-medium text-copper-on-subtle">
+                    Project tracking not supported
+                  </p>
+                  <p className="text-xs text-copper-on-subtle">
+                    This loom type is not currently supported for project tracking. You
+                    can save it for documentation and it will be available if support is
+                    added later.
+                  </p>
+                  <label className="flex items-center gap-2 text-xs text-copper-on-subtle cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={acknowledged}
+                      onChange={(e) => setAcknowledged(e.target.checked)}
+                    />
+                    I understand this loom cannot be used for project tracking
+                  </label>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Manufacturer</label>
+                  <input
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={manufacturer}
+                    onChange={(e) => setManufacturer(e.target.value)}
+                    placeholder="Ashford"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Model</label>
+                  <input
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    value={modelName}
+                    onChange={(e) => setModelName(e.target.value)}
+                    placeholder="Table Loom 8"
+                    required
+                  />
+                </div>
+              </div>
+
+              {(showsShafts(loomType) || showsTreadles(loomType) || showsHeddles(loomType)) && (
+                <div className="grid grid-cols-2 gap-3">
+                  {showsShafts(loomType) && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Shafts</label>
+                      <input
+                        type="number"
+                        min={1}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={numShafts}
+                        onChange={(e) => handleShaftsManual(e.target.value)}
+                        required={loomType !== "other" && loomType !== "dobby_floor_loom"}
+                      />
+                    </div>
+                  )}
+                  {showsTreadles(loomType) && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">Treadles</label>
+                      <input
+                        type="number"
+                        min={0}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={numTreadles}
+                        onChange={(e) => {
+                          setNumTreadles(e.target.value);
+                          setTreadlesManuallySet(true);
+                        }}
+                        required
+                      />
+                    </div>
+                  )}
+                  {showsHeddles(loomType) && (
+                    <div>
+                      <label className="mb-1 block text-sm font-medium">
+                        Heddles (optional)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                        value={numHeddles}
+                        onChange={(e) => setNumHeddles(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {loomType !== "inkle" && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    Weaving width (optional)
+                  </label>
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -464,10 +666,43 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                       <option value="in">in</option>
                     </select>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── Shared fields (visible once a mode is active) ── */}
+          {showForm && (
+            <>
               <div>
-                <label className="mb-1 block text-sm font-medium">Warp waste (optional)</label>
+                <label className="mb-1 block text-sm font-medium">
+                  Serial number (optional)
+                </label>
+                <input
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  placeholder="SN-12345"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Configuration as of
+                </label>
+                <input
+                  type="date"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={effectiveDate}
+                  onChange={(e) => setEffectiveDate(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Warp waste (optional)
+                </label>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -488,31 +723,40 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   </select>
                 </div>
               </div>
-            </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Notes (optional)
+                </label>
+                <textarea
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Any additional notes…"
+                />
+              </div>
+            </>
           )}
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Notes (optional)</label>
-            <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              placeholder="Any additional notes…"
-            />
-          </div>
-
           {error && (
-            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || (isUnsupported && !acknowledged)}>
-              {loading ? "Creating…" : "Create loom"}
-            </Button>
+            {showForm && (
+              <Button
+                type="submit"
+                disabled={loading || (isUnsupported && !acknowledged)}
+              >
+                {loading ? "Creating…" : "Create loom"}
+              </Button>
+            )}
           </div>
         </form>
       </div>

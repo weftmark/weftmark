@@ -92,8 +92,10 @@ _DB_COLUMNS = {
 def _locate_json() -> Path:
     """Find loom-data-master.json regardless of where the script is invoked from."""
     candidates = [
+        # Bundled alongside the seed script inside the Docker image (primary)
+        Path(__file__).parent / "loom-data-master.json",
+        # Repo root — local dev running outside the container
         Path(__file__).parent.parent.parent / "docs" / "research" / "looms" / "loom-data-master.json",
-        Path("/app/docs/research/looms/loom-data-master.json"),
         Path("docs/research/looms/loom-data-master.json"),
     ]
     for p in candidates:
