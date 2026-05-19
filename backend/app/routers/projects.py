@@ -19,7 +19,7 @@ from app.models.loom import PROJECT_SUPPORTED_LOOM_TYPES, Loom, LoomVersion
 from app.models.project import Project, ProjectPhoto, ProjectStep, WeaveSession
 from app.models.user import User
 from app.services import storage, wif_parser
-from app.services.images import resize_to_jpeg
+from app.services.images import resize_to_jpeg, validate_image_format
 from app.services.storage_quota import check_storage_quota
 from app.tasks.preview import (
     generate_drawdown_preview,
@@ -28,7 +28,7 @@ from app.tasks.preview import (
 )
 from app.tasks.tiles import prerender_project_tiles
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}  # fast pre-filter only
 MAX_PROJECT_PHOTOS = 10
 MAX_PHOTO_SIZE = 25 * 1024 * 1024  # 25 MB raw (resized output is much smaller)
 _PROJECT_RESIZE_MAX_PX = 2048
@@ -1401,6 +1401,11 @@ async def upload_project_photo(
     data = await file.read()
     if len(data) > MAX_PHOTO_SIZE:
         raise HTTPException(status_code=400, detail=f"File too large (max {MAX_PHOTO_SIZE // (1024 * 1024)} MB)")
+
+    try:
+        validate_image_format(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     existing = await db.scalars(select(ProjectPhoto).where(ProjectPhoto.project_id == project.id))
     if len(existing.all()) >= MAX_PROJECT_PHOTOS:

@@ -527,6 +527,16 @@ class TestLoomPhoto:
         )
         assert resp.status_code == 400
 
+    async def test_spoofed_content_type_rejected(self, auth_client: AsyncClient):
+        # Regression: garbage bytes claiming to be PNG must be rejected via PIL
+        # magic-byte check, not the client-supplied Content-Type header.
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.put(
+            f"/api/looms/{loom['id']}/photo",
+            files={"file": ("evil.png", b"not an image at all", "image/png")},
+        )
+        assert resp.status_code == 400
+
     async def test_get_photo_returns_200_after_upload(self, auth_client: AsyncClient):
         loom = await _create_loom(auth_client)
         await auth_client.put(
