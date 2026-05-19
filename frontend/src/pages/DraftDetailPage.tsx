@@ -24,6 +24,7 @@ export function DraftDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConflict, setDeleteConflict] = useState<DeleteConflict | null>(null);
   const [confirmForceDelete, setConfirmForceDelete] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
   const [showDangerZone, setShowDangerZone] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -804,7 +805,7 @@ export function DraftDetailPage() {
           {showDangerZone && (
             <div className="mt-3 space-y-3">
               {/* Archive / Unarchive */}
-              <div className="rounded-md border border-border p-4 flex items-center justify-between gap-4">
+              <div className="rounded-md border border-border p-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium">{draft.archived_at ? "Unarchive draft" : "Archive draft"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -813,14 +814,34 @@ export function DraftDetailPage() {
                       : "Hide this draft from active lists without deleting it. Existing projects are unaffected."}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => draft.archived_at ? unarchiveMutation.mutate() : archiveMutation.mutate()}
-                  disabled={archiveMutation.isPending || unarchiveMutation.isPending}
-                >
-                  {draft.archived_at ? "Unarchive" : "Archive"}
-                </Button>
+                <div className="flex gap-2 shrink-0">
+                  {!confirmArchive ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmArchive(true)}
+                    >
+                      {draft.archived_at ? "Unarchive" : "Archive"}
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setConfirmArchive(false);
+                          if (draft.archived_at) unarchiveMutation.mutate(); else archiveMutation.mutate();
+                        }}
+                        disabled={archiveMutation.isPending || unarchiveMutation.isPending}
+                      >
+                        Confirm
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmArchive(false)}>
+                        Cancel
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Delete */}

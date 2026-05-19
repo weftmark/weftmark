@@ -5,15 +5,16 @@ import { listProjects } from "@/api/projects";
 import { DraftCard } from "@/components/drafts/DraftCard";
 import { UploadWifModal } from "@/components/drafts/UploadWifModal";
 import { Button } from "@/components/ui/button";
+import { AppIcons } from "@/lib/icons";
 
 export function DraftsPage() {
   const queryClient = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
+  const [archivedOpen, setArchivedOpen] = useState(false);
 
   const { data: drafts = [], isLoading, error } = useQuery({
-    queryKey: ["drafts", { includeArchived: showArchived }],
-    queryFn: () => listDrafts(showArchived),
+    queryKey: ["drafts", { includeArchived: true }],
+    queryFn: () => listDrafts(true),
   });
 
   const { data: projects = [] } = useQuery({
@@ -46,31 +47,18 @@ export function DraftsPage() {
     <div className="p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Drafts</h1>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setShowArchived((v) => !v)}
-            className={`text-sm transition-colors ${showArchived ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            {showArchived ? "Hide archived" : "Show archived"}
-          </button>
-          <Button onClick={() => setShowUpload(true)}>New Draft</Button>
-        </div>
+        <Button onClick={() => setShowUpload(true)}>New Draft</Button>
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading drafts…</p>}
       {error && <p className="text-sm text-destructive">Failed to load drafts.</p>}
 
-      {!isLoading && drafts.length === 0 && (
+      {!isLoading && activeDrafts.length === 0 && archivedDrafts.length === 0 && (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            {showArchived ? "No archived drafts." : "No drafts yet. Upload a WIF file to get started."}
-          </p>
-          {!showArchived && (
-            <Button className="mt-4" onClick={() => setShowUpload(true)}>
-              New Draft
-            </Button>
-          )}
+          <p className="text-sm text-muted-foreground">No drafts yet. Upload a WIF file to get started.</p>
+          <Button className="mt-4" onClick={() => setShowUpload(true)}>
+            New Draft
+          </Button>
         </div>
       )}
 
@@ -82,14 +70,25 @@ export function DraftsPage() {
         </div>
       )}
 
-      {showArchived && archivedDrafts.length > 0 && (
+      {archivedDrafts.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">Archived</h2>
-          <div className="grid gap-4 sm:grid-cols-2 opacity-60">
-            {archivedDrafts.map((d) => (
-              <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} archived />
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setArchivedOpen((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+          >
+            <AppIcons.chevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${archivedOpen ? "rotate-180" : ""}`}
+            />
+            Archived ({archivedDrafts.length})
+          </button>
+          {archivedOpen && (
+            <div className="mt-3 grid gap-4 sm:grid-cols-2 opacity-60">
+              {archivedDrafts.map((d) => (
+                <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} archived />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -827,6 +827,7 @@ export function LoomDetailPage() {
   const [confirmForceDelete, setConfirmForceDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [retiring, setRetiring] = useState(false);
+  const [confirmRetire, setConfirmRetire] = useState(false);
   const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
 
@@ -1042,9 +1043,20 @@ export function LoomDetailPage() {
                         : "Hide this loom from active lists without deleting it. Existing projects are unaffected."}
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" className="shrink-0" onClick={handleRetire} disabled={retiring}>
-                    {loom.retired_at ? "Unretire" : "Retire"}
-                  </Button>
+                  {!confirmRetire ? (
+                    <Button variant="outline" size="sm" className="shrink-0" onClick={() => setConfirmRetire(true)}>
+                      {loom.retired_at ? "Unretire" : "Retire"}
+                    </Button>
+                  ) : (
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="outline" size="sm"
+                        onClick={() => { setConfirmRetire(false); handleRetire(); }}
+                        disabled={retiring}>
+                        Confirm
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmRetire(false)}>Cancel</Button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Delete */}
