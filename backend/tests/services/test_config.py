@@ -16,7 +16,6 @@ def _s(**kwargs) -> Settings:
     defaults = {
         "app_env": "dev",
         "debug": True,
-        "app_secret_key": "test-secret-key",
         "clerk_webhook_secret": "whsec_test123",
         "cors_origins": "http://localhost:3000",
         "storage_backend": "local",

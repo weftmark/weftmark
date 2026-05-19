@@ -40,7 +40,7 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Auth not configured")
 
     jwks_url = jwks_url_from_publishable_key(settings.clerk_publishable_key)
-    clerk_user_id = verify_session_token(token, jwks_url)
+    clerk_user_id = verify_session_token(token, jwks_url, expected_azp=settings.clerk_publishable_key)
     if not clerk_user_id:
         log.info("auth_failure reason=invalid_token method=%s path=%s", method, path)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")

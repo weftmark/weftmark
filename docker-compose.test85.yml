@@ -50,7 +50,6 @@ services:
       - "127.0.0.1:8085:8000"
     environment:
       APP_ENV: ${APP_ENV}
-      APP_SECRET_KEY: ${APP_SECRET_KEY}
       DEBUG: ${DEBUG:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       SEED_ENABLED: "false"

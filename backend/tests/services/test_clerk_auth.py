@@ -67,3 +67,51 @@ class TestVerifySessionToken:
                 result = verify_session_token("fake.jwt.token", "https://example.com/.well-known/jwks.json")
 
         assert result is None
+
+    def test_returns_none_when_azp_mismatch(self):
+        mock_client = MagicMock()
+        mock_signing_key = MagicMock()
+        mock_signing_key.key = "fake-key"
+        mock_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+        payload = {"sub": "user_abc", "azp": "pk_test_other_app"}
+        with patch("app.services.clerk_auth._jwks_client", return_value=mock_client):
+            with patch("app.services.clerk_auth.jwt.decode", return_value=payload):
+                result = verify_session_token(
+                    "fake.jwt.token",
+                    "https://example.com/.well-known/jwks.json",
+                    expected_azp="pk_test_this_app",
+                )
+
+        assert result is None
+
+    def test_returns_sub_when_azp_matches(self):
+        mock_client = MagicMock()
+        mock_signing_key = MagicMock()
+        mock_signing_key.key = "fake-key"
+        mock_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+        payload = {"sub": "user_abc", "azp": "pk_test_this_app"}
+        with patch("app.services.clerk_auth._jwks_client", return_value=mock_client):
+            with patch("app.services.clerk_auth.jwt.decode", return_value=payload):
+                result = verify_session_token(
+                    "fake.jwt.token",
+                    "https://example.com/.well-known/jwks.json",
+                    expected_azp="pk_test_this_app",
+                )
+
+        assert result == "user_abc"
+
+    def test_skips_azp_check_when_expected_azp_empty(self):
+        mock_client = MagicMock()
+        mock_signing_key = MagicMock()
+        mock_signing_key.key = "fake-key"
+        mock_client.get_signing_key_from_jwt.return_value = mock_signing_key
+
+        # No azp in payload, no expected_azp — should still return sub
+        payload = {"sub": "user_abc"}
+        with patch("app.services.clerk_auth._jwks_client", return_value=mock_client):
+            with patch("app.services.clerk_auth.jwt.decode", return_value=payload):
+                result = verify_session_token("fake.jwt.token", "https://example.com/.well-known/jwks.json")
+
+        assert result == "user_abc"

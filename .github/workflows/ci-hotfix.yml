@@ -113,7 +113,6 @@ jobs:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
-          APP_SECRET_KEY: ci-alembic-key-not-for-production
       - run: cd backend && alembic check
         env:
           POSTGRES_HOST: localhost
@@ -121,7 +120,6 @@ jobs:
           POSTGRES_DB: weaving_site
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
-          APP_SECRET_KEY: ci-alembic-key-not-for-production
 
   dependency-audit-backend:
     name: Dependency audit — backend (pip-audit)
