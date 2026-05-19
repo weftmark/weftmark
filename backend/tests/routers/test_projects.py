@@ -2995,3 +2995,426 @@ class TestSetReed:
         await db_session.commit()
         resp = await auth_client.get(f"/api/projects/{project.id}/drawdown_svg")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestShareProject — PATCH/DELETE /{project_id}/share
+# ---------------------------------------------------------------------------
+
+
+class TestShareProject:
+    async def test_share_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})
+        assert resp.status_code == 200
+
+    async def test_share_sets_slug(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})).json()
+        assert body["share_slug"] is not None
+        assert body["share_visibility"] == "link"
+
+    async def test_share_sets_expiry(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (
+            await auth_client.patch(
+                f"/api/projects/{project.id}/share",
+                json={"visibility": "link", "expires_at": "2099-01-01T00:00:00Z"},
+            )
+        ).json()
+        assert body["share_expires_at"] is not None
+
+    async def test_second_share_reuses_slug(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body1 = (await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})).json()
+        body2 = (await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})).json()
+        assert body1["share_slug"] == body2["share_slug"]
+
+    async def test_share_invalid_visibility_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "public"})
+        assert resp.status_code == 400
+
+    async def test_share_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(f"/api/projects/{uuid.uuid4()}/share", json={"visibility": "link"})
+        assert resp.status_code == 404
+
+    async def test_share_unauthenticated_returns_401(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})
+        assert resp.status_code == 401
+
+    async def test_revoke_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})
+        resp = await auth_client.delete(f"/api/projects/{project.id}/share")
+        assert resp.status_code == 204
+
+    async def test_revoke_clears_slug(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})
+        await auth_client.delete(f"/api/projects/{project.id}/share")
+        await db_session.refresh(project)
+        assert project.share_slug is None
+        assert project.share_visibility == "private"
+
+    async def test_revoke_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.delete(f"/api/projects/{uuid.uuid4()}/share")
+        assert resp.status_code == 404
+
+    async def test_revoke_unauthenticated_returns_401(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.delete(f"/api/projects/{project.id}/share")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestGetSharedProject — GET /api/share/projects/{slug}
+# ---------------------------------------------------------------------------
+
+
+async def _share_project(db_session: AsyncSession, project: "Project", slug: str = "test-slug-abc") -> None:
+    project.share_slug = slug
+    project.share_visibility = "link"
+    await db_session.commit()
+
+
+class TestGetSharedProject:
+    async def test_returns_200_for_valid_slug(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await _share_project(db_session, project, "my-slug-abc1")
+        resp = await client.get("/api/share/projects/my-slug-abc1")
+        assert resp.status_code == 200
+
+    async def test_returns_project_fields(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await _share_project(db_session, project, "my-slug-abc2")
+        body = (await client.get("/api/share/projects/my-slug-abc2")).json()
+        assert body["project_name"] == project.name
+        assert body["share_visibility"] == "link"
+        assert "has_drawdown_preview" in body
+
+    async def test_private_slug_returns_404(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.share_slug = "private-slug"
+        project.share_visibility = "private"
+        await db_session.commit()
+        resp = await client.get("/api/share/projects/private-slug")
+        assert resp.status_code == 404
+
+    async def test_unknown_slug_returns_404(self, client: AsyncClient):
+        resp = await client.get("/api/share/projects/does-not-exist")
+        assert resp.status_code == 404
+
+    async def test_expired_slug_returns_410(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.share_slug = "expired-slug"
+        project.share_visibility = "link"
+        project.share_expires_at = datetime(2000, 1, 1, tzinfo=timezone.utc)
+        await db_session.commit()
+        resp = await client.get("/api/share/projects/expired-slug")
+        assert resp.status_code == 410
+
+    async def test_no_auth_required(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await _share_project(db_session, project, "my-slug-abc3")
+        resp = await client.get("/api/share/projects/my-slug-abc3")
+        assert resp.status_code == 200
+
+
+class TestGetSharedProjectPreview:
+    async def test_returns_404_when_no_preview(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await _share_project(db_session, project, "prev-slug1")
+        resp = await client.get("/api/share/projects/prev-slug1/preview")
+        assert resp.status_code == 404
+
+    async def test_returns_404_for_private_project(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.share_slug = "prev-priv-slug"
+        project.share_visibility = "private"
+        await db_session.commit()
+        resp = await client.get("/api/share/projects/prev-priv-slug/preview")
+        assert resp.status_code == 404
+
+    async def test_returns_410_for_expired_link(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.share_slug = "prev-exp-slug"
+        project.share_visibility = "link"
+        project.share_expires_at = datetime(2000, 1, 1, tzinfo=timezone.utc)
+        await db_session.commit()
+        resp = await client.get("/api/share/projects/prev-exp-slug/preview")
+        assert resp.status_code == 410
+
+    async def test_returns_png_when_preview_exists(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        preview_path = f"project-previews/{project.id}/preview.png"
+        mock_storage[preview_path] = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+        project.drawdown_preview_path = preview_path
+        await _share_project(db_session, project, "prev-ok-slug")
+        resp = await client.get("/api/share/projects/prev-ok-slug/preview")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+
+class TestGetSharedProjectSvg:
+    async def test_returns_404_when_no_svg(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        await _share_project(db_session, project, "svg-slug1")
+        resp = await client.get("/api/share/projects/svg-slug1/svg")
+        assert resp.status_code == 404
+
+    async def test_returns_svg_when_exists(
+        self, client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        svg_path = f"project-svgs/{project.id}/drawdown.svg"
+        mock_storage[svg_path] = b"<svg></svg>"
+        project.drawdown_svg_path = svg_path
+        await _share_project(db_session, project, "svg-ok-slug")
+        resp = await client.get("/api/share/projects/svg-ok-slug/svg")
+        assert resp.status_code == 200
+        assert "svg" in resp.headers["content-type"]
+
+    async def test_returns_410_for_expired(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.share_slug = "svg-exp-slug"
+        project.share_visibility = "link"
+        project.share_expires_at = datetime(2000, 1, 1, tzinfo=timezone.utc)
+        await db_session.commit()
+        resp = await client.get("/api/share/projects/svg-exp-slug/svg")
+        assert resp.status_code == 410
+
+
+# ---------------------------------------------------------------------------
+# TestWarpingPlan — GET /{project_id}/warping-plan
+# ---------------------------------------------------------------------------
+
+
+class TestWarpingPlan:
+    async def test_returns_200(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.get(f"/api/projects/{project.id}/warping-plan")
+        assert resp.status_code == 200
+
+    async def test_returns_required_fields(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.get(f"/api/projects/{project.id}/warping-plan")).json()
+        assert "project_id" in body
+        assert "draft_name" in body
+        assert "project_type" in body
+        assert "warp_color_summary" in body
+        assert "weft_color_summary" in body
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/warping-plan")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.get(f"/api/projects/{project.id}/warping-plan")
+        assert resp.status_code == 401
+
+    async def test_has_threading_when_wif_has_it(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        draft.has_threading = True
+        await db_session.commit()
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        body = (await auth_client.get(f"/api/projects/{project.id}/warping-plan")).json()
+        assert body["has_threading"] is True
+
+
+# ---------------------------------------------------------------------------
+# TestDrawdownPreviewEndpoint — GET /{project_id}/drawdown/preview
+# ---------------------------------------------------------------------------
+
+
+class TestDrawdownPreviewEndpoint:
+    async def test_returns_png(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/preview")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+    async def test_returns_404_when_wif_missing(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        draft.wif_path = "drafts/nonexistent.wif"
+        await db_session.commit()
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/preview")
+        assert resp.status_code == 404
+
+    async def test_invalid_color_replacements_json_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/preview?color_replacements=not-json")
+        assert resp.status_code == 400
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        resp = await client.get(f"/api/projects/{project.id}/drawdown/preview")
+        assert resp.status_code == 401
+
+    async def test_not_found_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/drawdown/preview")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestCachedDrawdownPreviewAndSvg
+# ---------------------------------------------------------------------------
+
+
+class TestCachedDrawdownPreview:
+    async def test_returns_png_when_present(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        preview_path = f"project-previews/{project.id}/preview.png"
+        mock_storage[preview_path] = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+        project.drawdown_preview_path = preview_path
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown_preview")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.get(f"/api/projects/{project.id}/drawdown_preview")
+        assert resp.status_code == 401
+
+
+class TestCachedDrawdownSvg:
+    async def test_returns_svg_when_present(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, mock_storage: dict
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        svg_path = f"project-svgs/{project.id}/drawdown.svg"
+        mock_storage[svg_path] = b"<svg><rect/></svg>"
+        project.drawdown_svg_path = svg_path
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown_svg")
+        assert resp.status_code == 200
+        assert "svg" in resp.headers["content-type"]
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await client.get(f"/api/projects/{project.id}/drawdown_svg")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# TestSlugifyHelper
+# ---------------------------------------------------------------------------
+
+
+class TestSlugifyHelper:
+    def test_basic_slugify(self):
+        from app.routers.projects import _slugify
+
+        assert _slugify("My Draft Name") == "my-draft-name"
+
+    def test_strips_special_chars(self):
+        from app.routers.projects import _slugify
+
+        assert _slugify("Hello! World?") == "hello-world"
+
+    def test_empty_input_returns_project(self):
+        from app.routers.projects import _slugify
+
+        assert _slugify("   ") == "project"
+
+    def test_truncates_long_name(self):
+        from app.routers.projects import _slugify
+
+        long_name = "a" * 100
+        result = _slugify(long_name)
+        assert len(result) <= 48
+
+
+# ---------------------------------------------------------------------------
+# TestComputeColorRuns
+# ---------------------------------------------------------------------------
+
+
+class TestComputeColorRuns:
+    def test_empty_returns_empty(self):
+        from app.routers.projects import _compute_color_runs
+
+        assert _compute_color_runs([]) == []
+
+    def test_single_entry(self):
+        from app.routers.projects import _compute_color_runs
+
+        entries = [{"color": "#ff0000", "color_name": "Red", "end": 1}]
+        runs = _compute_color_runs(entries)
+        assert len(runs) == 1
+        assert runs[0].color == "#ff0000"
+        assert runs[0].count == 1
+
+    def test_consecutive_same_color_merged(self):
+        from app.routers.projects import _compute_color_runs
+
+        entries = [
+            {"color": "#ff0000", "color_name": "Red", "end": 1},
+            {"color": "#ff0000", "color_name": "Red", "end": 2},
+            {"color": "#ff0000", "color_name": "Red", "end": 3},
+        ]
+        runs = _compute_color_runs(entries)
+        assert len(runs) == 1
+        assert runs[0].count == 3
+
+    def test_color_change_creates_new_run(self):
+        from app.routers.projects import _compute_color_runs
+
+        entries = [
+            {"color": "#ff0000", "color_name": "Red", "end": 1},
+            {"color": "#0000ff", "color_name": "Blue", "end": 2},
+        ]
+        runs = _compute_color_runs(entries)
+        assert len(runs) == 2
+        assert runs[0].color == "#ff0000"
+        assert runs[1].color == "#0000ff"
