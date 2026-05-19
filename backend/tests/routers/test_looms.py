@@ -7,7 +7,9 @@ from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.draft import Draft
 from app.models.loom import Loom, LoomVersion, LoomVersionAccessory
+from app.models.project import Project
 from app.models.user import User
 
 
@@ -790,3 +792,190 @@ class TestReedInventory:
     async def test_unauthenticated_returns_401(self, client: AsyncClient):
         resp = await client.post(f"/api/looms/{uuid.uuid4()}/reeds", json={"dents_per_inch": 10})
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/looms/{loom_id} — deletion guard (409) and force-delete
+# ---------------------------------------------------------------------------
+
+
+async def _insert_draft_for_user(db_session: AsyncSession, owner: User) -> Draft:
+    draft = Draft(
+        owner_id=owner.id,
+        name="Test Draft",
+        wif_filename="test.wif",
+        wif_path="d/x.wif",
+        has_treadling=True,
+        num_shafts=4,
+        num_treadles=4,
+        weft_threads=4,
+    )
+    db_session.add(draft)
+    await db_session.commit()
+    return draft
+
+
+async def _insert_project_for_loom(
+    db_session: AsyncSession,
+    owner: User,
+    draft: Draft,
+    loom: Loom,
+    *,
+    status: str = "active",
+) -> Project:
+    project = Project(
+        owner_id=owner.id,
+        draft_id=draft.id,
+        loom_id=loom.id,
+        name="Test Project",
+        project_type="treadle",
+        total_picks=10,
+        status=status,
+    )
+    db_session.add(project)
+    await db_session.commit()
+    return project
+
+
+class TestDeleteLoomGuard:
+    async def test_returns_409_when_loom_has_active_project(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        draft = await _insert_draft_for_user(db_session, test_user)
+        await _insert_project_for_loom(db_session, test_user, draft, loom)
+        resp = await auth_client.delete(f"/api/looms/{loom.id}")
+        assert resp.status_code == 409
+
+    async def test_409_detail_has_code_and_projects(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        draft = await _insert_draft_for_user(db_session, test_user)
+        project = await _insert_project_for_loom(db_session, test_user, draft, loom)
+        body = (await auth_client.delete(f"/api/looms/{loom.id}")).json()
+        assert body["detail"]["code"] == "loom_in_use"
+        assert any(p["id"] == str(project.id) for p in body["detail"]["projects"])
+
+    async def test_no_guard_when_project_is_soft_deleted(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        draft = await _insert_draft_for_user(db_session, test_user)
+        project = await _insert_project_for_loom(db_session, test_user, draft, loom)
+        project.soft_delete()
+        await db_session.commit()
+        resp = await auth_client.delete(f"/api/looms/{loom.id}")
+        assert resp.status_code == 204
+
+    async def test_force_delete_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        draft = await _insert_draft_for_user(db_session, test_user)
+        await _insert_project_for_loom(db_session, test_user, draft, loom)
+        resp = await auth_client.delete(f"/api/looms/{loom.id}?force=true")
+        assert resp.status_code == 204
+
+    async def test_force_delete_soft_deletes_loom(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        draft = await _insert_draft_for_user(db_session, test_user)
+        await _insert_project_for_loom(db_session, test_user, draft, loom)
+        await auth_client.delete(f"/api/looms/{loom.id}?force=true")
+        await db_session.refresh(loom)
+        assert loom.deleted_at is not None
+
+    async def test_force_delete_nullifies_loom_on_project(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        draft = await _insert_draft_for_user(db_session, test_user)
+        project = await _insert_project_for_loom(db_session, test_user, draft, loom)
+        await auth_client.delete(f"/api/looms/{loom.id}?force=true")
+        await db_session.refresh(project)
+        assert project.loom_id is None
+        assert project.deleted_at is None
+
+
+# ---------------------------------------------------------------------------
+# POST /api/looms/{loom_id}/retire  and  POST /api/looms/{loom_id}/unretire
+# ---------------------------------------------------------------------------
+
+
+class TestRetireLoom:
+    async def test_retire_returns_204(self, auth_client: AsyncClient):
+        loom = await _create_loom(auth_client)
+        resp = await auth_client.post(f"/api/looms/{loom['id']}/retire")
+        assert resp.status_code == 204
+
+    async def test_retire_sets_retired_at(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        await auth_client.post(f"/api/looms/{loom.id}/retire")
+        await db_session.refresh(loom)
+        assert loom.retired_at is not None
+
+    async def test_retired_loom_excluded_from_list_by_default(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        loom.retire()
+        await db_session.commit()
+        resp = await auth_client.get("/api/looms")
+        assert resp.json() == []
+
+    async def test_retired_loom_included_with_param(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        loom.retire()
+        await db_session.commit()
+        data = (await auth_client.get("/api/looms?include_retired=true")).json()
+        assert any(entry["id"] == str(loom.id) for entry in data)
+
+    async def test_retired_loom_has_retired_at_in_response(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        loom.retire()
+        await db_session.commit()
+        data = (await auth_client.get("/api/looms?include_retired=true")).json()
+        match = next(entry for entry in data if entry["id"] == str(loom.id))
+        assert match["retired_at"] is not None
+
+    async def test_unretire_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        loom.retire()
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/looms/{loom.id}/unretire")
+        assert resp.status_code == 204
+
+    async def test_unretire_clears_retired_at(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        loom.retire()
+        await db_session.commit()
+        await auth_client.post(f"/api/looms/{loom.id}/unretire")
+        await db_session.refresh(loom)
+        assert loom.retired_at is None
+
+    async def test_unretired_loom_appears_in_default_list(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, test_user)
+        loom.retire()
+        await db_session.commit()
+        await auth_client.post(f"/api/looms/{loom.id}/unretire")
+        data = (await auth_client.get("/api/looms")).json()
+        assert any(entry["id"] == str(loom.id) for entry in data)
+
+    async def test_retire_nonexistent_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/looms/{uuid.uuid4()}/retire")
+        assert resp.status_code == 404
+
+    async def test_retire_other_users_loom_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        loom = await _insert_loom_for_user(db_session, admin_user)
+        resp = await auth_client.post(f"/api/looms/{loom.id}/retire")
+        assert resp.status_code == 404

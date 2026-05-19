@@ -25,7 +25,7 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
   const [error, setError] = useState<string | null>(null);
   const [conflictProject, setConflictProject] = useState<ProjectSummary | null>(null);
 
-  const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: listLooms });
+  const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: () => listLooms() });
   const { data: loomDetail } = useQuery({
     queryKey: ["loom", loomId],
     queryFn: () => getLoom(loomId),

@@ -51,8 +51,8 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
   const [error, setError] = useState<string | null>(null);
   const [conflictProject, setConflictProject] = useState<ProjectSummary | null>(null);
 
-  const { data: drafts = [] } = useQuery({ queryKey: ["drafts"], queryFn: listDrafts });
-  const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: listLooms });
+  const { data: drafts = [] } = useQuery({ queryKey: ["drafts"], queryFn: () => listDrafts() });
+  const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: () => listLooms() });
   const { data: loomDetail } = useQuery({
     queryKey: ["loom", loomId],
     queryFn: () => getLoom(loomId),

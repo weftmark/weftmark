@@ -4,10 +4,10 @@ from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, SoftDeleteMixin, TimestampMixin
+from app.models.base import Base, RetireMixin, SoftDeleteMixin, TimestampMixin
 
 
-class Draft(Base, TimestampMixin, SoftDeleteMixin):
+class Draft(Base, TimestampMixin, SoftDeleteMixin, RetireMixin):
     __tablename__ = "drafts"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

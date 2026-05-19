@@ -7,7 +7,7 @@ import { measurementSystemToUnit, displayLength, convertLength, type LengthUnit 
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import {
-  getLoom, deleteLoom, uploadLoomPhoto, deleteLoomPhoto, loomPhotoUrl,
+  getLoom, deleteLoom, retireLoom, unretireLoom, uploadLoomPhoto, deleteLoomPhoto, loomPhotoUrl,
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
   uploadVersionReceipt, deleteVersionReceipt, versionReceiptUrl,
   addAccessory, deleteAccessory, updateVersion,
@@ -16,6 +16,7 @@ import {
   type LoomVersionReceipt, type LoomVersionAccessory, type LoomReed,
   LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
+import { type DeleteConflict } from "@/api/drafts";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
 import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
@@ -822,7 +823,11 @@ export function LoomDetailPage() {
   const [showLinkCatalog, setShowLinkCatalog] = useState(false);
   const [cloneSource, setCloneSource] = useState<LoomVersion | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteConflict, setDeleteConflict] = useState<DeleteConflict | null>(null);
+  const [confirmForceDelete, setConfirmForceDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [retiring, setRetiring] = useState(false);
+  const [confirmRetire, setConfirmRetire] = useState(false);
   const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
 
@@ -852,16 +857,37 @@ export function LoomDetailPage() {
     setShowEdit(false);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (force = false) => {
     if (!id) return;
     setDeleting(true);
     try {
-      await deleteLoom(id);
+      const result = await deleteLoom(id, force);
+      if (result && "code" in result) {
+        setDeleteConflict(result as DeleteConflict);
+        setConfirmDelete(false);
+        setDeleting(false);
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["looms"] });
       navigate("/looms", { replace: true });
     } catch {
       setDeleting(false);
       setConfirmDelete(false);
+    }
+  };
+
+  const handleRetire = async () => {
+    if (!id || !loom) return;
+    setRetiring(true);
+    try {
+      if (loom.retired_at) {
+        await unretireLoom(id);
+      } else {
+        await retireLoom(id);
+      }
+      invalidate();
+    } finally {
+      setRetiring(false);
     }
   };
 
@@ -1000,28 +1026,89 @@ export function LoomDetailPage() {
             <button
               type="button"
               className="flex w-full items-center justify-between text-sm font-medium text-destructive hover:text-destructive/80"
-              onClick={() => { setDangerZoneOpen((o) => !o); setConfirmDelete(false); }}
+              onClick={() => { setDangerZoneOpen((o) => !o); setConfirmDelete(false); setDeleteConflict(null); setConfirmForceDelete(false); }}
             >
               <span>Danger zone</span>
               <span className="text-xs text-muted-foreground">{dangerZoneOpen ? "▲ collapse" : "▼ expand"}</span>
             </button>
             {dangerZoneOpen && (
-              <div className="mt-4 rounded-md border border-destructive/30 px-4 py-4">
-                <div className="flex items-start justify-between gap-4">
+              <div className="mt-4 space-y-3">
+                {/* Retire / Unretire */}
+                <div className="rounded-md border border-border px-4 py-4 flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium">Delete this loom</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Permanently removes the loom and all its configurations. This cannot be undone.</p>
+                    <p className="text-sm font-medium">{loom.retired_at ? "Unretire loom" : "Retire loom"}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {loom.retired_at
+                        ? "Restore this loom to your active equipment list."
+                        : "Hide this loom from active lists without deleting it. Existing projects are unaffected."}
+                    </p>
                   </div>
-                  {!confirmDelete ? (
-                    <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
-                      Delete loom
+                  {!confirmRetire ? (
+                    <Button variant="outline" size="sm" className="shrink-0" onClick={() => setConfirmRetire(true)}>
+                      {loom.retired_at ? "Unretire" : "Retire"}
                     </Button>
                   ) : (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
-                      <Button size="sm" onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        {deleting ? "Deleting…" : "Confirm delete"}
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="outline" size="sm"
+                        onClick={() => { setConfirmRetire(false); handleRetire(); }}
+                        disabled={retiring}>
+                        Confirm
                       </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmRetire(false)}>Cancel</Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Delete */}
+                <div className="rounded-md border border-destructive/30 px-4 py-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium">Delete this loom</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">Permanently removes the loom and all its configurations. This cannot be undone.</p>
+                    </div>
+                    {!confirmDelete && !deleteConflict ? (
+                      <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
+                        Delete loom
+                      </Button>
+                    ) : confirmDelete ? (
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
+                        <Button size="sm" onClick={() => handleDelete(false)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          {deleting ? "Deleting…" : "Confirm delete"}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* 409 conflict */}
+                  {deleteConflict && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-destructive font-medium">
+                        This loom is used by {deleteConflict.projects.length} active project{deleteConflict.projects.length !== 1 ? "s" : ""}:
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-0.5 pl-3">
+                        {deleteConflict.projects.map((p) => <li key={p.id}>· {p.name}</li>)}
+                      </ul>
+                      <p className="text-xs text-muted-foreground">
+                        The loom will be unlinked from those projects. Projects themselves will not be deleted.
+                      </p>
+                      {!confirmForceDelete ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                          onClick={() => setConfirmForceDelete(true)}
+                        >
+                          Force delete (unlinks {deleteConflict.projects.length} project{deleteConflict.projects.length !== 1 ? "s" : ""})
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => handleDelete(true)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            {deleting ? "Deleting…" : "Confirm force delete"}
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>Cancel</Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

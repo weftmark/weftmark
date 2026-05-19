@@ -19,7 +19,7 @@ export function SettingsPage() {
 
   const { data: drafts = [] } = useQuery({
     queryKey: ["drafts"],
-    queryFn: listDrafts,
+    queryFn: () => listDrafts(),
   });
   const sharedDraftCount = drafts.filter((d) => d.is_shared).length;
 

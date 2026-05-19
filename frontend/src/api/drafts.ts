@@ -63,6 +63,7 @@ export interface Draft {
   weaving_width_override_cm: number | null;
   epi_override: number | null;
   is_shared: boolean;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -89,8 +90,13 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export async function listDrafts(): Promise<Draft[]> {
-  return req("/api/drafts");
+export interface DeleteConflict {
+  code: string;
+  projects: { id: string; name: string }[];
+}
+
+export async function listDrafts(includeArchived = false): Promise<Draft[]> {
+  return req(`/api/drafts${includeArchived ? "?include_archived=true" : ""}`);
 }
 
 export async function getDraft(id: string): Promise<DraftDetail> {
@@ -109,8 +115,30 @@ export async function uploadDraft(
   return req("/api/drafts", { method: "POST", body: form });
 }
 
-export async function deleteDraft(id: string): Promise<void> {
-  return req(`/api/drafts/${id}`, { method: "DELETE" });
+export async function deleteDraft(id: string, force = false): Promise<DeleteConflict | void> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(`/api/drafts/${id}${force ? "?force=true" : ""}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers,
+  });
+  if (res.status === 409) {
+    const body = await res.json();
+    return body.detail as DeleteConflict;
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(err.detail ?? "Request failed");
+  }
+}
+
+export async function archiveDraft(id: string): Promise<void> {
+  return req(`/api/drafts/${id}/archive`, { method: "POST" });
+}
+
+export async function unarchiveDraft(id: string): Promise<void> {
+  return req(`/api/drafts/${id}/unarchive`, { method: "POST" });
 }
 
 export function previewUrl(id: string): string {

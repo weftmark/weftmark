@@ -24,3 +24,17 @@ class SoftDeleteMixin:
 
     def soft_delete(self) -> None:
         self.deleted_at = datetime.now(timezone.utc)
+
+
+class RetireMixin:
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
+
+    @property
+    def is_retired(self) -> bool:
+        return self.retired_at is not None
+
+    def retire(self) -> None:
+        self.retired_at = datetime.now(timezone.utc)
+
+    def unretire(self) -> None:
+        self.retired_at = None

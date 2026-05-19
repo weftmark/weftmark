@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
 from app.models.draft import Draft
+from app.models.project import Project
 from app.models.user import User
 from app.services import rendering
 
@@ -1177,3 +1178,173 @@ class TestUploadRateLimit:
             assert "retry-after" in resp.headers
         finally:
             app.dependency_overrides[_upload_rate_limit] = lambda: None
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/drafts/{draft_id} — deletion guard (409) and force-delete
+# ---------------------------------------------------------------------------
+
+
+async def _insert_project_for_draft(
+    db_session: AsyncSession,
+    owner: User,
+    draft: Draft,
+    *,
+    status: str = "active",
+) -> Project:
+    project = Project(
+        owner_id=owner.id,
+        draft_id=draft.id,
+        name="Test Project",
+        project_type="treadle",
+        total_picks=10,
+        status=status,
+    )
+    db_session.add(project)
+    await db_session.commit()
+    return project
+
+
+class TestDeleteDraftGuard:
+    async def test_returns_409_when_draft_has_active_project(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        await _insert_project_for_draft(db_session, test_user, draft)
+        resp = await auth_client.delete(f"/api/drafts/{draft.id}")
+        assert resp.status_code == 409
+
+    async def test_409_detail_has_code_and_projects(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        project = await _insert_project_for_draft(db_session, test_user, draft)
+        body = (await auth_client.delete(f"/api/drafts/{draft.id}")).json()
+        assert body["detail"]["code"] == "draft_in_use"
+        assert any(p["id"] == str(project.id) for p in body["detail"]["projects"])
+
+    async def test_blocks_on_completed_project(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        await _insert_project_for_draft(db_session, test_user, draft, status="completed")
+        resp = await auth_client.delete(f"/api/drafts/{draft.id}")
+        assert resp.status_code == 409
+
+    async def test_no_guard_when_project_is_soft_deleted(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        project = await _insert_project_for_draft(db_session, test_user, draft)
+        project.soft_delete()
+        await db_session.commit()
+        resp = await auth_client.delete(f"/api/drafts/{draft.id}")
+        assert resp.status_code == 204
+
+    async def test_force_delete_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        await _insert_project_for_draft(db_session, test_user, draft)
+        resp = await auth_client.delete(f"/api/drafts/{draft.id}?force=true")
+        assert resp.status_code == 204
+
+    async def test_force_delete_soft_deletes_draft(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        await _insert_project_for_draft(db_session, test_user, draft)
+        await auth_client.delete(f"/api/drafts/{draft.id}?force=true")
+        await db_session.refresh(draft)
+        assert draft.deleted_at is not None
+
+    async def test_force_delete_soft_deletes_associated_projects(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        project = await _insert_project_for_draft(db_session, test_user, draft)
+        await auth_client.delete(f"/api/drafts/{draft.id}?force=true")
+        await db_session.refresh(project)
+        assert project.deleted_at is not None
+
+
+# ---------------------------------------------------------------------------
+# POST /api/drafts/{draft_id}/archive  and  POST /api/drafts/{draft_id}/unarchive
+# ---------------------------------------------------------------------------
+
+
+class TestArchiveDraft:
+    async def test_archive_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.post(f"/api/drafts/{draft.id}/archive")
+        assert resp.status_code == 204
+
+    async def test_archive_sets_retired_at(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        await auth_client.post(f"/api/drafts/{draft.id}/archive")
+        await db_session.refresh(draft)
+        assert draft.retired_at is not None
+
+    async def test_archived_draft_excluded_from_list_by_default(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        draft.retire()
+        await db_session.commit()
+        resp = await auth_client.get("/api/drafts")
+        assert resp.json() == []
+
+    async def test_archived_draft_included_with_param(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        draft.retire()
+        await db_session.commit()
+        data = (await auth_client.get("/api/drafts?include_archived=true")).json()
+        assert any(d["id"] == str(draft.id) for d in data)
+
+    async def test_archived_draft_has_archived_at_in_response(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        draft.retire()
+        await db_session.commit()
+        data = (await auth_client.get("/api/drafts?include_archived=true")).json()
+        match = next(d for d in data if d["id"] == str(draft.id))
+        assert match["archived_at"] is not None
+
+    async def test_unarchive_returns_204(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        draft.retire()
+        await db_session.commit()
+        resp = await auth_client.post(f"/api/drafts/{draft.id}/unarchive")
+        assert resp.status_code == 204
+
+    async def test_unarchive_clears_retired_at(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        draft.retire()
+        await db_session.commit()
+        await auth_client.post(f"/api/drafts/{draft.id}/unarchive")
+        await db_session.refresh(draft)
+        assert draft.retired_at is None
+
+    async def test_unarchived_draft_appears_in_default_list(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        draft.retire()
+        await db_session.commit()
+        await auth_client.post(f"/api/drafts/{draft.id}/unarchive")
+        data = (await auth_client.get("/api/drafts")).json()
+        assert any(d["id"] == str(draft.id) for d in data)
+
+    async def test_archive_nonexistent_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.post(f"/api/drafts/{uuid.uuid4()}/archive")
+        assert resp.status_code == 404
+
+    async def test_archive_other_users_draft_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        draft = await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
+        resp = await auth_client.post(f"/api/drafts/{draft.id}/archive")
+        assert resp.status_code == 404

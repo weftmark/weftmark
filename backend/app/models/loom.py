@@ -6,7 +6,7 @@ from sqlalchemy import Boolean, Date, Float, ForeignKey, Index, Integer, Numeric
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, SoftDeleteMixin, TimestampMixin
+from app.models.base import Base, RetireMixin, SoftDeleteMixin, TimestampMixin
 
 LOOM_TYPES = (
     "floor_loom",
@@ -112,7 +112,7 @@ class LoomReference(Base, TimestampMixin):
     looms: Mapped[list["Loom"]] = relationship("Loom", back_populates="loom_reference")
 
 
-class Loom(Base, TimestampMixin, SoftDeleteMixin):
+class Loom(Base, TimestampMixin, SoftDeleteMixin, RetireMixin):
     __tablename__ = "looms"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
