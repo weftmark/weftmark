@@ -82,8 +82,15 @@ import { getHealthDetailed, type ReadinessResponse, type ReadinessService } from
 import { EulaContent } from "@/components/EulaContent";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
+import {
+  adminListLoomCatalog,
+  adminCreateLoomReference,
+  adminUpdateLoomReference,
+  adminDeleteLoomReference,
+  type LoomReferenceDetail,
+} from "@/api/looms";
 
-type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "credentials" | "superuser" | "slugs" | "feedback";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "credentials" | "superuser" | "slugs" | "feedback" | "looms";
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -174,6 +181,7 @@ export function AdminPage() {
       {tab === "credentials" && <CredentialsTab />}
       {tab === "slugs" && <SlugsTab />}
       {tab === "superuser" && <SuperuserTab />}
+      {tab === "looms" && <LoomDatabaseTab />}
     </div>
   );
 }
@@ -3412,6 +3420,385 @@ function ScheduledTasksTab() {
           onSaved={() => qc.invalidateQueries({ queryKey: ["admin", "scheduled-tasks"] })}
         />
       ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Loom Database tab
+// ---------------------------------------------------------------------------
+
+const LOOM_CATEGORY_OPTIONS = [
+  { value: "floor_loom", label: "Floor Loom" },
+  { value: "table_loom", label: "Table Loom" },
+  { value: "rigid_heddle", label: "Rigid Heddle" },
+  { value: "inkle", label: "Inkle" },
+  { value: "dobby_floor_loom", label: "Dobby Floor Loom" },
+  { value: "tapestry_loom", label: "Tapestry Loom" },
+  { value: "rug_loom", label: "Rug Loom" },
+  { value: "frame_loom", label: "Frame Loom" },
+  { value: "other", label: "Other" },
+];
+
+const SHEDDING_OPTIONS = [
+  "jack_rising", "counterbalance", "countermarch", "dobby_mechanical",
+  "dobby_electronic", "tapestry", "other",
+];
+
+function parseIntArray(s: string): number[] | undefined {
+  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !isNaN(n));
+  return parts.length > 0 ? parts : undefined;
+}
+
+function parseFloatArray(s: string): number[] | undefined {
+  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !isNaN(n));
+  return parts.length > 0 ? parts : undefined;
+}
+
+function formatArray(arr: number[] | null | undefined): string {
+  return arr ? arr.join(", ") : "";
+}
+
+interface LoomRefForm {
+  brand: string;
+  model_name: string;
+  model_series: string;
+  loom_category: string;
+  shedding_mechanism: string;
+  shaft_count_options: string;
+  treadle_count: string;
+  weaving_width_options_inches: string;
+  weaving_width_options_cm: string;
+  foldable: "" | "true" | "false";
+  origin_country: string;
+}
+
+function emptyForm(): LoomRefForm {
+  return {
+    brand: "", model_name: "", model_series: "", loom_category: "floor_loom",
+    shedding_mechanism: "", shaft_count_options: "", treadle_count: "",
+    weaving_width_options_inches: "", weaving_width_options_cm: "",
+    foldable: "", origin_country: "",
+  };
+}
+
+function formFromRef(ref: LoomReferenceDetail): LoomRefForm {
+  return {
+    brand: ref.brand,
+    model_name: ref.model_name,
+    model_series: ref.model_series ?? "",
+    loom_category: ref.loom_category,
+    shedding_mechanism: ref.shedding_mechanism ?? "",
+    shaft_count_options: formatArray(ref.shaft_count_options),
+    treadle_count: formatArray(ref.treadle_count),
+    weaving_width_options_inches: formatArray(ref.weaving_width_options_inches),
+    weaving_width_options_cm: formatArray(ref.weaving_width_options_cm),
+    foldable: ref.foldable === null ? "" : ref.foldable ? "true" : "false",
+    origin_country: ref.origin_country ?? "",
+  };
+}
+
+function buildPayload(form: LoomRefForm): Partial<LoomReferenceDetail> {
+  return {
+    brand: form.brand.trim(),
+    model_name: form.model_name.trim(),
+    model_series: form.model_series.trim() || undefined,
+    loom_category: form.loom_category,
+    shedding_mechanism: form.shedding_mechanism || undefined,
+    shaft_count_options: parseIntArray(form.shaft_count_options) ?? null,
+    treadle_count: parseIntArray(form.treadle_count) ?? null,
+    weaving_width_options_inches: parseFloatArray(form.weaving_width_options_inches) ?? null,
+    weaving_width_options_cm: parseFloatArray(form.weaving_width_options_cm) ?? null,
+    foldable: form.foldable === "" ? null : form.foldable === "true",
+    origin_country: form.origin_country.trim() || undefined,
+  };
+}
+
+function LoomRefFormModal({
+  title,
+  form,
+  onChange,
+  onSave,
+  onCancel,
+  saving,
+  error,
+}: {
+  title: string;
+  form: LoomRefForm;
+  onChange: (f: LoomRefForm) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string | null;
+}) {
+  const inputCls = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+  const labelCls = "mb-1 block text-sm font-medium";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto">
+      <div className="w-full max-w-lg rounded-lg border bg-background shadow-lg p-6 space-y-4 my-8">
+        <h3 className="font-semibold">{title}</h3>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Brand <span className="text-destructive">*</span></label>
+            <input className={inputCls} value={form.brand} onChange={(e) => onChange({ ...form, brand: e.target.value })} placeholder="Schacht" />
+          </div>
+          <div>
+            <label className={labelCls}>Model name <span className="text-destructive">*</span></label>
+            <input className={inputCls} value={form.model_name} onChange={(e) => onChange({ ...form, model_name: e.target.value })} placeholder="Baby Wolf" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Series <span className="text-muted-foreground font-normal text-xs">(optional)</span></label>
+            <input className={inputCls} value={form.model_series} onChange={(e) => onChange({ ...form, model_series: e.target.value })} placeholder="Wolf Family" />
+          </div>
+          <div>
+            <label className={labelCls}>Category</label>
+            <select className={inputCls} value={form.loom_category} onChange={(e) => onChange({ ...form, loom_category: e.target.value })}>
+              {LOOM_CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Shedding mechanism</label>
+            <select className={inputCls} value={form.shedding_mechanism} onChange={(e) => onChange({ ...form, shedding_mechanism: e.target.value })}>
+              <option value="">—</option>
+              {SHEDDING_OPTIONS.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Origin country</label>
+            <input className={inputCls} value={form.origin_country} onChange={(e) => onChange({ ...form, origin_country: e.target.value })} placeholder="USA" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Shaft count options <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input className={inputCls} value={form.shaft_count_options} onChange={(e) => onChange({ ...form, shaft_count_options: e.target.value })} placeholder="4, 8" />
+          </div>
+          <div>
+            <label className={labelCls}>Treadle count options <span className="text-muted-foreground font-normal text-xs">parallel to shafts</span></label>
+            <input className={inputCls} value={form.treadle_count} onChange={(e) => onChange({ ...form, treadle_count: e.target.value })} placeholder="6, 10" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Weaving width (inches) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input className={inputCls} value={form.weaving_width_options_inches} onChange={(e) => onChange({ ...form, weaving_width_options_inches: e.target.value })} placeholder="26" />
+          </div>
+          <div>
+            <label className={labelCls}>Weaving width (cm) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input className={inputCls} value={form.weaving_width_options_cm} onChange={(e) => onChange({ ...form, weaving_width_options_cm: e.target.value })} placeholder="66" />
+          </div>
+        </div>
+
+        <div>
+          <label className={labelCls}>Foldable</label>
+          <select className={inputCls} value={form.foldable} onChange={(e) => onChange({ ...form, foldable: e.target.value as LoomRefForm["foldable"] })}>
+            <option value="">Unknown</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+
+        {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Cancel</Button>
+          <Button onClick={onSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoomDatabaseTab() {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<LoomReferenceDetail | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LoomReferenceDetail | null>(null);
+  const [form, setForm] = useState<LoomRefForm>(emptyForm());
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [search]);
+
+  const { data: refs = [], isLoading } = useQuery({
+    queryKey: ["admin", "loom-catalog", debouncedSearch],
+    queryFn: () => adminListLoomCatalog(debouncedSearch || undefined),
+  });
+
+  function openAdd() {
+    setForm(emptyForm());
+    setFormError(null);
+    setAdding(true);
+  }
+
+  function openEdit(ref: LoomReferenceDetail) {
+    setForm(formFromRef(ref));
+    setFormError(null);
+    setEditing(ref);
+  }
+
+  function closeForm() { setAdding(false); setEditing(null); setFormError(null); }
+
+  async function handleSave() {
+    if (!form.brand.trim()) { setFormError("Brand is required"); return; }
+    if (!form.model_name.trim()) { setFormError("Model name is required"); return; }
+    setSaving(true); setFormError(null);
+    try {
+      const payload = buildPayload(form);
+      if (adding) {
+        await adminCreateLoomReference(payload);
+      } else if (editing) {
+        await adminUpdateLoomReference(editing.id, payload);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin", "loom-catalog"] });
+      closeForm();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await adminDeleteLoomReference(deleteTarget.id);
+      queryClient.invalidateQueries({ queryKey: ["admin", "loom-catalog"] });
+      setDeleteTarget(null);
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">Loom database</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Admin-maintained catalog of commercially available looms. Used for typeahead in loom creation.
+          </p>
+        </div>
+        <Button size="sm" onClick={openAdd}>Add loom</Button>
+      </div>
+
+      <input
+        type="search"
+        placeholder="Search brand or model…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : refs.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-4 text-center">
+          {debouncedSearch ? "No looms match that search." : "No looms in the catalog yet."}
+        </p>
+      ) : (
+        <div className="rounded-md border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead className="bg-muted/50">
+              <tr>
+                {["Brand", "Model", "Category", "Shafts", "Widths (in)", "Foldable", "Origin", ""].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {refs.map((ref) => (
+                <tr key={ref.id} className="hover:bg-muted/30">
+                  <td className="px-3 py-2.5 font-medium whitespace-nowrap">{ref.brand}</td>
+                  <td className="px-3 py-2.5">
+                    <span>{ref.model_name}</span>
+                    {ref.model_series && (
+                      <span className="ml-1.5 text-xs text-muted-foreground">{ref.model_series}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                    {LOOM_CATEGORY_OPTIONS.find((o) => o.value === ref.loom_category)?.label ?? ref.loom_category}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                    {ref.shaft_count_options ? ref.shaft_count_options.join(", ") : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                    {ref.weaving_width_options_inches ? ref.weaving_width_options_inches.join(", ") : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                    {ref.foldable === null ? "—" : ref.foldable ? "Yes" : "No"}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-muted-foreground">{ref.origin_country ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                    <button className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(ref)}>
+                      Edit
+                    </button>
+                    <button className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(ref)}>
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {refs.length > 0 && (
+        <p className="text-xs text-muted-foreground">{refs.length} {refs.length === 1 ? "entry" : "entries"}</p>
+      )}
+
+      {(adding || editing) && (
+        <LoomRefFormModal
+          title={adding ? "Add loom" : `Edit — ${editing?.brand} ${editing?.model_name}`}
+          form={form}
+          onChange={setForm}
+          onSave={handleSave}
+          onCancel={closeForm}
+          saving={saving}
+          error={formError}
+        />
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border bg-background shadow-lg p-6 space-y-4">
+            <h3 className="font-semibold">Delete loom?</h3>
+            <p className="text-sm text-muted-foreground">
+              Permanently remove <strong>{deleteTarget.brand} {deleteTarget.model_name}</strong> from the catalog.
+              Existing user looms linked to this entry will be unlinked automatically.
+            </p>
+            {formError && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{formError}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? "Deleting…" : "Delete"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby", "other"];
+const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby_floor_loom", "tapestry_loom", "rug_loom", "frame_loom", "other"];
 
 export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
   const [loomType, setLoomType] = useState<LoomType>(loom.loom_type);

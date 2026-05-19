@@ -41,6 +41,7 @@ const ADMIN_SECTIONS = [
   { id: "feedback", label: "Feedback" },
   { id: "credentials", label: "Credentials" },
   { id: "slugs", label: "Share links" },
+  { id: "looms", label: "Loom database" },
   { id: "superuser", label: "Superuser", superuserOnly: true },
 ];
 
