@@ -20,6 +20,7 @@ import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
 import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
 import { LinkToCatalogModal } from "@/components/looms/LinkToCatalogModal";
+import { CatalogRequestButton } from "@/components/looms/CatalogRequestButton";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { downloadAuthed } from "@/api/client";
@@ -28,43 +29,6 @@ import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBa
 
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — must match backend MAX_FILE_SIZE
 const MAX_VERSION_PHOTOS = 5;            // must match backend MAX_VERSION_PHOTOS
-const CATALOG_REQUESTS_KEY = "weftmark:catalog_requests_submitted";
-
-function hasSubmittedCatalogRequest(loomId: string): boolean {
-  try {
-    const stored = localStorage.getItem(CATALOG_REQUESTS_KEY);
-    return stored ? (JSON.parse(stored) as string[]).includes(loomId) : false;
-  } catch {
-    return false;
-  }
-}
-
-function markCatalogRequestSubmitted(loomId: string): void {
-  try {
-    const stored = localStorage.getItem(CATALOG_REQUESTS_KEY);
-    const arr: string[] = stored ? JSON.parse(stored) : [];
-    if (!arr.includes(loomId)) {
-      arr.push(loomId);
-      localStorage.setItem(CATALOG_REQUESTS_KEY, JSON.stringify(arr));
-    }
-  } catch {
-    // ignore storage errors
-  }
-}
-
-function catalogRequestUrl(loom: LoomDetail): string {
-  const title = encodeURIComponent(
-    `Loom catalog request: ${loom.manufacturer} ${loom.model_name}`,
-  );
-  const body = encodeURIComponent(
-    `## Loom catalog request\n\n` +
-      `**Brand:** ${loom.manufacturer}\n` +
-      `**Model:** ${loom.model_name}\n` +
-      `**Type:** ${LOOM_TYPE_LABELS[loom.loom_type] ?? loom.loom_type}\n\n` +
-      `Please add this loom to the weftmark catalog so other users can find and link it.\n`,
-  );
-  return `https://github.com/weftmark/weftmark/discussions/new?title=${title}&body=${body}`;
-}
 
 // ---------------------------------------------------------------------------
 // Reusable inline confirm
@@ -861,9 +825,6 @@ export function LoomDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
-  const [requestSubmitted, setRequestSubmitted] = useState(() =>
-    hasSubmittedCatalogRequest(id ?? ""),
-  );
 
   const { data: loom, isLoading, error } = useQuery({
     queryKey: ["loom", id],
@@ -985,22 +946,7 @@ export function LoomDetailPage() {
                   <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
                     Not in catalog
                   </span>
-                  {requestSubmitted ? (
-                    <span className="text-xs text-muted-foreground italic">Request submitted</span>
-                  ) : (
-                    <a
-                      href={catalogRequestUrl(loom)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => {
-                        markCatalogRequestSubmitted(loom.id);
-                        setRequestSubmitted(true);
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-                    >
-                      Submit request to add to catalog
-                    </a>
-                  )}
+                  <CatalogRequestButton loom={loom} />
                 </>
               )}
             </div>
