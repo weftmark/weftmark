@@ -16,6 +16,7 @@ from app.deps import get_current_user, get_db
 from app.models.loom import (
     Loom,
     LoomReed,
+    LoomReference,
     LoomVersion,
     LoomVersionAccessory,
     LoomVersionPhoto,
@@ -37,7 +38,17 @@ def _content_disposition(disposition: str, filename: str) -> str:
     return f"{disposition}; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"
 
 
-LoomType = Literal["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby", "other"]
+LoomType = Literal[
+    "floor_loom",
+    "table_loom",
+    "rigid_heddle",
+    "inkle",
+    "dobby_floor_loom",
+    "tapestry_loom",
+    "rug_loom",
+    "frame_loom",
+    "other",
+]
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
@@ -114,6 +125,7 @@ class LoomSummary(BaseModel):
     manufacturer: str
     model_name: str
     serial_number: str | None
+    loom_reference_id: uuid.UUID | None
     supports_lift_tracking: bool
     supports_treadle_tracking: bool
     notes: str | None
@@ -132,6 +144,7 @@ class LoomSummary(BaseModel):
             "manufacturer": loom.manufacturer,
             "model_name": loom.model_name,
             "serial_number": loom.serial_number,
+            "loom_reference_id": loom.loom_reference_id,
             "supports_lift_tracking": loom.supports_lift_tracking,
             "supports_treadle_tracking": loom.supports_treadle_tracking,
             "notes": loom.notes,
@@ -150,6 +163,7 @@ class LoomDetail(BaseModel):
     manufacturer: str
     model_name: str
     serial_number: str | None
+    loom_reference_id: uuid.UUID | None
     purchase_date: date | None
     purchase_price: Decimal | None
     vendor: str | None
@@ -173,6 +187,7 @@ class LoomDetail(BaseModel):
             "manufacturer": loom.manufacturer,
             "model_name": loom.model_name,
             "serial_number": loom.serial_number,
+            "loom_reference_id": loom.loom_reference_id,
             "purchase_date": loom.purchase_date,
             "purchase_price": loom.purchase_price,
             "vendor": loom.vendor,
@@ -193,6 +208,7 @@ class CreateLoomRequest(BaseModel):
     manufacturer: str
     model_name: str
     serial_number: str | None = None
+    loom_reference_id: uuid.UUID | None = None
     purchase_date: date | None = None
     purchase_price: Decimal | None = None
     vendor: str | None = None
@@ -236,6 +252,10 @@ class AddVersionRequest(BaseModel):
 class UpdateVersionRequest(BaseModel):
     name: str | None = None
     description: str | None = None
+    num_shafts: int | None = None
+    num_treadles: int | None = None
+    weaving_width: Decimal | None = None
+    weaving_width_unit: str | None = None
     warp_waste_allowance: Decimal | None = None
     warp_waste_unit: str | None = None
 
@@ -338,6 +358,7 @@ async def create_loom(
         manufacturer=body.manufacturer,
         model_name=body.model_name,
         serial_number=body.serial_number,
+        loom_reference_id=body.loom_reference_id,
         purchase_date=body.purchase_date,
         purchase_price=body.purchase_price,
         vendor=body.vendor,
@@ -813,3 +834,33 @@ async def delete_reed(
         raise HTTPException(status_code=404, detail="Reed not found")
     await db.delete(reed)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Catalog linking
+# ---------------------------------------------------------------------------
+
+
+class LinkReferenceRequest(BaseModel):
+    loom_reference_id: uuid.UUID | None
+
+
+@router.post("/{loom_id}/link-reference", response_model=LoomDetail)
+async def link_loom_reference(
+    loom_id: uuid.UUID,
+    body: LinkReferenceRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LoomDetail:
+    """Link (or unlink) an existing user loom to a catalog entry."""
+    loom = await _get_owned_loom(loom_id, current_user, db)
+
+    if body.loom_reference_id is not None:
+        ref = await db.get(LoomReference, body.loom_reference_id)
+        if ref is None:
+            raise HTTPException(status_code=404, detail="Loom reference not found")
+
+    loom.loom_reference_id = body.loom_reference_id
+    await db.commit()
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    return LoomDetail.from_loom(loom)

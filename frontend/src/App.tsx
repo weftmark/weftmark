@@ -26,6 +26,7 @@ import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
 import { ProjectLandingPage } from "@/pages/ProjectLandingPage";
 import { WarpingPlanPage } from "@/pages/WarpingPlanPage";
 import { SharedProjectPage } from "@/pages/SharedProjectPage";
+import { LoomCatalogPage } from "@/pages/LoomCatalogPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SignOutPage } from "@/pages/SignOutPage";
@@ -98,6 +99,7 @@ export default function App() {
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/costs" element={<CostsPage />} />
+                  <Route path="/catalog/looms" element={<LoomCatalogPage />} />
                   <Route path="/" element={<RootRoute />} />
                   <Route path="/home" element={<AuthRoute><DashboardPage /></AuthRoute>} />
                   <Route path="/drafts" element={<AuthRoute><DraftsPage /></AuthRoute>} />

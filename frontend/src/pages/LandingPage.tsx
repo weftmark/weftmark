@@ -42,12 +42,20 @@ export function LandingPage() {
             <WeftmarkLogo className="h-7 w-auto text-zinc-800" />
             <span className="text-base font-semibold tracking-tight" style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}>weftmark</span>
           </div>
-          <Link
-            to="/login"
-            className="text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
-          >
-            Sign in
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link
+              to="/catalog/looms"
+              className="text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
+            >
+              Loom catalog
+            </Link>
+            <Link
+              to="/login"
+              className="text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
+            >
+              Sign in
+            </Link>
+          </div>
         </div>
       </header>
 

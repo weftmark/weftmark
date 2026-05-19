@@ -26,6 +26,7 @@ from app.routers import (  # noqa: E402
     feedback,
     health,
     logs,
+    loom_catalog,
     looms,
     projects,
     system,
@@ -232,6 +233,8 @@ app.include_router(webhooks.router)
 app.include_router(users.eula_router)
 app.include_router(users.router)
 app.include_router(drafts.router)
+app.include_router(loom_catalog.public_router)
+app.include_router(loom_catalog.admin_catalog_router)
 app.include_router(looms.router)
 app.include_router(yarn.router)
 app.include_router(projects.router)

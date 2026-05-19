@@ -129,7 +129,12 @@ export function LoomsPage() {
     <div className="p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Equipment</h1>
-        <Button size="sm" onClick={() => setShowNew(true)}>New loom</Button>
+        <div className="flex items-center gap-3">
+          <Link to="/catalog/looms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Browse loom catalog
+          </Link>
+          <Button size="sm" onClick={() => setShowNew(true)}>New loom</Button>
+        </div>
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}

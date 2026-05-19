@@ -11,7 +11,7 @@ import {
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
   uploadVersionReceipt, deleteVersionReceipt, versionReceiptUrl,
   addAccessory, deleteAccessory, updateVersion,
-  addReed, deleteReed,
+  addReed, deleteReed, linkLoomReference,
   type LoomDetail, type LoomVersion, type LoomVersionPhoto,
   type LoomVersionReceipt, type LoomVersionAccessory, type LoomReed,
   LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
@@ -19,6 +19,8 @@ import {
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
 import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
+import { LinkToCatalogModal } from "@/components/looms/LinkToCatalogModal";
+import { CatalogRequestButton } from "@/components/looms/CatalogRequestButton";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { downloadAuthed } from "@/api/client";
@@ -817,10 +819,12 @@ export function LoomDetailPage() {
   const { user } = useAuthContext();
   const [showAddVersion, setShowAddVersion] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showLinkCatalog, setShowLinkCatalog] = useState(false);
   const [cloneSource, setCloneSource] = useState<LoomVersion | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
 
   const { data: loom, isLoading, error } = useQuery({
     queryKey: ["loom", id],
@@ -861,6 +865,17 @@ export function LoomDetailPage() {
     }
   };
 
+  const handleUnlink = async () => {
+    if (!loom) return;
+    setUnlinking(true);
+    try {
+      await linkLoomReference(loom.id, null);
+      invalidate();
+    } finally {
+      setUnlinking(false);
+    }
+  };
+
   if (isLoading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground text-sm">Loading…</p></div>;
   if (error || !loom) return <div className="flex min-h-screen items-center justify-center"><p className="text-destructive text-sm">Loom not found.</p></div>;
 
@@ -880,6 +895,11 @@ export function LoomDetailPage() {
           <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
         <div className="flex gap-2">
+          {!isReadOnly && (
+            <Button size="sm" variant="outline" onClick={() => setShowLinkCatalog(true)}>
+              Update from catalog
+            </Button>
+          )}
           {!isReadOnly && <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>}
           {!isReadOnly && <Button size="sm" onClick={() => setShowAddVersion(true)}>Add version</Button>}
         </div>
@@ -906,6 +926,31 @@ export function LoomDetailPage() {
             </div>
           )}
           {loom.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>}
+          {!isReadOnly && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {loom.loom_reference_id ? (
+                <>
+                  <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
+                    Linked to catalog
+                  </span>
+                  <button
+                    onClick={handleUnlink}
+                    disabled={unlinking}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    {unlinking ? "Unlinking…" : "Unlink"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
+                    Not in catalog
+                  </span>
+                  <CatalogRequestButton loom={loom} />
+                </>
+              )}
+            </div>
+          )}
           {activeProject && (
             <div className="rounded-md border border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-700 px-3 py-2.5 text-sm flex items-center justify-between gap-4">
               <div>
@@ -990,6 +1035,9 @@ export function LoomDetailPage() {
       )}
       {showEdit && (
         <EditLoomModal loom={loom} onSuccess={handleEditSaved} onClose={() => setShowEdit(false)} />
+      )}
+      {showLinkCatalog && (
+        <LinkToCatalogModal loom={loom} onSuccess={() => { setShowLinkCatalog(false); invalidate(); }} onClose={() => setShowLinkCatalog(false)} />
       )}
       {cloneSource && (
         <CloneVersionModal loomId={loom.id} source={cloneSource} onSuccess={handleCloned} onClose={() => setCloneSource(null)} />
