@@ -644,7 +644,7 @@ async def add_version(
     db.add(version)
     await db.commit()
     await db.refresh(version, ["photos", "receipts", "accessories"])
-    return LoomVersionSchema.model_validate(version)
+    return LoomVersionSchema.from_version(version)
 
 
 # ---------------------------------------------------------------------------
@@ -817,7 +817,7 @@ async def update_version(
         setattr(version, field, value)
     await db.commit()
     await db.refresh(version, ["photos", "receipts", "accessories"])
-    return LoomVersionSchema.model_validate(version)
+    return LoomVersionSchema.from_version(version)
 
 
 # ---------------------------------------------------------------------------
@@ -863,7 +863,7 @@ async def clone_version(
 
     await db.commit()
     await db.refresh(new_version, ["photos", "receipts", "accessories"])
-    return LoomVersionSchema.model_validate(new_version)
+    return LoomVersionSchema.from_version(new_version)
 
 
 # ---------------------------------------------------------------------------
