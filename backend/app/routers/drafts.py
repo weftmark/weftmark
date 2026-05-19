@@ -727,6 +727,7 @@ def _draft_detail_data(draft: Draft) -> dict:
     data["has_preview"] = storage.preview_exists(draft.preview_path)
     data["has_drawdown_preview"] = storage.drawdown_preview_exists(draft.drawdown_preview_path)
     data["has_modified_file"] = bool(draft.wif_modified_path and storage.file_exists(draft.wif_modified_path))
+    data["archived_at"] = data.pop("retired_at", None)
     overrides = draft.metadata_overrides or {}
     warnings = list(data.get("lint_warnings") or [])
     if "num_treadles" in overrides:
