@@ -332,7 +332,9 @@ export function LinkToCatalogModal({ loom, onSuccess, onClose }: Props) {
       <div className="w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg overflow-y-auto max-h-[90vh]">
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-lg font-semibold">Update from catalog</h2>
+            <h2 className="text-lg font-semibold">
+              {loom.loom_reference_id ? "Change catalog link" : "Link to catalog"}
+            </h2>
             <p className="text-sm text-muted-foreground">
               {loom.manufacturer} {loom.model_name}
             </p>

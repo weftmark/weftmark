@@ -263,3 +263,115 @@ async def test_link_nonexistent_reference_404(auth_client: AsyncClient, db_sessi
         json={"loom_reference_id": str(uuid.uuid4())},
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_relink_to_different_catalog_entry(auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+    """A loom linked to entry A can be relinked to entry B via link-reference."""
+    ref_a = await _make_ref(db_session, brand="Louet", model="Spring 8")
+    ref_b = await _make_ref(db_session, brand="Louet", model="Spring 12")
+
+    loom = Loom(
+        owner_id=test_user.id,
+        loom_type="floor_loom",
+        manufacturer="Louet",
+        model_name="Spring 8",
+        loom_reference_id=ref_a.id,
+        supports_lift_tracking=False,
+        supports_treadle_tracking=True,
+    )
+    db_session.add(loom)
+    await db_session.flush()
+    db_session.add(LoomVersion(loom_id=loom.id, version_number=1, effective_date=date(2024, 1, 1)))
+    await db_session.commit()
+
+    resp = await auth_client.post(
+        f"/api/looms/{loom.id}/link-reference",
+        json={"loom_reference_id": str(ref_b.id)},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["loom_reference_id"] == str(ref_b.id)
+    assert data["loom_reference_brand"] == "Louet"
+    assert data["loom_reference_model_name"] == "Spring 12"
+
+
+@pytest.mark.anyio
+async def test_linked_loom_detail_includes_catalog_names(
+    auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+):
+    """GET /api/looms/{id} returns loom_reference_brand/model_name when linked."""
+    ref = await _make_ref(db_session, brand="Schacht", model="Baby Wolf")
+
+    loom = Loom(
+        owner_id=test_user.id,
+        loom_type="floor_loom",
+        manufacturer="Schacht",
+        model_name="Baby Wolf",
+        loom_reference_id=ref.id,
+        supports_lift_tracking=False,
+        supports_treadle_tracking=True,
+    )
+    db_session.add(loom)
+    await db_session.flush()
+    db_session.add(LoomVersion(loom_id=loom.id, version_number=1, effective_date=date(2024, 1, 1)))
+    await db_session.commit()
+
+    resp = await auth_client.get(f"/api/looms/{loom.id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["loom_reference_brand"] == "Schacht"
+    assert data["loom_reference_model_name"] == "Baby Wolf"
+
+
+@pytest.mark.anyio
+async def test_unlinked_loom_detail_has_null_catalog_names(
+    auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+):
+    """GET /api/looms/{id} returns null catalog names when not linked."""
+    loom = Loom(
+        owner_id=test_user.id,
+        loom_type="floor_loom",
+        manufacturer="Unknown",
+        model_name="Mystery",
+        supports_lift_tracking=False,
+        supports_treadle_tracking=True,
+    )
+    db_session.add(loom)
+    await db_session.flush()
+    db_session.add(LoomVersion(loom_id=loom.id, version_number=1, effective_date=date(2024, 1, 1)))
+    await db_session.commit()
+
+    resp = await auth_client.get(f"/api/looms/{loom.id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["loom_reference_brand"] is None
+    assert data["loom_reference_model_name"] is None
+
+
+@pytest.mark.anyio
+async def test_list_looms_includes_catalog_names(auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+    """GET /api/looms returns loom_reference_brand/model_name for linked looms."""
+    ref = await _make_ref(db_session, brand="Schacht", model="Mighty Wolf")
+
+    loom = Loom(
+        owner_id=test_user.id,
+        loom_type="floor_loom",
+        manufacturer="Schacht",
+        model_name="Mighty Wolf",
+        loom_reference_id=ref.id,
+        supports_lift_tracking=False,
+        supports_treadle_tracking=True,
+    )
+    db_session.add(loom)
+    await db_session.flush()
+    db_session.add(LoomVersion(loom_id=loom.id, version_number=1, effective_date=date(2024, 1, 1)))
+    await db_session.commit()
+
+    resp = await auth_client.get("/api/looms")
+    assert resp.status_code == 200
+    looms = resp.json()
+    linked = next((loom for loom in looms if loom["loom_reference_id"] == str(ref.id)), None)
+    assert linked is not None
+    assert linked["loom_reference_brand"] == "Schacht"
+    assert linked["loom_reference_model_name"] == "Mighty Wolf"

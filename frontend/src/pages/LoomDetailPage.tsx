@@ -957,8 +957,16 @@ export function LoomDetailPage() {
               {loom.loom_reference_id ? (
                 <>
                   <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
-                    Linked to catalog
+                    {loom.loom_reference_brand && loom.loom_reference_model_name
+                      ? `${loom.loom_reference_brand} ${loom.loom_reference_model_name}`
+                      : "Linked to catalog"}
                   </span>
+                  <button
+                    onClick={() => setShowLinkCatalog(true)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Change
+                  </button>
                   <button
                     onClick={handleUnlink}
                     disabled={unlinking}

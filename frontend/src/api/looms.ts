@@ -80,6 +80,8 @@ export interface Loom {
   model_name: string;
   serial_number: string | null;
   loom_reference_id: string | null;
+  loom_reference_brand: string | null;
+  loom_reference_model_name: string | null;
   supports_lift_tracking: boolean;
   supports_treadle_tracking: boolean;
   notes: string | null;
