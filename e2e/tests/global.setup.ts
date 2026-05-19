@@ -4,25 +4,39 @@ import path from "path";
 const userFile = path.join(__dirname, "../.auth/user.json");
 const adminFile = path.join(__dirname, "../.auth/admin.json");
 
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto("/login");
+const BASE_URL = process.env.E2E_BASE_URL || "http://localhost:3000";
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY!;
 
-  // Wait for Clerk's embedded <SignIn> component to render the email field
-  const emailField = page.getByLabel(/email address/i).first();
-  await emailField.waitFor({ state: "visible", timeout: 15_000 });
-  await emailField.fill(email);
+// Clerk's Backend API returns a sign-in URL that auto-logs in the user.
+// This bypasses the Clerk UI entirely, avoiding Google Workspace domain detection
+// that redirects @weftmark.com addresses to Google OAuth instead of the password step.
+async function getSignInUrl(userId: string): Promise<string> {
+  const resp = await fetch("https://api.clerk.com/v1/sign_in_tokens", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${CLERK_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ user_id: userId }),
+  });
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Clerk sign-in token failed (${resp.status}): ${err}`);
+  }
+  const data = await resp.json();
+  // Clerk returns e.g. https://verified-anchovy-95.accounts.dev/sign-in?__clerk_ticket=...
+  // Append redirect_url so Clerk sends us back to the app after sign-in.
+  return `${data.url}&redirect_url=${encodeURIComponent(`${BASE_URL}/home`)}`;
+}
 
-  // Click Continue to advance to password step
-  await page.getByRole("button", { name: /continue/i }).first().click();
-
-  // Wait for password field (two-step flow)
-  const passwordField = page.getByLabel(/^password$/i).first();
-  await passwordField.waitFor({ state: "visible", timeout: 10_000 });
-  await passwordField.fill(password);
-  await page.getByRole("button", { name: /continue|sign in/i }).first().click();
-
-  // Wait for redirect to authenticated area
-  await page.waitForURL(/\/(home|admin|pending)/, { timeout: 20_000 });
+async function signIn(page: Page, userId: string) {
+  const signInUrl = await getSignInUrl(userId);
+  // Extract the ticket and present it on the app's own login page.
+  // Clerk's frontend SDK on the app domain handles __clerk_ticket natively,
+  // avoiding cross-domain session sync issues that arise from navigating to accounts.dev.
+  const ticket = new URL(signInUrl).searchParams.get("__clerk_ticket")!;
+  await page.goto(`${BASE_URL}/login?__clerk_ticket=${ticket}`);
+  await page.waitForURL(/\/(home|admin|pending)/, { timeout: 30_000 });
 
   // Handle EulaGate if shown on first sign-in
   const eulaVisible = await page
@@ -40,11 +54,11 @@ async function signIn(page: Page, email: string, password: string) {
 }
 
 setup("authenticate as regular user", async ({ page }) => {
-  await signIn(page, process.env.E2E_USER_EMAIL!, process.env.E2E_USER_PASSWORD!);
+  await signIn(page, process.env.E2E_USER_ID!);
   await page.context().storageState({ path: userFile });
 });
 
 setup("authenticate as admin user", async ({ page }) => {
-  await signIn(page, process.env.E2E_ADMIN_EMAIL!, process.env.E2E_ADMIN_PASSWORD!);
+  await signIn(page, process.env.E2E_ADMIN_ID!);
   await page.context().storageState({ path: adminFile });
 });
