@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -335,7 +336,7 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
           <div
             ref={innerRef}
             style={{ transformOrigin: "0 0", display: "inline-block", willChange: "transform" }}
-            dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
+            dangerouslySetInnerHTML={svg ? { __html: DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true } }) } : undefined}
           />
         </div>
       </div>
