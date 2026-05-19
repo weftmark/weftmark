@@ -64,6 +64,7 @@ export interface Draft {
   epi_override: number | null;
   is_shared: boolean;
   archived_at: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -95,8 +96,12 @@ export interface DeleteConflict {
   projects: { id: string; name: string }[];
 }
 
-export async function listDrafts(includeArchived = false): Promise<Draft[]> {
-  return req(`/api/drafts${includeArchived ? "?include_archived=true" : ""}`);
+export async function listDrafts(includeArchived = false, tags?: string[]): Promise<Draft[]> {
+  const qs = new URLSearchParams();
+  if (includeArchived) qs.set("include_archived", "true");
+  if (tags?.length) tags.forEach((t) => qs.append("tags", t));
+  const query = qs.size ? `?${qs}` : "";
+  return req(`/api/drafts${query}`);
 }
 
 export async function getDraft(id: string): Promise<DraftDetail> {
@@ -107,12 +112,25 @@ export async function uploadDraft(
   name: string,
   file: File,
   description?: string,
+  tags?: string[],
 ): Promise<Draft> {
   const form = new FormData();
   form.append("name", name);
   form.append("wif_file", file);
   if (description) form.append("description", description);
+  if (tags?.length) form.append("tags", JSON.stringify(tags));
   return req("/api/drafts", { method: "POST", body: form });
+}
+
+export async function updateDraft(
+  id: string,
+  data: { name?: string; description?: string; tags?: string[] },
+): Promise<DraftDetail> {
+  return req(`/api/drafts/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
 }
 
 export async function deleteDraft(id: string, force = false): Promise<DeleteConflict | void> {

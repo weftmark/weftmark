@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { uploadDraft } from "@/api/drafts";
 import { Button } from "@/components/ui/button";
+import { TagInput } from "@/components/ui/TagInput";
 
 interface Props {
   onSuccess: () => void;
@@ -10,6 +11,7 @@ interface Props {
 export function UploadWifModal({ onSuccess, onClose }: Props) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +23,7 @@ export function UploadWifModal({ onSuccess, onClose }: Props) {
     setError(null);
     setLoading(true);
     try {
-      await uploadDraft(name, file, description || undefined);
+      await uploadDraft(name, file, description || undefined, tags.length ? tags : undefined);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
@@ -56,6 +58,11 @@ export function UploadWifModal({ onSuccess, onClose }: Props) {
               rows={2}
               placeholder="Notes about this design…"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Tags <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <TagInput tags={tags} onChange={setTags} placeholder="twill, cotton…" />
           </div>
 
           <div>

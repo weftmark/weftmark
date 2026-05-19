@@ -88,6 +88,9 @@ class Draft(Base, TimestampMixin, SoftDeleteMixin, RetireMixin):
     # User-entered EPI override (ends per inch; null = derive from WIF warp_spacing or width ÷ thread count).
     epi_override: Mapped[float | None] = mapped_column(Float, nullable=True)
 
+    # User-defined tags for categorisation (e.g. "twill", "cotton", "gift")
+    tags: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+
     # Sharing
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     share_slug: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)

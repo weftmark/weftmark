@@ -86,6 +86,7 @@ class DraftSummary(BaseModel):
     epi_override: float | None
     is_shared: bool
     archived_at: datetime | None
+    tags: list[str]
     created_at: datetime
     updated_at: datetime
 
@@ -98,12 +99,19 @@ class DraftSummary(BaseModel):
         data["has_drawdown_preview"] = storage.drawdown_preview_exists(d.drawdown_preview_path)
         data["has_modified_file"] = bool(d.wif_modified_path and storage.file_exists(d.wif_modified_path))
         data["archived_at"] = data.pop("retired_at", None)
+        data.setdefault("tags", [])
         return cls(**data)
 
 
 class DraftDetail(DraftSummary):
     wif_source_software: str | None
     wif_source_version: str | None
+
+
+class UpdateDraftRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    tags: list[str] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +124,7 @@ async def create_draft(
     name: Annotated[str, Form()],
     wif_file: Annotated[UploadFile, File()],
     description: Annotated[str | None, Form()] = None,
+    tags: Annotated[str | None, Form()] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _rl: None = Depends(_upload_rate_limit),
@@ -140,10 +149,20 @@ async def create_draft(
     lint = wif_linter.lint(wif_bytes)
     measurements = wif_parser.extract_measurements(wif_bytes)
 
+    import json as _json
+
+    parsed_tags: list[str] = []
+    if tags:
+        try:
+            parsed_tags = [str(t).strip().lower() for t in _json.loads(tags) if str(t).strip()]
+        except (ValueError, TypeError):
+            parsed_tags = [t.strip().lower() for t in tags.split(",") if t.strip()]
+
     draft = Draft(
         owner_id=current_user.id,
         name=name,
         description=description,
+        tags=parsed_tags,
         wif_filename=wif_file.filename,
         wif_path="",  # set after we have the draft id
         num_shafts=lint.num_shafts,
@@ -193,6 +212,7 @@ async def create_draft(
 @router.get("", response_model=list[DraftSummary])
 async def list_drafts(
     include_archived: bool = Query(False),
+    tags: list[str] | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[DraftSummary]:
@@ -201,7 +221,10 @@ async def list_drafts(
         q = q.where(Draft.retired_at.is_(None))
     q = q.order_by(Draft.created_at.desc())
     result = await db.scalars(q)
-    return [DraftSummary.from_draft(d) for d in result.all()]
+    drafts = result.all()
+    if tags:
+        drafts = [d for d in drafts if any(t in (d.tags or []) for t in tags)]
+    return [DraftSummary.from_draft(d) for d in drafts]
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +239,30 @@ async def get_draft(
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
+    return DraftDetail(**_draft_detail_data(draft))
+
+
+@router.patch("/{draft_id}", response_model=DraftDetail)
+async def update_draft(
+    draft_id: uuid.UUID,
+    body: UpdateDraftRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DraftDetail:
+    if body.name is None and body.description is None and body.tags is None:
+        raise HTTPException(status_code=400, detail="At least one field must be provided")
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    if body.name is not None:
+        name = body.name.strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+        draft.name = name
+    if body.description is not None:
+        draft.description = body.description or None
+    if body.tags is not None:
+        draft.tags = [t.strip().lower() for t in body.tags if t.strip()]
+    await db.commit()
+    await db.refresh(draft)
     return DraftDetail(**_draft_detail_data(draft))
 
 

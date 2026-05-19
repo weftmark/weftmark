@@ -7,10 +7,12 @@ import { measurementSystemToUnit, displayLength, formatApproxLength, convertLeng
 import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
-  getWarpingPlan, completeProject, abandonProject, setProjectReed,
+  getWarpingPlan, completeProject, abandonProject, setProjectReed, updateProjectTags,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail,
 } from "@/api/projects";
+import { TagInput } from "@/components/ui/TagInput";
+import { TagChips } from "@/components/ui/TagChips";
 import { getReedRecommendation, buildDentPattern, nearestCleanDent } from "@/lib/reedRecommendation";
 import { TieUpDiagram } from "@/components/TieUpDiagram";
 import { previewUrl } from "@/api/drafts";
@@ -1172,6 +1174,8 @@ export function ProjectLandingPage() {
   const [tieupOpen, setTieupOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [showAddToCollection, setShowAddToCollection] = useState(false);
+  const [editingTags, setEditingTags] = useState(false);
+  const [pendingTags, setPendingTags] = useState<string[]>([]);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -1183,6 +1187,15 @@ export function ProjectLandingPage() {
     mutationFn: (replacements: Record<string, string>) =>
       setProjectColorReplacements(id!, replacements),
     onSuccess: (updated) => qc.setQueryData(["project", id], updated),
+  });
+
+  const tagsMutation = useMutation({
+    mutationFn: (tags: string[]) => updateProjectTags(id!, tags),
+    onSuccess: (updated) => {
+      qc.setQueryData(["project", id], updated);
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setEditingTags(false);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -1294,6 +1307,37 @@ export function ProjectLandingPage() {
             </Link>
             {project.loom_name && <span> · {project.loom_name}</span>}
           </p>
+          {!editingTags && (
+            <div className="flex items-center gap-2 flex-wrap mt-1.5">
+              {project.tags && project.tags.length > 0 && (
+                <TagChips tags={project.tags} max={10} />
+              )}
+              <button
+                type="button"
+                onClick={() => { setPendingTags(project.tags ?? []); setEditingTags(true); }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {project.tags && project.tags.length > 0 ? "Edit tags" : "+ Add tags"}
+              </button>
+            </div>
+          )}
+          {editingTags && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="w-64">
+                <TagInput tags={pendingTags} onChange={setPendingTags} />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => tagsMutation.mutate(pendingTags)}
+                disabled={tagsMutation.isPending}
+              >
+                {tagsMutation.isPending ? "Saving…" : "Save"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingTags(false)}>
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
         <Button
           variant="ghost"
