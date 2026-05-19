@@ -1,6 +1,7 @@
 from app.models.alembic_meta import AlembicMeta
 from app.models.audit_log import AuditLog
 from app.models.base import Base
+from app.models.collection import Collection, CollectionDraft, CollectionProject
 from app.models.credential_expiry import CredentialExpiry
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
@@ -25,6 +26,9 @@ from app.models.yarn import Skein, Yarn
 __all__ = [
     "Base",
     "AlembicMeta",
+    "Collection",
+    "CollectionDraft",
+    "CollectionProject",
     "AuditLog",
     "CredentialExpiry",
     "User",

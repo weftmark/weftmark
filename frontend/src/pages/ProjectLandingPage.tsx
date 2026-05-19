@@ -20,6 +20,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { ShareModal } from "@/components/projects/ShareModal";
+import { addProjectToCollection, removeProjectFromCollection } from "@/api/collections";
+import { AddToCollectionModal } from "@/components/collections/AddToCollectionModal";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1169,6 +1171,7 @@ export function ProjectLandingPage() {
   const [drawdownOpen, setDrawdownOpen] = useState(false);
   const [tieupOpen, setTieupOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [showAddToCollection, setShowAddToCollection] = useState(false);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -1292,6 +1295,15 @@ export function ProjectLandingPage() {
             {project.loom_name && <span> · {project.loom_name}</span>}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={() => setShowAddToCollection(true)}
+          title="Add to collection"
+        >
+          <AppIcons.collections className="h-4 w-4" />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -1561,6 +1573,16 @@ export function ProjectLandingPage() {
           project={project}
           onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
           onClose={() => setShareModalOpen(false)}
+        />
+      )}
+      {/* Add to collection modal */}
+      {showAddToCollection && (
+        <AddToCollectionModal
+          itemId={project.id}
+          itemType="project"
+          onAdd={(collectionId, itemId) => addProjectToCollection(collectionId, itemId)}
+          onRemove={(collectionId, itemId) => removeProjectFromCollection(collectionId, itemId)}
+          onClose={() => setShowAddToCollection(false)}
         />
       )}
     </div>

@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDraft, deleteDraft, archiveDraft, unarchiveDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat, type DeleteConflict } from "@/api/drafts";
+import { addDraftToCollection, removeDraftFromCollection } from "@/api/collections";
+import { AddToCollectionModal } from "@/components/collections/AddToCollectionModal";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -27,6 +29,7 @@ export function DraftDetailPage() {
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [showDangerZone, setShowDangerZone] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showAddToCollection, setShowAddToCollection] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -50,6 +53,7 @@ export function DraftDetailPage() {
     queryFn: () => listProjects({ draftId: id! }),
     enabled: !!id,
   });
+
 
   const deleteMutation = useMutation({
     mutationFn: (force: boolean) => deleteDraft(id!, force),
@@ -181,10 +185,18 @@ export function DraftDetailPage() {
         </div>
       )}
       <div className="p-6 space-y-6">
-      <div className="flex items-center gap-2 text-sm">
-        <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
-        <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="font-medium text-foreground">{draft.name}</span>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm">
+          <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
+          <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-medium text-foreground">{draft.name}</span>
+        </div>
+        {!isReadOnly && (
+          <Button size="sm" variant="outline" onClick={() => setShowAddToCollection(true)}>
+            <AppIcons.collections className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+            Add to collection
+          </Button>
+        )}
       </div>
 
         {/* Lint status */}
@@ -921,6 +933,16 @@ export function DraftDetailPage() {
             </div>
           )}
         </div>}
+
+      {showAddToCollection && (
+        <AddToCollectionModal
+          itemId={id!}
+          itemType="draft"
+          onAdd={addDraftToCollection}
+          onRemove={removeDraftFromCollection}
+          onClose={() => setShowAddToCollection(false)}
+        />
+      )}
 
       {showCreateProject && (
         <CreateProjectModal
