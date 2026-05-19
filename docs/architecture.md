@@ -142,7 +142,6 @@ Full reference in [`.env.example`](../.env.example). Key variables:
 
 | Variable | Description |
 | --- | --- |
-| `APP_SECRET_KEY` | Signing key — required in production |
 | `APP_ENV` | `dev` or `production` — controls HSTS, CSP, security headers |
 | `POSTGRES_DSN` | Pooled connection string (Neon) — overrides individual `POSTGRES_*` vars |
 | `POSTGRES_DSN_DIRECT` | Direct (non-pooled) connection for Alembic migrations |
@@ -168,7 +167,7 @@ Full reference in [`.env.example`](../.env.example). Key variables:
 git clone https://github.com/weftmark/weftmark.git
 cd weftmark
 cp .env.example .env.local
-# Fill in: CLERK keys, POSTGRES_PASSWORD, APP_SECRET_KEY
+# Fill in: CLERK keys, POSTGRES_PASSWORD
 # Set COMPOSE_PROFILES=local-db to start a local PostgreSQL container
 
 docker compose -f docker-compose.build.yml --env-file .env.local build frontend backend

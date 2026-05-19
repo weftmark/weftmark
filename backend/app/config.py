@@ -1,16 +1,13 @@
 from functools import lru_cache
 
-from pydantic import field_validator, model_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-_DEFAULT_SECRET = "change-me-in-production"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Application
-    app_secret_key: str = "change-me-in-production"
     app_env: str = "dev"
     app_name: str = "weftmark"
     seed_enabled: bool = False
@@ -200,15 +197,6 @@ class Settings(BaseSettings):
             )
 
         return issues
-
-    @model_validator(mode="after")
-    def _require_secret_key_in_production(self) -> "Settings":
-        if not self.debug and self.app_secret_key == _DEFAULT_SECRET:
-            raise ValueError(
-                "APP_SECRET_KEY is still the insecure default. "
-                'Generate a secure value: python -c "import secrets; print(secrets.token_hex(32))"'
-            )
-        return self
 
 
 @lru_cache

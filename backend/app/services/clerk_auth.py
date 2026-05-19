@@ -29,8 +29,15 @@ def _jwks_client(jwks_url: str) -> PyJWKClient:
     return _jwks_clients[jwks_url]
 
 
-def verify_session_token(token: str, jwks_url: str) -> str | None:
-    """Verify a Clerk session token. Returns the clerk_user_id (sub) or None."""
+def verify_session_token(token: str, jwks_url: str, expected_azp: str = "") -> str | None:
+    """Verify a Clerk session token. Returns the clerk_user_id (sub) or None.
+
+    expected_azp should be the Clerk publishable key (CLERK_PUBLISHABLE_KEY).
+    Clerk uses the `azp` claim instead of `aud`, so `verify_aud` is intentionally
+    disabled. When expected_azp is provided, the `azp` claim is checked explicitly
+    to prevent tokens issued for other apps on the same Clerk instance from being
+    accepted by this backend.
+    """
     try:
         client = _jwks_client(jwks_url)
         signing_key = client.get_signing_key_from_jwt(token)
@@ -38,8 +45,16 @@ def verify_session_token(token: str, jwks_url: str) -> str | None:
             token,
             signing_key.key,
             algorithms=["RS256"],
+            # Clerk uses azp instead of aud — verified explicitly below
             options={"verify_aud": False},
         )
+        if expected_azp and payload.get("azp") != expected_azp:
+            log.info(
+                "jwt_azp_mismatch expected=%s got=%s",
+                expected_azp,
+                payload.get("azp"),
+            )
+            return None
         return payload.get("sub")
     except Exception as exc:
         log.info("jwt_verification_failed type=%s detail=%s", type(exc).__name__, exc)
