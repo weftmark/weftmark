@@ -17,6 +17,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/home", icon: AppIcons.dashboard, exact: true },
   { label: "Equipment", href: "/looms", icon: AppIcons.equipment },
+  { label: "Collections", href: "/collections", icon: AppIcons.collections },
   { label: "Drafts", href: "/drafts", icon: AppIcons.drafts },
   { label: "Projects", href: "/projects", icon: AppIcons.projects },
 ];

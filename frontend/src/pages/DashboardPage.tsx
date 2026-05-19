@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { listProjects, PROJECT_TYPE_LABELS } from "@/api/projects";
 import { listDrafts } from "@/api/drafts";
 import { listLooms } from "@/api/looms";
+import { listCollections } from "@/api/collections";
 import { getActivityHeatmap, type ActivityDay } from "@/api/users";
 import { AppIcons } from "@/lib/icons";
 
@@ -304,6 +305,11 @@ export function DashboardPage() {
     queryFn: () => listLooms(),
   });
 
+  const { data: collections = [] } = useQuery({
+    queryKey: ["collections"],
+    queryFn: () => listCollections(),
+  });
+
   const activeProjects = projects.filter((a) => (a.status === "active" || a.status === "created") && !!a.loom_id);
   const planningProjects = projects.filter((a) => (a.status === "active" || a.status === "created") && !a.loom_id);
   const completedCount = projects.filter((a) => a.status === "completed").length;
@@ -357,6 +363,39 @@ export function DashboardPage() {
                 className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
               >
                 <span className="text-xs text-muted-foreground">+{looms.length - 3} more</span>
+              </Link>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Collections */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Collections</h2>
+          <Link to="/collections" className="text-xs text-muted-foreground hover:text-foreground">View all →</Link>
+        </div>
+        {collections.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <p className="text-sm text-muted-foreground">No collections yet.</p>
+            <Link to="/collections" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">Create a collection →</Link>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {collections.slice(0, 3).map((c) => (
+              <Link key={c.id} to={`/collections/${c.id}`} className="rounded-lg border p-4 hover:border-ring transition-colors">
+                <div className="flex items-start gap-2">
+                  <AppIcons.collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{c.draft_count} drafts · {c.project_count} projects</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+            {collections.length > 3 && (
+              <Link to="/collections" className="rounded-lg border border-dashed p-4 flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors">
+                +{collections.length - 3} more
               </Link>
             )}
           </div>

@@ -26,6 +26,8 @@ import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
 import { ProjectLandingPage } from "@/pages/ProjectLandingPage";
 import { WarpingPlanPage } from "@/pages/WarpingPlanPage";
 import { SharedProjectPage } from "@/pages/SharedProjectPage";
+import { CollectionsPage } from "@/pages/CollectionsPage";
+import { CollectionDetailPage } from "@/pages/CollectionDetailPage";
 import { LoomCatalogPage } from "@/pages/LoomCatalogPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
@@ -106,6 +108,8 @@ export default function App() {
                   <Route path="/drafts/:id" element={<AuthRoute><DraftDetailPage /></AuthRoute>} />
                   <Route path="/looms" element={<AuthRoute><LoomsPage /></AuthRoute>} />
                   <Route path="/looms/:id" element={<AuthRoute><LoomDetailPage /></AuthRoute>} />
+                  <Route path="/collections" element={<AuthRoute><CollectionsPage /></AuthRoute>} />
+                  <Route path="/collections/:id" element={<AuthRoute><CollectionDetailPage /></AuthRoute>} />
                   <Route path="/yarn" element={<AuthRoute><YarnPage /></AuthRoute>} />
                   <Route path="/yarn/:id" element={<AuthRoute><YarnDetailPage /></AuthRoute>} />
                   <Route path="/projects" element={<AuthRoute><ProjectsPage /></AuthRoute>} />
