@@ -5,6 +5,7 @@ export function PublicFooter() {
     <footer className="border-t border-border bg-muted py-4 px-6">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-2 sm:flex-row sm:justify-between">
         <nav className="flex flex-wrap gap-4 text-sm text-subdued">
+          <Link to="/catalog/looms" className="hover:text-foreground transition-colors">Loom catalog</Link>
           <Link to="/about" className="hover:text-foreground transition-colors">About</Link>
           <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
           <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
