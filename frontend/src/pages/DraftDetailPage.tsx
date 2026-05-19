@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat } from "@/api/drafts";
+import { getDraft, deleteDraft, archiveDraft, unarchiveDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat, type DeleteConflict } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
@@ -22,6 +22,8 @@ export function DraftDetailPage() {
   const { user } = useAuthContext();
   const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteConflict, setDeleteConflict] = useState<DeleteConflict | null>(null);
+  const [confirmForceDelete, setConfirmForceDelete] = useState(false);
   const [showDangerZone, setShowDangerZone] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -49,11 +51,26 @@ export function DraftDetailPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteDraft(id!),
-    onSuccess: () => {
+    mutationFn: (force: boolean) => deleteDraft(id!, force),
+    onSuccess: (result) => {
+      if (result && "code" in result) {
+        setDeleteConflict(result as DeleteConflict);
+        setConfirmDelete(false);
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["drafts"] });
       navigate("/drafts", { replace: true });
     },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: () => archiveDraft(id!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["draft", id] }),
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: () => unarchiveDraft(id!),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["draft", id] }),
   });
 
   const generateMutation = useMutation({
@@ -156,6 +173,12 @@ export function DraftDetailPage() {
   return (
     <div className="max-w-5xl mx-auto w-full">
       {isReadOnly && <SuperuserInspectionBanner />}
+      {draft.archived_at && (
+        <div className="px-6 py-2 bg-muted/50 border-b border-border text-sm text-muted-foreground flex items-center gap-2">
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">Archived</span>
+          This draft is archived and hidden from your active list.
+        </div>
+      )}
       <div className="p-6 space-y-6">
       <div className="flex items-center gap-2 text-sm">
         <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
@@ -772,42 +795,106 @@ export function DraftDetailPage() {
         {!isReadOnly && <div className="border-t pt-4">
           <button
             type="button"
-            onClick={() => setShowDangerZone((v) => !v)}
+            onClick={() => { setShowDangerZone((v) => !v); setConfirmDelete(false); setDeleteConflict(null); setConfirmForceDelete(false); }}
             className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide hover:text-destructive transition-colors"
           >
             <span>Danger zone</span>
             <span>{showDangerZone ? "▲" : "▼"}</span>
           </button>
           {showDangerZone && (
-            <div className="mt-3 rounded-md border border-destructive/30 p-4 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium">Delete draft</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Permanently removes this draft and its WIF file. Projects are not deleted.</p>
+            <div className="mt-3 space-y-3">
+              {/* Archive / Unarchive */}
+              <div className="rounded-md border border-border p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">{draft.archived_at ? "Unarchive draft" : "Archive draft"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {draft.archived_at
+                      ? "Restore this draft to your active list."
+                      : "Hide this draft from active lists without deleting it. Existing projects are unaffected."}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => draft.archived_at ? unarchiveMutation.mutate() : archiveMutation.mutate()}
+                  disabled={archiveMutation.isPending || unarchiveMutation.isPending}
+                >
+                  {draft.archived_at ? "Unarchive" : "Archive"}
+                </Button>
               </div>
-              <div className="flex gap-2 shrink-0">
-                {!confirmDelete ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setConfirmDelete(true)}
-                  >
-                    Delete draft
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate()}
-                      disabled={deleteMutation.isPending}
-                    >
-                      Confirm delete
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>
-                      Cancel
-                    </Button>
-                  </>
+
+              {/* Delete */}
+              <div className="rounded-md border border-destructive/30 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Delete draft</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Permanently removes this draft and its WIF file.</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    {!confirmDelete && !deleteConflict ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setConfirmDelete(true)}
+                      >
+                        Delete draft
+                      </Button>
+                    ) : confirmDelete ? (
+                      <>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deleteMutation.mutate(false)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          Confirm delete
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>
+                          Cancel
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* 409 conflict */}
+                {deleteConflict && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-destructive font-medium">
+                      This draft is used by {deleteConflict.projects.length} active project{deleteConflict.projects.length !== 1 ? "s" : ""}:
+                    </p>
+                    <ul className="text-xs text-muted-foreground space-y-0.5 pl-3">
+                      {deleteConflict.projects.map((p) => <li key={p.id}>· {p.name}</li>)}
+                    </ul>
+                    <p className="text-xs text-muted-foreground">
+                      Remove this draft from those projects first, or force-delete — which will also delete all listed projects.
+                    </p>
+                    {!confirmForceDelete ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setConfirmForceDelete(true)}
+                      >
+                        Force delete ({deleteConflict.projects.length} project{deleteConflict.projects.length !== 1 ? "s" : ""} will be deleted)
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deleteMutation.mutate(true)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          Confirm force delete
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

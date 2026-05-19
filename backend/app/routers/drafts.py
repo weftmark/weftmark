@@ -85,6 +85,7 @@ class DraftSummary(BaseModel):
     weaving_width_override_cm: float | None
     epi_override: float | None
     is_shared: bool
+    archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
@@ -96,6 +97,7 @@ class DraftSummary(BaseModel):
         data["has_preview"] = storage.preview_exists(d.preview_path)
         data["has_drawdown_preview"] = storage.drawdown_preview_exists(d.drawdown_preview_path)
         data["has_modified_file"] = bool(d.wif_modified_path and storage.file_exists(d.wif_modified_path))
+        data["archived_at"] = data.pop("retired_at", None)
         return cls(**data)
 
 
@@ -190,14 +192,15 @@ async def create_draft(
 
 @router.get("", response_model=list[DraftSummary])
 async def list_drafts(
+    include_archived: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[DraftSummary]:
-    result = await db.scalars(
-        select(Draft)
-        .where(Draft.owner_id == current_user.id, Draft.deleted_at.is_(None))
-        .order_by(Draft.created_at.desc())
-    )
+    q = select(Draft).where(Draft.owner_id == current_user.id, Draft.deleted_at.is_(None))
+    if not include_archived:
+        q = q.where(Draft.retired_at.is_(None))
+    q = q.order_by(Draft.created_at.desc())
+    result = await db.scalars(q)
     return [DraftSummary.from_draft(d) for d in result.all()]
 
 
@@ -488,18 +491,64 @@ async def download_wif_modified(
 
 
 # ---------------------------------------------------------------------------
-# Delete (soft)
+# Delete (soft) — with deletion guard and optional force
 # ---------------------------------------------------------------------------
 
 
 @router.delete("/{draft_id}", status_code=204)
 async def delete_draft(
     draft_id: uuid.UUID,
+    force: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    from app.models.project import Project
+
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    active_projects = (
+        await db.scalars(select(Project).where(Project.draft_id == draft.id, Project.deleted_at.is_(None)))
+    ).all()
+
+    if active_projects and not force:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "draft_in_use",
+                "projects": [{"id": str(p.id), "name": p.name} for p in active_projects],
+            },
+        )
+
+    for p in active_projects:
+        p.soft_delete()
+
+    draft.soft_delete()
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Archive / Unarchive
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{draft_id}/archive", status_code=204)
+async def archive_draft(
+    draft_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     draft = await _get_owned_draft(draft_id, current_user, db)
-    draft.soft_delete()
+    draft.retire()
+    await db.commit()
+
+
+@router.post("/{draft_id}/unarchive", status_code=204)
+async def unarchive_draft(
+    draft_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    draft = await _get_owned_draft(draft_id, current_user, db)
+    draft.unretire()
     await db.commit()
 
 

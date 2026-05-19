@@ -86,6 +86,7 @@ export interface Loom {
   has_photo: boolean;
   current_version: LoomVersion | null;
   reeds: LoomReed[];
+  retired_at: string | null;
   created_at: string;
 }
 
@@ -176,8 +177,8 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function listLooms(): Promise<Loom[]> {
-  return req("/api/looms");
+export function listLooms(includeRetired = false): Promise<Loom[]> {
+  return req(`/api/looms${includeRetired ? "?include_retired=true" : ""}`);
 }
 
 export function getLoom(id: string): Promise<LoomDetail> {
@@ -216,8 +217,30 @@ export function addLoomVersion(id: string, payload: AddVersionPayload): Promise<
   });
 }
 
-export function deleteLoom(id: string): Promise<void> {
-  return req(`/api/looms/${id}`, { method: "DELETE" });
+export async function deleteLoom(id: string, force = false): Promise<import("@/api/drafts").DeleteConflict | void> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(`/api/looms/${id}${force ? "?force=true" : ""}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers,
+  });
+  if (res.status === 409) {
+    const body = await res.json();
+    return body.detail as import("@/api/drafts").DeleteConflict;
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(err.detail ?? "Request failed");
+  }
+}
+
+export function retireLoom(id: string): Promise<void> {
+  return req(`/api/looms/${id}/retire`, { method: "POST" });
+}
+
+export function unretireLoom(id: string): Promise<void> {
+  return req(`/api/looms/${id}/unretire`, { method: "POST" });
 }
 
 export function loomPhotoUrl(id: string): string {

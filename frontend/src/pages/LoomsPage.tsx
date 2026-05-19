@@ -14,7 +14,7 @@ interface LoomProjectCounts {
   abandoned: number;
 }
 
-function LoomCard({ loom, projectCounts }: { loom: Loom; projectCounts?: LoomProjectCounts }) {
+function LoomCard({ loom, projectCounts, retired }: { loom: Loom; projectCounts?: LoomProjectCounts; retired?: boolean }) {
   const v = loom.current_version;
   return (
     <Link
@@ -47,7 +47,10 @@ function LoomCard({ loom, projectCounts }: { loom: Loom; projectCounts?: LoomPro
             )}
           </div>
         </div>
-        <div className="text-right text-xs text-muted-foreground shrink-0">
+        <div className="flex items-center gap-2 shrink-0 text-right text-xs text-muted-foreground">
+          {retired && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Retired</span>
+          )}
           {v && (
             <span>
               {v.num_shafts != null ? `${v.num_shafts}S` : null}
@@ -96,11 +99,12 @@ function LoomCard({ loom, projectCounts }: { loom: Loom; projectCounts?: LoomPro
 
 export function LoomsPage() {
   const [showNew, setShowNew] = useState(false);
+  const [showRetired, setShowRetired] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: looms, isLoading, error } = useQuery({
-    queryKey: ["looms"],
-    queryFn: listLooms,
+    queryKey: ["looms", { includeRetired: showRetired }],
+    queryFn: () => listLooms(showRetired),
   });
 
   const { data: projects = [] } = useQuery({
@@ -133,6 +137,13 @@ export function LoomsPage() {
           <Link to="/catalog/looms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Browse loom catalog
           </Link>
+          <button
+            type="button"
+            onClick={() => setShowRetired((v) => !v)}
+            className={`text-sm transition-colors ${showRetired ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {showRetired ? "Hide retired" : "Show retired"}
+          </button>
           <Button size="sm" onClick={() => setShowNew(true)}>New loom</Button>
         </div>
       </div>
@@ -143,21 +154,42 @@ export function LoomsPage() {
           Failed to load looms
         </p>
       )}
-      {looms && looms.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-muted-foreground">No looms yet.</p>
-          <Button className="mt-4" onClick={() => setShowNew(true)}>
-            Add your first loom
-          </Button>
-        </div>
-      )}
-      {looms && looms.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {looms.map((l) => (
-            <LoomCard key={l.id} loom={l} projectCounts={projectCountsByLoom[l.id]} />
-          ))}
-        </div>
-      )}
+
+      {(() => {
+        const activeLooms = (looms ?? []).filter((l) => !l.retired_at);
+        const retiredLooms = (looms ?? []).filter((l) => l.retired_at);
+        return (
+          <>
+            {looms && activeLooms.length === 0 && retiredLooms.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <p className="text-muted-foreground">{showRetired ? "No retired looms." : "No looms yet."}</p>
+                {!showRetired && (
+                  <Button className="mt-4" onClick={() => setShowNew(true)}>
+                    Add your first loom
+                  </Button>
+                )}
+              </div>
+            )}
+            {activeLooms.length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {activeLooms.map((l) => (
+                  <LoomCard key={l.id} loom={l} projectCounts={projectCountsByLoom[l.id]} />
+                ))}
+              </div>
+            )}
+            {showRetired && retiredLooms.length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">Retired</h2>
+                <div className="grid gap-4 sm:grid-cols-2 opacity-60">
+                  {retiredLooms.map((l) => (
+                    <LoomCard key={l.id} loom={l} projectCounts={projectCountsByLoom[l.id]} retired />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {showNew && (
         <NewLoomModal onSuccess={handleSuccess} onClose={() => setShowNew(false)} />

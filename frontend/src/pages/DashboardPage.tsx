@@ -296,12 +296,12 @@ export function DashboardPage() {
 
   const { data: drafts = [] } = useQuery({
     queryKey: ["drafts"],
-    queryFn: listDrafts,
+    queryFn: () => listDrafts(),
   });
 
   const { data: looms = [] } = useQuery({
     queryKey: ["looms"],
-    queryFn: listLooms,
+    queryFn: () => listLooms(),
   });
 
   const activeProjects = projects.filter((a) => (a.status === "active" || a.status === "created") && !!a.loom_id);

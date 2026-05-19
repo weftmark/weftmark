@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 export function DraftsPage() {
   const queryClient = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const { data: drafts = [], isLoading, error } = useQuery({
-    queryKey: ["drafts"],
-    queryFn: listDrafts,
+    queryKey: ["drafts", { includeArchived: showArchived }],
+    queryFn: () => listDrafts(showArchived),
   });
 
   const { data: projects = [] } = useQuery({
@@ -38,11 +39,23 @@ export function DraftsPage() {
     queryClient.invalidateQueries({ queryKey: ["drafts"] });
   };
 
+  const activeDrafts = drafts.filter((d) => !d.archived_at);
+  const archivedDrafts = drafts.filter((d) => d.archived_at);
+
   return (
     <div className="p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold">Drafts</h1>
-        <Button onClick={() => setShowUpload(true)}>New Draft</Button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            className={`text-sm transition-colors ${showArchived ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {showArchived ? "Hide archived" : "Show archived"}
+          </button>
+          <Button onClick={() => setShowUpload(true)}>New Draft</Button>
+        </div>
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading drafts…</p>}
@@ -51,19 +64,34 @@ export function DraftsPage() {
       {!isLoading && drafts.length === 0 && (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <p className="text-sm text-muted-foreground">
-            No drafts yet. Upload a WIF file to get started.
+            {showArchived ? "No archived drafts." : "No drafts yet. Upload a WIF file to get started."}
           </p>
-          <Button className="mt-4" onClick={() => setShowUpload(true)}>
-            New Draft
-          </Button>
+          {!showArchived && (
+            <Button className="mt-4" onClick={() => setShowUpload(true)}>
+              New Draft
+            </Button>
+          )}
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {drafts.map((d) => (
-          <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} />
-        ))}
-      </div>
+      {activeDrafts.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {activeDrafts.map((d) => (
+            <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} />
+          ))}
+        </div>
+      )}
+
+      {showArchived && archivedDrafts.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">Archived</h2>
+          <div className="grid gap-4 sm:grid-cols-2 opacity-60">
+            {archivedDrafts.map((d) => (
+              <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} archived />
+            ))}
+          </div>
+        </div>
+      )}
 
       {showUpload && (
         <UploadWifModal

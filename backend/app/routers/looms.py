@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -132,6 +132,7 @@ class LoomSummary(BaseModel):
     has_photo: bool
     current_version: LoomVersionSchema | None
     reeds: list[LoomReedSchema]
+    retired_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -151,6 +152,7 @@ class LoomSummary(BaseModel):
             "has_photo": loom.photo_path is not None,
             "current_version": loom.current_version,
             "reeds": loom.reeds,
+            "retired_at": loom.retired_at,
             "created_at": loom.created_at,
         }
         return cls.model_validate(data)
@@ -174,6 +176,7 @@ class LoomDetail(BaseModel):
     current_version: LoomVersionSchema | None
     versions: list[LoomVersionSchema]
     reeds: list[LoomReedSchema]
+    retired_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -198,6 +201,7 @@ class LoomDetail(BaseModel):
             "current_version": loom.current_version,
             "versions": loom.versions,
             "reeds": loom.reeds,
+            "retired_at": loom.retired_at,
             "created_at": loom.created_at,
         }
         return cls.model_validate(data)
@@ -391,10 +395,11 @@ async def create_loom(
 
 @router.get("", response_model=list[LoomSummary])
 async def list_looms(
+    include_retired: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[LoomSummary]:
-    result = await db.scalars(
+    q = (
         select(Loom)
         .where(Loom.owner_id == current_user.id, Loom.deleted_at.is_(None))
         .options(
@@ -405,6 +410,9 @@ async def list_looms(
         )
         .order_by(Loom.created_at.desc())
     )
+    if not include_retired:
+        q = q.where(Loom.retired_at.is_(None))
+    result = await db.scalars(q)
     return [LoomSummary.from_loom(loom) for loom in result.all()]
 
 
@@ -440,11 +448,58 @@ async def update_loom(
 @router.delete("/{loom_id}", status_code=204)
 async def delete_loom(
     loom_id: uuid.UUID,
+    force: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    from app.models.project import Project
+
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    active_projects = (
+        await db.scalars(select(Project).where(Project.loom_id == loom.id, Project.deleted_at.is_(None)))
+    ).all()
+
+    if active_projects and not force:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "loom_in_use",
+                "projects": [{"id": str(p.id), "name": p.name} for p in active_projects],
+            },
+        )
+
+    for p in active_projects:
+        p.loom_id = None
+        p.loom_version_id = None
+
+    loom.soft_delete()
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Retire / Unretire
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{loom_id}/retire", status_code=204)
+async def retire_loom(
+    loom_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
-    loom.soft_delete()
+    loom.retire()
+    await db.commit()
+
+
+@router.post("/{loom_id}/unretire", status_code=204)
+async def unretire_loom(
+    loom_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    loom.unretire()
     await db.commit()
 
 
