@@ -109,7 +109,7 @@ class LoomReference(Base, TimestampMixin):
     dobby_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     compatible_software: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
-    looms: Mapped[list["Loom"]] = relationship("Loom", back_populates="loom_reference")
+    loom_versions: Mapped[list["LoomVersion"]] = relationship("LoomVersion", back_populates="loom_reference")
 
 
 class Loom(Base, TimestampMixin, SoftDeleteMixin, RetireMixin):
@@ -117,9 +117,6 @@ class Loom(Base, TimestampMixin, SoftDeleteMixin, RetireMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    loom_reference_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("loom_references.id", ondelete="SET NULL"), nullable=True, index=True
-    )
 
     loom_type: Mapped[str] = mapped_column(String(30), nullable=False, default="floor_loom")
 
@@ -149,7 +146,6 @@ class Loom(Base, TimestampMixin, SoftDeleteMixin, RetireMixin):
         "LoomReed", back_populates="loom", order_by="LoomReed.dents_per_inch", cascade="all, delete-orphan"
     )
     owner: Mapped["User"] = relationship("User", foreign_keys=[owner_id])  # type: ignore[name-defined]
-    loom_reference: Mapped["LoomReference | None"] = relationship("LoomReference", back_populates="looms")
 
     @property
     def current_version(self) -> "LoomVersion | None":
@@ -161,6 +157,9 @@ class LoomVersion(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     loom_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("looms.id"), nullable=False, index=True)
+    loom_reference_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("loom_references.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     effective_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -176,6 +175,7 @@ class LoomVersion(Base, TimestampMixin):
     warp_waste_unit: Mapped[str] = mapped_column(String(5), default="cm", nullable=False)
 
     loom: Mapped["Loom"] = relationship("Loom", back_populates="versions")
+    loom_reference: Mapped["LoomReference | None"] = relationship("LoomReference", back_populates="loom_versions")
     photos: Mapped[list["LoomVersionPhoto"]] = relationship(
         "LoomVersionPhoto",
         back_populates="version",

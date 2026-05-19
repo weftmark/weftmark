@@ -11,7 +11,7 @@ import {
   uploadVersionPhoto, deleteVersionPhoto, versionPhotoUrl,
   uploadVersionReceipt, deleteVersionReceipt, versionReceiptUrl,
   addAccessory, deleteAccessory, updateVersion,
-  addReed, deleteReed, linkLoomReference,
+  addReed, deleteReed, linkVersionReference,
   type LoomDetail, type LoomVersion, type LoomVersionPhoto,
   type LoomVersionReceipt, type LoomVersionAccessory, type LoomReed,
   LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
@@ -630,6 +630,18 @@ function VersionCard({
   const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [open, setOpen] = useState(isCurrent);
   const [editing, setEditing] = useState(false);
+  const [showLinkCatalog, setShowLinkCatalog] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+
+  const handleUnlink = async () => {
+    setUnlinking(true);
+    try {
+      await linkVersionReference(loom.id, version.id, null);
+      onChanged();
+    } finally {
+      setUnlinking(false);
+    }
+  };
   const [editName, setEditName] = useState(version.name ?? "");
   const [editDesc, setEditDesc] = useState(version.description ?? "");
   const [editWasteUnit, setEditWasteUnit] = useState<LengthUnit>(
@@ -794,16 +806,63 @@ function VersionCard({
           </div>
 
           {!isReadOnly && (
-            <div className="border-t pt-3">
-              <Button size="sm" variant="outline" onClick={() => onClone(version)}>
-                Clone this configuration
-              </Button>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Creates a new configuration pre-filled with {displayName}'s spec and accessories.
-              </p>
+            <div className="border-t pt-3 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {version.loom_reference_id ? (
+                  <>
+                    <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
+                      {version.loom_reference_brand && version.loom_reference_model_name
+                        ? `${version.loom_reference_brand} ${version.loom_reference_model_name}`
+                        : "Linked to catalog"}
+                    </span>
+                    <button
+                      onClick={() => setShowLinkCatalog(true)}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Change
+                    </button>
+                    <button
+                      onClick={handleUnlink}
+                      disabled={unlinking}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      {unlinking ? "Unlinking…" : "Unlink"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
+                      Not in catalog
+                    </span>
+                    <button
+                      onClick={() => setShowLinkCatalog(true)}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Link to catalog…
+                    </button>
+                    <CatalogRequestButton loom={loom} />
+                  </>
+                )}
+              </div>
+              <div>
+                <Button size="sm" variant="outline" onClick={() => onClone(version)}>
+                  Clone this configuration
+                </Button>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Creates a new configuration pre-filled with {displayName}'s spec and accessories.
+                </p>
+              </div>
             </div>
           )}
         </div>
+      )}
+      {showLinkCatalog && (
+        <LinkToCatalogModal
+          loom={loom}
+          version={version}
+          onSuccess={() => { setShowLinkCatalog(false); onChanged(); }}
+          onClose={() => setShowLinkCatalog(false)}
+        />
       )}
     </div>
   );
@@ -820,7 +879,6 @@ export function LoomDetailPage() {
   const { user } = useAuthContext();
   const [showAddVersion, setShowAddVersion] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [showLinkCatalog, setShowLinkCatalog] = useState(false);
   const [cloneSource, setCloneSource] = useState<LoomVersion | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteConflict, setDeleteConflict] = useState<DeleteConflict | null>(null);
@@ -829,7 +887,6 @@ export function LoomDetailPage() {
   const [retiring, setRetiring] = useState(false);
   const [confirmRetire, setConfirmRetire] = useState(false);
   const [dangerZoneOpen, setDangerZoneOpen] = useState(false);
-  const [unlinking, setUnlinking] = useState(false);
 
   const { data: loom, isLoading, error } = useQuery({
     queryKey: ["loom", id],
@@ -891,17 +948,6 @@ export function LoomDetailPage() {
     }
   };
 
-  const handleUnlink = async () => {
-    if (!loom) return;
-    setUnlinking(true);
-    try {
-      await linkLoomReference(loom.id, null);
-      invalidate();
-    } finally {
-      setUnlinking(false);
-    }
-  };
-
   if (isLoading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground text-sm">Loading…</p></div>;
   if (error || !loom) return <div className="flex min-h-screen items-center justify-center"><p className="text-destructive text-sm">Loom not found.</p></div>;
 
@@ -921,11 +967,6 @@ export function LoomDetailPage() {
           <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
         <div className="flex gap-2">
-          {!isReadOnly && (
-            <Button size="sm" variant="outline" onClick={() => setShowLinkCatalog(true)}>
-              Update from catalog
-            </Button>
-          )}
           {!isReadOnly && <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>}
           {!isReadOnly && <Button size="sm" onClick={() => setShowAddVersion(true)}>Add version</Button>}
         </div>
@@ -952,31 +993,6 @@ export function LoomDetailPage() {
             </div>
           )}
           {loom.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>}
-          {!isReadOnly && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {loom.loom_reference_id ? (
-                <>
-                  <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
-                    Linked to catalog
-                  </span>
-                  <button
-                    onClick={handleUnlink}
-                    disabled={unlinking}
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    {unlinking ? "Unlinking…" : "Unlink"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
-                    Not in catalog
-                  </span>
-                  <CatalogRequestButton loom={loom} />
-                </>
-              )}
-            </div>
-          )}
           {activeProject && (
             <div className="rounded-md border border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-700 px-3 py-2.5 text-sm flex items-center justify-between gap-4">
               <div>
@@ -1122,9 +1138,6 @@ export function LoomDetailPage() {
       )}
       {showEdit && (
         <EditLoomModal loom={loom} onSuccess={handleEditSaved} onClose={() => setShowEdit(false)} />
-      )}
-      {showLinkCatalog && (
-        <LinkToCatalogModal loom={loom} onSuccess={() => { setShowLinkCatalog(false); invalidate(); }} onClose={() => setShowLinkCatalog(false)} />
       )}
       {cloneSource && (
         <CloneVersionModal loomId={loom.id} source={cloneSource} onSuccess={handleCloned} onClose={() => setCloneSource(null)} />

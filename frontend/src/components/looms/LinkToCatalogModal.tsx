@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import {
   searchLoomCatalog,
   updateLoom,
-  linkLoomReference,
+  linkVersionReference,
   updateVersion,
   type LoomDetail,
+  type LoomVersion,
   type LoomReferenceSummary,
   type LoomType,
   type UpdateVersionPayload,
@@ -99,11 +100,12 @@ function deriveTreadles(
 
 interface Props {
   loom: LoomDetail;
+  version: LoomVersion;
   onSuccess: () => void;
   onClose: () => void;
 }
 
-export function LinkToCatalogModal({ loom, onSuccess, onClose }: Props) {
+export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props) {
   const [step, setStep] = useState<Step>("search");
 
   // Search state — displayQuery shown in input, searchQuery triggers API
@@ -195,13 +197,13 @@ export function LinkToCatalogModal({ loom, onSuccess, onClose }: Props) {
     const sOpts = ref.shaft_count_options ?? [];
     const wOpts = buildWidthOptions(ref);
 
-    // Auto-match shaft to current version
-    setSelectedShaftIdx(closestIdx(sOpts, loom.current_version?.num_shafts));
+    // Auto-match shaft to target version
+    setSelectedShaftIdx(closestIdx(sOpts, version.num_shafts));
 
-    // Auto-match width to current version (convert units if needed)
-    if (wOpts.length > 0 && loom.current_version?.weaving_width) {
-      const curVal = parseFloat(loom.current_version.weaving_width);
-      const curUnit = loom.current_version.weaving_width_unit as "cm" | "in";
+    // Auto-match width to target version (convert units if needed)
+    if (wOpts.length > 0 && version.weaving_width) {
+      const curVal = parseFloat(version.weaving_width);
+      const curUnit = version.weaving_width_unit as "cm" | "in";
       const targetUnit = wOpts[0].unit;
       const converted =
         curUnit === targetUnit
@@ -221,7 +223,7 @@ export function LinkToCatalogModal({ loom, onSuccess, onClose }: Props) {
   }
 
   // Diff rows for confirm step
-  const cv = loom.current_version;
+  const cv = version;
 
   interface DiffRow {
     label: string;
@@ -300,7 +302,7 @@ export function LinkToCatalogModal({ loom, onSuccess, onClose }: Props) {
         model_name: selectedRef.model_name,
         loom_type: newLoomType,
       });
-      await linkLoomReference(loom.id, selectedRef.id);
+      await linkVersionReference(loom.id, version.id, selectedRef.id);
 
       if (cv) {
         const versionPayload: UpdateVersionPayload = {};
@@ -332,9 +334,11 @@ export function LinkToCatalogModal({ loom, onSuccess, onClose }: Props) {
       <div className="w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg overflow-y-auto max-h-[90vh]">
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-lg font-semibold">Update from catalog</h2>
+            <h2 className="text-lg font-semibold">
+              {version.loom_reference_id ? "Change catalog link" : "Link to catalog"}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              {loom.manufacturer} {loom.model_name}
+              {loom.manufacturer} {loom.model_name} — {version.name ?? `v${version.version_number}`}
             </p>
           </div>
           <button
