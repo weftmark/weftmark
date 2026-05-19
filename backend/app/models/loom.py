@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, Float, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -36,7 +36,7 @@ class LoomReference(Base, TimestampMixin):
     """Admin-maintained catalog of commercially available looms seeded from market research."""
 
     __tablename__ = "loom_references"
-    __table_args__ = (UniqueConstraint("brand", "model_name", name="ix_loom_references_brand_model"),)
+    __table_args__ = (Index("ix_loom_references_brand_model", "brand", "model_name", unique=True),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
