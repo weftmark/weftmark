@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDraft, deleteDraft, archiveDraft, unarchiveDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat, type DeleteConflict } from "@/api/drafts";
+import { getDraft, deleteDraft, archiveDraft, unarchiveDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, updateDraft, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat, type DeleteConflict } from "@/api/drafts";
+import { TagInput } from "@/components/ui/TagInput";
+import { TagChips } from "@/components/ui/TagChips";
 import { addDraftToCollection, removeDraftFromCollection } from "@/api/collections";
 import { AddToCollectionModal } from "@/components/collections/AddToCollectionModal";
 import { listProjects } from "@/api/projects";
@@ -41,6 +43,8 @@ export function DraftDetailPage() {
   const [weavingWidthUnit, setWeavingWidthUnit] = useState<"cm" | "in">(displayUnit);
   const [editingEpi, setEditingEpi] = useState(false);
   const [epiInput, setEpiInput] = useState("");
+  const [editingTags, setEditingTags] = useState(false);
+  const [pendingTags, setPendingTags] = useState<string[]>([]);
 
   const { data: draft, isLoading, error } = useQuery({
     queryKey: ["draft", id],
@@ -127,6 +131,15 @@ export function DraftDetailPage() {
     },
   });
 
+  const tagsMutation = useMutation({
+    mutationFn: (tags: string[]) => updateDraft(id!, { tags }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["draft", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["drafts"] });
+      setEditingTags(false);
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -186,10 +199,45 @@ export function DraftDetailPage() {
       )}
       <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm">
-          <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
-          <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="font-medium text-foreground">{draft.name}</span>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
+            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="font-medium text-foreground">{draft.name}</span>
+          </div>
+          {!editingTags && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {draft.tags && draft.tags.length > 0 && (
+                <TagChips tags={draft.tags} max={10} />
+              )}
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => { setPendingTags(draft.tags ?? []); setEditingTags(true); }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {draft.tags && draft.tags.length > 0 ? "Edit tags" : "+ Add tags"}
+                </button>
+              )}
+            </div>
+          )}
+          {editingTags && (
+            <div className="flex items-center gap-2">
+              <div className="w-64">
+                <TagInput tags={pendingTags} onChange={setPendingTags} />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => tagsMutation.mutate(pendingTags)}
+                disabled={tagsMutation.isPending}
+              >
+                {tagsMutation.isPending ? "Saving…" : "Save"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingTags(false)}>
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
         {!isReadOnly && (
           <Button size="sm" variant="outline" onClick={() => setShowAddToCollection(true)}>

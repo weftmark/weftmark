@@ -84,12 +84,12 @@ async def _seed_draft(db_session, owner_id, *, wif_colors=None, deleted=False):
     if wif_colors is None:
         # Omit wif_colors → SQL NULL default; include deleted_at when needed
         _bool_defaults = "FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE"
-        _jsonb_defaults = "'[]'::jsonb, '[]'::jsonb"
+        _jsonb_defaults = "'[]'::jsonb, '[]'::jsonb, '[]'::jsonb"
         _bool_cols = (
             "has_threading, has_tieup, has_treadling, has_liftplan, has_color_palette, "
             "liftplan_generated, warp_length_overridden, is_shared"
         )
-        _jsonb_cols = "lint_warnings, lint_errors"
+        _jsonb_cols = "lint_warnings, lint_errors, tags"
         if deleted:
             sql = text(
                 "INSERT INTO drafts "

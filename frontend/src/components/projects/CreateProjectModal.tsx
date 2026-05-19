@@ -4,6 +4,7 @@ import { createProject, completeProject, abandonProject, listProjects, ApiError,
 import { listDrafts } from "@/api/drafts";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { TagInput } from "@/components/ui/TagInput";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, convertLength, formatLength } from "@/lib/units";
 
@@ -47,6 +48,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
     setWarpWaste((v) => convertLen(v, newUnit));
     setLengthUnit(newUnit);
   };
+  const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conflictProject, setConflictProject] = useState<ProjectSummary | null>(null);
@@ -169,6 +171,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
     waste_between_items: wasteBetween ? parseFloat(wasteBetween) : undefined,
     warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
     length_unit: lengthUnit,
+    tags: tags.length ? tags : undefined,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -226,6 +229,11 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
           <div>
             <label className="mb-1 block text-sm font-medium">Project name <span className="text-destructive">*</span></label>
             <input className={f} value={name} onChange={(e) => setName(e.target.value)} placeholder="Spring towels — warp 1" required />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Tags <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <TagInput tags={tags} onChange={setTags} placeholder="cotton, twill…" />
           </div>
 
           <div>

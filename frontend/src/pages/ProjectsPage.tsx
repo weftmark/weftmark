@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listProjects, projectDrawdownPreviewUrl, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
@@ -8,6 +8,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { Button } from "@/components/ui/button";
+import { TagChips } from "@/components/ui/TagChips";
 import { Link } from "react-router-dom";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -104,6 +105,9 @@ function ProjectCard({ project, onAssign }: {
             <p className="mt-0.5 text-sm text-muted-foreground">{PROJECT_TYPE_LABELS[project.project_type]}</p>
             {endDate && (
               <p className="mt-0.5 text-xs text-muted-foreground">{fmtDate(endDate)}</p>
+            )}
+            {project.tags && project.tags.length > 0 && (
+              <TagChips tags={project.tags} className="mt-1.5" />
             )}
             {!isPlanning && project.status === "active" && (
               <div className="mt-3">
@@ -203,23 +207,34 @@ export function ProjectsPage() {
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [assigningProjectId, setAssigningProjectId] = useState<string | null>(null);
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
   const { data: projects = [], isLoading, error } = useQuery({
     queryKey: ["projects"],
     queryFn: () => listProjects(),
   });
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    projects.forEach((p) => p.tags?.forEach((t) => set.add(t)));
+    return [...set].sort();
+  }, [projects]);
+
+  const filteredProjects = activeTagFilter
+    ? projects.filter((p) => p.tags?.includes(activeTagFilter))
+    : projects;
+
   const currentYear = new Date().getFullYear();
 
-  const planning = projects.filter((p) => (p.status === "active" || p.status === "created") && !p.loom_id);
-  const notStarted = projects.filter((p) => p.status === "created" && !!p.loom_id);
-  const active = projects.filter((p) => p.status === "active" && !!p.loom_id);
+  const planning = filteredProjects.filter((p) => (p.status === "active" || p.status === "created") && !p.loom_id);
+  const notStarted = filteredProjects.filter((p) => p.status === "created" && !!p.loom_id);
+  const active = filteredProjects.filter((p) => p.status === "active" && !!p.loom_id);
 
-  const completed = projects
+  const completed = filteredProjects
     .filter((p) => p.status === "completed")
     .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
 
-  const abandoned = projects
+  const abandoned = filteredProjects
     .filter((p) => p.status === "abandoned")
     .sort((a, b) => (b.abandoned_at ?? "").localeCompare(a.abandoned_at ?? ""));
 
@@ -232,6 +247,32 @@ export function ProjectsPage() {
         <h1 className="text-xl font-semibold">Projects</h1>
         <Button size="sm" onClick={() => setShowCreate(true)}>New project</Button>
       </div>
+
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                activeTagFilter === tag
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent/20"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+          {activeTagFilter && (
+            <button
+              onClick={() => setActiveTagFilter(null)}
+              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              <AppIcons.close className="h-3 w-3" /> Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {error && <p className="text-sm text-destructive">Failed to load projects.</p>}
