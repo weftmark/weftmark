@@ -2,15 +2,19 @@
 writes them through the shared JsonFormatter logger so client-side events
 appear in the same JSON log stream as backend events.
 
-Rate limiting is handled at the nginx layer (30 req/s per IP on /api/).
-No authentication required — this endpoint only writes, never reads.
+Rate limiting is handled at the nginx layer (dedicated client_logs zone: 2 req/s).
+Unauthenticated requests are silently dropped (204 with no logging) to prevent
+log injection from external callers while never breaking client-side logging UX.
 """
 
 import logging
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
+
+from app.deps import get_optional_user
+from app.models.user import User
 
 log = logging.getLogger("frontend")
 router = APIRouter(prefix="/api/logs", tags=["logs"])
@@ -28,7 +32,10 @@ class ClientLogEvent(BaseModel):
 async def ingest_client_logs(
     events: Annotated[list[ClientLogEvent], Field(max_length=_MAX_EVENTS_PER_REQUEST)],
     request: Request,
+    current_user: User | None = Depends(get_optional_user),
 ) -> None:
+    if current_user is None:
+        return
     client_ip = request.headers.get("X-Real-IP") or (request.client.host if request.client else "unknown")
     for event in events[:_MAX_EVENTS_PER_REQUEST]:
         level_fn = getattr(log, event.level, log.info)

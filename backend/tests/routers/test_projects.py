@@ -733,6 +733,19 @@ class TestProjectPhotos:
         )
         assert resp.status_code == 400
 
+    async def test_spoofed_content_type_rejected(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        # Regression: garbage bytes claiming to be JPEG must be rejected via PIL
+        # magic-byte check, not the client-supplied Content-Type header.
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/photos",
+            files={"file": ("evil.jpg", b"not an image at all", "image/jpeg")},
+        )
+        assert resp.status_code == 400
+
     async def test_upload_cap_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)

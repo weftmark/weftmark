@@ -24,7 +24,7 @@ from app.models.loom import (
 )
 from app.models.user import User
 from app.services import storage
-from app.services.images import resize_to_jpeg
+from app.services.images import resize_to_jpeg, validate_image_format
 from app.services.storage_quota import check_storage_quota
 
 router = APIRouter(prefix="/api/looms", tags=["looms"])
@@ -303,6 +303,13 @@ def _validate_image(file: UploadFile) -> None:
         raise HTTPException(status_code=400, detail=f"Unsupported image type: {ct}. Use JPEG, PNG, WebP, or GIF.")
 
 
+def _validate_image_bytes(data: bytes) -> None:
+    try:
+        validate_image_format(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 def _validate_receipt(file: UploadFile) -> None:
     ct = file.content_type or ""
     if ct not in ALLOWED_RECEIPT_TYPES:
@@ -437,6 +444,7 @@ async def upload_loom_photo(
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+    _validate_image_bytes(data)
     try:
         data = resize_to_jpeg(data)
     except Exception:
@@ -528,6 +536,7 @@ async def upload_version_photo(
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+    _validate_image_bytes(data)
     try:
         data = resize_to_jpeg(data)
     except Exception:
