@@ -215,7 +215,9 @@ async def seed() -> None:
                     inserted += 1
 
     await engine.dispose()
+    result = {"inserted": inserted, "updated": updated, "skipped": skipped}
     print(f"Seed complete: {inserted} inserted, {updated} updated, {skipped} skipped")
+    return result
 
 
 if __name__ == "__main__":
