@@ -1,21 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { PublicFooter } from "@/components/PublicFooter";
 import { listLoomCatalog, type LoomReferenceSummary } from "@/api/looms";
-
-const LOOM_TYPE_LABELS: Record<string, string> = {
-  floor_loom: "Floor Loom",
-  table_loom: "Table Loom",
-  rigid_heddle: "Rigid Heddle",
-  inkle: "Inkle",
-  dobby_floor_loom: "Dobby Floor Loom",
-  tapestry_loom: "Tapestry Loom",
-  rug_loom: "Rug Loom",
-  frame_loom: "Frame Loom",
-  other: "Other",
-};
 
 function ShaftBadge({ options }: { options: number[] | null }) {
   if (!options || options.length === 0) return <span className="text-stone-400">—</span>;
@@ -39,6 +28,7 @@ function WidthBadge({ loom }: { loom: LoomReferenceSummary }) {
 }
 
 function LoomCard({ loom }: { loom: LoomReferenceSummary }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-stone-200 bg-white p-5 space-y-3 hover:border-amber-300 transition-colors">
       <div className="flex items-start justify-between gap-2">
@@ -50,38 +40,38 @@ function LoomCard({ loom }: { loom: LoomReferenceSummary }) {
           )}
         </div>
         <span className="shrink-0 text-xs rounded-full bg-stone-100 text-stone-600 px-2.5 py-1 font-medium">
-          {LOOM_TYPE_LABELS[loom.loom_category] ?? loom.loom_category}
+          {t(`loomCatalogPage.loomTypes.${loom.loom_category}`, { defaultValue: loom.loom_category })}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-stone-700">
         {loom.shaft_count_options && loom.shaft_count_options.length > 0 && (
           <>
-            <span className="text-stone-500">Shafts</span>
+            <span className="text-stone-500">{t("loomCatalogPage.shafts")}</span>
             <ShaftBadge options={loom.shaft_count_options} />
           </>
         )}
         {(loom.weaving_width_options_cm?.length || loom.weaving_width_options_inches?.length) ? (
           <>
-            <span className="text-stone-500">Width</span>
+            <span className="text-stone-500">{t("loomCatalogPage.width")}</span>
             <WidthBadge loom={loom} />
           </>
         ) : null}
         {loom.shedding_mechanism && (
           <>
-            <span className="text-stone-500">Shedding</span>
+            <span className="text-stone-500">{t("loomCatalogPage.shedding")}</span>
             <span>{loom.shedding_mechanism.replace(/_/g, " ")}</span>
           </>
         )}
         {loom.foldable !== null && (
           <>
-            <span className="text-stone-500">Foldable</span>
-            <span>{loom.foldable ? "Yes" : "No"}</span>
+            <span className="text-stone-500">{t("loomCatalogPage.foldable")}</span>
+            <span>{loom.foldable ? t("loomCatalogPage.yes") : t("loomCatalogPage.no")}</span>
           </>
         )}
         {loom.origin_country && (
           <>
-            <span className="text-stone-500">Origin</span>
+            <span className="text-stone-500">{t("loomCatalogPage.origin")}</span>
             <span>{loom.origin_country}</span>
           </>
         )}
@@ -91,6 +81,7 @@ function LoomCard({ loom }: { loom: LoomReferenceSummary }) {
 }
 
 export function LoomCatalogPage() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loomType, setLoomType] = useState("");
@@ -145,6 +136,11 @@ export function LoomCatalogPage() {
 
   const hasFilters = search || loomType || manufacturer || shaftCount;
 
+  const loomTypeKeys = [
+    "floor_loom", "table_loom", "rigid_heddle", "inkle",
+    "dobby_floor_loom", "tapestry_loom", "rug_loom", "frame_loom", "other",
+  ];
+
   const selectClass =
     "rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
 
@@ -161,8 +157,8 @@ export function LoomCatalogPage() {
               weftmark
             </span>
           </Link>
-          <Link to="/login" className="text-sm text-stone-600 hover:text-stone-900 transition-colors">
-            Sign in
+          <Link to="/login" className="text-sm text-stone-600 hover:text-stone.900 transition-colors">
+            {t("loomCatalogPage.signIn")}
           </Link>
         </div>
       </header>
@@ -170,12 +166,12 @@ export function LoomCatalogPage() {
       <main className="flex-1 px-4 py-12">
         <div className="mx-auto max-w-5xl space-y-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Supported looms</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">{t("loomCatalogPage.title")}</h1>
             <p className="text-stone-600">
-              Looms in our catalog can be selected during loom setup for automatic spec pre-fill.
+              {t("loomCatalogPage.intro")}
               {allLooms.length > 0 && (
                 <span className="ml-1 text-stone-500">
-                  {allLooms.length} {allLooms.length === 1 ? "loom" : "looms"} in the catalog.
+                  {t("loomCatalogPage.count", { count: allLooms.length })}
                 </span>
               )}
             </p>
@@ -185,7 +181,7 @@ export function LoomCatalogPage() {
           <div className="flex flex-wrap gap-3">
             <input
               type="search"
-              placeholder="Search brand or model…"
+              placeholder={t("loomCatalogPage.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 w-56"
@@ -196,9 +192,11 @@ export function LoomCatalogPage() {
               onChange={(e) => setLoomType(e.target.value)}
               className={selectClass}
             >
-              <option value="">All loom types</option>
-              {Object.entries(LOOM_TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
+              <option value="">{t("loomCatalogPage.allTypes")}</option>
+              {loomTypeKeys.map((key) => (
+                <option key={key} value={key}>
+                  {t(`loomCatalogPage.loomTypes.${key}`, { defaultValue: key })}
+                </option>
               ))}
             </select>
 
@@ -208,7 +206,7 @@ export function LoomCatalogPage() {
               className={selectClass}
               disabled={manufacturerOptions.length === 0}
             >
-              <option value="">All manufacturers</option>
+              <option value="">{t("loomCatalogPage.allManufacturers")}</option>
               {manufacturerOptions.map((b) => (
                 <option key={b} value={b}>{b}</option>
               ))}
@@ -220,9 +218,9 @@ export function LoomCatalogPage() {
               className={selectClass}
               disabled={shaftCountOptions.length === 0}
             >
-              <option value="">Any shaft count</option>
+              <option value="">{t("loomCatalogPage.anyShaftCount")}</option>
               {shaftCountOptions.map((n) => (
-                <option key={n} value={n}>{n} shafts</option>
+                <option key={n} value={n}>{t("loomCatalogPage.shaftCountOption", { count: n })}</option>
               ))}
             </select>
 
@@ -236,16 +234,16 @@ export function LoomCatalogPage() {
                 }}
                 className="text-sm text-stone-500 hover:text-stone-700 transition-colors"
               >
-                Clear filters
+                {t("loomCatalogPage.clearFilters")}
               </button>
             )}
           </div>
 
           {isLoading ? (
-            <div className="text-center py-16 text-stone-400">Loading catalog…</div>
+            <div className="text-center py-16 text-stone-400">{t("loomCatalogPage.loading")}</div>
           ) : looms.length === 0 ? (
             <div className="text-center py-16 text-stone-400">
-              {hasFilters ? "No looms match these filters." : "The catalog is empty."}
+              {hasFilters ? t("loomCatalogPage.noFilters") : t("loomCatalogPage.empty")}
             </div>
           ) : (
             <div className="space-y-8">
