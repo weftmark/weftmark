@@ -3,9 +3,16 @@ import { useTranslation } from "react-i18next";
 import { AppIcons } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { PublicFooter } from "@/components/PublicFooter";
+import { SUPPORTED_LANGUAGES } from "@/i18n/config";
 
 export function LandingPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  function handleLangChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const code = e.target.value;
+    i18n.changeLanguage(code);
+    localStorage.setItem("wm_lang", code);
+  }
 
   const FEATURES = [
     {
@@ -52,6 +59,18 @@ export function LandingPage() {
             >
               {t("landing.navLoomCatalog")}
             </Link>
+            <select
+              value={i18n.language}
+              onChange={handleLangChange}
+              className="cursor-pointer rounded border-0 bg-transparent text-sm font-medium text-stone-600 transition-colors hover:text-stone-900 focus:outline-none focus:ring-0"
+              aria-label="Language"
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.label}
+                </option>
+              ))}
+            </select>
             <Link
               to="/login"
               className="text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"

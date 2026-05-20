@@ -111,6 +111,7 @@
     "preferences": {
       "displayName": "Display name",
       "measurementSystem": "Measurement system",
+      "language": "Language",
       "sessionIdleTimeout": "Session idle timeout",
       "timeout15min": "15 minutes",
       "timeout30min": "30 minutes",

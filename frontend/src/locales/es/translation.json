@@ -111,6 +111,7 @@
     "preferences": {
       "displayName": "Nombre de pantalla",
       "measurementSystem": "Sistema de medidas",
+      "language": "Idioma",
       "sessionIdleTimeout": "Tiempo de espera de inactividad",
       "timeout15min": "15 minutos",
       "timeout30min": "30 minutos",

@@ -111,6 +111,7 @@
     "preferences": {
       "displayName": "Anzeigename",
       "measurementSystem": "Maßsystem",
+      "language": "Sprache",
       "sessionIdleTimeout": "Sitzungs-Leerlauf-Timeout",
       "timeout15min": "15 Minuten",
       "timeout30min": "30 Minuten",

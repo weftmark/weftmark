@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { SUPPORTED_LANGUAGES } from "@/i18n/config";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
@@ -14,7 +15,7 @@ import { TrackerStylePreview, TrackerLivePreview } from "@/components/TrackerSty
 type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history";
 
 export function SettingsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, refetch } = useAuth();
   const { section } = useParams<{ section: string }>();
   const activeSection: Section = (section as Section) ?? "appearance";
@@ -355,6 +356,24 @@ export function SettingsPage() {
                       </button>
                     ))}
                   </div>
+                </Field>
+
+                <Field label={t("settings.preferences.language")}>
+                  <select
+                    value={i18n.language}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      i18n.changeLanguage(code);
+                      localStorage.setItem("wm_lang", code);
+                    }}
+                    className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
 
                 <Field label={t("settings.preferences.sessionIdleTimeout")}>
