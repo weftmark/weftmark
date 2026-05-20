@@ -113,8 +113,8 @@ def _run_post_migrate(redis_client=None):
 
 
 class TestLoomSeedBackfill:
-    def test_dispatches_when_loom_references_empty(self, mock_redis):
-        """With an empty loom_references table, the seed task is dispatched."""
+    def test_dispatches_on_startup(self, mock_redis):
+        """Seed task is always dispatched on startup (SELECT 1 condition)."""
         dispatched: list[str] = []
 
         dispatch_fn = MagicMock(side_effect=lambda: dispatched.append("seed_loom_references"))
@@ -123,7 +123,7 @@ class TestLoomSeedBackfill:
                 {
                     "name": "seed_loom_references",
                     "description": "seed test",
-                    "condition": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE 0 END FROM loom_references",
+                    "condition": "SELECT 1",
                     "dispatch": dispatch_fn,
                 }
             ]
@@ -133,8 +133,8 @@ class TestLoomSeedBackfill:
         assert "seed_loom_references" in result["dispatched"][0]
         assert "seed_loom_references" in dispatched
 
-    async def test_skips_when_loom_references_has_rows(self, db_session, mock_redis):
-        """When loom_references already has at least one row, the seed is skipped."""
+    async def test_dispatches_even_when_loom_references_has_rows(self, db_session, mock_redis):
+        """Seed is dispatched even when loom_references already has rows — it's an upsert."""
         from sqlalchemy import text
 
         await db_session.execute(
@@ -145,16 +145,19 @@ class TestLoomSeedBackfill:
         )
         await db_session.commit()
 
+        dispatched: list[str] = []
+        dispatch_fn = MagicMock(side_effect=lambda: dispatched.append("seed_loom_references"))
         with patch("app.tasks.post_migrate._backfill_registry") as mock_reg:
             mock_reg.return_value = [
                 {
                     "name": "seed_loom_references",
                     "description": "seed test",
-                    "condition": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE 0 END FROM loom_references",
-                    "dispatch": lambda: (_ for _ in ()).throw(AssertionError("should not dispatch")),
+                    "condition": "SELECT 1",
+                    "dispatch": dispatch_fn,
                 }
             ]
             result = _run_post_migrate(mock_redis)
 
-        assert result["dispatched"] == []
-        assert any("seed_loom_references" in s for s in result["skipped"])
+        assert len(result["dispatched"]) == 1
+        assert "seed_loom_references" in result["dispatched"][0]
+        assert "seed_loom_references" in dispatched

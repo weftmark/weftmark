@@ -61,9 +61,8 @@ def _backfill_registry() -> list[dict]:
         {
             "name": "seed_loom_references",
             "task_name": "app.tasks.seeds.seed_loom_references",
-            "description": "Seed loom_references table from loom-data-master.json on first startup",
-            # Returns 1 (empty) → dispatch; returns 0 (has rows) → skip.
-            "condition": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE 0 END FROM loom_references",
+            "description": "Upsert loom_references from loom-data-master.json on every startup",
+            "condition": "SELECT 1",
             "dispatch": lambda: seed_loom_references.delay(),
         },
         {
