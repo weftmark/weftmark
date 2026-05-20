@@ -1,6 +1,7 @@
 import DOMPurify from "dompurify";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, displayLength, formatApproxLength, convertLength, type LengthUnit } from "@/lib/units";
@@ -1164,6 +1165,7 @@ function NotesSection({
 // ---------------------------------------------------------------------------
 
 export function ProjectLandingPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthContext();
@@ -1246,7 +1248,7 @@ export function ProjectLandingPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
-        Loading project…
+        {t("projectLandingPage.loading")}
       </div>
     );
   }
@@ -1254,9 +1256,9 @@ export function ProjectLandingPage() {
   if (error || !project) {
     return (
       <div className="flex flex-col items-center justify-center h-40 gap-3">
-        <p className="text-sm text-muted-foreground">Project not found.</p>
+        <p className="text-sm text-muted-foreground">{t("projectLandingPage.notFound")}</p>
         <Button variant="outline" size="sm" onClick={() => navigate("/projects")}>
-          Back to Projects
+          {t("projectLandingPage.backToProjects")}
         </Button>
       </div>
     );
@@ -1296,7 +1298,7 @@ export function ProjectLandingPage() {
                 title="Project is shared — click to manage"
               >
                 <AppIcons.share className="h-3 w-3" />
-                Shared
+                {t("projectLandingPage.shared")}
               </button>
             )}
           </div>
@@ -1317,7 +1319,7 @@ export function ProjectLandingPage() {
                 onClick={() => { setPendingTags(project.tags ?? []); setEditingTags(true); }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {project.tags && project.tags.length > 0 ? "Edit tags" : "+ Add tags"}
+                {project.tags && project.tags.length > 0 ? t("projectLandingPage.editTags") : t("projectLandingPage.addTags")}
               </button>
             </div>
           )}
@@ -1331,10 +1333,10 @@ export function ProjectLandingPage() {
                 onClick={() => tagsMutation.mutate(pendingTags)}
                 disabled={tagsMutation.isPending}
               >
-                {tagsMutation.isPending ? "Saving…" : "Save"}
+                {tagsMutation.isPending ? t("projectLandingPage.saving") : t("common.save")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setEditingTags(false)}>
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           )}
@@ -1344,7 +1346,7 @@ export function ProjectLandingPage() {
           size="icon"
           className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
           onClick={() => setShowAddToCollection(true)}
-          title="Add to collection"
+          title={t("projectLandingPage.addToCollection")}
         >
           <AppIcons.collections className="h-4 w-4" />
         </Button>
@@ -1353,7 +1355,7 @@ export function ProjectLandingPage() {
           size="icon"
           className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
           onClick={() => setShareModalOpen(true)}
-          title="Share project"
+          title={t("projectLandingPage.shareProject")}
         >
           <AppIcons.share className="h-4 w-4" />
         </Button>
@@ -1379,7 +1381,7 @@ export function ProjectLandingPage() {
               onClick={() => setTieupOpen(true)}
               title="View treadle tie-up diagram"
             >
-              Tie-up
+              {t("projectLandingPage.tieUp")}
             </button>
           )}
         </div>
@@ -1462,11 +1464,11 @@ export function ProjectLandingPage() {
       {progress && (
         <section className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
+            <span className="text-muted-foreground">{t("projectLandingPage.progress")}</span>
             <span className="tabular-nums">
-              {progress.done} / {progress.total} picks · {progress.pct}%
-              {project.num_items > 1 &&
-                ` · item ${project.current_item} of ${project.num_items}`}
+              {project.num_items > 1
+                ? t("projectLandingPage.picksItems", { done: progress.done, total: progress.total, pct: progress.pct, current: project.current_item, items: project.num_items })
+                : t("projectLandingPage.picks", { done: progress.done, total: progress.total, pct: progress.pct })}
             </span>
           </div>
           <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
@@ -1520,23 +1522,23 @@ export function ProjectLandingPage() {
         {/* Complete / Abandon inline confirmations */}
         {confirmComplete && (
           <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
-            <span className="flex-1 text-muted-foreground">Mark this project as completed?</span>
+            <span className="flex-1 text-muted-foreground">{t("projectLandingPage.confirmComplete")}</span>
             <Button size="sm" variant="success" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
               Confirm
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setConfirmComplete(false); setStatusActionError(null); }} disabled={completeMutation.isPending}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         )}
         {confirmAbandon && (
           <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
-            <span className="flex-1 text-muted-foreground">Abandon this project?</span>
+            <span className="flex-1 text-muted-foreground">{t("projectLandingPage.confirmAbandon")}</span>
             <Button size="sm" variant="destructive" onClick={() => abandonMutation.mutate()} disabled={abandonMutation.isPending}>
               Confirm
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setConfirmAbandon(false); setStatusActionError(null); }} disabled={abandonMutation.isPending}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         )}
@@ -1547,13 +1549,13 @@ export function ProjectLandingPage() {
           <Button
             variant="destructive"
             onClick={() => {
-              if (confirm("Delete this project? This cannot be undone.")) {
+              if (confirm(t("projectLandingPage.deleteConfirm"))) {
                 deleteMutation.mutate();
               }
             }}
             disabled={deleteMutation.isPending}
           >
-            Delete
+            {t("projectLandingPage.delete")}
           </Button>
           {(project.status === "active" || project.status === "created") && !confirmAbandon && (
             <Button
@@ -1561,7 +1563,7 @@ export function ProjectLandingPage() {
               className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => { setConfirmAbandon(true); setConfirmComplete(false); setStatusActionError(null); }}
             >
-              Abandon
+              {t("projectLandingPage.abandon")}
             </Button>
           )}
           {project.status === "active" && !confirmComplete && (
@@ -1570,14 +1572,14 @@ export function ProjectLandingPage() {
               className="border-green-600 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400 dark:border-green-500 dark:hover:bg-green-600 dark:hover:text-white"
               onClick={() => { setConfirmComplete(true); setConfirmAbandon(false); setStatusActionError(null); }}
             >
-              Mark Complete
+              {t("projectLandingPage.markComplete")}
             </Button>
           )}
           <Link
             to={`/projects/${project.id}/warping-plan`}
             className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
           >
-            Weave Plan
+            {t("projectLandingPage.weavePlan")}
           </Link>
           {isActive && (
             <Link
@@ -1585,7 +1587,7 @@ export function ProjectLandingPage() {
               className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
             >
               <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
-              {project.status === "created" ? "Start Weaving" : "Track"}
+              {project.status === "created" ? t("projectLandingPage.startWeaving") : t("projectLandingPage.track")}
             </Link>
           )}
         </div>
