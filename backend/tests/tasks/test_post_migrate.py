@@ -156,8 +156,10 @@ def _reparse_registry_entry(dispatch_fn):
 
 class TestNoNullRows:
     def test_skips_all_when_table_empty(self):
-        """With no drafts in the DB at all, backfill is skipped."""
-        result = _run()
+        """With no drafts in the DB, draft backfill is skipped."""
+        with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
+            mock_registry.return_value = [_reparse_registry_entry(lambda: None)]
+            result = _run()
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 
@@ -197,7 +199,9 @@ class TestNullRowsPresent:
         """Soft-deleted drafts with null wif_colors must not trigger dispatch."""
         await _seed_draft(db_session, test_user.id, wif_colors=None, deleted=True)
 
-        result = _run()
+        with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
+            mock_registry.return_value = [_reparse_registry_entry(lambda: None)]
+            result = _run()
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 
