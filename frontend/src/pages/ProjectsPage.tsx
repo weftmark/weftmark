@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { listProjects, projectDrawdownPreviewUrl, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
 import { AppIcons } from "@/lib/icons";
 import { previewUrl } from "@/api/drafts";
@@ -43,10 +44,11 @@ function ProjectCard({ project, onAssign }: {
   project: ProjectSummary;
   onAssign?: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState(false);
   const isPlanning = (project.status === "active" || project.status === "created") && !project.loom_id;
   const badgeKey = isPlanning ? "plan" : project.status;
-  const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
+  const badgeLabel = isPlanning ? t("projectsPage.planBadge") : PROJECT_STATUS_LABELS[project.status];
 
   const endDate = project.status === "completed"
     ? project.completed_at
@@ -85,10 +87,10 @@ function ProjectCard({ project, onAssign }: {
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
-                  aria-label="Preview drawdown"
+                  aria-label={t("projectsPage.previewAriaLabel")}
                   onClick={(e) => { e.preventDefault(); setShowPreview(true); }}
                   className="text-muted-foreground hover:text-foreground transition-colors"
-                  title="Preview drawdown"
+                  title={t("projectsPage.previewAriaLabel")}
                 >
                   <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor" aria-hidden>
                     <rect x="0" y="0" width="5" height="5" rx="1" />
@@ -112,7 +114,7 @@ function ProjectCard({ project, onAssign }: {
             {!isPlanning && project.status === "active" && (
               <div className="mt-3">
                 <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                  <span>Pick {Math.min(project.current_pick, project.total_picks)} of {project.total_picks}</span>
+                  <span>{t("projectsPage.pickProgress", { current: Math.min(project.current_pick, project.total_picks), total: project.total_picks })}</span>
                   <span>{pct}%</span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
@@ -130,7 +132,7 @@ function ProjectCard({ project, onAssign }: {
             onClick={() => onAssign(project.id)}
             className="w-full rounded-md border border-dashed border-input px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-ring hover:bg-muted hover:text-foreground"
           >
-            Assign to loom…
+            {t("projectsPage.assignLoom")}
           </button>
         </div>
       )}
@@ -141,7 +143,7 @@ function ProjectCard({ project, onAssign }: {
             className="flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
           >
             <AppIcons.projectActive className="h-3.5 w-3.5" />
-            Continue Weaving
+            {t("projectsPage.continueWeaving")}
           </Link>
         </div>
       )}
@@ -155,12 +157,12 @@ function ProjectCard({ project, onAssign }: {
               onClick={() => setShowPreview(false)}
               className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"
             >
-              Close ✕
+              {t("projectsPage.closePreview")}
             </button>
             <p className="absolute -top-9 left-0 text-white/70 text-sm truncate max-w-xs">{project.name}</p>
             <AuthedImage
               src={project.has_drawdown_preview ? projectDrawdownPreviewUrl(project.id) : previewUrl(project.draft_id)}
-              alt="Design preview"
+              alt={t("projectsPage.previewAriaLabel")}
               className="w-full rounded-lg shadow-2xl"
               style={{ imageRendering: "pixelated" }}
             />
@@ -203,6 +205,7 @@ function YearGroup({
 }
 
 export function ProjectsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -244,8 +247,8 @@ export function ProjectsPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Projects</h1>
-        <Button size="sm" onClick={() => setShowCreate(true)}>New project</Button>
+        <h1 className="text-xl font-semibold">{t("projectsPage.title")}</h1>
+        <Button size="sm" onClick={() => setShowCreate(true)}>{t("projectsPage.newButton")}</Button>
       </div>
 
       {allTags.length > 0 && (
@@ -268,25 +271,25 @@ export function ProjectsPage() {
               onClick={() => setActiveTagFilter(null)}
               className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
-              <AppIcons.close className="h-3 w-3" /> Clear
+              <AppIcons.close className="h-3 w-3" /> {t("projectsPage.clearFilter")}
             </button>
           )}
         </div>
       )}
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {error && <p className="text-sm text-destructive">Failed to load projects.</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+      {error && <p className="text-sm text-destructive">{t("projectsPage.loadError")}</p>}
 
       {!isLoading && projects.length === 0 && (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">No projects yet. Start one to begin tracking a weaving session.</p>
-          <Button className="mt-4" onClick={() => setShowCreate(true)}>New project</Button>
+          <p className="text-sm text-muted-foreground">{t("projectsPage.emptyState")}</p>
+          <Button className="mt-4" onClick={() => setShowCreate(true)}>{t("projectsPage.newButton")}</Button>
         </div>
       )}
 
       {active.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Active</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("projectsPage.sectionActive")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {active.map((p) => <ProjectCard key={p.id} project={p} />)}
           </div>
@@ -295,7 +298,7 @@ export function ProjectsPage() {
 
       {notStarted.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Not started</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("projectsPage.sectionNotStarted")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {notStarted.map((p) => <ProjectCard key={p.id} project={p} />)}
           </div>
@@ -304,7 +307,7 @@ export function ProjectsPage() {
 
       {planning.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Planning</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("projectsPage.sectionPlanning")}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {planning.map((p) => <ProjectCard key={p.id} project={p} onAssign={setAssigningProjectId} />)}
           </div>
@@ -313,7 +316,7 @@ export function ProjectsPage() {
 
       {completedByYear.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Completed</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("projectsPage.sectionCompleted")}</h2>
           <div className="space-y-4">
             {completedByYear.map(({ year, items }) => (
               <YearGroup
@@ -329,7 +332,7 @@ export function ProjectsPage() {
 
       {abandonedByYear.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Abandoned</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("projectsPage.sectionAbandoned")}</h2>
           <div className="space-y-4">
             {abandonedByYear.map(({ year, items }) => (
               <YearGroup

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,6 +45,7 @@ function ConfirmInline({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <span className="flex items-center gap-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
@@ -51,13 +53,13 @@ function ConfirmInline({
         onClick={onConfirm}
         className="text-destructive hover:underline text-xs font-medium"
       >
-        Confirm
+        {t("loomDetailPage.confirm")}
       </button>
       <button
         onClick={onCancel}
         className="text-muted-foreground hover:underline text-xs"
       >
-        Cancel
+        {t("common.cancel")}
       </button>
     </span>
   );
@@ -68,6 +70,7 @@ function ConfirmInline({
 // ---------------------------------------------------------------------------
 
 function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+  const { t } = useTranslation();
   const { user } = useAuthContext();
   const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
   const fileRef = useRef<HTMLInputElement>(null);
@@ -138,7 +141,7 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
         />
       ) : (
         <div className="h-32 w-32 rounded-lg border border-dashed flex items-center justify-center text-xs text-muted-foreground">
-          No photo
+          {t("loomDetailPage.noPhoto")}
         </div>
       )}
       <div className="flex flex-col gap-2">
@@ -146,16 +149,16 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
           <>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
             <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !!pendingFile}>
-              {uploading ? "Uploading…" : loom.has_photo ? "Replace photo" : "Upload photo"}
+              {uploading ? t("loomDetailPage.uploading") : loom.has_photo ? t("loomDetailPage.replacePhoto") : t("loomDetailPage.uploadPhoto")}
             </Button>
             {loom.has_photo && !confirmRemove && (
               <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={uploading || !!pendingFile}>
-                Remove photo
+                {t("loomDetailPage.removePhoto")}
               </Button>
             )}
             {loom.has_photo && confirmRemove && (
               <ConfirmInline
-                label="Remove this photo?"
+                label={t("loomDetailPage.removePhotoConfirm")}
                 onConfirm={handleDelete}
                 onCancel={() => setConfirmRemove(false)}
               />
@@ -165,15 +168,15 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
         {pendingFile && (
           <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
             <p className="font-medium text-copper-on-subtle">
-              Photo is {formatBytes(pendingFile.size)} — over the 5 MB limit
+              {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
             </p>
             <div className="mt-1.5 flex gap-2">
               <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
-                Resize &amp; upload
+                {t("loomDetailPage.resizeUpload")}
               </button>
               <span className="text-muted-foreground">·</span>
               <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -189,6 +192,7 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
 // ---------------------------------------------------------------------------
 
 function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+  const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -251,7 +255,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
   return (
     <div>
       <p className="text-sm font-medium mb-2">
-        Photos
+        {t("loomDetailPage.photos")}
         <span className="ml-1.5 text-xs font-normal text-muted-foreground">
           {version.photos.length}/{MAX_VERSION_PHOTOS}
         </span>
@@ -265,13 +269,13 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
                 onClick={() => setConfirmId(p.id)}
                 className="text-xs text-destructive hover:underline"
               >
-                Remove
+                {t("loomDetailPage.remove")}
               </button>
             ) : (
               <span className="flex gap-1 text-xs">
-                <button onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">Confirm</button>
+                <button onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">{t("loomDetailPage.confirm")}</button>
                 <span className="text-muted-foreground">·</span>
-                <button onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">Cancel</button>
+                <button onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">{t("common.cancel")}</button>
               </span>
             )}
           </div>
@@ -283,22 +287,22 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
               onClick={() => fileRef.current?.click()}
               disabled={uploading || !!pendingFile}
               className="h-20 w-20 rounded border border-dashed flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors disabled:opacity-50"
-            >{uploading ? "…" : "+ Add"}</button>
+            >{uploading ? "…" : t("loomDetailPage.addPhoto")}</button>
           </div>
         )}
       </div>
       {pendingFile && (
         <div className="mt-2 rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
           <p className="font-medium text-copper-on-subtle">
-            Photo is {formatBytes(pendingFile.size)} — over the 5 MB limit
+            {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
           </p>
           <div className="mt-1.5 flex gap-2">
             <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
-              Resize &amp; upload
+              {t("loomDetailPage.resizeUpload")}
             </button>
             <span className="text-muted-foreground">·</span>
             <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
-              Cancel
+              {t("common.cancel")}
             </button>
           </div>
         </div>
@@ -313,6 +317,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
 // ---------------------------------------------------------------------------
 
 function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+  const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -349,7 +354,7 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
 
   return (
     <div>
-      <p className="text-sm font-medium mb-2">Receipts &amp; documents</p>
+      <p className="text-sm font-medium mb-2">{t("loomDetailPage.receiptsTitle")}</p>
       {version.receipts.length > 0 && (
         <ul className="mb-3 space-y-2">
           {version.receipts.map((r) => (
@@ -362,11 +367,11 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
               <span className="ml-auto shrink-0">
                 {confirmId !== r.id ? (
                   <button onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">
-                    Remove
+                    {t("loomDetailPage.remove")}
                   </button>
                 ) : (
                   <ConfirmInline
-                    label={`Remove "${r.description || r.filename}"?`}
+                    label={t("loomDetailPage.removeReceiptConfirm", { name: r.description || r.filename })}
                     onConfirm={() => handleDelete(r)}
                     onCancel={() => setConfirmId(null)}
                   />
@@ -381,11 +386,11 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
           className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Label (optional)"
+          placeholder={t("loomDetailPage.labelPlaceholder")}
         />
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleUpload} />
         <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
-          {uploading ? "Uploading…" : "Upload"}
+          {uploading ? t("loomDetailPage.uploading") : t("loomDetailPage.uploadReceipt")}
         </Button>
       </div>
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
@@ -398,6 +403,7 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
 // ---------------------------------------------------------------------------
 
 function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+  const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -433,7 +439,7 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
 
   return (
     <div>
-      <p className="text-sm font-medium mb-2">Accessories</p>
+      <p className="text-sm font-medium mb-2">{t("loomDetailPage.accessoriesTitle")}</p>
       {version.accessories.length > 0 && (
         <ul className="mb-3 space-y-2">
           {version.accessories.map((acc) => (
@@ -442,11 +448,11 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
               <span className="shrink-0">
                 {confirmId !== acc.id ? (
                   <button onClick={() => setConfirmId(acc.id)} className="text-xs text-destructive hover:underline">
-                    Remove
+                    {t("loomDetailPage.remove")}
                   </button>
                 ) : (
                   <ConfirmInline
-                    label={`Remove "${acc.name}"?`}
+                    label={t("loomDetailPage.removeAccessoryConfirm", { name: acc.name })}
                     onConfirm={() => handleDelete(acc)}
                     onCancel={() => setConfirmId(null)}
                   />
@@ -461,11 +467,11 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
           className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. Second warp beam"
+          placeholder={t("loomDetailPage.accessoryPlaceholder")}
           disabled={saving}
         />
         <Button size="sm" type="submit" disabled={saving || !input.trim()}>
-          Add
+          {t("loomDetailPage.addAccessory")}
         </Button>
       </form>
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
@@ -478,6 +484,7 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
 // ---------------------------------------------------------------------------
 
 function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+  const { t } = useTranslation();
   const [dentsInput, setDentsInput] = useState("");
   const [widthInput, setWidthInput] = useState("");
   const [labelInput, setLabelInput] = useState("");
@@ -489,7 +496,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
     e.preventDefault();
     const dents = parseFloat(dentsInput);
     if (!dentsInput || isNaN(dents) || dents <= 0) {
-      setError("Dents per inch must be a positive number");
+      setError(t("loomDetailPage.dentsRequired"));
       return;
     }
     setSaving(true);
@@ -528,14 +535,14 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
 
   return (
     <section className="border-t pt-6">
-      <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Reed inventory</h2>
+      <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("loomDetailPage.reedInventory")}</h2>
       {loom.reeds.length > 0 && (
         <ul className="mb-4 space-y-2">
           {loom.reeds.map((reed) => (
             <li key={reed.id} className="flex items-center gap-3 text-sm">
-              <span className="w-20 font-medium tabular-nums">{reed.dents_per_inch} dent</span>
+              <span className="w-20 font-medium tabular-nums">{t("loomDetailPage.dentUnit", { dpi: reed.dents_per_inch })}</span>
               {reed.width_cm != null && (
-                <span className="text-muted-foreground">{reed.width_cm} cm wide</span>
+                <span className="text-muted-foreground">{t("loomDetailPage.cmWide", { cm: reed.width_cm })}</span>
               )}
               {reed.label && (
                 <span className="text-muted-foreground italic">{reed.label}</span>
@@ -546,11 +553,11 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
                     onClick={() => setConfirmId(reed.id)}
                     className="text-xs text-destructive hover:underline"
                   >
-                    Remove
+                    {t("loomDetailPage.remove")}
                   </button>
                 ) : (
                   <ConfirmInline
-                    label={`Remove ${reed.dents_per_inch}-dent reed?`}
+                    label={t("loomDetailPage.removeReedConfirm", { dpi: reed.dents_per_inch })}
                     onConfirm={() => handleDelete(reed)}
                     onCancel={() => setConfirmId(null)}
                   />
@@ -562,7 +569,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
       )}
       <form onSubmit={handleAdd} className="flex flex-wrap gap-2 items-end">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Dents/inch *</label>
+          <label className="text-xs text-muted-foreground">{t("loomDetailPage.dentsLabel")}</label>
           <input
             type="number"
             min="0.5"
@@ -570,12 +577,12 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
             className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             value={dentsInput}
             onChange={(e) => setDentsInput(e.target.value)}
-            placeholder="e.g. 10"
+            placeholder={t("loomDetailPage.dentsPlaceholder")}
             disabled={saving}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Width (cm)</label>
+          <label className="text-xs text-muted-foreground">{t("loomDetailPage.widthLabel")}</label>
           <input
             type="number"
             min="0"
@@ -583,27 +590,27 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
             className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             value={widthInput}
             onChange={(e) => setWidthInput(e.target.value)}
-            placeholder="optional"
+            placeholder={t("loomDetailPage.optionalPlaceholder")}
             disabled={saving}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-muted-foreground">Label</label>
+          <label className="text-xs text-muted-foreground">{t("loomDetailPage.reedLabel")}</label>
           <input
             className="w-36 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             value={labelInput}
             onChange={(e) => setLabelInput(e.target.value)}
-            placeholder="optional"
+            placeholder={t("loomDetailPage.optionalPlaceholder")}
             disabled={saving}
           />
         </div>
         <Button size="sm" type="submit" disabled={saving || !dentsInput}>
-          Add reed
+          {t("loomDetailPage.addReed")}
         </Button>
       </form>
       {duplicate && (
         <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-          You already have a {parseFloat(dentsInput)}-dent reed on this loom.
+          {t("loomDetailPage.duplicateReed", { dpi: parseFloat(dentsInput) })}
         </p>
       )}
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
@@ -625,6 +632,7 @@ function VersionCard({
   onChanged: () => void;
   onClone: (v: LoomVersion) => void;
 }) {
+  const { t } = useTranslation();
   const { user } = useAuthContext();
   const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
   const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
@@ -704,7 +712,7 @@ function VersionCard({
           ) : (
             <>v{version.version_number}</>
           )}
-          {isCurrent && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">current</span>}
+          {isCurrent && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal">{t("loomDetailPage.currentBadge")}</span>}
           {version.description && <span className="ml-2 text-xs text-muted-foreground font-normal">{version.description}</span>}
         </span>
         <span className="text-xs text-muted-foreground">{new Date(version.effective_date + "T00:00:00").toLocaleDateString()} {open ? "▲" : "▼"}</span>
@@ -717,7 +725,7 @@ function VersionCard({
             {editing ? (
               <form onSubmit={handleEditSave} className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Configuration name</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.configName")}</label>
                   <input
                     className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={editName}
@@ -727,16 +735,16 @@ function VersionCard({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.versionDescription")}</label>
                   <input
                     className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={editDesc}
                     onChange={(e) => setEditDesc(e.target.value)}
-                    placeholder="Optional description"
+                    placeholder={t("loomDetailPage.descriptionPlaceholder")}
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">Warp waste default</label>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.warpWasteDefault")}</label>
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -745,7 +753,7 @@ function VersionCard({
                       className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       value={editWaste}
                       onChange={(e) => setEditWaste(e.target.value)}
-                      placeholder="e.g. 50"
+                      placeholder={t("loomDetailPage.wastePlaceholder")}
                     />
                     <select
                       className="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -759,18 +767,18 @@ function VersionCard({
                 </div>
                 {editError && <p className="text-xs text-destructive">{editError}</p>}
                 <div className="flex gap-2">
-                  <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={handleEditCancel} disabled={saving}>Cancel</Button>
+                  <Button type="submit" size="sm" disabled={saving}>{saving ? t("loomDetailPage.saving") : t("loomDetailPage.save")}</Button>
+                  <Button type="button" size="sm" variant="outline" onClick={handleEditCancel} disabled={saving}>{t("common.cancel")}</Button>
                 </div>
               </form>
             ) : (
               <div className="flex items-start justify-between gap-2">
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-                  {version.num_shafts != null && (<><dt className="text-muted-foreground">Shafts</dt><dd>{version.num_shafts}</dd></>)}
-                  {version.num_treadles != null && (<><dt className="text-muted-foreground">Treadles</dt><dd>{version.num_treadles}</dd></>)}
-                  {version.num_heddles != null && (<><dt className="text-muted-foreground">Heddles</dt><dd>{version.num_heddles}</dd></>)}
-                  {version.weaving_width && (<><dt className="text-muted-foreground">Weaving width</dt><dd>{displayLength(version.weaving_width, version.weaving_width_unit, displayUnit)}</dd></>)}
-                  <dt className="text-muted-foreground">Warp waste</dt>
+                  {version.num_shafts != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.shafts")}</dt><dd>{version.num_shafts}</dd></>)}
+                  {version.num_treadles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.treadles")}</dt><dd>{version.num_treadles}</dd></>)}
+                  {version.num_heddles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.heddles")}</dt><dd>{version.num_heddles}</dd></>)}
+                  {version.weaving_width && (<><dt className="text-muted-foreground">{t("loomDetailPage.weavingWidth")}</dt><dd>{displayLength(version.weaving_width, version.weaving_width_unit, displayUnit)}</dd></>)}
+                  <dt className="text-muted-foreground">{t("loomDetailPage.warpWaste")}</dt>
                   <dd>
                     {version.warp_waste_allowance ? (() => {
                       const storedUnit = (version.warp_waste_unit ?? displayUnit) as LengthUnit;
@@ -778,7 +786,7 @@ function VersionCard({
                       if (storedUnit === displayUnit) return primary;
                       const secondary = displayLength(version.warp_waste_allowance, storedUnit, displayUnit);
                       return <><span className="font-medium">{primary}</span>{" "}<span className="text-xs text-muted-foreground">({secondary})</span></>;
-                    })() : <span className="italic text-muted-foreground">Not set</span>}
+                    })() : <span className="italic text-muted-foreground">{t("loomDetailPage.notSet")}</span>}
                   </dd>
                 </dl>
                 {!isReadOnly && (
@@ -786,7 +794,7 @@ function VersionCard({
                     type="button"
                     onClick={() => setEditing(true)}
                     className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    title="Edit configuration"
+                    title={t("loomDetailPage.editConfig")}
                   >
                     <AppIcons.edit className="h-4 w-4" />
                   </button>
@@ -813,32 +821,32 @@ function VersionCard({
                     <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
                       {version.loom_reference_brand && version.loom_reference_model_name
                         ? `${version.loom_reference_brand} ${version.loom_reference_model_name}`
-                        : "Linked to catalog"}
+                        : t("loomDetailPage.linkedToCatalog")}
                     </span>
                     <button
                       onClick={() => setShowLinkCatalog(true)}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      Change
+                      {t("loomDetailPage.change")}
                     </button>
                     <button
                       onClick={handleUnlink}
                       disabled={unlinking}
                       className="text-xs text-muted-foreground hover:text-destructive transition-colors"
                     >
-                      {unlinking ? "Unlinking…" : "Unlink"}
+                      {unlinking ? t("loomDetailPage.unlinking") : t("loomDetailPage.unlink")}
                     </button>
                   </>
                 ) : (
                   <>
                     <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
-                      Not in catalog
+                      {t("loomDetailPage.notInCatalog")}
                     </span>
                     <button
                       onClick={() => setShowLinkCatalog(true)}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      Link to catalog…
+                      {t("loomDetailPage.linkToCatalog")}
                     </button>
                     <CatalogRequestButton loom={loom} />
                   </>
@@ -846,10 +854,10 @@ function VersionCard({
               </div>
               <div>
                 <Button size="sm" variant="outline" onClick={() => onClone(version)}>
-                  Clone this configuration
+                  {t("loomDetailPage.cloneConfig")}
                 </Button>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Creates a new configuration pre-filled with {displayName}'s spec and accessories.
+                  {t("loomDetailPage.cloneNote", { name: displayName })}
                 </p>
               </div>
             </div>
@@ -873,6 +881,7 @@ function VersionCard({
 // ---------------------------------------------------------------------------
 
 export function LoomDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -948,8 +957,8 @@ export function LoomDetailPage() {
     }
   };
 
-  if (isLoading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground text-sm">Loading…</p></div>;
-  if (error || !loom) return <div className="flex min-h-screen items-center justify-center"><p className="text-destructive text-sm">Loom not found.</p></div>;
+  if (isLoading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground text-sm">{t("loomDetailPage.loading")}</p></div>;
+  if (error || !loom) return <div className="flex min-h-screen items-center justify-center"><p className="text-destructive text-sm">{t("loomDetailPage.notFound")}</p></div>;
 
   const sortedVersions = [...loom.versions].sort((a, b) => b.version_number - a.version_number);
   const currentVersionId = loom.current_version?.id;
@@ -961,56 +970,54 @@ export function LoomDetailPage() {
       <div className="p-6 space-y-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
-          <Link to="/looms" className="text-muted-foreground hover:text-foreground">Equipment</Link>
+          <Link to="/looms" className="text-muted-foreground hover:text-foreground">{t("loomDetailPage.breadcrumb")}</Link>
           <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="font-medium text-foreground">{loom.manufacturer} {loom.model_name}</span>
           <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
         <div className="flex gap-2">
-          {!isReadOnly && <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>Edit</Button>}
-          {!isReadOnly && <Button size="sm" onClick={() => setShowAddVersion(true)}>Add version</Button>}
+          {!isReadOnly && <Button size="sm" variant="outline" onClick={() => setShowEdit(true)}>{t("loomDetailPage.edit")}</Button>}
+          {!isReadOnly && <Button size="sm" onClick={() => setShowAddVersion(true)}>{t("loomDetailPage.addVersion")}</Button>}
         </div>
       </div>
         {!SUPPORTED_LOOM_TYPES.has(loom.loom_type) && (
           <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm text-copper-on-subtle">
-            <span className="font-medium">Project tracking not supported</span> — this loom type is not currently
-            supported for project tracking. It has been saved for documentation and will be available if support
-            is added later.
+            <span className="font-medium">{t("loomDetailPage.trackingNotSupportedTitle")}</span> — {t("loomDetailPage.trackingNotSupportedDesc")}
           </div>
         )}
         <section className="space-y-4">
           <ProfilePhoto loom={loom} onChanged={invalidate} />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
-            {loom.serial_number && (<><dt className="text-muted-foreground">Serial number</dt><dd className="col-span-1 sm:col-span-2">{loom.serial_number}</dd></>)}
-            {loom.purchase_date && (<><dt className="text-muted-foreground">Purchased</dt><dd className="col-span-1 sm:col-span-2">{new Date(loom.purchase_date + "T00:00:00").toLocaleDateString()}</dd></>)}
-            {loom.purchase_price && (<><dt className="text-muted-foreground">Purchase price</dt><dd className="col-span-1 sm:col-span-2">{loom.purchase_price}</dd></>)}
-            {loom.vendor && (<><dt className="text-muted-foreground">Purchased from</dt><dd className="col-span-1 sm:col-span-2">{loom.vendor}</dd></>)}
+            {loom.serial_number && (<><dt className="text-muted-foreground">{t("loomDetailPage.serialNumber")}</dt><dd className="col-span-1 sm:col-span-2">{loom.serial_number}</dd></>)}
+            {loom.purchase_date && (<><dt className="text-muted-foreground">{t("loomDetailPage.purchased")}</dt><dd className="col-span-1 sm:col-span-2">{new Date(loom.purchase_date + "T00:00:00").toLocaleDateString()}</dd></>)}
+            {loom.purchase_price && (<><dt className="text-muted-foreground">{t("loomDetailPage.purchasePrice")}</dt><dd className="col-span-1 sm:col-span-2">{loom.purchase_price}</dd></>)}
+            {loom.vendor && (<><dt className="text-muted-foreground">{t("loomDetailPage.purchasedFrom")}</dt><dd className="col-span-1 sm:col-span-2">{loom.vendor}</dd></>)}
           </dl>
           {(loom.supports_lift_tracking || loom.supports_treadle_tracking) && (
             <div className="flex gap-2">
-              {loom.supports_lift_tracking && <span className="rounded bg-muted px-2 py-0.5 text-xs">lift tracking</span>}
-              {loom.supports_treadle_tracking && <span className="rounded bg-muted px-2 py-0.5 text-xs">treadle tracking</span>}
+              {loom.supports_lift_tracking && <span className="rounded bg-muted px-2 py-0.5 text-xs">{t("loomDetailPage.liftTracking")}</span>}
+              {loom.supports_treadle_tracking && <span className="rounded bg-muted px-2 py-0.5 text-xs">{t("loomDetailPage.treadleTracking")}</span>}
             </div>
           )}
           {loom.notes && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{loom.notes}</p>}
           {activeProject && (
             <div className="rounded-md border border-green-300 bg-green-50 dark:bg-green-950/30 dark:border-green-700 px-3 py-2.5 text-sm flex items-center justify-between gap-4">
               <div>
-                <span className="font-medium text-green-900 dark:text-green-200">Active project: </span>
+                <span className="font-medium text-green-900 dark:text-green-200">{t("loomDetailPage.activeProject")} </span>
                 <span className="text-green-800 dark:text-green-300">{activeProject.name}</span>
               </div>
               <Link
                 to={`/projects/${activeProject.id}`}
                 className="shrink-0 text-xs text-green-700 dark:text-green-400 hover:underline"
               >
-                View →
+                {t("loomDetailPage.viewProject")}
               </Link>
             </div>
           )}
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Configuration history</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("loomDetailPage.configHistory")}</h2>
           <div className="space-y-3">
             {sortedVersions.map((v) => (
               <VersionCard
@@ -1029,9 +1036,9 @@ export function LoomDetailPage() {
 
         <section className="border-t pt-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold">Projects</h2>
+            <h2 className="text-base font-semibold">{t("loomDetailPage.projects")}</h2>
             <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
-              All projects →
+              {t("loomDetailPage.allProjects")}
             </Link>
           </div>
           <ProjectSummaryList projects={loomProjects} />
@@ -1044,33 +1051,33 @@ export function LoomDetailPage() {
               className="flex w-full items-center justify-between text-sm font-medium text-destructive hover:text-destructive/80"
               onClick={() => { setDangerZoneOpen((o) => !o); setConfirmDelete(false); setDeleteConflict(null); setConfirmForceDelete(false); }}
             >
-              <span>Danger zone</span>
-              <span className="text-xs text-muted-foreground">{dangerZoneOpen ? "▲ collapse" : "▼ expand"}</span>
+              <span>{t("loomDetailPage.dangerZone")}</span>
+              <span className="text-xs text-muted-foreground">{dangerZoneOpen ? t("loomDetailPage.collapse") : t("loomDetailPage.expand")}</span>
             </button>
             {dangerZoneOpen && (
               <div className="mt-4 space-y-3">
                 {/* Retire / Unretire */}
                 <div className="rounded-md border border-border px-4 py-4 flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium">{loom.retired_at ? "Unretire loom" : "Retire loom"}</p>
+                    <p className="text-sm font-medium">{loom.retired_at ? t("loomDetailPage.unretireLoom") : t("loomDetailPage.retireLoom")}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {loom.retired_at
-                        ? "Restore this loom to your active equipment list."
-                        : "Hide this loom from active lists without deleting it. Existing projects are unaffected."}
+                        ? t("loomDetailPage.unretireNote")
+                        : t("loomDetailPage.retireNote")}
                     </p>
                   </div>
                   {!confirmRetire ? (
                     <Button variant="outline" size="sm" className="shrink-0" onClick={() => setConfirmRetire(true)}>
-                      {loom.retired_at ? "Unretire" : "Retire"}
+                      {loom.retired_at ? t("loomDetailPage.unretire") : t("loomDetailPage.retire")}
                     </Button>
                   ) : (
                     <div className="flex gap-2 shrink-0">
                       <Button variant="outline" size="sm"
                         onClick={() => { setConfirmRetire(false); handleRetire(); }}
                         disabled={retiring}>
-                        Confirm
+                        {t("loomDetailPage.confirm")}
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmRetire(false)}>Cancel</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmRetire(false)}>{t("common.cancel")}</Button>
                     </div>
                   )}
                 </div>
@@ -1079,18 +1086,18 @@ export function LoomDetailPage() {
                 <div className="rounded-md border border-destructive/30 px-4 py-4 space-y-3">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-medium">Delete this loom</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">Permanently removes the loom and all its configurations. This cannot be undone.</p>
+                      <p className="text-sm font-medium">{t("loomDetailPage.deleteLoom")}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{t("loomDetailPage.deleteNote")}</p>
                     </div>
                     {!confirmDelete && !deleteConflict ? (
                       <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
-                        Delete loom
+                        {t("loomDetailPage.deleteLoomButton")}
                       </Button>
                     ) : confirmDelete ? (
                       <div className="flex shrink-0 items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
+                        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t("common.cancel")}</Button>
                         <Button size="sm" onClick={() => handleDelete(false)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          {deleting ? "Deleting…" : "Confirm delete"}
+                          {deleting ? t("loomDetailPage.deleting") : t("loomDetailPage.confirmDelete")}
                         </Button>
                       </div>
                     ) : null}
@@ -1100,13 +1107,13 @@ export function LoomDetailPage() {
                   {deleteConflict && (
                     <div className="space-y-2">
                       <p className="text-sm text-destructive font-medium">
-                        This loom is used by {deleteConflict.projects.length} active project{deleteConflict.projects.length !== 1 ? "s" : ""}:
+                        {t("loomDetailPage.usedByConflict", { count: deleteConflict.projects.length })}
                       </p>
                       <ul className="text-xs text-muted-foreground space-y-0.5 pl-3">
                         {deleteConflict.projects.map((p) => <li key={p.id}>· {p.name}</li>)}
                       </ul>
                       <p className="text-xs text-muted-foreground">
-                        The loom will be unlinked from those projects. Projects themselves will not be deleted.
+                        {t("loomDetailPage.conflictUnlinkNote")}
                       </p>
                       {!confirmForceDelete ? (
                         <Button
@@ -1115,14 +1122,14 @@ export function LoomDetailPage() {
                           className="border-destructive/50 text-destructive hover:bg-destructive/10"
                           onClick={() => setConfirmForceDelete(true)}
                         >
-                          Force delete (unlinks {deleteConflict.projects.length} project{deleteConflict.projects.length !== 1 ? "s" : ""})
+                          {t("loomDetailPage.forceDelete", { count: deleteConflict.projects.length })}
                         </Button>
                       ) : (
                         <div className="flex gap-2">
                           <Button size="sm" onClick={() => handleDelete(true)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            {deleting ? "Deleting…" : "Confirm force delete"}
+                            {deleting ? t("loomDetailPage.deleting") : t("loomDetailPage.confirmForceDelete")}
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>Cancel</Button>
+                          <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>{t("common.cancel")}</Button>
                         </div>
                       )}
                     </div>

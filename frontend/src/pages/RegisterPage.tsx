@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SignUp } from "@clerk/clerk-react";
 import { AuthCard } from "@/components/auth/AuthCard";
 
@@ -26,6 +27,7 @@ function isSSOStep() {
 
 export function RegisterPage() {
   const [ssoStep, setSSOStep] = useState(isSSOStep);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const onHash = () => setSSOStep(isSSOStep());
@@ -38,9 +40,9 @@ export function RegisterPage() {
       naked
       footer={
         <>
-          Already have an account?{" "}
+          {t("registerPage.alreadyHaveAccount")}{" "}
           <Link to="/login" className="text-amber-700 underline underline-offset-2 hover:text-amber-800">
-            Sign in
+            {t("registerPage.signIn")}
           </Link>
         </>
       }
@@ -48,15 +50,13 @@ export function RegisterPage() {
       <div className="mb-5 text-center">
         {ssoStep ? (
           <>
-            <h1 className="text-lg font-semibold text-zinc-800">One more step</h1>
-            <p className="mt-1 text-sm text-stone-600">
-              Your account was connected. Choose a display name to finish creating your weftmark account.
-            </p>
+            <h1 className="text-lg font-semibold text-zinc-800">{t("registerPage.oneMoreStep")}</h1>
+            <p className="mt-1 text-sm text-stone-600">{t("registerPage.accountConnected")}</p>
           </>
         ) : (
           <>
-            <h1 className="text-lg font-semibold text-zinc-800">Create your account</h1>
-            <p className="mt-1 text-sm text-stone-600">Sign up with email or connect an existing account</p>
+            <h1 className="text-lg font-semibold text-zinc-800">{t("registerPage.createAccount")}</h1>
+            <p className="mt-1 text-sm text-stone-600">{t("registerPage.signUpPrompt")}</p>
           </>
         )}
       </div>

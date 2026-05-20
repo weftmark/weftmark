@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthCard } from "@/components/auth/AuthCard";
 
 export function UnauthorizedPage() {
   const { isAuthenticated } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <AuthCard>
@@ -24,13 +26,13 @@ export function UnauthorizedPage() {
             />
           </svg>
         </div>
-        <h1 className="text-lg font-semibold text-zinc-800">Access denied</h1>
-        <p className="mt-2 text-sm text-stone-600">You don't have permission to view this page.</p>
+        <h1 className="text-lg font-semibold text-zinc-800">{t("unauthorizedPage.accessDenied")}</h1>
+        <p className="mt-2 text-sm text-stone-600">{t("unauthorizedPage.noPermission")}</p>
         <Link
           to={isAuthenticated ? "/home" : "/login"}
           className="mt-6 inline-block text-sm text-amber-700 underline underline-offset-2 hover:text-amber-800"
         >
-          {isAuthenticated ? "Back to home" : "Sign in"}
+          {isAuthenticated ? t("unauthorizedPage.backToHome") : t("unauthorizedPage.signIn")}
         </Link>
       </div>
     </AuthCard>

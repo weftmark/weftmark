@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { PublicFooter } from "@/components/PublicFooter";
@@ -6,6 +7,7 @@ import { EulaContent } from "@/components/EulaContent";
 import { getCurrentEula } from "@/api/users";
 
 export function TermsPage() {
+  const { t } = useTranslation();
   const { data: eula, isLoading, isError } = useQuery({
     queryKey: ["eula", "current"],
     queryFn: getCurrentEula,
@@ -26,26 +28,28 @@ export function TermsPage() {
       <main className="flex-1 px-6 py-16">
         <div className="mx-auto max-w-2xl space-y-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Terms of Service</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">{t("termsPage.title")}</h1>
             {eula && (
               <p className="text-sm text-stone-400">
-                Version {eula.version} &mdash; effective{" "}
-                {new Date(eula.effective_date).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
+                {t("termsPage.versionEffective", {
+                  version: eula.version,
+                  date: new Date(eula.effective_date).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }),
                 })}
               </p>
             )}
           </div>
 
           {isLoading && (
-            <p className="text-sm text-stone-400">Loading terms…</p>
+            <p className="text-sm text-stone-400">{t("termsPage.loading")}</p>
           )}
 
           {isError && (
             <p className="text-sm text-red-600">
-              Could not load the current Terms of Service. Please try again later or contact{" "}
+              {t("termsPage.error")}{" "}
               <a href="mailto:admin@weftmark.com" className="underline">
                 admin@weftmark.com
               </a>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth as useClerkAuth, useClerk, useUser } from "@clerk/clerk-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthCard } from "@/components/auth/AuthCard";
@@ -13,6 +14,7 @@ export function PendingPage() {
   const { user: clerkUser } = useUser();
   const { signOut } = useClerk();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [pollCount, setPollCount] = useState(0);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,8 +53,8 @@ export function PendingPage() {
       <AuthCard>
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-stone-200 border-t-zinc-800" />
-          <h1 className="text-lg font-semibold text-zinc-800">Setting up your account</h1>
-          <p className="mt-2 text-sm text-stone-600">Just a moment…</p>
+          <h1 className="text-lg font-semibold text-zinc-800">{t("pendingPage.settingUp")}</h1>
+          <p className="mt-2 text-sm text-stone-600">{t("pendingPage.justAMoment")}</p>
         </div>
       </AuthCard>
     );
@@ -77,11 +79,8 @@ export function PendingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
               </svg>
             </div>
-            <h1 className="text-lg font-semibold text-zinc-800">Account not approved</h1>
-            <p className="mt-2 text-sm text-stone-600">
-              weftmark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that
-              changes.
-            </p>
+            <h1 className="text-lg font-semibold text-zinc-800">{t("pendingPage.accountNotApproved")}</h1>
+            <p className="mt-2 text-sm text-stone-600">{t("pendingPage.deniedMessage")}</p>
           </>
         ) : (
           <>
@@ -97,18 +96,16 @@ export function PendingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
               </svg>
             </div>
-            <h1 className="text-lg font-semibold text-zinc-800">Request received</h1>
-            <p className="mt-2 text-sm text-stone-600">
-              Your sign-up request has been submitted. You'll receive an email once an admin approves your account.
-            </p>
-            <p className="mt-3 text-xs text-stone-500">No action needed — sit tight.</p>
+            <h1 className="text-lg font-semibold text-zinc-800">{t("pendingPage.requestReceived")}</h1>
+            <p className="mt-2 text-sm text-stone-600">{t("pendingPage.submittedMessage")}</p>
+            <p className="mt-3 text-xs text-stone-500">{t("pendingPage.noAction")}</p>
           </>
         )}
         <button
           onClick={() => signOut()}
           className="mt-6 text-sm text-stone-500 underline underline-offset-2 hover:text-stone-700"
         >
-          Sign out
+          {t("pendingPage.signOut")}
         </button>
       </div>
     </AuthCard>

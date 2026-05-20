@@ -58,7 +58,17 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
     { id: "credentials", label: t("adminSections.credentials") },
     { id: "slugs", label: t("adminSections.slugs") },
     { id: "looms", label: t("adminSections.looms") },
-    { id: "superuser", label: t("adminSections.superuser"), superuserOnly: true },
+  ];
+
+  const SUPERUSER_SECTIONS = [
+    { id: "eula", label: t("superuserSections.eula") },
+    { id: "storage", label: t("superuserSections.storage") },
+    { id: "cve", label: t("superuserSections.cve") },
+    { id: "workers", label: t("superuserSections.workers") },
+    { id: "deletion", label: t("superuserSections.deletion") },
+    { id: "reconcile", label: t("superuserSections.reconcile") },
+    { id: "maintenance", label: t("superuserSections.maintenance") },
+    { id: "schedule", label: t("superuserSections.schedule") },
   ];
 
   function isActive(href: string, exact = false) {
@@ -206,8 +216,43 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
 
           {user?.is_admin && isActive("/admin") && !desktopCollapsed && (
             <div className="ml-3 border-l border-border pl-2 space-y-0.5">
-              {ADMIN_SECTIONS.filter((s) => !s.superuserOnly || user?.is_superuser).map(({ id, label }) => {
+              {ADMIN_SECTIONS.map(({ id, label }) => {
                 const href = `/admin/${id}`;
+                const active = location.pathname === href;
+                return (
+                  <Link
+                    key={id}
+                    to={href}
+                    onClick={onClose}
+                    className={`block rounded-md px-2 py-1.5 text-xs transition-colors ${
+                      active
+                        ? "bg-accent/20 text-accent font-medium"
+                        : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {user?.is_superuser && (
+            <Link
+              to="/superuser/eula"
+              onClick={onClose}
+              className={navCls("/superuser")}
+              title={desktopCollapsed ? t("nav.superuser") : undefined}
+            >
+              <AppIcons.superuser className={iconCls("/superuser")} strokeWidth={1.75} />
+              <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.superuser")}</span>
+            </Link>
+          )}
+
+          {user?.is_superuser && isActive("/superuser") && !desktopCollapsed && (
+            <div className="ml-3 border-l border-border pl-2 space-y-0.5">
+              {SUPERUSER_SECTIONS.map(({ id, label }) => {
+                const href = `/superuser/${id}`;
                 const active = location.pathname === href;
                 return (
                   <Link

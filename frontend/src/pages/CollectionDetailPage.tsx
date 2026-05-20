@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   getCollection,
   updateCollection,
@@ -22,22 +23,24 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 type SortKey = "name" | "added";
 
 function SortControl({ value, onChange }: { value: SortKey; onChange: (v: SortKey) => void }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-      <span>Sort:</span>
+      <span>{t("collectionDetail.sort.label")}</span>
       <button
         className={`px-1.5 py-0.5 rounded transition-colors ${value === "added" ? "bg-accent/20 text-accent font-medium" : "hover:text-foreground"}`}
         onClick={() => onChange("added")}
-      >date added</button>
+      >{t("collectionDetail.sort.dateAdded")}</button>
       <button
         className={`px-1.5 py-0.5 rounded transition-colors ${value === "name" ? "bg-accent/20 text-accent font-medium" : "hover:text-foreground"}`}
         onClick={() => onChange("name")}
-      >name</button>
+      >{t("collectionDetail.sort.name")}</button>
     </div>
   );
 }
 
 function RemoveButton({ label, onConfirm }: { label: string; onConfirm: () => void }) {
+  const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   if (confirming) {
     return (
@@ -45,11 +48,11 @@ function RemoveButton({ label, onConfirm }: { label: string; onConfirm: () => vo
         <button
           className="rounded px-2 py-0.5 text-xs bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
           onClick={() => { setConfirming(false); onConfirm(); }}
-        >Remove</button>
+        >{t("collectionDetail.remove.confirm")}</button>
         <button
           className="rounded px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setConfirming(false)}
-        >Cancel</button>
+        >{t("collectionDetail.remove.cancel")}</button>
       </div>
     );
   }
@@ -75,6 +78,7 @@ function AddDraftModal({
   onClose: () => void;
   onAdded: () => void;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data: allDrafts = [] } = useQuery({ queryKey: ["drafts"], queryFn: () => listDrafts() });
   const addMutation = useMutation({
@@ -90,7 +94,7 @@ function AddDraftModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
-          <h2 className="text-base font-semibold">Add draft</h2>
+          <h2 className="text-base font-semibold">{t("collectionDetail.drafts.modal.title")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <AppIcons.close className="h-4 w-4" />
           </button>
@@ -98,7 +102,7 @@ function AddDraftModal({
         <div className="px-4 py-3">
           <input
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Search drafts…"
+            placeholder={t("collectionDetail.drafts.modal.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
@@ -106,7 +110,7 @@ function AddDraftModal({
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
           {filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">No drafts available.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("collectionDetail.drafts.modal.empty")}</p>
           )}
           {filtered.map((d) => (
             <button
@@ -136,6 +140,7 @@ function AddProjectModal({
   onClose: () => void;
   onAdded: () => void;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const { data: allProjects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => listProjects() });
   const addMutation = useMutation({
@@ -151,7 +156,7 @@ function AddProjectModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
-          <h2 className="text-base font-semibold">Add project</h2>
+          <h2 className="text-base font-semibold">{t("collectionDetail.projects.modal.title")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <AppIcons.close className="h-4 w-4" />
           </button>
@@ -159,7 +164,7 @@ function AddProjectModal({
         <div className="px-4 py-3">
           <input
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Search projects…"
+            placeholder={t("collectionDetail.projects.modal.searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
@@ -167,7 +172,7 @@ function AddProjectModal({
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
           {filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">No projects available.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t("collectionDetail.projects.modal.empty")}</p>
           )}
           {filtered.map((p) => (
             <button
@@ -190,6 +195,7 @@ function AddProjectModal({
 }
 
 export function CollectionDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -238,8 +244,8 @@ export function CollectionDetailPage() {
     },
   });
 
-  if (isLoading) return <div className="flex h-screen items-center justify-center"><span className="text-sm text-muted-foreground">Loading…</span></div>;
-  if (error || !collection) return <div className="flex h-screen items-center justify-center"><span className="text-sm text-destructive">Collection not found.</span></div>;
+  if (isLoading) return <div className="flex h-screen items-center justify-center"><span className="text-sm text-muted-foreground">{t("common.loading")}</span></div>;
+  if (error || !collection) return <div className="flex h-screen items-center justify-center"><span className="text-sm text-destructive">{t("collectionDetail.notFound")}</span></div>;
 
   function sortDrafts(drafts: DraftMember[]): DraftMember[] {
     return [...drafts].sort((a, b) =>
@@ -262,9 +268,8 @@ export function CollectionDetailPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto w-full">
-      {/* Header */}
       <div className="mb-1">
-        <Link to="/collections" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Collections</Link>
+        <Link to="/collections" className="text-sm text-muted-foreground hover:text-foreground transition-colors">{t("collectionDetail.backLink")}</Link>
       </div>
 
       {editing ? (
@@ -278,13 +283,13 @@ export function CollectionDetailPage() {
           <textarea
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
             rows={2}
-            placeholder="Description (optional)"
+            placeholder={t("collectionDetail.descPlaceholder")}
             value={editDesc}
             onChange={(e) => setEditDesc(e.target.value)}
           />
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => updateMutation.mutate({ name: editName, description: editDesc })} disabled={updateMutation.isPending || !editName.trim()}>Save</Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button size="sm" onClick={() => updateMutation.mutate({ name: editName, description: editDesc })} disabled={updateMutation.isPending || !editName.trim()}>{t("collectionDetail.edit.save")}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>{t("collectionDetail.edit.cancel")}</Button>
           </div>
         </div>
       ) : (
@@ -294,8 +299,8 @@ export function CollectionDetailPage() {
             {collection.description && <p className="mt-1 text-sm text-muted-foreground">{collection.description}</p>}
             {collection.tags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
-                {collection.tags.map((t) => (
-                  <span key={t} className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{t}</span>
+                {collection.tags.map((tag) => (
+                  <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{tag}</span>
                 ))}
               </div>
             )}
@@ -305,11 +310,11 @@ export function CollectionDetailPage() {
               <AppIcons.edit className="h-3.5 w-3.5" />
             </Button>
             {!confirmDelete ? (
-              <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>Delete</Button>
+              <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>{t("collectionDetail.delete.button")}</Button>
             ) : (
               <div className="flex gap-1">
-                <Button size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending}>Confirm delete</Button>
-                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                <Button size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending}>{t("collectionDetail.delete.confirm")}</Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>{t("collectionDetail.delete.cancel")}</Button>
               </div>
             )}
           </div>
@@ -319,15 +324,15 @@ export function CollectionDetailPage() {
       {/* Drafts section */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Drafts ({collection.drafts.length})</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("collectionDetail.drafts.heading", { count: collection.drafts.length })}</h2>
           <div className="flex items-center gap-3">
             {collection.drafts.length > 1 && <SortControl value={draftSort} onChange={setDraftSort} />}
-            <Button size="sm" variant="outline" onClick={() => setShowAddDraft(true)}>Add draft</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowAddDraft(true)}>{t("collectionDetail.drafts.addButton")}</Button>
           </div>
         </div>
         {collection.drafts.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-sm text-muted-foreground">No drafts in this collection yet.</p>
+            <p className="text-sm text-muted-foreground">{t("collectionDetail.drafts.empty")}</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -360,15 +365,15 @@ export function CollectionDetailPage() {
       {/* Projects section */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Projects ({collection.projects.length})</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t("collectionDetail.projects.heading", { count: collection.projects.length })}</h2>
           <div className="flex items-center gap-3">
             {collection.projects.length > 1 && <SortControl value={projectSort} onChange={setProjectSort} />}
-            <Button size="sm" variant="outline" onClick={() => setShowAddProject(true)}>Add project</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowAddProject(true)}>{t("collectionDetail.projects.addButton")}</Button>
           </div>
         </div>
         {collection.projects.length === 0 ? (
           <div className="rounded-lg border border-dashed p-8 text-center">
-            <p className="text-sm text-muted-foreground">No projects in this collection yet.</p>
+            <p className="text-sm text-muted-foreground">{t("collectionDetail.projects.empty")}</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">

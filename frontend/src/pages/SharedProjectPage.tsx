@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getSharedProject,
   sharedProjectPreviewUrl,
@@ -36,13 +37,14 @@ function StatusBadge({ status }: { status: string }) {
 // ---------------------------------------------------------------------------
 
 function ProgressBar({ current, total }: { current: number; total: number }) {
+  const { t } = useTranslation();
   const done = Math.max(0, current - 1);
   const pct = Math.min(100, Math.round((done / Math.max(total, 1)) * 100));
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-xs text-stone-500">
-        <span>Progress</span>
-        <span className="tabular-nums">{done.toLocaleString()} / {total.toLocaleString()} picks · {pct}%</span>
+        <span>{t("sharedProjectPage.progress")}</span>
+        <span className="tabular-nums">{t("sharedProjectPage.picks", { done: done.toLocaleString(), total: total.toLocaleString(), pct })}</span>
       </div>
       <div className="h-2 w-full rounded-full bg-stone-200 overflow-hidden">
         <div
@@ -71,6 +73,7 @@ function DrawdownWithHaze({
   totalPicks: number;
   isActive: boolean;
 }) {
+  const { t } = useTranslation();
   const [showHaze, setShowHaze] = useState(true);
   const [imgError, setImgError] = useState(false);
   const [useSvg, setUseSvg] = useState(false);
@@ -87,7 +90,7 @@ function DrawdownWithHaze({
       <div className="relative rounded-lg overflow-hidden border border-stone-200 bg-stone-100 flex justify-center">
         {imgError ? (
           <div className="flex items-center justify-center h-48 text-stone-400 text-sm">
-            Drawdown preview not available
+            {t("sharedProjectPage.drawdownNotAvailable")}
           </div>
         ) : (
           <>
@@ -119,7 +122,7 @@ function DrawdownWithHaze({
 
       {isActive && (
         <div className="flex items-center gap-2.5 px-1">
-          <span className="text-xs text-stone-500 select-none">Show progress</span>
+          <span className="text-xs text-stone-500 select-none">{t("sharedProjectPage.showProgress")}</span>
           <button
             role="switch"
             aria-checked={showHaze}
@@ -151,6 +154,7 @@ function ColorPaletteTable({
   weftStats: ColorStat[] | null;
   colorReplacements: Record<string, string> | null;
 }) {
+  const { t } = useTranslation();
   const bothPresent = warpStats !== null && weftStats !== null;
   const visibleColors = bothPresent
     ? wifColors.filter(
@@ -162,14 +166,14 @@ function ColorPaletteTable({
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">Color Palette</h2>
+      <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">{t("sharedProjectPage.colorPalette")}</h2>
       <div className="rounded-lg border border-stone-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-stone-200 bg-stone-50 text-stone-500 text-xs uppercase tracking-wide">
-              <th className="px-3 py-2 text-left">Color</th>
-              <th className="px-3 py-2 text-right">Warp ends</th>
-              <th className="px-3 py-2 text-right">Weft picks</th>
+              <th className="px-3 py-2 text-left">{t("sharedProjectPage.color")}</th>
+              <th className="px-3 py-2 text-right">{t("sharedProjectPage.warpEnds")}</th>
+              <th className="px-3 py-2 text-right">{t("sharedProjectPage.weftPicks")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-100">
@@ -227,6 +231,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 
 export function SharedProjectPage() {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
 
   const { data, isLoading, isError, error } = useQuery({
@@ -259,27 +264,27 @@ export function SharedProjectPage() {
         <div className="mx-auto max-w-3xl space-y-8">
 
           {isLoading && (
-            <div className="text-sm text-stone-400 text-center mt-16">Loading…</div>
+            <div className="text-sm text-stone-400 text-center mt-16">{t("sharedProjectPage.loading")}</div>
           )}
 
           {isError && isExpired && (
             <div className="text-center space-y-3 mt-16">
-              <h1 className="text-2xl font-bold text-stone-800">Link expired</h1>
-              <p className="text-stone-500 text-sm">This share link is no longer active.</p>
+              <h1 className="text-2xl font-bold text-stone-800">{t("sharedProjectPage.linkExpired")}</h1>
+              <p className="text-stone-500 text-sm">{t("sharedProjectPage.linkExpiredDesc")}</p>
             </div>
           )}
 
           {isError && isNotFound && !isExpired && (
             <div className="text-center space-y-3 mt-16">
-              <h1 className="text-2xl font-bold text-stone-800">Not found</h1>
-              <p className="text-stone-500 text-sm">This share link does not exist or has been revoked.</p>
+              <h1 className="text-2xl font-bold text-stone-800">{t("sharedProjectPage.notFound")}</h1>
+              <p className="text-stone-500 text-sm">{t("sharedProjectPage.notFoundDesc")}</p>
             </div>
           )}
 
           {isError && !isExpired && !isNotFound && (
             <div className="text-center space-y-3 mt-16">
-              <h1 className="text-2xl font-bold text-stone-800">Something went wrong</h1>
-              <p className="text-stone-500 text-sm">Unable to load this shared project.</p>
+              <h1 className="text-2xl font-bold text-stone-800">{t("sharedProjectPage.errorTitle")}</h1>
+              <p className="text-stone-500 text-sm">{t("sharedProjectPage.errorDesc")}</p>
             </div>
           )}
 
@@ -292,9 +297,9 @@ export function SharedProjectPage() {
                   <StatusBadge status={data.project_status} />
                 </div>
                 <p className="text-sm text-stone-500">
-                  Shared by <span className="font-medium text-stone-700">{data.owner_display_name}</span>
+                  {t("sharedProjectPage.sharedBy")} <span className="font-medium text-stone-700">{data.owner_display_name}</span>
                   {" · "}
-                  <span className="capitalize">{data.project_type} tracking</span>
+                  <span className="capitalize">{t("sharedProjectPage.typeTracking", { type: data.project_type })}</span>
                   {" · "}
                   <span className="italic">{data.draft_name}</span>
                 </p>
@@ -319,28 +324,28 @@ export function SharedProjectPage() {
               {/* Project info */}
               <div className="rounded-lg border border-stone-200 bg-white px-4 py-1">
                 {data.draft_num_shafts != null && (
-                  <InfoRow label="Shafts" value={data.draft_num_shafts} />
+                  <InfoRow label={t("sharedProjectPage.shafts")} value={data.draft_num_shafts} />
                 )}
                 {data.draft_num_treadles != null && data.project_type === "treadle" && (
-                  <InfoRow label="Treadles" value={data.draft_num_treadles} />
+                  <InfoRow label={t("sharedProjectPage.treadles")} value={data.draft_num_treadles} />
                 )}
-                <InfoRow label="Total picks" value={data.total_picks.toLocaleString()} />
+                <InfoRow label={t("sharedProjectPage.totalPicks")} value={data.total_picks.toLocaleString()} />
                 {data.num_items > 1 && (
-                  <InfoRow label="Items" value={data.num_items} />
+                  <InfoRow label={t("sharedProjectPage.items")} value={data.num_items} />
                 )}
                 {data.project_status === "active" && data.num_items > 1 && (
                   <InfoRow
-                    label="Current item"
-                    value={`${data.current_item} of ${data.num_items}`}
+                    label={t("sharedProjectPage.currentItem")}
+                    value={t("sharedProjectPage.itemOf", { current: data.current_item, total: data.num_items })}
                   />
                 )}
                 {data.completed_at && (
-                  <InfoRow label="Completed" value={new Date(data.completed_at).toLocaleDateString()} />
+                  <InfoRow label={t("sharedProjectPage.completed")} value={new Date(data.completed_at).toLocaleDateString()} />
                 )}
                 {data.abandoned_at && (
-                  <InfoRow label="Abandoned" value={new Date(data.abandoned_at).toLocaleDateString()} />
+                  <InfoRow label={t("sharedProjectPage.abandoned")} value={new Date(data.abandoned_at).toLocaleDateString()} />
                 )}
-                <InfoRow label="Started" value={new Date(data.created_at).toLocaleDateString()} />
+                <InfoRow label={t("sharedProjectPage.started")} value={new Date(data.created_at).toLocaleDateString()} />
               </div>
 
               {/* Color palette */}
@@ -356,7 +361,7 @@ export function SharedProjectPage() {
               {/* Expiry note */}
               {data.share_expires_at && (
                 <p className="text-xs text-stone-400 text-center">
-                  Link expires {new Date(data.share_expires_at).toLocaleDateString()}
+                  {t("sharedProjectPage.linkExpires", { date: new Date(data.share_expires_at).toLocaleDateString() })}
                 </p>
               )}
             </>

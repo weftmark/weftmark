@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getWarpingPlan, getProject, type WarpingPlan, type ColorStat, type ProjectDetail } from "@/api/projects";
@@ -9,11 +10,11 @@ import { convertLength, formatApproxLength, type LengthUnit } from "@/lib/units"
 
 type ReportTab = "summary" | "winding" | "tieup" | "threading";
 
-const TABS: { id: ReportTab; label: string }[] = [
-  { id: "summary", label: "Summary" },
-  { id: "winding", label: "Warping Board" },
-  { id: "tieup", label: "Tie-Up" },
-  { id: "threading", label: "Threading" },
+const TABS: { id: ReportTab; key: string }[] = [
+  { id: "summary", key: "warpingPlanPage.tabSummary" },
+  { id: "winding", key: "warpingPlanPage.tabWinding" },
+  { id: "tieup", key: "warpingPlanPage.tabTieUp" },
+  { id: "threading", key: "warpingPlanPage.tabThreading" },
 ];
 
 function approximateColorName(hex: string): string {
@@ -133,17 +134,19 @@ function MissingParamsBanner({
   projectId: string;
   loomId: string | null;
 }) {
+  const { t } = useTranslation();
   const items: React.ReactNode[] = [];
 
   if (setup.missingItemLength) {
     items.push(
       <li key="item-length">
-        <span className="font-medium">Item length</span> is not set —{" "}
+        <span className="font-medium">{t("warpingPlanPage.itemLength")}</span>{" "}
+        {t("warpingPlanPage.isNotSet")}{" "}
         <Link
           to={`/projects/${projectId}`}
           className="underline underline-offset-2 hover:text-foreground"
         >
-          set it in project warp setup
+          {t("warpingPlanPage.setInProjectWarpSetup")}
         </Link>
       </li>,
     );
@@ -153,40 +156,42 @@ function MissingParamsBanner({
     if (loomId) {
       items.push(
         <li key="warp-waste">
-          <span className="font-medium">Warp waste allowance</span> is not set —{" "}
+          <span className="font-medium">{t("warpingPlanPage.warpWasteAllowance")}</span>{" "}
+          {t("warpingPlanPage.isNotSet")}{" "}
           <Link
             to={`/looms/${loomId}`}
             className="underline underline-offset-2 hover:text-foreground"
           >
-            set a default on your loom
+            {t("warpingPlanPage.setDefaultOnLoom")}
           </Link>
-          {" "}or{" "}
+          {" "}{t("warpingPlanPage.or")}{" "}
           <Link
             to={`/projects/${projectId}`}
             className="underline underline-offset-2 hover:text-foreground"
           >
-            add a project override
+            {t("warpingPlanPage.addProjectOverride")}
           </Link>
         </li>,
       );
     } else {
       items.push(
         <li key="warp-waste">
-          <span className="font-medium">Warp waste allowance</span> is not set —{" "}
+          <span className="font-medium">{t("warpingPlanPage.warpWasteAllowance")}</span>{" "}
+          {t("warpingPlanPage.isNotSet")}{" "}
           <Link
             to={`/projects/${projectId}`}
             className="underline underline-offset-2 hover:text-foreground"
           >
-            set a project override
+            {t("warpingPlanPage.setProjectOverride")}
           </Link>
-          {" "}or{" "}
+          {" "}{t("warpingPlanPage.or")}{" "}
           <Link
             to={`/projects/${projectId}`}
             className="underline underline-offset-2 hover:text-foreground"
           >
-            assign a loom
+            {t("warpingPlanPage.assignLoom")}
           </Link>
-          {" "}with a warp waste default
+          {" "}{t("warpingPlanPage.withWarpWasteDefault")}
         </li>,
       );
     }
@@ -195,13 +200,13 @@ function MissingParamsBanner({
   if (setup.missingWasteBetween) {
     items.push(
       <li key="waste-between">
-        <span className="font-medium">Waste between items</span> is not set for this{" "}
-        {setup.numItems}-item project —{" "}
+        <span className="font-medium">{t("warpingPlanPage.wasteBetweenItems")}</span>{" "}
+        {t("warpingPlanPage.wasteBetweenNotSet", { count: setup.numItems })}{" "}
         <Link
           to={`/projects/${projectId}`}
           className="underline underline-offset-2 hover:text-foreground"
         >
-          set it in project warp setup
+          {t("warpingPlanPage.setInProjectWarpSetup")}
         </Link>
       </li>,
     );
@@ -215,8 +220,8 @@ function MissingParamsBanner({
     <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm print:hidden">
       <p className="font-medium text-foreground mb-1.5">
         {lengthColAffected
-          ? "Approx length cannot be calculated — missing parameters:"
-          : "Length calculation is incomplete — some parameters are missing:"}
+          ? t("warpingPlanPage.approxLengthCannotCalculate")
+          : t("warpingPlanPage.lengthCalculationIncomplete")}
       </p>
       <ul className="space-y-1 text-muted-foreground list-disc list-inside">
         {items}
@@ -237,41 +242,42 @@ function Swatch({ hex }: { hex: string | null }) {
 }
 
 function SummarySection({ plan }: { plan: WarpingPlan }) {
+  const { t } = useTranslation();
   const warpLengthM = plan.warp_length_cm != null ? (plan.warp_length_cm / 100).toFixed(2) : null;
   return (
     <div className="space-y-8">
       <section>
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3 print:text-black">
-          Loom Setup
+          {t("warpingPlanPage.loomSetup")}
         </h2>
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm">
           <div>
-            <dt className="text-xs text-muted-foreground">Warp ends</dt>
+            <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.warpEnds")}</dt>
             <dd className="font-semibold mt-0.5">{plan.warp_threads ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Total picks</dt>
+            <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.totalPicks")}</dt>
             <dd className="font-semibold mt-0.5">{plan.total_picks ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Shafts</dt>
+            <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.shafts")}</dt>
             <dd className="font-semibold mt-0.5">{plan.num_shafts ?? "—"}</dd>
           </div>
           {plan.project_type === "treadle" && (
             <div>
-              <dt className="text-xs text-muted-foreground">Treadles</dt>
+              <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.treadles")}</dt>
               <dd className="font-semibold mt-0.5">{plan.num_treadles ?? "—"}</dd>
             </div>
           )}
           {plan.epi != null && (
             <div>
-              <dt className="text-xs text-muted-foreground">EPI</dt>
+              <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.epi")}</dt>
               <dd className="font-semibold mt-0.5">{plan.epi}</dd>
             </div>
           )}
           {warpLengthM != null && (
             <div>
-              <dt className="text-xs text-muted-foreground">Warp length</dt>
+              <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.warpLength")}</dt>
               <dd className="font-semibold mt-0.5">{warpLengthM} m</dd>
             </div>
           )}
@@ -283,19 +289,20 @@ function SummarySection({ plan }: { plan: WarpingPlan }) {
 }
 
 function WarpColorSummary({ rows }: { rows: ColorStat[] }) {
+  const { t } = useTranslation();
   if (rows.length === 0) return null;
   return (
     <section>
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2 print:text-black">
-        Warp Colors
+        {t("warpingPlanPage.warpColors")}
       </h2>
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="border-b border-border text-muted-foreground text-xs">
-            <th className="py-1.5 text-left font-medium w-8">Color</th>
-            <th className="py-1.5 text-left font-medium">Hex</th>
-            <th className="py-1.5 text-right font-medium">Count</th>
-            <th className="py-1.5 text-right font-medium">%</th>
+            <th className="py-1.5 text-left font-medium w-8">{t("warpingPlanPage.color")}</th>
+            <th className="py-1.5 text-left font-medium">{t("warpingPlanPage.hex")}</th>
+            <th className="py-1.5 text-right font-medium">{t("warpingPlanPage.count")}</th>
+            <th className="py-1.5 text-right font-medium">{t("warpingPlanPage.percentage")}</th>
           </tr>
         </thead>
         <tbody>
@@ -320,13 +327,14 @@ function WindingSection({
   plan: WarpingPlan;
   project?: ProjectDetail;
 }) {
+  const { t } = useTranslation();
   const setup = project ? computeWarpSetup(project) : null;
   const hasMissing = setup
     ? setup.missingItemLength || setup.missingWarpWaste || setup.missingWasteBetween
     : false;
 
   if (!plan.warp_color_runs || plan.warp_color_runs.length === 0) {
-    return <p className="text-sm text-muted-foreground italic">Winding sequence not available — no threading data found.</p>;
+    return <p className="text-sm text-muted-foreground italic">{t("warpingPlanPage.windingNotAvailable")}</p>;
   }
   const hasOdd = plan.warp_color_runs.some((r) => r.count % 2 !== 0);
   const showLengthCol = setup?.approxWarpLengthCm != null;
@@ -343,12 +351,12 @@ function WindingSection({
       {setup && (
         <section className="border border-border rounded-md p-4 bg-muted/30">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3 print:text-black">
-            Length Parameters
+            {t("warpingPlanPage.lengthParameters")}
           </h2>
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm mb-3">
             {setup.warpWasteCm != null && (
               <div>
-                <dt className="text-xs text-muted-foreground">Warp waste</dt>
+                <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.warpWaste")}</dt>
                 <dd className="font-semibold mt-0.5">
                   {formatApproxLength(setup.warpWasteCm, setup.displayUnit)}
                 </dd>
@@ -356,19 +364,19 @@ function WindingSection({
             )}
             {setup.itemLengthCm != null && (
               <div>
-                <dt className="text-xs text-muted-foreground">Item length</dt>
+                <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.itemLength")}</dt>
                 <dd className="font-semibold mt-0.5">
                   {formatApproxLength(setup.itemLengthCm, setup.displayUnit)}
                 </dd>
               </div>
             )}
             <div>
-              <dt className="text-xs text-muted-foreground">Number of items</dt>
+              <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.numberOfItems")}</dt>
               <dd className="font-semibold mt-0.5">{setup.numItems}</dd>
             </div>
             {setup.numItems > 1 && setup.wasteBetweenCm != null && (
               <div>
-                <dt className="text-xs text-muted-foreground">Between items</dt>
+                <dt className="text-xs text-muted-foreground">{t("warpingPlanPage.betweenItems")}</dt>
                 <dd className="font-semibold mt-0.5">
                   {formatApproxLength(setup.wasteBetweenCm, setup.displayUnit)}
                 </dd>
@@ -377,31 +385,30 @@ function WindingSection({
           </dl>
           {setup.approxWarpLengthCm != null && (
             <div className="border-t border-border pt-3 text-sm">
-              <span className="text-muted-foreground">Approx warp length: </span>
+              <span className="text-muted-foreground">{t("warpingPlanPage.approxWarpLength")} </span>
               <span className="font-bold">{formatApproxLength(setup.approxWarpLengthCm, setup.displayUnit)}</span>
               {setup.missingWarpWaste && (
-                <span className="ml-2 text-xs text-muted-foreground">(excludes warp waste)</span>
+                <span className="ml-2 text-xs text-muted-foreground">{t("warpingPlanPage.excludesWarpWaste")}</span>
               )}
             </div>
           )}
         </section>
       )}
       <section>
-        <h2 className="text-base font-semibold mb-1 print:text-black">Winding Sequence</h2>
+        <h2 className="text-base font-semibold mb-1 print:text-black">{t("warpingPlanPage.windingSequence")}</h2>
         <p className="text-xs text-muted-foreground mb-3">
-          Wind the warp left to right in this order.
-          One loop = one back-and-forth pass on the warping board = 2 ends.
+          {t("warpingPlanPage.windingDesc")}
         </p>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border text-muted-foreground text-xs">
-              <th className="py-1.5 text-left font-medium w-8">#</th>
-              <th className="py-1.5 text-left font-medium w-8">Color</th>
-              <th className="py-1.5 text-left font-medium">Hex / Name</th>
-              <th className="py-1.5 text-right font-medium pr-4">Loops</th>
-              <th className="py-1.5 text-right font-medium pr-4">Ends</th>
-              {showLengthCol && <th className="py-1.5 text-right font-medium">Approx Length</th>}
-              <th className="py-1.5 text-right font-medium">Position</th>
+              <th className="py-1.5 text-left font-medium w-8">{t("warpingPlanPage.numberCol")}</th>
+              <th className="py-1.5 text-left font-medium w-8">{t("warpingPlanPage.color")}</th>
+              <th className="py-1.5 text-left font-medium">{t("warpingPlanPage.hexName")}</th>
+              <th className="py-1.5 text-right font-medium pr-4">{t("warpingPlanPage.loops")}</th>
+              <th className="py-1.5 text-right font-medium pr-4">{t("warpingPlanPage.ends")}</th>
+              {showLengthCol && <th className="py-1.5 text-right font-medium">{t("warpingPlanPage.approxLength")}</th>}
+              <th className="py-1.5 text-right font-medium">{t("warpingPlanPage.position")}</th>
             </tr>
           </thead>
           <tbody>
@@ -444,7 +451,7 @@ function WindingSection({
         </table>
         {hasOdd && (
           <p className="text-xs text-muted-foreground mt-2 italic">
-            +1 = one extra single end at the end of that group (half-loop).
+            {t("warpingPlanPage.halfLoopNote")}
           </p>
         )}
       </section>
@@ -453,21 +460,21 @@ function WindingSection({
 }
 
 function TieUpSection({ plan }: { plan: WarpingPlan }) {
+  const { t } = useTranslation();
   if (!plan.has_tieup || !plan.tieup || !plan.tieup_num_shafts || !plan.tieup_num_treadles) {
     return (
       <p className="text-sm text-muted-foreground italic">
         {plan.project_type === "lift"
-          ? "Tie-up not applicable for lift-plan projects."
-          : "Tie-up not available — this WIF file does not contain a [TIEUP] section."}
+          ? t("warpingPlanPage.tieupNotApplicable")
+          : t("warpingPlanPage.tieupNotAvailable")}
       </p>
     );
   }
   return (
     <section>
-      <h2 className="text-base font-semibold mb-1 print:text-black">Treadle Tie-Up</h2>
+      <h2 className="text-base font-semibold mb-1 print:text-black">{t("warpingPlanPage.treadleTieUp")}</h2>
       <p className="text-xs text-muted-foreground mb-3">
-        Filled squares show which shafts are connected to each treadle.
-        Columns = treadles (left to right), rows = shafts (top to bottom).
+        {t("warpingPlanPage.tieupDesc")}
       </p>
       <div className="overflow-x-auto">
         <TieUpDiagram
@@ -481,27 +488,28 @@ function TieUpSection({ plan }: { plan: WarpingPlan }) {
 }
 
 function ThreadingSection({ plan }: { plan: WarpingPlan }) {
+  const { t } = useTranslation();
   if (!plan.has_threading || !plan.threading || plan.threading.length === 0) {
     return (
       <p className="text-sm text-muted-foreground italic">
-        Threading sequence not available — this WIF file does not contain a [THREADING] section.
+        {t("warpingPlanPage.threadingNotAvailable")}
       </p>
     );
   }
   return (
     <section>
-      <h2 className="text-base font-semibold mb-1 print:text-black">Threading Sequence</h2>
+      <h2 className="text-base font-semibold mb-1 print:text-black">{t("warpingPlanPage.threadingSequence")}</h2>
       <p className="text-xs text-muted-foreground mb-3">
-        Thread each warp end through the listed shaft(s) in order.
+        {t("warpingPlanPage.threadingDesc")}
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse min-w-[320px]">
           <thead>
             <tr className="border-b border-border text-muted-foreground text-xs">
-              <th className="py-1.5 text-right font-medium w-16 pr-4">End</th>
-              <th className="py-1.5 text-left font-medium w-24">Shaft(s)</th>
-              <th className="py-1.5 text-left font-medium w-8">Color</th>
-              <th className="py-1.5 text-left font-medium">Hex / Name</th>
+              <th className="py-1.5 text-right font-medium w-16 pr-4">{t("warpingPlanPage.endCol")}</th>
+              <th className="py-1.5 text-left font-medium w-24">{t("warpingPlanPage.shaftsCol")}</th>
+              <th className="py-1.5 text-left font-medium w-8">{t("warpingPlanPage.color")}</th>
+              <th className="py-1.5 text-left font-medium">{t("warpingPlanPage.hexName")}</th>
             </tr>
           </thead>
           <tbody>
@@ -530,6 +538,7 @@ function ThreadingSection({ plan }: { plan: WarpingPlan }) {
 }
 
 export function WarpingPlanPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState<ReportTab>("winding");
   const { data: plan, isLoading, isError } = useQuery({
@@ -554,15 +563,16 @@ export function WarpingPlanPage() {
   if (isError || !plan) {
     return (
       <div className="flex flex-col items-center justify-center h-40 gap-3">
-        <p className="text-sm text-muted-foreground">Failed to load warping plan.</p>
+        <p className="text-sm text-muted-foreground">{t("warpingPlanPage.failedToLoad")}</p>
         <Link to={`/projects/${id}`}>
-          <Button variant="outline" size="sm">Back to project</Button>
+          <Button variant="outline" size="sm">{t("warpingPlanPage.backToProject")}</Button>
         </Link>
       </div>
     );
   }
 
-  const activeLabel = TABS.find((t) => t.id === tab)?.label ?? "";
+  const activeTab = TABS.find((tab_) => tab_.id === tab);
+  const activeLabel = activeTab ? t(activeTab.key) : "";
 
   return (
     <div className="h-full overflow-y-auto bg-background">
@@ -575,11 +585,11 @@ export function WarpingPlanPage() {
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
             <AppIcons.chevronRight className="h-4 w-4 rotate-180" />
-            Back to tracker
+            {t("warpingPlanPage.backToTracker")}
           </Link>
           <span className="text-border">|</span>
           <Link to={`/projects/${id}`} className="text-sm text-muted-foreground hover:text-foreground">
-            Project overview
+            {t("warpingPlanPage.projectOverview")}
           </Link>
           <div className="ml-auto flex items-center gap-2">
             <Button
@@ -587,33 +597,33 @@ export function WarpingPlanPage() {
               variant="outline"
               onClick={() => {
                 const prev = document.title;
-                document.title = `${plan.draft_name} - ${activeLabel} - Weave Plan`;
+                document.title = `${plan.draft_name} - ${activeLabel} - ${t("warpingPlanPage.warpingPlan")}`;
                 window.print();
                 document.title = prev;
               }}
             >
               <AppIcons.saveAsPdf className="h-4 w-4 mr-1.5" />
-              Save as PDF
+              {t("warpingPlanPage.saveAsPdf")}
             </Button>
             <Button size="sm" onClick={() => window.print()}>
               <AppIcons.print className="h-4 w-4 mr-1.5" />
-              Print
+              {t("warpingPlanPage.print")}
             </Button>
           </div>
         </div>
         {/* Tab row */}
         <div className="flex px-4 gap-0">
-          {TABS.map((t) => (
+          {TABS.map((tab_) => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={tab_.id}
+              onClick={() => setTab(tab_.id)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.id
+                tab === tab_.id
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t.label}
+              {t(tab_.key)}
             </button>
           ))}
         </div>
@@ -623,17 +633,17 @@ export function WarpingPlanPage() {
       <div className="mx-auto max-w-3xl px-6 py-8 print:px-0 print:py-4">
         {/* Report header */}
         <div className="border-b border-border pb-4 mb-8">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Warping Plan</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t("warpingPlanPage.warpingPlan")}</p>
           <h1 className="text-2xl font-bold">{plan.draft_name}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             <span className="print:hidden">
-              {plan.project_type === "lift" ? "Lift tracking" : "Treadle tracking"}
+              {plan.project_type === "lift" ? t("warpingPlanPage.liftTracking") : t("warpingPlanPage.treadleTracking")}
               {" · "}
               {activeLabel}
             </span>
             <span className="hidden print:inline">
-              {activeLabel} · {plan.project_type === "lift" ? "Lift tracking" : "Treadle tracking"}
-              {" · "}Generated {new Date().toLocaleDateString()}
+              {activeLabel} · {plan.project_type === "lift" ? t("warpingPlanPage.liftTracking") : t("warpingPlanPage.treadleTracking")}
+              {" · "}{t("warpingPlanPage.generated")} {new Date().toLocaleDateString()}
             </span>
           </p>
         </div>
