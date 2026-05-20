@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +21,7 @@ import { getReedRecommendation } from "@/lib/reedRecommendation";
 import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
 
 export function DraftDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -143,7 +145,7 @@ export function DraftDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <span className="text-sm text-muted-foreground">Loading…</span>
+        <span className="text-sm text-muted-foreground">{t("draftDetailPage.loading")}</span>
       </div>
     );
   }
@@ -151,7 +153,7 @@ export function DraftDetailPage() {
   if (error || !draft) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <span className="text-sm text-destructive">Draft not found.</span>
+        <span className="text-sm text-destructive">{t("draftDetailPage.notFound")}</span>
       </div>
     );
   }
@@ -193,15 +195,15 @@ export function DraftDetailPage() {
       {isReadOnly && <SuperuserInspectionBanner />}
       {draft.archived_at && (
         <div className="px-6 py-2 bg-muted/50 border-b border-border text-sm text-muted-foreground flex items-center gap-2">
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">Archived</span>
-          This draft is archived and hidden from your active list.
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">{t("draftDetailPage.archivedBadge")}</span>
+          {t("draftDetailPage.archivedNote")}
         </div>
       )}
       <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
-            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
+            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">{t("draftDetailPage.breadcrumb")}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-medium text-foreground">{draft.name}</span>
           </div>
@@ -216,7 +218,7 @@ export function DraftDetailPage() {
                   onClick={() => { setPendingTags(draft.tags ?? []); setEditingTags(true); }}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {draft.tags && draft.tags.length > 0 ? "Edit tags" : "+ Add tags"}
+                  {draft.tags && draft.tags.length > 0 ? t("draftDetailPage.editTags") : t("draftDetailPage.addTags")}
                 </button>
               )}
             </div>
@@ -231,10 +233,10 @@ export function DraftDetailPage() {
                 onClick={() => tagsMutation.mutate(pendingTags)}
                 disabled={tagsMutation.isPending}
               >
-                {tagsMutation.isPending ? "Saving…" : "Save"}
+                {tagsMutation.isPending ? t("draftDetailPage.saving") : t("common.save")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setEditingTags(false)}>
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           )}
@@ -242,7 +244,7 @@ export function DraftDetailPage() {
         {!isReadOnly && (
           <Button size="sm" variant="outline" onClick={() => setShowAddToCollection(true)}>
             <AppIcons.collections className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
-            Add to collection
+            {t("draftDetailPage.addToCollection")}
           </Button>
         )}
       </div>
@@ -250,7 +252,7 @@ export function DraftDetailPage() {
         {/* Lint status */}
         {draft.lint_errors.length > 0 && (
           <div className="rounded-md bg-destructive/10 p-4 space-y-1">
-            <p className="text-sm font-medium text-destructive">Errors</p>
+            <p className="text-sm font-medium text-destructive">{t("draftDetailPage.lintErrors")}</p>
             {draft.lint_errors.map((e, i) => (
               <p key={i} className="text-sm text-destructive">{e}</p>
             ))}
@@ -258,7 +260,7 @@ export function DraftDetailPage() {
         )}
         {draft.lint_warnings.length > 0 && (
           <div className="rounded-md bg-muted p-4 space-y-1">
-            <p className="text-sm font-medium">Warnings</p>
+            <p className="text-sm font-medium">{t("draftDetailPage.lintWarnings")}</p>
             {draft.lint_warnings.map((w, i) => (
               <p key={i} className="text-sm text-muted-foreground">{w}</p>
             ))}
@@ -269,7 +271,7 @@ export function DraftDetailPage() {
           {/* Left column: Info + Features + Activities */}
           <div className="space-y-6">
             <div className="space-y-4">
-              <h2 className="text-base font-semibold">Design Info</h2>
+              <h2 className="text-base font-semibold">{t("draftDetailPage.designInfo")}</h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <dt className="text-muted-foreground">File</dt>
                 <dd className="flex flex-wrap items-center gap-2">
@@ -290,7 +292,7 @@ export function DraftDetailPage() {
                       }
                     }}
                   >
-                    {downloading ? "Downloading…" : draft.has_modified_file ? "Download original" : "Download"}
+                    {downloading ? t("draftDetailPage.downloading") : draft.has_modified_file ? t("draftDetailPage.downloadOriginal") : t("draftDetailPage.download")}
                   </button>
                   {draft.has_modified_file && (
                     <button
@@ -309,7 +311,7 @@ export function DraftDetailPage() {
                         }
                       }}
                     >
-                      Download modified
+                      {t("draftDetailPage.downloadModified")}
                     </button>
                   )}
                 </dd>
@@ -373,7 +375,7 @@ export function DraftDetailPage() {
                         <option value="in">in</option>
                       </select>
                       <Button type="submit" size="sm" disabled={warpLengthMutation.isPending}>
-                        {warpLengthMutation.isPending ? "Saving…" : "Save"}
+                        {warpLengthMutation.isPending ? t("draftDetailPage.saving") : t("common.save")}
                       </Button>
                       <Button
                         type="button"
@@ -382,7 +384,7 @@ export function DraftDetailPage() {
                         onClick={() => { setEditingWarpLength(false); setWarpLengthInput(""); }}
                         disabled={warpLengthMutation.isPending}
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                       {warpLengthMutation.isError && (
                         <span className="text-xs text-destructive">
@@ -612,7 +614,7 @@ export function DraftDetailPage() {
                 if (visibleColors.length === 0) return null;
                 return (
                 <div className="mt-4 space-y-2">
-                  <h3 className="text-sm font-medium">Color palette</h3>
+                  <h3 className="text-sm font-medium">{t("draftDetailPage.colorPalette")}</h3>
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-muted-foreground">
@@ -681,7 +683,7 @@ export function DraftDetailPage() {
             </div>
 
             <div className="space-y-3 border-t pt-4">
-              <h2 className="text-base font-semibold">Features</h2>
+              <h2 className="text-base font-semibold">{t("draftDetailPage.features")}</h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {(
                   [
@@ -805,11 +807,11 @@ export function DraftDetailPage() {
 
             <div className="border-t pt-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold">Projects</h2>
+                <h2 className="text-base font-semibold">{t("draftDetailPage.projects")}</h2>
                 <div className="flex items-center gap-3">
-                  {!isReadOnly && <Button size="sm" onClick={() => setShowCreateProject(true)}>New project</Button>}
+                  {!isReadOnly && <Button size="sm" onClick={() => setShowCreateProject(true)}>{t("draftDetailPage.newProject")}</Button>}
                   <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
-                    All projects →
+                    {t("draftDetailPage.allProjects")}
                   </Link>
                 </div>
               </div>
@@ -819,7 +821,7 @@ export function DraftDetailPage() {
 
           {/* Right column: Preview */}
           <div>
-            <h2 className="text-base font-semibold mb-3">Design Preview</h2>
+            <h2 className="text-base font-semibold mb-3">{t("draftDetailPage.designPreview")}</h2>
             {draft.wif_filename ? (
               <button
                 type="button"
@@ -834,18 +836,18 @@ export function DraftDetailPage() {
                   data-testid="draft-preview-img"
                   loadingContent={
                     <div className="w-full min-h-48 animate-pulse rounded-md bg-muted flex items-center justify-center">
-                      <span className="text-sm text-muted-foreground">Loading preview…</span>
+                      <span className="text-sm text-muted-foreground">{t("draftDetailPage.loadingPreview")}</span>
                     </div>
                   }
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  Click to zoom
+                  {t("draftDetailPage.clickToZoom")}
                 </p>
               </button>
             ) : (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Preview not available for this file.
+                  {t("draftDetailPage.previewUnavailable")}
                 </p>
               </div>
             )}
@@ -859,7 +861,7 @@ export function DraftDetailPage() {
             onClick={() => { setShowDangerZone((v) => !v); setConfirmDelete(false); setDeleteConflict(null); setConfirmForceDelete(false); }}
             className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide hover:text-destructive transition-colors"
           >
-            <span>Danger zone</span>
+            <span>{t("draftDetailPage.dangerZone")}</span>
             <span>{showDangerZone ? "▲" : "▼"}</span>
           </button>
           {showDangerZone && (
@@ -867,11 +869,9 @@ export function DraftDetailPage() {
               {/* Archive / Unarchive */}
               <div className="rounded-md border border-border p-4 flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium">{draft.archived_at ? "Unarchive draft" : "Archive draft"}</p>
+                  <p className="text-sm font-medium">{draft.archived_at ? t("draftDetailPage.unarchiveDraft") : t("draftDetailPage.archiveDraft")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {draft.archived_at
-                      ? "Restore this draft to your active list."
-                      : "Hide this draft from active lists without deleting it. Existing projects are unaffected."}
+                    {draft.archived_at ? t("draftDetailPage.unarchiveNote") : t("draftDetailPage.archiveNote")}
                   </p>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -881,7 +881,7 @@ export function DraftDetailPage() {
                       size="sm"
                       onClick={() => setConfirmArchive(true)}
                     >
-                      {draft.archived_at ? "Unarchive" : "Archive"}
+                      {draft.archived_at ? t("draftDetailPage.unarchive") : t("draftDetailPage.archive")}
                     </Button>
                   ) : (
                     <>
@@ -908,8 +908,8 @@ export function DraftDetailPage() {
               <div className="rounded-md border border-destructive/30 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium">Delete draft</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Permanently removes this draft and its WIF file.</p>
+                    <p className="text-sm font-medium">{t("draftDetailPage.deleteDraft")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("draftDetailPage.deleteNote")}</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {!confirmDelete && !deleteConflict ? (
@@ -919,7 +919,7 @@ export function DraftDetailPage() {
                         className="text-destructive hover:text-destructive"
                         onClick={() => setConfirmDelete(true)}
                       >
-                        Delete draft
+                        {t("draftDetailPage.deleteDraft")}
                       </Button>
                     ) : confirmDelete ? (
                       <>
@@ -929,10 +929,10 @@ export function DraftDetailPage() {
                           onClick={() => deleteMutation.mutate(false)}
                           disabled={deleteMutation.isPending}
                         >
-                          Confirm delete
+                          {t("draftDetailPage.confirmDelete")}
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>
-                          Cancel
+                          {t("common.cancel")}
                         </Button>
                       </>
                     ) : null}
@@ -968,10 +968,10 @@ export function DraftDetailPage() {
                           onClick={() => deleteMutation.mutate(true)}
                           disabled={deleteMutation.isPending}
                         >
-                          Confirm force delete
+                          {t("draftDetailPage.confirmForceDelete")}
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>
-                          Cancel
+                          {t("common.cancel")}
                         </Button>
                       </div>
                     )}
