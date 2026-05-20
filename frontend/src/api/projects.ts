@@ -1,16 +1,18 @@
 export type ProjectType = "treadle" | "lift";
 export type ProjectStatus = "created" | "active" | "completed" | "abandoned";
 
+import i18next from "i18next";
+
 export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
-  treadle: "Treadle tracking",
-  lift: "Lift tracking",
+  get treadle() { return i18next.t("projectType.treadle"); },
+  get lift() { return i18next.t("projectType.lift"); },
 };
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  created: "Not started",
-  active: "Active",
-  completed: "Completed",
-  abandoned: "Abandoned",
+  get created() { return i18next.t("projectStatus.created"); },
+  get active() { return i18next.t("projectStatus.active"); },
+  get completed() { return i18next.t("projectStatus.completed"); },
+  get abandoned() { return i18next.t("projectStatus.abandoned"); },
 };
 
 export type ShareVisibility = "private" | "link" | "public";

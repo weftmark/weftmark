@@ -34,14 +34,14 @@
     "superuser": "Superusuario"
   },
   "loomTypes": {
-    "floor_loom": "Telar de piso – seguimiento de pedales",
-    "table_loom": "Telar de mesa – seguimiento de palancas",
+    "floor_loom": "Telar de piso - seguimiento de pedales",
+    "table_loom": "Telar de mesa - seguimiento de palancas",
     "rigid_heddle": "Telar de lizos rígidos",
     "inkle": "Telar inkle",
     "dobby_floor_loom": "Telar dobby de piso",
-    "tapestry_loom": "Telar de tapiz – seguimiento de proyectos no disponible",
-    "rug_loom": "Telar de alfombras – seguimiento de proyectos no disponible",
-    "frame_loom": "Telar de marco – seguimiento de proyectos no disponible",
+    "tapestry_loom": "Telar de tapiz - seguimiento de proyectos no disponible",
+    "rug_loom": "Telar de alfombras - seguimiento de proyectos no disponible",
+    "frame_loom": "Telar de marco - seguimiento de proyectos no disponible",
     "other": "Otro"
   },
   "projectStatus": {
@@ -64,13 +64,118 @@
     "feature_request": "Solicitud de función",
     "bug_report": "Reporte de error"
   },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loading": "Cargando…"
+  },
+  "settings": {
+    "saved": "Guardado",
+    "sections": {
+      "appearance": "Apariencia",
+      "diagnostics": "Diagnóstico",
+      "preferences": "Preferencias",
+      "privacy": "Privacidad",
+      "terms": "Términos de uso",
+      "feedbackHistory": "Historial de comentarios",
+      "account": "Gestión de cuenta"
+    },
+    "appearance": {
+      "theme": "Tema",
+      "activityTrackerStyle": "Estilo del seguidor de actividad",
+      "trackerDefaults": "Valores predeterminados del seguidor",
+      "trackerDefaultsHelp": "Opciones de vista predeterminadas al abrir el seguidor de actividad. Puedes anularlas por proyecto en el panel de configuración del seguidor.",
+      "colorMode": "Modo de color",
+      "progressBar": "Barra de progreso",
+      "drawdownPattern": "Ligamento",
+      "weftColorBar": "Barra de color de trama",
+      "prevNextPickCards": "Tarjetas de pasada anterior/siguiente",
+      "hideUnusedShaftsTreadles": "Ocultar marcos y pedales no utilizados",
+      "hideUnusedHelp": "Cuando está activado, los marcos y pedales no usados por el diseño se ocultan en el visor. Los nuevos proyectos heredan esta configuración. Desactivado por defecto (todos los marcos/pedales visibles).",
+      "hidden": "Oculto",
+      "shown": "Visible",
+      "styleVariantNote": "Las variantes de estilo se diferenciarán visualmente en una futura actualización.",
+      "active": "— activo",
+      "activityStyles": {
+        "default": { "label": "Predeterminado", "desc": "Diseño estándar con tarjetas de pasada de tamaño completo y vista previa del ligamento." },
+        "compact": { "label": "Compacto", "desc": "Diseño más denso para sesiones de seguimiento intensivo con menos espacio vertical." },
+        "high_contrast": { "label": "Alto contraste", "desc": "Mayor contraste visual para una lectura más fácil bajo luz intensa o por accesibilidad." }
+      }
+    },
+    "diagnostics": {
+      "showVersionNumbers": "Mostrar números de versión",
+      "showVersionNumbersHelp": "Mostrar u ocultar el distintivo de versión de UI, API y worker en la esquina inferior derecha.",
+      "visible": "Visible",
+      "hidden": "Oculto"
+    },
+    "preferences": {
+      "displayName": "Nombre de pantalla",
+      "measurementSystem": "Sistema de medidas",
+      "sessionIdleTimeout": "Tiempo de espera de inactividad",
+      "timeout15min": "15 minutos",
+      "timeout30min": "30 minutos",
+      "timeout1hr": "1 hora",
+      "timeout2hr": "2 horas"
+    },
+    "privacy": {
+      "optOut": "Rechazar el uso de datos",
+      "optOutHelp": "Según nuestros términos de uso, tus datos se utilizan de forma predeterminada para mejorar la plataforma. Activa esta opción para rechazarlo.",
+      "optedOut": "Rechazado",
+      "participating": "Participando (predeterminado)",
+      "dataUseNote": "Tu contenido, configuración y etiquetas — incluidos archivos WIF, fotos y datos de proyectos — pueden usarse para entrenamiento de modelos IA/ML y mejoras de funciones según se describe en los términos de uso.",
+      "sharingNote": "Rechazar también desactiva todos los enlaces de uso compartido público de tus ligamentos.",
+      "whatWeStore": "Qué almacenamos sobre ti",
+      "storeEmail": "Dirección de correo electrónico y nombre de pantalla (de tu proveedor de inicio de sesión)",
+      "storeFiles": "Archivos WIF, registros de telares, proyectos, fotos e hilos que creas",
+      "storeSettings": "Configuración, etiquetas y metadatos que asignas a tu contenido",
+      "storeTimestamp": "Marca de tiempo de última actividad",
+      "noSell": "Nunca vendemos tus datos. Consulta nuestros términos de uso para conocer la política completa.",
+      "optOutModal": {
+        "title": "¿Rechazar el uso de datos?",
+        "body": "Rechazar detiene el uso futuro de tus datos para entrenamiento de modelos IA/ML y mejoras de funciones. Los datos ya utilizados en el entrenamiento no pueden eliminarse retroactivamente.",
+        "warningTitle": "Lo siguiente se desactivará inmediatamente:",
+        "sharingLinks": "Enlaces de uso compartido público para todos tus ligamentos",
+        "currentlyActive": "({{count}} activos actualmente)",
+        "futureSharing": "Cualquier función futura de uso compartido vinculada a tu cuenta",
+        "loseAccess": "Cualquier persona con tus enlaces de uso compartido actuales perderá el acceso de inmediato.",
+        "reOptInNote": "Puedes volver a participar en cualquier momento desde esta página. Volver a participar restaura el acceso al uso compartido pero no reactiva los enlaces individuales de ligamentos — tendrás que compartirlos de nuevo manualmente.",
+        "confirmButton": "Rechazar y desactivar uso compartido",
+        "cancelButton": "Cancelar"
+      }
+    },
+    "terms": {
+      "tosTitle": "Términos de uso de weftmark v{{version}}",
+      "accepted": "Has aceptado la versión actual.",
+      "notAccepted": "Aún no has aceptado la versión actual.",
+      "hide": "Ocultar",
+      "readTerms": "Leer términos"
+    },
+    "feedbackHistory": {
+      "description": "Tus envíos, incluidos los anónimos. Solo tú puedes ver esta lista.",
+      "noSubmissions": "Sin envíos todavía.",
+      "anonymous": "(anónimo)",
+      "viewDiscussion": "Ver discusión en GitHub"
+    },
+    "account": {
+      "downloadData": "Descargar mis datos",
+      "requestArchive": "Solicitar archivo de datos",
+      "exportNote": "La exportación de datos está planificada para el Hito 2. Actualmente solo devuelve el estado.",
+      "dangerZone": "Zona de peligro",
+      "dangerDescription": "Eliminar permanentemente tu cuenta y todos los datos: archivos WIF, fotos, registros de proyectos, telares, hilos y ligamentos. Esta acción no se puede deshacer.",
+      "deleteAccount": "Eliminar mi cuenta",
+      "deleteConfirmInstruction": "Escribe DELETE MY ACCOUNT para confirmar:",
+      "deleteConfirmPlaceholder": "DELETE MY ACCOUNT",
+      "deleting": "Eliminando…",
+      "permanentDelete": "Eliminar permanentemente mi cuenta"
+    }
+  },
   "landing": {
     "navLoomCatalog": "Catálogo de telares",
     "navSignIn": "Iniciar sesión",
     "tagline": "Compañero de tejido para tejedores manuales",
     "heroTitle": "Tu tejido,",
     "heroTitleHighlight": "pasada a pasada.",
-    "heroBody": "Sube tu ligamento WIF, sigue cada pasada, y mantén un registro completo de cada proyecto – desde el primer urdido hasta la última pasada.",
+    "heroBody": "Sube tu ligamento WIF, sigue cada pasada, y mantén un registro completo de cada proyecto - desde el primer urdido hasta la última pasada.",
     "ctaSignIn": "Iniciar sesión",
     "ctaCreateAccount": "Crear cuenta",
     "featuresHeading": "Todo lo que necesitas junto al telar",

@@ -34,14 +34,14 @@
     "superuser": "Superuser"
   },
   "loomTypes": {
-    "floor_loom": "Trittwebstuhl – Trittfolge-Tracking",
-    "table_loom": "Tischwebstuhl – Schafthebel-Tracking",
+    "floor_loom": "Trittwebstuhl - Trittfolge-Tracking",
+    "table_loom": "Tischwebstuhl - Schafthebel-Tracking",
     "rigid_heddle": "Starrblatt-Webstuhl",
     "inkle": "Inkle-Webstuhl",
     "dobby_floor_loom": "Dobby-Trittwebstuhl",
-    "tapestry_loom": "Bildwirkerei-Webstuhl – Projekt-Tracking derzeit nicht unterstützt",
-    "rug_loom": "Teppichwebstuhl – Projekt-Tracking derzeit nicht unterstützt",
-    "frame_loom": "Rahmenwebstuhl – Projekt-Tracking derzeit nicht unterstützt",
+    "tapestry_loom": "Bildwirkerei-Webstuhl - Projekt-Tracking derzeit nicht unterstützt",
+    "rug_loom": "Teppichwebstuhl - Projekt-Tracking derzeit nicht unterstützt",
+    "frame_loom": "Rahmenwebstuhl - Projekt-Tracking derzeit nicht unterstützt",
     "other": "Sonstige"
   },
   "projectStatus": {
@@ -64,13 +64,118 @@
     "feature_request": "Funktionswunsch",
     "bug_report": "Fehlermeldung"
   },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "loading": "Lädt …"
+  },
+  "settings": {
+    "saved": "Gespeichert",
+    "sections": {
+      "appearance": "Darstellung",
+      "diagnostics": "Diagnose",
+      "preferences": "Einstellungen",
+      "privacy": "Datenschutz",
+      "terms": "Nutzungsbedingungen",
+      "feedbackHistory": "Feedback-Verlauf",
+      "account": "Kontoverwaltung"
+    },
+    "appearance": {
+      "theme": "Design",
+      "activityTrackerStyle": "Aktivitäts-Tracker-Stil",
+      "trackerDefaults": "Tracker-Standardwerte",
+      "trackerDefaultsHelp": "Standardansichtsoptionen beim Öffnen des Aktivitäts-Trackers. Diese können pro Projekt in den Tracker-Einstellungen überschrieben werden.",
+      "colorMode": "Farbmodus",
+      "progressBar": "Fortschrittsbalken",
+      "drawdownPattern": "Patrone",
+      "weftColorBar": "Schussfarbenleiste",
+      "prevNextPickCards": "Vorherige/nächste Eintrags­karten",
+      "hideUnusedShaftsTreadles": "Ungenutzte Schäfte und Tritte ausblenden",
+      "hideUnusedHelp": "Wenn aktiviert, werden im Patron-Viewer Schäfte und Tritte, die im Muster nicht verwendet werden, ausgeblendet. Neue Projekte übernehmen diese Einstellung. Standard: aus (alle Schäfte/Tritte sichtbar).",
+      "hidden": "Ausgeblendet",
+      "shown": "Angezeigt",
+      "styleVariantNote": "Stilabweichungen werden in einem zukünftigen Update visuell unterschieden.",
+      "active": "— aktiv",
+      "activityStyles": {
+        "default": { "label": "Standard", "desc": "Standardlayout mit großen Eintrags­karten und Patron-Vorschau." },
+        "compact": { "label": "Kompakt", "desc": "Dichteres Layout für intensives Tracking mit weniger vertikalem Platz." },
+        "high_contrast": { "label": "Hoher Kontrast", "desc": "Höherer visueller Kontrast für einfacheres Lesen bei hellem Licht oder für Barrierefreiheit." }
+      }
+    },
+    "diagnostics": {
+      "showVersionNumbers": "Versionsnummern anzeigen",
+      "showVersionNumbersHelp": "Anzeige oder Ausblendung des Versions-Badges für UI, API und Worker in der unteren rechten Ecke.",
+      "visible": "Sichtbar",
+      "hidden": "Ausgeblendet"
+    },
+    "preferences": {
+      "displayName": "Anzeigename",
+      "measurementSystem": "Maßsystem",
+      "sessionIdleTimeout": "Sitzungs-Leerlauf-Timeout",
+      "timeout15min": "15 Minuten",
+      "timeout30min": "30 Minuten",
+      "timeout1hr": "1 Stunde",
+      "timeout2hr": "2 Stunden"
+    },
+    "privacy": {
+      "optOut": "Datennutzung ablehnen",
+      "optOutHelp": "Gemäß unseren Nutzungsbedingungen werden deine Daten standardmäßig zur Plattformverbesserung genutzt. Aktiviere diesen Schalter, um abzulehnen.",
+      "optedOut": "Abgelehnt",
+      "participating": "Teilnehmend (Standard)",
+      "dataUseNote": "Deine Inhalte, Einstellungen und Tags – einschließlich WIF-Dateien, Fotos und Projektdaten – können gemäß den Nutzungsbedingungen für KI/ML-Modelltraining und Funktionsverbesserungen verwendet werden.",
+      "sharingNote": "Die Ablehnung deaktiviert auch alle öffentlichen Freigabelinks für deine Entwürfe.",
+      "whatWeStore": "Was wir über dich speichern",
+      "storeEmail": "E-Mail-Adresse und Anzeigename (von deinem Anmeldeanbieter)",
+      "storeFiles": "Von dir erstellte WIF-Dateien, Webstuhleinträge, Projekte, Fotos und Garne",
+      "storeSettings": "Einstellungen, Tags und Metadaten, die du deinen Inhalten zuweist",
+      "storeTimestamp": "Zeitstempel der letzten Aktivität",
+      "noSell": "Wir verkaufen deine Daten nicht. Die vollständige Richtlinie findest du in unseren Nutzungsbedingungen.",
+      "optOutModal": {
+        "title": "Datennutzung ablehnen?",
+        "body": "Die Ablehnung stoppt die zukünftige Nutzung deiner Daten für KI/ML-Modelltraining und Funktionsverbesserungen. Bereits in das Modelltraining eingeflossene Daten können nicht rückwirkend entfernt werden.",
+        "warningTitle": "Folgendes wird sofort deaktiviert:",
+        "sharingLinks": "Öffentliche Freigabelinks für alle deine Entwürfe",
+        "currentlyActive": "({{count}} derzeit aktiv)",
+        "futureSharing": "Alle zukünftigen Freigabefunktionen, die mit deinem Konto verknüpft sind",
+        "loseAccess": "Alle Personen mit deinen aktuellen Freigabelinks verlieren sofort den Zugriff.",
+        "reOptInNote": "Du kannst jederzeit auf dieser Seite wieder zustimmen. Das erneute Zustimmen stellt den Freigabezugriff wieder her, aktiviert jedoch keine einzelnen Entwurfslinks erneut – diese müssen manuell erneut geteilt werden.",
+        "confirmButton": "Ablehnen und Freigabe deaktivieren",
+        "cancelButton": "Abbrechen"
+      }
+    },
+    "terms": {
+      "tosTitle": "weftmark Nutzungsbedingungen v{{version}}",
+      "accepted": "Du hast die aktuelle Version akzeptiert.",
+      "notAccepted": "Du hast die aktuelle Version noch nicht akzeptiert.",
+      "hide": "Ausblenden",
+      "readTerms": "Bedingungen lesen"
+    },
+    "feedbackHistory": {
+      "description": "Deine gesendeten Einsendungen, einschließlich anonymer. Nur du kannst diese Liste sehen.",
+      "noSubmissions": "Noch keine Einsendungen.",
+      "anonymous": "(anonym)",
+      "viewDiscussion": "Diskussion auf GitHub anzeigen"
+    },
+    "account": {
+      "downloadData": "Meine Daten herunterladen",
+      "requestArchive": "Datenarchiv anfordern",
+      "exportNote": "Datenexport ist für Meilenstein 2 geplant. Gibt derzeit nur den Status zurück.",
+      "dangerZone": "Gefahrenzone",
+      "dangerDescription": "Konto und alle Daten dauerhaft löschen: WIF-Dateien, Fotos, Projekteinträge, Webstühle, Garne und Entwürfe. Dies kann nicht rückgängig gemacht werden.",
+      "deleteAccount": "Mein Konto löschen",
+      "deleteConfirmInstruction": "Gib DELETE MY ACCOUNT zur Bestätigung ein:",
+      "deleteConfirmPlaceholder": "DELETE MY ACCOUNT",
+      "deleting": "Wird gelöscht …",
+      "permanentDelete": "Mein Konto dauerhaft löschen"
+    }
+  },
   "landing": {
     "navLoomCatalog": "Webstuh-Katalog",
     "navSignIn": "Anmelden",
     "tagline": "Webbegleiter für Handweber",
     "heroTitle": "Dein Weben,",
     "heroTitleHighlight": "Reihe für Reihe.",
-    "heroBody": "Lade deinen WIF-Entwurf hoch, folge Pick für Pick, und behalte eine vollständige Aufzeichnung von jedem Entwurf – vom ersten Aufzug bis zum letzten Pick.",
+    "heroBody": "Lade deinen WIF-Entwurf hoch, folge Pick für Pick, und behalte eine vollständige Aufzeichnung von jedem Entwurf - vom ersten Aufzug bis zum letzten Pick.",
     "ctaSignIn": "Anmelden",
     "ctaCreateAccount": "Konto erstellen",
     "featuresHeading": "Alles, was du am Webstuhl brauchst",
