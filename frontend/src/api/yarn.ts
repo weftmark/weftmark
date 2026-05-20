@@ -16,10 +16,12 @@ export function displayWeight(oz: string | null, g: string | null): string | nul
   return null;
 }
 
+import i18next from "i18next";
+
 export const SKEIN_STATUS_LABELS: Record<string, string> = {
-  available: "Available",
-  in_use: "In use",
-  consumed: "Consumed",
+  get available() { return i18next.t("skeinStatus.available"); },
+  get in_use() { return i18next.t("skeinStatus.in_use"); },
+  get consumed() { return i18next.t("skeinStatus.consumed"); },
 };
 
 export type SkeinStatus = "available" | "in_use" | "consumed";

@@ -1,0 +1,198 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "equipment": "Équipement",
+    "collections": "Collections",
+    "drafts": "Armures",
+    "projects": "Projets",
+    "settings": "Paramètres",
+    "admin": "Admin",
+    "sendFeedback": "Envoyer un retour",
+    "supportWeftmark": "Soutenir weftmark",
+    "signOut": "Se déconnecter"
+  },
+  "settingsSections": {
+    "appearance": "Apparence",
+    "preferences": "Préférences",
+    "privacy": "Confidentialité",
+    "terms": "Conditions d'utilisation",
+    "account": "Compte",
+    "feedbackHistory": "Historique des retours"
+  },
+  "adminSections": {
+    "users": "Utilisateurs",
+    "invites": "Invitations",
+    "stats": "Statistiques",
+    "health": "État",
+    "services": "Services",
+    "deps": "Dépendances",
+    "audit": "Journal d'audit",
+    "feedback": "Retours",
+    "credentials": "Identifiants",
+    "slugs": "Liens de partage",
+    "looms": "Base de métiers",
+    "superuser": "Superutilisateur"
+  },
+  "loomTypes": {
+    "floor_loom": "Métier de basse lisse - suivi des marches",
+    "table_loom": "Métier de table - suivi des leviers",
+    "rigid_heddle": "Métier à cadre rigide",
+    "inkle": "Métier inkle",
+    "dobby_floor_loom": "Métier dobby",
+    "tapestry_loom": "Métier à tapisserie - suivi de projet non disponible",
+    "rug_loom": "Métier à tapis - suivi de projet non disponible",
+    "frame_loom": "Métier à cadre - suivi de projet non disponible",
+    "other": "Autre"
+  },
+  "projectStatus": {
+    "created": "Non commencé",
+    "active": "En cours",
+    "completed": "Terminé",
+    "abandoned": "Abandonné"
+  },
+  "projectType": {
+    "treadle": "Suivi des marches",
+    "lift": "Suivi des leviers"
+  },
+  "skeinStatus": {
+    "available": "Disponible",
+    "in_use": "En cours d'utilisation",
+    "consumed": "Consommé"
+  },
+  "feedbackType": {
+    "feedback": "Retour",
+    "feature_request": "Demande de fonctionnalité",
+    "bug_report": "Signalement de bug"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "loading": "Chargement…"
+  },
+  "settings": {
+    "saved": "Enregistré",
+    "sections": {
+      "appearance": "Apparence",
+      "diagnostics": "Diagnostics",
+      "preferences": "Préférences",
+      "privacy": "Confidentialité",
+      "terms": "Conditions d'utilisation",
+      "feedbackHistory": "Historique des retours",
+      "account": "Gestion du compte"
+    },
+    "appearance": {
+      "theme": "Thème",
+      "activityTrackerStyle": "Style du suivi d'activité",
+      "trackerDefaults": "Paramètres par défaut du suivi",
+      "trackerDefaultsHelp": "Options d'affichage par défaut lors de l'ouverture du suivi d'activité. Vous pouvez les modifier par projet dans le panneau de paramètres du suivi.",
+      "colorMode": "Mode couleur",
+      "progressBar": "Barre de progression",
+      "drawdownPattern": "Armure",
+      "weftColorBar": "Barre de couleur de trame",
+      "prevNextPickCards": "Cartes duite précédente/suivante",
+      "hideUnusedShaftsTreadles": "Masquer les cadres et marches inutilisés",
+      "hideUnusedHelp": "Quand activé, les cadres et marches non utilisés par le motif sont masqués dans la visionneuse. Les nouveaux projets héritent de ce réglage. Par défaut désactivé (tous les cadres/marches affichés).",
+      "hidden": "Masqué",
+      "shown": "Affiché",
+      "styleVariantNote": "Les variantes de style seront visuellement différenciées dans une prochaine mise à jour.",
+      "active": "— actif",
+      "activityStyles": {
+        "default": { "label": "Par défaut", "desc": "Disposition standard avec cartes de duite en taille réelle et aperçu de l'armure." },
+        "compact": { "label": "Compact", "desc": "Disposition plus dense pour les sessions de suivi intensif avec moins d'espace vertical." },
+        "high_contrast": { "label": "Contraste élevé", "desc": "Contraste visuel plus élevé pour une lecture facilitée sous forte luminosité ou pour l'accessibilité." }
+      }
+    },
+    "diagnostics": {
+      "showVersionNumbers": "Afficher les numéros de version",
+      "showVersionNumbersHelp": "Afficher ou masquer le badge de version UI, API et worker dans le coin inférieur droit.",
+      "visible": "Visible",
+      "hidden": "Masqué"
+    },
+    "preferences": {
+      "displayName": "Nom d'affichage",
+      "measurementSystem": "Système de mesure",
+      "language": "Langue",
+      "sessionIdleTimeout": "Délai d'inactivité de session",
+      "timeout15min": "15 minutes",
+      "timeout30min": "30 minutes",
+      "timeout1hr": "1 heure",
+      "timeout2hr": "2 heures"
+    },
+    "privacy": {
+      "optOut": "Refuser l'utilisation des données",
+      "optOutHelp": "Conformément à nos conditions d'utilisation, vos données sont utilisées par défaut pour améliorer la plateforme. Activez ce bouton pour refuser.",
+      "optedOut": "Refusé",
+      "participating": "Participant (par défaut)",
+      "dataUseNote": "Votre contenu, vos paramètres et vos tags — y compris les fichiers WIF, les photos et les données de projet — peuvent être utilisés pour l'entraînement de modèles IA/ML et l'amélioration des fonctionnalités, comme décrit dans les conditions d'utilisation.",
+      "sharingNote": "Le refus désactive également tous les liens de partage public pour vos armures.",
+      "whatWeStore": "Ce que nous conservons à votre sujet",
+      "storeEmail": "Adresse e-mail et nom d'affichage (de votre fournisseur de connexion)",
+      "storeFiles": "Fichiers WIF, métiers, projets, photos et fils que vous créez",
+      "storeSettings": "Paramètres, tags et métadonnées que vous attribuez à votre contenu",
+      "storeTimestamp": "Horodatage de dernière activité",
+      "noSell": "Nous ne vendons jamais vos données. Consultez nos conditions d'utilisation pour la politique complète.",
+      "optOutModal": {
+        "title": "Refuser l'utilisation des données ?",
+        "body": "Le refus arrête l'utilisation future de vos données pour l'entraînement de modèles IA/ML et l'amélioration des fonctionnalités. Les données déjà utilisées dans l'entraînement ne peuvent pas être supprimées rétroactivement.",
+        "warningTitle": "Les éléments suivants seront désactivés immédiatement :",
+        "sharingLinks": "Liens de partage public pour toutes vos armures",
+        "currentlyActive": "({{count}} actuellement actifs)",
+        "futureSharing": "Toutes les fonctionnalités de partage futures liées à votre compte",
+        "loseAccess": "Toute personne disposant de vos liens de partage actuels perdra immédiatement l'accès.",
+        "reOptInNote": "Vous pouvez vous réinscrire à tout moment depuis cette page. La réinscription rétablit l'accès au partage mais ne réactive pas les liens individuels d'armures — vous devrez les repartager manuellement.",
+        "confirmButton": "Refuser et désactiver le partage",
+        "cancelButton": "Annuler"
+      }
+    },
+    "terms": {
+      "tosTitle": "Conditions d'utilisation weftmark v{{version}}",
+      "accepted": "Vous avez accepté la version actuelle.",
+      "notAccepted": "Vous n'avez pas encore accepté la version actuelle.",
+      "hide": "Masquer",
+      "readTerms": "Lire les conditions"
+    },
+    "feedbackHistory": {
+      "description": "Vos soumissions envoyées, y compris les anonymes. Vous seul pouvez voir cette liste.",
+      "noSubmissions": "Aucune soumission pour l'instant.",
+      "anonymous": "(anonyme)",
+      "viewDiscussion": "Voir la discussion sur GitHub"
+    },
+    "account": {
+      "downloadData": "Télécharger mes données",
+      "requestArchive": "Demander une archive de données",
+      "exportNote": "L'export de données est prévu pour le Milestone 2. Retourne actuellement uniquement le statut.",
+      "dangerZone": "Zone de danger",
+      "dangerDescription": "Supprimer définitivement votre compte et toutes les données : fichiers WIF, photos, projets, métiers, fils et armures. Cette action est irréversible.",
+      "deleteAccount": "Supprimer mon compte",
+      "deleteConfirmInstruction": "Tapez DELETE MY ACCOUNT pour confirmer :",
+      "deleteConfirmPlaceholder": "DELETE MY ACCOUNT",
+      "deleting": "Suppression…",
+      "permanentDelete": "Supprimer définitivement mon compte"
+    }
+  },
+  "landing": {
+    "navLoomCatalog": "Catalogue de métiers",
+    "navSignIn": "Se connecter",
+    "tagline": "Compagnon de tissage pour tisserands",
+    "heroTitle": "Votre tissage,",
+    "heroTitleHighlight": "rang par rang.",
+    "heroBody": "Importez votre armure WIF, suivez chaque duite, et gardez un historique complet de chaque projet - du premier montage au dernier passage.",
+    "ctaSignIn": "Se connecter",
+    "ctaCreateAccount": "Créer un compte",
+    "featuresHeading": "Tout ce dont vous avez besoin au métier",
+    "features": {
+      "trackWeaves": {
+        "title": "Suivez vos tissages",
+        "body": "Importez votre armure WIF et avancez duite par duite. weftmark retient votre place pour que vous puissiez poser la navette et reprendre exactement où vous en étiez."
+      },
+      "recordPicks": {
+        "title": "Enregistrez chaque duite",
+        "body": "Avancez, reculez ou sautez à n'importe quel rang. Marquez un projet comme terminé quand la dernière duite est tissée."
+      },
+      "manageTools": {
+        "title": "Gérez votre matériel",
+        "body": "Tenez un registre de vos métiers et de vos fils. Associez un métier à une armure et suivez ce qui est sur l'ensouple."
+      }
+    }
+  }
+}

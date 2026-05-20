@@ -1,0 +1,198 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "equipment": "Apparatuur",
+    "collections": "Collecties",
+    "drafts": "Bindingen",
+    "projects": "Projecten",
+    "settings": "Instellingen",
+    "admin": "Admin",
+    "sendFeedback": "Feedback sturen",
+    "supportWeftmark": "weftmark steunen",
+    "signOut": "Afmelden"
+  },
+  "settingsSections": {
+    "appearance": "Weergave",
+    "preferences": "Voorkeuren",
+    "privacy": "Privacy",
+    "terms": "Gebruiksvoorwaarden",
+    "account": "Account",
+    "feedbackHistory": "Feedbackgeschiedenis"
+  },
+  "adminSections": {
+    "users": "Gebruikers",
+    "invites": "Uitnodigingen",
+    "stats": "Statistieken",
+    "health": "Status",
+    "services": "Diensten",
+    "deps": "Afhankelijkheden",
+    "audit": "Auditlogboek",
+    "feedback": "Feedback",
+    "credentials": "Inloggegevens",
+    "slugs": "Deellinks",
+    "looms": "Weefstoel­database",
+    "superuser": "Supergebruiker"
+  },
+  "loomTypes": {
+    "floor_loom": "Vloerweefstoel — trapper-tracking",
+    "table_loom": "Tafelweefstoel — hefinrichting-tracking",
+    "rigid_heddle": "Rigid heddle weefstoel",
+    "inkle": "Inkle weefstoel",
+    "dobby_floor_loom": "Dobby vloerweefstoel",
+    "tapestry_loom": "Wandtapijt weefstoel — project­tracking momenteel niet ondersteund",
+    "rug_loom": "Kleed­weefstoel — project­tracking momenteel niet ondersteund",
+    "frame_loom": "Raam­weefstoel — project­tracking momenteel niet ondersteund",
+    "other": "Overig"
+  },
+  "projectStatus": {
+    "created": "Niet gestart",
+    "active": "Actief",
+    "completed": "Voltooid",
+    "abandoned": "Gestopt"
+  },
+  "projectType": {
+    "treadle": "Trapper-tracking",
+    "lift": "Hefinrichting-tracking"
+  },
+  "skeinStatus": {
+    "available": "Beschikbaar",
+    "in_use": "In gebruik",
+    "consumed": "Opgebruikt"
+  },
+  "feedbackType": {
+    "feedback": "Feedback",
+    "feature_request": "Functieverzoek",
+    "bug_report": "Foutmelding"
+  },
+  "common": {
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "loading": "Laden…"
+  },
+  "settings": {
+    "saved": "Opgeslagen",
+    "sections": {
+      "appearance": "Weergave",
+      "diagnostics": "Diagnostiek",
+      "preferences": "Voorkeuren",
+      "privacy": "Privacy",
+      "terms": "Gebruiksvoorwaarden",
+      "feedbackHistory": "Feedbackgeschiedenis",
+      "account": "Accountbeheer"
+    },
+    "appearance": {
+      "theme": "Thema",
+      "activityTrackerStyle": "Stijl van de activiteits­tracker",
+      "trackerDefaults": "Standaard­instellingen tracker",
+      "trackerDefaultsHelp": "Standaard weergave­opties bij het openen van de activiteits­tracker. Deze kunnen per project overschreven worden in het instellingen­paneel van de tracker.",
+      "colorMode": "Kleurmodus",
+      "progressBar": "Voortgangs­balk",
+      "drawdownPattern": "Bindingspatroon",
+      "weftColorBar": "Inslagkleur­balk",
+      "prevNextPickCards": "Kaarten vorige/volgende inslag",
+      "hideUnusedShaftsTreadles": "Ongebruikte schachten en trappers verbergen",
+      "hideUnusedHelp": "Wanneer ingeschakeld, worden schachten en trappers die niet gebruikt worden door het ontwerp verborgen in de bindingskijker. Nieuwe projecten erven deze instelling. Standaard uit (alle schachten/trappers zichtbaar).",
+      "hidden": "Verborgen",
+      "shown": "Zichtbaar",
+      "styleVariantNote": "Stijl­varianten worden visueel onderscheiden in een toekomstige update.",
+      "active": "— actief",
+      "activityStyles": {
+        "default": { "label": "Standaard", "desc": "Standaard indeling met kaarten op volledige grootte en bindingsvoorbeeld." },
+        "compact": { "label": "Compact", "desc": "Dichtere indeling voor intensieve tracking­sessies met minder verticale ruimte." },
+        "high_contrast": { "label": "Hoog contrast", "desc": "Hoger visueel contrast voor gemakkelijker lezen bij fel licht of voor toegankelijkheid." }
+      }
+    },
+    "diagnostics": {
+      "showVersionNumbers": "Versie­nummers tonen",
+      "showVersionNumbersHelp": "De versie­badge voor UI, API en worker in de rechter­onderhoek tonen of verbergen.",
+      "visible": "Zichtbaar",
+      "hidden": "Verborgen"
+    },
+    "preferences": {
+      "displayName": "Weergavenaam",
+      "measurementSystem": "Meetsysteem",
+      "language": "Taal",
+      "sessionIdleTimeout": "Time-out bij inactiviteit",
+      "timeout15min": "15 minuten",
+      "timeout30min": "30 minuten",
+      "timeout1hr": "1 uur",
+      "timeout2hr": "2 uur"
+    },
+    "privacy": {
+      "optOut": "Gegevens­gebruik weigeren",
+      "optOutHelp": "Volgens onze gebruiksvoorwaarden worden uw gegevens standaard gebruikt voor platformverbetering. Zet dit aan om te weigeren.",
+      "optedOut": "Geweigerd",
+      "participating": "Deelnemend (standaard)",
+      "dataUseNote": "Uw inhoud, instellingen en tags — inclusief WIF-bestanden, foto's en projectgegevens — kunnen worden gebruikt voor AI/ML-modeltraining en functieverbeteringen zoals beschreven in de gebruiksvoorwaarden.",
+      "sharingNote": "Weigeren schakelt ook alle openbare deel­links voor uw bindingen uit.",
+      "whatWeStore": "Wat we van u opslaan",
+      "storeEmail": "E-mailadres en weergavenaam (van uw aanmeld­provider)",
+      "storeFiles": "WIF-bestanden, weefstoel­records, projecten, foto's en garen die u aanmaakt",
+      "storeSettings": "Instellingen, tags en metadata die u aan uw inhoud toevoegt",
+      "storeTimestamp": "Tijdstempel van laatste activiteit",
+      "noSell": "Wij verkopen uw gegevens nooit. Zie onze gebruiksvoorwaarden voor het volledige beleid.",
+      "optOutModal": {
+        "title": "Gegevens­gebruik weigeren?",
+        "body": "Weigeren stopt toekomstig gebruik van uw gegevens voor AI/ML-modeltraining en functieverbeteringen. Gegevens die al zijn gebruikt voor modeltraining kunnen niet achteraf worden verwijderd.",
+        "warningTitle": "Het volgende wordt onmiddellijk uitgeschakeld:",
+        "sharingLinks": "Openbare deel­links voor al uw bindingen",
+        "currentlyActive": "({{count}} momenteel actief)",
+        "futureSharing": "Toekomstige deel­functies gekoppeld aan uw account",
+        "loseAccess": "Iedereen met uw huidige deel­links verliest onmiddellijk de toegang.",
+        "reOptInNote": "U kunt zich op elk moment op deze pagina opnieuw aanmelden. Opnieuw aanmelden herstelt deeltoegang maar activeert individuele bindingslinks niet opnieuw — u moet ze handmatig opnieuw delen.",
+        "confirmButton": "Weigeren en delen uitschakelen",
+        "cancelButton": "Annuleren"
+      }
+    },
+    "terms": {
+      "tosTitle": "weftmark Gebruiksvoorwaarden v{{version}}",
+      "accepted": "U heeft de huidige versie geaccepteerd.",
+      "notAccepted": "U heeft de huidige versie nog niet geaccepteerd.",
+      "hide": "Verbergen",
+      "readTerms": "Voorwaarden lezen"
+    },
+    "feedbackHistory": {
+      "description": "Uw ingediende berichten, inclusief anonieme. Alleen u kunt deze lijst zien.",
+      "noSubmissions": "Nog geen berichten.",
+      "anonymous": "(anoniem)",
+      "viewDiscussion": "Discussie bekijken op GitHub"
+    },
+    "account": {
+      "downloadData": "Mijn gegevens downloaden",
+      "requestArchive": "Gegevens­archief aanvragen",
+      "exportNote": "Gegevens­export is gepland voor Mijlpaal 2. Geeft momenteel alleen de status terug.",
+      "dangerZone": "Gevaren­zone",
+      "dangerDescription": "Uw account en alle gegevens permanent verwijderen: WIF-bestanden, foto's, project­records, weefstoel­en, garen en bindingen. Dit kan niet ongedaan worden gemaakt.",
+      "deleteAccount": "Mijn account verwijderen",
+      "deleteConfirmInstruction": "Typ DELETE MY ACCOUNT ter bevestiging:",
+      "deleteConfirmPlaceholder": "DELETE MY ACCOUNT",
+      "deleting": "Verwijderen…",
+      "permanentDelete": "Mijn account permanent verwijderen"
+    }
+  },
+  "landing": {
+    "navLoomCatalog": "Weefstoel­catalogus",
+    "navSignIn": "Aanmelden",
+    "tagline": "Weefbegeleider voor hand­wevers",
+    "heroTitle": "Uw weefwerk,",
+    "heroTitleHighlight": "rij voor rij.",
+    "heroBody": "Upload uw WIF-binding, volg elke inslag en houd een volledig overzicht bij van elk project — van de eerste schering tot de laatste inslag.",
+    "ctaSignIn": "Aanmelden",
+    "ctaCreateAccount": "Account aanmaken",
+    "featuresHeading": "Alles wat u nodig heeft aan het weefgetouw",
+    "features": {
+      "trackWeaves": {
+        "title": "Volg uw weefprojecten",
+        "body": "Upload uw WIF-binding en ga inslag voor inslag verder. weftmark onthoudt uw positie zodat u het schietspoel neer kunt leggen en precies verder kunt gaan waar u was gebleven."
+      },
+      "recordPicks": {
+        "title": "Leg elke inslag vast",
+        "body": "Vooruit, achteruit of naar elke rij springen. Markeer een project als voltooid wanneer de laatste inslag is geweven."
+      },
+      "manageTools": {
+        "title": "Beheer uw gereedschap",
+        "body": "Houd een overzicht bij van uw weefstoel­en en garen. Koppel een weefstoel aan een binding en volg wat er op de boom zit."
+      }
+    }
+  }
+}

@@ -1,0 +1,198 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "equipment": "Equipment",
+    "collections": "Collections",
+    "drafts": "Drafts",
+    "projects": "Projects",
+    "settings": "Settings",
+    "admin": "Admin",
+    "sendFeedback": "Send Feedback",
+    "supportWeftmark": "Support weftmark",
+    "signOut": "Sign out"
+  },
+  "settingsSections": {
+    "appearance": "Appearance",
+    "preferences": "Preferences",
+    "privacy": "Privacy & data",
+    "terms": "Terms",
+    "account": "Account",
+    "feedbackHistory": "Feedback history"
+  },
+  "adminSections": {
+    "users": "Users",
+    "invites": "Invites",
+    "stats": "Stats",
+    "health": "Health",
+    "services": "Services",
+    "deps": "Dependencies",
+    "audit": "Audit log",
+    "feedback": "Feedback",
+    "credentials": "Credentials",
+    "slugs": "Share links",
+    "looms": "Loom database",
+    "superuser": "Superuser"
+  },
+  "loomTypes": {
+    "floor_loom": "Floor Loom — treadle tracking",
+    "table_loom": "Table Loom — lift tracking",
+    "rigid_heddle": "Rigid Heddle",
+    "inkle": "Inkle",
+    "dobby_floor_loom": "Dobby Floor Loom",
+    "tapestry_loom": "Tapestry Loom — project tracking not currently supported",
+    "rug_loom": "Rug Loom — project tracking not currently supported",
+    "frame_loom": "Frame Loom — project tracking not currently supported",
+    "other": "Other"
+  },
+  "projectStatus": {
+    "created": "Not started",
+    "active": "Active",
+    "completed": "Completed",
+    "abandoned": "Abandoned"
+  },
+  "projectType": {
+    "treadle": "Treadle tracking",
+    "lift": "Lift tracking"
+  },
+  "skeinStatus": {
+    "available": "Available",
+    "in_use": "In use",
+    "consumed": "Consumed"
+  },
+  "feedbackType": {
+    "feedback": "Feedback",
+    "feature_request": "Feature Request",
+    "bug_report": "Bug Report"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading…"
+  },
+  "settings": {
+    "saved": "Saved",
+    "sections": {
+      "appearance": "Appearance",
+      "diagnostics": "Diagnostics",
+      "preferences": "Preferences",
+      "privacy": "Privacy & data",
+      "terms": "Terms of Service",
+      "feedbackHistory": "Feedback history",
+      "account": "Account management"
+    },
+    "appearance": {
+      "theme": "Theme",
+      "activityTrackerStyle": "Activity tracker style",
+      "trackerDefaults": "Tracker defaults",
+      "trackerDefaultsHelp": "Default view options when opening the activity tracker. You can still override these per-project in the tracker settings panel.",
+      "colorMode": "Color mode",
+      "progressBar": "Progress bar",
+      "drawdownPattern": "Drawdown pattern",
+      "weftColorBar": "Weft color bar",
+      "prevNextPickCards": "Prev/next pick cards",
+      "hideUnusedShaftsTreadles": "Hide unused shafts and treadles",
+      "hideUnusedHelp": "When enabled, shafts and treadles not used by the design are hidden in the drawdown viewer. New projects inherit this setting. Default is off (all shafts/treadles shown).",
+      "hidden": "Hidden",
+      "shown": "Shown",
+      "styleVariantNote": "Style variants will be visually differentiated in a future update.",
+      "active": "— active",
+      "activityStyles": {
+        "default": { "label": "Default", "desc": "Standard layout with full-size pick cards and drawdown preview." },
+        "compact": { "label": "Compact", "desc": "Denser layout for tracking-heavy sessions with less vertical space." },
+        "high_contrast": { "label": "High contrast", "desc": "Higher visual contrast for easier reading under bright light or for accessibility." }
+      }
+    },
+    "diagnostics": {
+      "showVersionNumbers": "Show version numbers",
+      "showVersionNumbersHelp": "Show or hide the UI, API, and worker version badge in the bottom-right corner.",
+      "visible": "Visible",
+      "hidden": "Hidden"
+    },
+    "preferences": {
+      "displayName": "Display name",
+      "measurementSystem": "Measurement system",
+      "language": "Language",
+      "sessionIdleTimeout": "Session idle timeout",
+      "timeout15min": "15 minutes",
+      "timeout30min": "30 minutes",
+      "timeout1hr": "1 hour",
+      "timeout2hr": "2 hours"
+    },
+    "privacy": {
+      "optOut": "Opt out of data use",
+      "optOutHelp": "Per our Terms of Service, your data is used for platform improvements by default. Toggle on to opt out.",
+      "optedOut": "Opted out",
+      "participating": "Participating (default)",
+      "dataUseNote": "Your content, settings, and tags — including WIF files, photos, and project data — may be used for AI/ML model training and feature improvements as described in the Terms of Service.",
+      "sharingNote": "Opting out also disables all public sharing links for your drafts.",
+      "whatWeStore": "What we store about you",
+      "storeEmail": "Email address and display name (from your sign-in provider)",
+      "storeFiles": "WIF files, loom records, projects, photos, and yarn you create",
+      "storeSettings": "Settings, tags, and metadata you assign to your content",
+      "storeTimestamp": "Last active timestamp",
+      "noSell": "We never sell your data. See our Terms of Service for the full policy.",
+      "optOutModal": {
+        "title": "Opt out of data use?",
+        "body": "Opting out stops future use of your data for AI/ML model training and feature improvements. Data already used in model training cannot be retroactively removed.",
+        "warningTitle": "The following will be disabled immediately:",
+        "sharingLinks": "Public sharing links for all your drafts",
+        "currentlyActive": "({{count}} currently active)",
+        "futureSharing": "Any future sharing features tied to your account",
+        "loseAccess": "Anyone with your current sharing links will immediately lose access.",
+        "reOptInNote": "You can opt back in at any time from this page. Re-opting in restores sharing access but does not re-enable individual draft links — you will need to re-share those manually.",
+        "confirmButton": "Opt out and disable sharing",
+        "cancelButton": "Cancel"
+      }
+    },
+    "terms": {
+      "tosTitle": "weftmark Terms of Service v{{version}}",
+      "accepted": "You have accepted the current version.",
+      "notAccepted": "You have not yet accepted the current version.",
+      "hide": "Hide",
+      "readTerms": "Read terms"
+    },
+    "feedbackHistory": {
+      "description": "Submissions you've sent, including anonymous ones. Only you can see this list.",
+      "noSubmissions": "No submissions yet.",
+      "anonymous": "(anonymous)",
+      "viewDiscussion": "View discussion on GitHub"
+    },
+    "account": {
+      "downloadData": "Download my data",
+      "requestArchive": "Request data archive",
+      "exportNote": "Data export is planned for Milestone 2. Currently returns status only.",
+      "dangerZone": "Danger zone",
+      "dangerDescription": "Permanently delete your account and all data: WIF files, photos, project records, looms, yarn, and drafts. This cannot be undone.",
+      "deleteAccount": "Delete my account",
+      "deleteConfirmInstruction": "Type DELETE MY ACCOUNT to confirm:",
+      "deleteConfirmPlaceholder": "DELETE MY ACCOUNT",
+      "deleting": "Deleting…",
+      "permanentDelete": "Permanently delete my account"
+    }
+  },
+  "landing": {
+    "navLoomCatalog": "Loom catalog",
+    "navSignIn": "Sign in",
+    "tagline": "Weaving companion for handweavers",
+    "heroTitle": "Your weaving,",
+    "heroTitleHighlight": "row by row.",
+    "heroBody": "Upload your WIF draft, follow along pick by pick, and keep a complete record of every draft from first warp to last pick.",
+    "ctaSignIn": "Sign In",
+    "ctaCreateAccount": "Create Account",
+    "featuresHeading": "Everything you need at the loom",
+    "features": {
+      "trackWeaves": {
+        "title": "Track your weaves",
+        "body": "Upload your WIF draft and step through every pick. weftmark keeps your place so you can put down the shuttle and pick it right back up."
+      },
+      "recordPicks": {
+        "title": "Record every pick",
+        "body": "Advance, reverse, or jump to any row. Mark a project complete when the last pick is woven in."
+      },
+      "manageTools": {
+        "title": "Manage your tools",
+        "body": "Keep a record of your looms and yarn. Assign a loom to a draft and track what's on the beam."
+      }
+    }
+  }
+}
