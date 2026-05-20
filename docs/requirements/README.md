@@ -17,6 +17,13 @@ This directory contains the formal requirements for the WeftMark platform.
 | [admin.md](admin.md) | Admin capabilities — invites, monitoring, WIF records |
 | [phase2.md](phase2.md) | Deferred features for future consideration |
 
+## Feature Guides
+
+| Document | Description |
+| --- | --- |
+| [features/i18n.md](../features/i18n.md) | i18n pattern reference — how to add translations to new features |
+| [features/user-settings-eula.md](../features/user-settings-eula.md) | User settings and EULA acceptance gate |
+
 ## Supporting Files
 
 - `docs/standard/standard-wif1-1.txt` — WIF 1.1 specification (authoritative reference)
