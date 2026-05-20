@@ -11,6 +11,7 @@ Technical reference for the stack, repo layout, services, API security model, an
 | **Frontend** | React 18 + Vite + TypeScript + Tailwind CSS |
 | **UI components** | shadcn/ui (Radix primitives) |
 | **Data fetching** | TanStack Query v5 + React Router v6 |
+| **Internationalization** | react-i18next — 5 locales (en, de, fr, es, nl) |
 | **Backend** | FastAPI (Python 3.12) |
 | **ORM / migrations** | SQLAlchemy 2 (async) + Alembic |
 | **Database** | PostgreSQL 17 (Neon in prod; local container in dev) |
@@ -66,6 +67,14 @@ weaving_site/
 │   │   │   ├── yarn/
 │   │   │   └── ui/           # shadcn/ui primitives
 │   │   ├── api/              # API client functions (all use authed client)
+│   │   ├── i18n/
+│   │   │   └── config.ts     # react-i18next init + SUPPORTED_LANGUAGES
+│   │   ├── locales/
+│   │   │   ├── en/translation.json
+│   │   │   ├── de/translation.json
+│   │   │   ├── fr/translation.json
+│   │   │   ├── es/translation.json
+│   │   │   └── nl/translation.json
 │   │   └── lib/
 │   │       └── client.ts     # Axios instance configured with Bearer auth
 │   └── Dockerfile

@@ -6,7 +6,7 @@ WeftMark: multi-user web platform for managing weaving drafts. Private by defaul
 
 | Layer | Choice |
 | --- | --- |
-| Frontend | React + Vite + TypeScript + Tailwind CSS + shadcn/ui + TanStack Query + React Router |
+| Frontend | React + Vite + TypeScript + Tailwind CSS + shadcn/ui + TanStack Query + React Router + react-i18next |
 | Backend | FastAPI (Python) + SQLAlchemy + Alembic |
 | Database | PostgreSQL (Neon in prod, local container in dev) |
 | Task queue | Celery + Redis |
@@ -170,6 +170,21 @@ Dark mode is class-based (`darkMode: ["class"]` in `tailwind.config.ts`); applie
 
 Full design reference (layout patterns, component snippets, palette previews): `docs/design-system.md`
 
+## Internationalization (i18n)
+
+**Every new user-facing string must be translated.** The app supports 5 languages: `en`, `de`, `fr`, `es`, `nl`.
+
+**Rules:**
+
+- Use `useTranslation()` and `t("namespace.key")` in every page and component — no hardcoded strings
+- Add keys to **all five** locale files (`frontend/src/locales/{lang}/translation.json`) in the same commit
+- Group keys by page/feature: `loginPage.signIn`, `myNewPage.title`
+- Interpolation: `t("key", { name })` with `{{name}}` in the JSON value
+- Plurals: `key_one` / `key_other` — pass `{ count }` to select the right form
+- Do **not** translate: long prose pages (About, Privacy, Costs), admin/superuser tooling, API-stored enum values
+
+Full pattern reference: `docs/features/i18n.md`
+
 ## Feature requirements map
 
 Read the listed spec **before** touching any of these feature areas:
@@ -185,6 +200,7 @@ Read the listed spec **before** touching any of these feature areas:
 | User sharing / profiles | `docs/requirements/sharing-profiles.md` | `app/routers/drafts.py` |
 | Admin capabilities | `docs/requirements/admin.md` | `app/routers/admin.py` |
 | User settings / EULA | `docs/features/user-settings-eula.md` | `app/routers/users.py` |
+| i18n / localization | `docs/features/i18n.md` | `frontend/src/i18n/config.ts`, `frontend/src/locales/` |
 | Test coverage gaps | `docs/testing.md` | `backend/tests/` |
 | Environments / staging | `docs/deployment/environments.md` | `docker-compose.build.yml` |
 | Phase 2 ideas | `docs/requirements/phase2.md` | **Do not implement unless explicitly directed** |

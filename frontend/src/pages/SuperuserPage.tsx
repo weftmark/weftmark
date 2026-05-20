@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,17 +47,6 @@ function formatUptime(seconds: number): string {
 }
 
 type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule";
-
-const SECTION_LABELS: Record<SuperuserSection, string> = {
-  eula: "EULA",
-  storage: "Storage",
-  cve: "CVE Scan",
-  workers: "Workers",
-  deletion: "Deletion",
-  reconcile: "Reconcile",
-  maintenance: "Maintenance",
-  schedule: "Scheduled Tasks",
-};
 
 // ---------------------------------------------------------------------------
 // EULA tab
@@ -1273,35 +1262,11 @@ function ScheduledTasksTab() {
 
 export function SuperuserPage() {
   const { section = "eula" } = useParams<{ section: string }>();
-  const navigate = useNavigate();
   const activeSection = section as SuperuserSection;
-  const sections: SuperuserSection[] = ["eula", "storage", "cve", "workers", "deletion", "reconcile", "maintenance", "schedule"];
 
   return (
     <div className="p-6 max-w-4xl mx-auto w-full space-y-6">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">Superuser Console</h1>
-        <span className="text-xs border rounded px-1.5 py-0.5 text-muted-foreground">superuser</span>
-      </div>
-
       <CveBanner />
-
-      <div className="flex gap-2 border-b pb-2 flex-wrap">
-        {sections.map((s) => (
-          <button
-            key={s}
-            onClick={() => navigate(`/superuser/${s}`)}
-            className={`px-3 py-1.5 text-sm rounded ${
-              activeSection === s
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {SECTION_LABELS[s]}
-          </button>
-        ))}
-      </div>
-
       {activeSection === "eula" && <EulaTab />}
       {activeSection === "storage" && <StorageAuditTab />}
       {activeSection === "cve" && <CveScanTab />}
