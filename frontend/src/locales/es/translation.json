@@ -7,6 +7,7 @@
     "projects": "Proyectos",
     "settings": "Configuración",
     "admin": "Admin",
+    "superuser": "Consola de superusuario",
     "sendFeedback": "Enviar comentarios",
     "supportWeftmark": "Apoyar weftmark",
     "signOut": "Cerrar sesión"
@@ -30,8 +31,17 @@
     "feedback": "Comentarios",
     "credentials": "Credenciales",
     "slugs": "Enlaces compartidos",
-    "looms": "Base de telares",
-    "superuser": "Superusuario"
+    "looms": "Base de telares"
+  },
+  "superuserSections": {
+    "eula": "CLUF",
+    "storage": "Almacenamiento",
+    "cve": "Escaneo CVE",
+    "workers": "Workers",
+    "deletion": "Eliminación",
+    "reconcile": "Reconciliación",
+    "maintenance": "Mantenimiento",
+    "schedule": "Tareas programadas"
   },
   "loomTypes": {
     "floor_loom": "Telar de piso - seguimiento de pedales",

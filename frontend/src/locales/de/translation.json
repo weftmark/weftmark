@@ -7,6 +7,7 @@
     "projects": "Projekte",
     "settings": "Einstellungen",
     "admin": "Admin",
+    "superuser": "Superuser-Konsole",
     "sendFeedback": "Feedback senden",
     "supportWeftmark": "weftmark unterstützen",
     "signOut": "Abmelden"
@@ -30,8 +31,17 @@
     "feedback": "Feedback",
     "credentials": "Zugangsdaten",
     "slugs": "Freigabelinks",
-    "looms": "Webstuhldatenbank",
-    "superuser": "Superuser"
+    "looms": "Webstuhldatenbank"
+  },
+  "superuserSections": {
+    "eula": "EULA",
+    "storage": "Speicher",
+    "cve": "CVE-Scan",
+    "workers": "Worker",
+    "deletion": "Löschung",
+    "reconcile": "Abgleich",
+    "maintenance": "Wartung",
+    "schedule": "Geplante Aufgaben"
   },
   "loomTypes": {
     "floor_loom": "Trittwebstuhl - Trittfolge-Tracking",

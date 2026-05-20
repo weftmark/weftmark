@@ -5,9 +5,10 @@ import type { ReactNode } from "react";
 interface Props {
   children: ReactNode;
   requireAdmin?: boolean;
+  requireSuperuser?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false }: Props) {
+export function ProtectedRoute({ children, requireAdmin = false, requireSuperuser = false }: Props) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
 
@@ -23,12 +24,18 @@ export function ProtectedRoute({ children, requireAdmin = false }: Props) {
     return <Navigate to="/login" replace />;
   }
 
-  // Superusers land in the admin console; allow /settings and specific resource
-  // detail pages (/drafts/:id, /looms/:id, /projects/:id) for read-only inspection
+  if (requireSuperuser && !user?.is_superuser) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  // Superusers land in the admin console; allow /settings, /superuser, and
+  // specific resource detail pages for read-only inspection
   if (
     user?.is_superuser &&
     !requireAdmin &&
+    !requireSuperuser &&
     !location.pathname.startsWith("/admin") &&
+    !location.pathname.startsWith("/superuser") &&
     !location.pathname.startsWith("/settings") &&
     !location.pathname.startsWith("/drafts/") &&
     !location.pathname.startsWith("/looms/") &&

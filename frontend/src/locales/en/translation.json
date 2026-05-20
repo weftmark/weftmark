@@ -7,6 +7,7 @@
     "projects": "Projects",
     "settings": "Settings",
     "admin": "Admin",
+    "superuser": "Superuser Console",
     "sendFeedback": "Send Feedback",
     "supportWeftmark": "Support weftmark",
     "signOut": "Sign out"
@@ -30,8 +31,17 @@
     "feedback": "Feedback",
     "credentials": "Credentials",
     "slugs": "Share links",
-    "looms": "Loom database",
-    "superuser": "Superuser"
+    "looms": "Loom database"
+  },
+  "superuserSections": {
+    "eula": "EULA",
+    "storage": "Storage",
+    "cve": "CVE Scan",
+    "workers": "Workers",
+    "deletion": "Deletion",
+    "reconcile": "Reconcile",
+    "maintenance": "Maintenance",
+    "schedule": "Scheduled Tasks"
   },
   "loomTypes": {
     "floor_loom": "Floor Loom — treadle tracking",

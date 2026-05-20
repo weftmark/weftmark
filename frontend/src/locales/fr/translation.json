@@ -7,6 +7,7 @@
     "projects": "Projets",
     "settings": "Paramètres",
     "admin": "Admin",
+    "superuser": "Console superutilisateur",
     "sendFeedback": "Envoyer un retour",
     "supportWeftmark": "Soutenir weftmark",
     "signOut": "Se déconnecter"
@@ -30,8 +31,17 @@
     "feedback": "Retours",
     "credentials": "Identifiants",
     "slugs": "Liens de partage",
-    "looms": "Base de métiers",
-    "superuser": "Superutilisateur"
+    "looms": "Base de métiers"
+  },
+  "superuserSections": {
+    "eula": "CLUF",
+    "storage": "Stockage",
+    "cve": "Scan CVE",
+    "workers": "Workers",
+    "deletion": "Suppression",
+    "reconcile": "Réconciliation",
+    "maintenance": "Maintenance",
+    "schedule": "Tâches planifiées"
   },
   "loomTypes": {
     "floor_loom": "Métier de basse lisse - suivi des marches",

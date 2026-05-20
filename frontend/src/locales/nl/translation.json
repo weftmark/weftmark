@@ -7,6 +7,7 @@
     "projects": "Projecten",
     "settings": "Instellingen",
     "admin": "Admin",
+    "superuser": "Supergebruikersconsole",
     "sendFeedback": "Feedback sturen",
     "supportWeftmark": "weftmark steunen",
     "signOut": "Afmelden"
@@ -30,8 +31,17 @@
     "feedback": "Feedback",
     "credentials": "Inloggegevens",
     "slugs": "Deellinks",
-    "looms": "Weefstoel­database",
-    "superuser": "Supergebruiker"
+    "looms": "Weefstoel­database"
+  },
+  "superuserSections": {
+    "eula": "EULA",
+    "storage": "Opslag",
+    "cve": "CVE-scan",
+    "workers": "Workers",
+    "deletion": "Verwijdering",
+    "reconcile": "Afstemming",
+    "maintenance": "Onderhoud",
+    "schedule": "Geplande taken"
   },
   "loomTypes": {
     "floor_loom": "Vloerweefstoel — trapper-tracking",
