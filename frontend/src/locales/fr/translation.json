@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "equipment": "Équipement",
+    "collections": "Collections",
+    "drafts": "Armures",
+    "projects": "Projets",
+    "settings": "Paramètres",
+    "admin": "Admin",
+    "sendFeedback": "Envoyer un retour",
+    "supportWeftmark": "Soutenir weftmark",
+    "signOut": "Se déconnecter"
+  },
+  "settingsSections": {
+    "appearance": "Apparence",
+    "preferences": "Préférences",
+    "privacy": "Confidentialité",
+    "terms": "Conditions d'utilisation",
+    "account": "Compte",
+    "feedbackHistory": "Historique des retours"
+  },
+  "adminSections": {
+    "users": "Utilisateurs",
+    "invites": "Invitations",
+    "stats": "Statistiques",
+    "health": "État",
+    "services": "Services",
+    "deps": "Dépendances",
+    "audit": "Journal d'audit",
+    "feedback": "Retours",
+    "credentials": "Identifiants",
+    "slugs": "Liens de partage",
+    "looms": "Base de métiers",
+    "superuser": "Superutilisateur"
+  },
+  "loomTypes": {
+    "floor_loom": "Métier de basse lisse – suivi des marches",
+    "table_loom": "Métier de table – suivi des leviers",
+    "rigid_heddle": "Métier à cadre rigide",
+    "inkle": "Métier inkle",
+    "dobby_floor_loom": "Métier dobby",
+    "tapestry_loom": "Métier à tapisserie – suivi de projet non disponible",
+    "rug_loom": "Métier à tapis – suivi de projet non disponible",
+    "frame_loom": "Métier à cadre – suivi de projet non disponible",
+    "other": "Autre"
+  },
+  "projectStatus": {
+    "created": "Non commencé",
+    "active": "En cours",
+    "completed": "Terminé",
+    "abandoned": "Abandonné"
+  },
+  "projectType": {
+    "treadle": "Suivi des marches",
+    "lift": "Suivi des leviers"
+  },
+  "skeinStatus": {
+    "available": "Disponible",
+    "in_use": "En cours d'utilisation",
+    "consumed": "Consommé"
+  },
+  "feedbackType": {
+    "feedback": "Retour",
+    "feature_request": "Demande de fonctionnalité",
+    "bug_report": "Signalement de bug"
+  },
+  "landing": {
+    "navLoomCatalog": "Catalogue de métiers",
+    "navSignIn": "Se connecter",
+    "tagline": "Compagnon de tissage pour tisserands",
+    "heroTitle": "Votre tissage,",
+    "heroTitleHighlight": "rang par rang.",
+    "heroBody": "Importez votre armure WIF, suivez chaque duite, et gardez un historique complet de chaque projet – du premier montage au dernier passage.",
+    "ctaSignIn": "Se connecter",
+    "ctaCreateAccount": "Créer un compte",
+    "featuresHeading": "Tout ce dont vous avez besoin au métier",
+    "features": {
+      "trackWeaves": {
+        "title": "Suivez vos tissages",
+        "body": "Importez votre armure WIF et avancez duite par duite. weftmark retient votre place pour que vous puissiez poser la navette et reprendre exactement où vous en étiez."
+      },
+      "recordPicks": {
+        "title": "Enregistrez chaque duite",
+        "body": "Avancez, reculez ou sautez à n'importe quel rang. Marquez un projet comme terminé quand la dernière duite est tissée."
+      },
+      "manageTools": {
+        "title": "Gérez votre matériel",
+        "body": "Tenez un registre de vos métiers et de vos fils. Associez un métier à une armure et suivez ce qui est sur l'ensouple."
+      }
+    }
+  }
+}

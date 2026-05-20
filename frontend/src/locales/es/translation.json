@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "dashboard": "Panel",
+    "equipment": "Equipamiento",
+    "collections": "Colecciones",
+    "drafts": "Ligamentos",
+    "projects": "Proyectos",
+    "settings": "Configuración",
+    "admin": "Admin",
+    "sendFeedback": "Enviar comentarios",
+    "supportWeftmark": "Apoyar weftmark",
+    "signOut": "Cerrar sesión"
+  },
+  "settingsSections": {
+    "appearance": "Apariencia",
+    "preferences": "Preferencias",
+    "privacy": "Privacidad",
+    "terms": "Términos",
+    "account": "Cuenta",
+    "feedbackHistory": "Historial de comentarios"
+  },
+  "adminSections": {
+    "users": "Usuarios",
+    "invites": "Invitaciones",
+    "stats": "Estadísticas",
+    "health": "Estado",
+    "services": "Servicios",
+    "deps": "Dependencias",
+    "audit": "Registro de auditoría",
+    "feedback": "Comentarios",
+    "credentials": "Credenciales",
+    "slugs": "Enlaces compartidos",
+    "looms": "Base de telares",
+    "superuser": "Superusuario"
+  },
+  "loomTypes": {
+    "floor_loom": "Telar de piso – seguimiento de pedales",
+    "table_loom": "Telar de mesa – seguimiento de palancas",
+    "rigid_heddle": "Telar de lizos rígidos",
+    "inkle": "Telar inkle",
+    "dobby_floor_loom": "Telar dobby de piso",
+    "tapestry_loom": "Telar de tapiz – seguimiento de proyectos no disponible",
+    "rug_loom": "Telar de alfombras – seguimiento de proyectos no disponible",
+    "frame_loom": "Telar de marco – seguimiento de proyectos no disponible",
+    "other": "Otro"
+  },
+  "projectStatus": {
+    "created": "No iniciado",
+    "active": "Activo",
+    "completed": "Completado",
+    "abandoned": "Abandonado"
+  },
+  "projectType": {
+    "treadle": "Seguimiento de pedales",
+    "lift": "Seguimiento de palancas"
+  },
+  "skeinStatus": {
+    "available": "Disponible",
+    "in_use": "En uso",
+    "consumed": "Consumido"
+  },
+  "feedbackType": {
+    "feedback": "Comentario",
+    "feature_request": "Solicitud de función",
+    "bug_report": "Reporte de error"
+  },
+  "landing": {
+    "navLoomCatalog": "Catálogo de telares",
+    "navSignIn": "Iniciar sesión",
+    "tagline": "Compañero de tejido para tejedores manuales",
+    "heroTitle": "Tu tejido,",
+    "heroTitleHighlight": "pasada a pasada.",
+    "heroBody": "Sube tu ligamento WIF, sigue cada pasada, y mantén un registro completo de cada proyecto – desde el primer urdido hasta la última pasada.",
+    "ctaSignIn": "Iniciar sesión",
+    "ctaCreateAccount": "Crear cuenta",
+    "featuresHeading": "Todo lo que necesitas junto al telar",
+    "features": {
+      "trackWeaves": {
+        "title": "Sigue tus tejidos",
+        "body": "Sube tu ligamento WIF y avanza pasada por pasada. weftmark guarda tu lugar para que puedas dejar la lanzadera y retomarlo exactamente donde lo dejaste."
+      },
+      "recordPicks": {
+        "title": "Registra cada pasada",
+        "body": "Avanza, retrocede o salta a cualquier fila. Marca un proyecto como completado cuando se teja la última pasada."
+      },
+      "manageTools": {
+        "title": "Gestiona tus herramientas",
+        "body": "Lleva un registro de tus telares e hilos. Asigna un telar a un ligamento y rastrea lo que está en el plegador."
+      }
+    }
+  }
+}

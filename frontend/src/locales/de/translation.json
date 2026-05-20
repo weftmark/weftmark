@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "equipment": "Ausrüstung",
+    "collections": "Sammlungen",
+    "drafts": "Entwürfe",
+    "projects": "Projekte",
+    "settings": "Einstellungen",
+    "admin": "Admin",
+    "sendFeedback": "Feedback senden",
+    "supportWeftmark": "weftmark unterstützen",
+    "signOut": "Abmelden"
+  },
+  "settingsSections": {
+    "appearance": "Darstellung",
+    "preferences": "Einstellungen",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "account": "Konto",
+    "feedbackHistory": "Feedback-Verlauf"
+  },
+  "adminSections": {
+    "users": "Benutzer",
+    "invites": "Einladungen",
+    "stats": "Statistiken",
+    "health": "Status",
+    "services": "Dienste",
+    "deps": "Abhängigkeiten",
+    "audit": "Protokoll",
+    "feedback": "Feedback",
+    "credentials": "Zugangsdaten",
+    "slugs": "Freigabelinks",
+    "looms": "Webstuhldatenbank",
+    "superuser": "Superuser"
+  },
+  "loomTypes": {
+    "floor_loom": "Trittwebstuhl – Trittfolge-Tracking",
+    "table_loom": "Tischwebstuhl – Schafthebel-Tracking",
+    "rigid_heddle": "Starrblatt-Webstuhl",
+    "inkle": "Inkle-Webstuhl",
+    "dobby_floor_loom": "Dobby-Trittwebstuhl",
+    "tapestry_loom": "Bildwirkerei-Webstuhl – Projekt-Tracking derzeit nicht unterstützt",
+    "rug_loom": "Teppichwebstuhl – Projekt-Tracking derzeit nicht unterstützt",
+    "frame_loom": "Rahmenwebstuhl – Projekt-Tracking derzeit nicht unterstützt",
+    "other": "Sonstige"
+  },
+  "projectStatus": {
+    "created": "Nicht begonnen",
+    "active": "Aktiv",
+    "completed": "Abgeschlossen",
+    "abandoned": "Abgebrochen"
+  },
+  "projectType": {
+    "treadle": "Trittfolge-Tracking",
+    "lift": "Schafthebel-Tracking"
+  },
+  "skeinStatus": {
+    "available": "Verfügbar",
+    "in_use": "In Verwendung",
+    "consumed": "Verbraucht"
+  },
+  "feedbackType": {
+    "feedback": "Feedback",
+    "feature_request": "Funktionswunsch",
+    "bug_report": "Fehlermeldung"
+  },
+  "landing": {
+    "navLoomCatalog": "Webstuh-Katalog",
+    "navSignIn": "Anmelden",
+    "tagline": "Webbegleiter für Handweber",
+    "heroTitle": "Dein Weben,",
+    "heroTitleHighlight": "Reihe für Reihe.",
+    "heroBody": "Lade deinen WIF-Entwurf hoch, folge Pick für Pick, und behalte eine vollständige Aufzeichnung von jedem Entwurf – vom ersten Aufzug bis zum letzten Pick.",
+    "ctaSignIn": "Anmelden",
+    "ctaCreateAccount": "Konto erstellen",
+    "featuresHeading": "Alles, was du am Webstuhl brauchst",
+    "features": {
+      "trackWeaves": {
+        "title": "Webprojekte verfolgen",
+        "body": "Lade deinen WIF-Entwurf hoch und gehe jeden Pick durch. weftmark merkt dir die Stelle, damit du das Schiffchen ablegen und nahtlos weitermachen kannst."
+      },
+      "recordPicks": {
+        "title": "Jeden Pick festhalten",
+        "body": "Vorwärts, rückwärts oder zu einer beliebigen Reihe springen. Markiere ein Projekt als abgeschlossen, wenn der letzte Pick eingewebt ist."
+      },
+      "manageTools": {
+        "title": "Werkzeuge verwalten",
+        "body": "Behalte den Überblick über deine Webstühle und dein Garn. Weise einem Entwurf einen Webstuhl zu und verfolge, was auf dem Baum ist."
+      }
+    }
+  }
+}
