@@ -88,7 +88,7 @@ class TestSeedTask:
         async def mock_seed():
             return mock_result
 
-        with patch("seeds.loom_references.seed", mock_seed):
+        with patch("app.services.loom_seed.seed", mock_seed):
             result = await _seed()
 
         assert result["inserted"] == 3
