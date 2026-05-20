@@ -55,8 +55,16 @@ def _backfill_registry() -> list[dict]:
         backfill_all_project_drawdown_svgs,
     )
     from app.tasks.reparse import reparse_all_drafts
+    from app.tasks.seeds import seed_loom_references
 
     return [
+        {
+            "name": "seed_loom_references",
+            "description": "Seed loom_references table from loom-data-master.json on first startup",
+            # Returns 1 (empty) → dispatch; returns 0 (has rows) → skip.
+            "condition": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE 0 END FROM loom_references",
+            "dispatch": lambda: seed_loom_references.delay(),
+        },
         {
             "name": "reparse_drafts",
             "description": "Backfill wif_colors, wif_measurements, warp_color_stats, weft_color_stats on drafts",
