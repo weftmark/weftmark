@@ -194,5 +194,126 @@
         "body": "Houd een overzicht bij van uw weefstoel­en en garen. Koppel een weefstoel aan een binding en volg wat er op de boom zit."
       }
     }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welkom terug, {{name}}.",
+    "viewAll": "Alles bekijken →",
+    "moreItems": "+{{count}} meer",
+    "equipment": {
+      "heading": "Apparatuur",
+      "empty": "Nog geen weefstoel toegevoegd.",
+      "addFirst": "Eerste weefstoel toevoegen →"
+    },
+    "collectionSection": {
+      "heading": "Collecties",
+      "empty": "Nog geen collecties. Groepeer uw bindingen en projecten in benoemde verkenningen.",
+      "createFirst": "Maak een collectie →",
+      "draftCount_one": "{{count}} binding",
+      "draftCount_other": "{{count}} bindingen",
+      "projectCount_one": "{{count}} project",
+      "projectCount_other": "{{count}} projecten",
+      "itemSummary": "{{drafts}} · {{projects}}"
+    },
+    "drafts": {
+      "heading": "Bindingen",
+      "empty": "Nog geen bindingen geüpload.",
+      "uploadFirst": "WIF-bestand uploaden →"
+    },
+    "projects": {
+      "heading": "Projecten",
+      "pickProgress": "Inslag {{current}} van {{total}}",
+      "continueWeaving": "Weven voortzetten",
+      "picksPlanned_one": "{{count}} inslag gepland",
+      "picksPlanned_other": "{{count}} inslagen gepland",
+      "planBadge": "Plan",
+      "empty": "Geen actieve projecten.",
+      "startProject": "Een project starten of plannen →",
+      "activeStat": "Actief",
+      "completedStat": "Voltooid"
+    },
+    "activity": {
+      "heading": "Activiteit",
+      "steps_one": "{{count}} stap",
+      "steps_other": "{{count}} stappen",
+      "days_one": "{{count}} dag",
+      "days_other": "{{count}} dagen",
+      "summary": "{{steps}} over {{days}}",
+      "legendLess": "Minder",
+      "legendMore": "Meer"
+    },
+    "storage": {
+      "heading": "Opslag",
+      "used": "{{amount}} gebruikt",
+      "total": "{{total}} MB totaal",
+      "pct": "{{pct}}% gebruikt"
+    }
+  },
+  "collections": {
+    "pageTitle": "Collecties",
+    "newButton": "Nieuwe collectie",
+    "loadError": "Collecties konden niet worden geladen.",
+    "empty": "Nog geen collecties. Groepeer uw bindingen en projecten in benoemde verkenningen.",
+    "draftCount_one": "{{count}} binding",
+    "draftCount_other": "{{count}} bindingen",
+    "projectCount_one": "{{count}} project",
+    "projectCount_other": "{{count}} projecten",
+    "modal": {
+      "title": "Nieuwe collectie",
+      "nameLabel": "Naam",
+      "namePlaceholder": "Lentesjalen…",
+      "descLabel": "Beschrijving",
+      "descOptional": "(optioneel)",
+      "descPlaceholder": "Een reeks experimenten…",
+      "tagsLabel": "Tags",
+      "tagsHint": "(druk op Enter of komma om toe te voegen)",
+      "tagsPlaceholder": "Tag toevoegen…",
+      "createError": "Collectie aanmaken mislukt.",
+      "creating": "Aanmaken…",
+      "create": "Aanmaken"
+    }
+  },
+  "collectionDetail": {
+    "backLink": "← Collecties",
+    "descPlaceholder": "Beschrijving (optioneel)",
+    "notFound": "Collectie niet gevonden.",
+    "sort": {
+      "label": "Sorteren:",
+      "dateAdded": "datum toegevoegd",
+      "name": "naam"
+    },
+    "remove": {
+      "confirm": "Verwijderen",
+      "cancel": "Annuleren"
+    },
+    "edit": {
+      "save": "Opslaan",
+      "cancel": "Annuleren"
+    },
+    "delete": {
+      "button": "Verwijderen",
+      "confirm": "Verwijderen bevestigen",
+      "cancel": "Annuleren"
+    },
+    "drafts": {
+      "heading": "Bindingen ({{count}})",
+      "addButton": "Binding toevoegen",
+      "empty": "Nog geen bindingen in deze collectie.",
+      "modal": {
+        "title": "Binding toevoegen",
+        "searchPlaceholder": "Bindingen zoeken…",
+        "empty": "Geen bindingen beschikbaar."
+      }
+    },
+    "projects": {
+      "heading": "Projecten ({{count}})",
+      "addButton": "Project toevoegen",
+      "empty": "Nog geen projecten in deze collectie.",
+      "modal": {
+        "title": "Project toevoegen",
+        "searchPlaceholder": "Projecten zoeken…",
+        "empty": "Geen projecten beschikbaar."
+      }
+    }
   }
 }

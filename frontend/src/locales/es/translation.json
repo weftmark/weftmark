@@ -194,5 +194,126 @@
         "body": "Lleva un registro de tus telares e hilos. Asigna un telar a un ligamento y rastrea lo que está en el plegador."
       }
     }
+  },
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "Bienvenido de nuevo, {{name}}.",
+    "viewAll": "Ver todo →",
+    "moreItems": "+{{count}} más",
+    "equipment": {
+      "heading": "Equipamiento",
+      "empty": "Aún no se han añadido telares.",
+      "addFirst": "Añadir tu primer telar →"
+    },
+    "collectionSection": {
+      "heading": "Colecciones",
+      "empty": "Sin colecciones todavía. Agrupa tus ligamentos y proyectos en exploraciones nombradas.",
+      "createFirst": "Crear una colección →",
+      "draftCount_one": "{{count}} ligamento",
+      "draftCount_other": "{{count}} ligamentos",
+      "projectCount_one": "{{count}} proyecto",
+      "projectCount_other": "{{count}} proyectos",
+      "itemSummary": "{{drafts}} · {{projects}}"
+    },
+    "drafts": {
+      "heading": "Ligamentos",
+      "empty": "Aún no se han subido ligamentos.",
+      "uploadFirst": "Subir un archivo WIF →"
+    },
+    "projects": {
+      "heading": "Proyectos",
+      "pickProgress": "Pasada {{current}} de {{total}}",
+      "continueWeaving": "Continuar tejiendo",
+      "picksPlanned_one": "{{count}} pasada planeada",
+      "picksPlanned_other": "{{count}} pasadas planeadas",
+      "planBadge": "Plan",
+      "empty": "Sin proyectos activos.",
+      "startProject": "Iniciar o planear un proyecto →",
+      "activeStat": "Activo",
+      "completedStat": "Completados"
+    },
+    "activity": {
+      "heading": "Actividad",
+      "steps_one": "{{count}} paso",
+      "steps_other": "{{count}} pasos",
+      "days_one": "{{count}} día",
+      "days_other": "{{count}} días",
+      "summary": "{{steps}} en {{days}}",
+      "legendLess": "Menos",
+      "legendMore": "Más"
+    },
+    "storage": {
+      "heading": "Almacenamiento",
+      "used": "{{amount}} usado",
+      "total": "{{total}} MB en total",
+      "pct": "{{pct}}% usado"
+    }
+  },
+  "collections": {
+    "pageTitle": "Colecciones",
+    "newButton": "Nueva colección",
+    "loadError": "Error al cargar las colecciones.",
+    "empty": "Sin colecciones todavía. Agrupa tus ligamentos y proyectos en exploraciones nombradas.",
+    "draftCount_one": "{{count}} ligamento",
+    "draftCount_other": "{{count}} ligamentos",
+    "projectCount_one": "{{count}} proyecto",
+    "projectCount_other": "{{count}} proyectos",
+    "modal": {
+      "title": "Nueva colección",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Bufandas de primavera…",
+      "descLabel": "Descripción",
+      "descOptional": "(opcional)",
+      "descPlaceholder": "Una serie de experimentos…",
+      "tagsLabel": "Etiquetas",
+      "tagsHint": "(pulsa Intro o coma para añadir)",
+      "tagsPlaceholder": "Añadir etiqueta…",
+      "createError": "Error al crear la colección.",
+      "creating": "Creando…",
+      "create": "Crear"
+    }
+  },
+  "collectionDetail": {
+    "backLink": "← Colecciones",
+    "descPlaceholder": "Descripción (opcional)",
+    "notFound": "Colección no encontrada.",
+    "sort": {
+      "label": "Ordenar:",
+      "dateAdded": "fecha de adición",
+      "name": "nombre"
+    },
+    "remove": {
+      "confirm": "Eliminar",
+      "cancel": "Cancelar"
+    },
+    "edit": {
+      "save": "Guardar",
+      "cancel": "Cancelar"
+    },
+    "delete": {
+      "button": "Eliminar",
+      "confirm": "Confirmar eliminación",
+      "cancel": "Cancelar"
+    },
+    "drafts": {
+      "heading": "Ligamentos ({{count}})",
+      "addButton": "Añadir ligamento",
+      "empty": "Sin ligamentos en esta colección todavía.",
+      "modal": {
+        "title": "Añadir ligamento",
+        "searchPlaceholder": "Buscar ligamentos…",
+        "empty": "Sin ligamentos disponibles."
+      }
+    },
+    "projects": {
+      "heading": "Proyectos ({{count}})",
+      "addButton": "Añadir proyecto",
+      "empty": "Sin proyectos en esta colección todavía.",
+      "modal": {
+        "title": "Añadir proyecto",
+        "searchPlaceholder": "Buscar proyectos…",
+        "empty": "Sin proyectos disponibles."
+      }
+    }
   }
 }

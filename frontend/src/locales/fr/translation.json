@@ -194,5 +194,126 @@
         "body": "Tenez un registre de vos métiers et de vos fils. Associez un métier à une armure et suivez ce qui est sur l'ensouple."
       }
     }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "welcome": "Bon retour, {{name}}.",
+    "viewAll": "Voir tout →",
+    "moreItems": "+{{count}} de plus",
+    "equipment": {
+      "heading": "Équipement",
+      "empty": "Aucun métier ajouté pour l'instant.",
+      "addFirst": "Ajouter votre premier métier →"
+    },
+    "collectionSection": {
+      "heading": "Collections",
+      "empty": "Aucune collection. Regroupez vos armures et projets dans des explorations nommées.",
+      "createFirst": "Créer une collection →",
+      "draftCount_one": "{{count}} armure",
+      "draftCount_other": "{{count}} armures",
+      "projectCount_one": "{{count}} projet",
+      "projectCount_other": "{{count}} projets",
+      "itemSummary": "{{drafts}} · {{projects}}"
+    },
+    "drafts": {
+      "heading": "Armures",
+      "empty": "Aucune armure téléversée pour l'instant.",
+      "uploadFirst": "Téléverser un fichier WIF →"
+    },
+    "projects": {
+      "heading": "Projets",
+      "pickProgress": "Duite {{current}} sur {{total}}",
+      "continueWeaving": "Continuer le tissage",
+      "picksPlanned_one": "{{count}} duite prévue",
+      "picksPlanned_other": "{{count}} duites prévues",
+      "planBadge": "Plan",
+      "empty": "Aucun projet actif.",
+      "startProject": "Démarrer ou planifier un projet →",
+      "activeStat": "En cours",
+      "completedStat": "Terminés"
+    },
+    "activity": {
+      "heading": "Activité",
+      "steps_one": "{{count}} pas",
+      "steps_other": "{{count}} pas",
+      "days_one": "{{count}} jour",
+      "days_other": "{{count}} jours",
+      "summary": "{{steps}} sur {{days}}",
+      "legendLess": "Moins",
+      "legendMore": "Plus"
+    },
+    "storage": {
+      "heading": "Stockage",
+      "used": "{{amount}} utilisé",
+      "total": "{{total}} Mo au total",
+      "pct": "{{pct}}% utilisé"
+    }
+  },
+  "collections": {
+    "pageTitle": "Collections",
+    "newButton": "Nouvelle collection",
+    "loadError": "Impossible de charger les collections.",
+    "empty": "Aucune collection. Regroupez vos armures et projets dans des explorations nommées.",
+    "draftCount_one": "{{count}} armure",
+    "draftCount_other": "{{count}} armures",
+    "projectCount_one": "{{count}} projet",
+    "projectCount_other": "{{count}} projets",
+    "modal": {
+      "title": "Nouvelle collection",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Écharpes de printemps…",
+      "descLabel": "Description",
+      "descOptional": "(facultatif)",
+      "descPlaceholder": "Une série d'expériences…",
+      "tagsLabel": "Tags",
+      "tagsHint": "(appuyez sur Entrée ou virgule pour ajouter)",
+      "tagsPlaceholder": "Ajouter un tag…",
+      "createError": "Impossible de créer la collection.",
+      "creating": "Création…",
+      "create": "Créer"
+    }
+  },
+  "collectionDetail": {
+    "backLink": "← Collections",
+    "descPlaceholder": "Description (facultatif)",
+    "notFound": "Collection introuvable.",
+    "sort": {
+      "label": "Trier :",
+      "dateAdded": "date d'ajout",
+      "name": "nom"
+    },
+    "remove": {
+      "confirm": "Retirer",
+      "cancel": "Annuler"
+    },
+    "edit": {
+      "save": "Enregistrer",
+      "cancel": "Annuler"
+    },
+    "delete": {
+      "button": "Supprimer",
+      "confirm": "Confirmer la suppression",
+      "cancel": "Annuler"
+    },
+    "drafts": {
+      "heading": "Armures ({{count}})",
+      "addButton": "Ajouter une armure",
+      "empty": "Aucune armure dans cette collection.",
+      "modal": {
+        "title": "Ajouter une armure",
+        "searchPlaceholder": "Rechercher des armures…",
+        "empty": "Aucune armure disponible."
+      }
+    },
+    "projects": {
+      "heading": "Projets ({{count}})",
+      "addButton": "Ajouter un projet",
+      "empty": "Aucun projet dans cette collection.",
+      "modal": {
+        "title": "Ajouter un projet",
+        "searchPlaceholder": "Rechercher des projets…",
+        "empty": "Aucun projet disponible."
+      }
+    }
   }
 }

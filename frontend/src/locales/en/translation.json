@@ -194,5 +194,126 @@
         "body": "Keep a record of your looms and yarn. Assign a loom to a draft and track what's on the beam."
       }
     }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back, {{name}}.",
+    "viewAll": "View all →",
+    "moreItems": "+{{count}} more",
+    "equipment": {
+      "heading": "Equipment",
+      "empty": "No looms added yet.",
+      "addFirst": "Add your first loom →"
+    },
+    "collectionSection": {
+      "heading": "Collections",
+      "empty": "No collections yet. Group your drafts and projects into named explorations.",
+      "createFirst": "Create a collection →",
+      "draftCount_one": "{{count}} draft",
+      "draftCount_other": "{{count}} drafts",
+      "projectCount_one": "{{count}} project",
+      "projectCount_other": "{{count}} projects",
+      "itemSummary": "{{drafts}} · {{projects}}"
+    },
+    "drafts": {
+      "heading": "Drafts",
+      "empty": "No drafts uploaded yet.",
+      "uploadFirst": "Upload a WIF file →"
+    },
+    "projects": {
+      "heading": "Projects",
+      "pickProgress": "Pick {{current}} of {{total}}",
+      "continueWeaving": "Continue Weaving",
+      "picksPlanned_one": "{{count}} pick planned",
+      "picksPlanned_other": "{{count}} picks planned",
+      "planBadge": "Plan",
+      "empty": "No active projects.",
+      "startProject": "Start or plan a project →",
+      "activeStat": "Active",
+      "completedStat": "Completed"
+    },
+    "activity": {
+      "heading": "Activity",
+      "steps_one": "{{count}} step",
+      "steps_other": "{{count}} steps",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "summary": "{{steps}} across {{days}}",
+      "legendLess": "Less",
+      "legendMore": "More"
+    },
+    "storage": {
+      "heading": "Storage",
+      "used": "{{amount}} used",
+      "total": "{{total}} MB total",
+      "pct": "{{pct}}% used"
+    }
+  },
+  "collections": {
+    "pageTitle": "Collections",
+    "newButton": "New collection",
+    "loadError": "Failed to load collections.",
+    "empty": "No collections yet. Group your drafts and projects into named explorations.",
+    "draftCount_one": "{{count}} draft",
+    "draftCount_other": "{{count}} drafts",
+    "projectCount_one": "{{count}} project",
+    "projectCount_other": "{{count}} projects",
+    "modal": {
+      "title": "New collection",
+      "nameLabel": "Name",
+      "namePlaceholder": "Spring scarves…",
+      "descLabel": "Description",
+      "descOptional": "(optional)",
+      "descPlaceholder": "A series of experiments…",
+      "tagsLabel": "Tags",
+      "tagsHint": "(press Enter or comma to add)",
+      "tagsPlaceholder": "Add a tag…",
+      "createError": "Failed to create collection.",
+      "creating": "Creating…",
+      "create": "Create"
+    }
+  },
+  "collectionDetail": {
+    "backLink": "← Collections",
+    "descPlaceholder": "Description (optional)",
+    "notFound": "Collection not found.",
+    "sort": {
+      "label": "Sort:",
+      "dateAdded": "date added",
+      "name": "name"
+    },
+    "remove": {
+      "confirm": "Remove",
+      "cancel": "Cancel"
+    },
+    "edit": {
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "delete": {
+      "button": "Delete",
+      "confirm": "Confirm delete",
+      "cancel": "Cancel"
+    },
+    "drafts": {
+      "heading": "Drafts ({{count}})",
+      "addButton": "Add draft",
+      "empty": "No drafts in this collection yet.",
+      "modal": {
+        "title": "Add draft",
+        "searchPlaceholder": "Search drafts…",
+        "empty": "No drafts available."
+      }
+    },
+    "projects": {
+      "heading": "Projects ({{count}})",
+      "addButton": "Add project",
+      "empty": "No projects in this collection yet.",
+      "modal": {
+        "title": "Add project",
+        "searchPlaceholder": "Search projects…",
+        "empty": "No projects available."
+      }
+    }
   }
 }

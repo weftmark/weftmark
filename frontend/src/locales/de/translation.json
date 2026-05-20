@@ -194,5 +194,126 @@
         "body": "Behalte den Überblick über deine Webstühle und dein Garn. Weise einem Entwurf einen Webstuhl zu und verfolge, was auf dem Baum ist."
       }
     }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Willkommen zurück, {{name}}.",
+    "viewAll": "Alle anzeigen →",
+    "moreItems": "+{{count}} weitere",
+    "equipment": {
+      "heading": "Ausrüstung",
+      "empty": "Noch keine Webstühle hinzugefügt.",
+      "addFirst": "Ersten Webstuhl hinzufügen →"
+    },
+    "collectionSection": {
+      "heading": "Sammlungen",
+      "empty": "Noch keine Sammlungen. Gruppiere deine Entwürfe und Projekte in benannte Erkundungen.",
+      "createFirst": "Sammlung erstellen →",
+      "draftCount_one": "{{count}} Entwurf",
+      "draftCount_other": "{{count}} Entwürfe",
+      "projectCount_one": "{{count}} Projekt",
+      "projectCount_other": "{{count}} Projekte",
+      "itemSummary": "{{drafts}} · {{projects}}"
+    },
+    "drafts": {
+      "heading": "Entwürfe",
+      "empty": "Noch keine Entwürfe hochgeladen.",
+      "uploadFirst": "WIF-Datei hochladen →"
+    },
+    "projects": {
+      "heading": "Projekte",
+      "pickProgress": "Eintrag {{current}} von {{total}}",
+      "continueWeaving": "Weben fortsetzen",
+      "picksPlanned_one": "{{count}} Eintrag geplant",
+      "picksPlanned_other": "{{count}} Einträge geplant",
+      "planBadge": "Plan",
+      "empty": "Keine aktiven Projekte.",
+      "startProject": "Projekt starten oder planen →",
+      "activeStat": "Aktiv",
+      "completedStat": "Abgeschlossen"
+    },
+    "activity": {
+      "heading": "Aktivität",
+      "steps_one": "{{count}} Schritt",
+      "steps_other": "{{count}} Schritte",
+      "days_one": "{{count}} Tag",
+      "days_other": "{{count}} Tage",
+      "summary": "{{steps}} über {{days}}",
+      "legendLess": "Weniger",
+      "legendMore": "Mehr"
+    },
+    "storage": {
+      "heading": "Speicher",
+      "used": "{{amount}} verwendet",
+      "total": "{{total}} MB gesamt",
+      "pct": "{{pct}}% verwendet"
+    }
+  },
+  "collections": {
+    "pageTitle": "Sammlungen",
+    "newButton": "Neue Sammlung",
+    "loadError": "Sammlungen konnten nicht geladen werden.",
+    "empty": "Noch keine Sammlungen. Gruppiere deine Entwürfe und Projekte in benannte Erkundungen.",
+    "draftCount_one": "{{count}} Entwurf",
+    "draftCount_other": "{{count}} Entwürfe",
+    "projectCount_one": "{{count}} Projekt",
+    "projectCount_other": "{{count}} Projekte",
+    "modal": {
+      "title": "Neue Sammlung",
+      "nameLabel": "Name",
+      "namePlaceholder": "Frühlingsschals…",
+      "descLabel": "Beschreibung",
+      "descOptional": "(optional)",
+      "descPlaceholder": "Eine Reihe von Experimenten…",
+      "tagsLabel": "Tags",
+      "tagsHint": "(Enter oder Komma zum Hinzufügen)",
+      "tagsPlaceholder": "Tag hinzufügen…",
+      "createError": "Sammlung konnte nicht erstellt werden.",
+      "creating": "Wird erstellt…",
+      "create": "Erstellen"
+    }
+  },
+  "collectionDetail": {
+    "backLink": "← Sammlungen",
+    "descPlaceholder": "Beschreibung (optional)",
+    "notFound": "Sammlung nicht gefunden.",
+    "sort": {
+      "label": "Sortieren:",
+      "dateAdded": "Hinzufügedatum",
+      "name": "Name"
+    },
+    "remove": {
+      "confirm": "Entfernen",
+      "cancel": "Abbrechen"
+    },
+    "edit": {
+      "save": "Speichern",
+      "cancel": "Abbrechen"
+    },
+    "delete": {
+      "button": "Löschen",
+      "confirm": "Löschen bestätigen",
+      "cancel": "Abbrechen"
+    },
+    "drafts": {
+      "heading": "Entwürfe ({{count}})",
+      "addButton": "Entwurf hinzufügen",
+      "empty": "Noch keine Entwürfe in dieser Sammlung.",
+      "modal": {
+        "title": "Entwurf hinzufügen",
+        "searchPlaceholder": "Entwürfe suchen…",
+        "empty": "Keine Entwürfe verfügbar."
+      }
+    },
+    "projects": {
+      "heading": "Projekte ({{count}})",
+      "addButton": "Projekt hinzufügen",
+      "empty": "Noch keine Projekte in dieser Sammlung.",
+      "modal": {
+        "title": "Projekt hinzufügen",
+        "searchPlaceholder": "Projekte suchen…",
+        "empty": "Keine Projekte verfügbar."
+      }
+    }
   }
 }
