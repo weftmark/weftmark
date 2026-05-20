@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { listLooms, loomPhotoUrl, type Loom } from "@/api/looms";
 import { AppIcons } from "@/lib/icons";
 import { AuthedImage } from "@/components/ui/AuthedImage";
@@ -15,6 +16,7 @@ interface LoomProjectCounts {
 }
 
 function LoomCard({ loom, projectCounts, retired }: { loom: Loom; projectCounts?: LoomProjectCounts; retired?: boolean }) {
+  const { t } = useTranslation();
   const v = loom.current_version;
   return (
     <Link
@@ -49,7 +51,7 @@ function LoomCard({ loom, projectCounts, retired }: { loom: Loom; projectCounts?
         </div>
         <div className="flex items-center gap-2 shrink-0 text-right text-xs text-muted-foreground">
           {retired && (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Retired</span>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{t("loomsPage.retiredBadge")}</span>
           )}
           {v && (
             <span>
@@ -62,32 +64,32 @@ function LoomCard({ loom, projectCounts, retired }: { loom: Loom; projectCounts?
       </div>
       {v?.weaving_width && (
         <p className="mt-2 text-sm text-muted-foreground">
-          Weaving width: {v.weaving_width} {v.weaving_width_unit}
+          {t("loomsPage.weavingWidth", { width: v.weaving_width, unit: v.weaving_width_unit })}
         </p>
       )}
       <div className="mt-2 flex gap-2">
         {loom.supports_lift_tracking && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">lift tracking</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{t("loomsPage.liftTracking")}</span>
         )}
         {loom.supports_treadle_tracking && (
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">treadle tracking</span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs">{t("loomsPage.treadleTracking")}</span>
         )}
       </div>
       {projectCounts && (projectCounts.active + projectCounts.completed + projectCounts.abandoned) > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5 border-t pt-2.5">
           {projectCounts.active > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-              {projectCounts.active} active
+              {t("loomsPage.activeCount", { count: projectCounts.active })}
             </span>
           )}
           {projectCounts.completed > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-              {projectCounts.completed} completed
+              {t("loomsPage.completedCount", { count: projectCounts.completed })}
             </span>
           )}
           {projectCounts.abandoned > 0 && (
             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-              {projectCounts.abandoned} abandoned
+              {t("loomsPage.abandonedCount", { count: projectCounts.abandoned })}
             </span>
           )}
         </div>
@@ -98,6 +100,7 @@ function LoomCard({ loom, projectCounts, retired }: { loom: Loom; projectCounts?
 }
 
 export function LoomsPage() {
+  const { t } = useTranslation();
   const [showNew, setShowNew] = useState(false);
   const [retiredOpen, setRetiredOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -135,27 +138,27 @@ export function LoomsPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-semibold">Equipment</h1>
-        <Button size="sm" onClick={() => setShowNew(true)}>New loom</Button>
+        <h1 className="text-xl font-semibold">{t("loomsPage.title")}</h1>
+        <Button size="sm" onClick={() => setShowNew(true)}>{t("loomsPage.newButton")}</Button>
       </div>
       <div className="mb-6">
         <Link to="/catalog/looms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-          Browse loom catalog
+          {t("loomsPage.catalogLink")}
         </Link>
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
       {error && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          Failed to load looms
+          {t("loomsPage.loadError")}
         </p>
       )}
 
       {looms && activeLooms.length === 0 && retiredLooms.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-muted-foreground">No looms yet.</p>
+          <p className="text-muted-foreground">{t("loomsPage.emptyState")}</p>
           <Button className="mt-4" onClick={() => setShowNew(true)}>
-            Add your first loom
+            {t("loomsPage.addFirst")}
           </Button>
         </div>
       )}
@@ -178,7 +181,7 @@ export function LoomsPage() {
             <AppIcons.chevronDown
               className={`h-4 w-4 transition-transform duration-200 ${retiredOpen ? "rotate-180" : ""}`}
             />
-            Retired ({retiredLooms.length})
+            {t("loomsPage.retired", { count: retiredLooms.length })}
           </button>
           {retiredOpen && (
             <div className="mt-3 grid gap-4 sm:grid-cols-2 opacity-60">

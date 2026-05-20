@@ -273,6 +273,50 @@
       "create": "Erstellen"
     }
   },
+  "draftsPage": {
+    "title": "Entwürfe",
+    "newButton": "Neuer Entwurf",
+    "clearFilter": "Löschen",
+    "loadingText": "Entwürfe werden geladen…",
+    "loadError": "Entwürfe konnten nicht geladen werden.",
+    "emptyState": "Noch keine Entwürfe. Lade eine WIF-Datei hoch, um loszulegen.",
+    "noTagMatch": "Keine Entwürfe mit Tag \"{{tag}}\".",
+    "archived": "Archiviert ({{count}})"
+  },
+  "projectsPage": {
+    "title": "Projekte",
+    "newButton": "Neues Projekt",
+    "clearFilter": "Löschen",
+    "loadError": "Projekte konnten nicht geladen werden.",
+    "emptyState": "Noch keine Projekte. Starte eines, um eine Webesitzung zu verfolgen.",
+    "sectionActive": "Aktiv",
+    "sectionNotStarted": "Nicht begonnen",
+    "sectionPlanning": "In Planung",
+    "sectionCompleted": "Abgeschlossen",
+    "sectionAbandoned": "Abgebrochen",
+    "pickProgress": "Eintrag {{current}} von {{total}}",
+    "assignLoom": "Webstuhl zuweisen…",
+    "continueWeaving": "Weben fortsetzen",
+    "planBadge": "Plan",
+    "previewAriaLabel": "Vorschau der Patrone",
+    "closePreview": "Schließen ✕"
+  },
+  "loomsPage": {
+    "title": "Ausrüstung",
+    "newButton": "Neuer Webstuhl",
+    "catalogLink": "Webstuhldatenbank durchsuchen",
+    "loadError": "Webstühle konnten nicht geladen werden",
+    "emptyState": "Noch keine Webstühle.",
+    "addFirst": "Ersten Webstuhl hinzufügen",
+    "retiredBadge": "Im Ruhestand",
+    "weavingWidth": "Webbreite: {{width}} {{unit}}",
+    "liftTracking": "Heb-Tracking",
+    "treadleTracking": "Tritt-Tracking",
+    "activeCount": "{{count}} aktiv",
+    "completedCount": "{{count}} abgeschlossen",
+    "abandonedCount": "{{count}} abgebrochen",
+    "retired": "Im Ruhestand ({{count}})"
+  },
   "collectionDetail": {
     "backLink": "← Sammlungen",
     "descPlaceholder": "Beschreibung (optional)",

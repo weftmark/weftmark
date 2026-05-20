@@ -273,6 +273,50 @@
       "create": "Create"
     }
   },
+  "draftsPage": {
+    "title": "Drafts",
+    "newButton": "New Draft",
+    "clearFilter": "Clear",
+    "loadingText": "Loading drafts…",
+    "loadError": "Failed to load drafts.",
+    "emptyState": "No drafts yet. Upload a WIF file to get started.",
+    "noTagMatch": "No drafts tagged \"{{tag}}\".",
+    "archived": "Archived ({{count}})"
+  },
+  "projectsPage": {
+    "title": "Projects",
+    "newButton": "New project",
+    "clearFilter": "Clear",
+    "loadError": "Failed to load projects.",
+    "emptyState": "No projects yet. Start one to begin tracking a weaving session.",
+    "sectionActive": "Active",
+    "sectionNotStarted": "Not started",
+    "sectionPlanning": "Planning",
+    "sectionCompleted": "Completed",
+    "sectionAbandoned": "Abandoned",
+    "pickProgress": "Pick {{current}} of {{total}}",
+    "assignLoom": "Assign to loom…",
+    "continueWeaving": "Continue Weaving",
+    "planBadge": "Plan",
+    "previewAriaLabel": "Preview drawdown",
+    "closePreview": "Close ✕"
+  },
+  "loomsPage": {
+    "title": "Equipment",
+    "newButton": "New loom",
+    "catalogLink": "Browse loom catalog",
+    "loadError": "Failed to load looms",
+    "emptyState": "No looms yet.",
+    "addFirst": "Add your first loom",
+    "retiredBadge": "Retired",
+    "weavingWidth": "Weaving width: {{width}} {{unit}}",
+    "liftTracking": "lift tracking",
+    "treadleTracking": "treadle tracking",
+    "activeCount": "{{count}} active",
+    "completedCount": "{{count}} completed",
+    "abandonedCount": "{{count}} abandoned",
+    "retired": "Retired ({{count}})"
+  },
   "collectionDetail": {
     "backLink": "← Collections",
     "descPlaceholder": "Description (optional)",

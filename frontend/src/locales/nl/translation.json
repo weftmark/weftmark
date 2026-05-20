@@ -273,6 +273,50 @@
       "create": "Aanmaken"
     }
   },
+  "draftsPage": {
+    "title": "Bindingen",
+    "newButton": "Nieuwe binding",
+    "clearFilter": "Wissen",
+    "loadingText": "Bindingen laden…",
+    "loadError": "Bindingen konden niet worden geladen.",
+    "emptyState": "Nog geen bindingen. Upload een WIF-bestand om te beginnen.",
+    "noTagMatch": "Geen bindingen met tag \"{{tag}}\".",
+    "archived": "Gearchiveerd ({{count}})"
+  },
+  "projectsPage": {
+    "title": "Projecten",
+    "newButton": "Nieuw project",
+    "clearFilter": "Wissen",
+    "loadError": "Projecten konden niet worden geladen.",
+    "emptyState": "Nog geen projecten. Start er een om een wefsessie bij te houden.",
+    "sectionActive": "Actief",
+    "sectionNotStarted": "Niet gestart",
+    "sectionPlanning": "In planning",
+    "sectionCompleted": "Voltooid",
+    "sectionAbandoned": "Gestopt",
+    "pickProgress": "Inslag {{current}} van {{total}}",
+    "assignLoom": "Aan weefstoel toewijzen…",
+    "continueWeaving": "Weven voortzetten",
+    "planBadge": "Plan",
+    "previewAriaLabel": "Bindingsvoorbeeld bekijken",
+    "closePreview": "Sluiten ✕"
+  },
+  "loomsPage": {
+    "title": "Apparatuur",
+    "newButton": "Nieuwe weefstoel",
+    "catalogLink": "Weefstoelenlijst bekijken",
+    "loadError": "Weefstoel konden niet worden geladen",
+    "emptyState": "Nog geen weefstoel.",
+    "addFirst": "Eerste weefstoel toevoegen",
+    "retiredBadge": "Gepensioneerd",
+    "weavingWidth": "Weefbreedte: {{width}} {{unit}}",
+    "liftTracking": "hef-tracking",
+    "treadleTracking": "trapper-tracking",
+    "activeCount": "{{count}} actief",
+    "completedCount": "{{count}} voltooid",
+    "abandonedCount": "{{count}} gestopt",
+    "retired": "Gepensioneerd ({{count}})"
+  },
   "collectionDetail": {
     "backLink": "← Collecties",
     "descPlaceholder": "Beschrijving (optioneel)",

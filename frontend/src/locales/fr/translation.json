@@ -273,6 +273,50 @@
       "create": "Créer"
     }
   },
+  "draftsPage": {
+    "title": "Armures",
+    "newButton": "Nouvelle armure",
+    "clearFilter": "Effacer",
+    "loadingText": "Chargement des armures…",
+    "loadError": "Impossible de charger les armures.",
+    "emptyState": "Aucune armure. Téléversez un fichier WIF pour commencer.",
+    "noTagMatch": "Aucune armure avec le tag \"{{tag}}\".",
+    "archived": "Archivées ({{count}})"
+  },
+  "projectsPage": {
+    "title": "Projets",
+    "newButton": "Nouveau projet",
+    "clearFilter": "Effacer",
+    "loadError": "Impossible de charger les projets.",
+    "emptyState": "Aucun projet. Démarrez-en un pour commencer une session de tissage.",
+    "sectionActive": "En cours",
+    "sectionNotStarted": "Non commencé",
+    "sectionPlanning": "En préparation",
+    "sectionCompleted": "Terminés",
+    "sectionAbandoned": "Abandonnés",
+    "pickProgress": "Duite {{current}} sur {{total}}",
+    "assignLoom": "Assigner au métier…",
+    "continueWeaving": "Continuer le tissage",
+    "planBadge": "Plan",
+    "previewAriaLabel": "Aperçu de l'armure",
+    "closePreview": "Fermer ✕"
+  },
+  "loomsPage": {
+    "title": "Équipement",
+    "newButton": "Nouveau métier",
+    "catalogLink": "Parcourir le catalogue de métiers",
+    "loadError": "Impossible de charger les métiers",
+    "emptyState": "Aucun métier.",
+    "addFirst": "Ajouter votre premier métier",
+    "retiredBadge": "Retraité",
+    "weavingWidth": "Laize : {{width}} {{unit}}",
+    "liftTracking": "suivi des leviers",
+    "treadleTracking": "suivi des marches",
+    "activeCount": "{{count}} en cours",
+    "completedCount": "{{count}} terminé",
+    "abandonedCount": "{{count}} abandonné",
+    "retired": "Retraités ({{count}})"
+  },
   "collectionDetail": {
     "backLink": "← Collections",
     "descPlaceholder": "Description (facultatif)",

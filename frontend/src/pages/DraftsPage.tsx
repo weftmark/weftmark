@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { listDrafts } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { DraftCard } from "@/components/drafts/DraftCard";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 
 export function DraftsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
@@ -57,8 +59,8 @@ export function DraftsPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-semibold">Drafts</h1>
-        <Button onClick={() => setShowUpload(true)}>New Draft</Button>
+        <h1 className="text-xl font-semibold">{t("draftsPage.title")}</h1>
+        <Button onClick={() => setShowUpload(true)}>{t("draftsPage.newButton")}</Button>
       </div>
 
       {allTags.length > 0 && (
@@ -81,26 +83,26 @@ export function DraftsPage() {
               onClick={() => setActiveTagFilter(null)}
               className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
-              <AppIcons.close className="h-3 w-3" /> Clear
+              <AppIcons.close className="h-3 w-3" /> {t("draftsPage.clearFilter")}
             </button>
           )}
         </div>
       )}
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading drafts…</p>}
-      {error && <p className="text-sm text-destructive">Failed to load drafts.</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">{t("draftsPage.loadingText")}</p>}
+      {error && <p className="text-sm text-destructive">{t("draftsPage.loadError")}</p>}
 
       {!isLoading && activeDrafts.length === 0 && archivedDrafts.length === 0 && !activeTagFilter && (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">No drafts yet. Upload a WIF file to get started.</p>
+          <p className="text-sm text-muted-foreground">{t("draftsPage.emptyState")}</p>
           <Button className="mt-4" onClick={() => setShowUpload(true)}>
-            New Draft
+            {t("draftsPage.newButton")}
           </Button>
         </div>
       )}
 
       {!isLoading && activeDrafts.length === 0 && archivedDrafts.length === 0 && activeTagFilter && (
-        <p className="text-sm text-muted-foreground">No drafts tagged "{activeTagFilter}".</p>
+        <p className="text-sm text-muted-foreground">{t("draftsPage.noTagMatch", { tag: activeTagFilter })}</p>
       )}
 
       {activeDrafts.length > 0 && (
@@ -121,7 +123,7 @@ export function DraftsPage() {
             <AppIcons.chevronDown
               className={`h-4 w-4 transition-transform duration-200 ${archivedOpen ? "rotate-180" : ""}`}
             />
-            Archived ({archivedDrafts.length})
+            {t("draftsPage.archived", { count: archivedDrafts.length })}
           </button>
           {archivedOpen && (
             <div className="mt-3 grid gap-4 sm:grid-cols-2 opacity-60">

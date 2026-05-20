@@ -273,6 +273,50 @@
       "create": "Crear"
     }
   },
+  "draftsPage": {
+    "title": "Ligamentos",
+    "newButton": "Nuevo ligamento",
+    "clearFilter": "Limpiar",
+    "loadingText": "Cargando ligamentos…",
+    "loadError": "Error al cargar los ligamentos.",
+    "emptyState": "Sin ligamentos todavía. Sube un archivo WIF para empezar.",
+    "noTagMatch": "Sin ligamentos con la etiqueta \"{{tag}}\".",
+    "archived": "Archivados ({{count}})"
+  },
+  "projectsPage": {
+    "title": "Proyectos",
+    "newButton": "Nuevo proyecto",
+    "clearFilter": "Limpiar",
+    "loadError": "Error al cargar los proyectos.",
+    "emptyState": "Sin proyectos todavía. Inicia uno para comenzar a seguir una sesión de tejido.",
+    "sectionActive": "Activo",
+    "sectionNotStarted": "No iniciado",
+    "sectionPlanning": "En planificación",
+    "sectionCompleted": "Completados",
+    "sectionAbandoned": "Abandonados",
+    "pickProgress": "Pasada {{current}} de {{total}}",
+    "assignLoom": "Asignar a telar…",
+    "continueWeaving": "Continuar tejiendo",
+    "planBadge": "Plan",
+    "previewAriaLabel": "Vista previa del ligamento",
+    "closePreview": "Cerrar ✕"
+  },
+  "loomsPage": {
+    "title": "Equipamiento",
+    "newButton": "Nuevo telar",
+    "catalogLink": "Explorar el catálogo de telares",
+    "loadError": "Error al cargar los telares",
+    "emptyState": "Sin telares todavía.",
+    "addFirst": "Añadir tu primer telar",
+    "retiredBadge": "Retirado",
+    "weavingWidth": "Ancho de tejido: {{width}} {{unit}}",
+    "liftTracking": "seguimiento de palancas",
+    "treadleTracking": "seguimiento de pedales",
+    "activeCount": "{{count}} activo",
+    "completedCount": "{{count}} completado",
+    "abandonedCount": "{{count}} abandonado",
+    "retired": "Retirados ({{count}})"
+  },
   "collectionDetail": {
     "backLink": "← Colecciones",
     "descPlaceholder": "Descripción (opcional)",
