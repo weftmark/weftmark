@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SignIn, useAuth as useClerkAuth, useClerk, useUser } from "@clerk/clerk-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthCard } from "@/components/auth/AuthCard";
@@ -26,6 +27,7 @@ export function LoginPage() {
   const { signOut } = useClerk();
   const clerkStatus = clerkUser?.publicMetadata?.status as string | undefined;
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -59,18 +61,16 @@ export function LoginPage() {
             </div>
           )}
           <h1 className="text-lg font-semibold text-zinc-800">
-            {isDenied ? "Account not approved" : "Approval pending"}
+            {isDenied ? t("loginPage.accountNotApproved") : t("loginPage.approvalPending")}
           </h1>
           <p className="mt-2 text-sm text-stone-600">
-            {isDenied
-              ? "weftmark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that changes."
-              : "Your sign-up request has been received. You'll get an email when an admin approves your account."}
+            {isDenied ? t("loginPage.deniedMessage") : t("loginPage.pendingMessage")}
           </p>
           <button
             onClick={() => signOut()}
             className="mt-6 text-sm text-stone-500 underline underline-offset-2 hover:text-stone-700"
           >
-            Sign out
+            {t("loginPage.signOut")}
           </button>
         </div>
       </AuthCard>
@@ -82,16 +82,16 @@ export function LoginPage() {
       naked
       footer={
         <>
-          New to weftmark?{" "}
+          {t("loginPage.newToWeftmark")}{" "}
           <Link to="/register" className="text-amber-700 underline underline-offset-2 hover:text-amber-800">
-            Request access
+            {t("loginPage.requestAccess")}
           </Link>
         </>
       }
     >
       <div className="mb-5 text-center">
-        <h1 className="text-lg font-semibold text-zinc-800">Sign in</h1>
-        <p className="mt-1 text-sm text-stone-600">Welcome back</p>
+        <h1 className="text-lg font-semibold text-zinc-800">{t("loginPage.signIn")}</h1>
+        <p className="mt-1 text-sm text-stone-600">{t("loginPage.welcomeBack")}</p>
       </div>
       <SignIn routing="hash" appearance={CLERK_APPEARANCE} />
     </AuthCard>

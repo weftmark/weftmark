@@ -901,6 +901,65 @@
     "started": "Begonnen",
     "linkExpires": "Link läuft ab am {{date}}"
   },
+  "loginPage": {
+    "signIn": "Anmelden",
+    "welcomeBack": "Willkommen zurück",
+    "newToWeftmark": "Neu bei weftmark?",
+    "requestAccess": "Zugang anfordern",
+    "accountNotApproved": "Konto nicht genehmigt",
+    "approvalPending": "Genehmigung ausstehend",
+    "deniedMessage": "weftmark ist derzeit für neue Anmeldungen geschlossen, aber Ihr Interesse wurde vermerkt. Wir melden uns, wenn sich das ändert.",
+    "pendingMessage": "Ihre Anmeldeanfrage wurde erhalten. Sie erhalten eine E-Mail, wenn ein Administrator Ihr Konto genehmigt hat.",
+    "signOut": "Abmelden"
+  },
+  "registerPage": {
+    "createAccount": "Konto erstellen",
+    "signUpPrompt": "Mit E-Mail registrieren oder ein vorhandenes Konto verbinden",
+    "oneMoreStep": "Noch ein Schritt",
+    "accountConnected": "Ihr Konto wurde verknüpft. Wählen Sie einen Anzeigenamen, um Ihr weftmark-Konto zu erstellen.",
+    "alreadyHaveAccount": "Haben Sie bereits ein Konto?",
+    "signIn": "Anmelden"
+  },
+  "pendingPage": {
+    "settingUp": "Ihr Konto wird eingerichtet",
+    "justAMoment": "Einen Moment…",
+    "accountNotApproved": "Konto nicht genehmigt",
+    "deniedMessage": "weftmark ist derzeit für neue Anmeldungen geschlossen, aber Ihr Interesse wurde vermerkt. Wir melden uns, wenn sich das ändert.",
+    "requestReceived": "Anfrage erhalten",
+    "submittedMessage": "Ihre Anmeldeanfrage wurde übermittelt. Sie erhalten eine E-Mail, sobald ein Administrator Ihr Konto genehmigt hat.",
+    "noAction": "Keine Aktion erforderlich — warten Sie kurz.",
+    "signOut": "Abmelden"
+  },
+  "signOutPage": {
+    "signingOut": "Sie werden abgemeldet",
+    "justAMoment": "Einen Moment…",
+    "signedOut": "Sie wurden abgemeldet",
+    "redirecting": "Sie werden zur Startseite weitergeleitet…"
+  },
+  "unauthorizedPage": {
+    "accessDenied": "Zugriff verweigert",
+    "noPermission": "Sie haben keine Berechtigung, diese Seite anzuzeigen.",
+    "backToHome": "Zurück zur Startseite",
+    "signIn": "Anmelden"
+  },
+  "uninitializedPage": {
+    "title": "System nicht initialisiert",
+    "desc": "Es wurde kein Administratorkonto konfiguriert. Führen Sie den Seed-Befehl auf dem Server aus, um das System zu initialisieren."
+  },
+  "versionErrorPage": {
+    "title": "Server-Versionskonflikt",
+    "desc": "Der Server wird gerade aktualisiert. Versuchen Sie es in einem Moment erneut oder wenden Sie sich an Ihren Administrator, wenn das Problem weiterhin besteht.",
+    "frontend": "Frontend:",
+    "backend": "Backend:",
+    "worker": "Worker:",
+    "unreachable": "nicht erreichbar"
+  },
+  "termsPage": {
+    "title": "Nutzungsbedingungen",
+    "versionEffective": "Version {{version}} — gültig ab {{date}}",
+    "loading": "Nutzungsbedingungen werden geladen…",
+    "error": "Die aktuellen Nutzungsbedingungen konnten nicht geladen werden. Versuchen Sie es erneut oder wenden Sie sich an"
+  },
   "loomCatalogPage": {
     "signIn": "Anmelden",
     "title": "Unterstützte Webstühle",

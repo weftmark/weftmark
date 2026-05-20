@@ -901,6 +901,65 @@
     "started": "Iniciado",
     "linkExpires": "El enlace expira el {{date}}"
   },
+  "loginPage": {
+    "signIn": "Iniciar sesión",
+    "welcomeBack": "Bienvenido de nuevo",
+    "newToWeftmark": "¿Nuevo en weftmark?",
+    "requestAccess": "Solicitar acceso",
+    "accountNotApproved": "Cuenta no aprobada",
+    "approvalPending": "Aprobación pendiente",
+    "deniedMessage": "weftmark está actualmente cerrado a nuevos registros, pero hemos tomado nota de tu interés. Te informaremos si eso cambia.",
+    "pendingMessage": "Tu solicitud de registro ha sido recibida. Recibirás un correo cuando un administrador apruebe tu cuenta.",
+    "signOut": "Cerrar sesión"
+  },
+  "registerPage": {
+    "createAccount": "Crea tu cuenta",
+    "signUpPrompt": "Regístrate con correo o conecta una cuenta existente",
+    "oneMoreStep": "Un paso más",
+    "accountConnected": "Tu cuenta fue conectada. Elige un nombre para mostrar y finaliza la creación de tu cuenta weftmark.",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta?",
+    "signIn": "Iniciar sesión"
+  },
+  "pendingPage": {
+    "settingUp": "Configurando tu cuenta",
+    "justAMoment": "Un momento…",
+    "accountNotApproved": "Cuenta no aprobada",
+    "deniedMessage": "weftmark está actualmente cerrado a nuevos registros, pero hemos tomado nota de tu interés. Te informaremos si eso cambia.",
+    "requestReceived": "Solicitud recibida",
+    "submittedMessage": "Tu solicitud de registro ha sido enviada. Recibirás un correo una vez que un administrador apruebe tu cuenta.",
+    "noAction": "No se necesita ninguna acción — espera un momento.",
+    "signOut": "Cerrar sesión"
+  },
+  "signOutPage": {
+    "signingOut": "Cerrando tu sesión",
+    "justAMoment": "Un momento…",
+    "signedOut": "Has cerrado sesión",
+    "redirecting": "Redirigiendo a la página de inicio…"
+  },
+  "unauthorizedPage": {
+    "accessDenied": "Acceso denegado",
+    "noPermission": "No tienes permiso para ver esta página.",
+    "backToHome": "Volver al inicio",
+    "signIn": "Iniciar sesión"
+  },
+  "uninitializedPage": {
+    "title": "Sistema no inicializado",
+    "desc": "No se ha configurado ninguna cuenta de administrador. Ejecuta el comando seed en el servidor para inicializar el sistema."
+  },
+  "versionErrorPage": {
+    "title": "Discordancia de versión del servidor",
+    "desc": "El servidor se está actualizando. Inténtalo de nuevo en un momento o contacta a tu administrador si el problema persiste.",
+    "frontend": "Frontend:",
+    "backend": "Backend:",
+    "worker": "Worker:",
+    "unreachable": "inalcanzable"
+  },
+  "termsPage": {
+    "title": "Términos de servicio",
+    "versionEffective": "Versión {{version}} — vigente desde {{date}}",
+    "loading": "Cargando términos…",
+    "error": "No se pudieron cargar los Términos de servicio actuales. Inténtalo más tarde o contacta a"
+  },
   "loomCatalogPage": {
     "signIn": "Iniciar sesión",
     "title": "Telares compatibles",

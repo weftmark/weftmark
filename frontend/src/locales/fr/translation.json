@@ -901,6 +901,65 @@
     "started": "Commencé",
     "linkExpires": "Lien expire le {{date}}"
   },
+  "loginPage": {
+    "signIn": "Se connecter",
+    "welcomeBack": "Bon retour",
+    "newToWeftmark": "Nouveau sur weftmark ?",
+    "requestAccess": "Demander l'accès",
+    "accountNotApproved": "Compte non approuvé",
+    "approvalPending": "Approbation en attente",
+    "deniedMessage": "weftmark est actuellement fermé aux nouvelles inscriptions, mais votre intérêt a été noté. Nous vous contacterons si cela change.",
+    "pendingMessage": "Votre demande d'inscription a été reçue. Vous recevrez un e-mail lorsqu'un administrateur approuvera votre compte.",
+    "signOut": "Se déconnecter"
+  },
+  "registerPage": {
+    "createAccount": "Créer votre compte",
+    "signUpPrompt": "Inscrivez-vous par e-mail ou connectez un compte existant",
+    "oneMoreStep": "Une dernière étape",
+    "accountConnected": "Votre compte a été lié. Choisissez un nom d'affichage pour finaliser la création de votre compte weftmark.",
+    "alreadyHaveAccount": "Vous avez déjà un compte ?",
+    "signIn": "Se connecter"
+  },
+  "pendingPage": {
+    "settingUp": "Configuration de votre compte",
+    "justAMoment": "Un instant…",
+    "accountNotApproved": "Compte non approuvé",
+    "deniedMessage": "weftmark est actuellement fermé aux nouvelles inscriptions, mais votre intérêt a été noté. Nous vous contacterons si cela change.",
+    "requestReceived": "Demande reçue",
+    "submittedMessage": "Votre demande d'inscription a été soumise. Vous recevrez un e-mail une fois qu'un administrateur aura approuvé votre compte.",
+    "noAction": "Aucune action nécessaire — patientez.",
+    "signOut": "Se déconnecter"
+  },
+  "signOutPage": {
+    "signingOut": "Déconnexion en cours",
+    "justAMoment": "Un instant…",
+    "signedOut": "Vous avez été déconnecté",
+    "redirecting": "Redirection vers la page d'accueil…"
+  },
+  "unauthorizedPage": {
+    "accessDenied": "Accès refusé",
+    "noPermission": "Vous n'avez pas la permission de consulter cette page.",
+    "backToHome": "Retour à l'accueil",
+    "signIn": "Se connecter"
+  },
+  "uninitializedPage": {
+    "title": "Système non initialisé",
+    "desc": "Aucun compte administrateur n'a été configuré. Exécutez la commande seed sur le serveur pour initialiser le système."
+  },
+  "versionErrorPage": {
+    "title": "Incompatibilité de version du serveur",
+    "desc": "Le serveur est en cours de mise à jour. Réessayez dans un instant ou contactez votre administrateur si ce problème persiste.",
+    "frontend": "Frontend :",
+    "backend": "Backend :",
+    "worker": "Worker :",
+    "unreachable": "inaccessible"
+  },
+  "termsPage": {
+    "title": "Conditions d'utilisation",
+    "versionEffective": "Version {{version}} — en vigueur le {{date}}",
+    "loading": "Chargement des conditions…",
+    "error": "Impossible de charger les conditions d'utilisation actuelles. Réessayez plus tard ou contactez"
+  },
   "loomCatalogPage": {
     "signIn": "Se connecter",
     "title": "Métiers supportés",

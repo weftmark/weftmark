@@ -901,6 +901,65 @@
     "started": "Gestart",
     "linkExpires": "Link verloopt {{date}}"
   },
+  "loginPage": {
+    "signIn": "Aanmelden",
+    "welcomeBack": "Welkom terug",
+    "newToWeftmark": "Nieuw bij weftmark?",
+    "requestAccess": "Toegang aanvragen",
+    "accountNotApproved": "Account niet goedgekeurd",
+    "approvalPending": "Goedkeuring in behandeling",
+    "deniedMessage": "weftmark is momenteel gesloten voor nieuwe aanmeldingen, maar uw interesse is genoteerd. We nemen contact op als dat verandert.",
+    "pendingMessage": "Uw aanmeldingsverzoek is ontvangen. U ontvangt een e-mail wanneer een beheerder uw account heeft goedgekeurd.",
+    "signOut": "Afmelden"
+  },
+  "registerPage": {
+    "createAccount": "Account aanmaken",
+    "signUpPrompt": "Meld u aan met e-mail of verbind een bestaand account",
+    "oneMoreStep": "Nog één stap",
+    "accountConnected": "Uw account is gekoppeld. Kies een weergavenaam om uw weftmark-account aan te maken.",
+    "alreadyHaveAccount": "Heeft u al een account?",
+    "signIn": "Aanmelden"
+  },
+  "pendingPage": {
+    "settingUp": "Uw account wordt ingesteld",
+    "justAMoment": "Een ogenblik…",
+    "accountNotApproved": "Account niet goedgekeurd",
+    "deniedMessage": "weftmark is momenteel gesloten voor nieuwe aanmeldingen, maar uw interesse is genoteerd. We nemen contact op als dat verandert.",
+    "requestReceived": "Verzoek ontvangen",
+    "submittedMessage": "Uw aanmeldingsverzoek is ingediend. U ontvangt een e-mail zodra een beheerder uw account heeft goedgekeurd.",
+    "noAction": "Geen actie nodig — wacht even.",
+    "signOut": "Afmelden"
+  },
+  "signOutPage": {
+    "signingOut": "U wordt afgemeld",
+    "justAMoment": "Een ogenblik…",
+    "signedOut": "U bent afgemeld",
+    "redirecting": "U wordt doorgestuurd naar de startpagina…"
+  },
+  "unauthorizedPage": {
+    "accessDenied": "Toegang geweigerd",
+    "noPermission": "U heeft geen toestemming om deze pagina te bekijken.",
+    "backToHome": "Terug naar start",
+    "signIn": "Aanmelden"
+  },
+  "uninitializedPage": {
+    "title": "Systeem niet geïnitialiseerd",
+    "desc": "Er is geen beheerdersaccount geconfigureerd. Voer de seed-opdracht uit op de server om het systeem te initialiseren."
+  },
+  "versionErrorPage": {
+    "title": "Versieconflict op server",
+    "desc": "De server wordt momenteel bijgewerkt. Probeer het over een moment opnieuw of neem contact op met uw beheerder als dit probleem aanhoudt.",
+    "frontend": "Frontend:",
+    "backend": "Backend:",
+    "worker": "Worker:",
+    "unreachable": "onbereikbaar"
+  },
+  "termsPage": {
+    "title": "Servicevoorwaarden",
+    "versionEffective": "Versie {{version}} — van kracht op {{date}}",
+    "loading": "Voorwaarden laden…",
+    "error": "Kan de huidige Servicevoorwaarden niet laden. Probeer het later opnieuw of neem contact op met"
+  },
   "loomCatalogPage": {
     "signIn": "Inloggen",
     "title": "Ondersteunde weefgetouwen",

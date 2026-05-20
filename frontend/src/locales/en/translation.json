@@ -901,6 +901,65 @@
     "started": "Started",
     "linkExpires": "Link expires {{date}}"
   },
+  "loginPage": {
+    "signIn": "Sign in",
+    "welcomeBack": "Welcome back",
+    "newToWeftmark": "New to weftmark?",
+    "requestAccess": "Request access",
+    "accountNotApproved": "Account not approved",
+    "approvalPending": "Approval pending",
+    "deniedMessage": "weftmark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that changes.",
+    "pendingMessage": "Your sign-up request has been received. You'll get an email when an admin approves your account.",
+    "signOut": "Sign out"
+  },
+  "registerPage": {
+    "createAccount": "Create your account",
+    "signUpPrompt": "Sign up with email or connect an existing account",
+    "oneMoreStep": "One more step",
+    "accountConnected": "Your account was connected. Choose a display name to finish creating your weftmark account.",
+    "alreadyHaveAccount": "Already have an account?",
+    "signIn": "Sign in"
+  },
+  "pendingPage": {
+    "settingUp": "Setting up your account",
+    "justAMoment": "Just a moment…",
+    "accountNotApproved": "Account not approved",
+    "deniedMessage": "weftmark is currently closed to new sign-ups, but your interest has been noted. We'll be in touch if that changes.",
+    "requestReceived": "Request received",
+    "submittedMessage": "Your sign-up request has been submitted. You'll receive an email once an admin approves your account.",
+    "noAction": "No action needed — sit tight.",
+    "signOut": "Sign out"
+  },
+  "signOutPage": {
+    "signingOut": "Signing you out",
+    "justAMoment": "Just a moment…",
+    "signedOut": "You've been signed out",
+    "redirecting": "Redirecting you to the home page…"
+  },
+  "unauthorizedPage": {
+    "accessDenied": "Access denied",
+    "noPermission": "You don't have permission to view this page.",
+    "backToHome": "Back to home",
+    "signIn": "Sign in"
+  },
+  "uninitializedPage": {
+    "title": "System Not Initialized",
+    "desc": "No administrator account has been configured. Run the seed command on the server to initialize the system."
+  },
+  "versionErrorPage": {
+    "title": "Server Version Mismatch",
+    "desc": "The server is currently being updated. Please try again in a moment, or contact your administrator if this problem persists.",
+    "frontend": "Frontend:",
+    "backend": "Backend:",
+    "worker": "Worker:",
+    "unreachable": "unreachable"
+  },
+  "termsPage": {
+    "title": "Terms of Service",
+    "versionEffective": "Version {{version}} — effective {{date}}",
+    "loading": "Loading terms…",
+    "error": "Could not load the current Terms of Service. Please try again later or contact"
+  },
   "loomCatalogPage": {
     "signIn": "Sign in",
     "title": "Supported looms",
