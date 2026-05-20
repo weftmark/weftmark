@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "equipment": "Equipment",
+    "collections": "Collections",
+    "drafts": "Drafts",
+    "projects": "Projects",
+    "settings": "Settings",
+    "admin": "Admin",
+    "sendFeedback": "Send Feedback",
+    "supportWeftmark": "Support weftmark",
+    "signOut": "Sign out"
+  },
+  "settingsSections": {
+    "appearance": "Appearance",
+    "preferences": "Preferences",
+    "privacy": "Privacy & data",
+    "terms": "Terms",
+    "account": "Account",
+    "feedbackHistory": "Feedback history"
+  },
+  "adminSections": {
+    "users": "Users",
+    "invites": "Invites",
+    "stats": "Stats",
+    "health": "Health",
+    "services": "Services",
+    "deps": "Dependencies",
+    "audit": "Audit log",
+    "feedback": "Feedback",
+    "credentials": "Credentials",
+    "slugs": "Share links",
+    "looms": "Loom database",
+    "superuser": "Superuser"
+  },
+  "loomTypes": {
+    "floor_loom": "Floor Loom — treadle tracking",
+    "table_loom": "Table Loom — lift tracking",
+    "rigid_heddle": "Rigid Heddle",
+    "inkle": "Inkle",
+    "dobby_floor_loom": "Dobby Floor Loom",
+    "tapestry_loom": "Tapestry Loom — project tracking not currently supported",
+    "rug_loom": "Rug Loom — project tracking not currently supported",
+    "frame_loom": "Frame Loom — project tracking not currently supported",
+    "other": "Other"
+  },
+  "projectStatus": {
+    "created": "Not started",
+    "active": "Active",
+    "completed": "Completed",
+    "abandoned": "Abandoned"
+  },
+  "projectType": {
+    "treadle": "Treadle tracking",
+    "lift": "Lift tracking"
+  },
+  "skeinStatus": {
+    "available": "Available",
+    "in_use": "In use",
+    "consumed": "Consumed"
+  },
+  "feedbackType": {
+    "feedback": "Feedback",
+    "feature_request": "Feature Request",
+    "bug_report": "Bug Report"
+  },
+  "landing": {
+    "navLoomCatalog": "Loom catalog",
+    "navSignIn": "Sign in",
+    "tagline": "Weaving companion for handweavers",
+    "heroTitle": "Your weaving,",
+    "heroTitleHighlight": "row by row.",
+    "heroBody": "Upload your WIF draft, follow along pick by pick, and keep a complete record of every draft from first warp to last pick.",
+    "ctaSignIn": "Sign In",
+    "ctaCreateAccount": "Create Account",
+    "featuresHeading": "Everything you need at the loom",
+    "features": {
+      "trackWeaves": {
+        "title": "Track your weaves",
+        "body": "Upload your WIF draft and step through every pick. weftmark keeps your place so you can put down the shuttle and pick it right back up."
+      },
+      "recordPicks": {
+        "title": "Record every pick",
+        "body": "Advance, reverse, or jump to any row. Mark a project complete when the last pick is woven in."
+      },
+      "manageTools": {
+        "title": "Manage your tools",
+        "body": "Keep a record of your looms and yarn. Assign a loom to a draft and track what's on the beam."
+      }
+    }
+  }
+}

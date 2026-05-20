@@ -1,27 +1,30 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AppIcons } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { PublicFooter } from "@/components/PublicFooter";
 
-const FEATURES = [
-  {
-    title: "Track your weaves",
-    body: "Upload your WIF draft and step through every pick. weftmark keeps your place so you can put down the shuttle and pick it right back up.",
-    Icon: AppIcons.designLibrary,
-  },
-  {
-    title: "Record every pick",
-    body: "Advance, reverse, or jump to any row. Mark a project complete when the last pick is woven in.",
-    Icon: AppIcons.pickTracking,
-  },
-  {
-    title: "Manage your tools",
-    body: "Keep a record of your looms and yarn. Assign a loom to a draft and track what's on the beam.",
-    Icon: AppIcons.toolManagement,
-  },
-];
-
 export function LandingPage() {
+  const { t } = useTranslation();
+
+  const FEATURES = [
+    {
+      title: t("landing.features.trackWeaves.title"),
+      body: t("landing.features.trackWeaves.body"),
+      Icon: AppIcons.designLibrary,
+    },
+    {
+      title: t("landing.features.recordPicks.title"),
+      body: t("landing.features.recordPicks.body"),
+      Icon: AppIcons.pickTracking,
+    },
+    {
+      title: t("landing.features.manageTools.title"),
+      body: t("landing.features.manageTools.body"),
+      Icon: AppIcons.toolManagement,
+    },
+  ];
+
   return (
     <div className="flex min-h-screen flex-col bg-stone-50 text-stone-900">
       {/* Grain texture overlay */}
@@ -47,13 +50,13 @@ export function LandingPage() {
               to="/catalog/looms"
               className="text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
             >
-              Loom catalog
+              {t("landing.navLoomCatalog")}
             </Link>
             <Link
               to="/login"
               className="text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
             >
-              Sign in
+              {t("landing.navSignIn")}
             </Link>
           </div>
         </div>
@@ -69,29 +72,28 @@ export function LandingPage() {
             <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.4fr]">
               <div className="order-2 lg:order-1">
                 <span className="mb-5 inline-block rounded-full bg-amber-100 px-3.5 py-1 text-xs font-medium tracking-wide text-amber-700">
-                  Weaving companion for handweavers
+                  {t("landing.tagline")}
                 </span>
                 <h1 className="mb-5 text-4xl font-bold tracking-tight text-stone-900 sm:text-5xl lg:text-6xl">
-                  Your weaving,
+                  {t("landing.heroTitle")}
                   <br />
-                  <span className="text-amber-600">row by row.</span>
+                  <span className="text-amber-600">{t("landing.heroTitleHighlight")}</span>
                 </h1>
                 <p className="mb-8 max-w-lg text-lg leading-relaxed text-stone-600">
-                  Upload your WIF draft, follow along pick by pick, and keep a complete record of every
-                  draft from first warp to last pick.
+                  {t("landing.heroBody")}
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Link
                     to="/login"
                     className="rounded-lg bg-zinc-800 px-6 py-3 text-center text-sm font-semibold text-white shadow-md shadow-zinc-900/30 transition-colors hover:bg-zinc-900"
                   >
-                    Sign In
+                    {t("landing.ctaSignIn")}
                   </Link>
                   <Link
                     to="/register"
                     className="rounded-lg border border-stone-300 bg-white/60 px-6 py-3 text-center text-sm font-semibold text-stone-700 transition-colors hover:bg-white"
                   >
-                    Create Account
+                    {t("landing.ctaCreateAccount")}
                   </Link>
                 </div>
               </div>
@@ -120,7 +122,7 @@ export function LandingPage() {
         <section className="relative z-10 -mt-12 px-6 pb-20">
           <div className="mx-auto max-w-6xl">
             <h2 className="mb-10 text-center text-2xl font-bold tracking-tight text-stone-900">
-              Everything you need at the loom
+              {t("landing.featuresHeading")}
             </h2>
             <div className="grid gap-6 sm:grid-cols-3">
               {FEATURES.map(({ title, body, Icon }) => (
