@@ -30,13 +30,6 @@ def seed_loom_references(self: Task) -> dict:
 
 
 async def _seed() -> dict:
-    from seeds.loom_references import seed
+    from app.services.loom_seed import seed
 
-    result = await seed()
-    log.info(
-        "seed_loom_references inserted=%d updated=%d skipped=%d",
-        result.get("inserted", 0),
-        result.get("updated", 0),
-        result.get("skipped", 0),
-    )
-    return result
+    return await seed()
