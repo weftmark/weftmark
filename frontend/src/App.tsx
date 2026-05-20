@@ -82,7 +82,7 @@ export default function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} afterSignUpUrl="/pending" afterSignOutUrl="/sign-out">
+    <ClerkProvider publishableKey={clerkPublishableKey} afterSignInUrl="/home" afterSignUpUrl="/pending" afterSignOutUrl="/sign-out">
       <VersionGate>
         <SystemGate>
         <QueryClientProvider client={queryClient}>

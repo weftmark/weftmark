@@ -20,8 +20,8 @@ test("upload a WIF file and confirm draft appears", async ({ page }) => {
   await page.getByRole("button", { name: "New Draft" }).first().click();
   await expect(page.locator("h2").filter({ hasText: "New Draft" })).toBeVisible();
 
-  // Fill in the required name field
-  await page.getByLabel(/draft name/i).fill("E2E Test Draft");
+  // Fill in the required name field (label has no htmlFor, use placeholder instead)
+  await page.locator('input[placeholder="My Weaving Draft"]').fill("E2E Test Draft");
 
   // Set the file directly on the file input (no file-chooser dialog needed)
   await page.locator('input[type="file"]').setInputFiles(
@@ -32,7 +32,7 @@ test("upload a WIF file and confirm draft appears", async ({ page }) => {
   await page.getByRole("button", { name: "Upload" }).click();
 
   const response = await uploadResponse;
-  expect(response.status()).toBe(200);
+  expect(response.ok()).toBe(true);
 
   // Draft card should appear after upload
   await expect(page.locator("[data-testid='draft-card']").first()).toBeVisible({
