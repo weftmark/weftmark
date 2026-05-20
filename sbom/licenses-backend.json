@@ -22,7 +22,7 @@
   {
     "License": "MIT",
     "Name": "PyJWT",
-    "Version": "2.12.0"
+    "Version": "2.12.1"
   },
   {
     "License": "MIT License",
@@ -42,7 +42,7 @@
   {
     "License": "Python Software Foundation License",
     "Name": "aiohappyeyeballs",
-    "Version": "2.6.1"
+    "Version": "2.6.2"
   },
   {
     "License": "Apache-2.0 AND MIT",
@@ -132,7 +132,7 @@
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
     "Name": "certifi",
-    "Version": "2026.4.22"
+    "Version": "2026.5.20"
   },
   {
     "License": "MIT",
@@ -152,7 +152,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "click",
-    "Version": "8.3.3"
+    "Version": "8.4.0"
   },
   {
     "License": "MIT License",
@@ -237,7 +237,7 @@
   {
     "License": "MIT AND PSF-2.0",
     "Name": "greenlet",
-    "Version": "3.5.0"
+    "Version": "3.5.1"
   },
   {
     "License": "MIT License",
@@ -317,7 +317,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "lxml",
-    "Version": "6.1.0"
+    "Version": "6.1.1"
   },
   {
     "License": "MIT License",
@@ -552,7 +552,7 @@
   {
     "License": "Apache Software License",
     "Name": "requests",
-    "Version": "2.34.0"
+    "Version": "2.34.2"
   },
   {
     "License": "MIT License",
@@ -622,12 +622,12 @@
   {
     "License": "Apache-2.0",
     "Name": "types-Deprecated",
-    "Version": "1.3.1.20260508"
+    "Version": "1.3.1.20260520"
   },
   {
     "License": "Apache-2.0",
     "Name": "types-python-dateutil",
-    "Version": "2.9.0.20260508"
+    "Version": "2.9.0.20260518"
   },
   {
     "License": "MIT",
@@ -677,7 +677,7 @@
   {
     "License": "MIT License",
     "Name": "watchfiles",
-    "Version": "1.1.1"
+    "Version": "1.2.0"
   },
   {
     "License": "BSD License",
@@ -697,11 +697,11 @@
   {
     "License": "Apache-2.0",
     "Name": "yarl",
-    "Version": "1.23.0"
+    "Version": "1.24.2"
   },
   {
     "License": "MIT",
     "Name": "zipp",
-    "Version": "3.23.1"
+    "Version": "4.1.0"
   }
 ]

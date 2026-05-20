@@ -2,7 +2,7 @@
   "components": [
     {
       "bom-ref": "requirements-L16",
-      "description": "requirements line 16: PyJWT[crypto]==2.12.0",
+      "description": "requirements line 16: PyJWT[crypto]==2.12.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -17,9 +17,9 @@
           "value": "crypto"
         }
       ],
-      "purl": "pkg:pypi/pyjwt@2.12.0",
+      "purl": "pkg:pypi/pyjwt@2.12.1",
       "type": "library",
-      "version": "2.12.0"
+      "version": "2.12.1"
     },
     {
       "bom-ref": "requirements-L14",
@@ -656,7 +656,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-13T10:50:09.506138+00:00",
+    "timestamp": "2026-05-20T19:56:06.647631+00:00",
     "tools": {
       "components": [
         {
@@ -760,7 +760,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:e0c93dbf-f5af-4a95-96ad-477596ba4574",
+  "serialNumber": "urn:uuid:e0e9abf5-930c-45fe-97ef-b6a39bad7239",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
