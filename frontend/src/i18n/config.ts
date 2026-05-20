@@ -7,11 +7,11 @@ import es from "@/locales/es/translation.json";
 import nl from "@/locales/nl/translation.json";
 
 export const SUPPORTED_LANGUAGES = [
-  { code: "en", label: "English" },
-  { code: "de", label: "Deutsch" },
-  { code: "fr", label: "Français" },
-  { code: "es", label: "Español" },
-  { code: "nl", label: "Nederlands" },
+  { code: "en", label: "English", flag: "🇺🇸" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "nl", label: "Nederlands", flag: "🇳🇱" },
 ] as const;
 
 export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
