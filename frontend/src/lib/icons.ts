@@ -4,6 +4,7 @@
  */
 import {
   Activity,
+  BookOpen,
   CheckSquare,
   ChevronDown,
   ListChecks,
@@ -57,6 +58,7 @@ export const AppIcons = {
   draft: Scroll,
   projects: Activity,
   equipment: Wrench,
+  collections: BookOpen,
   settings: Settings,
   admin: ShieldCheck,
   logout: LogOut,

@@ -38,6 +38,7 @@ export interface ProjectSummary {
   share_slug: string | null;
   share_visibility: ShareVisibility;
   share_expires_at: string | null;
+  tags: string[];
 }
 
 export interface WifColor {
@@ -157,6 +158,7 @@ export interface CreateProjectPayload {
   waste_between_items?: number;
   warp_waste_allowance?: number;
   length_unit?: string;
+  tags?: string[];
 }
 
 export interface StepResponse {
@@ -293,10 +295,11 @@ export function projectDrawdownSvgUrl(projectId: string): string {
   return `/api/projects/${projectId}/drawdown_svg`;
 }
 
-export function listProjects(params?: { draftId?: string; loomId?: string }): Promise<ProjectSummary[]> {
+export function listProjects(params?: { draftId?: string; loomId?: string; tags?: string[] }): Promise<ProjectSummary[]> {
   const qs = new URLSearchParams();
   if (params?.draftId) qs.set("draft_id", params.draftId);
   if (params?.loomId) qs.set("loom_id", params.loomId);
+  if (params?.tags?.length) params.tags.forEach((t) => qs.append("tags", t));
   const query = qs.size ? `?${qs}` : "";
   return req(`/api/projects${query}`);
 }
@@ -338,6 +341,14 @@ export function renameProject(id: string, name: string): Promise<ProjectDetail> 
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
+  });
+}
+
+export function updateProjectTags(id: string, tags: string[]): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tags }),
   });
 }
 

@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { VersionBadge } from "@/components/layout/VersionFooter";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { useAuth } from "@/hooks/useAuth";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import type { ReactNode } from "react";
 
 const DETAIL_PATTERN = /^\/projects\/[^/]+/;
@@ -52,6 +53,8 @@ export function AppLayout({ children }: Props) {
             <AppIcons.feedback className="h-5 w-5" />
           </button>
         </div>
+
+        <OfflineBanner />
 
         {/* Detail pages manage their own height/scroll internally; other pages use the scroll wrapper */}
         <main className={`flex-1 ${isDetailPage ? "overflow-hidden" : "overflow-y-auto"}`}>

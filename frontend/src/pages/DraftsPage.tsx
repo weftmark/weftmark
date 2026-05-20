@@ -1,18 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listDrafts } from "@/api/drafts";
 import { listProjects } from "@/api/projects";
 import { DraftCard } from "@/components/drafts/DraftCard";
 import { UploadWifModal } from "@/components/drafts/UploadWifModal";
 import { Button } from "@/components/ui/button";
+import { AppIcons } from "@/lib/icons";
 
 export function DraftsPage() {
   const queryClient = useQueryClient();
   const [showUpload, setShowUpload] = useState(false);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
   const { data: drafts = [], isLoading, error } = useQuery({
-    queryKey: ["drafts"],
-    queryFn: listDrafts,
+    queryKey: ["drafts", { includeArchived: true }],
+    queryFn: () => listDrafts(true),
   });
 
   const { data: projects = [] } = useQuery({
@@ -33,37 +36,102 @@ export function DraftsPage() {
     {},
   );
 
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    drafts.forEach((d) => d.tags?.forEach((t) => set.add(t)));
+    return [...set].sort();
+  }, [drafts]);
+
   const handleUploadSuccess = () => {
     setShowUpload(false);
     queryClient.invalidateQueries({ queryKey: ["drafts"] });
   };
 
+  const filteredDrafts = activeTagFilter
+    ? drafts.filter((d) => d.tags?.includes(activeTagFilter))
+    : drafts;
+
+  const activeDrafts = filteredDrafts.filter((d) => !d.archived_at);
+  const archivedDrafts = filteredDrafts.filter((d) => d.archived_at);
+
   return (
     <div className="p-6 max-w-4xl mx-auto w-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold">Drafts</h1>
         <Button onClick={() => setShowUpload(true)}>New Draft</Button>
       </div>
 
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-5">
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                activeTagFilter === tag
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent/20"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+          {activeTagFilter && (
+            <button
+              onClick={() => setActiveTagFilter(null)}
+              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            >
+              <AppIcons.close className="h-3 w-3" /> Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {isLoading && <p className="text-sm text-muted-foreground">Loading drafts…</p>}
       {error && <p className="text-sm text-destructive">Failed to load drafts.</p>}
 
-      {!isLoading && drafts.length === 0 && (
+      {!isLoading && activeDrafts.length === 0 && archivedDrafts.length === 0 && !activeTagFilter && (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            No drafts yet. Upload a WIF file to get started.
-          </p>
+          <p className="text-sm text-muted-foreground">No drafts yet. Upload a WIF file to get started.</p>
           <Button className="mt-4" onClick={() => setShowUpload(true)}>
             New Draft
           </Button>
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {drafts.map((d) => (
-          <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} />
-        ))}
-      </div>
+      {!isLoading && activeDrafts.length === 0 && archivedDrafts.length === 0 && activeTagFilter && (
+        <p className="text-sm text-muted-foreground">No drafts tagged "{activeTagFilter}".</p>
+      )}
+
+      {activeDrafts.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {activeDrafts.map((d) => (
+            <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} />
+          ))}
+        </div>
+      )}
+
+      {archivedDrafts.length > 0 && (
+        <div className="mt-8">
+          <button
+            type="button"
+            onClick={() => setArchivedOpen((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+          >
+            <AppIcons.chevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${archivedOpen ? "rotate-180" : ""}`}
+            />
+            Archived ({archivedDrafts.length})
+          </button>
+          {archivedOpen && (
+            <div className="mt-3 grid gap-4 sm:grid-cols-2 opacity-60">
+              {archivedDrafts.map((d) => (
+                <DraftCard key={d.id} draft={d} projectCounts={projectCountsByDraft[d.id]} archived />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showUpload && (
         <UploadWifModal

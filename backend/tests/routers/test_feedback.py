@@ -235,3 +235,134 @@ class TestAdminRecoverFeedback:
     async def test_not_found_returns_404(self, admin_client: AsyncClient):
         resp = await admin_client.post(f"/api/admin/feedback/{uuid.uuid4()}/recover")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /api/feedback/mine
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestListMyFeedback:
+    async def test_returns_own_submissions(self, auth_client: AsyncClient):
+        await auth_client.post("/api/feedback", json=_feedback_payload(body="my own post"))
+        resp = await auth_client.get("/api/feedback/mine")
+        assert resp.status_code == 200
+        items = resp.json()
+        assert isinstance(items, list)
+        assert any(i["body"] == "my own post" for i in items)
+
+    async def test_empty_list_when_no_submissions(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/feedback/mine")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    async def test_unauthenticated_returns_401(self, client: AsyncClient):
+        resp = await client.get("/api/feedback/mine")
+        assert resp.status_code == 401
+
+    async def test_excludes_soft_deleted(self, auth_client: AsyncClient, admin_client: AsyncClient):
+        sub = await auth_client.post("/api/feedback", json=_feedback_payload(body="to delete"))
+        fid = sub.json()["id"]
+        await admin_client.delete(f"/api/admin/feedback/{fid}")
+        resp = await auth_client.get("/api/feedback/mine")
+        ids = [i["id"] for i in resp.json()]
+        assert fid not in ids
+
+
+# ---------------------------------------------------------------------------
+# GET /api/feedback/{id}/status
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestFeedbackStatus:
+    async def test_returns_status_for_own_submission(self, auth_client: AsyncClient):
+        sub = await auth_client.post("/api/feedback", json=_feedback_payload())
+        fid = sub.json()["id"]
+        resp = await auth_client.get(f"/api/feedback/{fid}/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "dispatch_status" in data
+        assert "github_discussion_url" in data
+
+    async def test_not_found_when_wrong_user(self, admin_client: AsyncClient, db_session, test_user):
+        from app.models.feedback import UserFeedback
+
+        # Create feedback owned by test_user (not admin_user who admin_client uses)
+        row = UserFeedback(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            submission_type="feedback",
+            body="other user's feedback",
+            dispatch_status="skipped",
+        )
+        db_session.add(row)
+        await db_session.commit()
+
+        resp = await admin_client.get(f"/api/feedback/{row.id}/status")
+        assert resp.status_code == 404
+
+    async def test_not_found_for_unknown_id(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/feedback/{uuid.uuid4()}/status")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/feedback/{id}/retry-dispatch
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestAdminRetryDispatch:
+    async def test_retry_resets_status_to_pending(
+        self, auth_client: AsyncClient, admin_client: AsyncClient, db_session
+    ):
+        from unittest.mock import patch
+
+        from app.models.feedback import UserFeedback
+
+        sub = await auth_client.post("/api/feedback", json=_feedback_payload())
+        fid = sub.json()["id"]
+
+        row = await db_session.get(UserFeedback, uuid.UUID(fid))
+        row.dispatch_status = "failed"
+        await db_session.commit()
+
+        with patch("app.routers.feedback._enqueue_dispatch"):
+            resp = await admin_client.post(f"/api/admin/feedback/{fid}/retry-dispatch")
+
+        assert resp.status_code == 200
+        assert resp.json()["dispatch_status"] == "pending"
+
+    async def test_retry_skipped_status_returns_400(self, admin_client: AsyncClient, db_session, admin_user):
+        from app.models.feedback import UserFeedback
+
+        row = UserFeedback(
+            id=uuid.uuid4(),
+            user_id=admin_user.id,
+            submission_type="feedback",
+            body="skipped dispatch",
+            dispatch_status="skipped",
+        )
+        db_session.add(row)
+        await db_session.commit()
+
+        resp = await admin_client.post(f"/api/admin/feedback/{row.id}/retry-dispatch")
+        assert resp.status_code == 400
+
+    async def test_not_found_returns_404(self, admin_client: AsyncClient):
+        resp = await admin_client.post(f"/api/admin/feedback/{uuid.uuid4()}/retry-dispatch")
+        assert resp.status_code == 404
+
+    async def test_filter_by_dispatch_status(self, auth_client: AsyncClient, admin_client: AsyncClient):
+        await auth_client.post("/api/feedback", json=_feedback_payload(body="skipped-dispatch"))
+        resp = await admin_client.get("/api/admin/feedback?dispatch_status=skipped")
+        items = resp.json()["items"]
+        assert all(i["dispatch_status"] == "skipped" for i in items)
+
+    async def test_non_admin_returns_403(self, auth_client: AsyncClient):
+        sub = await auth_client.post("/api/feedback", json=_feedback_payload())
+        fid = sub.json()["id"]
+        resp = await auth_client.post(f"/api/admin/feedback/{fid}/retry-dispatch")
+        assert resp.status_code == 403

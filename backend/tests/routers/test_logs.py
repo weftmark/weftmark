@@ -4,22 +4,22 @@ from httpx import AsyncClient
 
 
 class TestClientLogs:
-    async def test_single_info_event(self, client: AsyncClient):
-        resp = await client.post(
+    async def test_single_info_event(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
             "/api/logs",
             json=[{"level": "info", "message": "page loaded"}],
         )
         assert resp.status_code == 204
 
-    async def test_event_with_context(self, client: AsyncClient):
-        resp = await client.post(
+    async def test_event_with_context(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
             "/api/logs",
             json=[{"level": "error", "message": "fetch failed", "context": {"route": "/dashboard", "status": 500}}],
         )
         assert resp.status_code == 204
 
-    async def test_multiple_events(self, client: AsyncClient):
-        resp = await client.post(
+    async def test_multiple_events(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
             "/api/logs",
             json=[
                 {"level": "debug", "message": "component mounted"},
@@ -28,20 +28,21 @@ class TestClientLogs:
         )
         assert resp.status_code == 204
 
-    async def test_empty_list(self, client: AsyncClient):
-        resp = await client.post("/api/logs", json=[])
+    async def test_empty_list(self, auth_client: AsyncClient):
+        resp = await auth_client.post("/api/logs", json=[])
         assert resp.status_code == 204
 
-    async def test_no_auth_required(self, client: AsyncClient):
+    async def test_unauthenticated_request_silently_dropped(self, client: AsyncClient):
+        # Unauthenticated callers get 204 (not 401/403) so client-side logging
+        # never breaks auth UX, but events are not written to the log stream.
         resp = await client.post(
             "/api/logs",
-            json=[{"level": "info", "message": "unauthenticated event"}],
+            json=[{"level": "info", "message": "injected log event"}],
         )
-        assert resp.status_code != 401
-        assert resp.status_code != 403
+        assert resp.status_code == 204
 
-    async def test_x_real_ip_header_accepted(self, client: AsyncClient):
-        resp = await client.post(
+    async def test_x_real_ip_header_accepted(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
             "/api/logs",
             headers={"X-Real-IP": "203.0.113.5"},
             json=[{"level": "info", "message": "event with real ip"}],

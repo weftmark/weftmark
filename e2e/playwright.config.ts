@@ -2,7 +2,10 @@ import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
 
-dotenv.config({ path: path.resolve(__dirname, ".env") });
+// DOTENV_FILE=.env.local  → localhost:3000   (default)
+// DOTENV_FILE=.env.dev    → dev.weftmark.com
+// DOTENV_FILE=.env.prod   → weftmark.com
+dotenv.config({ path: path.resolve(__dirname, process.env.DOTENV_FILE ?? ".env.local") });
 
 export default defineConfig({
   testDir: "./tests",

@@ -84,12 +84,12 @@ async def _seed_draft(db_session, owner_id, *, wif_colors=None, deleted=False):
     if wif_colors is None:
         # Omit wif_colors → SQL NULL default; include deleted_at when needed
         _bool_defaults = "FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE"
-        _jsonb_defaults = "'[]'::jsonb, '[]'::jsonb"
+        _jsonb_defaults = "'[]'::jsonb, '[]'::jsonb, '[]'::jsonb"
         _bool_cols = (
             "has_threading, has_tieup, has_treadling, has_liftplan, has_color_palette, "
             "liftplan_generated, warp_length_overridden, is_shared"
         )
-        _jsonb_cols = "lint_warnings, lint_errors"
+        _jsonb_cols = "lint_warnings, lint_errors, tags"
         if deleted:
             sql = text(
                 "INSERT INTO drafts "
@@ -156,8 +156,10 @@ def _reparse_registry_entry(dispatch_fn):
 
 class TestNoNullRows:
     def test_skips_all_when_table_empty(self):
-        """With no drafts in the DB at all, backfill is skipped."""
-        result = _run()
+        """With no drafts in the DB, draft backfill is skipped."""
+        with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
+            mock_registry.return_value = [_reparse_registry_entry(lambda: None)]
+            result = _run()
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 
@@ -165,7 +167,9 @@ class TestNoNullRows:
         """Drafts that already have wif_colors set are not counted."""
         await _seed_draft(db_session, test_user.id, wif_colors=[1, 2, 3])
 
-        result = _run()
+        with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
+            mock_registry.return_value = [_reparse_registry_entry(lambda: None)]
+            result = _run()
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 
@@ -195,7 +199,9 @@ class TestNullRowsPresent:
         """Soft-deleted drafts with null wif_colors must not trigger dispatch."""
         await _seed_draft(db_session, test_user.id, wif_colors=None, deleted=True)
 
-        result = _run()
+        with patch("app.tasks.post_migrate._backfill_registry") as mock_registry:
+            mock_registry.return_value = [_reparse_registry_entry(lambda: None)]
+            result = _run()
         assert result["dispatched"] == []
         assert any("no_null_rows" in s for s in result["skipped"])
 

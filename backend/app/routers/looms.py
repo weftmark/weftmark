@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -16,6 +16,7 @@ from app.deps import get_current_user, get_db
 from app.models.loom import (
     Loom,
     LoomReed,
+    LoomReference,
     LoomVersion,
     LoomVersionAccessory,
     LoomVersionPhoto,
@@ -24,7 +25,7 @@ from app.models.loom import (
 )
 from app.models.user import User
 from app.services import storage
-from app.services.images import resize_to_jpeg
+from app.services.images import resize_to_jpeg, validate_image_format
 from app.services.storage_quota import check_storage_quota
 
 router = APIRouter(prefix="/api/looms", tags=["looms"])
@@ -37,7 +38,17 @@ def _content_disposition(disposition: str, filename: str) -> str:
     return f"{disposition}; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"
 
 
-LoomType = Literal["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby", "other"]
+LoomType = Literal[
+    "floor_loom",
+    "table_loom",
+    "rigid_heddle",
+    "inkle",
+    "dobby_floor_loom",
+    "tapestry_loom",
+    "rug_loom",
+    "frame_loom",
+    "other",
+]
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
@@ -89,6 +100,9 @@ class LoomReedSchema(BaseModel):
 
 class LoomVersionSchema(BaseModel):
     id: uuid.UUID
+    loom_reference_id: uuid.UUID | None
+    loom_reference_brand: str | None
+    loom_reference_model_name: str | None
     version_number: int
     name: str | None
     effective_date: date
@@ -107,6 +121,33 @@ class LoomVersionSchema(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @classmethod
+    def from_version(cls, v: LoomVersion) -> "LoomVersionSchema":
+        ref = v.loom_reference
+        return cls.model_validate(
+            {
+                "id": v.id,
+                "loom_reference_id": v.loom_reference_id,
+                "loom_reference_brand": ref.brand if ref else None,
+                "loom_reference_model_name": ref.model_name if ref else None,
+                "version_number": v.version_number,
+                "name": v.name,
+                "effective_date": v.effective_date,
+                "description": v.description,
+                "num_shafts": v.num_shafts,
+                "num_treadles": v.num_treadles,
+                "num_heddles": v.num_heddles,
+                "weaving_width": v.weaving_width,
+                "weaving_width_unit": v.weaving_width_unit,
+                "warp_waste_allowance": v.warp_waste_allowance,
+                "warp_waste_unit": v.warp_waste_unit,
+                "photos": v.photos,
+                "receipts": v.receipts,
+                "accessories": v.accessories,
+                "created_at": v.created_at,
+            }
+        )
+
 
 class LoomSummary(BaseModel):
     id: uuid.UUID
@@ -114,33 +155,44 @@ class LoomSummary(BaseModel):
     manufacturer: str
     model_name: str
     serial_number: str | None
+    loom_reference_id: uuid.UUID | None
+    loom_reference_brand: str | None
+    loom_reference_model_name: str | None
     supports_lift_tracking: bool
     supports_treadle_tracking: bool
     notes: str | None
     has_photo: bool
     current_version: LoomVersionSchema | None
     reeds: list[LoomReedSchema]
+    retired_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
     @classmethod
     def from_loom(cls, loom: Loom) -> "LoomSummary":
-        data = {
-            "id": loom.id,
-            "loom_type": loom.loom_type,
-            "manufacturer": loom.manufacturer,
-            "model_name": loom.model_name,
-            "serial_number": loom.serial_number,
-            "supports_lift_tracking": loom.supports_lift_tracking,
-            "supports_treadle_tracking": loom.supports_treadle_tracking,
-            "notes": loom.notes,
-            "has_photo": loom.photo_path is not None,
-            "current_version": loom.current_version,
-            "reeds": loom.reeds,
-            "created_at": loom.created_at,
-        }
-        return cls.model_validate(data)
+        cv = loom.current_version
+        cv_ref = cv.loom_reference if cv else None
+        return cls.model_validate(
+            {
+                "id": loom.id,
+                "loom_type": loom.loom_type,
+                "manufacturer": loom.manufacturer,
+                "model_name": loom.model_name,
+                "serial_number": loom.serial_number,
+                "loom_reference_id": cv.loom_reference_id if cv else None,
+                "loom_reference_brand": cv_ref.brand if cv_ref else None,
+                "loom_reference_model_name": cv_ref.model_name if cv_ref else None,
+                "supports_lift_tracking": loom.supports_lift_tracking,
+                "supports_treadle_tracking": loom.supports_treadle_tracking,
+                "notes": loom.notes,
+                "has_photo": loom.photo_path is not None,
+                "current_version": LoomVersionSchema.from_version(cv) if cv else None,
+                "reeds": loom.reeds,
+                "retired_at": loom.retired_at,
+                "created_at": loom.created_at,
+            }
+        )
 
 
 class LoomDetail(BaseModel):
@@ -150,6 +202,9 @@ class LoomDetail(BaseModel):
     manufacturer: str
     model_name: str
     serial_number: str | None
+    loom_reference_id: uuid.UUID | None
+    loom_reference_brand: str | None
+    loom_reference_model_name: str | None
     purchase_date: date | None
     purchase_price: Decimal | None
     vendor: str | None
@@ -160,32 +215,40 @@ class LoomDetail(BaseModel):
     current_version: LoomVersionSchema | None
     versions: list[LoomVersionSchema]
     reeds: list[LoomReedSchema]
+    retired_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
     @classmethod
     def from_loom(cls, loom: Loom) -> "LoomDetail":
-        data = {
-            "id": loom.id,
-            "owner_id": loom.owner_id,
-            "loom_type": loom.loom_type,
-            "manufacturer": loom.manufacturer,
-            "model_name": loom.model_name,
-            "serial_number": loom.serial_number,
-            "purchase_date": loom.purchase_date,
-            "purchase_price": loom.purchase_price,
-            "vendor": loom.vendor,
-            "supports_lift_tracking": loom.supports_lift_tracking,
-            "supports_treadle_tracking": loom.supports_treadle_tracking,
-            "notes": loom.notes,
-            "has_photo": loom.photo_path is not None,
-            "current_version": loom.current_version,
-            "versions": loom.versions,
-            "reeds": loom.reeds,
-            "created_at": loom.created_at,
-        }
-        return cls.model_validate(data)
+        cv = loom.current_version
+        cv_ref = cv.loom_reference if cv else None
+        return cls.model_validate(
+            {
+                "id": loom.id,
+                "owner_id": loom.owner_id,
+                "loom_type": loom.loom_type,
+                "manufacturer": loom.manufacturer,
+                "model_name": loom.model_name,
+                "serial_number": loom.serial_number,
+                "loom_reference_id": cv.loom_reference_id if cv else None,
+                "loom_reference_brand": cv_ref.brand if cv_ref else None,
+                "loom_reference_model_name": cv_ref.model_name if cv_ref else None,
+                "purchase_date": loom.purchase_date,
+                "purchase_price": loom.purchase_price,
+                "vendor": loom.vendor,
+                "supports_lift_tracking": loom.supports_lift_tracking,
+                "supports_treadle_tracking": loom.supports_treadle_tracking,
+                "notes": loom.notes,
+                "has_photo": loom.photo_path is not None,
+                "current_version": LoomVersionSchema.from_version(cv) if cv else None,
+                "versions": [LoomVersionSchema.from_version(v) for v in loom.versions],
+                "reeds": loom.reeds,
+                "retired_at": loom.retired_at,
+                "created_at": loom.created_at,
+            }
+        )
 
 
 class CreateLoomRequest(BaseModel):
@@ -193,6 +256,7 @@ class CreateLoomRequest(BaseModel):
     manufacturer: str
     model_name: str
     serial_number: str | None = None
+    loom_reference_id: uuid.UUID | None = None  # assigned to initial version
     purchase_date: date | None = None
     purchase_price: Decimal | None = None
     vendor: str | None = None
@@ -236,6 +300,10 @@ class AddVersionRequest(BaseModel):
 class UpdateVersionRequest(BaseModel):
     name: str | None = None
     description: str | None = None
+    num_shafts: int | None = None
+    num_treadles: int | None = None
+    weaving_width: Decimal | None = None
+    weaving_width_unit: str | None = None
     warp_waste_allowance: Decimal | None = None
     warp_waste_unit: str | None = None
 
@@ -263,7 +331,14 @@ class AddReedRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession, *, allow_superuser: bool = False) -> Loom:
+async def _get_owned_loom(
+    loom_id: uuid.UUID,
+    user: User,
+    db: AsyncSession,
+    *,
+    allow_superuser: bool = False,
+    populate_existing: bool = False,
+) -> Loom:
     stmt = (
         select(Loom)
         .where(Loom.id == loom_id, Loom.deleted_at.is_(None))
@@ -271,11 +346,14 @@ async def _get_owned_loom(loom_id: uuid.UUID, user: User, db: AsyncSession, *, a
             selectinload(Loom.versions).selectinload(LoomVersion.photos),
             selectinload(Loom.versions).selectinload(LoomVersion.receipts),
             selectinload(Loom.versions).selectinload(LoomVersion.accessories),
+            selectinload(Loom.versions).selectinload(LoomVersion.loom_reference),
             selectinload(Loom.reeds),
         )
     )
     if not (allow_superuser and user.is_superuser):
         stmt = stmt.where(Loom.owner_id == user.id)
+    if populate_existing:
+        stmt = stmt.execution_options(populate_existing=True)
     loom = await db.scalar(stmt)
     if loom is None:
         raise HTTPException(status_code=404, detail="Loom not found")
@@ -301,6 +379,13 @@ def _validate_image(file: UploadFile) -> None:
     ct = file.content_type or ""
     if ct not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail=f"Unsupported image type: {ct}. Use JPEG, PNG, WebP, or GIF.")
+
+
+def _validate_image_bytes(data: bytes) -> None:
+    try:
+        validate_image_format(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 def _validate_receipt(file: UploadFile) -> None:
@@ -343,6 +428,7 @@ async def create_loom(
 
     version = LoomVersion(
         loom_id=loom.id,
+        loom_reference_id=body.loom_reference_id,
         version_number=1,
         effective_date=body.effective_date,
         description=body.version_description or "Initial configuration",
@@ -363,20 +449,25 @@ async def create_loom(
 
 @router.get("", response_model=list[LoomSummary])
 async def list_looms(
+    include_retired: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[LoomSummary]:
-    result = await db.scalars(
+    q = (
         select(Loom)
         .where(Loom.owner_id == current_user.id, Loom.deleted_at.is_(None))
         .options(
             selectinload(Loom.versions).selectinload(LoomVersion.photos),
             selectinload(Loom.versions).selectinload(LoomVersion.receipts),
             selectinload(Loom.versions).selectinload(LoomVersion.accessories),
+            selectinload(Loom.versions).selectinload(LoomVersion.loom_reference),
             selectinload(Loom.reeds),
         )
         .order_by(Loom.created_at.desc())
     )
+    if not include_retired:
+        q = q.where(Loom.retired_at.is_(None))
+    result = await db.scalars(q)
     return [LoomSummary.from_loom(loom) for loom in result.all()]
 
 
@@ -412,11 +503,58 @@ async def update_loom(
 @router.delete("/{loom_id}", status_code=204)
 async def delete_loom(
     loom_id: uuid.UUID,
+    force: bool = Query(False),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    from app.models.project import Project
+
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    active_projects = (
+        await db.scalars(select(Project).where(Project.loom_id == loom.id, Project.deleted_at.is_(None)))
+    ).all()
+
+    if active_projects and not force:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "loom_in_use",
+                "projects": [{"id": str(p.id), "name": p.name} for p in active_projects],
+            },
+        )
+
+    for p in active_projects:
+        p.loom_id = None
+        p.loom_version_id = None
+
+    loom.soft_delete()
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Retire / Unretire
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{loom_id}/retire", status_code=204)
+async def retire_loom(
+    loom_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
-    loom.soft_delete()
+    loom.retire()
+    await db.commit()
+
+
+@router.post("/{loom_id}/unretire", status_code=204)
+async def unretire_loom(
+    loom_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    loom = await _get_owned_loom(loom_id, current_user, db)
+    loom.unretire()
     await db.commit()
 
 
@@ -437,6 +575,7 @@ async def upload_loom_photo(
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+    _validate_image_bytes(data)
     try:
         data = resize_to_jpeg(data)
     except Exception:
@@ -505,7 +644,7 @@ async def add_version(
     db.add(version)
     await db.commit()
     await db.refresh(version, ["photos", "receipts", "accessories"])
-    return LoomVersionSchema.model_validate(version)
+    return LoomVersionSchema.from_version(version)
 
 
 # ---------------------------------------------------------------------------
@@ -528,6 +667,7 @@ async def upload_version_photo(
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+    _validate_image_bytes(data)
     try:
         data = resize_to_jpeg(data)
     except Exception:
@@ -677,7 +817,7 @@ async def update_version(
         setattr(version, field, value)
     await db.commit()
     await db.refresh(version, ["photos", "receipts", "accessories"])
-    return LoomVersionSchema.model_validate(version)
+    return LoomVersionSchema.from_version(version)
 
 
 # ---------------------------------------------------------------------------
@@ -723,7 +863,7 @@ async def clone_version(
 
     await db.commit()
     await db.refresh(new_version, ["photos", "receipts", "accessories"])
-    return LoomVersionSchema.model_validate(new_version)
+    return LoomVersionSchema.from_version(new_version)
 
 
 # ---------------------------------------------------------------------------
@@ -804,3 +944,34 @@ async def delete_reed(
         raise HTTPException(status_code=404, detail="Reed not found")
     await db.delete(reed)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Catalog linking
+# ---------------------------------------------------------------------------
+
+
+class LinkReferenceRequest(BaseModel):
+    loom_reference_id: uuid.UUID | None
+
+
+@router.post("/{loom_id}/versions/{version_id}/link-reference", response_model=LoomDetail)
+async def link_version_reference(
+    loom_id: uuid.UUID,
+    version_id: uuid.UUID,
+    body: LinkReferenceRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LoomDetail:
+    """Link (or unlink) a specific loom version to a catalog entry."""
+    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+
+    if body.loom_reference_id is not None:
+        ref = await db.get(LoomReference, body.loom_reference_id)
+        if ref is None:
+            raise HTTPException(status_code=404, detail="Loom reference not found")
+
+    version.loom_reference_id = body.loom_reference_id
+    await db.commit()
+    loom = await _get_owned_loom(loom_id, current_user, db, populate_existing=True)
+    return LoomDetail.from_loom(loom)

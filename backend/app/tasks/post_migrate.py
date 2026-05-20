@@ -55,10 +55,20 @@ def _backfill_registry() -> list[dict]:
         backfill_all_project_drawdown_svgs,
     )
     from app.tasks.reparse import reparse_all_drafts
+    from app.tasks.seeds import seed_loom_references
 
     return [
         {
+            "name": "seed_loom_references",
+            "task_name": "app.tasks.seeds.seed_loom_references",
+            "description": "Seed loom_references table from loom-data-master.json on first startup",
+            # Returns 1 (empty) → dispatch; returns 0 (has rows) → skip.
+            "condition": "SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE 0 END FROM loom_references",
+            "dispatch": lambda: seed_loom_references.delay(),
+        },
+        {
             "name": "reparse_drafts",
+            "task_name": "app.tasks.reparse.reparse_all_drafts",
             "description": "Backfill wif_colors, wif_measurements, warp_color_stats, weft_color_stats on drafts",
             "condition": (
                 "SELECT COUNT(*) FROM drafts WHERE wif_colors IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
@@ -67,6 +77,7 @@ def _backfill_registry() -> list[dict]:
         },
         {
             "name": "drawdown_preview",
+            "task_name": "app.tasks.preview.backfill_all_drawdown_previews",
             "description": "Pre-render drawdown_preview PNG for drafts missing it",
             "condition": (
                 "SELECT COUNT(*) FROM drafts"
@@ -76,12 +87,14 @@ def _backfill_registry() -> list[dict]:
         },
         {
             "name": "project_drawdown_preview",
+            "task_name": "app.tasks.preview.backfill_all_project_drawdown_previews",
             "description": "Pre-render drawdown_preview PNG for projects missing it",
             "condition": ("SELECT COUNT(*) FROM projects WHERE drawdown_preview_path IS NULL AND deleted_at IS NULL"),
             "dispatch": lambda: backfill_all_project_drawdown_previews.delay(),
         },
         {
             "name": "project_drawdown_svg",
+            "task_name": "app.tasks.preview.backfill_all_project_drawdown_svgs",
             "description": "Pre-render drawdown SVG for projects missing it",
             "condition": ("SELECT COUNT(*) FROM projects WHERE drawdown_svg_path IS NULL AND deleted_at IS NULL"),
             "dispatch": lambda: backfill_all_project_drawdown_svgs.delay(),
@@ -140,7 +153,19 @@ def _run() -> dict:
                         continue
 
                     try:
-                        entry["dispatch"]()
+                        result = entry["dispatch"]()
+                        if result is not None and hasattr(result, "id"):
+                            try:
+                                from app.services.task_history import record_queued
+
+                                record_queued(
+                                    settings,
+                                    result.id,
+                                    entry.get("task_name", name),
+                                    "post_migrate",
+                                )
+                            except Exception:
+                                pass
                         dispatched.append(f"{name}(null_rows={null_count})")
                         log.info(
                             "post_migrate_dispatch name=%s null_rows=%d description=%r",

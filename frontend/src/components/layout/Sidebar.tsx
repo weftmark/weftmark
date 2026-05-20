@@ -17,6 +17,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/home", icon: AppIcons.dashboard, exact: true },
   { label: "Equipment", href: "/looms", icon: AppIcons.equipment },
+  { label: "Collections", href: "/collections", icon: AppIcons.collections },
   { label: "Drafts", href: "/drafts", icon: AppIcons.drafts },
   { label: "Projects", href: "/projects", icon: AppIcons.projects },
 ];
@@ -41,6 +42,7 @@ const ADMIN_SECTIONS = [
   { id: "feedback", label: "Feedback" },
   { id: "credentials", label: "Credentials" },
   { id: "slugs", label: "Share links" },
+  { id: "looms", label: "Loom database" },
   { id: "superuser", label: "Superuser", superuserOnly: true },
 ];
 

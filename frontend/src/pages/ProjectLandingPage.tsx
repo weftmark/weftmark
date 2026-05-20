@@ -1,3 +1,4 @@
+import DOMPurify from "dompurify";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,10 +7,12 @@ import { measurementSystemToUnit, displayLength, formatApproxLength, convertLeng
 import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
-  getWarpingPlan, completeProject, abandonProject, setProjectReed,
+  getWarpingPlan, completeProject, abandonProject, setProjectReed, updateProjectTags,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail,
 } from "@/api/projects";
+import { TagInput } from "@/components/ui/TagInput";
+import { TagChips } from "@/components/ui/TagChips";
 import { getReedRecommendation, buildDentPattern, nearestCleanDent } from "@/lib/reedRecommendation";
 import { TieUpDiagram } from "@/components/TieUpDiagram";
 import { previewUrl } from "@/api/drafts";
@@ -19,6 +22,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { ShareModal } from "@/components/projects/ShareModal";
+import { addProjectToCollection, removeProjectFromCollection } from "@/api/collections";
+import { AddToCollectionModal } from "@/components/collections/AddToCollectionModal";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -335,7 +340,7 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
           <div
             ref={innerRef}
             style={{ transformOrigin: "0 0", display: "inline-block", willChange: "transform" }}
-            dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
+            dangerouslySetInnerHTML={svg ? { __html: DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true } }) } : undefined}
           />
         </div>
       </div>
@@ -1168,6 +1173,9 @@ export function ProjectLandingPage() {
   const [drawdownOpen, setDrawdownOpen] = useState(false);
   const [tieupOpen, setTieupOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [showAddToCollection, setShowAddToCollection] = useState(false);
+  const [editingTags, setEditingTags] = useState(false);
+  const [pendingTags, setPendingTags] = useState<string[]>([]);
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -1179,6 +1187,15 @@ export function ProjectLandingPage() {
     mutationFn: (replacements: Record<string, string>) =>
       setProjectColorReplacements(id!, replacements),
     onSuccess: (updated) => qc.setQueryData(["project", id], updated),
+  });
+
+  const tagsMutation = useMutation({
+    mutationFn: (tags: string[]) => updateProjectTags(id!, tags),
+    onSuccess: (updated) => {
+      qc.setQueryData(["project", id], updated);
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setEditingTags(false);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -1290,7 +1307,47 @@ export function ProjectLandingPage() {
             </Link>
             {project.loom_name && <span> · {project.loom_name}</span>}
           </p>
+          {!editingTags && (
+            <div className="flex items-center gap-2 flex-wrap mt-1.5">
+              {project.tags && project.tags.length > 0 && (
+                <TagChips tags={project.tags} max={10} />
+              )}
+              <button
+                type="button"
+                onClick={() => { setPendingTags(project.tags ?? []); setEditingTags(true); }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {project.tags && project.tags.length > 0 ? "Edit tags" : "+ Add tags"}
+              </button>
+            </div>
+          )}
+          {editingTags && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <div className="w-64">
+                <TagInput tags={pendingTags} onChange={setPendingTags} />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => tagsMutation.mutate(pendingTags)}
+                disabled={tagsMutation.isPending}
+              >
+                {tagsMutation.isPending ? "Saving…" : "Save"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingTags(false)}>
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={() => setShowAddToCollection(true)}
+          title="Add to collection"
+        >
+          <AppIcons.collections className="h-4 w-4" />
+        </Button>
         <Button
           variant="ghost"
           size="icon"
@@ -1560,6 +1617,16 @@ export function ProjectLandingPage() {
           project={project}
           onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
           onClose={() => setShareModalOpen(false)}
+        />
+      )}
+      {/* Add to collection modal */}
+      {showAddToCollection && (
+        <AddToCollectionModal
+          itemId={project.id}
+          itemType="project"
+          onAdd={(collectionId, itemId) => addProjectToCollection(collectionId, itemId)}
+          onRemove={(collectionId, itemId) => removeProjectFromCollection(collectionId, itemId)}
+          onClose={() => setShowAddToCollection(false)}
         />
       )}
     </div>

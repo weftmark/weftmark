@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import type { Draft } from "@/api/drafts";
 import { drawdownPreviewUrl } from "@/api/drafts";
 import { AuthedImage } from "@/components/ui/AuthedImage";
+import { TagChips } from "@/components/ui/TagChips";
 import { AppIcons } from "@/lib/icons";
 
 interface ProjectCounts {
@@ -14,9 +15,10 @@ interface ProjectCounts {
 interface Props {
   draft: Draft;
   projectCounts?: ProjectCounts;
+  archived?: boolean;
 }
 
-export function DraftCard({ draft, projectCounts }: Props) {
+export function DraftCard({ draft, projectCounts, archived }: Props) {
   const navigate = useNavigate();
 
   const featureBadges = [
@@ -46,6 +48,9 @@ export function DraftCard({ draft, projectCounts }: Props) {
           <p className="text-xs text-muted-foreground mt-0.5 truncate">{draft.wif_filename}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {archived && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Archived</span>
+          )}
           {draft.has_liftplan && (
             <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
           )}
@@ -95,6 +100,10 @@ export function DraftCard({ draft, projectCounts }: Props) {
         <p className="mt-2 text-xs text-muted-foreground">
           {draft.lint_warnings.length} warning{draft.lint_warnings.length > 1 ? "s" : ""}
         </p>
+      )}
+
+      {draft.tags && draft.tags.length > 0 && (
+        <TagChips tags={draft.tags} className="mt-2" />
       )}
 
       {projectCounts && (projectCounts.active + projectCounts.planning + projectCounts.completed + projectCounts.abandoned) > 0 && (

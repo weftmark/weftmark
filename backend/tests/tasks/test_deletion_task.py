@@ -133,6 +133,37 @@ class TestDeleteUserHappyPath:
 
         assert await db_session.scalar(select(Loom).where(Loom.owner_id == user.id)) is None
 
+    async def test_deletes_pending_signup_for_clerk_user_id(self, db_session, mock_db, mock_storage, mock_emails):
+        from sqlalchemy import select
+
+        from app.models.pending_signup import PendingSignup
+
+        clerk_id = f"clerk_{uuid.uuid4().hex[:12]}"
+        user = User(
+            email=f"clerk-{uuid.uuid4().hex[:6]}@test.com",
+            display_name="Clerk User",
+            oidc_sub=f"clerk-sub-{uuid.uuid4().hex}",
+            clerk_user_id=clerk_id,
+            deletion_state="pending",
+        )
+        user.soft_delete()
+        db_session.add(user)
+        await db_session.flush()
+
+        signup = PendingSignup(
+            clerk_user_id=clerk_id,
+            email="clerk-pending@test.com",
+            display_name="Pending",
+        )
+        db_session.add(signup)
+        await db_session.commit()
+        await db_session.refresh(user)
+
+        await _delete_user(_task_mock(), user.id)
+
+        remaining = (await db_session.scalars(select(PendingSignup))).all()
+        assert all(s.clerk_user_id != clerk_id for s in remaining)
+
     async def test_notifies_admins_on_complete(self, db_session, mock_db, mock_storage):
         admin = User(
             email="task-notify-admin@test.com",
@@ -243,6 +274,15 @@ class TestDeleteUserErrorPaths:
                 await _delete_user(task, user.id)
 
         task.retry.assert_called_once()
+
+    def test_run_user_deletion_calls_asyncio_run(self):
+        from app.tasks.deletion import run_user_deletion
+
+        user_id = str(uuid.uuid4())
+        with patch("app.tasks.deletion.asyncio") as mock_asyncio:
+            mock_asyncio.run = MagicMock()
+            run_user_deletion.run(user_id)
+        mock_asyncio.run.assert_called_once()
 
     async def test_stalled_notifies_superusers(self, db_session, mock_db):
         superuser = User(

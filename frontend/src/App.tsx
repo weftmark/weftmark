@@ -26,6 +26,9 @@ import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
 import { ProjectLandingPage } from "@/pages/ProjectLandingPage";
 import { WarpingPlanPage } from "@/pages/WarpingPlanPage";
 import { SharedProjectPage } from "@/pages/SharedProjectPage";
+import { CollectionsPage } from "@/pages/CollectionsPage";
+import { CollectionDetailPage } from "@/pages/CollectionDetailPage";
+import { LoomCatalogPage } from "@/pages/LoomCatalogPage";
 import { AdminPage } from "@/pages/AdminPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SignOutPage } from "@/pages/SignOutPage";
@@ -79,7 +82,7 @@ export default function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} afterSignUpUrl="/pending" afterSignOutUrl="/sign-out">
+    <ClerkProvider publishableKey={clerkPublishableKey} afterSignInUrl="/home" afterSignUpUrl="/pending" afterSignOutUrl="/sign-out">
       <VersionGate>
         <SystemGate>
         <QueryClientProvider client={queryClient}>
@@ -98,12 +101,15 @@ export default function App() {
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/costs" element={<CostsPage />} />
+                  <Route path="/catalog/looms" element={<LoomCatalogPage />} />
                   <Route path="/" element={<RootRoute />} />
                   <Route path="/home" element={<AuthRoute><DashboardPage /></AuthRoute>} />
                   <Route path="/drafts" element={<AuthRoute><DraftsPage /></AuthRoute>} />
                   <Route path="/drafts/:id" element={<AuthRoute><DraftDetailPage /></AuthRoute>} />
                   <Route path="/looms" element={<AuthRoute><LoomsPage /></AuthRoute>} />
                   <Route path="/looms/:id" element={<AuthRoute><LoomDetailPage /></AuthRoute>} />
+                  <Route path="/collections" element={<AuthRoute><CollectionsPage /></AuthRoute>} />
+                  <Route path="/collections/:id" element={<AuthRoute><CollectionDetailPage /></AuthRoute>} />
                   <Route path="/yarn" element={<AuthRoute><YarnPage /></AuthRoute>} />
                   <Route path="/yarn/:id" element={<AuthRoute><YarnDetailPage /></AuthRoute>} />
                   <Route path="/projects" element={<AuthRoute><ProjectsPage /></AuthRoute>} />

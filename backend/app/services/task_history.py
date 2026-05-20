@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 HISTORY_ZSET_KEY = "weftmark:task_history"
 HISTORY_META_PREFIX = "weftmark:task_history:meta:"
-HISTORY_MAX = 100
+HISTORY_MAX = 500
 META_TTL = 7 * 86400  # 7 days
 
 

@@ -36,6 +36,7 @@ def _make_celery() -> Celery:
             "app.tasks.post_migrate",
             "app.tasks.reparse",
             "app.tasks.scheduler",
+            "app.tasks.seeds",
         ],
     )
     app.conf.update(

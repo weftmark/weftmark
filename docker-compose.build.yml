@@ -1,6 +1,5 @@
 x-worker-env: &worker-env
   APP_ENV: ${APP_ENV}
-  APP_SECRET_KEY: ${APP_SECRET_KEY}
   DEBUG: ${DEBUG}
   LOG_LEVEL: ${LOG_LEVEL}
   POSTGRES_DSN: ${POSTGRES_DSN:-}
@@ -114,7 +113,6 @@ services:
       - internal
     environment:
       APP_ENV: ${APP_ENV}
-      APP_SECRET_KEY: ${APP_SECRET_KEY}
       DEBUG: ${DEBUG}
       LOG_LEVEL: ${LOG_LEVEL}
       SEED_ENABLED: ${SEED_ENABLED}

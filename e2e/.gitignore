@@ -3,4 +3,8 @@ node_modules/
 test-results/
 playwright-report/
 .env
+.env.local
+.env.dev
+.env.prod
+!.env.example
 credentials/

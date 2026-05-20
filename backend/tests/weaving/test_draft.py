@@ -1,6 +1,6 @@
 """Independent tests for the Draft domain model.
 
-Run standalone: pytest backend/app/weaving/tests/test_draft.py
+Collected by CI via testpaths = tests in pytest.ini.
 No WeftMark fixtures, database, or Celery stack required.
 """
 

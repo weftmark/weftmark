@@ -66,6 +66,7 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     hide_unused_shafts_treadles: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     color_replacements: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    tags: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     reed_dents_per_inch: Mapped[float | None] = mapped_column(Float, nullable=True)
     drawdown_preview_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     drawdown_svg_path: Mapped[str | None] = mapped_column(String(500), nullable=True)

@@ -1,11 +1,23 @@
-export type LoomType = "floor_loom" | "table_loom" | "rigid_heddle" | "inkle" | "dobby" | "other";
+export type LoomType =
+  | "floor_loom"
+  | "table_loom"
+  | "rigid_heddle"
+  | "inkle"
+  | "dobby_floor_loom"
+  | "tapestry_loom"
+  | "rug_loom"
+  | "frame_loom"
+  | "other";
 
 export const LOOM_TYPE_LABELS: Record<LoomType, string> = {
   floor_loom: "Floor Loom — treadle tracking",
   table_loom: "Table Loom — lift tracking",
   rigid_heddle: "Rigid Heddle",
   inkle: "Inkle",
-  dobby: "Dobby Loom",
+  dobby_floor_loom: "Dobby Floor Loom",
+  tapestry_loom: "Tapestry Loom — project tracking not currently supported",
+  rug_loom: "Rug Loom — project tracking not currently supported",
+  frame_loom: "Frame Loom — project tracking not currently supported",
   other: "Other",
 };
 
@@ -43,6 +55,9 @@ export interface LoomReed {
 
 export interface LoomVersion {
   id: string;
+  loom_reference_id: string | null;
+  loom_reference_brand: string | null;
+  loom_reference_model_name: string | null;
   version_number: number;
   name: string | null;
   effective_date: string;
@@ -67,12 +82,16 @@ export interface Loom {
   manufacturer: string;
   model_name: string;
   serial_number: string | null;
+  loom_reference_id: string | null;
+  loom_reference_brand: string | null;
+  loom_reference_model_name: string | null;
   supports_lift_tracking: boolean;
   supports_treadle_tracking: boolean;
   notes: string | null;
   has_photo: boolean;
   current_version: LoomVersion | null;
   reeds: LoomReed[];
+  retired_at: string | null;
   created_at: string;
 }
 
@@ -88,6 +107,7 @@ export interface CreateLoomPayload {
   manufacturer: string;
   model_name: string;
   serial_number?: string;
+  loom_reference_id?: string;
   purchase_date?: string;
   purchase_price?: number;
   vendor?: string;
@@ -130,6 +150,10 @@ export interface AddVersionPayload {
 export interface UpdateVersionPayload {
   name?: string;
   description?: string;
+  num_shafts?: number;
+  num_treadles?: number;
+  weaving_width?: number;
+  weaving_width_unit?: string;
   warp_waste_allowance?: number | null;
   warp_waste_unit?: string;
 }
@@ -158,8 +182,8 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function listLooms(): Promise<Loom[]> {
-  return req("/api/looms");
+export function listLooms(includeRetired = false): Promise<Loom[]> {
+  return req(`/api/looms${includeRetired ? "?include_retired=true" : ""}`);
 }
 
 export function getLoom(id: string): Promise<LoomDetail> {
@@ -198,8 +222,30 @@ export function addLoomVersion(id: string, payload: AddVersionPayload): Promise<
   });
 }
 
-export function deleteLoom(id: string): Promise<void> {
-  return req(`/api/looms/${id}`, { method: "DELETE" });
+export async function deleteLoom(id: string, force = false): Promise<import("@/api/drafts").DeleteConflict | void> {
+  const token = await getAuthToken();
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const res = await fetch(`/api/looms/${id}${force ? "?force=true" : ""}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers,
+  });
+  if (res.status === 409) {
+    const body = await res.json();
+    return body.detail as import("@/api/drafts").DeleteConflict;
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Request failed" }));
+    throw new Error(err.detail ?? "Request failed");
+  }
+}
+
+export function retireLoom(id: string): Promise<void> {
+  return req(`/api/looms/${id}/retire`, { method: "POST" });
+}
+
+export function unretireLoom(id: string): Promise<void> {
+  return req(`/api/looms/${id}/unretire`, { method: "POST" });
 }
 
 export function loomPhotoUrl(id: string): string {
@@ -330,4 +376,126 @@ export function addReed(loomId: string, payload: AddReedPayload): Promise<LoomRe
 
 export function deleteReed(loomId: string, reedId: string): Promise<void> {
   return req(`/api/looms/${loomId}/reeds/${reedId}`, { method: "DELETE" });
+}
+
+// ---------------------------------------------------------------------------
+// Loom catalog (loom_references)
+// ---------------------------------------------------------------------------
+
+export interface LoomReferenceSummary {
+  id: string;
+  brand: string;
+  model_name: string;
+  model_series: string | null;
+  loom_category: string;
+  shedding_mechanism: string | null;
+  shaft_count_options: number[] | null;
+  treadle_count: number[] | null;
+  weaving_width_options_inches: number[] | null;
+  weaving_width_options_cm: number[] | null;
+  foldable: boolean | null;
+  origin_country: string | null;
+}
+
+export interface LoomReferenceDetail extends LoomReferenceSummary {
+  frame_material: string | null;
+  foldable_while_warped: boolean | null;
+  weight_lbs: string | null;
+  unfolded_depth_inches: string | null;
+  folded_depth_inches: string | null;
+  castle_height_inches: string | null;
+  breast_beam_height_inches: string | null;
+  reed_included: boolean | null;
+  reed_dent_included: number[] | null;
+  reed_material: string | null;
+  heddle_type: string | null;
+  heddles_per_shaft_included: string | null;
+  brake_type: string | null;
+  beater_type: string | null;
+  beater_adjustable: boolean | null;
+  tie_up_system: string | null;
+  treadle_hinge: string | null;
+  shaft_upgrade_available: boolean | null;
+  max_shafts_with_upgrade: number | null;
+  four_now_four_later: boolean | null;
+  height_extender_available: boolean | null;
+  height_extender_inches: string | null;
+  sectional_beam_available: boolean | null;
+  double_back_beam_available: boolean | null;
+  floating_breast_beam: boolean | null;
+  fly_shuttle_available: boolean | null;
+  mobility_wheels_included: boolean | null;
+  stroller_available: boolean | null;
+  shaft_switching_device_available: boolean | null;
+  lease_sticks_included: boolean | null;
+  raddle_included: boolean | null;
+  shuttle_included: boolean | null;
+  carry_bag_included: boolean | null;
+  assembly_required: boolean | null;
+  finish_required: boolean | null;
+  origin_country: string | null;
+  warranty_years: string | null;
+  dobby_type: string | null;
+  compatible_software: string[] | null;
+}
+
+/** Search the public catalog (no auth required). Used for typeahead. */
+export function searchLoomCatalog(q: string): Promise<LoomReferenceSummary[]> {
+  return fetch(`/api/loom-catalog/search?q=${encodeURIComponent(q)}&limit=20`)
+    .then((r) => r.json());
+}
+
+/** Full catalog list with optional filters. */
+export function listLoomCatalog(params?: {
+  q?: string;
+  category?: string;
+  foldable?: boolean;
+}): Promise<LoomReferenceSummary[]> {
+  const sp = new URLSearchParams();
+  if (params?.q) sp.set("q", params.q);
+  if (params?.category) sp.set("category", params.category);
+  if (params?.foldable !== undefined) sp.set("foldable", String(params.foldable));
+  return fetch(`/api/loom-catalog?${sp}`).then((r) => r.json());
+}
+
+export function getLoomCatalogEntry(id: string): Promise<LoomReferenceDetail> {
+  return fetch(`/api/loom-catalog/${id}`).then((r) => r.json());
+}
+
+export function linkVersionReference(
+  loomId: string,
+  versionId: string,
+  referenceId: string | null,
+): Promise<LoomDetail> {
+  return req(`/api/looms/${loomId}/versions/${versionId}/link-reference`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ loom_reference_id: referenceId }),
+  });
+}
+
+// Admin catalog CRUD
+export function adminListLoomCatalog(q?: string): Promise<LoomReferenceDetail[]> {
+  const url = q ? `/api/admin/loom-catalog?q=${encodeURIComponent(q)}` : "/api/admin/loom-catalog";
+  return req(url);
+}
+
+export function adminCreateLoomReference(payload: Partial<LoomReferenceDetail>): Promise<LoomReferenceDetail> {
+  return req("/api/admin/loom-catalog", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminUpdateLoomReference(id: string, payload: Partial<LoomReferenceDetail>): Promise<LoomReferenceDetail> {
+  return req(`/api/admin/loom-catalog/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminDeleteLoomReference(id: string): Promise<void> {
+  return req(`/api/admin/loom-catalog/${id}`, { method: "DELETE" });
 }

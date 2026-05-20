@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
 import { usePresentMode } from "@/hooks/usePresentMode";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useStepQueue } from "@/hooks/useStepQueue";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, displayLength } from "@/lib/units";
@@ -1055,6 +1057,8 @@ export function ProjectDetailPage() {
   const [localPick, setLocalPick] = useState(1);
 
   const { isPresent, isSupported: presentModeSupported, toggle: togglePresentMode } = usePresentMode();
+  const isOnline = useOnlineStatus();
+  const { enqueue: enqueueStep, pending: pendingOfflineSteps, drainAll } = useStepQueue();
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
@@ -1134,6 +1138,19 @@ export function ProjectDetailPage() {
   // Counts in-flight step requests. Used to suppress intermediate server responses
   // during rapid tapping — only the last response in a burst settles the cache.
   const pendingStepsRef = useRef(0);
+  const drainingRef = useRef(false);
+
+  // Drain buffered offline steps when connectivity is restored
+  useEffect(() => {
+    if (!isOnline || drainingRef.current || pendingOfflineSteps === 0) return;
+    drainingRef.current = true;
+    drainAll(async (projectId, direction) => {
+      await stepProject(projectId, direction);
+    }).then(() => {
+      drainingRef.current = false;
+      if (id) queryClient.invalidateQueries({ queryKey: ["project", id] });
+    });
+  }, [isOnline, pendingOfflineSteps, drainAll, id, queryClient]);
 
   const handleStep = useCallback(async (direction: "advance" | "reverse") => {
     if (!id) return;
@@ -1150,6 +1167,11 @@ export function ProjectDetailPage() {
     queryClient.setQueryData<typeof project>(["project", id], (old) =>
       old ? { ...old, current_pick: newPick } : old
     );
+
+    if (!isOnline) {
+      enqueueStep(id, direction);
+      return;
+    }
 
     pendingStepsRef.current += 1;
     try {
@@ -1172,7 +1194,7 @@ export function ProjectDetailPage() {
       // On error, invalidate to let the server state win
       queryClient.invalidateQueries({ queryKey: ["project", id] });
     }
-  }, [id, queryClient]);
+  }, [id, queryClient, isOnline, enqueueStep]);
 
   const handleLocalStep = useCallback((direction: "advance" | "reverse") => {
     setLocalPick((prev) => {

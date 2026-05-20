@@ -1,0 +1,354 @@
+{
+  "schema_version": "1.0",
+  "description": "Normalized specification schema for commercially available consumer weaving looms, synthesized from manufacturer and retailer product pages across schachtspindle.com, ashford.co.nz, louet.com, leclercloom.com, woolery.com, harrisville.com, glimakrausa.com, gathertextiles.com, eugenetextilecenter.com, camillavalleyfarm.com, and yarnbarn-ks.com.",
+  "fields": {
+    "brand": {
+      "type": "string",
+      "category": "core",
+      "description": "Manufacturer or brand name of the loom (e.g. Schacht, Ashford, Louet, Leclerc, Harrisville Designs, Glimakra, AVL)."
+    },
+    "model_name": {
+      "type": "string",
+      "category": "core",
+      "description": "The specific product model name as marketed (e.g. Baby Wolf, Spring II, Nilus II, Standard, Delta, Dorothy)."
+    },
+    "loom_category": {
+      "type": "enum",
+      "category": "core",
+      "enum_values": [
+        "rigid_heddle",
+        "table_loom",
+        "floor_loom",
+        "tapestry_loom",
+        "inkle_loom",
+        "rug_loom",
+        "dobby_floor_loom",
+        "frame_loom"
+      ],
+      "description": "Primary functional category of the loom. Dobby floor looms (Louet Megado, Leclerc Diana, AVL A-Series) are enumerated separately from treadle floor looms due to fundamentally different shedding mechanisms."
+    },
+    "shedding_mechanism": {
+      "type": "enum",
+      "category": "core",
+      "enum_values": [
+        "rigid_heddle",
+        "jack_rising",
+        "jack_sinking",
+        "counterbalance",
+        "countermarch",
+        "dobby_mechanical",
+        "dobby_electronic",
+        "no_shed_device"
+      ],
+      "description": "The mechanism used to form the shed. jack_sinking is specific to looms like the Louet David III. dobby_mechanical uses program bars and pegs; dobby_electronic uses a computer interface. no_shed_device applies to bare frame/tapestry looms."
+    },
+    "weaving_width_options_inches": {
+      "type": "array",
+      "category": "core",
+      "unit": "inches",
+      "description": "All available weaving widths expressed in inches, rounded to two decimal places. This is the normalized comparison field used across all brands. For metric-native brands, convert from cm (e.g. Louet Jane 50cm = 19.69 in, Jane 70cm = 27.56 in). Always populated."
+    },
+    "shaft_count_options": {
+      "type": "array",
+      "category": "core",
+      "description": "Array of integers listing all available shaft/harness configurations for this model (e.g. [4,8], [2,4], [4,8,12,16], [8,12], [8,16,32]). Use [0] for rigid heddle or frame looms with no shafts."
+    },
+    "reed_included": {
+      "type": "boolean",
+      "category": "core",
+      "description": "Whether at least one reed is included with the base loom purchase. True for most floor looms (Leclerc, Harrisville, Glimakra, Louet, Ashford Jack Loom). May be false for some tapestry or frame looms."
+    },
+    "frame_material": {
+      "type": "enum",
+      "category": "core",
+      "enum_values": [
+        "maple",
+        "cherry",
+        "ash",
+        "beech",
+        "pine",
+        "birch",
+        "oak",
+        "steel",
+        "aluminum",
+        "mixed_wood",
+        "other"
+      ],
+      "description": "Primary structural wood or material of the loom frame. Schacht uses maple (Danish oil finish); Leclerc and Harrisville use solid Canadian or hard rock maple; Louet uses lacquered beech (Octado, Spring, Magic) or lacquered ash (Delta, Megado); Glimakra uses Swedish pine."
+    },
+    "model_series": {
+      "type": "string",
+      "category": "common",
+      "description": "Product family or series grouping when a brand groups multiple models together (e.g. Wolf Family for Schacht Baby Wolf/Mighty Wolf/Wolf Pup; Standard for Glimakra Standard Countermarch/Counterbalance; Spring for Louet Spring I/II)."
+    },
+    "weaving_width_options_cm": {
+      "type": "array",
+      "category": "common",
+      "unit": "cm",
+      "description": "All available weaving widths in centimeters as marketed by the manufacturer. Must be populated for metric-native brands (Louet, Glimakra, Leclerc) to preserve the native model-name width (e.g. Louet David 70 = 70 cm, Spring 90 = 90 cm, Spring 110 = 110 cm; Glimakra Standard = 100, 120, 150, 160 cm). May be omitted or null for brands that market exclusively in inches (Schacht, Harrisville, Ashford US models)."
+    },
+    "treadle_count": {
+      "type": "array",
+      "category": "common",
+      "description": "Array of integers listing treadle counts corresponding to each shaft configuration. For example Harrisville 4-shaft has 6 treadles, 8-shaft has 10 treadles. Leclerc looms always have two treadles more than the shaft count. Glimakra Standard base model has 6 treadles expandable to 10. Louet Spring 8-shaft has 10 treadles, 12-shaft has 14. Not applicable to rigid heddle, table, tapestry, or dobby looms \u2014 use null."
+    },
+    "treadle_hinge": {
+      "type": "enum",
+      "category": "common",
+      "enum_values": [
+        "front_hinged",
+        "back_hinged",
+        "pivoting_back",
+        "roller_rocker",
+        "not_applicable"
+      ],
+      "description": "Location and style of the treadle hinge point. Front-hinged (conventional jack looms including Leclerc Nilus II and most Ashford looms). Back-hinged for easier treadling under high tension (Louet Spring, David). Pivoting back for Glimakra countermarch. Roller-rocker for Leclerc Nilus II redesign. Not applicable for table/rigid heddle/dobby-only looms."
+    },
+    "heddle_type": {
+      "type": "enum",
+      "category": "common",
+      "enum_values": [
+        "wire",
+        "texsolv",
+        "inserted_eye",
+        "string",
+        "rigid_heddle_bar",
+        "twisted_wire_inserted_eye",
+        "not_applicable"
+      ],
+      "description": "Type of heddles supplied and used. Schacht uses wire or Texsolv. Leclerc ships wire heddles standard but inserted-eye available at extra cost. Louet looms use Texsolv (Swedish cording). Glimakra uses Texsolv. Rigid heddle looms use the rigid heddle bar itself."
+    },
+    "heddles_per_shaft_included": {
+      "type": "number",
+      "category": "common",
+      "description": "Number of heddles included per shaft at time of purchase. Varies by width and shaft count. Examples: Harrisville A4 ~100/shaft (400 total, 4-shaft 22 in); Leclerc Nilus II 1000-1500 total depending on width; Louet Spring 90 includes 600 Texsolv, Spring 110 includes 800-1200; Glimakra Standard includes 1000 Texsolv. Expressed as total divided by shaft count, or null if variable."
+    },
+    "reed_dent_included": {
+      "type": "array",
+      "category": "common",
+      "unit": "dents_per_inch",
+      "description": "Reed dentage(s) (ends per inch) included with the loom. Harrisville includes buyer's choice of 6, 8, 10, 12, or 15 dent stainless steel reed. Leclerc offers choice of 6, 8, 10, or 12 dent carbon or stainless reed. Glimakra Standard ships with buyer's choice of 5, 6, 8, 10, or 12 dent stainless reed. Louet looms typically include a 10 dent stainless steel reed (40-10). Ashford table looms offer 5 extra reed sizes."
+    },
+    "reed_material": {
+      "type": "enum",
+      "category": "common",
+      "enum_values": [
+        "stainless_steel",
+        "carbon_steel",
+        "aluminum",
+        "wood",
+        "not_applicable"
+      ],
+      "description": "Material of the included reed. Harrisville includes stainless steel. Louet includes stainless steel (40-10). Leclerc standard is carbon steel reed (stainless optional at supplement). Glimakra includes stainless steel."
+    },
+    "weight_lbs": {
+      "type": "number",
+      "category": "common",
+      "unit": "lbs",
+      "description": "Shipping or assembled weight of the loom in pounds. Examples: Ashford Jack Loom 38 in = 132 lbs; Harrisville A4 22 in = 60 lbs, A8 22 in = 70 lbs, T8 36 in = 90 lbs; Louet Delta 110 = 194 lbs, Delta 130 = 205 lbs; Louet Octado 110 = 117 lbs. Null if not published."
+    },
+    "unfolded_depth_inches": {
+      "type": "number",
+      "category": "common",
+      "unit": "inches",
+      "description": "Floor depth (front-to-back) of the loom in its fully unfolded, ready-to-weave position. Harrisville A4: 32 in; A8: 34 in; T4: 32 in; T8: 34 in. Louet Octado 70: 39 in; Megado 70: 50 in. Null if not published."
+    },
+    "folded_depth_inches": {
+      "type": "number",
+      "category": "common",
+      "unit": "inches",
+      "description": "Floor depth (front-to-back) when folded for storage. Harrisville A4: 13 in; A8: 18 in; T4: 13 in; T8: 18 in. Null if loom does not fold or dimension not published."
+    },
+    "castle_height_inches": {
+      "type": "number",
+      "category": "common",
+      "unit": "inches",
+      "description": "Interior castle height or overall loom height in inches. Harrisville all models: 42 in castle height. Louet Octado 110: 50 in overall height. Schacht Standard high castle: taller than standard. Null if not published."
+    },
+    "breast_beam_height_inches": {
+      "type": "number",
+      "category": "common",
+      "unit": "inches",
+      "description": "Height of the breast beam from the floor in inches, which determines weaving position ergonomics. Relevant for floor loom selection, especially for taller weavers. Null if not published."
+    },
+    "foldable": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether the loom frame can be folded for storage or transport. Schacht Wolf family folds via X-frame design. Harrisville floor looms fold. Louet David, Magic Dobby fold. Leclerc Dorothy and Voyageur table looms fold. Glimakra Standard does NOT fold. Ashford 8-shaft table loom folds flat."
+    },
+    "foldable_while_warped": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether the loom can be folded with the warp still in place, leaving the tie-up intact. Harrisville floor looms fold while fully warped. Schacht Wolf family folds with warp via removable back beam. Leclerc Nilus II can fold with warp attached. Glimakra Standard cannot be folded."
+    },
+    "brake_type": {
+      "type": "enum",
+      "category": "common",
+      "enum_values": [
+        "friction",
+        "ratchet",
+        "worm_gear",
+        "tension_brake",
+        "auto_warp_tension",
+        "not_applicable"
+      ],
+      "description": "Type of warp beam brake system. Friction brake on Schacht Wolf family, Harrisville, Leclerc Nilus II, Louet Spring/David/Octado. Worm gear on Schacht Cranbrook (affords precise tensioning). Ratchet on Glimakra Standard. Auto warp tension system on AVL production looms. Not applicable on rigid heddle or tapestry looms."
+    },
+    "sectional_beam_available": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether an optional sectional warp beam is available as an upgrade or accessory. True for Leclerc Nilus II (rake-like pieces added to plain beam), Louet Spring/David/Megado/Octado, Schacht Table Loom, AVL A-Series. Allows warping by one person with consistent tension."
+    },
+    "double_back_beam_available": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether an optional second/double back beam is available. True for Schacht Table Loom, Leclerc 45 in and wider floor looms, Louet Spring 2 and David 3, Glimakra Standard (second back roller). Useful for weaving seersucker, supplementary warps, or yarns requiring different tensions."
+    },
+    "floating_breast_beam": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether the loom features Louet's patented floating/moving breast beam system, which allows the breast beam to move toward the shafts when the shed opens, compensating for warp tension changes. Exclusive to Louet Spring, Delta, and Megado lines. False for all other brands."
+    },
+    "beater_type": {
+      "type": "enum",
+      "category": "common",
+      "enum_values": [
+        "overhead_swing",
+        "bottom_swing",
+        "sliding",
+        "pivoting_floor_hinge",
+        "adjustable_swing",
+        "fly_shuttle",
+        "not_applicable"
+      ],
+      "description": "Type and mounting of the beater. Overhead swing on Glimakra Standard (hanging beater), Ashford table looms, Leclerc large floor looms. Bottom swing (floor hinge) on Louet Spring II and David III. Sliding beater on Louet David I/II and AVL Studio Dobby. Adjustable swing on Harrisville (adjustable for different reed heights). Fly shuttle beater available on Leclerc 45 in+ and AVL A-Series."
+    },
+    "beater_adjustable": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether the beater can be adjusted in height or position. Harrisville looms feature an adjustable beater to accommodate reeds of different heights and widths. Louet Spring II beater adjusts for height and level and is removable for threading. Leclerc and Glimakra beaters are generally fixed-position swing beaters."
+    },
+    "tie_up_system": {
+      "type": "enum",
+      "category": "common",
+      "enum_values": [
+        "nylon_cord_slot",
+        "texsolv_loop",
+        "snap_chain",
+        "wire_hook",
+        "locking_treadle",
+        "not_applicable"
+      ],
+      "description": "The treadle tie-up system used. Schacht uses pre-measured nylon cords that slide into a treadle slot. Harrisville uses snap chains instead of cords or knots. Glimakra Standard and Louet looms use Texsolv loop cord system. Schacht Cranbrook uses Texsolv loop cord permanently installed on treadles. Leclerc uses wire treadle hooks through eyelet screws. Locking treadle on Schacht Cranbrook for rug/tapestry weaving."
+    },
+    "shaft_upgrade_available": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether the shaft count can be increased after initial purchase via an upgrade kit. Schacht Standard, Baby Wolf, Mighty Wolf, Wolf Pup support 4 Now-4 Later upgrades. Glimakra Standard expands from 4 to up to 10 shafts. Glimakra Julia countermarch upgrades from 4 to 8 shafts. Louet Spring 2 ships with 8 shafts and allows addition of 4 more. Leclerc Dorothy upgrades from 4 to 8 or 12 shafts."
+    },
+    "height_extender_available": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether a height extender accessory is available to raise the loom for taller weavers. True for Schacht Wolf family (Baby Wolf, Mighty Wolf, Wolf Pup 8.10). Blocks raise the loom 2 inches and require longer treadles and brake pedal."
+    },
+    "stroller_available": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether an optional wheeled stroller/transport cart is available for moving the loom. Distinct from built-in mobility wheels. Check manufacturer accessory pages."
+    },
+    "carry_bag_included": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether a padded carry bag is included with the base loom purchase. True for Leclerc Voyageur table loom (included padded bag). Generally false for floor looms. Null if not specified."
+    },
+    "shuttle_included": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether a shuttle is included with the base loom purchase. Leclerc Nilus II and most Leclerc floor looms include 1 boat shuttle and 12 plastic bobbins. Generally false for Schacht, Harrisville, and Glimakra floor looms. Null if not specified."
+    },
+    "lease_sticks_included": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether lease sticks are included with the base loom. True for Harrisville (two lease sticks standard), Leclerc Nilus II (two lease sticks), Louet Spring/David/Octado (2 lease sticks standard), Glimakra Standard (included). Generally true for most floor looms."
+    },
+    "raddle_included": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether a raddle is included with or built into the base loom. Louet Spring II, Delta, Megado, and Octado all include a built-in raddle on top of the castle. Harrisville raddle sold separately. Schacht Cranbrook raddle sold separately. Leclerc raddle sold separately."
+    },
+    "assembly_required": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether the loom ships knocked down and requires assembly by the buyer. Leclerc floor looms ship knocked down. Louet Spring and Delta ship with the castle section pre-assembled but require assembly of beams and base. Harrisville ships as a kit requiring light sanding and oil finish. Ashford Jack Loom ships unassembled. Glimakra Standard ships partially assembled."
+    },
+    "finish_required": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether the buyer must apply a finish (oil, wax, or lacquer) to the wood before or during assembly. Harrisville kit looms require light sanding and application of oil finish. Schacht looms ship with Danish oil finish already applied. Louet looms ship lacquered. Leclerc looms ship ready-finished."
+    },
+    "origin_country": {
+      "type": "string",
+      "category": "common",
+      "description": "Country where the loom is manufactured. Schacht: USA (Boulder, CO). Harrisville Designs: USA (Harrisville, NH). Leclerc: Canada (Quebec, since 1906). Ashford: New Zealand (Ashburton). Louet: Netherlands (Holland). Glimakra: Sweden. AVL: USA (Chico, CA)."
+    },
+    "warranty_years": {
+      "type": "number",
+      "category": "common",
+      "unit": "years",
+      "description": "Length of manufacturer warranty in years. Harrisville Designs: 5 years (defect in manufacture). AVL: 1 year on reconditioned looms, lifetime support on new looms. Schacht and Leclerc warranty terms vary by model. Null if not published."
+    },
+    "mobility_wheels_included": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether the loom comes standard with built-in wheels for moving it across a studio floor. Harrisville floor looms all include wheels standard at no extra cost. Schacht Standard does not include wheels standard. Glimakra Standard does not include wheels."
+    },
+    "fly_shuttle_available": {
+      "type": "boolean",
+      "category": "common",
+      "description": "Whether an optional fly shuttle system is available as an accessory. True for Leclerc floor looms 45 in and wider, Louet Octado and Megado (Flying Dutchman shuttle device available), AVL A-Series (single, double, and four-box fly shuttle). Generally false for narrow or table looms."
+    },
+    "max_shafts_with_upgrade": {
+      "type": "number",
+      "category": "conditional",
+      "condition": "shaft_upgrade_available is true",
+      "description": "Maximum shaft count achievable after purchasing upgrade kits. Schacht Standard, Baby Wolf, Mighty Wolf: max 8 shafts via 4 Now-4 Later kit. Glimakra Standard: max 10 shafts. Glimakra Julia countermarch: max 8 shafts. Louet Spring 2: max 12 shafts. Leclerc Dorothy: max 12 shafts."
+    },
+    "four_now_four_later": {
+      "type": "boolean",
+      "category": "conditional",
+      "condition": "shaft_upgrade_available is true AND brand is Schacht",
+      "description": "Schacht-specific upgrade program where an 8-shaft loom ships with 4 shafts installed and all heddles, treadles, and tie-ups for 8 shafts included, with space and a later kit to add 4 more shafts at any time. Available on Schacht Standard Floor Loom, Baby Wolf, Mighty Wolf, and Wolf Pup 8.10."
+    },
+    "dobby_type": {
+      "type": "enum",
+      "category": "conditional",
+      "condition": "shedding_mechanism is dobby_mechanical or dobby_electronic",
+      "enum_values": [
+        "mechanical_program_bar",
+        "electronic_interface",
+        "compu_dobby",
+        "electronic_wifi_tablet"
+      ],
+      "description": "Sub-type of dobby mechanism. mechanical_program_bar: pegs inserted into numbered holes on a program bar chain (Louet Octado/Megado mechanical option, AVL mechanical dobby up to 24 shafts). electronic_interface: computer connected via serial or USB port (Louet Octado/Megado electronic dobby, Leclerc Diana/Weavebird). compu_dobby: AVL's proprietary computerized dobby (Compu-Dobby 5, up to 40 shafts). electronic_wifi_tablet: Louet Dobby 2.0 with WiFi connection to tablet plus PC/Mac software support."
+    },
+    "compatible_software": {
+      "type": "array",
+      "category": "conditional",
+      "condition": "dobby_type is electronic_interface or compu_dobby or electronic_wifi_tablet",
+      "description": "Weaving design software packages compatible with the electronic dobby interface. Louet electronic dobby and Dobby 2.0: Fiberworks PCW, Patternland, PixieLoom, Weavemaker, Pro Weave, Weave It, WeavePoint. Leclerc Diana/Weavebird: Weavebird Loom Driver (included free), plus compatible third-party .wif-based programs. AVL Compu-Dobby: all .wif-compatible software (WeavePoint IDL Design included for Industrial Dobby Loom). Louet Dobby 2.0 supports both PC and Macintosh platforms."
+    },
+    "height_extender_inches": {
+      "type": "number",
+      "category": "conditional",
+      "condition": "height_extender_available is true",
+      "unit": "inches",
+      "description": "Height added to the loom in inches when the height extender accessory is installed. Schacht Wolf family height extender raises the loom 2 inches via blocks on the legs, and requires longer treadles and a longer brake pedal."
+    },
+    "shaft_switching_device_available": {
+      "type": "boolean",
+      "category": "conditional",
+      "condition": "loom_category is rug_loom or tapestry_loom",
+      "description": "Whether an optional shaft switching or shed-selection device (such as a mechanical dobby or drawloom attachment) is available to facilitate complex shed selection for rug or tapestry weaving. Glimakra Standard vertical countermarch supports a drawloom attachment. Schacht Cranbrook supports locking treadles for rug and tapestry weaving. Schacht Tapestry Loom includes four heddle bars as a built-in shed device."
+    }
+  }
+}

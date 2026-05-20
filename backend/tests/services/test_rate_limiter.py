@@ -8,16 +8,23 @@ from fastapi import HTTPException
 from starlette.requests import Request
 
 
-def _make_request(ip: str = "1.2.3.4", forwarded_for: str | None = None) -> Request:
+def _make_request(
+    ip: str = "1.2.3.4",
+    real_ip: str | None = None,
+    forwarded_for: str | None = None,
+) -> Request:
+    headers: list[tuple[bytes, bytes]] = []
+    if real_ip:
+        headers.append((b"x-real-ip", real_ip.encode()))
+    if forwarded_for:
+        headers.append((b"x-forwarded-for", forwarded_for.encode()))
     scope = {
         "type": "http",
         "method": "POST",
         "path": "/test",
-        "headers": [],
+        "headers": headers,
         "client": (ip, 12345),
     }
-    if forwarded_for:
-        scope["headers"] = [(b"x-forwarded-for", forwarded_for.encode())]
     return Request(scope)
 
 
@@ -67,41 +74,77 @@ class TestRateLimiter:
         from app.services.rate_limiter import rate_limit
 
         limiter = rate_limit("test_ip", max_requests=1, window_seconds=60)
-        req_a = _make_request(ip="10.0.0.1")
-        req_b = _make_request(ip="10.0.0.2")
+        req_a = _make_request(real_ip="10.0.0.1")
+        req_b = _make_request(real_ip="10.0.0.2")
 
         with patch("app.services.rate_limiter.aioredis.from_url", return_value=fake_redis):
             await limiter(req_a)  # first request from A — OK
             await limiter(req_b)  # first request from B — OK (independent counter)
 
-    async def test_uses_x_forwarded_for_when_present(self, fake_redis):
+    async def test_uses_x_real_ip_for_rate_limit_key(self, fake_redis):
         from app.services.rate_limiter import rate_limit
 
-        limiter = rate_limit("test_xff", max_requests=1, window_seconds=60)
-        # Socket IP is proxy; real client IP is in X-Forwarded-For
-        req = _make_request(ip="172.18.0.1", forwarded_for="203.0.113.5, 172.18.0.1")
+        limiter = rate_limit("test_rip", max_requests=1, window_seconds=60)
+        # nginx sets X-Real-IP to the real client; socket IP is the nginx proxy
+        req = _make_request(ip="172.18.0.1", real_ip="203.0.113.5")
 
         with patch("app.services.rate_limiter.aioredis.from_url", return_value=fake_redis):
-            await limiter(req)  # OK
+            await limiter(req)  # OK — counted against 203.0.113.5
             with pytest.raises(HTTPException):
-                await limiter(req)  # 429 — counted against 203.0.113.5, not proxy IP
+                await limiter(req)  # 429 — same real IP
+
+    async def test_spoofed_x_forwarded_for_does_not_bypass_limit(self, fake_redis):
+        """Regression test: XFF spoofing must not circumvent per-IP rate limits."""
+        from app.services.rate_limiter import rate_limit
+
+        limiter = rate_limit("test_spoof", max_requests=1, window_seconds=60)
+        real_ip = "203.0.113.99"
+        # Attacker varies XFF while the real IP (X-Real-IP) stays the same
+        req1 = _make_request(real_ip=real_ip, forwarded_for="10.0.0.1")
+        req2 = _make_request(real_ip=real_ip, forwarded_for="10.0.0.2")
+
+        with patch("app.services.rate_limiter.aioredis.from_url", return_value=fake_redis):
+            await limiter(req1)  # first request — OK
+            with pytest.raises(HTTPException):
+                await limiter(req2)  # still blocked — XFF ignored, real IP is the key
 
 
 class TestGetClientIp:
-    def test_returns_socket_ip_when_no_header(self):
+    def test_returns_socket_ip_when_no_headers(self):
         from app.services.rate_limiter import _get_client_ip
 
         req = _make_request(ip="9.8.7.6")
         assert _get_client_ip(req) == "9.8.7.6"
 
-    def test_returns_first_forwarded_for_ip(self):
+    def test_returns_x_real_ip_when_present(self):
         from app.services.rate_limiter import _get_client_ip
 
-        req = _make_request(forwarded_for="1.1.1.1, 2.2.2.2, 3.3.3.3")
-        assert _get_client_ip(req) == "1.1.1.1"
+        req = _make_request(ip="172.18.0.1", real_ip="203.0.113.5")
+        assert _get_client_ip(req) == "203.0.113.5"
 
-    def test_strips_whitespace_from_forwarded_for(self):
+    def test_strips_whitespace_from_x_real_ip(self):
         from app.services.rate_limiter import _get_client_ip
 
-        req = _make_request(forwarded_for="  1.1.1.1  , 2.2.2.2")
+        req = _make_request(real_ip="  1.1.1.1  ")
         assert _get_client_ip(req) == "1.1.1.1"
+
+    def test_ignores_x_forwarded_for_when_x_real_ip_present(self):
+        from app.services.rate_limiter import _get_client_ip
+
+        # Attacker sets XFF; nginx sets X-Real-IP to the actual remote addr
+        req = _make_request(real_ip="203.0.113.5", forwarded_for="1.1.1.1, 2.2.2.2")
+        assert _get_client_ip(req) == "203.0.113.5"
+
+    def test_falls_back_to_socket_ip_when_no_x_real_ip(self):
+        from app.services.rate_limiter import _get_client_ip
+
+        # Direct connection (no nginx proxy), no headers
+        req = _make_request(ip="10.0.0.42")
+        assert _get_client_ip(req) == "10.0.0.42"
+
+    def test_x_forwarded_for_alone_is_ignored(self):
+        from app.services.rate_limiter import _get_client_ip
+
+        # XFF without X-Real-IP — falls back to socket IP, not XFF
+        req = _make_request(ip="10.0.0.1", forwarded_for="spoofed.ip.here")
+        assert _get_client_ip(req) == "10.0.0.1"

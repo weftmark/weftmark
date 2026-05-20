@@ -19,7 +19,7 @@ from app.models.loom import PROJECT_SUPPORTED_LOOM_TYPES, Loom, LoomVersion
 from app.models.project import Project, ProjectPhoto, ProjectStep, WeaveSession
 from app.models.user import User
 from app.services import storage, wif_parser
-from app.services.images import resize_to_jpeg
+from app.services.images import resize_to_jpeg, validate_image_format
 from app.services.storage_quota import check_storage_quota
 from app.tasks.preview import (
     generate_drawdown_preview,
@@ -28,7 +28,7 @@ from app.tasks.preview import (
 )
 from app.tasks.tiles import prerender_project_tiles
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}  # fast pre-filter only
 MAX_PROJECT_PHOTOS = 10
 MAX_PHOTO_SIZE = 25 * 1024 * 1024  # 25 MB raw (resized output is much smaller)
 _PROJECT_RESIZE_MAX_PX = 2048
@@ -74,6 +74,7 @@ class ProjectSummary(BaseModel):
     share_slug: str | None = None
     share_visibility: str = "private"
     share_expires_at: datetime | None = None
+    tags: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -122,12 +123,14 @@ class CreateProjectRequest(BaseModel):
     waste_between_items: Decimal | None = None
     warp_waste_allowance: Decimal | None = None
     length_unit: str = "cm"
+    tags: list[str] = []
 
 
 class RenameProjectRequest(BaseModel):
     name: str | None = None
     notes: str | None = None
     hide_unused_shafts_treadles: bool | None = None
+    tags: list[str] | None = None
 
 
 class WarpSetupRequest(BaseModel):
@@ -429,6 +432,7 @@ def _to_detail(
         share_visibility=project.share_visibility,
         share_expires_at=project.share_expires_at,
         reed_dents_per_inch=project.reed_dents_per_inch,
+        tags=project.tags or [],
         loom_reeds=loom_reeds or [],
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
     )
@@ -520,6 +524,7 @@ async def create_project(
         warp_waste_allowance=body.warp_waste_allowance,
         length_unit=body.length_unit,
         hide_unused_shafts_treadles=current_user.hide_unused_shafts_treadles,
+        tags=[t.strip().lower() for t in body.tags if t.strip()],
     )
     db.add(project)
     await db.commit()
@@ -540,6 +545,7 @@ async def create_project(
 async def list_projects(
     draft_id: uuid.UUID | None = Query(None),
     loom_id: uuid.UUID | None = Query(None),
+    tags: list[str] | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ProjectSummary]:
@@ -549,7 +555,10 @@ async def list_projects(
     if loom_id is not None:
         q = q.where(Project.loom_id == loom_id)
     result = await db.scalars(q.order_by(Project.created_at.desc()))
-    return [ProjectSummary.model_validate(p) for p in result.all()]
+    projects = result.all()
+    if tags:
+        projects = [p for p in projects if any(t in (p.tags or []) for t in tags)]
+    return [ProjectSummary.model_validate(p) for p in projects]
 
 
 @router.get("/{project_id}/drawdown")
@@ -896,7 +905,7 @@ async def rename_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    if body.name is None and body.notes is None and body.hide_unused_shafts_treadles is None:
+    if body.name is None and body.notes is None and body.hide_unused_shafts_treadles is None and body.tags is None:
         raise HTTPException(status_code=400, detail="At least one field must be provided")
     project = await _get_owned_project(project_id, current_user, db)
     if body.name is not None:
@@ -908,6 +917,8 @@ async def rename_project(
         project.notes = body.notes
     if body.hide_unused_shafts_treadles is not None:
         project.hide_unused_shafts_treadles = body.hide_unused_shafts_treadles
+    if body.tags is not None:
+        project.tags = [t.strip().lower() for t in body.tags if t.strip()]
     await db.commit()
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
@@ -1401,6 +1412,11 @@ async def upload_project_photo(
     data = await file.read()
     if len(data) > MAX_PHOTO_SIZE:
         raise HTTPException(status_code=400, detail=f"File too large (max {MAX_PHOTO_SIZE // (1024 * 1024)} MB)")
+
+    try:
+        validate_image_format(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     existing = await db.scalars(select(ProjectPhoto).where(ProjectPhoto.project_id == project.id))
     if len(existing.all()) >= MAX_PROJECT_PHOTOS:

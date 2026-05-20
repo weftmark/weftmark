@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements-dev.txt
 
 COPY backend/ .
 COPY VERSION .
+COPY docs/research/looms/loom-data-master.json seeds/
 # Substitute DejaVu Sans for Arial in the vendored weaving engine
 RUN cp /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf /app/app/weaving/data/Arial.ttf
 
