@@ -446,5 +446,20 @@
     "deleteNote": "Verwijdert deze binding en het WIF-bestand permanent.",
     "confirmDelete": "Verwijdering bevestigen",
     "confirmForceDelete": "Geforceerde verwijdering bevestigen"
+  },
+  "yarnDetailPage": {
+    "loading": "Laden…",
+    "notFound": "Garen niet gevonden.",
+    "breadcrumb": "Garen",
+    "cloneYarn": "Garen klonen",
+    "edit": "Bewerken",
+    "cancelEdit": "Bewerken annuleren",
+    "skeins": "Strengen",
+    "skeinsAvailable": "— {{available}} beschikbaar van {{total}} in totaal",
+    "addSkeins": "+ Strengen toevoegen",
+    "deleteYarnRecord": "Garenrecord verwijderen",
+    "deleteYarnConfirm": "Dit garen en alle strengrecords verwijderen? Dit kan niet ongedaan worden gemaakt.",
+    "deleting": "Verwijderen…",
+    "confirmDelete": "Verwijdering bevestigen"
   }
 }

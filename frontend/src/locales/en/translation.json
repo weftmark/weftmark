@@ -446,5 +446,20 @@
     "deleteNote": "Permanently removes this draft and its WIF file.",
     "confirmDelete": "Confirm delete",
     "confirmForceDelete": "Confirm force delete"
+  },
+  "yarnDetailPage": {
+    "loading": "Loading…",
+    "notFound": "Yarn not found.",
+    "breadcrumb": "Yarn",
+    "cloneYarn": "Clone yarn",
+    "edit": "Edit",
+    "cancelEdit": "Cancel edit",
+    "skeins": "Skeins",
+    "skeinsAvailable": "— {{available}} available of {{total}} total",
+    "addSkeins": "+ Add skeins",
+    "deleteYarnRecord": "Delete yarn record",
+    "deleteYarnConfirm": "Delete this yarn and all skein records? This cannot be undone.",
+    "deleting": "Deleting…",
+    "confirmDelete": "Confirm delete"
   }
 }

@@ -446,5 +446,20 @@
     "deleteNote": "Entfernt dieses Ligament und seine WIF-Datei dauerhaft.",
     "confirmDelete": "Löschen bestätigen",
     "confirmForceDelete": "Erzwungenes Löschen bestätigen"
+  },
+  "yarnDetailPage": {
+    "loading": "Laden…",
+    "notFound": "Garn nicht gefunden.",
+    "breadcrumb": "Garn",
+    "cloneYarn": "Garn klonen",
+    "edit": "Bearbeiten",
+    "cancelEdit": "Bearbeiten abbrechen",
+    "skeins": "Stränge",
+    "skeinsAvailable": "— {{available}} von {{total}} verfügbar",
+    "addSkeins": "+ Stränge hinzufügen",
+    "deleteYarnRecord": "Garneintrag löschen",
+    "deleteYarnConfirm": "Dieses Garn und alle Strangeintragungen löschen? Dies kann nicht rückgängig gemacht werden.",
+    "deleting": "Löschen…",
+    "confirmDelete": "Löschen bestätigen"
   }
 }

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -399,6 +400,7 @@ function SkeinRow({ yarn, skein, onChanged }: { yarn: YarnDetail; skein: Skein; 
 // ---------------------------------------------------------------------------
 
 function AddSkeinsForm({ yarn, onAdded }: { yarn: YarnDetail; onAdded: () => void }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const initAddWeightUnit: "oz" | "g" = yarn.unit_weight_oz ? "oz" : "g";
   const initAddWeight = yarn.unit_weight_oz ?? yarn.unit_weight_g ?? "";
@@ -438,7 +440,7 @@ function AddSkeinsForm({ yarn, onAdded }: { yarn: YarnDetail; onAdded: () => voi
 
   if (!open) {
     return (
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>+ Add skeins</Button>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>{t("yarnDetailPage.addSkeins")}</Button>
     );
   }
 
@@ -482,6 +484,7 @@ function AddSkeinsForm({ yarn, onAdded }: { yarn: YarnDetail; onAdded: () => voi
 // ---------------------------------------------------------------------------
 
 export function YarnDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -514,21 +517,21 @@ export function YarnDetailPage() {
     }
   };
 
-  if (isLoading) return <div className="flex min-h-screen items-center justify-center"><p className="text-sm text-muted-foreground">Loading…</p></div>;
-  if (error || !yarn) return <div className="flex min-h-screen items-center justify-center"><p className="text-sm text-destructive">Yarn not found.</p></div>;
+  if (isLoading) return <div className="flex min-h-screen items-center justify-center"><p className="text-sm text-muted-foreground">{t("yarnDetailPage.loading")}</p></div>;
+  if (error || !yarn) return <div className="flex min-h-screen items-center justify-center"><p className="text-sm text-destructive">{t("yarnDetailPage.notFound")}</p></div>;
 
   return (
     <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
-          <Link to="/yarn" className="text-muted-foreground hover:text-foreground">Yarn</Link>
+          <Link to="/yarn" className="text-muted-foreground hover:text-foreground">{t("yarnDetailPage.breadcrumb")}</Link>
           <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="font-medium text-foreground">{yarn.brand} — {yarn.name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setShowClone(true)}>Clone yarn</Button>
+          <Button size="sm" variant="outline" onClick={() => setShowClone(true)}>{t("yarnDetailPage.cloneYarn")}</Button>
           <Button size="sm" variant="outline" onClick={() => setEditing((e) => !e)}>
-            {editing ? "Cancel edit" : "Edit"}
+            {editing ? t("yarnDetailPage.cancelEdit") : t("yarnDetailPage.edit")}
           </Button>
         </div>
       </div>
@@ -559,9 +562,9 @@ export function YarnDetailPage() {
         {/* Skeins */}
         <section>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Skeins
+            {t("yarnDetailPage.skeins")}
             <span className="ml-1.5 normal-case">
-              — {yarn.available_count} available of {yarn.skein_count} total
+              {t("yarnDetailPage.skeinsAvailable", { available: yarn.available_count, total: yarn.skein_count })}
             </span>
           </h2>
 
@@ -579,13 +582,13 @@ export function YarnDetailPage() {
         {/* Delete */}
         <section className="border-t pt-6">
           {!confirmDelete ? (
-            <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>Delete yarn record</Button>
+            <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>{t("yarnDetailPage.deleteYarnRecord")}</Button>
           ) : (
             <div className="flex items-center gap-3">
-              <p className="text-sm text-destructive">Delete this yarn and all skein records? This cannot be undone.</p>
-              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancel</Button>
+              <p className="text-sm text-destructive">{t("yarnDetailPage.deleteYarnConfirm")}</p>
+              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t("common.cancel")}</Button>
               <Button size="sm" onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                {deleting ? "Deleting…" : "Confirm delete"}
+                {deleting ? t("yarnDetailPage.deleting") : t("yarnDetailPage.confirmDelete")}
               </Button>
             </div>
           )}

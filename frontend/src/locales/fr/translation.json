@@ -446,5 +446,20 @@
     "deleteNote": "Supprime définitivement cette armure et son fichier WIF.",
     "confirmDelete": "Confirmer la suppression",
     "confirmForceDelete": "Confirmer la suppression forcée"
+  },
+  "yarnDetailPage": {
+    "loading": "Chargement…",
+    "notFound": "Fil introuvable.",
+    "breadcrumb": "Fils",
+    "cloneYarn": "Dupliquer le fil",
+    "edit": "Modifier",
+    "cancelEdit": "Annuler la modification",
+    "skeins": "Échevettes",
+    "skeinsAvailable": "— {{available}} disponible sur {{total}} au total",
+    "addSkeins": "+ Ajouter des échevettes",
+    "deleteYarnRecord": "Supprimer le fil",
+    "deleteYarnConfirm": "Supprimer ce fil et toutes ses échevettes ? Cette action est irréversible.",
+    "deleting": "Suppression…",
+    "confirmDelete": "Confirmer la suppression"
   }
 }

@@ -446,5 +446,20 @@
     "deleteNote": "Elimina permanentemente este ligamento y su archivo WIF.",
     "confirmDelete": "Confirmar eliminación",
     "confirmForceDelete": "Confirmar eliminación forzada"
+  },
+  "yarnDetailPage": {
+    "loading": "Cargando…",
+    "notFound": "Hilo no encontrado.",
+    "breadcrumb": "Hilos",
+    "cloneYarn": "Clonar hilo",
+    "edit": "Editar",
+    "cancelEdit": "Cancelar edición",
+    "skeins": "Madejas",
+    "skeinsAvailable": "— {{available}} disponible de {{total}} en total",
+    "addSkeins": "+ Añadir madejas",
+    "deleteYarnRecord": "Eliminar registro de hilo",
+    "deleteYarnConfirm": "¿Eliminar este hilo y todos los registros de madejas? Esta acción no se puede deshacer.",
+    "deleting": "Eliminando…",
+    "confirmDelete": "Confirmar eliminación"
   }
 }
