@@ -17,6 +17,8 @@ import {
   getTaskHistory,
   revokeTask,
   runPurgeSoftDeleted,
+  getSoftDeleteQueue,
+  getDeletionQueue,
   listScheduledTasks,
   patchScheduledTask,
   type ScheduledTask,
@@ -27,6 +29,7 @@ import {
   type CveFinding,
   type WorkerStatus,
   type WorkerInfo,
+  type DeletionQueueUser,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 import { CveBanner } from "@/components/admin/CveBanner";
@@ -919,11 +922,78 @@ function TaskHistoryTable() {
   );
 }
 
-function DeletionTab() {
+const DELETION_STATE_STYLE: Record<string, string> = {
+  pending: "border-border text-muted-foreground",
+  in_progress: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  stalled: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  complete: "border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300",
+};
+
+function DeletionStateBadge({ state }: { state: string }) {
   return (
-    <div className="rounded-lg border border-dashed p-8 text-center">
-      <p className="text-sm font-medium text-muted-foreground">Deletion Queue</p>
-      <p className="text-xs text-muted-foreground mt-1">Coming soon — in-progress and pending user deletion states.</p>
+    <span className={`text-xs px-2 py-0.5 rounded border font-medium ${DELETION_STATE_STYLE[state] ?? "border-border text-muted-foreground"}`}>
+      {state}
+    </span>
+  );
+}
+
+function DeletionTab() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin", "deletion-queue"],
+    queryFn: getDeletionQueue,
+    refetchInterval: 10_000,
+  });
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (error) return <p className="text-sm text-destructive">Failed to load deletion queue.</p>;
+
+  const users = data ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-sm font-medium">User Deletion Queue</h2>
+        <p className="text-xs text-muted-foreground">
+          Users currently in the deletion pipeline. Auto-refreshes every 10s.
+          Stalled entries indicate a Celery task that errored mid-cascade and requires investigation.
+        </p>
+      </div>
+
+      {users.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No users in the deletion queue.</p>
+      ) : (
+        <div className="rounded-md border overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Display name</th>
+                <th className="px-3 py-2 text-left font-medium">Email</th>
+                <th className="px-3 py-2 text-left font-medium">State</th>
+                <th className="px-3 py-2 text-left font-medium whitespace-nowrap">Initiated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u: DeletionQueueUser) => (
+                <tr key={u.id} className={`border-t ${u.deletion_state === "stalled" ? "bg-amber-500/5" : ""}`}>
+                  <td className="px-3 py-2 font-medium">{u.display_name}</td>
+                  <td className="px-3 py-2 text-muted-foreground font-mono text-xs">{u.email}</td>
+                  <td className="px-3 py-2">
+                    <DeletionStateBadge state={u.deletion_state} />
+                    {u.deletion_state === "stalled" && (
+                      <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">⚠ check logs</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                    {u.deletion_initiated_at
+                      ? new Date(u.deletion_initiated_at).toLocaleString()
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -932,18 +1002,83 @@ function MaintenanceTab() {
   const queryClient = useQueryClient();
   const [purging, setPurging] = useState(false);
 
+  const { data: queue, isLoading: queueLoading } = useQuery({
+    queryKey: ["admin", "soft-delete-queue"],
+    queryFn: getSoftDeleteQueue,
+  });
+
+  const nothingEligible = queue != null && queue.ready_to_purge.total === 0;
+
   function triggerPurge() {
     setPurging(true);
     runPurgeSoftDeleted()
       .then(() => {
         setPurging(false);
         queryClient.invalidateQueries({ queryKey: ["admin", "task-history"] });
+        queryClient.invalidateQueries({ queryKey: ["admin", "soft-delete-queue"] });
       })
       .catch(() => setPurging(false));
   }
 
   return (
     <div className="space-y-6">
+      {/* Soft-delete queue summary */}
+      <div className="rounded-lg border p-5 space-y-3">
+        <div>
+          <p className="text-sm font-medium">Soft-Delete Queue</p>
+          {queue && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Items deleted before{" "}
+              <span className="font-mono">{new Date(queue.cutoff).toLocaleDateString()}</span>
+              {" "}are eligible for purge (retention: {queue.retention_days} days).
+            </p>
+          )}
+        </div>
+
+        {queueLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
+
+        {queue && (
+          nothingEligible && queue.in_retention_window.total === 0 ? (
+            <p className="text-xs text-muted-foreground">No soft-deleted records found.</p>
+          ) : (
+            <div className="rounded-md border overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Type</th>
+                    <th className="px-3 py-2 text-right font-medium text-destructive">Ready to purge</th>
+                    <th className="px-3 py-2 text-right font-medium">In retention window</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(["drafts", "projects", "yarn", "looms"] as const).map((key) => (
+                    <tr key={key} className="border-t">
+                      <td className="px-3 py-2 capitalize">{key}</td>
+                      <td className={`px-3 py-2 text-right tabular-nums font-medium ${queue.ready_to_purge[key] > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {queue.ready_to_purge[key]}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {queue.in_retention_window[key]}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t bg-muted/40 font-medium">
+                    <td className="px-3 py-2">Total</td>
+                    <td className={`px-3 py-2 text-right tabular-nums ${queue.ready_to_purge.total > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                      {queue.ready_to_purge.total}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                      {queue.in_retention_window.total}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+      </div>
+
+      {/* Purge action */}
       <div className="rounded-lg border p-5 space-y-3">
         <div>
           <p className="text-sm font-medium">Purge Soft-Deleted Records</p>
@@ -958,12 +1093,17 @@ function MaintenanceTab() {
           <Button
             size="sm"
             variant="destructive"
-            disabled={purging}
+            disabled={purging || nothingEligible}
             onClick={triggerPurge}
+            title={nothingEligible ? "Nothing is eligible for purge yet" : undefined}
           >
             {purging ? "Queuing…" : "Run Purge Now"}
           </Button>
-          <p className="text-xs text-muted-foreground">Results appear in the Workers → Task History table.</p>
+          {nothingEligible ? (
+            <p className="text-xs text-muted-foreground">Nothing eligible for purge yet.</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Results appear in the Workers → Task History table.</p>
+          )}
         </div>
       </div>
     </div>

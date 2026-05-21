@@ -358,6 +358,35 @@ export const revokeTask = (taskId: string) =>
 export const runPurgeSoftDeleted = () =>
   api.post<{ status: string; task_id: string }>("/api/admin/purge-soft-deleted", {});
 
+export interface SoftDeleteBucket {
+  drafts: number;
+  projects: number;
+  yarn: number;
+  looms: number;
+  total: number;
+}
+
+export interface SoftDeleteQueue {
+  retention_days: number;
+  cutoff: string;
+  ready_to_purge: SoftDeleteBucket;
+  in_retention_window: SoftDeleteBucket;
+}
+
+export const getSoftDeleteQueue = () =>
+  api.get<SoftDeleteQueue>("/api/admin/soft-delete-queue");
+
+export interface DeletionQueueUser {
+  id: string;
+  display_name: string;
+  email: string;
+  deletion_state: string;
+  deletion_initiated_at: string | null;
+}
+
+export const getDeletionQueue = () =>
+  api.get<DeletionQueueUser[]>("/api/admin/deletion-queue");
+
 export interface ScheduledTask {
   name: string;
   display_name: string;
