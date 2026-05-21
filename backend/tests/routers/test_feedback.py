@@ -377,7 +377,7 @@ class TestAdminRetryDispatch:
 class TestDiscussionState:
     async def test_discussion_state_null_by_default(self, auth_client: AsyncClient):
         sub = await auth_client.post("/api/feedback", json=_feedback_payload())
-        assert sub.status_code == 200
+        assert sub.status_code == 201
         data = sub.json()
         assert "github_discussion_state" in data
         assert data["github_discussion_state"] is None
