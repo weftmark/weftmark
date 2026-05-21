@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { listProjects, PROJECT_TYPE_LABELS } from "@/api/projects";
 import { listDrafts } from "@/api/drafts";
 import { listLooms } from "@/api/looms";
@@ -9,7 +10,6 @@ import { listCollections } from "@/api/collections";
 import { getActivityHeatmap, type ActivityDay } from "@/api/users";
 import { AppIcons } from "@/lib/icons";
 
-const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const RANGE_OPTIONS = [
   { label: "1M", days: 30 },
   { label: "3M", days: 90 },
@@ -62,12 +62,14 @@ function HeatmapGrid({
   weeks,
   rangeEnd,
   dayByDate,
+  dowLabels,
   onCellEnter,
   onCellLeave,
 }: {
   weeks: Date[][];
   rangeEnd: Date;
   dayByDate: Map<string, ActivityDay>;
+  dowLabels: string[];
   onCellEnter: (e: React.MouseEvent, dateStr: string) => void;
   onCellLeave: () => void;
 }) {
@@ -94,7 +96,7 @@ function HeatmapGrid({
         {[0, 1, 2, 3, 4, 5, 6].map((dow) => (
           <div key={dow} className="flex items-center gap-[3px]">
             <span className="w-[18px] text-[9px] text-muted-foreground text-right shrink-0 leading-none">
-              {dow % 2 === 1 ? DOW_LABELS[dow] : ""}
+              {dow % 2 === 1 ? dowLabels[dow] : ""}
             </span>
             {weeks.map((week, wi) => {
               const day = week[dow];
@@ -118,20 +120,26 @@ function HeatmapGrid({
 }
 
 function ActivityHeatmap() {
+  const { t, i18n } = useTranslation();
+
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
 
-  // null = user hasn't made an explicit choice; effective values are derived from data
+  // Jan 1 2023 was a Sunday — generate locale-aware day abbreviations Sun–Sat
+  const dowLabels = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(i18n.language, { weekday: "short" });
+    return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2023, 0, 1 + i)));
+  }, [i18n.language]);
+
   const [selectedDays, setSelectedDays] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
   const [mode, setMode] = useState<"range" | "year" | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Base fetch: always 366-day window + metadata
   const { data: baseData } = useQuery({
     queryKey: ["activity-heatmap"],
     queryFn: () => getActivityHeatmap(),
@@ -140,7 +148,6 @@ function ActivityHeatmap() {
 
   const earliestDate = baseData?.earliest_activity_date ?? null;
 
-  // Derive effective mode — user choice wins; fall back to data-driven default
   const effectiveMode = useMemo((): "range" | "year" => {
     if (mode !== null) return mode;
     if (!earliestDate) return "range";
@@ -149,13 +156,11 @@ function ActivityHeatmap() {
       : "range";
   }, [mode, earliestDate, today]);
 
-  // Derive effective days — user choice wins; fall back to data-driven default
   const effectiveDays = useMemo(
     () => selectedDays ?? defaultDaysFromHistory(earliestDate),
     [selectedDays, earliestDate],
   );
 
-  // Year fetch: only when in year mode
   const { data: yearData } = useQuery({
     queryKey: ["activity-heatmap-year", selectedYear],
     queryFn: () => getActivityHeatmap({ year: selectedYear }),
@@ -174,7 +179,6 @@ function ActivityHeatmap() {
     return (today.getTime() - new Date(earliestDate + "T00:00:00Z").getTime()) / 86_400_000 >= 365;
   }, [effectiveMode, yearsWithActivity, earliestDate, today]);
 
-  // Grid bounds
   let rangeStart: Date;
   let rangeEnd: Date;
   if (effectiveMode === "year") {
@@ -203,12 +207,14 @@ function ActivityHeatmap() {
     setTooltip({ day, x: e.clientX, y: e.clientY });
   }
 
+  const stepsStr = t("dashboard.activity.steps", { count: totalSteps });
+  const daysStr = t("dashboard.activity.days", { count: activeDays });
+
   return (
     <div className="space-y-3">
-      {/* Selector row */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          {totalSteps.toLocaleString()} step{totalSteps !== 1 ? "s" : ""} across {activeDays} day{activeDays !== 1 ? "s" : ""}
+          {t("dashboard.activity.summary", { steps: stepsStr, days: daysStr })}
         </p>
         {hasMultipleYears ? (
           <select
@@ -243,16 +249,17 @@ function ActivityHeatmap() {
         weeks={weeks}
         rangeEnd={rangeEnd}
         dayByDate={dayByDate}
+        dowLabels={dowLabels}
         onCellEnter={handleCellEnter}
         onCellLeave={scheduleHide}
       />
 
       <div className="flex items-center gap-1.5 justify-end">
-        <span className="text-[9px] text-muted-foreground">Less</span>
+        <span className="text-[9px] text-muted-foreground">{t("dashboard.activity.legendLess")}</span>
         {[0, 2, 5, 10, 11].map((v) => (
           <div key={v} className={`w-[10px] h-[10px] rounded-[2px] ${intensityClass(v)}`} />
         ))}
-        <span className="text-[9px] text-muted-foreground">More</span>
+        <span className="text-[9px] text-muted-foreground">{t("dashboard.activity.legendMore")}</span>
       </div>
 
       {tooltip && (
@@ -263,7 +270,7 @@ function ActivityHeatmap() {
           onMouseLeave={scheduleHide}
         >
           <p className="text-xs font-medium text-muted-foreground">
-            {new Date(tooltip.day.date + "T12:00:00").toLocaleDateString("default", {
+            {new Date(tooltip.day.date + "T12:00:00").toLocaleDateString(i18n.language, {
               weekday: "short", year: "numeric", month: "short", day: "numeric",
             })}
           </p>
@@ -276,7 +283,9 @@ function ActivityHeatmap() {
                   onClick={() => setTooltip(null)}
                 >
                   <span className="truncate font-medium">{p.name}</span>
-                  <span className="shrink-0 text-muted-foreground tabular-nums">{p.step_count} step{p.step_count !== 1 ? "s" : ""}</span>
+                  <span className="shrink-0 text-muted-foreground tabular-nums">
+                    {t("dashboard.activity.steps", { count: p.step_count })}
+                  </span>
                 </Link>
               </li>
             ))}
@@ -288,6 +297,7 @@ function ActivityHeatmap() {
 }
 
 export function DashboardPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const { data: projects = [] } = useQuery({
@@ -317,23 +327,23 @@ export function DashboardPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
       <div>
-        <h1 className="text-xl font-semibold">Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Welcome back, {user?.display_name}.</p>
+        <h1 className="text-xl font-semibold">{t("dashboard.title")}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.welcome", { name: user?.display_name })}</p>
       </div>
 
       {/* Equipment */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Equipment</h2>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.equipment.heading")}</h2>
           <Link to="/looms" className="text-xs text-muted-foreground hover:text-foreground">
-            View all →
+            {t("dashboard.viewAll")}
           </Link>
         </div>
         {looms.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">No looms added yet.</p>
+            <p className="text-sm text-muted-foreground">{t("dashboard.equipment.empty")}</p>
             <Link to="/looms" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
-              Add your first loom →
+              {t("dashboard.equipment.addFirst")}
             </Link>
           </div>
         ) : (
@@ -362,7 +372,7 @@ export function DashboardPage() {
                 to="/looms"
                 className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
               >
-                <span className="text-xs text-muted-foreground">+{looms.length - 3} more</span>
+                <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: looms.length - 3 })}</span>
               </Link>
             )}
           </div>
@@ -372,13 +382,13 @@ export function DashboardPage() {
       {/* Collections */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Collections</h2>
-          <Link to="/collections" className="text-xs text-muted-foreground hover:text-foreground">View all →</Link>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.collectionSection.heading")}</h2>
+          <Link to="/collections" className="text-xs text-muted-foreground hover:text-foreground">{t("dashboard.viewAll")}</Link>
         </div>
         {collections.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">No collections yet.</p>
-            <Link to="/collections" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">Create a collection →</Link>
+            <p className="text-sm text-muted-foreground">{t("dashboard.collectionSection.empty")}</p>
+            <Link to="/collections" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">{t("dashboard.collectionSection.createFirst")}</Link>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-3">
@@ -388,14 +398,19 @@ export function DashboardPage() {
                   <AppIcons.collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{c.draft_count} drafts · {c.project_count} projects</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {t("dashboard.collectionSection.itemSummary", {
+                        drafts: t("dashboard.collectionSection.draftCount", { count: c.draft_count }),
+                        projects: t("dashboard.collectionSection.projectCount", { count: c.project_count }),
+                      })}
+                    </p>
                   </div>
                 </div>
               </Link>
             ))}
             {collections.length > 3 && (
               <Link to="/collections" className="rounded-lg border border-dashed p-4 flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors">
-                +{collections.length - 3} more
+                {t("dashboard.moreItems", { count: collections.length - 3 })}
               </Link>
             )}
           </div>
@@ -405,16 +420,16 @@ export function DashboardPage() {
       {/* Drafts */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Drafts</h2>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.drafts.heading")}</h2>
           <Link to="/drafts" className="text-xs text-muted-foreground hover:text-foreground">
-            View all →
+            {t("dashboard.viewAll")}
           </Link>
         </div>
         {drafts.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">No drafts uploaded yet.</p>
+            <p className="text-sm text-muted-foreground">{t("dashboard.drafts.empty")}</p>
             <Link to="/drafts" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
-              Upload a WIF file →
+              {t("dashboard.drafts.uploadFirst")}
             </Link>
           </div>
         ) : (
@@ -439,7 +454,7 @@ export function DashboardPage() {
                 to="/drafts"
                 className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
               >
-                <span className="text-xs text-muted-foreground">+{drafts.length - 3} more</span>
+                <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: drafts.length - 3 })}</span>
               </Link>
             )}
           </div>
@@ -449,9 +464,9 @@ export function DashboardPage() {
       {/* Projects */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Projects</h2>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.projects.heading")}</h2>
           <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
-            View all →
+            {t("dashboard.viewAll")}
           </Link>
         </div>
 
@@ -481,7 +496,7 @@ export function DashboardPage() {
                       {a.status === "active" && (
                         <div className="mt-2">
                           <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                            <span>Pick {Math.min(a.current_pick, a.total_picks)} of {a.total_picks}</span>
+                            <span>{t("dashboard.projects.pickProgress", { current: Math.min(a.current_pick, a.total_picks), total: a.total_picks })}</span>
                             <span>{pct}%</span>
                           </div>
                           <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
@@ -498,7 +513,7 @@ export function DashboardPage() {
                         className="flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
                       >
                         <AppIcons.projectActive className="h-3.5 w-3.5" />
-                        Continue Weaving
+                        {t("dashboard.projects.continueWeaving")}
                       </Link>
                     </div>
                   )}
@@ -519,10 +534,10 @@ export function DashboardPage() {
                 <AppIcons.planning className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{a.name}</p>
-                  <p className="text-xs text-muted-foreground">{a.total_picks} picks planned</p>
+                  <p className="text-xs text-muted-foreground">{t("dashboard.projects.picksPlanned", { count: a.total_picks })}</p>
                 </div>
                 <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                  Plan
+                  {t("dashboard.projects.planBadge")}
                 </span>
               </Link>
             ))}
@@ -531,12 +546,12 @@ export function DashboardPage() {
 
         {activeProjects.length === 0 && planningProjects.length === 0 && (
           <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">No active projects.</p>
+            <p className="text-sm text-muted-foreground">{t("dashboard.projects.empty")}</p>
             <Link
               to="/projects"
               className="mt-2 inline-block text-sm text-foreground underline underline-offset-2"
             >
-              Start or plan a project →
+              {t("dashboard.projects.startProject")}
             </Link>
           </div>
         )}
@@ -546,14 +561,14 @@ export function DashboardPage() {
             <AppIcons.projectActive className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div>
               <p className="text-2xl font-bold tabular-nums">{activeProjects.length + planningProjects.length}</p>
-              <p className="text-xs text-muted-foreground">Active</p>
+              <p className="text-xs text-muted-foreground">{t("dashboard.projects.activeStat")}</p>
             </div>
           </div>
           <div className="rounded-lg border p-4 flex items-center gap-3">
             <AppIcons.projectCompleted className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div>
               <p className="text-2xl font-bold tabular-nums">{completedCount}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
+              <p className="text-xs text-muted-foreground">{t("dashboard.projects.completedStat")}</p>
             </div>
           </div>
         </div>
@@ -561,7 +576,7 @@ export function DashboardPage() {
 
       {/* Activity heatmap */}
       <section>
-        <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Activity</h2>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.activity.heading")}</h2>
         <div className="rounded-lg border p-4">
           <ActivityHeatmap />
         </div>
@@ -570,23 +585,24 @@ export function DashboardPage() {
       {/* Storage */}
       {user && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">Storage</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.storage.heading")}</h2>
           <div className="rounded-lg border p-4">
             {(() => {
               const usedMB = user.storage_used_bytes / (1024 * 1024);
               const quotaMB = user.storage_quota_bytes / (1024 * 1024);
               const pct = Math.min(Math.round((user.storage_used_bytes / user.storage_quota_bytes) * 100), 100);
               const barColor = pct >= 90 ? "bg-red-500" : pct >= 75 ? "bg-amber-500" : "bg-primary";
+              const usedLabel = usedMB < 1 ? `${Math.round(usedMB * 1024)} KB` : `${usedMB.toFixed(1)} MB`;
               return (
                 <>
                   <div className="mb-2 flex justify-between text-sm">
-                    <span>{usedMB < 1 ? `${Math.round(usedMB * 1024)} KB` : `${usedMB.toFixed(1)} MB`} used</span>
-                    <span className="text-muted-foreground">{Math.round(quotaMB)} MB total</span>
+                    <span>{t("dashboard.storage.used", { amount: usedLabel })}</span>
+                    <span className="text-muted-foreground">{t("dashboard.storage.total", { total: Math.round(quotaMB) })}</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                     <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                   </div>
-                  <p className="mt-1.5 text-xs text-muted-foreground text-right">{pct}% used</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground text-right">{t("dashboard.storage.pct", { pct })}</p>
                 </>
               );
             })()}

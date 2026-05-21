@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useClerk } from "@clerk/clerk-react";
+import { useTranslation } from "react-i18next";
 import { AppIcons, type LucideIcon } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,38 +15,6 @@ interface NavItem {
   exact?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/home", icon: AppIcons.dashboard, exact: true },
-  { label: "Equipment", href: "/looms", icon: AppIcons.equipment },
-  { label: "Collections", href: "/collections", icon: AppIcons.collections },
-  { label: "Drafts", href: "/drafts", icon: AppIcons.drafts },
-  { label: "Projects", href: "/projects", icon: AppIcons.projects },
-];
-
-const SETTINGS_SECTIONS = [
-  { id: "appearance", label: "Appearance" },
-  { id: "preferences", label: "Preferences" },
-  { id: "privacy", label: "Privacy & data" },
-  { id: "terms", label: "Terms" },
-  { id: "account", label: "Account" },
-  { id: "feedback-history", label: "Feedback history" },
-];
-
-const ADMIN_SECTIONS = [
-  { id: "users", label: "Users" },
-  { id: "invites", label: "Invites" },
-  { id: "stats", label: "Stats" },
-  { id: "health", label: "Health" },
-  { id: "services", label: "Services" },
-  { id: "deps", label: "Dependencies" },
-  { id: "audit", label: "Audit log" },
-  { id: "feedback", label: "Feedback" },
-  { id: "credentials", label: "Credentials" },
-  { id: "slugs", label: "Share links" },
-  { id: "looms", label: "Loom database" },
-  { id: "superuser", label: "Superuser", superuserOnly: true },
-];
-
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -57,7 +26,50 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   const location = useLocation();
   const { user } = useAuth();
   const { signOut } = useClerk();
+  const { t } = useTranslation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+
+  const NAV_ITEMS: NavItem[] = [
+    { label: t("nav.dashboard"), href: "/home", icon: AppIcons.dashboard, exact: true },
+    { label: t("nav.equipment"), href: "/looms", icon: AppIcons.equipment },
+    { label: t("nav.collections"), href: "/collections", icon: AppIcons.collections },
+    { label: t("nav.drafts"), href: "/drafts", icon: AppIcons.drafts },
+    { label: t("nav.projects"), href: "/projects", icon: AppIcons.projects },
+  ];
+
+  const SETTINGS_SECTIONS = [
+    { id: "appearance", label: t("settingsSections.appearance") },
+    { id: "preferences", label: t("settingsSections.preferences") },
+    { id: "privacy", label: t("settingsSections.privacy") },
+    { id: "terms", label: t("settingsSections.terms") },
+    { id: "account", label: t("settingsSections.account") },
+    { id: "feedback-history", label: t("settingsSections.feedbackHistory") },
+  ];
+
+  const ADMIN_SECTIONS = [
+    { id: "users", label: t("adminSections.users") },
+    { id: "invites", label: t("adminSections.invites") },
+    { id: "stats", label: t("adminSections.stats") },
+    { id: "health", label: t("adminSections.health") },
+    { id: "services", label: t("adminSections.services") },
+    { id: "deps", label: t("adminSections.deps") },
+    { id: "audit", label: t("adminSections.audit") },
+    { id: "feedback", label: t("adminSections.feedback") },
+    { id: "credentials", label: t("adminSections.credentials") },
+    { id: "slugs", label: t("adminSections.slugs") },
+    { id: "looms", label: t("adminSections.looms") },
+  ];
+
+  const SUPERUSER_SECTIONS = [
+    { id: "eula", label: t("superuserSections.eula") },
+    { id: "storage", label: t("superuserSections.storage") },
+    { id: "cve", label: t("superuserSections.cve") },
+    { id: "workers", label: t("superuserSections.workers") },
+    { id: "deletion", label: t("superuserSections.deletion") },
+    { id: "reconcile", label: t("superuserSections.reconcile") },
+    { id: "maintenance", label: t("superuserSections.maintenance") },
+    { id: "schedule", label: t("superuserSections.schedule") },
+  ];
 
   function isActive(href: string, exact = false) {
     if (exact) return location.pathname === href;
@@ -161,10 +173,10 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
             to="/settings/appearance"
             onClick={onClose}
             className={navCls("/settings")}
-            title={desktopCollapsed ? "Settings" : undefined}
+            title={desktopCollapsed ? t("nav.settings") : undefined}
           >
             <AppIcons.settings className={iconCls("/settings")} strokeWidth={1.75} />
-            <span className={desktopCollapsed ? "lg:hidden" : ""}>Settings</span>
+            <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.settings")}</span>
           </Link>
 
           {isActive("/settings") && !desktopCollapsed && (
@@ -195,17 +207,52 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
               to="/admin/users"
               onClick={onClose}
               className={navCls("/admin")}
-              title={desktopCollapsed ? "Admin" : undefined}
+              title={desktopCollapsed ? t("nav.admin") : undefined}
             >
               <AppIcons.admin className={iconCls("/admin")} strokeWidth={1.75} />
-              <span className={desktopCollapsed ? "lg:hidden" : ""}>Admin</span>
+              <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.admin")}</span>
             </Link>
           )}
 
           {user?.is_admin && isActive("/admin") && !desktopCollapsed && (
             <div className="ml-3 border-l border-border pl-2 space-y-0.5">
-              {ADMIN_SECTIONS.filter((s) => !s.superuserOnly || user?.is_superuser).map(({ id, label }) => {
+              {ADMIN_SECTIONS.map(({ id, label }) => {
                 const href = `/admin/${id}`;
+                const active = location.pathname === href;
+                return (
+                  <Link
+                    key={id}
+                    to={href}
+                    onClick={onClose}
+                    className={`block rounded-md px-2 py-1.5 text-xs transition-colors ${
+                      active
+                        ? "bg-accent/20 text-accent font-medium"
+                        : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {user?.is_superuser && (
+            <Link
+              to="/superuser/eula"
+              onClick={onClose}
+              className={navCls("/superuser")}
+              title={desktopCollapsed ? t("nav.superuser") : undefined}
+            >
+              <AppIcons.superuser className={iconCls("/superuser")} strokeWidth={1.75} />
+              <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.superuser")}</span>
+            </Link>
+          )}
+
+          {user?.is_superuser && isActive("/superuser") && !desktopCollapsed && (
+            <div className="ml-3 border-l border-border pl-2 space-y-0.5">
+              {SUPERUSER_SECTIONS.map(({ id, label }) => {
+                const href = `/superuser/${id}`;
                 const active = location.pathname === href;
                 return (
                   <Link
@@ -228,29 +275,29 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           <button
             onClick={() => setFeedbackOpen(true)}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
-            title={desktopCollapsed ? "Send Feedback" : undefined}
+            title={desktopCollapsed ? t("nav.sendFeedback") : undefined}
           >
             <AppIcons.feedback className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-            <span className={desktopCollapsed ? "lg:hidden" : ""}>Send Feedback</span>
+            <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.sendFeedback")}</span>
           </button>
 
           <Link
             to="/costs"
             onClick={onClose}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
-            title={desktopCollapsed ? "Support weftmark" : undefined}
+            title={desktopCollapsed ? t("nav.supportWeftmark") : undefined}
           >
             <AppIcons.support className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-            <span className={desktopCollapsed ? "lg:hidden" : ""}>Support weftmark</span>
+            <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.supportWeftmark")}</span>
           </Link>
 
           <button
             onClick={() => signOut()}
             className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-subdued transition-colors hover:bg-muted hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
-            title={desktopCollapsed ? "Sign out" : undefined}
+            title={desktopCollapsed ? t("nav.signOut") : undefined}
           >
             <AppIcons.logout className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-            <span className={desktopCollapsed ? "lg:hidden" : ""}>Sign out</span>
+            <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.signOut")}</span>
           </button>
         </div>
 

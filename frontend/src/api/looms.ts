@@ -9,16 +9,18 @@ export type LoomType =
   | "frame_loom"
   | "other";
 
+import i18next from "i18next";
+
 export const LOOM_TYPE_LABELS: Record<LoomType, string> = {
-  floor_loom: "Floor Loom — treadle tracking",
-  table_loom: "Table Loom — lift tracking",
-  rigid_heddle: "Rigid Heddle",
-  inkle: "Inkle",
-  dobby_floor_loom: "Dobby Floor Loom",
-  tapestry_loom: "Tapestry Loom — project tracking not currently supported",
-  rug_loom: "Rug Loom — project tracking not currently supported",
-  frame_loom: "Frame Loom — project tracking not currently supported",
-  other: "Other",
+  get floor_loom() { return i18next.t("loomTypes.floor_loom"); },
+  get table_loom() { return i18next.t("loomTypes.table_loom"); },
+  get rigid_heddle() { return i18next.t("loomTypes.rigid_heddle"); },
+  get inkle() { return i18next.t("loomTypes.inkle"); },
+  get dobby_floor_loom() { return i18next.t("loomTypes.dobby_floor_loom"); },
+  get tapestry_loom() { return i18next.t("loomTypes.tapestry_loom"); },
+  get rug_loom() { return i18next.t("loomTypes.rug_loom"); },
+  get frame_loom() { return i18next.t("loomTypes.frame_loom"); },
+  get other() { return i18next.t("loomTypes.other"); },
 };
 
 /** Loom types that support project tracking (treadle or lift). */

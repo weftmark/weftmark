@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { AppIcons } from "@/lib/icons";
 import { usePresentMode } from "@/hooks/usePresentMode";
@@ -82,6 +83,7 @@ function fmtDuration(ms: number): string {
 }
 
 function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
@@ -97,25 +99,25 @@ function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
 
   return (
     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-      <dt className="text-muted-foreground">Total woven picks</dt>
+      <dt className="text-muted-foreground">{t("projectDetailPage.totalWovenPicks")}</dt>
       <dd>{metrics.total_worked_picks}</dd>
-      <dt className="text-muted-foreground">Total advances</dt>
+      <dt className="text-muted-foreground">{t("projectDetailPage.totalAdvances")}</dt>
       <dd>{metrics.total_advance_steps}</dd>
-      <dt className="text-muted-foreground">Reverses</dt>
+      <dt className="text-muted-foreground">{t("projectDetailPage.reverses")}</dt>
       <dd>{metrics.total_reverse_steps}</dd>
       {avgSec != null && (
         <>
-          <dt className="text-muted-foreground">Avg pick time</dt>
+          <dt className="text-muted-foreground">{t("projectDetailPage.avgPickTime")}</dt>
           <dd>{avgSec}s</dd>
         </>
       )}
-      <dt className="text-muted-foreground">Sessions</dt>
+      <dt className="text-muted-foreground">{t("projectDetailPage.sessions")}</dt>
       <dd>{metrics.total_sessions}</dd>
-      <dt className="text-muted-foreground">Total weaving time</dt>
+      <dt className="text-muted-foreground">{t("projectDetailPage.totalWeavingTime")}</dt>
       <dd>{fmtDuration(metrics.total_session_time_ms)}</dd>
       {metrics.current_session_started_at && (
         <>
-          <dt className="text-muted-foreground">Current session</dt>
+          <dt className="text-muted-foreground">{t("projectDetailPage.currentSession")}</dt>
           <dd className="text-accent font-medium">{fmtDuration(elapsed)}</dd>
         </>
       )}
@@ -173,6 +175,7 @@ function PickDisplay({
   showWeftColor: boolean;
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   const count = Math.max(totalCount, 1);
   const weftHex = pick.color ?? null;
   // Scale number size to fill cell: larger font for fewer boxes, smaller for many.
@@ -249,7 +252,7 @@ function PickDisplay({
             className="h-6 w-full shrink-0 rounded-md flex items-center justify-center text-xs font-semibold uppercase tracking-wider"
             style={{ backgroundColor: weftHex, color: contrastColor(weftHex) }}
           >
-            Weft Color
+            {t("projectDetailPage.weftColor")}
           </div>
         )}
       </div>
@@ -300,6 +303,7 @@ function WeavingPatternView({
   picks: PickRow[];
   maxActive: number;
 }) {
+  const { t } = useTranslation();
   const containerH = useAdaptivePatternHeight();
   const [drawdownData, setDrawdownData] = useState<DrawdownPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -390,7 +394,7 @@ function WeavingPatternView({
         ) : (
           <>
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Loading pattern…</span>
+            <span className="text-xs text-muted-foreground">{t("projectDetailPage.loadingPattern")}</span>
           </>
         )}
       </div>
@@ -492,6 +496,7 @@ function AbandonedDrawdownView({
   currentPick: number;
   totalPicks: number;
 }) {
+  const { t } = useTranslation();
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
   const objectUrlRef = useRef<string | null>(null);
@@ -525,7 +530,7 @@ function AbandonedDrawdownView({
 
   if (loadError) return (
     <div className="flex items-center justify-center rounded-lg border bg-muted text-muted-foreground text-sm p-6">
-      Pattern preview unavailable for this design.
+      {t("projectDetailPage.patternPreviewUnavailable")}
     </div>
   );
   if (!imgSrc) return null;
@@ -585,6 +590,7 @@ function StepControls({
   onJump: (pick: number) => void;
   stepping: boolean;
 }) {
+  const { t } = useTranslation();
   const atStart = currentPick <= 1;
   const pastEnd = currentPick > total;
   const disabled = stepping;
@@ -615,7 +621,7 @@ function StepControls({
         <p className="text-5xl font-bold tabular-nums">
           {Math.min(currentPick, total)}
         </p>
-        <p className="text-sm text-muted-foreground">of {total}</p>
+        <p className="text-sm text-muted-foreground">{t("projectDetailPage.ofTotal", { total })}</p>
       </div>
 
       <button
@@ -654,6 +660,7 @@ function JumpToPick({
   onJump: (pick: number) => void;
   disabled: boolean;
 }) {
+  const { t } = useTranslation();
   const [value, setValue] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -667,7 +674,7 @@ function JumpToPick({
 
   return (
     <form onSubmit={handleSubmit} className="flex items-center justify-center gap-3">
-      <label className="text-sm text-muted-foreground whitespace-nowrap">Go to pick</label>
+      <label className="text-sm text-muted-foreground whitespace-nowrap">{t("projectDetailPage.goToPick")}</label>
       <input
         type="number"
         min={1}
@@ -687,7 +694,7 @@ function JumpToPick({
             : "border-input bg-background text-muted-foreground opacity-40"
         }`}
       >
-        Go
+        {t("projectDetailPage.go")}
       </button>
     </form>
   );
@@ -698,12 +705,13 @@ function JumpToPick({
 // ---------------------------------------------------------------------------
 
 function ProgressBar({ current, total }: { current: number; total: number }) {
+  const { t } = useTranslation();
   const pct = total > 0 ? Math.round((Math.min(current - 1, total) / total) * 100) : 0;
   return (
     <div>
       <div className="mb-1 flex justify-between text-sm text-muted-foreground">
-        <span>{pct}%<span className="hidden sm:inline"> complete</span></span>
-        <span>{Math.max(0, total - current + 1)} picks<span className="hidden sm:inline"> remaining</span></span>
+        <span>{pct}%<span className="hidden sm:inline"> {t("projectDetailPage.complete")}</span></span>
+        <span>{Math.max(0, total - current + 1)} {t("projectDetailPage.picks")}<span className="hidden sm:inline"> {t("projectDetailPage.remaining")}</span></span>
       </div>
       <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
         <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${pct}%` }} />
@@ -729,6 +737,7 @@ function PhotoGrid({
   onDeleted: (id: string) => void;
   readOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -741,7 +750,7 @@ function PhotoGrid({
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        if (photos.length >= 10) { setError("Maximum 10 photos reached."); break; }
+        if (photos.length >= 10) { setError(t("projectDetailPage.maxPhotos")); break; }
         const photo = await uploadProjectPhoto(projectId, file);
         onUploaded(photo);
       }
@@ -769,7 +778,7 @@ function PhotoGrid({
             disabled={uploading}
             className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
           >
-            {uploading ? "Uploading…" : "+ Add photo"}
+            {uploading ? t("projectDetailPage.uploading") : t("projectDetailPage.addPhoto")}
           </button>
         )}
         <input
@@ -784,7 +793,7 @@ function PhotoGrid({
       {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
       {photos.length === 0 ? (
         readOnly ? (
-          <p className="text-sm text-muted-foreground/60 italic">No photos.</p>
+          <p className="text-sm text-muted-foreground/60 italic">{t("projectDetailPage.noPhotos")}</p>
         ) : (
           <button
             type="button"
@@ -792,7 +801,7 @@ function PhotoGrid({
             disabled={uploading}
             className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50"
           >
-            Add photos to document your work
+            {t("projectDetailPage.addPhotosPrompt")}
           </button>
         )
       ) : (
@@ -844,17 +853,17 @@ function PhotoGrid({
             onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 text-white/70 hover:text-white text-sm"
           >
-            Close ✕
+            {t("projectDetailPage.closePhoto")}
           </button>
         </div>
       )}
       {confirmDeleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-background rounded-lg border p-6 max-w-sm w-full space-y-4">
-            <p className="text-sm">Delete this photo? This cannot be undone.</p>
+            <p className="text-sm">{t("projectDetailPage.deletePhotoConfirm")}</p>
             <div className="flex gap-2">
-              <Button size="sm" variant="destructive" onClick={() => handleDelete(confirmDeleteId)}>Delete</Button>
-              <Button size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+              <Button size="sm" variant="destructive" onClick={() => handleDelete(confirmDeleteId)}>{t("projectDetailPage.delete")}</Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirmDeleteId(null)}>{t("common.cancel")}</Button>
             </div>
           </div>
         </div>
@@ -872,6 +881,7 @@ function CompletedSummary({
   siblings: ProjectSummary[];
   onPhotosChange: (photos: ProjectPhoto[]) => void;
 }) {
+  const { t } = useTranslation();
   const { user } = useAuthContext();
   const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [photos, setPhotos] = useState<ProjectPhoto[]>(project.photos);
@@ -899,32 +909,32 @@ function CompletedSummary({
     <div className="mx-auto max-w-2xl px-6 py-6 space-y-6">
       {/* Metrics */}
       <div className="rounded-lg border p-5 space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Summary</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectDetailPage.summarySection")}</h2>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
           {completedDate && (
-            <><dt className="text-muted-foreground">Completed</dt><dd>{completedDate}</dd></>
+            <><dt className="text-muted-foreground">{t("projectDetailPage.completedOn")}</dt><dd>{completedDate}</dd></>
           )}
-          <dt className="text-muted-foreground">Picks woven</dt>
-          <dd>{project.total_picks} picks ({pct}%)</dd>
+          <dt className="text-muted-foreground">{t("projectDetailPage.picksWoven")}</dt>
+          <dd>{t("projectDetailPage.picksWovenValue", { count: project.total_picks, pct })}</dd>
           {project.num_items > 1 && (
-            <><dt className="text-muted-foreground">Items</dt><dd>{project.num_items}</dd></>
+            <><dt className="text-muted-foreground">{t("projectDetailPage.items")}</dt><dd>{project.num_items}</dd></>
           )}
           {project.finished_length_per_item && (
-            <><dt className="text-muted-foreground">Length / item</dt>
+            <><dt className="text-muted-foreground">{t("projectDetailPage.lengthPerItem")}</dt>
             <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd></>
           )}
           {project.warp_waste_allowance && (
-            <><dt className="text-muted-foreground">Warp waste</dt>
+            <><dt className="text-muted-foreground">{t("projectDetailPage.warpWaste")}</dt>
             <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
           )}
-          <dt className="text-muted-foreground">Type</dt>
+          <dt className="text-muted-foreground">{t("projectDetailPage.type")}</dt>
           <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
         </dl>
       </div>
 
       {/* Design preview */}
       <div>
-        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Design Preview</h2>
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("projectDetailPage.designPreview")}</h2>
         <div className="overflow-auto rounded-lg border bg-card p-2">
           <AuthedImage
             src={
@@ -945,7 +955,7 @@ function CompletedSummary({
           to={`/drafts/${project.draft_id}`}
           className="rounded-lg border p-4 hover:border-ring transition-colors block"
         >
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Draft</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t("projectDetailPage.draftLink")}</p>
           <p className="font-medium text-sm">{project.draft_name}</p>
         </Link>
         {project.loom_id && project.loom_name && (
@@ -953,7 +963,7 @@ function CompletedSummary({
             to={`/looms/${project.loom_id}`}
             className="rounded-lg border p-4 hover:border-ring transition-colors block"
           >
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Loom</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t("projectDetailPage.loomLink")}</p>
             <p className="font-medium text-sm">{project.loom_name}</p>
           </Link>
         )}
@@ -962,7 +972,7 @@ function CompletedSummary({
       {/* Sibling projects */}
       {siblings.length > 0 && (
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">Other projects on this draft</h2>
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">{t("projectDetailPage.otherProjects")}</h2>
           <div className="space-y-1">
             {siblings.map((s) => {
               const isPlanning = s.status === "active" && !s.loom_id;
@@ -1003,6 +1013,7 @@ function CompletedSummary({
 // ---------------------------------------------------------------------------
 
 export function ProjectDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -1340,12 +1351,12 @@ export function ProjectDetailPage() {
 
   if (isLoading) return (
     <div className="flex min-h-screen items-center justify-center">
-      <p className="text-sm text-muted-foreground">Loading…</p>
+      <p className="text-sm text-muted-foreground">{t("projectDetailPage.loading")}</p>
     </div>
   );
   if (error || !project) return (
     <div className="flex min-h-screen items-center justify-center">
-      <p className="text-sm text-destructive">Project not found.</p>
+      <p className="text-sm text-destructive">{t("projectDetailPage.notFound")}</p>
     </div>
   );
 
@@ -1387,7 +1398,7 @@ export function ProjectDetailPage() {
     : project.status === "active"
       ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
       : "bg-muted text-muted-foreground";
-  const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
+  const badgeLabel = isPlanning ? t("projectDetailPage.plan") : PROJECT_STATUS_LABELS[project.status];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -1399,13 +1410,13 @@ export function ProjectDetailPage() {
           <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
             {project.loom_id && (
               <>
-                <Link to="/looms" className="text-muted-foreground hover:text-foreground">Equipment</Link>
+                <Link to="/looms" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.equipment")}</Link>
                 <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               </>
             )}
-            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
+            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.drafts")}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            <Link to="/projects" className="text-muted-foreground hover:text-foreground">Projects</Link>
+            <Link to="/projects" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.projects")}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <Link to={`/projects/${project.id}`} className="text-muted-foreground hover:text-foreground truncate max-w-[12rem]">{project.name}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1450,7 +1461,7 @@ export function ProjectDetailPage() {
             <button
               onClick={() => { setNameInput(project.name); setEditingName(true); }}
               className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text truncate"
-              title="Click to rename"
+              title={t("projectDetailPage.clickToRename")}
             >
               {project.name}
             </button>
@@ -1461,23 +1472,23 @@ export function ProjectDetailPage() {
           <button
             onClick={() => setShowDesignPreview(true)}
             className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
-            title="View WIF design preview"
+            title={t("projectDetailPage.viewDesignTitle")}
           >
-            View design
+            {t("projectDetailPage.viewDesign")}
           </button>
           <Link
             to={`/projects/${project.id}/warping-plan`}
             className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hidden sm:inline-flex items-center gap-1"
-            title="View printable weave plan"
+            title={t("projectDetailPage.weavePlanTitle")}
           >
-            Weave Plan
+            {t("projectDetailPage.weavePlan")}
           </Link>
           {!isReadOnly && (
             <button
               onClick={() => setShareModalOpen(true)}
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="Share project"
-              aria-label="Share project"
+              title={t("projectDetailPage.shareProject")}
+              aria-label={t("projectDetailPage.shareProject")}
             >
               <AppIcons.share className="h-4 w-4" />
             </button>
@@ -1486,8 +1497,8 @@ export function ProjectDetailPage() {
             <button
               onClick={() => setSettingsOpen(true)}
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="View settings"
-              aria-label="Open view settings"
+              title={t("projectDetailPage.viewSettings")}
+              aria-label={t("projectDetailPage.viewSettings")}
             >
               <AppIcons.settings className="h-4 w-4" />
             </button>
@@ -1499,18 +1510,18 @@ export function ProjectDetailPage() {
             <button
               onClick={() => setShareModalOpen(true)}
               className="rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
-              title="Project is shared — click to manage"
+              title={t("projectDetailPage.projectSharedManage")}
             >
               <AppIcons.share className="h-3 w-3" />
-              Shared
+              {t("projectDetailPage.shared")}
             </button>
           )}
           {presentModeSupported && (
             <button
               onClick={togglePresentMode}
               className="ml-3 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title={isPresent ? "Exit present mode" : "Present mode — fullscreen + keep screen on"}
-              aria-label={isPresent ? "Exit present mode" : "Enter present mode"}
+              title={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
+              aria-label={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
             >
               {isPresent
                 ? <AppIcons.exitPresentMode className="h-4 w-4" />
@@ -1538,8 +1549,8 @@ export function ProjectDetailPage() {
           <div className="mx-auto max-w-2xl px-8 pt-6">
             <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 text-sm overflow-hidden">
               <div className="px-4 py-3">
-                <p className="font-medium text-blue-900 dark:text-blue-200">Planning mode — design preview only</p>
-                <p className="mt-0.5 text-xs text-blue-800 dark:text-blue-300">Assign a loom to start tracking picks.</p>
+                <p className="font-medium text-blue-900 dark:text-blue-200">{t("projectDetailPage.planningMode")}</p>
+                <p className="mt-0.5 text-xs text-blue-800 dark:text-blue-300">{t("projectDetailPage.assignLoomToStart")}</p>
               </div>
               <div className="border-t border-blue-200 dark:border-blue-800 px-3 pb-3 pt-2">
                 <button
@@ -1547,7 +1558,7 @@ export function ProjectDetailPage() {
                   onClick={() => setShowAssignLoom(true)}
                   className="w-full rounded-md border border-dashed border-blue-300 dark:border-blue-700 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-300 transition-colors hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:text-blue-900 dark:hover:text-blue-200"
                 >
-                  Assign to loom…
+                  {t("projectDetailPage.assignToLoom")}
                 </button>
               </div>
             </div>
@@ -1558,10 +1569,9 @@ export function ProjectDetailPage() {
         {isAbandoned && (
           <div className="mx-auto max-w-2xl px-8 pt-6">
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm">
-              <p className="font-medium text-copper-on-subtle">This project was not completed</p>
+              <p className="font-medium text-copper-on-subtle">{t("projectDetailPage.notCompleted")}</p>
               <p className="mt-0.5 text-xs text-copper-on-subtle">
-                Abandoned at pick {project.current_pick} of {project.total_picks}
-                {" "}({Math.round((project.current_pick - 1) / project.total_picks * 100)}% woven)
+                {t("projectDetailPage.abandonedAt", { current: project.current_pick, total: project.total_picks, pct: Math.round((project.current_pick - 1) / project.total_picks * 100) })}
                 {project.abandoned_at && ` · ${new Date(project.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
               </p>
             </div>
@@ -1579,7 +1589,7 @@ export function ProjectDetailPage() {
                       key={i}
                       onClick={() => isActiveTracking && handleJumpItem(i + 1)}
                       disabled={!isActiveTracking || actionLoading}
-                      title={`Jump to item ${i + 1}`}
+                      title={t("projectDetailPage.jumpToItem", { n: i + 1 })}
                       className={`h-2.5 rounded-full transition-all ${
                         i + 1 === project.current_item
                           ? "w-6 bg-primary"
@@ -1591,7 +1601,7 @@ export function ProjectDetailPage() {
                   ))}
                 </div>
                 <span className="text-xs text-muted-foreground font-medium">
-                  Item {project.current_item} of {project.num_items}
+                  {t("projectDetailPage.itemNofM", { current: project.current_item, total: project.num_items })}
                 </span>
               </div>
             )}
@@ -1603,14 +1613,14 @@ export function ProjectDetailPage() {
         {!isCompleted && showPickDisplay && <div className="w-full px-8 pt-4">
           {isAtItemEnd ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-lg font-medium">Item {project.current_item} complete!</p>
+              <p className="text-lg font-medium">{t("projectDetailPage.itemComplete", { n: project.current_item })}</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {project.total_picks} picks done. Ready to start item {project.current_item + 1} of {project.num_items}.
+                {t("projectDetailPage.picksDoneReadyNext", { picks: project.total_picks, next: project.current_item + 1, total: project.num_items })}
               </p>
               {isActiveTracking && (
                 <div className="mt-6">
                   <Button variant="success" onClick={handleAdvanceItem} disabled={actionLoading}>
-                    {actionLoading ? "…" : `Start item ${project.current_item + 1}`}
+                    {actionLoading ? "…" : t("projectDetailPage.startItem", { n: project.current_item + 1 })}
                   </Button>
                 </div>
               )}
@@ -1618,20 +1628,20 @@ export function ProjectDetailPage() {
           ) : isFinished ? (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
               <p className="text-lg font-medium">
-                {isMultiItem ? `All ${project.num_items} items complete!` : `All ${project.total_picks} picks complete!`}
+                {isMultiItem ? t("projectDetailPage.allItemsComplete", { n: project.num_items }) : t("projectDetailPage.allPicksComplete", { n: project.total_picks })}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Mark the project as completed when you're done.
+                {t("projectDetailPage.markAsDone")}
               </p>
               {isActiveTracking && (
                 <div className="mt-6">
                   {!confirmComplete ? (
-                    <Button variant="success" onClick={() => setConfirmComplete(true)}>Mark complete</Button>
+                    <Button variant="success" onClick={() => setConfirmComplete(true)}>{t("projectDetailPage.markComplete")}</Button>
                   ) : (
                     <div className="flex items-center justify-center gap-2">
-                      <span className="text-sm">Mark this project as completed?</span>
-                      <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
-                      <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
+                      <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
+                      <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+                      <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
                     </div>
                   )}
                 </div>
@@ -1644,7 +1654,7 @@ export function ProjectDetailPage() {
                 <div className="hidden md:block">
                   {currentPickIndex > 0 ? (
                     <div>
-                      <p className="text-xs text-muted-foreground text-center mb-1.5">← Pick {picksData.picks[currentPickIndex - 1].pick}</p>
+                      <p className="text-xs text-muted-foreground text-center mb-1.5">{t("projectDetailPage.prevPickLabel", { n: picksData.picks[currentPickIndex - 1].pick })}</p>
                       <PickDisplay
                         pick={picksData.picks[currentPickIndex - 1]}
                         totalCount={displayCount}
@@ -1668,7 +1678,7 @@ export function ProjectDetailPage() {
                 <div className="hidden md:block">
                   {currentPickIndex < picksData.picks.length - 1 ? (
                     <div>
-                      <p className="text-xs text-muted-foreground text-center mb-1.5">Pick {picksData.picks[currentPickIndex + 1].pick} →</p>
+                      <p className="text-xs text-muted-foreground text-center mb-1.5">{t("projectDetailPage.nextPickLabel", { n: picksData.picks[currentPickIndex + 1].pick })}</p>
                       <PickDisplay
                         pick={picksData.picks[currentPickIndex + 1]}
                         totalCount={displayCount}
@@ -1692,7 +1702,7 @@ export function ProjectDetailPage() {
             )
           ) : (
             <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-sm text-muted-foreground">Pick data loading…</p>
+              <p className="text-sm text-muted-foreground">{t("projectDetailPage.pickDataLoading")}</p>
             </div>
           )}
         </div>}
@@ -1753,7 +1763,7 @@ export function ProjectDetailPage() {
 
           {!isReadOnly && (isActiveTracking || isPlanning) && (
             <p className="text-center text-sm text-muted-foreground">
-              ← → arrow keys or spacebar to navigate picks
+              {t("projectDetailPage.arrowKeysHint")}
             </p>
           )}
         </div>
@@ -1771,7 +1781,7 @@ export function ProjectDetailPage() {
           className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
           aria-expanded={panelOpen}
         >
-          Details &amp; settings
+          {t("projectDetailPage.detailsSettings")}
           <AppIcons.chevronDown
             className={`h-4 w-4 transition-transform duration-200 ${panelOpen ? "" : "-rotate-90"}`}
           />
@@ -1780,7 +1790,7 @@ export function ProjectDetailPage() {
           <div className="overflow-y-auto max-h-[55dvh] border-t border-border/50">
             <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0">
           {(!isCompleted || isReadOnly) && (
-            <CollapsibleSection title={`Photos (${project.photos.length}/10)`} defaultOpen={isAbandoned}>
+            <CollapsibleSection title={t("projectDetailPage.photosSection", { count: project.photos.length })} defaultOpen={isAbandoned}>
               <PhotoGrid
                 projectId={project.id}
                 photos={project.photos}
@@ -1800,17 +1810,17 @@ export function ProjectDetailPage() {
           )}
 
           {metrics && (
-            <CollapsibleSection title="Session metrics">
+            <CollapsibleSection title={t("projectDetailPage.sessionMetrics")}>
               <SessionMetricsPanel metrics={metrics} />
             </CollapsibleSection>
           )}
 
-          <CollapsibleSection title="Notes" defaultOpen={!!project.notes}>
+          <CollapsibleSection title={t("projectDetailPage.notes")} defaultOpen={!!project.notes}>
             {isReadOnly ? (
               project.notes ? (
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">{project.notes}</p>
               ) : (
-                <p className="text-sm text-muted-foreground/60 italic">No notes.</p>
+                <p className="text-sm text-muted-foreground/60 italic">{t("projectDetailPage.noNotes")}</p>
               )
             ) : editingNotes ? (
               <textarea
@@ -1836,51 +1846,51 @@ export function ProjectDetailPage() {
               <button
                 onClick={() => { setNotesInput(project.notes ?? ""); setEditingNotes(true); }}
                 className="w-full text-left text-sm"
-                title="Click to edit notes"
+                title={t("projectDetailPage.clickToEditNotes")}
               >
                 {project.notes ? (
                   <p className="whitespace-pre-wrap text-muted-foreground">{project.notes}</p>
                 ) : (
-                  <p className="text-muted-foreground/60 italic">Add notes...</p>
+                  <p className="text-muted-foreground/60 italic">{t("projectDetailPage.addNotes")}</p>
                 )}
               </button>
             )}
           </CollapsibleSection>
 
-          <CollapsibleSection title="Details">
+          <CollapsibleSection title={t("projectDetailPage.details")}>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">Type</dt>
+              <dt className="text-muted-foreground">{t("projectDetailPage.type")}</dt>
               <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
               {project.loom_name && (
-                <><dt className="text-muted-foreground">Loom</dt><dd>{project.loom_name}</dd></>
+                <><dt className="text-muted-foreground">{t("projectDetailPage.loom")}</dt><dd>{project.loom_name}</dd></>
               )}
               {project.draft_metadata_overrides?.num_treadles && (
-                <><dt className="text-muted-foreground">Treadle count</dt>
+                <><dt className="text-muted-foreground">{t("projectDetailPage.treadleCount")}</dt>
                 <dd className="flex items-center gap-1.5">
                   {project.draft_num_treadles}
-                  <span className="text-xs text-muted-foreground">(overridden from {project.draft_metadata_overrides.num_treadles.original})</span>
+                  <span className="text-xs text-muted-foreground">{t("projectDetailPage.overriddenFrom", { original: project.draft_metadata_overrides.num_treadles.original })}</span>
                 </dd></>
               )}
               {project.draft_metadata_overrides?.num_shafts && (
-                <><dt className="text-muted-foreground">Shaft count</dt>
+                <><dt className="text-muted-foreground">{t("projectDetailPage.shaftCount")}</dt>
                 <dd className="flex items-center gap-1.5">
                   {project.draft_num_shafts}
-                  <span className="text-xs text-muted-foreground">(overridden from {project.draft_metadata_overrides.num_shafts.original})</span>
+                  <span className="text-xs text-muted-foreground">{t("projectDetailPage.overriddenFrom", { original: project.draft_metadata_overrides.num_shafts.original })}</span>
                 </dd></>
               )}
               {project.num_items > 1 && (
-                <><dt className="text-muted-foreground">Items</dt><dd>{project.num_items}</dd></>
+                <><dt className="text-muted-foreground">{t("projectDetailPage.items")}</dt><dd>{project.num_items}</dd></>
               )}
               {project.finished_length_per_item && (
-                <><dt className="text-muted-foreground">Length / item</dt>
+                <><dt className="text-muted-foreground">{t("projectDetailPage.lengthPerItem")}</dt>
                 <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd></>
               )}
               {project.warp_waste_allowance && (
-                <><dt className="text-muted-foreground">Warp waste</dt>
+                <><dt className="text-muted-foreground">{t("projectDetailPage.warpWaste")}</dt>
                 <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
               )}
               {project.completed_at && (
-                <><dt className="text-muted-foreground">Completed</dt>
+                <><dt className="text-muted-foreground">{t("projectDetailPage.completedOn")}</dt>
                 <dd>{new Date(project.completed_at).toLocaleDateString()}</dd></>
               )}
             </dl>
@@ -1888,32 +1898,32 @@ export function ProjectDetailPage() {
 
           {/* Active tracking: complete / abandon */}
           {!isReadOnly && isActiveTracking && (
-            <CollapsibleSection title="Actions">
+            <CollapsibleSection title={t("projectDetailPage.actions")}>
               <div className="flex flex-wrap gap-2">
                 {!confirmComplete && !confirmAbandon && (
                   <>
                     {isFinished && (
                       <Button variant="success" size="sm" onClick={() => setConfirmComplete(true)}>
-                        Mark complete
+                        {t("projectDetailPage.markComplete")}
                       </Button>
                     )}
                     <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
-                      Abandon
+                      {t("projectDetailPage.abandon")}
                     </Button>
                   </>
                 )}
                 {confirmComplete && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">Mark this project as completed?</span>
-                    <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>Confirm</Button>
-                    <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>Cancel</Button>
+                    <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
+                    <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
                   </div>
                 )}
                 {confirmAbandon && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-destructive">Abandon this project?</span>
-                    <Button size="sm" onClick={handleAbandon} disabled={actionLoading}>Confirm</Button>
-                    <Button size="sm" variant="outline" onClick={() => setConfirmAbandon(false)} disabled={actionLoading}>Cancel</Button>
+                    <span className="text-sm text-destructive">{t("projectDetailPage.confirmAbandon")}</span>
+                    <Button size="sm" onClick={handleAbandon} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmAbandon(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
                   </div>
                 )}
               </div>
@@ -1921,35 +1931,35 @@ export function ProjectDetailPage() {
           )}
 
           {!isReadOnly && project.status === "abandoned" && (
-            <CollapsibleSection title="Actions">
+            <CollapsibleSection title={t("projectDetailPage.actions")}>
               <div className="space-y-3">
                 {!confirmRestart && !restartConflict && (
                   <Button variant="outline" size="sm" onClick={() => setConfirmRestart(true)}>
-                    Restart project
+                    {t("projectDetailPage.restartProject")}
                   </Button>
                 )}
                 {confirmRestart && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">Resume from pick {project.current_pick}?</span>
-                    <Button size="sm" onClick={handleRestart} disabled={actionLoading}>Confirm</Button>
-                    <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>Cancel</Button>
+                    <span className="text-sm">{t("projectDetailPage.resumeFromPick", { pick: project.current_pick })}</span>
+                    <Button size="sm" onClick={handleRestart} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
                   </div>
                 )}
                 {restartConflict && (
                   <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
                     <p className="font-medium text-copper-on-subtle">
-                      This loom has an active project: <span className="font-semibold">{restartConflict.name}</span>
+                      {t("projectDetailPage.loomHasActive")} <span className="font-semibold">{restartConflict.name}</span>
                     </p>
-                    <p className="text-copper-on-subtle text-xs">Resolve it to restart this one.</p>
+                    <p className="text-copper-on-subtle text-xs">{t("projectDetailPage.resolveToRestart")}</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button type="button" size="sm" onClick={() => handleResolveAndRestart("complete")} disabled={actionLoading}>
-                        {actionLoading ? "Working…" : "Mark completed & restart"}
+                        {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.markCompletedAndRestart")}
                       </Button>
                       <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndRestart("abandon")} disabled={actionLoading}>
-                        {actionLoading ? "Working…" : "Abandon & restart"}
+                        {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.abandonAndRestart")}
                       </Button>
                       <Button type="button" size="sm" variant="ghost" onClick={() => setRestartConflict(null)} disabled={actionLoading}>
-                        Dismiss
+                        {t("projectDetailPage.dismiss")}
                       </Button>
                     </div>
                   </div>
@@ -1958,36 +1968,36 @@ export function ProjectDetailPage() {
             </CollapsibleSection>
           )}
 
-          {!isReadOnly && <CollapsibleSection title="Clone project">
+          {!isReadOnly && <CollapsibleSection title={t("projectDetailPage.cloneProjectSection")}>
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Create a new project with the same configuration, starting at pick 1.</p>
+              <p className="text-xs text-muted-foreground">{t("projectDetailPage.cloneDesc")}</p>
               {!confirmClone && !cloneConflict && (
                 <Button variant="outline" size="sm" onClick={() => setConfirmClone(true)}>
-                  Clone project
+                  {t("projectDetailPage.cloneProjectButton")}
                 </Button>
               )}
               {confirmClone && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">Start a new project with the same settings?</span>
-                  <Button size="sm" onClick={handleClone} disabled={actionLoading}>{actionLoading ? "Cloning…" : "Confirm"}</Button>
-                  <Button size="sm" variant="outline" onClick={() => setConfirmClone(false)} disabled={actionLoading}>Cancel</Button>
+                  <span className="text-sm">{t("projectDetailPage.confirmCloneQuestion")}</span>
+                  <Button size="sm" onClick={handleClone} disabled={actionLoading}>{actionLoading ? t("projectDetailPage.cloning") : t("projectDetailPage.confirm")}</Button>
+                  <Button size="sm" variant="outline" onClick={() => setConfirmClone(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
                 </div>
               )}
               {cloneConflict && (
                 <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
                   <p className="font-medium text-copper-on-subtle">
-                    This loom has an active project: <span className="font-semibold">{cloneConflict.name}</span>
+                    {t("projectDetailPage.loomHasActive")} <span className="font-semibold">{cloneConflict.name}</span>
                   </p>
-                  <p className="text-copper-on-subtle text-xs">Resolve it to start the clone.</p>
+                  <p className="text-copper-on-subtle text-xs">{t("projectDetailPage.resolveToClone")}</p>
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button type="button" size="sm" onClick={() => handleResolveAndClone("complete")} disabled={actionLoading}>
-                      {actionLoading ? "Working…" : "Mark completed & clone"}
+                      {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.markCompletedAndClone")}
                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndClone("abandon")} disabled={actionLoading}>
-                      {actionLoading ? "Working…" : "Abandon & clone"}
+                      {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.abandonAndClone")}
                     </Button>
                     <Button type="button" size="sm" variant="ghost" onClick={() => setCloneConflict(null)} disabled={actionLoading}>
-                      Dismiss
+                      {t("projectDetailPage.dismiss")}
                     </Button>
                   </div>
                 </div>
@@ -1995,18 +2005,18 @@ export function ProjectDetailPage() {
             </div>
           </CollapsibleSection>}
 
-          {!isReadOnly && <CollapsibleSection title="Danger zone">
+          {!isReadOnly && <CollapsibleSection title={t("projectDetailPage.dangerZone")}>
             {!confirmDelete ? (
               <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>
-                Delete project
+                {t("projectDetailPage.deleteProject")}
               </Button>
             ) : (
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-sm text-destructive">
-                  Delete this project and all step history? This cannot be undone.
+                  {t("projectDetailPage.deleteProjectConfirm")}
                 </p>
                 <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={actionLoading}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   size="sm"
@@ -2014,7 +2024,7 @@ export function ProjectDetailPage() {
                   disabled={actionLoading}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {actionLoading ? "Deleting…" : "Confirm delete"}
+                  {actionLoading ? t("projectDetailPage.deleting") : t("projectDetailPage.confirmDelete")}
                 </Button>
               </div>
             )}
@@ -2073,7 +2083,7 @@ export function ProjectDetailPage() {
           />
           <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <span className="text-sm font-semibold">View settings</span>
+              <span className="text-sm font-semibold">{t("projectDetailPage.viewSettings")}</span>
               <button
                 onClick={() => setSettingsOpen(false)}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -2086,12 +2096,12 @@ export function ProjectDetailPage() {
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
               {/* Show/hide toggles */}
               <div className="space-y-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Show / hide</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("projectDetailPage.showHide")}</p>
                 {([
-                  { label: "Progress bar", value: showProgress, key: "proj-view:showProgress", setter: setShowProgress },
-                  { label: "Drawdown pattern", value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
-                  { label: "Weft color", value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
-                  { label: "Prev/next pick cards", value: showPickCards, key: "proj-view:showPickCards", setter: setShowPickCards },
+                  { label: t("projectDetailPage.progressBar"), value: showProgress, key: "proj-view:showProgress", setter: setShowProgress },
+                  { label: t("projectDetailPage.drawdownPattern"), value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
+                  { label: t("projectDetailPage.weftColorToggle"), value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
+                  { label: t("projectDetailPage.prevNextCards"), value: showPickCards, key: "proj-view:showPickCards", setter: setShowPickCards },
                 ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void }[]).map(({ label, value, key, setter }) => (
                   <div key={label} className="flex items-center justify-between">
                     <span className="text-sm">{label}</span>
@@ -2111,15 +2121,15 @@ export function ProjectDetailPage() {
               {trailingUnused > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {project.project_type === "lift" ? "Shaft display" : "Treadle display"}
+                    {project.project_type === "lift" ? t("projectDetailPage.shaftDisplay") : t("projectDetailPage.treadleDisplay")}
                   </p>
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-sm">
-                        Hide unused {project.project_type === "lift" ? "shafts" : "treadles"}
+                        {t("projectDetailPage.hideUnused", { type: project.project_type === "lift" ? t("projectDetailPage.shafts") : t("projectDetailPage.treadles") })}
                       </span>
                       <p className="text-xs text-muted-foreground">
-                        {trailingUnused} unused trailing {trailingUnused === 1 ? (project.project_type === "lift" ? "shaft" : "treadle") : (project.project_type === "lift" ? "shafts" : "treadles")}
+                        {t("projectDetailPage.unusedTrailing", { count: trailingUnused, type: trailingUnused === 1 ? (project.project_type === "lift" ? t("projectDetailPage.shaft") : t("projectDetailPage.treadle")) : (project.project_type === "lift" ? t("projectDetailPage.shafts") : t("projectDetailPage.treadles")) })}
                       </p>
                     </div>
                     <button
@@ -2140,7 +2150,7 @@ export function ProjectDetailPage() {
 
               {/* Color mode selector — always shown; strip/filled have no visible effect without weft colors */}
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Color mode</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("projectDetailPage.colorMode")}</p>
                 <div className="inline-flex rounded-md border border-input overflow-hidden text-sm w-full">
                   {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
                     <button
@@ -2157,7 +2167,7 @@ export function ProjectDetailPage() {
                   ))}
                 </div>
                 {!picksData?.has_weft_colors && (
-                  <p className="text-xs text-muted-foreground">This design has no weft colors defined.</p>
+                  <p className="text-xs text-muted-foreground">{t("projectDetailPage.noWeftColors")}</p>
                 )}
               </div>
             </div>

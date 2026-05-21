@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
@@ -13,6 +15,7 @@ import { TrackerStylePreview, TrackerLivePreview } from "@/components/TrackerSty
 type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history";
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const { user, refetch } = useAuth();
   const { section } = useParams<{ section: string }>();
   const activeSection: Section = (section as Section) ?? "appearance";
@@ -114,7 +117,7 @@ export function SettingsPage() {
       const result = await getDataExport();
       setExportInfo(result.message);
     } catch {
-      setExportInfo("Could not fetch export status.");
+      setExportInfo(t("common.loading"));
     }
   }
 
@@ -128,7 +131,7 @@ export function SettingsPage() {
                 : "bg-destructive/10 text-destructive"
             }`}
           >
-            {saveSuccess ? "Saved" : saveError}
+            {saveSuccess ? t("settings.saved") : saveError}
           </div>
         )}
         <div className="space-y-6">
@@ -136,8 +139,8 @@ export function SettingsPage() {
             {/* ── Appearance ── */}
             {activeSection === "appearance" && (
               <>
-              <Section title="Appearance">
-                <Field label="Theme">
+              <Section title={t("settings.sections.appearance")}>
+                <Field label={t("settings.appearance.theme")}>
                   <div className="flex gap-2">
                     {(["light", "dark", "system"] as const).map((t) => (
                       <button
@@ -158,13 +161,13 @@ export function SettingsPage() {
                   </div>
                 </Field>
 
-                <Field label="Activity tracker style">
+                <Field label={t("settings.appearance.activityTrackerStyle")}>
                   <div className="flex flex-col gap-3 mt-1">
                     {(["default", "compact", "high_contrast"] as const).map((s) => {
                       const meta: Record<string, { label: string; desc: string }> = {
-                        default: { label: "Default", desc: "Standard layout with full-size pick cards and drawdown preview." },
-                        compact: { label: "Compact", desc: "Denser layout for tracking-heavy sessions with less vertical space." },
-                        high_contrast: { label: "High contrast", desc: "Higher visual contrast for easier reading under bright light or for accessibility." },
+                        default: { label: t("settings.appearance.activityStyles.default.label"), desc: t("settings.appearance.activityStyles.default.desc") },
+                        compact: { label: t("settings.appearance.activityStyles.compact.label"), desc: t("settings.appearance.activityStyles.compact.desc") },
+                        high_contrast: { label: t("settings.appearance.activityStyles.high_contrast.label"), desc: t("settings.appearance.activityStyles.high_contrast.desc") },
                       };
                       const selected = activityTheme === s;
                       return (
@@ -178,7 +181,7 @@ export function SettingsPage() {
                           <div className="mb-2">
                             <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
                               {meta[s].label}
-                              {selected && <span className="ml-2 text-xs font-normal text-primary/70">— active</span>}
+                              {selected && <span className="ml-2 text-xs font-normal text-primary/70">{t("settings.appearance.active")}</span>}
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">{meta[s].desc}</p>
                           </div>
@@ -188,18 +191,18 @@ export function SettingsPage() {
                     })}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Style variants will be visually differentiated in a future update.
+                    {t("settings.appearance.styleVariantNote")}
                   </p>
                 </Field>
 
-                <Field label="Tracker defaults">
+                <Field label={t("settings.appearance.trackerDefaults")}>
                   <p className="text-xs text-muted-foreground mb-3">
-                    Default view options when opening the activity tracker. You can still override these per-project in the tracker settings panel.
+                    {t("settings.appearance.trackerDefaultsHelp")}
                   </p>
 
                   {/* Color mode */}
                   <div className="mb-4">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Color mode</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("settings.appearance.colorMode")}</p>
                     <div className="inline-flex rounded-md border border-input overflow-hidden text-sm">
                       {(["theme", "strip", "filled"] as const).map((mode) => (
                         <button
@@ -220,10 +223,10 @@ export function SettingsPage() {
                   {/* Show/hide toggles */}
                   <div className="space-y-2.5">
                     {([
-                      { label: "Progress bar", value: trackerShowProgress, setter: setTrackerShowProgress, key: "tracker_show_progress" as const },
-                      { label: "Drawdown pattern", value: trackerShowDrawdown, setter: setTrackerShowDrawdown, key: "tracker_show_drawdown" as const },
-                      { label: "Weft color bar", value: trackerShowWeftColor, setter: setTrackerShowWeftColor, key: "tracker_show_weft_color" as const },
-                      { label: "Prev/next pick cards", value: trackerShowPickCards, setter: setTrackerShowPickCards, key: "tracker_show_pick_cards" as const },
+                      { label: t("settings.appearance.progressBar"), value: trackerShowProgress, setter: setTrackerShowProgress, key: "tracker_show_progress" as const },
+                      { label: t("settings.appearance.drawdownPattern"), value: trackerShowDrawdown, setter: setTrackerShowDrawdown, key: "tracker_show_drawdown" as const },
+                      { label: t("settings.appearance.weftColorBar"), value: trackerShowWeftColor, setter: setTrackerShowWeftColor, key: "tracker_show_weft_color" as const },
+                      { label: t("settings.appearance.prevNextPickCards"), value: trackerShowPickCards, setter: setTrackerShowPickCards, key: "tracker_show_pick_cards" as const },
                     ] as { label: string; value: boolean; setter: (v: boolean) => void; key: "tracker_show_progress" | "tracker_show_drawdown" | "tracker_show_weft_color" | "tracker_show_pick_cards" }[]).map(({ label, value, setter, key }) => (
                       <div key={key} className="flex items-center justify-between">
                         <span className="text-sm">{label}</span>
@@ -253,7 +256,7 @@ export function SettingsPage() {
                   </div>
                 </Field>
 
-                <Field label="Hide unused shafts and treadles">
+                <Field label={t("settings.appearance.hideUnusedShaftsTreadles")}>
                   <div className="flex items-center gap-3">
                     <button
                       role="switch"
@@ -273,17 +276,16 @@ export function SettingsPage() {
                         }`}
                       />
                     </button>
-                    <span className="text-sm">{hideUnusedShaftsTreadles ? "Hidden" : "Shown"}</span>
+                    <span className="text-sm">{hideUnusedShaftsTreadles ? t("settings.appearance.hidden") : t("settings.appearance.shown")}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    When enabled, shafts and treadles not used by the design are hidden in the drawdown
-                    viewer. New projects inherit this setting. Default is off (all shafts/treadles shown).
+                    {t("settings.appearance.hideUnusedHelp")}
                   </p>
                 </Field>
               </Section>
 
-              <Section title="Diagnostics">
-                <Field label="Show version numbers">
+              <Section title={t("settings.sections.diagnostics")}>
+                <Field label={t("settings.diagnostics.showVersionNumbers")}>
                   <div className="flex items-center gap-3">
                     <button
                       role="switch"
@@ -303,10 +305,10 @@ export function SettingsPage() {
                         }`}
                       />
                     </button>
-                    <span className="text-sm">{showVersionNumbers ? "Visible" : "Hidden"}</span>
+                    <span className="text-sm">{showVersionNumbers ? t("settings.diagnostics.visible") : t("settings.diagnostics.hidden")}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Show or hide the UI, API, and worker version badge in the bottom-right corner.
+                    {t("settings.diagnostics.showVersionNumbersHelp")}
                   </p>
                 </Field>
               </Section>
@@ -315,8 +317,8 @@ export function SettingsPage() {
 
             {/* ── Preferences ── */}
             {activeSection === "preferences" && (
-              <Section title="Preferences">
-                <Field label="Display name">
+              <Section title={t("settings.sections.preferences")}>
+                <Field label={t("settings.preferences.displayName")}>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -330,12 +332,12 @@ export function SettingsPage() {
                       onClick={() => save({ display_name: displayName })}
                       disabled={saving || displayName === user.display_name}
                     >
-                      Save
+                      {t("common.save")}
                     </Button>
                   </div>
                 </Field>
 
-                <Field label="Measurement system">
+                <Field label={t("settings.preferences.measurementSystem")}>
                   <div className="flex gap-2">
                     {(["metric", "imperial"] as const).map((m) => (
                       <button
@@ -356,7 +358,11 @@ export function SettingsPage() {
                   </div>
                 </Field>
 
-                <Field label="Session idle timeout">
+                <Field label={t("settings.preferences.language")}>
+                  <LanguageSelector variant="app" />
+                </Field>
+
+                <Field label={t("settings.preferences.sessionIdleTimeout")}>
                   <select
                     value={idleTimeout}
                     onChange={(e) => {
@@ -366,10 +372,10 @@ export function SettingsPage() {
                     }}
                     className="rounded-md border border-border bg-background px-3 py-2 text-sm"
                   >
-                    <option value={15}>15 minutes</option>
-                    <option value={30}>30 minutes</option>
-                    <option value={60}>1 hour</option>
-                    <option value={120}>2 hours</option>
+                    <option value={15}>{t("settings.preferences.timeout15min")}</option>
+                    <option value={30}>{t("settings.preferences.timeout30min")}</option>
+                    <option value={60}>{t("settings.preferences.timeout1hr")}</option>
+                    <option value={120}>{t("settings.preferences.timeout2hr")}</option>
                   </select>
                 </Field>
               </Section>
@@ -377,11 +383,10 @@ export function SettingsPage() {
 
             {/* ── Privacy & data ── */}
             {activeSection === "privacy" && (
-              <Section title="Privacy & data">
-                <Field label="Opt out of data use">
+              <Section title={t("settings.sections.privacy")}>
+                <Field label={t("settings.privacy.optOut")}>
                   <p className="text-xs text-muted-foreground">
-                    Per our Terms of Service, your data is used for platform improvements by default.
-                    Toggle on to opt out.
+                    {t("settings.privacy.optOutHelp")}
                   </p>
                   <div className="flex items-center gap-3 mt-2">
                     <button
@@ -398,67 +403,61 @@ export function SettingsPage() {
                         }`}
                       />
                     </button>
-                    <span className="text-sm">{!dataConsent ? "Opted out" : "Participating (default)"}</span>
+                    <span className="text-sm">{!dataConsent ? t("settings.privacy.optedOut") : t("settings.privacy.participating")}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Your content, settings, and tags — including WIF files, photos, and project
-                    data — may be used for AI/ML model training and feature improvements as described
-                    in the Terms of Service.
+                    {t("settings.privacy.dataUseNote")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    <strong>Note:</strong> Opting out also disables all public sharing links for your drafts.
+                    <strong>Note:</strong> {t("settings.privacy.sharingNote")}
                   </p>
                 </Field>
 
                 {showConsentWarning && (
                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
                     <div className="w-full max-w-md rounded-xl border bg-background shadow-xl space-y-4 p-6">
-                      <h2 className="text-base font-semibold">Opt out of data use?</h2>
+                      <h2 className="text-base font-semibold">{t("settings.privacy.optOutModal.title")}</h2>
 
                       <p className="text-sm text-muted-foreground">
-                        Opting out stops future use of your data for AI/ML model training and
-                        feature improvements. Data already used in model training cannot be
-                        retroactively removed.
+                        {t("settings.privacy.optOutModal.body")}
                       </p>
 
                       <div className="rounded-md bg-amber-500/10 border border-amber-500/30 px-4 py-3 space-y-1.5">
                         <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                          The following will be disabled immediately:
+                          {t("settings.privacy.optOutModal.warningTitle")}
                         </p>
                         <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
                           <li>
-                            Public sharing links for all your drafts
+                            {t("settings.privacy.optOutModal.sharingLinks")}
                             {sharedDraftCount > 0 && (
                               <span className="font-medium text-foreground">
-                                {" "}({sharedDraftCount} currently active)
+                                {" "}{t("settings.privacy.optOutModal.currentlyActive", { count: sharedDraftCount })}
                               </span>
                             )}
                           </li>
-                          <li>Any future sharing features tied to your account</li>
+                          <li>{t("settings.privacy.optOutModal.futureSharing")}</li>
                         </ul>
                         {sharedDraftCount > 0 && (
                           <p className="text-xs text-amber-700 dark:text-amber-400 pt-1">
-                            Anyone with your current sharing links will immediately lose access.
+                            {t("settings.privacy.optOutModal.loseAccess")}
                           </p>
                         )}
                       </div>
 
                       <p className="text-xs text-muted-foreground">
-                        You can opt back in at any time from this page. Re-opting in restores
-                        sharing access but does not re-enable individual draft links — you will
-                        need to re-share those manually.
+                        {t("settings.privacy.optOutModal.reOptInNote")}
                       </p>
 
                       <div className="flex gap-2 pt-1">
                         <Button variant="destructive" size="sm" onClick={confirmConsentOptOut}>
-                          Opt out and disable sharing
+                          {t("settings.privacy.optOutModal.confirmButton")}
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => setShowConsentWarning(false)}
                         >
-                          Cancel
+                          {t("settings.privacy.optOutModal.cancelButton")}
                         </Button>
                       </div>
                     </div>
@@ -466,35 +465,35 @@ export function SettingsPage() {
                 )}
 
                 <div className="rounded-md bg-muted px-4 py-3 text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">What we store about you</p>
+                  <p className="font-medium text-foreground">{t("settings.privacy.whatWeStore")}</p>
                   <ul className="list-disc list-inside space-y-0.5">
-                    <li>Email address and display name (from your sign-in provider)</li>
-                    <li>WIF files, loom records, projects, photos, and yarn you create</li>
-                    <li>Settings, tags, and metadata you assign to your content</li>
-                    <li>Last active timestamp</li>
+                    <li>{t("settings.privacy.storeEmail")}</li>
+                    <li>{t("settings.privacy.storeFiles")}</li>
+                    <li>{t("settings.privacy.storeSettings")}</li>
+                    <li>{t("settings.privacy.storeTimestamp")}</li>
                   </ul>
-                  <p className="pt-1">We never sell your data. See our Terms of Service for the full policy.</p>
+                  <p className="pt-1">{t("settings.privacy.noSell")}</p>
                 </div>
               </Section>
             )}
 
             {/* ── Terms ── */}
             {activeSection === "terms" && (
-              <Section title="Terms of Service">
+              <Section title={t("settings.sections.terms")}>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
                       <p className="text-sm font-medium">
-                        WeftMark Terms of Service v{user.current_eula_version}
+                        {t("settings.terms.tosTitle", { version: user.current_eula_version })}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {user.eula_accepted_version === user.current_eula_version
-                          ? "You have accepted the current version."
-                          : "You have not yet accepted the current version."}
+                          ? t("settings.terms.accepted")
+                          : t("settings.terms.notAccepted")}
                       </p>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => setShowEula(!showEula)}>
-                      {showEula ? "Hide" : "Read terms"}
+                      {showEula ? t("settings.terms.hide") : t("settings.terms.readTerms")}
                     </Button>
                   </div>
 
@@ -512,24 +511,23 @@ export function SettingsPage() {
 
             {/* ── Account ── */}
             {activeSection === "account" && (
-              <Section title="Account management">
-                <Field label="Download my data">
+              <Section title={t("settings.sections.account")}>
+                <Field label={t("settings.account.downloadData")}>
                   <Button variant="outline" size="sm" onClick={handleDataExport}>
-                    Request data archive
+                    {t("settings.account.requestArchive")}
                   </Button>
                   {exportInfo && (
                     <p className="text-xs text-muted-foreground mt-2">{exportInfo}</p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    Data export is planned for Milestone 2. Currently returns status only.
+                    {t("settings.account.exportNote")}
                   </p>
                 </Field>
 
                 <div className="rounded-lg border border-destructive/30 p-4 space-y-3">
-                  <p className="text-sm font-medium text-destructive">Danger zone</p>
+                  <p className="text-sm font-medium text-destructive">{t("settings.account.dangerZone")}</p>
                   <p className="text-sm text-muted-foreground">
-                    Permanently delete your account and all data: WIF files, photos, project
-                    records, looms, yarn, and drafts. This cannot be undone.
+                    {t("settings.account.dangerDescription")}
                   </p>
 
                   {!showDeleteConfirm ? (
@@ -538,18 +536,18 @@ export function SettingsPage() {
                       size="sm"
                       onClick={() => setShowDeleteConfirm(true)}
                     >
-                      Delete my account
+                      {t("settings.account.deleteAccount")}
                     </Button>
                   ) : (
                     <div className="space-y-3">
                       <p className="text-sm">
-                        Type <strong>DELETE MY ACCOUNT</strong> to confirm:
+                        {t("settings.account.deleteConfirmInstruction")}
                       </p>
                       <input
                         type="text"
                         value={deleteInput}
                         onChange={(e) => setDeleteInput(e.target.value)}
-                        placeholder="DELETE MY ACCOUNT"
+                        placeholder={t("settings.account.deleteConfirmPlaceholder")}
                         className="w-full rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm"
                       />
                       {deleteError && (
@@ -562,7 +560,7 @@ export function SettingsPage() {
                           onClick={handleDeleteAccount}
                           disabled={deleteInput !== "DELETE MY ACCOUNT" || deleting}
                         >
-                          {deleting ? "Deleting…" : "Permanently delete my account"}
+                          {deleting ? t("settings.account.deleting") : t("settings.account.permanentDelete")}
                         </Button>
                         <Button
                           variant="outline"
@@ -574,7 +572,7 @@ export function SettingsPage() {
                           }}
                           disabled={deleting}
                         >
-                          Cancel
+                          {t("common.cancel")}
                         </Button>
                       </div>
                     </div>
@@ -595,6 +593,7 @@ const DISPATCH_BADGE: Record<string, string> = {
 };
 
 function FeedbackHistorySection() {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const { data: submissions = [], isLoading } = useQuery({
@@ -603,15 +602,15 @@ function FeedbackHistorySection() {
   });
 
   return (
-    <Section title="Feedback history">
+    <Section title={t("settings.sections.feedbackHistory")}>
       <p className="text-sm text-muted-foreground">
-        Submissions you've sent, including anonymous ones. Only you can see this list.
+        {t("settings.feedbackHistory.description")}
       </p>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : submissions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No submissions yet.</p>
+        <p className="text-sm text-muted-foreground">{t("settings.feedbackHistory.noSubmissions")}</p>
       ) : (
         <div className="divide-y divide-border rounded-lg border">
           {submissions.map((s: FeedbackRecord) => (
@@ -626,7 +625,7 @@ function FeedbackHistorySection() {
                       {SUBMISSION_TYPE_LABELS[s.submission_type as keyof typeof SUBMISSION_TYPE_LABELS] ?? s.submission_type}
                     </span>
                     {s.is_anonymous && (
-                      <span className="text-xs text-muted-foreground shrink-0">(anonymous)</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{t("settings.feedbackHistory.anonymous")}</span>
                     )}
                     {s.subject && (
                       <span className="text-sm text-foreground truncate">{s.subject}</span>
@@ -657,7 +656,7 @@ function FeedbackHistorySection() {
                       className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
                     >
                       <AppIcons.externalLink className="h-3.5 w-3.5" />
-                      View discussion on GitHub
+                      {t("settings.feedbackHistory.viewDiscussion")}
                     </a>
                   )}
                 </div>

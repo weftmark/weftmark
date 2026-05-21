@@ -113,11 +113,11 @@ Portrait orientation is preferred for the project (loom-side) interface.
 
 ## Theme and Localization
 
-- Light mode is the default
-- Users can switch to dark mode via a preference setting
+- Light mode is the default; users can switch to dark mode via Settings → Appearance
 - Users can configure their preferred measurement system: `metric`, `imperial`, or `both`
 - Measurement values are stored with their unit on each record (mixed units are supported per field)
 - All calculations normalize to a common unit internally and convert to the user's display preference for presentation
+- **Internationalization:** All user-facing UI strings are translated via `react-i18next`. Supported languages: English, Deutsch, Français, Español, Nederlands. Language is user-selectable in Settings → Preferences and persisted in `localStorage`. New features must include translations for all five locales — see `docs/features/i18n.md`.
 
 ---
 
@@ -169,7 +169,7 @@ Portrait orientation is preferred for the project (loom-side) interface.
 
 ## Feature Highlights (Current)
 
-The following features are implemented and live as of v0.145.0:
+The following features are implemented and live as of v0.182.0:
 
 - WIF 1.1 import with detailed lint report
 - Draft library with threading, tie-up, drawdown preview, and color palette display
@@ -184,8 +184,11 @@ The following features are implemented and live as of v0.145.0:
 - Photo documentation with captions, auto-stamped step/session metadata
 - Project completion summary with design preview, session metrics, and warp setup details
 - Yarn inventory (products + physical units)
+- Collections — named groups of drafts and projects for organizing related work
 - Admin console: user management, approval queue, platform health, audit log, maintenance
+- Superuser console: EULA management, storage audit, CVE scanning, worker monitoring, scheduled tasks, reconciliation, maintenance (dedicated `/superuser` route, visible only to superusers)
 - OpenTelemetry observability (traces, metrics, structured logs)
 - GeoIP geolocation for audit logs and metrics (MaxMind GeoLite2)
 - EULA acceptance gate with versioned EULA content
 - Light and dark mode; metric and imperial measurement support
+- Internationalization (i18n): 5 languages (en, de, fr, es, nl), user-selectable in Settings

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { listCollections, createCollection, type CollectionSummary } from "@/api/collections";
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 
 function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tagInput, setTagInput] = useState("");
@@ -36,7 +38,7 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       await createCollection({ name: name.trim(), description: description.trim() || undefined, tags: finalTags });
       onSuccess();
     } catch {
-      setError("Failed to create collection.");
+      setError(t("collections.modal.createError"));
       setSaving(false);
     }
   }
@@ -45,17 +47,17 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold">New collection</h2>
+          <h2 className="text-base font-semibold">{t("collections.modal.title")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <AppIcons.close className="h-4 w-4" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
+            <label className="block text-sm font-medium mb-1">{t("collections.modal.nameLabel")}</label>
             <input
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Spring scarves…"
+              placeholder={t("collections.modal.namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
@@ -63,28 +65,32 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Description <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium mb-1">
+              {t("collections.modal.descLabel")} <span className="text-muted-foreground font-normal">{t("collections.modal.descOptional")}</span>
+            </label>
             <textarea
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
               rows={2}
-              placeholder="A series of experiments…"
+              placeholder={t("collections.modal.descPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Tags <span className="text-muted-foreground font-normal">(press Enter or comma to add)</span></label>
+            <label className="block text-sm font-medium mb-1">
+              {t("collections.modal.tagsLabel")} <span className="text-muted-foreground font-normal">{t("collections.modal.tagsHint")}</span>
+            </label>
             <div className="flex flex-wrap gap-1.5 mb-1.5">
-              {tags.map((t) => (
-                <span key={t} className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs">
-                  {t}
-                  <button type="button" onClick={() => setTags((prev) => prev.filter((x) => x !== t))} className="text-muted-foreground hover:text-foreground">×</button>
+              {tags.map((tag) => (
+                <span key={tag} className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs">
+                  {tag}
+                  <button type="button" onClick={() => setTags((prev) => prev.filter((x) => x !== tag))} className="text-muted-foreground hover:text-foreground">×</button>
                 </span>
               ))}
             </div>
             <input
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Add a tag…"
+              placeholder={t("collections.modal.tagsPlaceholder")}
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleTagKey}
@@ -93,9 +99,9 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>{t("common.cancel")}</Button>
             <Button type="submit" size="sm" disabled={saving || !name.trim()}>
-              {saving ? "Creating…" : "Create"}
+              {saving ? t("collections.modal.creating") : t("collections.modal.create")}
             </Button>
           </div>
         </form>
@@ -105,6 +111,7 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
 }
 
 function CollectionCard({ collection }: { collection: CollectionSummary }) {
+  const { t } = useTranslation();
   return (
     <Link
       to={`/collections/${collection.id}`}
@@ -121,20 +128,21 @@ function CollectionCard({ collection }: { collection: CollectionSummary }) {
       </div>
       {collection.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {collection.tags.map((t) => (
-            <span key={t} className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{t}</span>
+          {collection.tags.map((tag) => (
+            <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{tag}</span>
           ))}
         </div>
       )}
       <div className="mt-3 flex gap-3 text-xs text-muted-foreground border-t border-border pt-2.5">
-        <span>{collection.draft_count} {collection.draft_count === 1 ? "draft" : "drafts"}</span>
-        <span>{collection.project_count} {collection.project_count === 1 ? "project" : "projects"}</span>
+        <span>{t("collections.draftCount", { count: collection.draft_count })}</span>
+        <span>{t("collections.projectCount", { count: collection.project_count })}</span>
       </div>
     </Link>
   );
 }
 
 export function CollectionsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showNew, setShowNew] = useState(false);
 
@@ -151,17 +159,17 @@ export function CollectionsPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Collections</h1>
-        <Button size="sm" onClick={() => setShowNew(true)}>New collection</Button>
+        <h1 className="text-xl font-semibold">{t("collections.pageTitle")}</h1>
+        <Button size="sm" onClick={() => setShowNew(true)}>{t("collections.newButton")}</Button>
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {error && <p className="text-sm text-destructive">Failed to load collections.</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+      {error && <p className="text-sm text-destructive">{t("collections.loadError")}</p>}
 
       {!isLoading && collections.length === 0 && (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">No collections yet. Group your drafts and projects into named explorations.</p>
-          <Button className="mt-4" onClick={() => setShowNew(true)}>New collection</Button>
+          <p className="text-sm text-muted-foreground">{t("collections.empty")}</p>
+          <Button className="mt-4" onClick={() => setShowNew(true)}>{t("collections.newButton")}</Button>
         </div>
       )}
 

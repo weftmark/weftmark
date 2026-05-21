@@ -103,6 +103,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/parser/LICENSE"
   },
+  "@babel/runtime@7.29.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/babel/babel",
+    "publisher": "The Babel Team",
+    "url": "https://babel.dev/team",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/runtime",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/runtime/LICENSE"
+  },
   "@babel/template@7.28.6": {
     "licenses": "MIT",
     "repository": "https://github.com/babel/babel",
@@ -140,6 +148,27 @@
     "publisher": "Clerk",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared/LICENSE"
+  },
+  "@emnapi/core@1.10.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/toyobayashi/emnapi",
+    "publisher": "toyobayashi",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/core",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/core/LICENSE"
+  },
+  "@emnapi/runtime@1.10.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/toyobayashi/emnapi",
+    "publisher": "toyobayashi",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/runtime",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/runtime/LICENSE"
+  },
+  "@emnapi/wasi-threads@1.2.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/toyobayashi/emnapi",
+    "publisher": "toyobayashi",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/wasi-threads",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/wasi-threads/LICENSE"
   },
   "@eslint-community/eslint-utils@4.9.1": {
     "licenses": "MIT",
@@ -819,6 +848,23 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/hermes-parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/hermes-parser/LICENSE"
   },
+  "html-parse-stringify@3.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/henrikjoreteg/html-parse-stringify",
+    "publisher": "Henrik Joreteg",
+    "email": "henrik@joreteg.com",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/html-parse-stringify",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/html-parse-stringify/README.md"
+  },
+  "i18next@26.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/i18next/i18next",
+    "publisher": "Jan Mühlemann",
+    "email": "jan.muehlemann@gmail.com",
+    "url": "https://github.com/jamuhl",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/i18next",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/i18next/LICENSE"
+  },
   "ignore@5.3.2": {
     "licenses": "MIT",
     "repository": "https://github.com/kaelzhang/node-ignore",
@@ -1122,6 +1168,15 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom/LICENSE"
   },
+  "react-i18next@17.0.8": {
+    "licenses": "MIT",
+    "repository": "https://github.com/i18next/react-i18next",
+    "publisher": "Jan Mühlemann",
+    "email": "jan.muehlemann@gmail.com",
+    "url": "https://github.com/jamuhl",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-i18next",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-i18next/LICENSE"
+  },
   "react-router-dom@7.15.0": {
     "licenses": "MIT",
     "repository": "https://github.com/remix-run/react-router",
@@ -1308,7 +1363,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.170.7": {
+  "void-elements@3.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pugjs/void-elements",
+    "publisher": "hemanth.hm",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements/LICENSE"
+  },
+  "weaving-site@0.180.0": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",

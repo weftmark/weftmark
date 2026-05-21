@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { listYarn, yarnPhotoUrl, type YarnSummary } from "@/api/yarn";
 import { AddYarnModal } from "@/components/yarn/AddYarnModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 
 function YarnCard({ yarn }: { yarn: YarnSummary }) {
+  const { t } = useTranslation();
   const skeinLabel = yarn.skein_count === 0
-    ? "No skeins"
+    ? t("yarnPage.noSkeins")
     : yarn.available_count === yarn.skein_count
-      ? `${yarn.skein_count} available`
-      : `${yarn.available_count} of ${yarn.skein_count} available`;
+      ? t("yarnPage.allAvailable", { count: yarn.skein_count })
+      : t("yarnPage.someAvailable", { available: yarn.available_count, total: yarn.skein_count });
 
   return (
     <Link
@@ -48,7 +50,7 @@ function YarnCard({ yarn }: { yarn: YarnSummary }) {
       <div className="text-right shrink-0">
         <p className="text-xs text-muted-foreground">{skeinLabel}</p>
         {yarn.unit_yardage && (
-          <p className="text-xs text-muted-foreground">{yarn.unit_yardage} yds/unit</p>
+          <p className="text-xs text-muted-foreground">{yarn.unit_yardage} {t("yarnPage.yardsPerUnit")}</p>
         )}
       </div>
     </Link>
@@ -56,6 +58,7 @@ function YarnCard({ yarn }: { yarn: YarnSummary }) {
 }
 
 export function YarnPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
 
@@ -72,17 +75,17 @@ export function YarnPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Yarn inventory</h1>
-        <Button onClick={() => setShowAdd(true)}>Add yarn</Button>
+        <h1 className="text-xl font-semibold">{t("yarnPage.title")}</h1>
+        <Button onClick={() => setShowAdd(true)}>{t("yarnPage.newButton")}</Button>
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {error && <p className="text-sm text-destructive">Failed to load yarn inventory.</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+      {error && <p className="text-sm text-destructive">{t("yarnPage.loadError")}</p>}
 
       {!isLoading && yarns.length === 0 && (
         <div className="rounded-lg border border-dashed p-12 text-center">
-          <p className="text-sm text-muted-foreground">No yarn yet. Add your first entry to start tracking your stash.</p>
-          <Button className="mt-4" onClick={() => setShowAdd(true)}>Add yarn</Button>
+          <p className="text-sm text-muted-foreground">{t("yarnPage.emptyState")}</p>
+          <Button className="mt-4" onClick={() => setShowAdd(true)}>{t("yarnPage.newButton")}</Button>
         </div>
       )}
 

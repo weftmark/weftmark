@@ -30,6 +30,7 @@ import { CollectionsPage } from "@/pages/CollectionsPage";
 import { CollectionDetailPage } from "@/pages/CollectionDetailPage";
 import { LoomCatalogPage } from "@/pages/LoomCatalogPage";
 import { AdminPage } from "@/pages/AdminPage";
+import { SuperuserPage } from "@/pages/SuperuserPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SignOutPage } from "@/pages/SignOutPage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
@@ -40,9 +41,9 @@ import { SystemGate } from "@/components/SystemGate";
 import { clerkPublishableKey, clerkKeyMissing } from "@/lib/env";
 import { useAuth } from "@/hooks/useAuth";
 
-function AuthRoute({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
+function AuthRoute({ children, requireAdmin = false, requireSuperuser = false }: { children: ReactNode; requireAdmin?: boolean; requireSuperuser?: boolean }) {
   return (
-    <ProtectedRoute requireAdmin={requireAdmin}>
+    <ProtectedRoute requireAdmin={requireAdmin} requireSuperuser={requireSuperuser}>
       <AppLayout>{children}</AppLayout>
     </ProtectedRoute>
   );
@@ -119,6 +120,8 @@ export default function App() {
                   <Route path="/p/:slug" element={<SharedProjectPage />} />
                   <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
                   <Route path="/admin/:section" element={<AuthRoute requireAdmin><AdminPage /></AuthRoute>} />
+                  <Route path="/superuser" element={<Navigate to="/superuser/eula" replace />} />
+                  <Route path="/superuser/:section" element={<AuthRoute requireSuperuser><SuperuserPage /></AuthRoute>} />
                   <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />
                   <Route path="/settings/:section" element={<AuthRoute><SettingsPage /></AuthRoute>} />
                   <Route path="*" element={<Navigate to="/" replace />} />

@@ -82,7 +82,7 @@ services:
     container_name: ${STACK_NAME:-weftmark}_backend
     environment:
       APP_ENV: ${APP_ENV}
-          DEBUG: ${DEBUG}
+      DEBUG: ${DEBUG}
       LOG_LEVEL: ${LOG_LEVEL}
       SEED_ENABLED: ${SEED_ENABLED}
       CORS_ORIGINS: ${CORS_ORIGINS}

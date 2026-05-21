@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +21,7 @@ import { getReedRecommendation } from "@/lib/reedRecommendation";
 import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
 
 export function DraftDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -143,7 +145,7 @@ export function DraftDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <span className="text-sm text-muted-foreground">Loading…</span>
+        <span className="text-sm text-muted-foreground">{t("draftDetailPage.loading")}</span>
       </div>
     );
   }
@@ -151,7 +153,7 @@ export function DraftDetailPage() {
   if (error || !draft) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <span className="text-sm text-destructive">Draft not found.</span>
+        <span className="text-sm text-destructive">{t("draftDetailPage.notFound")}</span>
       </div>
     );
   }
@@ -193,15 +195,15 @@ export function DraftDetailPage() {
       {isReadOnly && <SuperuserInspectionBanner />}
       {draft.archived_at && (
         <div className="px-6 py-2 bg-muted/50 border-b border-border text-sm text-muted-foreground flex items-center gap-2">
-          <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">Archived</span>
-          This draft is archived and hidden from your active list.
+          <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">{t("draftDetailPage.archivedBadge")}</span>
+          {t("draftDetailPage.archivedNote")}
         </div>
       )}
       <div className="p-6 space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
-            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">Drafts</Link>
+            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">{t("draftDetailPage.breadcrumb")}</Link>
             <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-medium text-foreground">{draft.name}</span>
           </div>
@@ -216,7 +218,7 @@ export function DraftDetailPage() {
                   onClick={() => { setPendingTags(draft.tags ?? []); setEditingTags(true); }}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {draft.tags && draft.tags.length > 0 ? "Edit tags" : "+ Add tags"}
+                  {draft.tags && draft.tags.length > 0 ? t("draftDetailPage.editTags") : t("draftDetailPage.addTags")}
                 </button>
               )}
             </div>
@@ -231,10 +233,10 @@ export function DraftDetailPage() {
                 onClick={() => tagsMutation.mutate(pendingTags)}
                 disabled={tagsMutation.isPending}
               >
-                {tagsMutation.isPending ? "Saving…" : "Save"}
+                {tagsMutation.isPending ? t("draftDetailPage.saving") : t("common.save")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setEditingTags(false)}>
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           )}
@@ -242,7 +244,7 @@ export function DraftDetailPage() {
         {!isReadOnly && (
           <Button size="sm" variant="outline" onClick={() => setShowAddToCollection(true)}>
             <AppIcons.collections className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
-            Add to collection
+            {t("draftDetailPage.addToCollection")}
           </Button>
         )}
       </div>
@@ -250,7 +252,7 @@ export function DraftDetailPage() {
         {/* Lint status */}
         {draft.lint_errors.length > 0 && (
           <div className="rounded-md bg-destructive/10 p-4 space-y-1">
-            <p className="text-sm font-medium text-destructive">Errors</p>
+            <p className="text-sm font-medium text-destructive">{t("draftDetailPage.lintErrors")}</p>
             {draft.lint_errors.map((e, i) => (
               <p key={i} className="text-sm text-destructive">{e}</p>
             ))}
@@ -258,7 +260,7 @@ export function DraftDetailPage() {
         )}
         {draft.lint_warnings.length > 0 && (
           <div className="rounded-md bg-muted p-4 space-y-1">
-            <p className="text-sm font-medium">Warnings</p>
+            <p className="text-sm font-medium">{t("draftDetailPage.lintWarnings")}</p>
             {draft.lint_warnings.map((w, i) => (
               <p key={i} className="text-sm text-muted-foreground">{w}</p>
             ))}
@@ -269,9 +271,9 @@ export function DraftDetailPage() {
           {/* Left column: Info + Features + Activities */}
           <div className="space-y-6">
             <div className="space-y-4">
-              <h2 className="text-base font-semibold">Design Info</h2>
+              <h2 className="text-base font-semibold">{t("draftDetailPage.designInfo")}</h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <dt className="text-muted-foreground">File</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.file")}</dt>
                 <dd className="flex flex-wrap items-center gap-2">
                   <span>{draft.wif_filename}</span>
                   <button
@@ -284,13 +286,13 @@ export function DraftDetailPage() {
                       try {
                         await downloadWif(draft.id, draft.wif_filename);
                       } catch {
-                        setDownloadError("Download failed");
+                        setDownloadError(t("draftDetailPage.downloadFailed"));
                       } finally {
                         setDownloading(false);
                       }
                     }}
                   >
-                    {downloading ? "Downloading…" : draft.has_modified_file ? "Download original" : "Download"}
+                    {downloading ? t("draftDetailPage.downloading") : draft.has_modified_file ? t("draftDetailPage.downloadOriginal") : t("draftDetailPage.download")}
                   </button>
                   {draft.has_modified_file && (
                     <button
@@ -303,44 +305,44 @@ export function DraftDetailPage() {
                         try {
                           await downloadWifModified(draft.id, draft.wif_filename);
                         } catch {
-                          setDownloadError("Download failed");
+                          setDownloadError(t("draftDetailPage.downloadFailed"));
                         } finally {
                           setDownloading(false);
                         }
                       }}
                     >
-                      Download modified
+                      {t("draftDetailPage.downloadModified")}
                     </button>
                   )}
                 </dd>
                 {downloadError && (
                   <dd className="col-span-2 text-xs text-destructive">{downloadError}</dd>
                 )}
-                <dt className="text-muted-foreground">Shafts</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.shafts")}</dt>
                 <dd className="flex items-center gap-1.5">
                   {draft.num_shafts ?? "—"}
                   {draft.metadata_overrides?.num_shafts && (
-                    <span className="text-xs text-muted-foreground">(value overwritten)</span>
+                    <span className="text-xs text-muted-foreground">{t("draftDetailPage.valueOverwritten")}</span>
                   )}
                 </dd>
-                <dt className="text-muted-foreground">Treadles</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.treadles")}</dt>
                 <dd className="flex items-center gap-1.5">
                   {draft.num_treadles ?? "—"}
                   {draft.metadata_overrides?.num_treadles && (
-                    <span className="text-xs text-muted-foreground">(value overwritten)</span>
+                    <span className="text-xs text-muted-foreground">{t("draftDetailPage.valueOverwritten")}</span>
                   )}
                 </dd>
-                <dt className="text-muted-foreground">Warp threads</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.warpThreads")}</dt>
                 <dd>{draft.warp_threads ?? "—"}</dd>
-                <dt className="text-muted-foreground">Weft threads</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.weftThreads")}</dt>
                 <dd>{draft.weft_threads ?? "—"}</dd>
                 {draft.wif_source_software && (
                   <>
-                    <dt className="text-muted-foreground">Source software</dt>
+                    <dt className="text-muted-foreground">{t("draftDetailPage.sourceSoftware")}</dt>
                     <dd>{draft.wif_source_software}{draft.wif_source_version ? ` ${draft.wif_source_version}` : ""}</dd>
                   </>
                 )}
-                <dt className="text-muted-foreground">Warp length</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.warpLength")}</dt>
                 <dd>
                   {editingWarpLength ? (
                     <form
@@ -373,7 +375,7 @@ export function DraftDetailPage() {
                         <option value="in">in</option>
                       </select>
                       <Button type="submit" size="sm" disabled={warpLengthMutation.isPending}>
-                        {warpLengthMutation.isPending ? "Saving…" : "Save"}
+                        {warpLengthMutation.isPending ? t("draftDetailPage.saving") : t("common.save")}
                       </Button>
                       <Button
                         type="button"
@@ -382,11 +384,11 @@ export function DraftDetailPage() {
                         onClick={() => { setEditingWarpLength(false); setWarpLengthInput(""); }}
                         disabled={warpLengthMutation.isPending}
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                       {warpLengthMutation.isError && (
                         <span className="text-xs text-destructive">
-                          {warpLengthMutation.error instanceof Error ? warpLengthMutation.error.message : "Save failed"}
+                          {warpLengthMutation.error instanceof Error ? warpLengthMutation.error.message : t("draftDetailPage.saveFailed")}
                         </span>
                       )}
                     </form>
@@ -397,12 +399,12 @@ export function DraftDetailPage() {
                           <span>{formatLength(convertLength(draft.warp_length_cm, "cm", displayUnit), displayUnit)}</span>
                           {draft.wif_measurements?.warp_length != null && !draft.warp_length_overridden && (
                             <span className="text-xs text-muted-foreground">
-                              ({draft.wif_measurements.warp_length_original} {draft.wif_measurements.warp_length_unit} in WIF)
+                              ({draft.wif_measurements.warp_length_original} {draft.wif_measurements.warp_length_unit} {t("draftDetailPage.inWif")})
                             </span>
                           )}
                           {draft.warp_length_overridden && draft.wif_measurements?.warp_length != null && (
                             <span className="text-xs text-muted-foreground">
-                              (WIF: {draft.wif_measurements.warp_length_original} {draft.wif_measurements.warp_length_unit}, overridden)
+                              {t("draftDetailPage.wifOverridden", { original: draft.wif_measurements.warp_length_original, unit: draft.wif_measurements.warp_length_unit })}
                             </span>
                           )}
                           <button
@@ -415,18 +417,18 @@ export function DraftDetailPage() {
                               setEditingWarpLength(true);
                             }}
                           >
-                            Edit
+                            {t("draftDetailPage.edit")}
                           </button>
                         </>
                       ) : (
                         <>
-                          <span className="text-muted-foreground">Not set</span>
+                          <span className="text-muted-foreground">{t("draftDetailPage.notSet")}</span>
                           <button
                             type="button"
                             className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                             onClick={() => { setWarpLengthInput(""); setWarpLengthUnit(displayUnit); setEditingWarpLength(true); }}
                           >
-                            Set
+                            {t("draftDetailPage.set")}
                           </button>
                         </>
                       )}
@@ -437,11 +439,11 @@ export function DraftDetailPage() {
                   <>
                     <dt />
                     <dd className="text-xs text-subdued">
-                      Warp calculations unavailable until warp length is set.
+                      {t("draftDetailPage.warpLengthRequired")}
                     </dd>
                   </>
                 )}
-                <dt className="text-muted-foreground">Weaving width</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.weavingWidth")}</dt>
                 <dd>
                   {editingWeavingWidth ? (
                     <div className="flex items-center gap-1 flex-wrap">
@@ -468,26 +470,26 @@ export function DraftDetailPage() {
                           const v = parseFloat(weavingWidthInput);
                           if (!isNaN(v) && v > 0) weavingWidthMutation.mutate({ width: v, unit: weavingWidthUnit });
                         }}
-                      >Save</button>
+                      >{t("common.save")}</button>
                       <button
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2"
                         onClick={() => { setEditingWeavingWidth(false); setWeavingWidthInput(""); }}
-                      >Cancel</button>
+                      >{t("common.cancel")}</button>
                     </div>
                   ) : weavingWidthCm != null ? (
                     <div className="flex items-center gap-2 flex-wrap">
                       <span>{formatLength(convertLength(weavingWidthCm, "cm", displayUnit), displayUnit)}</span>
                       {weavingWidthSource === "wif" && draft.wif_measurements?.weft_length_unit !== displayUnit && (
                         <span className="text-xs text-muted-foreground">
-                          ({draft.wif_measurements!.weft_length_original} {draft.wif_measurements!.weft_length_unit} in WIF)
+                          ({draft.wif_measurements!.weft_length_original} {draft.wif_measurements!.weft_length_unit} {t("draftDetailPage.inWif")})
                         </span>
                       )}
                       {weavingWidthSource === "calculated" && (
-                        <span className="text-xs text-muted-foreground">(thread count × spacing)</span>
+                        <span className="text-xs text-muted-foreground">{t("draftDetailPage.threadCountSpacing")}</span>
                       )}
                       {weavingWidthSource === "override" && (
-                        <span className="text-xs text-muted-foreground">(manually set)</span>
+                        <span className="text-xs text-muted-foreground">{t("draftDetailPage.manuallySet")}</span>
                       )}
                       <button
                         type="button"
@@ -497,20 +499,20 @@ export function DraftDetailPage() {
                           setWeavingWidthUnit(displayUnit);
                           setEditingWeavingWidth(true);
                         }}
-                      >Edit</button>
+                      >{t("draftDetailPage.edit")}</button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">Not set</span>
+                      <span className="text-muted-foreground">{t("draftDetailPage.notSet")}</span>
                       <button
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                         onClick={() => { setWeavingWidthInput(""); setWeavingWidthUnit(displayUnit); setEditingWeavingWidth(true); }}
-                      >Set</button>
+                      >{t("draftDetailPage.set")}</button>
                     </div>
                   )}
                 </dd>
-                <dt className="text-muted-foreground">EPI</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.epi")}</dt>
                 <dd>
                   {editingEpi ? (
                     <div className="flex items-center gap-1">
@@ -522,7 +524,7 @@ export function DraftDetailPage() {
                         value={epiInput}
                         onChange={(e) => setEpiInput(e.target.value)}
                       />
-                      <span className="text-sm text-muted-foreground">ends/in</span>
+                      <span className="text-sm text-muted-foreground">{t("draftDetailPage.endsPerIn")}</span>
                       <button
                         type="button"
                         className="text-xs text-accent underline underline-offset-2"
@@ -530,39 +532,39 @@ export function DraftDetailPage() {
                           const v = parseFloat(epiInput);
                           if (!isNaN(v) && v > 0) epiMutation.mutate({ epi: v });
                         }}
-                      >Save</button>
+                      >{t("common.save")}</button>
                       <button
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2"
                         onClick={() => { setEditingEpi(false); setEpiInput(""); }}
-                      >Cancel</button>
+                      >{t("common.cancel")}</button>
                     </div>
                   ) : resolvedEpi != null ? (
                     <div className="flex items-center gap-2">
-                      <span>{resolvedEpi} ends/in</span>
+                      <span>{resolvedEpi} {t("draftDetailPage.endsPerIn")}</span>
                       {epiSource === "calculated" && (
-                        <span className="text-xs text-muted-foreground">(width ÷ thread count)</span>
+                        <span className="text-xs text-muted-foreground">{t("draftDetailPage.widthDivCount")}</span>
                       )}
                       {epiSource === "spacing" && (
-                        <span className="text-xs text-muted-foreground">(from WIF spacing)</span>
+                        <span className="text-xs text-muted-foreground">{t("draftDetailPage.fromWifSpacing")}</span>
                       )}
                       {epiSource === "override" && (
-                        <span className="text-xs text-muted-foreground">(manually set)</span>
+                        <span className="text-xs text-muted-foreground">{t("draftDetailPage.manuallySet")}</span>
                       )}
                       <button
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                         onClick={() => { setEpiInput(String(resolvedEpi)); setEditingEpi(true); }}
-                      >Edit</button>
+                      >{t("draftDetailPage.edit")}</button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">Not set</span>
+                      <span className="text-muted-foreground">{t("draftDetailPage.notSet")}</span>
                       <button
                         type="button"
                         className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                         onClick={() => { setEpiInput(""); setEditingEpi(true); }}
-                      >Set</button>
+                      >{t("draftDetailPage.set")}</button>
                     </div>
                   )}
                 </dd>
@@ -571,26 +573,25 @@ export function DraftDetailPage() {
                   const rec = getReedRecommendation(resolvedEpi);
                   return (
                     <>
-                      <dt className="text-muted-foreground">Reed</dt>
+                      <dt className="text-muted-foreground">{t("draftDetailPage.reed")}</dt>
                       <dd>
                         {rec.matches.length > 0 ? (
                           <ul className="space-y-0.5">
                             {rec.matches.map((m) => (
                               <li key={m.dents} className="text-sm">
-                                {m.dents}-dent, {m.threadsPerDent} per dent
+                                {t("draftDetailPage.reedSpec", { dents: m.dents, threadsPerDent: m.threadsPerDent })}
                                 {m.threadsPerDent === 1 && (
-                                  <span className="ml-1 text-xs text-muted-foreground">(ideal)</span>
+                                  <span className="ml-1 text-xs text-muted-foreground">{t("draftDetailPage.reedIdeal")}</span>
                                 )}
                               </li>
                             ))}
                           </ul>
                         ) : rec.nearest ? (
                           <p className="text-sm text-muted-foreground">
-                            No standard reed matches {resolvedEpi} EPI exactly.
-                            Nearest clean setts: {rec.nearest[0]} or {rec.nearest[1]} EPI.
+                            {t("draftDetailPage.reedNoMatch", { epi: resolvedEpi, near1: rec.nearest[0], near2: rec.nearest[1] })}
                           </p>
                         ) : (
-                          <span className="text-sm text-muted-foreground">No standard reed match found.</span>
+                          <span className="text-sm text-muted-foreground">{t("draftDetailPage.reedNotFound")}</span>
                         )}
                       </dd>
                     </>
@@ -612,16 +613,16 @@ export function DraftDetailPage() {
                 if (visibleColors.length === 0) return null;
                 return (
                 <div className="mt-4 space-y-2">
-                  <h3 className="text-sm font-medium">Color palette</h3>
+                  <h3 className="text-sm font-medium">{t("draftDetailPage.colorPalette")}</h3>
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-muted-foreground">
-                        <th className="text-left pb-1.5 font-normal pr-3">Color</th>
-                        <th className="text-left pb-1.5 font-normal pr-3">Name</th>
-                        <th className="text-right pb-1.5 font-normal pr-3">Warp ends</th>
-                        <th className="text-right pb-1.5 font-normal pr-3">Weft picks</th>
+                        <th className="text-left pb-1.5 font-normal pr-3">{t("draftDetailPage.colorPaletteColor")}</th>
+                        <th className="text-left pb-1.5 font-normal pr-3">{t("draftDetailPage.colorPaletteName")}</th>
+                        <th className="text-right pb-1.5 font-normal pr-3">{t("draftDetailPage.colorPaletteWarpEnds")}</th>
+                        <th className="text-right pb-1.5 font-normal pr-3">{t("draftDetailPage.colorPaletteWeftPicks")}</th>
                         {weavingWidthCm != null && (
-                          <th className="text-right pb-1.5 font-normal">Est. weft length</th>
+                          <th className="text-right pb-1.5 font-normal">{t("draftDetailPage.colorPaletteEstWeftLength")}</th>
                         )}
                       </tr>
                     </thead>
@@ -681,47 +682,47 @@ export function DraftDetailPage() {
             </div>
 
             <div className="space-y-3 border-t pt-4">
-              <h2 className="text-base font-semibold">Features</h2>
+              <h2 className="text-base font-semibold">{t("draftDetailPage.features")}</h2>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {(
                   [
-                    ["Threading diagram", draft.has_threading],
-                    ["Tie-up grid", draft.has_tieup],
-                    ["Treadle-tracking", draft.has_treadling],
-                    ["Color palette", draft.has_color_palette],
+                    [t("draftDetailPage.threadingDiagram"), draft.has_threading],
+                    [t("draftDetailPage.tieUpGrid"), draft.has_tieup],
+                    [t("draftDetailPage.treadleTracking"), draft.has_treadling],
+                    [t("draftDetailPage.colorPalette"), draft.has_color_palette],
                   ] as [string, boolean][]
                 ).map(([label, available]) => (
                   <>
                     <dt key={`${label}-dt`} className="text-muted-foreground">{label}</dt>
                     <dd key={`${label}-dd`} className={available ? "text-foreground" : "text-muted-foreground"}>
-                      {available ? "✓ Available" : "✗ Not in file"}
+                      {available ? t("draftDetailPage.featureAvailable") : t("draftDetailPage.featureNotInFile")}
                     </dd>
                   </>
                 ))}
-                <dt className="text-muted-foreground">Lift-tracking</dt>
+                <dt className="text-muted-foreground">{t("draftDetailPage.liftTracking")}</dt>
                 <dd>
                   {draft.has_liftplan ? (
                     <span className="text-foreground">
-                      ✓ Available
+                      {t("draftDetailPage.featureAvailable")}
                       {draft.liftplan_generated && (
-                        <span className="ml-1.5 text-xs text-muted-foreground">(computed)</span>
+                        <span className="ml-1.5 text-xs text-muted-foreground">{t("draftDetailPage.computed")}</span>
                       )}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">✗ Not in file</span>
+                    <span className="text-muted-foreground">{t("draftDetailPage.featureNotInFile")}</span>
                   )}
                 </dd>
               </dl>
 
               {!draft.has_liftplan && draft.has_treadling && draft.has_tieup && (
                 <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2.5 text-sm">
-                  <p className="font-medium text-copper-on-subtle">Lift plan not in file</p>
+                  <p className="font-medium text-copper-on-subtle">{t("draftDetailPage.liftPlanNotInFile")}</p>
                   <p className="mt-0.5 text-copper-on-subtle text-xs">
-                    This WIF has treadling and tie-up data. A lift plan can be computed algorithmically and added to the draft.
+                    {t("draftDetailPage.liftPlanCanBeComputed")}
                   </p>
                   {generateMutation.isError && (
                     <p className="mt-1 text-xs text-destructive">
-                      {generateMutation.error instanceof Error ? generateMutation.error.message : "Generation failed"}
+                      {generateMutation.error instanceof Error ? generateMutation.error.message : t("draftDetailPage.generationFailed")}
                     </p>
                   )}
                   <Button
@@ -731,7 +732,7 @@ export function DraftDetailPage() {
                     onClick={() => generateMutation.mutate()}
                     disabled={generateMutation.isPending}
                   >
-                    {generateMutation.isPending ? "Generating…" : "Generate lift plan"}
+                    {generateMutation.isPending ? t("draftDetailPage.generating") : t("draftDetailPage.generateLiftPlan")}
                   </Button>
                 </div>
               )}
@@ -741,16 +742,16 @@ export function DraftDetailPage() {
                 draft.num_treadles != null &&
                 draft.effective_num_treadles !== draft.num_treadles && (
                 <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
-                  <p className="font-medium text-foreground">Treadle metadata mismatch</p>
+                  <p className="font-medium text-foreground">{t("draftDetailPage.treadleMismatch")}</p>
                   <p className="mt-0.5 text-subdued text-xs">
-                    [WEAVING] declares {draft.num_treadles} treadles but the treadling data only uses {draft.effective_num_treadles}.
+                    {t("draftDetailPage.treadleMismatchDesc", { numDeclared: draft.num_treadles, numUsed: draft.effective_num_treadles })}
                     {draft.metadata_overrides?.num_treadles
-                      ? ` (overridden from ${draft.metadata_overrides.num_treadles.original})`
-                      : " Override to fix loom compatibility checks and correct the exported file."}
+                      ? " " + t("draftDetailPage.overriddenFrom", { original: draft.metadata_overrides.num_treadles.original })
+                      : " " + t("draftDetailPage.overrideToFix")}
                   </p>
                   {overrideMutation.isError && overrideMutation.variables?.field === "num_treadles" && (
                     <p className="mt-1 text-xs text-destructive">
-                      {overrideMutation.error instanceof Error ? overrideMutation.error.message : "Override failed"}
+                      {overrideMutation.error instanceof Error ? overrideMutation.error.message : t("draftDetailPage.overrideFailed")}
                     </p>
                   )}
                   {!draft.metadata_overrides?.num_treadles && (
@@ -762,8 +763,8 @@ export function DraftDetailPage() {
                       disabled={overrideMutation.isPending}
                     >
                       {overrideMutation.isPending && overrideMutation.variables?.field === "num_treadles"
-                        ? "Overriding…"
-                        : `Set treadles to ${draft.effective_num_treadles}`}
+                        ? t("draftDetailPage.overriding")
+                        : t("draftDetailPage.setTreadles", { count: draft.effective_num_treadles })}
                     </Button>
                   )}
                 </div>
@@ -774,16 +775,16 @@ export function DraftDetailPage() {
                 draft.num_shafts != null &&
                 draft.effective_num_shafts !== draft.num_shafts && (
                 <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
-                  <p className="font-medium text-foreground">Shaft metadata mismatch</p>
+                  <p className="font-medium text-foreground">{t("draftDetailPage.shaftMismatch")}</p>
                   <p className="mt-0.5 text-subdued text-xs">
-                    [WEAVING] declares {draft.num_shafts} shafts but the lift plan only uses {draft.effective_num_shafts}.
+                    {t("draftDetailPage.shaftMismatchDesc", { numDeclared: draft.num_shafts, numUsed: draft.effective_num_shafts })}
                     {draft.metadata_overrides?.num_shafts
-                      ? ` (overridden from ${draft.metadata_overrides.num_shafts.original})`
-                      : " Override to fix loom compatibility checks and correct the exported file."}
+                      ? " " + t("draftDetailPage.overriddenFrom", { original: draft.metadata_overrides.num_shafts.original })
+                      : " " + t("draftDetailPage.overrideToFix")}
                   </p>
                   {overrideMutation.isError && overrideMutation.variables?.field === "num_shafts" && (
                     <p className="mt-1 text-xs text-destructive">
-                      {overrideMutation.error instanceof Error ? overrideMutation.error.message : "Override failed"}
+                      {overrideMutation.error instanceof Error ? overrideMutation.error.message : t("draftDetailPage.overrideFailed")}
                     </p>
                   )}
                   {!draft.metadata_overrides?.num_shafts && (
@@ -795,8 +796,8 @@ export function DraftDetailPage() {
                       disabled={overrideMutation.isPending}
                     >
                       {overrideMutation.isPending && overrideMutation.variables?.field === "num_shafts"
-                        ? "Overriding…"
-                        : `Set shafts to ${draft.effective_num_shafts}`}
+                        ? t("draftDetailPage.overriding")
+                        : t("draftDetailPage.setShafts", { count: draft.effective_num_shafts })}
                     </Button>
                   )}
                 </div>
@@ -805,11 +806,11 @@ export function DraftDetailPage() {
 
             <div className="border-t pt-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold">Projects</h2>
+                <h2 className="text-base font-semibold">{t("draftDetailPage.projects")}</h2>
                 <div className="flex items-center gap-3">
-                  {!isReadOnly && <Button size="sm" onClick={() => setShowCreateProject(true)}>New project</Button>}
+                  {!isReadOnly && <Button size="sm" onClick={() => setShowCreateProject(true)}>{t("draftDetailPage.newProject")}</Button>}
                   <Link to="/projects" className="text-xs text-muted-foreground hover:text-foreground">
-                    All projects →
+                    {t("draftDetailPage.allProjects")}
                   </Link>
                 </div>
               </div>
@@ -819,13 +820,13 @@ export function DraftDetailPage() {
 
           {/* Right column: Preview */}
           <div>
-            <h2 className="text-base font-semibold mb-3">Design Preview</h2>
+            <h2 className="text-base font-semibold mb-3">{t("draftDetailPage.designPreview")}</h2>
             {draft.wif_filename ? (
               <button
                 type="button"
                 className="group w-full overflow-hidden rounded-lg border bg-card p-2 cursor-zoom-in text-left"
                 onClick={() => setShowPreviewModal(true)}
-                title="Click to open interactive preview"
+                title={t("draftDetailPage.previewTitle")}
               >
                 <AuthedImage
                   src={draft.has_preview ? previewUrl(draft.id) : previewSvgUrl(draft.id)}
@@ -834,18 +835,18 @@ export function DraftDetailPage() {
                   data-testid="draft-preview-img"
                   loadingContent={
                     <div className="w-full min-h-48 animate-pulse rounded-md bg-muted flex items-center justify-center">
-                      <span className="text-sm text-muted-foreground">Loading preview…</span>
+                      <span className="text-sm text-muted-foreground">{t("draftDetailPage.loadingPreview")}</span>
                     </div>
                   }
                 />
                 <p className="mt-1.5 text-xs text-muted-foreground text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  Click to zoom
+                  {t("draftDetailPage.clickToZoom")}
                 </p>
               </button>
             ) : (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Preview not available for this file.
+                  {t("draftDetailPage.previewUnavailable")}
                 </p>
               </div>
             )}
@@ -859,7 +860,7 @@ export function DraftDetailPage() {
             onClick={() => { setShowDangerZone((v) => !v); setConfirmDelete(false); setDeleteConflict(null); setConfirmForceDelete(false); }}
             className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide hover:text-destructive transition-colors"
           >
-            <span>Danger zone</span>
+            <span>{t("draftDetailPage.dangerZone")}</span>
             <span>{showDangerZone ? "▲" : "▼"}</span>
           </button>
           {showDangerZone && (
@@ -867,11 +868,9 @@ export function DraftDetailPage() {
               {/* Archive / Unarchive */}
               <div className="rounded-md border border-border p-4 flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-medium">{draft.archived_at ? "Unarchive draft" : "Archive draft"}</p>
+                  <p className="text-sm font-medium">{draft.archived_at ? t("draftDetailPage.unarchiveDraft") : t("draftDetailPage.archiveDraft")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {draft.archived_at
-                      ? "Restore this draft to your active list."
-                      : "Hide this draft from active lists without deleting it. Existing projects are unaffected."}
+                    {draft.archived_at ? t("draftDetailPage.unarchiveNote") : t("draftDetailPage.archiveNote")}
                   </p>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -881,7 +880,7 @@ export function DraftDetailPage() {
                       size="sm"
                       onClick={() => setConfirmArchive(true)}
                     >
-                      {draft.archived_at ? "Unarchive" : "Archive"}
+                      {draft.archived_at ? t("draftDetailPage.unarchive") : t("draftDetailPage.archive")}
                     </Button>
                   ) : (
                     <>
@@ -894,10 +893,10 @@ export function DraftDetailPage() {
                         }}
                         disabled={archiveMutation.isPending || unarchiveMutation.isPending}
                       >
-                        Confirm
+                        {t("draftDetailPage.confirm")}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => setConfirmArchive(false)}>
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                     </>
                   )}
@@ -908,8 +907,8 @@ export function DraftDetailPage() {
               <div className="rounded-md border border-destructive/30 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium">Delete draft</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Permanently removes this draft and its WIF file.</p>
+                    <p className="text-sm font-medium">{t("draftDetailPage.deleteDraft")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("draftDetailPage.deleteNote")}</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     {!confirmDelete && !deleteConflict ? (
@@ -919,7 +918,7 @@ export function DraftDetailPage() {
                         className="text-destructive hover:text-destructive"
                         onClick={() => setConfirmDelete(true)}
                       >
-                        Delete draft
+                        {t("draftDetailPage.deleteDraft")}
                       </Button>
                     ) : confirmDelete ? (
                       <>
@@ -929,10 +928,10 @@ export function DraftDetailPage() {
                           onClick={() => deleteMutation.mutate(false)}
                           disabled={deleteMutation.isPending}
                         >
-                          Confirm delete
+                          {t("draftDetailPage.confirmDelete")}
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)}>
-                          Cancel
+                          {t("common.cancel")}
                         </Button>
                       </>
                     ) : null}
@@ -943,13 +942,13 @@ export function DraftDetailPage() {
                 {deleteConflict && (
                   <div className="space-y-2">
                     <p className="text-sm text-destructive font-medium">
-                      This draft is used by {deleteConflict.projects.length} active project{deleteConflict.projects.length !== 1 ? "s" : ""}:
+                      {t("draftDetailPage.usedByConflict", { count: deleteConflict.projects.length })}
                     </p>
                     <ul className="text-xs text-muted-foreground space-y-0.5 pl-3">
                       {deleteConflict.projects.map((p) => <li key={p.id}>· {p.name}</li>)}
                     </ul>
                     <p className="text-xs text-muted-foreground">
-                      Remove this draft from those projects first, or force-delete — which will also delete all listed projects.
+                      {t("draftDetailPage.conflictNote")}
                     </p>
                     {!confirmForceDelete ? (
                       <Button
@@ -958,7 +957,7 @@ export function DraftDetailPage() {
                         className="text-destructive hover:text-destructive"
                         onClick={() => setConfirmForceDelete(true)}
                       >
-                        Force delete ({deleteConflict.projects.length} project{deleteConflict.projects.length !== 1 ? "s" : ""} will be deleted)
+                        {t("draftDetailPage.forceDelete", { count: deleteConflict.projects.length })}
                       </Button>
                     ) : (
                       <div className="flex gap-2">
@@ -968,10 +967,10 @@ export function DraftDetailPage() {
                           onClick={() => deleteMutation.mutate(true)}
                           disabled={deleteMutation.isPending}
                         >
-                          Confirm force delete
+                          {t("draftDetailPage.confirmForceDelete")}
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>
-                          Cancel
+                          {t("common.cancel")}
                         </Button>
                       </div>
                     )}

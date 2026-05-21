@@ -2,10 +2,12 @@ import { api } from "@/api/client";
 
 export type SubmissionType = "feedback" | "feature_request" | "bug_report";
 
+import i18next from "i18next";
+
 export const SUBMISSION_TYPE_LABELS: Record<SubmissionType, string> = {
-  feedback: "Feedback",
-  feature_request: "Feature Request",
-  bug_report: "Bug Report",
+  get feedback() { return i18next.t("feedbackType.feedback"); },
+  get feature_request() { return i18next.t("feedbackType.feature_request"); },
+  get bug_report() { return i18next.t("feedbackType.bug_report"); },
 };
 
 export interface FeedbackDiagnostics {

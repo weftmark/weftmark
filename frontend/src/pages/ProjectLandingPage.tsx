@@ -1,6 +1,7 @@
 import DOMPurify from "dompurify";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, displayLength, formatApproxLength, convertLength, type LengthUnit } from "@/lib/units";
@@ -123,6 +124,7 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
   title?: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   const panRef = useRef({ x: 0, y: 0 });
@@ -329,12 +331,12 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
         >
           {isLoading && (
             <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-              Loading drawdown…
+              {t("projectLandingPage.loadingDrawdown")}
             </div>
           )}
           {!isLoading && !svg && (
             <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-              Could not load drawdown.
+              {t("projectLandingPage.couldNotLoadDrawdown")}
             </div>
           )}
           <div
@@ -357,6 +359,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
   draftName: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { data: plan, isLoading } = useQuery({
     queryKey: ["warping-plan", projectId],
     queryFn: () => getWarpingPlan(projectId),
@@ -375,7 +378,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
     >
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-lg w-full max-h-[80vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="font-semibold text-sm">Treadle Tie-Up — {draftName}</h2>
+          <h2 className="font-semibold text-sm">{t("projectLandingPage.tieUpTitle", { name: draftName })}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
             <AppIcons.close className="h-4 w-4" />
           </button>
@@ -383,18 +386,18 @@ function TieUpModal({ projectId, draftName, onClose }: {
         <div className="flex-1 overflow-auto p-5">
           {isLoading && (
             <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-              <AppIcons.spinner className="h-4 w-4 animate-spin mr-2" /> Loading…
+              <AppIcons.spinner className="h-4 w-4 animate-spin mr-2" /> {t("common.loading")}
             </div>
           )}
           {plan && !plan.has_tieup && (
             <p className="text-sm text-muted-foreground italic">
-              Tie-up data not available — this WIF file does not contain a [TIEUP] section.
+              {t("projectLandingPage.tieUpNotAvailable")}
             </p>
           )}
           {plan?.has_tieup && plan.tieup && plan.tieup_num_shafts && plan.tieup_num_treadles && (
             <>
               <p className="text-xs text-muted-foreground mb-4">
-                Columns = treadles · Rows = shafts · Filled = connected
+                {t("projectLandingPage.tieUpDesc")}
               </p>
               <div className="overflow-x-auto">
                 <TieUpDiagram
@@ -411,7 +414,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
             to={`/projects/${projectId}/warping-plan`}
             className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
           >
-            View Weave Plan
+            {t("projectLandingPage.viewWeavePlan")}
           </Link>
           <Button
             size="sm"
@@ -421,7 +424,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
             }}
           >
             <AppIcons.print className="h-4 w-4 mr-1.5" />
-            Print / Save PDF
+            {t("projectLandingPage.printSavePdf")}
           </Button>
         </div>
       </div>
@@ -454,6 +457,7 @@ function ColorPaletteSection({
   isSaving: boolean;
   locked?: boolean;
 }) {
+  const { t } = useTranslation();
   const { user } = useAuthContext();
   const unit = measurementSystemToUnit(user?.measurement_system ?? "metric");
 
@@ -494,10 +498,10 @@ function ColorPaletteSection({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Color Palette
+            {t("projectLandingPage.colorPalette")}
           </h3>
           {locked && (
-            <span className="text-xs text-muted-foreground">(locked — project active)</span>
+            <span className="text-xs text-muted-foreground">{t("projectLandingPage.locked")}</span>
           )}
         </div>
         <div className="flex gap-2">
@@ -507,7 +511,7 @@ function ColorPaletteSection({
               variant="outline"
               onClick={() => setPreviewOpen((v) => !v)}
             >
-              Preview
+              {t("projectLandingPage.preview")}
             </Button>
           )}
           {!locked && dirty && (
@@ -516,7 +520,7 @@ function ColorPaletteSection({
               onClick={() => { onSave(pending); setDirty(false); }}
               disabled={isSaving}
             >
-              {isSaving ? "Saving…" : "Save colors"}
+              {isSaving ? t("projectLandingPage.saving") : t("projectLandingPage.saveColors")}
             </Button>
           )}
         </div>
@@ -526,13 +530,13 @@ function ColorPaletteSection({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs uppercase tracking-wide">
-              <th className="px-3 py-2 text-left">Color</th>
-              <th className="px-3 py-2 text-right">Warp ends</th>
-              <th className="px-3 py-2 text-right">Weft picks</th>
+              <th className="px-3 py-2 text-left">{t("projectLandingPage.colorCol")}</th>
+              <th className="px-3 py-2 text-right">{t("projectLandingPage.warpEndsCol")}</th>
+              <th className="px-3 py-2 text-right">{t("projectLandingPage.weftPicksCol")}</th>
               {warpLengthCm !== null && weftStats !== null && (
-                <th className="px-3 py-2 text-right">Est. weft length</th>
+                <th className="px-3 py-2 text-right">{t("projectLandingPage.estWeftLength")}</th>
               )}
-              {!locked && <th className="px-3 py-2 text-left">Replace with</th>}
+              {!locked && <th className="px-3 py-2 text-left">{t("projectLandingPage.replaceWith")}</th>}
             </tr>
           </thead>
           <tbody>
@@ -668,6 +672,7 @@ function WarpSetupSection({
   // Per-field unit defaults: prefer the original source unit over the user's global preference.
   // Length / item + waste-between: use the draft WIF warp_length_unit if available.
   // Loom waste: use the loom version's warp_waste_unit if available.
+  const { t } = useTranslation();
   const defaultItemUnit: LengthUnit =
     mapToSupportedUnit(project.draft_wif_measurements?.warp_length_unit) ?? displayUnit;
   const defaultWasteUnit: LengthUnit =
@@ -790,9 +795,9 @@ function WarpSetupSection({
 
   return (
     <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Warp Setup</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.warpSetup")}</h3>
       <div className="grid grid-cols-[1fr_1fr] gap-x-4 gap-y-2 text-sm items-start">
-        <label className="text-muted-foreground self-center">Items</label>
+        <label className="text-muted-foreground self-center">{t("projectLandingPage.items")}</label>
         <input
           type="number"
           min="1"
@@ -801,7 +806,7 @@ function WarpSetupSection({
           className="w-full rounded border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         />
 
-        <label className="text-muted-foreground self-center">Length / item</label>
+        <label className="text-muted-foreground self-center">{t("projectLandingPage.lengthPerItem")}</label>
         <div className="flex gap-1">
           <input type="number" min="0" step="0.1" value={lengthPerItem}
             onChange={(e) => setLengthPerItem(e.target.value)} className={inputCls} />
@@ -809,12 +814,12 @@ function WarpSetupSection({
         </div>
 
         <div className="self-start pt-1">
-          <label className="text-muted-foreground">Loom waste</label>
+          <label className="text-muted-foreground">{t("projectLandingPage.loomWaste")}</label>
           {loomWasteUnconfigured && (
             <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-              Default not set on loom.{" "}
+              {t("projectLandingPage.loomWasteUnconfigured")}{" "}
               <Link to={`/looms/${project.loom_id}`} className="underline underline-offset-2 hover:text-foreground">
-                Configure loom
+                {t("projectLandingPage.configureLoom")}
               </Link>
             </p>
           )}
@@ -827,7 +832,7 @@ function WarpSetupSection({
 
         {numItems > 1 && (
           <>
-            <label className="text-muted-foreground self-center">Waste between items</label>
+            <label className="text-muted-foreground self-center">{t("projectLandingPage.wasteBetween")}</label>
             <div className="flex gap-1">
               <input type="number" min="0" step="0.1" value={wasteBetween}
                 onChange={(e) => setWasteBetween(e.target.value)} className={inputCls} />
@@ -839,7 +844,7 @@ function WarpSetupSection({
 
       {isDirty && (
         <Button size="sm" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Save"}
+          {mutation.isPending ? t("projectLandingPage.saving") : t("common.save")}
         </Button>
       )}
     </section>
@@ -865,6 +870,7 @@ function ReedSelector({
   project: ProjectDetail;
   onUpdated: (p: ProjectDetail) => void;
 }) {
+  const { t } = useTranslation();
   const locked = project.status !== "created";
 
   // Resolve EPI from draft data (same logic as DraftDetailPage)
@@ -953,30 +959,30 @@ function ReedSelector({
     return (
       <section className="rounded-lg border border-border bg-card p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Reed</h3>
-          <span className="text-xs text-muted-foreground">(locked — project active)</span>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.reed")}</h3>
+          <span className="text-xs text-muted-foreground">{t("projectLandingPage.locked")}</span>
         </div>
         {savedDents != null ? (
           <div className="space-y-1">
-            <p className="text-sm font-medium">{savedDents}-dent reed</p>
+            <p className="text-sm font-medium">{t("projectLandingPage.reedDent", { dents: savedDents })}</p>
             {savedTpd != null && (
               <p className="text-sm font-semibold">
-                {savedTpd} thread{savedTpd !== 1 ? "s" : ""}/dent{savedTpd === 1 ? " (ideal)" : ""}
+                {t("projectLandingPage.threadsPerDent", { count: savedTpd })}{savedTpd === 1 ? ` ${t("projectLandingPage.ideal")}` : ""}
               </p>
             )}
             {savedPattern != null && (
               <div className="space-y-0.5">
                 <p className="text-sm font-semibold">
-                  {Math.min(...savedPattern)}–{Math.max(...savedPattern)} threads/dent
+                  {t("projectLandingPage.threadsPerDentRange", { min: Math.min(...savedPattern), max: Math.max(...savedPattern) })}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Threading pattern: {formatDentPattern(savedPattern)}
+                  {t("projectLandingPage.threadingPattern")} {formatDentPattern(savedPattern)}
                 </p>
               </div>
             )}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground italic">No reed selected</p>
+          <p className="text-sm text-muted-foreground italic">{t("projectLandingPage.noReedSelected")}</p>
         )}
       </section>
     );
@@ -984,16 +990,16 @@ function ReedSelector({
 
   return (
     <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Reed</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.reed")}</h3>
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={isCustom ? "custom" : selectValue}
           onChange={(e) => handleSelect(e.target.value)}
           className="rounded border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         >
-          <option value="">— not set —</option>
+          <option value="">{t("projectLandingPage.reedNotSet")}</option>
           {loomDents.length > 0 && (
-            <optgroup label="Your loom's reeds">
+            <optgroup label={t("projectLandingPage.yourLoomReeds")}>
               {loomDents.map((d) => (
                 <option key={d} value={String(d)}>
                   {d}-dent{d === bestMatch ? " ★" : ""}
@@ -1001,14 +1007,14 @@ function ReedSelector({
               ))}
             </optgroup>
           )}
-          <optgroup label={loomDents.length > 0 ? "Other common reeds" : "Common reeds"}>
+          <optgroup label={loomDents.length > 0 ? t("projectLandingPage.otherCommonReeds") : t("projectLandingPage.commonReeds")}>
             {(loomDents.length > 0 ? extraDents : COMMON_DENTS).map((d) => (
               <option key={d} value={String(d)}>
                 {d}-dent{d === bestMatch ? " ★" : ""}
               </option>
             ))}
           </optgroup>
-          <option value="custom">Custom…</option>
+          <option value="custom">{t("projectLandingPage.customReed")}</option>
         </select>
 
         {isCustom && (
@@ -1017,20 +1023,20 @@ function ReedSelector({
               type="number"
               min="1"
               step="0.5"
-              placeholder="dents/in"
+              placeholder={t("projectLandingPage.dentsPerIn")}
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
               className="w-24 rounded border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <Button size="sm" onClick={handleCustomSave} disabled={mutation.isPending || !customInput}>
-              Set
+              {t("projectLandingPage.setReed")}
             </Button>
           </div>
         )}
 
         {threadsPerDent != null && (
           <span className="text-sm font-semibold">
-            {threadsPerDent} thread{threadsPerDent !== 1 ? "s" : ""}/dent{threadsPerDent === 1 ? " (ideal)" : ""}
+            {t("projectLandingPage.threadsPerDent", { count: threadsPerDent })}{threadsPerDent === 1 ? ` ${t("projectLandingPage.ideal")}` : ""}
           </span>
         )}
 
@@ -1041,19 +1047,19 @@ function ReedSelector({
       {dentPattern != null && epiInt != null && effectiveDentsInt != null && (
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 px-3 py-2 space-y-1">
           <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-            {epiInt} EPI is not an exact multiple of {effectiveDentsInt}-dent. Approximate threading distribution:
+            {t("projectLandingPage.approxDistribution", { epi: epiInt, dents: effectiveDentsInt })}
           </p>
           <p className="font-mono text-xs text-amber-700 dark:text-amber-400">
             {formatDentPattern(dentPattern)}
           </p>
           {idealDent != null && idealDent !== effectiveDentsInt && (
             <p className="text-xs text-amber-700 dark:text-amber-400 pt-0.5">
-              For a clean sett, use a {idealDent}-dent reed.{" "}
+              {t("projectLandingPage.useCleanSett", { dent: idealDent })}{" "}
               <button
                 className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200"
                 onClick={() => handleSelect(String(idealDent))}
               >
-                Switch
+                {t("projectLandingPage.switchReed")}
               </button>
             </p>
           )}
@@ -1063,12 +1069,12 @@ function ReedSelector({
       {/* "Use this" nudge when a better clean-multiple reed exists */}
       {epiInt != null && bestMatch != null && effectiveDentsInt !== bestMatch && !dentPattern && (
         <p className="text-xs text-muted-foreground">
-          Recommended for {epiInt} EPI: {bestMatch}-dent{" "}
+          {t("projectLandingPage.recommendedReed", { epi: epiInt, dents: bestMatch })}{" "}
           <button
             className="underline underline-offset-2 hover:text-foreground"
             onClick={() => handleSelect(String(bestMatch))}
           >
-            Use this
+            {t("projectLandingPage.useThis")}
           </button>
         </p>
       )}
@@ -1076,9 +1082,9 @@ function ReedSelector({
       {project.loom_id && project.loom_reeds.length === 0 && (
         <p className="text-xs text-muted-foreground">
           <Link to={`/looms/${project.loom_id}`} className="underline underline-offset-2 hover:text-foreground">
-            Add reeds to your loom
+            {t("projectLandingPage.addReedsToLoom")}
           </Link>{" "}
-          to see them here.
+          {t("projectLandingPage.toSeeHere")}
         </p>
       )}
     </section>
@@ -1100,6 +1106,7 @@ function NotesSection({
   initialNotes: string | null;
   onUpdated: (updated: ProjectDetail) => void;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(initialNotes ?? "");
 
@@ -1115,12 +1122,12 @@ function NotesSection({
     return (
       <section className="space-y-1">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Notes</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.notes")}</h3>
           <button
             className="text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setEditing(true)}
           >
-            {initialNotes ? "Edit" : "Add notes"}
+            {initialNotes ? t("projectLandingPage.edit") : t("projectLandingPage.addNotes")}
           </button>
         </div>
         {initialNotes && (
@@ -1132,7 +1139,7 @@ function NotesSection({
 
   return (
     <section className="space-y-2">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Notes</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.notes")}</h3>
       <textarea
         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y min-h-[80px]"
         value={value}
@@ -1145,14 +1152,14 @@ function NotesSection({
           onClick={() => mutation.mutate(value)}
           disabled={mutation.isPending}
         >
-          Save
+          {t("common.save")}
         </Button>
         <Button
           size="sm"
           variant="outline"
           onClick={() => { setValue(initialNotes ?? ""); setEditing(false); }}
         >
-          Cancel
+          {t("common.cancel")}
         </Button>
       </div>
     </section>
@@ -1164,6 +1171,7 @@ function NotesSection({
 // ---------------------------------------------------------------------------
 
 export function ProjectLandingPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthContext();
@@ -1219,7 +1227,7 @@ export function ProjectLandingPage() {
       setStatusActionError(null);
     },
     onError: (err: Error) => {
-      setStatusActionError(err.message ?? "Could not mark project complete.");
+      setStatusActionError(err.message ?? t("projectLandingPage.couldNotComplete"));
     },
   });
 
@@ -1232,7 +1240,7 @@ export function ProjectLandingPage() {
       setStatusActionError(null);
     },
     onError: (err: Error) => {
-      setStatusActionError(err.message ?? "Could not abandon project.");
+      setStatusActionError(err.message ?? t("projectLandingPage.couldNotAbandon"));
     },
   });
 
@@ -1246,7 +1254,7 @@ export function ProjectLandingPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">
-        Loading project…
+        {t("projectLandingPage.loading")}
       </div>
     );
   }
@@ -1254,9 +1262,9 @@ export function ProjectLandingPage() {
   if (error || !project) {
     return (
       <div className="flex flex-col items-center justify-center h-40 gap-3">
-        <p className="text-sm text-muted-foreground">Project not found.</p>
+        <p className="text-sm text-muted-foreground">{t("projectLandingPage.notFound")}</p>
         <Button variant="outline" size="sm" onClick={() => navigate("/projects")}>
-          Back to Projects
+          {t("projectLandingPage.backToProjects")}
         </Button>
       </div>
     );
@@ -1293,10 +1301,10 @@ export function ProjectLandingPage() {
               <button
                 onClick={() => setShareModalOpen(true)}
                 className="rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
-                title="Project is shared — click to manage"
+                title={t("projectLandingPage.projectSharedManage")}
               >
                 <AppIcons.share className="h-3 w-3" />
-                Shared
+                {t("projectLandingPage.shared")}
               </button>
             )}
           </div>
@@ -1317,7 +1325,7 @@ export function ProjectLandingPage() {
                 onClick={() => { setPendingTags(project.tags ?? []); setEditingTags(true); }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {project.tags && project.tags.length > 0 ? "Edit tags" : "+ Add tags"}
+                {project.tags && project.tags.length > 0 ? t("projectLandingPage.editTags") : t("projectLandingPage.addTags")}
               </button>
             </div>
           )}
@@ -1331,10 +1339,10 @@ export function ProjectLandingPage() {
                 onClick={() => tagsMutation.mutate(pendingTags)}
                 disabled={tagsMutation.isPending}
               >
-                {tagsMutation.isPending ? "Saving…" : "Save"}
+                {tagsMutation.isPending ? t("projectLandingPage.saving") : t("common.save")}
               </Button>
               <Button size="sm" variant="outline" onClick={() => setEditingTags(false)}>
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           )}
@@ -1344,7 +1352,7 @@ export function ProjectLandingPage() {
           size="icon"
           className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
           onClick={() => setShowAddToCollection(true)}
-          title="Add to collection"
+          title={t("projectLandingPage.addToCollection")}
         >
           <AppIcons.collections className="h-4 w-4" />
         </Button>
@@ -1353,7 +1361,7 @@ export function ProjectLandingPage() {
           size="icon"
           className="mt-0.5 flex-shrink-0 text-muted-foreground hover:text-foreground"
           onClick={() => setShareModalOpen(true)}
-          title="Share project"
+          title={t("projectLandingPage.shareProject")}
         >
           <AppIcons.share className="h-4 w-4" />
         </Button>
@@ -1365,7 +1373,7 @@ export function ProjectLandingPage() {
           <button
             className="rounded-lg overflow-hidden border border-border bg-muted/20 hover:border-ring transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             onClick={() => setDrawdownOpen(true)}
-            title="Click to view full drawdown"
+            title={t("projectLandingPage.clickForDrawdown")}
           >
             <AuthedImage
               src={previewUrl(project.draft_id)}
@@ -1377,81 +1385,81 @@ export function ProjectLandingPage() {
             <button
               className="text-xs text-center text-muted-foreground hover:text-foreground py-0.5 border border-border/50 rounded hover:border-border transition-colors"
               onClick={() => setTieupOpen(true)}
-              title="View treadle tie-up diagram"
+              title={t("projectLandingPage.viewTieUp")}
             >
-              Tie-up
+              {t("projectLandingPage.tieUp")}
             </button>
           )}
         </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm pt-1">
           {project.draft_num_shafts != null && (
             <>
-              <dt className="text-muted-foreground">Shafts</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.shafts")}</dt>
               <dd>{project.draft_effective_num_shafts ?? project.draft_num_shafts}</dd>
             </>
           )}
           {project.draft_num_treadles != null && (
             <>
-              <dt className="text-muted-foreground">Treadles</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.treadles")}</dt>
               <dd>{project.draft_effective_num_treadles ?? project.draft_num_treadles}</dd>
             </>
           )}
           {project.draft_warp_threads != null && (
             <>
-              <dt className="text-muted-foreground">Warp threads</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.warpThreads")}</dt>
               <dd>{project.draft_warp_threads}</dd>
             </>
           )}
           {project.draft_weft_threads != null && (
             <>
-              <dt className="text-muted-foreground">Picks / repeat</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.picksPerRepeat")}</dt>
               <dd>{project.draft_weft_threads}</dd>
             </>
           )}
           {project.draft_weaving_width_override_cm != null && (
             <>
-              <dt className="text-muted-foreground">Weaving width</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.weavingWidth")}</dt>
               <dd>{displayLength(project.draft_weaving_width_override_cm, "cm", displayUnit)}</dd>
             </>
           )}
           {project.draft_epi_override != null ? (
             <>
-              <dt className="text-muted-foreground">Sett</dt>
-              <dd>{project.draft_epi_override} e.p.i.</dd>
+              <dt className="text-muted-foreground">{t("projectLandingPage.sett")}</dt>
+              <dd>{project.draft_epi_override} {t("projectLandingPage.epiUnit")}</dd>
             </>
           ) : m?.warp_spacing != null ? (
             <>
-              <dt className="text-muted-foreground">Warp spacing</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.warpSpacing")}</dt>
               <dd>{displayLength(m.warp_spacing, "cm", displayUnit)}</dd>
             </>
           ) : null}
           {warpLengthCm != null && (
             <>
-              <dt className="text-muted-foreground">Warp length</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.warpLength")}</dt>
               <dd>{displayLength(warpLengthCm, "cm", displayUnit)}</dd>
             </>
           )}
           {project.finished_length_per_item && (
             <>
-              <dt className="text-muted-foreground">Length / item</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.lengthPerItem")}</dt>
               <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd>
             </>
           )}
           {project.num_items > 1 && (
             <>
-              <dt className="text-muted-foreground">Items</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.items")}</dt>
               <dd>{project.num_items}</dd>
             </>
           )}
           {project.waste_between_items && (
             <>
-              <dt className="text-muted-foreground">Waste between items</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.wasteBetween")}</dt>
               <dd>{displayLength(project.waste_between_items, project.length_unit, displayUnit)}</dd>
             </>
           )}
           {project.warp_waste_allowance && (
             <>
-              <dt className="text-muted-foreground">Loom waste</dt>
+              <dt className="text-muted-foreground">{t("projectLandingPage.loomWaste")}</dt>
               <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd>
             </>
           )}
@@ -1462,11 +1470,11 @@ export function ProjectLandingPage() {
       {progress && (
         <section className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Progress</span>
+            <span className="text-muted-foreground">{t("projectLandingPage.progress")}</span>
             <span className="tabular-nums">
-              {progress.done} / {progress.total} picks · {progress.pct}%
-              {project.num_items > 1 &&
-                ` · item ${project.current_item} of ${project.num_items}`}
+              {project.num_items > 1
+                ? t("projectLandingPage.picksItems", { done: progress.done, total: progress.total, pct: progress.pct, current: project.current_item, items: project.num_items })
+                : t("projectLandingPage.picks", { done: progress.done, total: progress.total, pct: progress.pct })}
             </span>
           </div>
           <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
@@ -1520,23 +1528,23 @@ export function ProjectLandingPage() {
         {/* Complete / Abandon inline confirmations */}
         {confirmComplete && (
           <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
-            <span className="flex-1 text-muted-foreground">Mark this project as completed?</span>
+            <span className="flex-1 text-muted-foreground">{t("projectLandingPage.confirmComplete")}</span>
             <Button size="sm" variant="success" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
-              Confirm
+              {t("projectLandingPage.confirm")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setConfirmComplete(false); setStatusActionError(null); }} disabled={completeMutation.isPending}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         )}
         {confirmAbandon && (
           <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
-            <span className="flex-1 text-muted-foreground">Abandon this project?</span>
+            <span className="flex-1 text-muted-foreground">{t("projectLandingPage.confirmAbandon")}</span>
             <Button size="sm" variant="destructive" onClick={() => abandonMutation.mutate()} disabled={abandonMutation.isPending}>
-              Confirm
+              {t("projectLandingPage.confirm")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setConfirmAbandon(false); setStatusActionError(null); }} disabled={abandonMutation.isPending}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         )}
@@ -1547,13 +1555,13 @@ export function ProjectLandingPage() {
           <Button
             variant="destructive"
             onClick={() => {
-              if (confirm("Delete this project? This cannot be undone.")) {
+              if (confirm(t("projectLandingPage.deleteConfirm"))) {
                 deleteMutation.mutate();
               }
             }}
             disabled={deleteMutation.isPending}
           >
-            Delete
+            {t("projectLandingPage.delete")}
           </Button>
           {(project.status === "active" || project.status === "created") && !confirmAbandon && (
             <Button
@@ -1561,7 +1569,7 @@ export function ProjectLandingPage() {
               className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => { setConfirmAbandon(true); setConfirmComplete(false); setStatusActionError(null); }}
             >
-              Abandon
+              {t("projectLandingPage.abandon")}
             </Button>
           )}
           {project.status === "active" && !confirmComplete && (
@@ -1570,14 +1578,14 @@ export function ProjectLandingPage() {
               className="border-green-600 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400 dark:border-green-500 dark:hover:bg-green-600 dark:hover:text-white"
               onClick={() => { setConfirmComplete(true); setConfirmAbandon(false); setStatusActionError(null); }}
             >
-              Mark Complete
+              {t("projectLandingPage.markComplete")}
             </Button>
           )}
           <Link
             to={`/projects/${project.id}/warping-plan`}
             className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
           >
-            Weave Plan
+            {t("projectLandingPage.weavePlan")}
           </Link>
           {isActive && (
             <Link
@@ -1585,7 +1593,7 @@ export function ProjectLandingPage() {
               className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
             >
               <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
-              {project.status === "created" ? "Start Weaving" : "Track"}
+              {project.status === "created" ? t("projectLandingPage.startWeaving") : t("projectLandingPage.track")}
             </Link>
           )}
         </div>

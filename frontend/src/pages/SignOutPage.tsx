@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth as useClerkAuth, useClerk } from "@clerk/clerk-react";
 import { AuthCard } from "@/components/auth/AuthCard";
 
@@ -7,6 +8,7 @@ export function SignOutPage() {
   const { isSignedIn, isLoaded } = useClerkAuth();
   const { signOut } = useClerk();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -24,8 +26,8 @@ export function SignOutPage() {
         {!isLoaded || isSignedIn ? (
           <>
             <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-stone-200 border-t-zinc-800" />
-            <h1 className="text-lg font-semibold text-zinc-800">Signing you out</h1>
-            <p className="mt-2 text-sm text-stone-600">Just a moment…</p>
+            <h1 className="text-lg font-semibold text-zinc-800">{t("signOutPage.signingOut")}</h1>
+            <p className="mt-2 text-sm text-stone-600">{t("signOutPage.justAMoment")}</p>
           </>
         ) : (
           <>
@@ -41,8 +43,8 @@ export function SignOutPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75" />
               </svg>
             </div>
-            <h1 className="text-lg font-semibold text-zinc-800">You've been signed out</h1>
-            <p className="mt-2 text-sm text-stone-600">Redirecting you to the home page…</p>
+            <h1 className="text-lg font-semibold text-zinc-800">{t("signOutPage.signedOut")}</h1>
+            <p className="mt-2 text-sm text-stone-600">{t("signOutPage.redirecting")}</p>
           </>
         )}
       </div>
