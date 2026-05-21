@@ -89,12 +89,12 @@
       "preferences": "Preferences",
       "preferencesDesc": "Update your display name and default units for measurements.",
       "privacy": "Privacy & data",
-      "privacyDesc": "Control what information is visible to others on the platform.",
+      "privacyDesc": "Control your data sharing preferences and download a copy of your data.",
       "terms": "Terms of Service",
       "termsDesc": "Review the terms of service you have accepted.",
       "feedbackHistory": "Feedback history",
       "account": "Account management",
-      "accountDesc": "Download your data or permanently delete your account."
+      "accountDesc": "Permanently delete your account and all associated data."
     },
     "appearance": {
       "theme": "Theme",
