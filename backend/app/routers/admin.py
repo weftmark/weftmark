@@ -2186,6 +2186,96 @@ async def run_purge_soft_deleted(
     return {"status": "queued", "task_id": task.id}
 
 
+class SoftDeleteBucket(BaseModel):
+    drafts: int
+    projects: int
+    yarn: int
+    looms: int
+    total: int
+
+
+class SoftDeleteQueueResponse(BaseModel):
+    retention_days: int
+    cutoff: datetime
+    ready_to_purge: SoftDeleteBucket
+    in_retention_window: SoftDeleteBucket
+
+
+@router.get("/soft-delete-queue", response_model=SoftDeleteQueueResponse)
+async def get_soft_delete_queue(
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> SoftDeleteQueueResponse:
+    settings = get_settings()
+    retention_days = settings.soft_delete_retention_days
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+
+    async def _count(model, before_cutoff: bool) -> int:
+        if before_cutoff:
+            condition = model.deleted_at.is_not(None) & (model.deleted_at < cutoff)
+        else:
+            condition = model.deleted_at.is_not(None) & (model.deleted_at >= cutoff)
+        result = await db.scalar(select(func.count()).select_from(model).where(condition))
+        return result or 0
+
+    ready_drafts = await _count(Draft, True)
+    ready_projects = await _count(Project, True)
+    ready_yarn = await _count(Yarn, True)
+    ready_looms = await _count(Loom, True)
+
+    window_drafts = await _count(Draft, False)
+    window_projects = await _count(Project, False)
+    window_yarn = await _count(Yarn, False)
+    window_looms = await _count(Loom, False)
+
+    return SoftDeleteQueueResponse(
+        retention_days=retention_days,
+        cutoff=cutoff,
+        ready_to_purge=SoftDeleteBucket(
+            drafts=ready_drafts,
+            projects=ready_projects,
+            yarn=ready_yarn,
+            looms=ready_looms,
+            total=ready_drafts + ready_projects + ready_yarn + ready_looms,
+        ),
+        in_retention_window=SoftDeleteBucket(
+            drafts=window_drafts,
+            projects=window_projects,
+            yarn=window_yarn,
+            looms=window_looms,
+            total=window_drafts + window_projects + window_yarn + window_looms,
+        ),
+    )
+
+
+class DeletionQueueUser(BaseModel):
+    id: uuid.UUID
+    display_name: str
+    email: str
+    deletion_state: str
+    deletion_initiated_at: datetime | None
+
+
+@router.get("/deletion-queue", response_model=list[DeletionQueueUser])
+async def get_deletion_queue(
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> list[DeletionQueueUser]:
+    rows = await db.scalars(
+        select(User).where(User.deletion_state.is_not(None)).order_by(User.deletion_initiated_at.desc())
+    )
+    return [
+        DeletionQueueUser(
+            id=u.id,
+            display_name=u.display_name,
+            email=u.email,
+            deletion_state=u.deletion_state,
+            deletion_initiated_at=u.deletion_initiated_at,
+        )
+        for u in rows.all()
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Scheduled tasks (superuser only)
 # ---------------------------------------------------------------------------

@@ -1961,3 +1961,187 @@ class TestCveScan:
     async def test_summary_requires_superuser(self, admin_client: AsyncClient):
         resp = await admin_client.get("/api/admin/cve-scan/summary")
         assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/soft-delete-queue
+# ---------------------------------------------------------------------------
+
+
+class TestSoftDeleteQueue:
+    async def test_requires_superuser(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/soft-delete-queue")
+        assert resp.status_code == 403
+
+    async def test_requires_auth(self, client: AsyncClient):
+        resp = await client.get("/api/admin/soft-delete-queue")
+        assert resp.status_code == 401
+
+    async def test_empty_queue_returns_zeros(self, superuser_client: AsyncClient, superuser_user: User):
+        resp = await superuser_client.get("/api/admin/soft-delete-queue")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ready_to_purge"]["total"] == 0
+        assert data["in_retention_window"]["total"] == 0
+        assert data["retention_days"] > 0
+        assert "cutoff" in data
+
+    async def test_counts_ready_to_purge(
+        self,
+        superuser_client: AsyncClient,
+        superuser_user: User,
+        db_session: AsyncSession,
+        test_user: User,
+    ):
+        old_cutoff = datetime.now(timezone.utc) - timedelta(days=400)
+        draft = Draft(
+            owner_id=test_user.id,
+            name="Old draft",
+            wif_filename="old.wif",
+            wif_path="drafts/old.wif",
+            deleted_at=old_cutoff,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        resp = await superuser_client.get("/api/admin/soft-delete-queue")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ready_to_purge"]["drafts"] >= 1
+        assert data["ready_to_purge"]["total"] >= 1
+        assert data["in_retention_window"]["drafts"] == 0
+
+    async def test_counts_in_retention_window(
+        self,
+        superuser_client: AsyncClient,
+        superuser_user: User,
+        db_session: AsyncSession,
+        test_user: User,
+    ):
+        recent = datetime.now(timezone.utc) - timedelta(days=5)
+        draft = Draft(
+            owner_id=test_user.id,
+            name="Recent draft",
+            wif_filename="recent.wif",
+            wif_path="drafts/recent.wif",
+            deleted_at=recent,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        resp = await superuser_client.get("/api/admin/soft-delete-queue")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["in_retention_window"]["drafts"] >= 1
+        assert data["in_retention_window"]["total"] >= 1
+        assert data["ready_to_purge"]["drafts"] == 0
+
+    async def test_non_deleted_records_not_counted(
+        self,
+        superuser_client: AsyncClient,
+        superuser_user: User,
+        db_session: AsyncSession,
+        test_user: User,
+    ):
+        draft = Draft(
+            owner_id=test_user.id,
+            name="Active draft",
+            wif_filename="active.wif",
+            wif_path="drafts/active.wif",
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        resp = await superuser_client.get("/api/admin/soft-delete-queue")
+        data = resp.json()
+        assert data["ready_to_purge"]["total"] == 0
+        assert data["in_retention_window"]["total"] == 0
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/deletion-queue
+# ---------------------------------------------------------------------------
+
+
+class TestDeletionQueue:
+    async def test_requires_superuser(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/deletion-queue")
+        assert resp.status_code == 403
+
+    async def test_requires_auth(self, client: AsyncClient):
+        resp = await client.get("/api/admin/deletion-queue")
+        assert resp.status_code == 401
+
+    async def test_empty_when_no_deletions(self, superuser_client: AsyncClient, superuser_user: User):
+        resp = await superuser_client.get("/api/admin/deletion-queue")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_returns_users_in_deletion_pipeline(
+        self,
+        superuser_client: AsyncClient,
+        superuser_user: User,
+        db_session: AsyncSession,
+        test_user: User,
+    ):
+        test_user.deletion_state = "pending"
+        test_user.deletion_initiated_at = datetime.now(timezone.utc)
+        db_session.add(test_user)
+        await db_session.commit()
+
+        resp = await superuser_client.get("/api/admin/deletion-queue")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["deletion_state"] == "pending"
+        assert data[0]["email"] == test_user.email
+
+    async def test_excludes_users_without_deletion_state(
+        self,
+        superuser_client: AsyncClient,
+        superuser_user: User,
+        db_session: AsyncSession,
+        test_user: User,
+    ):
+        assert test_user.deletion_state is None
+        resp = await superuser_client.get("/api/admin/deletion-queue")
+        assert resp.json() == []
+
+    async def test_ordered_by_initiated_at_desc(
+        self,
+        superuser_client: AsyncClient,
+        superuser_user: User,
+        db_session: AsyncSession,
+        test_user: User,
+        admin_user: User,
+    ):
+        now = datetime.now(timezone.utc)
+        test_user.deletion_state = "pending"
+        test_user.deletion_initiated_at = now - timedelta(hours=2)
+        admin_user.deletion_state = "in_progress"
+        admin_user.deletion_initiated_at = now
+        db_session.add_all([test_user, admin_user])
+        await db_session.commit()
+
+        resp = await superuser_client.get("/api/admin/deletion-queue")
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["deletion_state"] == "in_progress"
+        assert data[1]["deletion_state"] == "pending"
+
+    async def test_stalled_state_included(
+        self,
+        superuser_client: AsyncClient,
+        superuser_user: User,
+        db_session: AsyncSession,
+        test_user: User,
+    ):
+        test_user.deletion_state = "stalled"
+        test_user.deletion_initiated_at = datetime.now(timezone.utc)
+        db_session.add(test_user)
+        await db_session.commit()
+
+        resp = await superuser_client.get("/api/admin/deletion-queue")
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["deletion_state"] == "stalled"
