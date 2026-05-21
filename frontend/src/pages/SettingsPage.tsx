@@ -483,12 +483,26 @@ export function SettingsPage() {
                 </div>
 
                 <Field label={t("settings.account.downloadData")}>
-                  {exportStatus?.status === "pending" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => requestExportMutation.mutate()}
+                    disabled={requestExportMutation.isPending || exportStatus?.status === "pending"}
+                  >
+                    {t("settings.account.requestArchive")}
+                  </Button>
+                  {exportStatus?.status === "pending" && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <AppIcons.spinner className="h-4 w-4 animate-spin" />
                       {t("settings.account.archivePending")}
                     </div>
-                  ) : exportStatus?.status === "complete" && exportStatus.request_id ? (
+                  )}
+                  {exportStatus?.status === "pending" && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings.account.archiveEmailNotice")}
+                    </p>
+                  )}
+                  {exportStatus?.status === "complete" && exportStatus.request_id && (
                     <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">{t("settings.account.archiveReady")}</p>
                       {exportStatus.expires_at && (
@@ -511,29 +525,13 @@ export function SettingsPage() {
                         {t("settings.account.downloadArchive")}
                       </Button>
                     </div>
-                  ) : (
-                    <>
-                      {exportStatus?.status === "failed" && (
-                        <p className="text-xs text-destructive mb-1">
-                          {t("settings.account.archiveFailed")}
-                        </p>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => requestExportMutation.mutate()}
-                        disabled={requestExportMutation.isPending}
-                      >
-                        {t("settings.account.requestArchive")}
-                      </Button>
-                    </>
                   )}
-                  {exportStatus?.status === "pending" && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("settings.account.archiveEmailNotice")}
+                  {exportStatus?.status === "failed" && (
+                    <p className="text-xs text-destructive">
+                      {t("settings.account.archiveFailed")}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground">
                     {t("settings.account.archiveNote")}
                   </p>
                 </Field>
