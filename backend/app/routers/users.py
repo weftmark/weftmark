@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_current_user, get_db
 from app.metrics import eula_accepted_total
+from app.models.collection import Collection, CollectionDraft, CollectionProject
 from app.models.draft import Draft
 from app.models.eula_version import EulaVersion
 from app.models.invite import Invite
@@ -309,6 +310,12 @@ async def delete_account(
         )
 
     user_id = current_user.id
+
+    if current_user.clerk_user_id:
+        from app.services.clerk import delete_clerk_user
+
+        await delete_clerk_user(current_user.clerk_user_id)
+
     await _purge_user_storage(db, user_id)
     await _purge_user_db(db, user_id, current_user)
     await db.commit()
@@ -596,6 +603,11 @@ async def _purge_user_db(db: AsyncSession, user_id: uuid.UUID, user: User) -> No
     await db.execute(delete(LoomVersionPhoto).where(LoomVersionPhoto.loom_version_id.in_(version_ids_subq)))
     await db.execute(delete(LoomVersion).where(LoomVersion.loom_id.in_(loom_ids_subq)))
     await db.execute(delete(Loom).where(Loom.owner_id == user_id))
+
+    collection_ids_subq = select(Collection.id).where(Collection.owner_id == user_id)
+    await db.execute(delete(CollectionDraft).where(CollectionDraft.collection_id.in_(collection_ids_subq)))
+    await db.execute(delete(CollectionProject).where(CollectionProject.collection_id.in_(collection_ids_subq)))
+    await db.execute(delete(Collection).where(Collection.owner_id == user_id))
 
     await db.execute(delete(Draft).where(Draft.owner_id == user_id))
 

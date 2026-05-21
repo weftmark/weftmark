@@ -84,3 +84,14 @@ async def unban_clerk_user(clerk_user_id: str) -> None:
     async with httpx.AsyncClient() as client:
         r = await client.post(f"{_BASE}/users/{clerk_user_id}/unban", headers=_headers(), timeout=10)
         r.raise_for_status()
+
+
+async def delete_clerk_user(clerk_user_id: str) -> None:
+    """Delete a Clerk user via the Management API. Logs failure but does not raise."""
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.delete(f"{_BASE}/users/{clerk_user_id}", headers=_headers(), timeout=10)
+            if not r.is_success:
+                log.warning("clerk_delete_failed user_id=%s status=%s", clerk_user_id, r.status_code)
+    except Exception:
+        log.exception("Failed to delete Clerk user %s", clerk_user_id)

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useClerk } from "@clerk/clerk-react";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +18,7 @@ type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | 
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  const { signOut } = useClerk();
   const { user, refetch } = useAuth();
   const { section } = useParams<{ section: string }>();
   const activeSection: Section = (section as Section) ?? "appearance";
@@ -117,7 +119,8 @@ export function SettingsPage() {
     setDeleteError(null);
     try {
       await deleteAccount("DELETE MY ACCOUNT");
-      window.location.href = "/login";
+      await signOut();
+      window.location.href = "/";
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : "Failed to delete account");
       setDeleting(false);

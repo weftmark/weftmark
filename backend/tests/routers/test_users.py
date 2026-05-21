@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
+from app.models.collection import Collection, CollectionDraft, CollectionProject
 from app.models.draft import Draft
 from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt
 from app.models.project import Project, ProjectPhoto, ProjectStep
@@ -360,6 +361,50 @@ class TestDeleteAccount:
         await auth_client.request("DELETE", "/api/users/me", json={"confirm": "DELETE MY ACCOUNT"})
         assert wif_path not in mock_storage
         assert preview_path not in mock_storage
+
+    async def test_deletes_collections_and_join_rows(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from datetime import datetime, timezone
+
+        draft = Draft(owner_id=test_user.id, name="D", wif_filename="d.wif", wif_path="drafts/d.wif")
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="P",
+            project_type="treadle",
+            status="planning",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        collection = Collection(owner_id=test_user.id, name="My Collection")
+        db_session.add(collection)
+        await db_session.flush()
+
+        now = datetime.now(timezone.utc)
+        cd = CollectionDraft(collection_id=collection.id, draft_id=draft.id, added_at=now)
+        cp = CollectionProject(collection_id=collection.id, project_id=project.id, added_at=now)
+        db_session.add_all([cd, cp])
+        await db_session.commit()
+
+        collection_id = collection.id
+        await auth_client.request("DELETE", "/api/users/me", json={"confirm": "DELETE MY ACCOUNT"})
+
+        assert await db_session.scalar(select(Collection).where(Collection.id == collection_id)) is None
+        assert (
+            await db_session.scalar(select(CollectionDraft).where(CollectionDraft.collection_id == collection_id))
+            is None
+        )
+        assert (
+            await db_session.scalar(select(CollectionProject).where(CollectionProject.collection_id == collection_id))
+            is None
+        )
 
 
 # ---------------------------------------------------------------------------
