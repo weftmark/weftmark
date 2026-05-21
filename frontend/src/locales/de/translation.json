@@ -83,12 +83,18 @@
     "saved": "Gespeichert",
     "sections": {
       "appearance": "Darstellung",
+      "appearanceDesc": "Wähle dein Farbthema und passe das Aussehen des Aktivitäts-Trackers an.",
       "diagnostics": "Diagnose",
+      "diagnosticsDesc": "Entwickleroptionen wie Versionsnummern konfigurieren.",
       "preferences": "Einstellungen",
+      "preferencesDesc": "Anzeigename und Standardeinheiten für Maßangaben aktualisieren.",
       "privacy": "Datenschutz",
+      "privacyDesc": "Steuere, welche Informationen für andere auf der Plattform sichtbar sind.",
       "terms": "Nutzungsbedingungen",
+      "termsDesc": "Überprüfe die akzeptierten Nutzungsbedingungen.",
       "feedbackHistory": "Feedback-Verlauf",
-      "account": "Kontoverwaltung"
+      "account": "Kontoverwaltung",
+      "accountDesc": "Daten herunterladen oder Konto dauerhaft löschen."
     },
     "appearance": {
       "theme": "Design",

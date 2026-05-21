@@ -142,7 +142,7 @@ export function SettingsPage() {
             {/* ── Appearance ── */}
             {activeSection === "appearance" && (
               <>
-              <Section title={t("settings.sections.appearance")}>
+              <Section title={t("settings.sections.appearance")} description={t("settings.sections.appearanceDesc")}>
                 <Field label={t("settings.appearance.theme")}>
                   <div className="flex gap-2">
                     {(["light", "dark", "system"] as const).map((t) => (
@@ -288,7 +288,7 @@ export function SettingsPage() {
                 </Field>
               </Section>
 
-              <Section title={t("settings.sections.diagnostics")}>
+              <Section title={t("settings.sections.diagnostics")} description={t("settings.sections.diagnosticsDesc")}>
                 <Field label={t("settings.diagnostics.showVersionNumbers")}>
                   <div className="flex items-center gap-3">
                     <button
@@ -321,7 +321,7 @@ export function SettingsPage() {
 
             {/* ── Preferences ── */}
             {activeSection === "preferences" && (
-              <Section title={t("settings.sections.preferences")}>
+              <Section title={t("settings.sections.preferences")} description={t("settings.sections.preferencesDesc")}>
                 <Field label={t("settings.preferences.displayName")}>
                   <div className="flex gap-2">
                     <input
@@ -387,7 +387,7 @@ export function SettingsPage() {
 
             {/* ── Privacy & data ── */}
             {activeSection === "privacy" && (
-              <Section title={t("settings.sections.privacy")}>
+              <Section title={t("settings.sections.privacy")} description={t("settings.sections.privacyDesc")}>
                 <Field label={t("settings.privacy.optOut")}>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.privacy.optOutHelp")}
@@ -483,7 +483,7 @@ export function SettingsPage() {
 
             {/* ── Terms ── */}
             {activeSection === "terms" && (
-              <Section title={t("settings.sections.terms")}>
+              <Section title={t("settings.sections.terms")} description={t("settings.sections.termsDesc")}>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
@@ -515,7 +515,7 @@ export function SettingsPage() {
 
             {/* ── Account ── */}
             {activeSection === "account" && (
-              <Section title={t("settings.sections.account")}>
+              <Section title={t("settings.sections.account")} description={t("settings.sections.accountDesc")}>
                 <Field label={t("settings.account.downloadData")}>
                   {exportStatus?.status === "pending" ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -650,11 +650,7 @@ function FeedbackHistorySection() {
   });
 
   return (
-    <Section title={t("settings.sections.feedbackHistory")}>
-      <p className="text-sm text-muted-foreground">
-        {t("settings.feedbackHistory.description")}
-      </p>
-
+    <Section title={t("settings.sections.feedbackHistory")} description={t("settings.feedbackHistory.description")}>
       {isLoading ? (
         <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : submissions.length === 0 ? (
@@ -729,10 +725,13 @@ function FeedbackHistorySection() {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
     <div className="space-y-5">
-      <h2 className="text-base font-semibold border-b pb-2">{title}</h2>
+      <div className="border-b pb-2 space-y-0.5">
+        <h2 className="text-base font-semibold">{title}</h2>
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      </div>
       {children}
     </div>
   );

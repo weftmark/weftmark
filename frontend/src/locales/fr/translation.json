@@ -83,12 +83,18 @@
     "saved": "Enregistré",
     "sections": {
       "appearance": "Apparence",
+      "appearanceDesc": "Choisissez votre thème de couleur et personnalisez l'affichage du suivi d'activité.",
       "diagnostics": "Diagnostics",
+      "diagnosticsDesc": "Configurer les options développeur comme les numéros de version.",
       "preferences": "Préférences",
+      "preferencesDesc": "Mettez à jour votre nom d'affichage et les unités par défaut pour les mesures.",
       "privacy": "Confidentialité",
+      "privacyDesc": "Contrôlez les informations visibles par les autres utilisateurs de la plateforme.",
       "terms": "Conditions d'utilisation",
+      "termsDesc": "Consultez les conditions d'utilisation que vous avez acceptées.",
       "feedbackHistory": "Historique des retours",
-      "account": "Gestion du compte"
+      "account": "Gestion du compte",
+      "accountDesc": "Téléchargez vos données ou supprimez définitivement votre compte."
     },
     "appearance": {
       "theme": "Thème",
