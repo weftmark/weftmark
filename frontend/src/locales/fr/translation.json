@@ -97,6 +97,7 @@
       "trackerDefaultsHelp": "Options d'affichage par défaut lors de l'ouverture du suivi d'activité. Vous pouvez les modifier par projet dans le panneau de paramètres du suivi.",
       "colorMode": "Mode couleur",
       "progressBar": "Barre de progression",
+      "hiddenInCompact": "Masqué en mode compact",
       "drawdownPattern": "Armure",
       "weftColorBar": "Barre de couleur de trame",
       "prevNextPickCards": "Cartes duite précédente/suivante",

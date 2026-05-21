@@ -97,6 +97,7 @@
       "trackerDefaultsHelp": "Opciones de vista predeterminadas al abrir el seguidor de actividad. Puedes anularlas por proyecto en el panel de configuración del seguidor.",
       "colorMode": "Modo de color",
       "progressBar": "Barra de progreso",
+      "hiddenInCompact": "Oculto en modo compacto",
       "drawdownPattern": "Ligamento",
       "weftColorBar": "Barra de color de trama",
       "prevNextPickCards": "Tarjetas de pasada anterior/siguiente",

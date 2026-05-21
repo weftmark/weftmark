@@ -97,6 +97,7 @@
       "trackerDefaultsHelp": "Standaard weergave­opties bij het openen van de activiteits­tracker. Deze kunnen per project overschreven worden in het instellingen­paneel van de tracker.",
       "colorMode": "Kleurmodus",
       "progressBar": "Voortgangs­balk",
+      "hiddenInCompact": "Verborgen in compacte modus",
       "drawdownPattern": "Bindingspatroon",
       "weftColorBar": "Inslagkleur­balk",
       "prevNextPickCards": "Kaarten vorige/volgende inslag",

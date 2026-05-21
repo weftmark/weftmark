@@ -97,6 +97,7 @@
       "trackerDefaultsHelp": "Standardansichtsoptionen beim Öffnen des Aktivitäts-Trackers. Diese können pro Projekt in den Tracker-Einstellungen überschrieben werden.",
       "colorMode": "Farbmodus",
       "progressBar": "Fortschrittsbalken",
+      "hiddenInCompact": "Im kompakten Modus ausgeblendet",
       "drawdownPattern": "Patrone",
       "weftColorBar": "Schussfarbenleiste",
       "prevNextPickCards": "Vorherige/nächste Eintrags­karten",
