@@ -41,7 +41,8 @@
     "deletion": "Verwijdering",
     "reconcile": "Afstemming",
     "maintenance": "Onderhoud",
-    "schedule": "Geplande taken"
+    "schedule": "Geplande taken",
+    "exports": "Gegevensexports"
   },
   "loomTypes": {
     "floor_loom": "Vloerweefstoel — trapper-tracking",

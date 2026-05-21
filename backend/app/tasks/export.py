@@ -195,10 +195,12 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
                 zf.writestr(f"{prefix}/README.txt", _readme(user, date_str))
 
             archive_key = f"exports/{user_id}/{request_id}.zip"
-            await asyncio.to_thread(storage._put, archive_key, buf.getvalue())
+            archive_bytes = buf.getvalue()
+            await asyncio.to_thread(storage._put, archive_key, archive_bytes)
 
             req.status = "complete"
             req.archive_path = archive_key
+            req.archive_size_bytes = len(archive_bytes)
             req.expires_at = datetime.now(timezone.utc) + timedelta(days=EXPORT_TTL_DAYS)
             await db.commit()
 

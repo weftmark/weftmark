@@ -493,3 +493,19 @@ export interface AdminProjectStep {
 
 export const listProjectSteps = (projectId: string, limit = 200) =>
   api.get<AdminProjectStep[]>(`/api/admin/project-steps?project_id=${projectId}&limit=${limit}`);
+
+export interface AdminExportRecord {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_display_name: string | null;
+  status: "pending" | "complete" | "failed";
+  requested_at: string;
+  completed_at: string | null;
+  expires_at: string | null;
+  archive_size_bytes: number | null;
+  error: string | null;
+}
+
+export const listExports = () => api.get<AdminExportRecord[]>("/api/admin/exports");
+export const deleteExport = (id: string) => api.delete<void>(`/api/admin/exports/${id}`);

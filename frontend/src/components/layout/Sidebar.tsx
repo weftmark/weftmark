@@ -69,6 +69,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
     { id: "reconcile", label: t("superuserSections.reconcile") },
     { id: "maintenance", label: t("superuserSections.maintenance") },
     { id: "schedule", label: t("superuserSections.schedule") },
+    { id: "exports", label: t("superuserSections.exports") },
   ];
 
   function isActive(href: string, exact = false) {

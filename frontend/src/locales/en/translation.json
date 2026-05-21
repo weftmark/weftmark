@@ -41,7 +41,8 @@
     "deletion": "Deletion",
     "reconcile": "Reconcile",
     "maintenance": "Maintenance",
-    "schedule": "Scheduled Tasks"
+    "schedule": "Scheduled Tasks",
+    "exports": "Data Exports"
   },
   "loomTypes": {
     "floor_loom": "Floor Loom — treadle tracking",

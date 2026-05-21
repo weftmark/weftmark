@@ -21,6 +21,8 @@ import {
   getDeletionQueue,
   listScheduledTasks,
   patchScheduledTask,
+  listExports,
+  deleteExport,
   type ScheduledTask,
   type TaskHistoryItem,
   type ReconcileReport,
@@ -30,6 +32,7 @@ import {
   type WorkerStatus,
   type WorkerInfo,
   type DeletionQueueUser,
+  type AdminExportRecord,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 import { CveBanner } from "@/components/admin/CveBanner";
@@ -49,7 +52,7 @@ function formatUptime(seconds: number): string {
   return parts.join(", ");
 }
 
-type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule";
+type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports";
 
 // ---------------------------------------------------------------------------
 // EULA tab
@@ -1416,6 +1419,131 @@ function ScheduledTasksTab() {
 }
 
 
+// ---------------------------------------------------------------------------
+// Data Exports tab
+// ---------------------------------------------------------------------------
+
+function ExportStatusBadge({ status }: { status: AdminExportRecord["status"] }) {
+  const cls =
+    status === "complete"
+      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+      : status === "failed"
+        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+  return (
+    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{status}</span>
+  );
+}
+
+function ExportRow({ record, onDeleted }: { record: AdminExportRecord; onDeleted: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const mutation = useMutation({
+    mutationFn: () => deleteExport(record.id),
+    onSuccess: onDeleted,
+  });
+
+  const sizeMb =
+    record.archive_size_bytes != null
+      ? `${(record.archive_size_bytes / 1_048_576).toFixed(2)} MB`
+      : "—";
+
+  const fmt = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString() : "—";
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-medium truncate">
+            {record.user_display_name || <span className="text-muted-foreground italic">no name</span>}
+          </p>
+          <p className="text-sm text-muted-foreground truncate">{record.user_email}</p>
+        </div>
+        <ExportStatusBadge status={record.status} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+        <span className="text-muted-foreground">Requested</span>
+        <span>{fmt(record.requested_at)}</span>
+        <span className="text-muted-foreground">Generated</span>
+        <span>{fmt(record.completed_at)}</span>
+        <span className="text-muted-foreground">Expires</span>
+        <span>{fmt(record.expires_at)}</span>
+        <span className="text-muted-foreground">Size</span>
+        <span>{sizeMb}</span>
+      </div>
+
+      {record.status === "failed" && record.error && (
+        <p className="text-xs text-destructive font-mono bg-destructive/10 rounded px-2 py-1 break-all">
+          {record.error}
+        </p>
+      )}
+
+      <div className="flex justify-end">
+        {confirming ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Delete this record and archive?</span>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? "Deleting…" : "Confirm"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
+            Delete
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ExportsTab() {
+  const qc = useQueryClient();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin", "exports"],
+    queryFn: listExports,
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Data Exports</h1>
+        <p className="text-sm text-muted-foreground">
+          All user data export requests. Archives are stored in R2 and expire after 7 days. Delete a record to
+          immediately remove both the DB row and the archive object.
+        </p>
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>}
+      {error && <p className="text-sm text-destructive">Failed to load exports.</p>}
+
+      {!isLoading && data && data.length === 0 && (
+        <p className="text-sm text-muted-foreground py-8 text-center">No export requests found.</p>
+      )}
+
+      {data && data.length > 0 && (
+        <div className="space-y-3">
+          {data.map((record) => (
+            <ExportRow
+              key={record.id}
+              record={record}
+              onDeleted={() => qc.invalidateQueries({ queryKey: ["admin", "exports"] })}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SuperuserPage() {
   const { section = "eula" } = useParams<{ section: string }>();
   const activeSection = section as SuperuserSection;
@@ -1431,6 +1559,7 @@ export function SuperuserPage() {
       {activeSection === "reconcile" && <ReconcileTab />}
       {activeSection === "maintenance" && <MaintenanceTab />}
       {activeSection === "schedule" && <ScheduledTasksTab />}
+      {activeSection === "exports" && <ExportsTab />}
     </div>
   );
 }

@@ -41,7 +41,8 @@
     "deletion": "Suppression",
     "reconcile": "Réconciliation",
     "maintenance": "Maintenance",
-    "schedule": "Tâches planifiées"
+    "schedule": "Tâches planifiées",
+    "exports": "Exports de données"
   },
   "loomTypes": {
     "floor_loom": "Métier de basse lisse - suivi des marches",
