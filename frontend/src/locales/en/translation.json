@@ -97,6 +97,7 @@
       "trackerDefaultsHelp": "Default view options when opening the activity tracker. You can still override these per-project in the tracker settings panel.",
       "colorMode": "Color mode",
       "progressBar": "Progress bar",
+      "hiddenInCompact": "Hidden in compact mode",
       "drawdownPattern": "Drawdown pattern",
       "weftColorBar": "Weft color bar",
       "prevNextPickCards": "Prev/next pick cards",

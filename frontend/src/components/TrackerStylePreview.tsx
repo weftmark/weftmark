@@ -49,12 +49,16 @@ export function TrackerStylePreview({ style }: { style: TrackerStyle }) {
 
   return (
     <div className="pointer-events-none select-none space-y-1.5 p-3 rounded-lg bg-muted/30 border border-border/50">
-      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-        <div className={`h-full rounded-full ${isHighContrast ? "bg-foreground" : "bg-primary"}`} style={{ width: `${(DEMO_PICK / DEMO_TOTAL) * 100}%` }} />
-      </div>
-      <div className={`text-center font-semibold ${isCompact ? "text-[10px]" : "text-xs"} text-muted-foreground`}>
-        Pick {DEMO_PICK} / {DEMO_TOTAL}
-      </div>
+      {!isCompact && (
+        <>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className={`h-full rounded-full ${isHighContrast ? "bg-foreground" : "bg-primary"}`} style={{ width: `${(DEMO_PICK / DEMO_TOTAL) * 100}%` }} />
+          </div>
+          <div className="text-center font-semibold text-xs text-muted-foreground">
+            Pick {DEMO_PICK} / {DEMO_TOTAL}
+          </div>
+        </>
+      )}
       <div className="grid grid-cols-[1fr_2fr_1fr] gap-1 items-center">
         <DemoPickCard compact style={style} />
         <DemoPickCard style={style} />

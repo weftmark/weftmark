@@ -223,18 +223,19 @@ export function SettingsPage() {
                   {/* Show/hide toggles */}
                   <div className="space-y-2.5">
                     {([
-                      { label: t("settings.appearance.progressBar"), value: trackerShowProgress, setter: setTrackerShowProgress, key: "tracker_show_progress" as const },
+                      { label: t("settings.appearance.progressBar"), value: trackerShowProgress, setter: setTrackerShowProgress, key: "tracker_show_progress" as const, disabled: activityTheme === "compact", disabledTitle: t("settings.appearance.hiddenInCompact") },
                       { label: t("settings.appearance.drawdownPattern"), value: trackerShowDrawdown, setter: setTrackerShowDrawdown, key: "tracker_show_drawdown" as const },
                       { label: t("settings.appearance.weftColorBar"), value: trackerShowWeftColor, setter: setTrackerShowWeftColor, key: "tracker_show_weft_color" as const },
                       { label: t("settings.appearance.prevNextPickCards"), value: trackerShowPickCards, setter: setTrackerShowPickCards, key: "tracker_show_pick_cards" as const },
-                    ] as { label: string; value: boolean; setter: (v: boolean) => void; key: "tracker_show_progress" | "tracker_show_drawdown" | "tracker_show_weft_color" | "tracker_show_pick_cards" }[]).map(({ label, value, setter, key }) => (
-                      <div key={key} className="flex items-center justify-between">
+                    ] as { label: string; value: boolean; setter: (v: boolean) => void; key: "tracker_show_progress" | "tracker_show_drawdown" | "tracker_show_weft_color" | "tracker_show_pick_cards"; disabled?: boolean; disabledTitle?: string }[]).map(({ label, value, setter, key, disabled, disabledTitle }) => (
+                      <div key={key} className={`flex items-center justify-between ${disabled ? "opacity-40" : ""}`} title={disabledTitle}>
                         <span className="text-sm">{label}</span>
                         <button
                           role="switch"
                           aria-checked={value}
+                          disabled={disabled}
                           onClick={() => { setter(!value); save({ [key]: !value }); }}
-                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"}`}
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"} disabled:cursor-not-allowed`}
                         >
                           <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-1"}`} />
                         </button>
@@ -247,7 +248,7 @@ export function SettingsPage() {
                     <TrackerLivePreview
                       style={activityTheme}
                       colorMode={trackerColorMode}
-                      showProgress={trackerShowProgress}
+                      showProgress={activityTheme === "compact" ? false : trackerShowProgress}
                       showDrawdown={trackerShowDrawdown}
                       showWeftColor={trackerShowWeftColor}
                       showPickCards={trackerShowPickCards}
