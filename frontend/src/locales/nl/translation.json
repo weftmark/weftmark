@@ -166,7 +166,9 @@
       "description": "Uw ingediende berichten, inclusief anonieme. Alleen u kunt deze lijst zien.",
       "noSubmissions": "Nog geen berichten.",
       "anonymous": "(anoniem)",
-      "viewDiscussion": "Discussie bekijken op GitHub"
+      "viewDiscussion": "Discussie bekijken op GitHub",
+      "discussionOpen": "Open",
+      "discussionClosed": "Gesloten"
     },
     "account": {
       "downloadData": "Een gegevensarchief aanvragen",

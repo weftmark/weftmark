@@ -29,6 +29,7 @@ class UserFeedback(Base, TimestampMixin, SoftDeleteMixin):
     # Auto-collected: environment, page_url, user_agent, app_version, project_id, draft_id
     diagnostics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     github_discussion_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    github_discussion_state: Mapped[str | None] = mapped_column(String(10), nullable=True)
     dispatch_status: Mapped[str] = mapped_column(String(10), nullable=False, default="pending")
     dispatch_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
