@@ -40,7 +40,7 @@ export function SettingsPage() {
     queryKey: ["export-status"],
     queryFn: getDataExportStatus,
     refetchInterval: (query) => (query.state.data?.status === "pending" ? 5000 : false),
-    enabled: activeSection === "account",
+    enabled: activeSection === "privacy",
   });
   const requestExportMutation = useMutation({
     mutationFn: requestDataExport,
@@ -481,44 +481,7 @@ export function SettingsPage() {
                   </ul>
                   <p className="pt-1">{t("settings.privacy.noSell")}</p>
                 </div>
-              </Section>
-            )}
 
-            {/* ── Terms ── */}
-            {activeSection === "terms" && (
-              <Section title={t("settings.sections.terms")} description={t("settings.sections.termsDesc")}>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                      <p className="text-sm font-medium">
-                        {t("settings.terms.tosTitle", { version: user.current_eula_version })}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {user.eula_accepted_version === user.current_eula_version
-                          ? t("settings.terms.accepted")
-                          : t("settings.terms.notAccepted")}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setShowEula(!showEula)}>
-                      {showEula ? t("settings.terms.hide") : t("settings.terms.readTerms")}
-                    </Button>
-                  </div>
-
-                  {showEula && currentEula && (
-                    <div className="rounded-lg border p-4 max-h-[50vh] overflow-y-auto">
-                      <EulaContent bodyHtml={currentEula.body_html} />
-                    </div>
-                  )}
-                </div>
-              </Section>
-            )}
-
-            {/* ── Feedback history ── */}
-            {activeSection === "feedback-history" && <FeedbackHistorySection />}
-
-            {/* ── Account ── */}
-            {activeSection === "account" && (
-              <Section title={t("settings.sections.account")} description={t("settings.sections.accountDesc")}>
                 <Field label={t("settings.account.downloadData")}>
                   {exportStatus?.status === "pending" ? (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -574,7 +537,44 @@ export function SettingsPage() {
                     {t("settings.account.archiveNote")}
                   </p>
                 </Field>
+              </Section>
+            )}
 
+            {/* ── Terms ── */}
+            {activeSection === "terms" && (
+              <Section title={t("settings.sections.terms")} description={t("settings.sections.termsDesc")}>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between rounded-lg border p-4">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {t("settings.terms.tosTitle", { version: user.current_eula_version })}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {user.eula_accepted_version === user.current_eula_version
+                          ? t("settings.terms.accepted")
+                          : t("settings.terms.notAccepted")}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setShowEula(!showEula)}>
+                      {showEula ? t("settings.terms.hide") : t("settings.terms.readTerms")}
+                    </Button>
+                  </div>
+
+                  {showEula && currentEula && (
+                    <div className="rounded-lg border p-4 max-h-[50vh] overflow-y-auto">
+                      <EulaContent bodyHtml={currentEula.body_html} />
+                    </div>
+                  )}
+                </div>
+              </Section>
+            )}
+
+            {/* ── Feedback history ── */}
+            {activeSection === "feedback-history" && <FeedbackHistorySection />}
+
+            {/* ── Account ── */}
+            {activeSection === "account" && (
+              <Section title={t("settings.sections.account")} description={t("settings.sections.accountDesc")}>
                 <div className="rounded-lg border border-destructive/30 p-4 space-y-3">
                   <p className="text-sm font-medium text-destructive">{t("settings.account.dangerZone")}</p>
                   <p className="text-sm text-muted-foreground">

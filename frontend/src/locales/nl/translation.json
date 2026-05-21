@@ -89,12 +89,12 @@
       "preferences": "Voorkeuren",
       "preferencesDesc": "Werk je weergavenaam en standaardeenheden voor metingen bij.",
       "privacy": "Privacy",
-      "privacyDesc": "Bepaal welke informatie zichtbaar is voor anderen op het platform.",
+      "privacyDesc": "Beheer je instellingen voor gegevensdeling en download een kopie van je gegevens.",
       "terms": "Gebruiksvoorwaarden",
       "termsDesc": "Bekijk de gebruiksvoorwaarden die je hebt geaccepteerd.",
       "feedbackHistory": "Feedbackgeschiedenis",
       "account": "Accountbeheer",
-      "accountDesc": "Download je gegevens of verwijder je account permanent."
+      "accountDesc": "Verwijder je account en alle bijbehorende gegevens permanent."
     },
     "appearance": {
       "theme": "Thema",

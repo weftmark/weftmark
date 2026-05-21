@@ -89,12 +89,12 @@
       "preferences": "Preferencias",
       "preferencesDesc": "Actualiza tu nombre de visualización y las unidades predeterminadas para medidas.",
       "privacy": "Privacidad",
-      "privacyDesc": "Controla qué información es visible para otros usuarios de la plataforma.",
+      "privacyDesc": "Gestiona tus preferencias de uso de datos y descarga una copia de tus datos.",
       "terms": "Términos de uso",
       "termsDesc": "Revisa los términos de uso que has aceptado.",
       "feedbackHistory": "Historial de comentarios",
       "account": "Gestión de cuenta",
-      "accountDesc": "Descarga tus datos o elimina permanentemente tu cuenta."
+      "accountDesc": "Elimina permanentemente tu cuenta y todos los datos asociados."
     },
     "appearance": {
       "theme": "Tema",

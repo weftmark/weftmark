@@ -89,12 +89,12 @@
       "preferences": "Einstellungen",
       "preferencesDesc": "Anzeigename und Standardeinheiten für Maßangaben aktualisieren.",
       "privacy": "Datenschutz",
-      "privacyDesc": "Steuere, welche Informationen für andere auf der Plattform sichtbar sind.",
+      "privacyDesc": "Datenweitergabe-Einstellungen verwalten und eine Kopie deiner Daten herunterladen.",
       "terms": "Nutzungsbedingungen",
       "termsDesc": "Überprüfe die akzeptierten Nutzungsbedingungen.",
       "feedbackHistory": "Feedback-Verlauf",
       "account": "Kontoverwaltung",
-      "accountDesc": "Daten herunterladen oder Konto dauerhaft löschen."
+      "accountDesc": "Konto und alle zugehörigen Daten dauerhaft löschen."
     },
     "appearance": {
       "theme": "Design",
