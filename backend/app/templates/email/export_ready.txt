@@ -1,0 +1,9 @@
+Hi {display_name},
+
+Your {app_name} data archive is ready to download.
+
+Download your archive: {download_url}
+
+This link will expire in {ttl_days} days. The archive includes your WIF
+files, project photos, and a JSON export of all your records.
+

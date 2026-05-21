@@ -17,7 +17,7 @@
     "preferences": "Voorkeuren",
     "privacy": "Privacy",
     "terms": "Gebruiksvoorwaarden",
-    "account": "Account",
+    "account": "Mijn gegevens",
     "feedbackHistory": "Feedbackgeschiedenis"
   },
   "adminSections": {
@@ -168,9 +168,15 @@
       "viewDiscussion": "Discussie bekijken op GitHub"
     },
     "account": {
-      "downloadData": "Mijn gegevens downloaden",
-      "requestArchive": "Gegevens­archief aanvragen",
-      "exportNote": "Gegevens­export is gepland voor Mijlpaal 2. Geeft momenteel alleen de status terug.",
+      "downloadData": "Een gegevensarchief aanvragen",
+      "requestArchive": "Archief aanvragen",
+      "archivePending": "Uw archief wordt gemaakt…",
+      "archiveReady": "Uw archief is klaar",
+      "archiveExpires": "Beschikbaar tot {{date}}",
+      "downloadArchive": "Archief downloaden",
+      "archiveFailed": "Export mislukt — probeer het opnieuw",
+      "archiveEmailNotice": "We sturen u een e-mail wanneer uw archief klaar is om te downloaden.",
+      "archiveNote": "Bevat uw WIF-bestanden, projectfoto's en een JSON-export van al uw gegevens.",
       "dangerZone": "Gevaren­zone",
       "dangerDescription": "Uw account en alle gegevens permanent verwijderen: WIF-bestanden, foto's, project­records, weefstoel­en, garen en bindingen. Dit kan niet ongedaan worden gemaakt.",
       "deleteAccount": "Mijn account verwijderen",
