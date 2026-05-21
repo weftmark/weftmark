@@ -1354,16 +1354,18 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
           )}
         </div>
 
-        {task.next_runs.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Next: {task.next_runs.slice(0, 3).map((r) => new Date(r).toLocaleString()).join(" · ")}
-          </p>
-        )}
-        {task.last_fired_at && (
-          <p className="text-xs text-muted-foreground">
-            Last fired: {new Date(task.last_fired_at).toLocaleString()}
-          </p>
-        )}
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+          {task.next_runs.length > 0 && (
+            <span>
+              Next: {task.next_runs.slice(0, 3).map((r) => new Date(r).toLocaleString()).join(" · ")}
+            </span>
+          )}
+          {task.last_fired_at && (
+            <span>
+              Last fired: {new Date(task.last_fired_at).toLocaleString()}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
