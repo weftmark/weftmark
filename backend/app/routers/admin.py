@@ -28,6 +28,7 @@ from app.models.pending_signup import PendingSignup
 from app.models.project import Project, ProjectPhoto, ProjectStep
 from app.models.server_event import ServerEvent
 from app.models.user import User
+from app.models.user_export import UserExportRequest
 from app.models.yarn import Yarn
 from app.services.audit import write_audit_log
 from app.services.clerk import ban_clerk_user, get_clerk_user, list_clerk_users, set_user_metadata, unban_clerk_user
@@ -2643,3 +2644,71 @@ async def admin_list_project_steps(
         )
         for s in rows.all()
     ]
+
+
+# ---------------------------------------------------------------------------
+# Data exports
+# ---------------------------------------------------------------------------
+
+
+class AdminExportRecord(BaseModel):
+    id: str
+    user_id: str
+    user_email: str
+    user_display_name: str | None
+    status: str
+    requested_at: datetime
+    completed_at: datetime | None
+    expires_at: datetime | None
+    archive_size_bytes: int | None
+    error: str | None
+
+
+@router.get("/exports", response_model=list[AdminExportRecord])
+async def list_exports(
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminExportRecord]:
+    rows = await db.execute(
+        select(UserExportRequest, User)
+        .join(User, User.id == UserExportRequest.user_id)
+        .order_by(UserExportRequest.requested_at.desc())
+        .limit(200)
+    )
+    return [
+        AdminExportRecord(
+            id=str(req.id),
+            user_id=str(req.user_id),
+            user_email=user.email,
+            user_display_name=user.display_name,
+            status=req.status,
+            requested_at=req.requested_at,
+            completed_at=req.updated_at if req.status == "complete" else None,
+            expires_at=req.expires_at,
+            archive_size_bytes=req.archive_size_bytes,
+            error=req.error,
+        )
+        for req, user in rows.all()
+    ]
+
+
+@router.delete("/exports/{export_id}", status_code=204)
+async def delete_export(
+    export_id: uuid.UUID,
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    req = await db.get(UserExportRequest, export_id)
+    if req is None:
+        raise HTTPException(status_code=404, detail="Export not found")
+
+    if req.archive_path:
+        try:
+            from app.services import storage
+
+            await asyncio.to_thread(storage._delete, req.archive_path)
+        except Exception:
+            log.warning("export_delete_storage_failed export_id=%s", export_id)
+
+    await db.delete(req)
+    await db.commit()

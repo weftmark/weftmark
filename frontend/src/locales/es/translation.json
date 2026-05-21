@@ -41,7 +41,8 @@
     "deletion": "Eliminación",
     "reconcile": "Reconciliación",
     "maintenance": "Mantenimiento",
-    "schedule": "Tareas programadas"
+    "schedule": "Tareas programadas",
+    "exports": "Exportaciones de datos"
   },
   "loomTypes": {
     "floor_loom": "Telar de piso - seguimiento de pedales",
