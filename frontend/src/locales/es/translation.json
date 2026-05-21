@@ -165,7 +165,9 @@
       "description": "Tus envíos, incluidos los anónimos. Solo tú puedes ver esta lista.",
       "noSubmissions": "Sin envíos todavía.",
       "anonymous": "(anónimo)",
-      "viewDiscussion": "Ver discusión en GitHub"
+      "viewDiscussion": "Ver discusión en GitHub",
+      "discussionOpen": "Abierta",
+      "discussionClosed": "Cerrada"
     },
     "account": {
       "downloadData": "Solicitar un archivo de datos",

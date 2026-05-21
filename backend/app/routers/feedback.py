@@ -62,6 +62,7 @@ class FeedbackResponse(BaseModel):
     is_anonymous: bool
     diagnostics: dict | None
     github_discussion_url: str | None
+    github_discussion_state: str | None
     dispatch_status: str
     user_email: str | None
     deleted_at: str | None
@@ -90,6 +91,7 @@ def _serialize(row: UserFeedback, include_user_email: bool = False) -> FeedbackR
         is_anonymous=row.is_anonymous,
         diagnostics=row.diagnostics,
         github_discussion_url=row.github_discussion_url,
+        github_discussion_state=row.github_discussion_state,
         dispatch_status=row.dispatch_status,
         user_email=user_email,
         deleted_at=row.deleted_at.isoformat() if row.deleted_at else None,
@@ -173,6 +175,7 @@ async def list_my_feedback(
 class FeedbackStatusResponse(BaseModel):
     dispatch_status: str
     github_discussion_url: str | None
+    github_discussion_state: str | None
 
 
 @router.get("/{feedback_id}/status")
@@ -187,6 +190,7 @@ async def get_feedback_status(
     return FeedbackStatusResponse(
         dispatch_status=row.dispatch_status,
         github_discussion_url=row.github_discussion_url,
+        github_discussion_state=row.github_discussion_state,
     )
 
 

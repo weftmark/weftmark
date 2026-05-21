@@ -165,7 +165,9 @@
       "description": "Deine gesendeten Einsendungen, einschließlich anonymer. Nur du kannst diese Liste sehen.",
       "noSubmissions": "Noch keine Einsendungen.",
       "anonymous": "(anonym)",
-      "viewDiscussion": "Diskussion auf GitHub anzeigen"
+      "viewDiscussion": "Diskussion auf GitHub anzeigen",
+      "discussionOpen": "Offen",
+      "discussionClosed": "Geschlossen"
     },
     "account": {
       "downloadData": "Datenarchiv anfordern",

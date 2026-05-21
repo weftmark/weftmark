@@ -366,3 +366,89 @@ class TestAdminRetryDispatch:
         fid = sub.json()["id"]
         resp = await auth_client.post(f"/api/admin/feedback/{fid}/retry-dispatch")
         assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# github_discussion_state field
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestDiscussionState:
+    async def test_discussion_state_null_by_default(self, auth_client: AsyncClient):
+        sub = await auth_client.post("/api/feedback", json=_feedback_payload())
+        assert sub.status_code == 200
+        data = sub.json()
+        assert "github_discussion_state" in data
+        assert data["github_discussion_state"] is None
+
+    async def test_mine_includes_discussion_state(self, auth_client: AsyncClient):
+        await auth_client.post("/api/feedback", json=_feedback_payload())
+        resp = await auth_client.get("/api/feedback/mine")
+        assert resp.status_code == 200
+        items = resp.json()
+        assert len(items) >= 1
+        assert "github_discussion_state" in items[0]
+
+    async def test_status_endpoint_includes_discussion_state(self, auth_client: AsyncClient):
+        sub = await auth_client.post("/api/feedback", json=_feedback_payload())
+        fid = sub.json()["id"]
+        resp = await auth_client.get(f"/api/feedback/{fid}/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "github_discussion_state" in data
+        assert data["github_discussion_state"] is None
+
+    async def test_admin_list_includes_discussion_state(self, auth_client: AsyncClient, admin_client: AsyncClient):
+        await auth_client.post("/api/feedback", json=_feedback_payload())
+        resp = await admin_client.get("/api/admin/feedback")
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert len(items) >= 1
+        assert "github_discussion_state" in items[0]
+
+    async def test_stored_state_returned_correctly(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from app.models.feedback import UserFeedback
+
+        row = UserFeedback(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            submission_type="feedback",
+            body="discussion state test",
+            dispatch_status="sent",
+            github_discussion_url="https://github.com/example/repo/discussions/1",
+            github_discussion_state="OPEN",
+        )
+        db_session.add(row)
+        await db_session.commit()
+
+        resp = await auth_client.get("/api/feedback/mine")
+        assert resp.status_code == 200
+        items = resp.json()
+        match = next((i for i in items if i["id"] == str(row.id)), None)
+        assert match is not None
+        assert match["github_discussion_state"] == "OPEN"
+
+    async def test_closed_state_returned_correctly(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from app.models.feedback import UserFeedback
+
+        row = UserFeedback(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            submission_type="feedback",
+            body="closed discussion test",
+            dispatch_status="sent",
+            github_discussion_url="https://github.com/example/repo/discussions/2",
+            github_discussion_state="CLOSED",
+        )
+        db_session.add(row)
+        await db_session.commit()
+
+        resp = await auth_client.get(f"/api/feedback/{row.id}/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["github_discussion_state"] == "CLOSED"

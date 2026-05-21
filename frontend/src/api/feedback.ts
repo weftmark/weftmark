@@ -35,6 +35,7 @@ export interface FeedbackRecord {
   is_anonymous: boolean;
   diagnostics: Record<string, unknown> | null;
   github_discussion_url: string | null;
+  github_discussion_state: "OPEN" | "CLOSED" | null;
   dispatch_status: "pending" | "sent" | "failed" | "skipped";
   user_email: string | null;
   deleted_at: string | null;
@@ -87,6 +88,7 @@ export const retryFeedbackDispatch = (id: string) =>
 export interface FeedbackStatus {
   dispatch_status: string;
   github_discussion_url: string | null;
+  github_discussion_state: "OPEN" | "CLOSED" | null;
 }
 
 export const getFeedbackStatus = (id: string) =>

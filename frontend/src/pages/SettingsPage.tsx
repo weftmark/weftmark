@@ -696,15 +696,27 @@ function FeedbackHistorySection() {
                 <div className="pt-2 space-y-2">
                   <p className="text-sm whitespace-pre-wrap text-foreground">{s.body}</p>
                   {s.github_discussion_url && (
-                    <a
-                      href={s.github_discussion_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-                    >
-                      <AppIcons.externalLink className="h-3.5 w-3.5" />
-                      {t("settings.feedbackHistory.viewDiscussion")}
-                    </a>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <a
+                        href={s.github_discussion_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                      >
+                        <AppIcons.externalLink className="h-3.5 w-3.5" />
+                        {t("settings.feedbackHistory.viewDiscussion")}
+                      </a>
+                      {s.github_discussion_state === "OPEN" && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
+                          {t("settings.feedbackHistory.discussionOpen")}
+                        </span>
+                      )}
+                      {s.github_discussion_state === "CLOSED" && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                          {t("settings.feedbackHistory.discussionClosed")}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

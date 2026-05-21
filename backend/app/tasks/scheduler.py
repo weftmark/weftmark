@@ -145,6 +145,16 @@ REGISTRY: dict[str, dict] = {
         "default_cron": "30 4 * * *",
         "default_config": {"retention_days": 7},
     },
+    "discussion_state_sync": {
+        "display_name": "Discussion State Sync",
+        "description": (
+            "Syncs the open/closed state of GitHub Discussions linked to feedback submissions. "
+            "Updates github_discussion_state for all sent feedback with a discussion URL. "
+            "No-op when GITHUB_FEEDBACK_TOKEN is not configured."
+        ),
+        "default_cron": "0 3 * * *",
+        "default_config": {"limit": 100},
+    },
 }
 
 
@@ -291,6 +301,19 @@ def _dispatch_feedback_purge(settings, task=None):
     return t
 
 
+def _dispatch_discussion_state_sync(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.feedback_dispatch import sync_discussion_states
+
+    cfg = (task.config or {}) if task else {}
+    limit = int(cfg.get("limit", 100))
+    t = sync_discussion_states.delay(limit=limit)
+    record_queued(
+        settings, t.id, "app.tasks.feedback_dispatch.sync_discussion_states", "scheduled:discussion_state_sync"
+    )
+    return t
+
+
 DISPATCH_FNS: dict[str, object] = {
     "cve_scan": _dispatch_cve_scan,
     "s3_audit": _dispatch_s3_audit,
@@ -306,6 +329,7 @@ DISPATCH_FNS: dict[str, object] = {
     "tile_prune": _dispatch_tile_prune,
     "feedback_retry": _dispatch_feedback_retry,
     "feedback_purge": _dispatch_feedback_purge,
+    "discussion_state_sync": _dispatch_discussion_state_sync,
 }
 
 

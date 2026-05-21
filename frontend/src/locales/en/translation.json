@@ -165,7 +165,9 @@
       "description": "Submissions you've sent, including anonymous ones. Only you can see this list.",
       "noSubmissions": "No submissions yet.",
       "anonymous": "(anonymous)",
-      "viewDiscussion": "View discussion on GitHub"
+      "viewDiscussion": "View discussion on GitHub",
+      "discussionOpen": "Open",
+      "discussionClosed": "Closed"
     },
     "account": {
       "downloadData": "Request a data archive",

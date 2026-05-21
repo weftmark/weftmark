@@ -34,6 +34,27 @@ async def _graphql(token: str, query: str, variables: dict) -> dict:
     return data["data"]
 
 
+async def get_discussion_state(token: str, discussion_url: str) -> str | None:
+    """Return "OPEN" or "CLOSED" for a discussion URL, or None on error."""
+    query = """
+    query($url: URI!) {
+      resource(url: $url) {
+        ... on Discussion { closed }
+      }
+    }
+    """
+    try:
+        data = await _graphql(token, query, {"url": discussion_url})
+        resource = data.get("resource") or {}
+        closed = resource.get("closed")
+        if closed is None:
+            return None
+        return "CLOSED" if closed else "OPEN"
+    except Exception as exc:
+        log.warning("get_discussion_state failed url=%s error=%s", discussion_url, exc)
+        return None
+
+
 async def get_repo_and_category_id(token: str, repo: str, submission_type: str) -> tuple[str, str]:
     """Return (repositoryId, categoryId) for the given repo and submission type."""
     owner, name = repo.split("/", 1)
