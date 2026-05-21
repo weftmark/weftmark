@@ -474,3 +474,15 @@ async def send_admin_digest_email(
     )
     subject = f"{settings.app_name} — Weekly Admin Digest ({week_start} – {week_end})"
     await _send(admin_emails, subject, txt, html)
+
+
+async def send_export_ready(to_email: str, display_name: str, ttl_days: int) -> None:
+    settings = get_settings()
+    download_url = f"{settings.frontend_url}/settings/account"
+    txt, html = _render(
+        "export_ready",
+        display_name=display_name,
+        download_url=download_url,
+        ttl_days=ttl_days,
+    )
+    await _send([to_email], f"Your {settings.app_name} data archive is ready", txt, html)

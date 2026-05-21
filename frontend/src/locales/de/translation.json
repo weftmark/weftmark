@@ -17,7 +17,7 @@
     "preferences": "Einstellungen",
     "privacy": "Datenschutz",
     "terms": "Nutzungsbedingungen",
-    "account": "Konto",
+    "account": "Meine Daten",
     "feedbackHistory": "Feedback-Verlauf"
   },
   "adminSections": {
@@ -168,9 +168,15 @@
       "viewDiscussion": "Diskussion auf GitHub anzeigen"
     },
     "account": {
-      "downloadData": "Meine Daten herunterladen",
-      "requestArchive": "Datenarchiv anfordern",
-      "exportNote": "Datenexport ist für Meilenstein 2 geplant. Gibt derzeit nur den Status zurück.",
+      "downloadData": "Datenarchiv anfordern",
+      "requestArchive": "Archiv anfordern",
+      "archivePending": "Archiv wird erstellt …",
+      "archiveReady": "Dein Archiv ist bereit",
+      "archiveExpires": "Verfügbar bis {{date}}",
+      "downloadArchive": "Archiv herunterladen",
+      "archiveFailed": "Export fehlgeschlagen — bitte erneut versuchen",
+      "archiveEmailNotice": "Wir senden dir eine E-Mail, wenn dein Archiv zum Download bereit ist.",
+      "archiveNote": "Enthält deine WIF-Dateien, Projektfotos und einen JSON-Export aller Einträge.",
       "dangerZone": "Gefahrenzone",
       "dangerDescription": "Konto und alle Daten dauerhaft löschen: WIF-Dateien, Fotos, Projekteinträge, Webstühle, Garne und Entwürfe. Dies kann nicht rückgängig gemacht werden.",
       "deleteAccount": "Mein Konto löschen",

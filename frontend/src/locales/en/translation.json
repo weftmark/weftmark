@@ -17,7 +17,7 @@
     "preferences": "Preferences",
     "privacy": "Privacy & data",
     "terms": "Terms",
-    "account": "Account",
+    "account": "My Data",
     "feedbackHistory": "Feedback history"
   },
   "adminSections": {
@@ -168,9 +168,15 @@
       "viewDiscussion": "View discussion on GitHub"
     },
     "account": {
-      "downloadData": "Download my data",
-      "requestArchive": "Request data archive",
-      "exportNote": "Data export is planned for Milestone 2. Currently returns status only.",
+      "downloadData": "Request a data archive",
+      "requestArchive": "Request archive",
+      "archivePending": "Building your archive…",
+      "archiveReady": "Your archive is ready",
+      "archiveExpires": "Available until {{date}}",
+      "downloadArchive": "Download archive",
+      "archiveFailed": "Export failed — please try again",
+      "archiveEmailNotice": "We'll send you an email when your archive is ready to download.",
+      "archiveNote": "Includes your WIF files, project photos, and a JSON export of all your records.",
       "dangerZone": "Danger zone",
       "dangerDescription": "Permanently delete your account and all data: WIF files, photos, project records, looms, yarn, and drafts. This cannot be undone.",
       "deleteAccount": "Delete my account",

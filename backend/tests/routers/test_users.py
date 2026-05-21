@@ -416,23 +416,7 @@ class TestAcceptEula:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/users/me/data-export
-# ---------------------------------------------------------------------------
-
-
-class TestDataExport:
-    async def test_returns_200(self, auth_client: AsyncClient):
-        resp = await auth_client.get("/api/users/me/data-export")
-        assert resp.status_code == 200
-
-    async def test_returns_not_implemented_status(self, auth_client: AsyncClient):
-        data = (await auth_client.get("/api/users/me/data-export")).json()
-        assert data["status"] == "not_implemented"
-        assert data["milestone"] == "2"
-
-    async def test_unauthenticated_returns_401(self, client: AsyncClient):
-        resp = await client.get("/api/users/me/data-export")
-        assert resp.status_code == 401
+# Data export endpoints are covered by tests/routers/test_users_export.py
 
 
 # ---------------------------------------------------------------------------

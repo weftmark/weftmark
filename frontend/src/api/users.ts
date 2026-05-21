@@ -40,8 +40,24 @@ export async function deleteAccount(confirm: string): Promise<void> {
   return api.delete<void>("/api/users/me", { confirm });
 }
 
-export async function getDataExport(): Promise<{ status: string; milestone: string; message: string }> {
-  return api.get("/api/users/me/data-export");
+export interface ExportStatus {
+  request_id: string | null;
+  status: string | null;
+  requested_at: string | null;
+  expires_at: string | null;
+  error: string | null;
+}
+
+export async function requestDataExport(): Promise<ExportStatus> {
+  return api.post<ExportStatus>("/api/users/me/data-export", {});
+}
+
+export async function getDataExportStatus(): Promise<ExportStatus> {
+  return api.get<ExportStatus>("/api/users/me/data-export/status");
+}
+
+export function getDataExportDownloadUrl(requestId: string): string {
+  return `/api/users/me/data-export/download/${requestId}`;
 }
 
 export interface HeatmapProject {

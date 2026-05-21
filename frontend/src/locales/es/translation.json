@@ -17,7 +17,7 @@
     "preferences": "Preferencias",
     "privacy": "Privacidad",
     "terms": "Términos",
-    "account": "Cuenta",
+    "account": "Mis datos",
     "feedbackHistory": "Historial de comentarios"
   },
   "adminSections": {
@@ -168,9 +168,15 @@
       "viewDiscussion": "Ver discusión en GitHub"
     },
     "account": {
-      "downloadData": "Descargar mis datos",
-      "requestArchive": "Solicitar archivo de datos",
-      "exportNote": "La exportación de datos está planificada para el Hito 2. Actualmente solo devuelve el estado.",
+      "downloadData": "Solicitar un archivo de datos",
+      "requestArchive": "Solicitar archivo",
+      "archivePending": "Creando tu archivo…",
+      "archiveReady": "Tu archivo está listo",
+      "archiveExpires": "Disponible hasta el {{date}}",
+      "downloadArchive": "Descargar archivo",
+      "archiveFailed": "Error en la exportación — inténtalo de nuevo",
+      "archiveEmailNotice": "Te enviaremos un correo electrónico cuando tu archivo esté listo para descargar.",
+      "archiveNote": "Incluye tus archivos WIF, fotos de proyectos y una exportación JSON de todos tus registros.",
       "dangerZone": "Zona de peligro",
       "dangerDescription": "Eliminar permanentemente tu cuenta y todos los datos: archivos WIF, fotos, registros de proyectos, telares, hilos y ligamentos. Esta acción no se puede deshacer.",
       "deleteAccount": "Eliminar mi cuenta",

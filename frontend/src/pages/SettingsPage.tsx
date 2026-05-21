@@ -3,8 +3,9 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { updateSettings, deleteAccount, requestDataExport, getDataExportStatus, getDataExportDownloadUrl, getCurrentEula } from "@/api/users";
+import { downloadAuthed } from "@/api/client";
 import { listDrafts } from "@/api/drafts";
 import { listMyFeedback, SUBMISSION_TYPE_LABELS, type FeedbackRecord } from "@/api/feedback";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,18 @@ export function SettingsPage() {
     queryKey: ["eula", "current"],
     queryFn: getCurrentEula,
     staleTime: 5 * 60 * 1000,
+  });
+
+  const queryClient = useQueryClient();
+  const { data: exportStatus } = useQuery({
+    queryKey: ["export-status"],
+    queryFn: getDataExportStatus,
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? 5000 : false),
+    enabled: activeSection === "account",
+  });
+  const requestExportMutation = useMutation({
+    mutationFn: requestDataExport,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["export-status"] }),
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -63,7 +76,6 @@ export function SettingsPage() {
   const [deleteInput, setDeleteInput] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [exportInfo, setExportInfo] = useState<string | null>(null);
 
   if (!user) return null;
 
@@ -109,15 +121,6 @@ export function SettingsPage() {
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : "Failed to delete account");
       setDeleting(false);
-    }
-  }
-
-  async function handleDataExport() {
-    try {
-      const result = await getDataExport();
-      setExportInfo(result.message);
-    } catch {
-      setExportInfo(t("common.loading"));
     }
   }
 
@@ -513,14 +516,58 @@ export function SettingsPage() {
             {activeSection === "account" && (
               <Section title={t("settings.sections.account")}>
                 <Field label={t("settings.account.downloadData")}>
-                  <Button variant="outline" size="sm" onClick={handleDataExport}>
-                    {t("settings.account.requestArchive")}
-                  </Button>
-                  {exportInfo && (
-                    <p className="text-xs text-muted-foreground mt-2">{exportInfo}</p>
+                  {exportStatus?.status === "pending" ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <AppIcons.spinner className="h-4 w-4 animate-spin" />
+                      {t("settings.account.archivePending")}
+                    </div>
+                  ) : exportStatus?.status === "complete" && exportStatus.request_id ? (
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">{t("settings.account.archiveReady")}</p>
+                      {exportStatus.expires_at && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("settings.account.archiveExpires", {
+                            date: new Date(exportStatus.expires_at).toLocaleDateString(),
+                          })}
+                        </p>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          downloadAuthed(
+                            getDataExportDownloadUrl(exportStatus.request_id!),
+                            "weftmark-data-export.zip"
+                          ).catch(() => {})
+                        }
+                      >
+                        {t("settings.account.downloadArchive")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {exportStatus?.status === "failed" && (
+                        <p className="text-xs text-destructive mb-1">
+                          {t("settings.account.archiveFailed")}
+                        </p>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => requestExportMutation.mutate()}
+                        disabled={requestExportMutation.isPending}
+                      >
+                        {t("settings.account.requestArchive")}
+                      </Button>
+                    </>
+                  )}
+                  {exportStatus?.status === "pending" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("settings.account.archiveEmailNotice")}
+                    </p>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    {t("settings.account.exportNote")}
+                    {t("settings.account.archiveNote")}
                   </p>
                 </Field>
 

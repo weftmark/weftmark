@@ -17,7 +17,7 @@
     "preferences": "Préférences",
     "privacy": "Confidentialité",
     "terms": "Conditions d'utilisation",
-    "account": "Compte",
+    "account": "Mes données",
     "feedbackHistory": "Historique des retours"
   },
   "adminSections": {
@@ -168,9 +168,15 @@
       "viewDiscussion": "Voir la discussion sur GitHub"
     },
     "account": {
-      "downloadData": "Télécharger mes données",
-      "requestArchive": "Demander une archive de données",
-      "exportNote": "L'export de données est prévu pour le Milestone 2. Retourne actuellement uniquement le statut.",
+      "downloadData": "Demander une archive de données",
+      "requestArchive": "Demander une archive",
+      "archivePending": "Création de votre archive en cours…",
+      "archiveReady": "Votre archive est prête",
+      "archiveExpires": "Disponible jusqu'au {{date}}",
+      "downloadArchive": "Télécharger l'archive",
+      "archiveFailed": "L'export a échoué — veuillez réessayer",
+      "archiveEmailNotice": "Nous vous enverrons un e-mail lorsque votre archive sera prête à télécharger.",
+      "archiveNote": "Inclut vos fichiers WIF, les photos de projets et un export JSON de tous vos enregistrements.",
       "dangerZone": "Zone de danger",
       "dangerDescription": "Supprimer définitivement votre compte et toutes les données : fichiers WIF, photos, projets, métiers, fils et armures. Cette action est irréversible.",
       "deleteAccount": "Supprimer mon compte",

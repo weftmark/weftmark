@@ -1,12 +1,14 @@
 """User settings, EULA acceptance, and account management.
 
 Routes:
-  GET    /api/eula/current           — current EULA version + HTML body (public)
-  GET    /api/users/me/settings      — current user settings (same as /auth/me but explicit)
-  PATCH  /api/users/me               — update settings
-  POST   /api/users/me/eula          — accept the current EULA version
-  DELETE /api/users/me               — hard-delete account + all data from DB and storage
-  GET    /api/users/me/data-export   — Phase 2 stub
+  GET    /api/eula/current                        — current EULA version + HTML body (public)
+  GET    /api/users/me/settings                   — current user settings
+  PATCH  /api/users/me                            — update settings
+  POST   /api/users/me/eula                       — accept the current EULA version
+  DELETE /api/users/me                            — hard-delete account + all data
+  POST   /api/users/me/data-export                — queue a data export archive task
+  GET    /api/users/me/data-export/status         — most recent export request status
+  GET    /api/users/me/data-export/download/{id}  — stream the archive (auth-gated)
 """
 
 import logging
@@ -15,6 +17,7 @@ from datetime import date as date_cls
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import Date, and_, cast, delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +30,7 @@ from app.models.invite import Invite
 from app.models.loom import Loom, LoomVersion, LoomVersionAccessory, LoomVersionPhoto, LoomVersionReceipt
 from app.models.project import Project, ProjectPhoto, ProjectStep
 from app.models.user import User
+from app.models.user_export import UserExportRequest
 from app.models.user_identity import UserIdentity
 from app.models.yarn import Skein, Yarn
 from app.services import storage
@@ -312,16 +316,112 @@ async def delete_account(
     response.delete_cookie(_SESSION_COOKIE)
 
 
-@router.get("/me/data-export")
-async def data_export(_: User = Depends(get_current_user)) -> dict:
-    return {
-        "status": "not_implemented",
-        "milestone": "2",
-        "message": (
-            "Data export is planned for Milestone 2. "
-            "It will package your WIF files, photos, and project history into a downloadable archive."
-        ),
-    }
+class ExportStatusResponse(BaseModel):
+    request_id: str | None = None
+    status: str | None = None
+    requested_at: str | None = None
+    expires_at: str | None = None
+    error: str | None = None
+
+
+_EXPORT_COOLDOWN_HOURS = 24
+
+
+@router.post("/me/data-export", status_code=202)
+async def request_data_export(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ExportStatusResponse:
+    """Queue a data export task. De-duplicated: one request per 24 h."""
+    from datetime import timedelta
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_EXPORT_COOLDOWN_HOURS)
+    existing = await db.scalar(
+        select(UserExportRequest)
+        .where(
+            UserExportRequest.user_id == current_user.id,
+            UserExportRequest.requested_at >= cutoff,
+            UserExportRequest.status.in_(("pending", "complete")),
+        )
+        .order_by(UserExportRequest.requested_at.desc())
+        .limit(1)
+    )
+    if existing:
+        return ExportStatusResponse(
+            request_id=str(existing.id),
+            status=existing.status,
+            requested_at=existing.requested_at.isoformat(),
+            expires_at=existing.expires_at.isoformat() if existing.expires_at else None,
+        )
+
+    req = UserExportRequest(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        requested_at=datetime.now(timezone.utc),
+        status="pending",
+    )
+    db.add(req)
+    await db.commit()
+    await db.refresh(req)
+
+    from app.tasks.export import run_user_export
+
+    run_user_export.delay(str(current_user.id), str(req.id))
+
+    return ExportStatusResponse(
+        request_id=str(req.id),
+        status="pending",
+        requested_at=req.requested_at.isoformat(),
+    )
+
+
+@router.get("/me/data-export/status", response_model=ExportStatusResponse)
+async def get_export_status(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ExportStatusResponse:
+    """Return the most recent export request for the current user."""
+    req = await db.scalar(
+        select(UserExportRequest)
+        .where(UserExportRequest.user_id == current_user.id)
+        .order_by(UserExportRequest.requested_at.desc())
+        .limit(1)
+    )
+    if req is None:
+        return ExportStatusResponse()
+    return ExportStatusResponse(
+        request_id=str(req.id),
+        status=req.status,
+        requested_at=req.requested_at.isoformat(),
+        expires_at=req.expires_at.isoformat() if req.expires_at else None,
+        error=req.error,
+    )
+
+
+@router.get("/me/data-export/download/{request_id}")
+async def download_data_export(
+    request_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """Stream the export archive. Auth-gated; returns 404 after expiry."""
+    req = await db.get(UserExportRequest, request_id)
+    if req is None or req.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Export not found")
+    if req.status != "complete" or not req.archive_path:
+        raise HTTPException(status_code=404, detail="Export not ready")
+    if req.expires_at and req.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="Export has expired")
+
+    archive_bytes = storage.read_file(req.archive_path)
+    date_str = req.requested_at.strftime("%Y%m%d")
+    filename = f"weftmark-export-{date_str}.zip"
+
+    return StreamingResponse(
+        iter([archive_bytes]),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 class OnboardingStatusResponse(BaseModel):
