@@ -298,7 +298,11 @@ function UsersTab() {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Users</h1>
+        <p className="text-sm text-muted-foreground">Manage all registered accounts — approve, adjust roles, and ban or delete users.</p>
+      </div>
       {/* Filter bar */}
       <div className="flex flex-wrap gap-2">
         <input
@@ -499,6 +503,10 @@ function InvitesTab() {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Invites</h1>
+        <p className="text-sm text-muted-foreground">Create invite codes for new users and manage pending self-registration requests.</p>
+      </div>
       {pendingSignups.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Waiting to join ({pendingSignups.length})</h2>
@@ -720,7 +728,11 @@ function StatsTab() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Stats</h1>
+        <p className="text-sm text-muted-foreground">Aggregate counts across users and content in the database.</p>
+      </div>
       <StatTable title="Users" rows={userRows} />
       <StatTable title="Content" rows={contentRows} />
     </div>
@@ -806,6 +818,10 @@ function HealthTab() {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">System Health</h1>
+        <p className="text-sm text-muted-foreground">Live metrics for CPU, memory, and database response time, sampled every 3 seconds.</p>
+      </div>
       <div className="flex items-center gap-2">
         <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
         <span className="text-xs text-muted-foreground">
@@ -947,7 +963,11 @@ function VersionsTable() {
 
 function DepsTab() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Dependencies</h1>
+        <p className="text-sm text-muted-foreground">Installed package versions for the backend runtime and worker.</p>
+      </div>
       <VersionsTable />
     </div>
   );
@@ -1176,7 +1196,11 @@ function ServicesTab() {
   const getDetail = (name: string) => diagnostics?.find((d) => d.service === name);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Services</h1>
+        <p className="text-sm text-muted-foreground">Connectivity checks and diagnostics for external services and infrastructure components.</p>
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -1369,19 +1393,16 @@ function SlugsTab() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "project-slugs"] }),
   });
 
-  if (isLoading) {
-    return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
-  }
-
-  if (slugs.length === 0) {
-    return <div className="text-sm text-muted-foreground py-8 text-center">No active share links.</div>;
-  }
-
   return (
-    <div className="space-y-8">
-      <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Active share links</h2>
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Share Links</h1>
+        <p className="text-sm text-muted-foreground">All active project share links across users, with options to revoke.</p>
+      </div>
+      {isLoading && <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>}
+      {!isLoading && slugs.length === 0 && <div className="text-sm text-muted-foreground py-8 text-center">No active share links.</div>}
+      {!isLoading && slugs.length > 0 && (<div className="space-y-3">
+      <div className="flex items-center justify-end">
         <span className="text-xs text-muted-foreground">{slugs.length} link{slugs.length !== 1 ? "s" : ""}</span>
       </div>
       <div className="rounded-lg border border-border overflow-x-auto">
@@ -1445,7 +1466,7 @@ function SlugsTab() {
           </tbody>
         </table>
       </div>
-    </div>
+    </div>)}
       <StepLogSection />
     </div>
   );
@@ -1580,9 +1601,12 @@ function FeedbackTab() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-base font-semibold">Feedback submissions</h2>
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Feedback</h1>
+        <p className="text-sm text-muted-foreground">Review all user-submitted feedback, bug reports, and feature requests.</p>
+      </div>
+      <div className="flex items-center justify-end flex-wrap gap-2">
         <div className="flex items-center gap-2 text-sm">
           <select
             className="rounded-md border border-border bg-background px-2 py-1 text-sm"
@@ -1824,11 +1848,11 @@ function CredentialsTab() {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">Managed credentials</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Track expiration dates for secrets and service credentials.</p>
+        <div className="space-y-1 pb-2 border-b flex-1 mr-4">
+          <h1 className="text-lg font-semibold">Credentials</h1>
+          <p className="text-sm text-muted-foreground">Track expiration dates for secrets and third-party service credentials.</p>
         </div>
         {isSuperuser && (
           <Button size="sm" onClick={openAdd}>Add credential</Button>
@@ -1985,8 +2009,11 @@ function AuditLogTab() {
   });
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Audit Log</h2>
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Audit Log</h1>
+        <p className="text-sm text-muted-foreground">Immutable record of admin actions and significant account events.</p>
+      </div>
 
       <div className="flex gap-2 flex-wrap">
         <select
@@ -2367,13 +2394,11 @@ function LoomDatabaseTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Loom database</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Admin-maintained catalog of commercially available looms. Used for typeahead in loom creation.
-          </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1 pb-2 border-b flex-1 mr-4">
+          <h1 className="text-lg font-semibold">Loom Database</h1>
+          <p className="text-sm text-muted-foreground">Admin-maintained catalog of commercially available looms, used for typeahead in loom creation.</p>
         </div>
         <Button size="sm" onClick={openAdd}>Add loom</Button>
       </div>

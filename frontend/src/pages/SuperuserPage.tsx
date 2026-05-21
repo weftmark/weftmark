@@ -170,6 +170,10 @@ function EulaTab() {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Terms of Service</h1>
+        <p className="text-sm text-muted-foreground">View the current published EULA version and publish a new version that will require all users to re-accept on next login.</p>
+      </div>
       {/* Current version */}
       <div className="space-y-2">
         <h2 className="text-sm font-medium">Current version: {current?.version}</h2>
@@ -388,6 +392,10 @@ function StorageAuditTab() {
 
   return (
     <div className="space-y-4">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Storage Audit</h1>
+        <p className="text-sm text-muted-foreground">Scan R2/S3 for orphaned files that are no longer referenced by any database record and permanently delete them.</p>
+      </div>
       <div className="flex items-center gap-3">
         <Button onClick={startScan} disabled={scanStatus === "running"} size="sm">
           {scanStatus === "running" ? "Scanning…" : "Scan S3 for Orphaned Files"}
@@ -561,6 +569,10 @@ function CveScanTab() {
 
   return (
     <div className="space-y-4">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">CVE Scanner</h1>
+        <p className="text-sm text-muted-foreground">Run pip-audit and OSV.dev scans against Python and npm dependencies. Results populate the warning banner shown on all admin pages.</p>
+      </div>
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
           Scans Python dependencies via pip-audit and npm packages via OSV.dev.
@@ -721,6 +733,10 @@ function WorkersTab() {
 
   return (
     <div className="space-y-4">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Worker Status</h1>
+        <p className="text-sm text-muted-foreground">Live view of Celery worker health, queue depths, active and reserved tasks, and recent task history.</p>
+      </div>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -951,12 +967,9 @@ function DeletionTab() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-sm font-medium">User Deletion Queue</h2>
-        <p className="text-xs text-muted-foreground">
-          Users currently in the deletion pipeline. Auto-refreshes every 10s.
-          Stalled entries indicate a Celery task that errored mid-cascade and requires investigation.
-        </p>
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Deletion Queue</h1>
+        <p className="text-sm text-muted-foreground">Users currently in the deletion pipeline and soft-deleted content items awaiting hard purge.</p>
       </div>
 
       {users.length === 0 ? (
@@ -1022,6 +1035,10 @@ function MaintenanceTab() {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Maintenance</h1>
+        <p className="text-sm text-muted-foreground">Manual maintenance operations including hard-purging soft-deleted records that have passed the retention window.</p>
+      </div>
       {/* Soft-delete queue summary */}
       <div className="rounded-lg border p-5 space-y-3">
         <div>
@@ -1153,12 +1170,9 @@ function ReconcileTab() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-sm font-medium">Clerk ↔ DB Reconciliation</h2>
-        <p className="text-xs text-muted-foreground">
-          Cross-references Clerk accounts against the database. Use this to backfill users created
-          directly in the Clerk dashboard.
-        </p>
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Clerk Reconciliation</h1>
+        <p className="text-sm text-muted-foreground">Cross-reference Clerk accounts against the database to find and backfill users created directly in the Clerk dashboard.</p>
       </div>
 
       <Button onClick={runReconcile} disabled={loading} size="sm">
@@ -1382,11 +1396,11 @@ function ScheduledTasksTab() {
   if (error) return <p className="text-sm text-destructive">Failed to load scheduled tasks.</p>;
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Configure recurring background tasks. Settings are stored in Postgres and survive restarts.
-        The scheduler tick runs every 60 seconds via Celery Beat.
-      </p>
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Scheduled Tasks</h1>
+        <p className="text-sm text-muted-foreground">Configure recurring background tasks. Schedules are stored in Postgres and survive restarts; the scheduler tick runs every 60 seconds via Celery Beat.</p>
+      </div>
       {data && data.length === 0 && (
         <p className="text-sm text-muted-foreground">No scheduled tasks configured.</p>
       )}

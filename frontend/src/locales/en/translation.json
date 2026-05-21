@@ -83,12 +83,18 @@
     "saved": "Saved",
     "sections": {
       "appearance": "Appearance",
+      "appearanceDesc": "Choose your color theme and customize how the activity tracker looks.",
       "diagnostics": "Diagnostics",
+      "diagnosticsDesc": "Configure developer-facing display options like version numbers.",
       "preferences": "Preferences",
+      "preferencesDesc": "Update your display name and default units for measurements.",
       "privacy": "Privacy & data",
+      "privacyDesc": "Control what information is visible to others on the platform.",
       "terms": "Terms of Service",
+      "termsDesc": "Review the terms of service you have accepted.",
       "feedbackHistory": "Feedback history",
-      "account": "Account management"
+      "account": "Account management",
+      "accountDesc": "Download your data or permanently delete your account."
     },
     "appearance": {
       "theme": "Theme",

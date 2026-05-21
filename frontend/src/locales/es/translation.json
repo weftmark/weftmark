@@ -83,12 +83,18 @@
     "saved": "Guardado",
     "sections": {
       "appearance": "Apariencia",
+      "appearanceDesc": "Elige tu tema de color y personaliza el aspecto del rastreador de actividad.",
       "diagnostics": "Diagnóstico",
+      "diagnosticsDesc": "Configura opciones para desarrolladores como los números de versión.",
       "preferences": "Preferencias",
+      "preferencesDesc": "Actualiza tu nombre de visualización y las unidades predeterminadas para medidas.",
       "privacy": "Privacidad",
+      "privacyDesc": "Controla qué información es visible para otros usuarios de la plataforma.",
       "terms": "Términos de uso",
+      "termsDesc": "Revisa los términos de uso que has aceptado.",
       "feedbackHistory": "Historial de comentarios",
-      "account": "Gestión de cuenta"
+      "account": "Gestión de cuenta",
+      "accountDesc": "Descarga tus datos o elimina permanentemente tu cuenta."
     },
     "appearance": {
       "theme": "Tema",

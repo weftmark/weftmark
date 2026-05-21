@@ -83,12 +83,18 @@
     "saved": "Opgeslagen",
     "sections": {
       "appearance": "Weergave",
+      "appearanceDesc": "Kies je kleurthema en pas de weergave van de activiteitstracker aan.",
       "diagnostics": "Diagnostiek",
+      "diagnosticsDesc": "Ontwikkelaarsopties zoals versienummers instellen.",
       "preferences": "Voorkeuren",
+      "preferencesDesc": "Werk je weergavenaam en standaardeenheden voor metingen bij.",
       "privacy": "Privacy",
+      "privacyDesc": "Bepaal welke informatie zichtbaar is voor anderen op het platform.",
       "terms": "Gebruiksvoorwaarden",
+      "termsDesc": "Bekijk de gebruiksvoorwaarden die je hebt geaccepteerd.",
       "feedbackHistory": "Feedbackgeschiedenis",
-      "account": "Accountbeheer"
+      "account": "Accountbeheer",
+      "accountDesc": "Download je gegevens of verwijder je account permanent."
     },
     "appearance": {
       "theme": "Thema",
