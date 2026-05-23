@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { createYarn, getYarnProperties, weightBothUnits, type CreateYarnPayload } from "@/api/yarn";
+import { createYarn, getYarnProperties, listYarn, weightBothUnits, type CreateYarnPayload } from "@/api/yarn";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 
@@ -26,7 +26,9 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
   const navigate = useNavigate();
 
   const [brand, setBrand] = useState("");
+  const [brandOpen, setBrandOpen] = useState(false);
   const [name, setName] = useState("");
+  const [nameOpen, setNameOpen] = useState(false);
   const [weightCategory, setWeightCategory] = useState("");
   const [weightNotation, setWeightNotation] = useState("");
   const [fiberContent, setFiberContent] = useState("");
@@ -53,6 +55,32 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
     queryFn: getYarnProperties,
     staleTime: 60 * 60 * 1000,
   });
+
+  const { data: existingYarns = [] } = useQuery({
+    queryKey: ["yarn", { includeArchived: false }],
+    queryFn: () => listYarn(false),
+    staleTime: 60 * 1000,
+  });
+
+  const brandSuggestions = useMemo(() => {
+    const q = brand.trim().toLowerCase();
+    if (!q) return [];
+    return [...new Set(existingYarns.map((y) => y.brand))]
+      .filter((b) => b.toLowerCase().includes(q))
+      .sort();
+  }, [existingYarns, brand]);
+
+  const nameSuggestions = useMemo(() => {
+    const q = name.trim().toLowerCase();
+    if (!q) return [];
+    const brandLower = brand.trim().toLowerCase();
+    const pool = brandLower
+      ? existingYarns.filter((y) => y.brand.toLowerCase() === brandLower)
+      : existingYarns;
+    return [...new Set(pool.map((y) => y.name))]
+      .filter((n) => n.toLowerCase().includes(q))
+      .sort();
+  }, [existingYarns, brand, name]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,17 +138,61 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
 
         <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="relative">
               <label className="mb-1 block text-sm font-medium">
                 {t("addYarnModal.brandLabel")} <span className="text-destructive">*</span>
               </label>
-              <input className={f} value={brand} onChange={(e) => setBrand(e.target.value)} placeholder={t("addYarnModal.brandPlaceholder")} required />
+              <input
+                className={f}
+                value={brand}
+                onChange={(e) => { setBrand(e.target.value); setBrandOpen(true); }}
+                onFocus={() => setBrandOpen(true)}
+                onBlur={() => setTimeout(() => setBrandOpen(false), 150)}
+                placeholder={t("addYarnModal.brandPlaceholder")}
+                autoComplete="off"
+                required
+              />
+              {brandOpen && brandSuggestions.length > 0 && (
+                <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover shadow-md text-sm">
+                  {brandSuggestions.map((b) => (
+                    <li
+                      key={b}
+                      className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                      onMouseDown={() => { setBrand(b); setBrandOpen(false); }}
+                    >
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <div>
+            <div className="relative">
               <label className="mb-1 block text-sm font-medium">
                 {t("addYarnModal.nameLabel")} <span className="text-destructive">*</span>
               </label>
-              <input className={f} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("addYarnModal.namePlaceholder")} required />
+              <input
+                className={f}
+                value={name}
+                onChange={(e) => { setName(e.target.value); setNameOpen(true); }}
+                onFocus={() => setNameOpen(true)}
+                onBlur={() => setTimeout(() => setNameOpen(false), 150)}
+                placeholder={t("addYarnModal.namePlaceholder")}
+                autoComplete="off"
+                required
+              />
+              {nameOpen && nameSuggestions.length > 0 && (
+                <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover shadow-md text-sm">
+                  {nameSuggestions.map((n) => (
+                    <li
+                      key={n}
+                      className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                      onMouseDown={() => { setName(n); setNameOpen(false); }}
+                    >
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
