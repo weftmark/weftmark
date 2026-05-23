@@ -44,9 +44,10 @@ interface YarnFilters {
   weights: string[];
   hasColor: boolean;
   inRavelryStash: boolean;
+  machineWashable: boolean;
 }
 
-const DEFAULT_FILTERS: YarnFilters = { brands: [], weights: [], hasColor: false, inRavelryStash: false };
+const DEFAULT_FILTERS: YarnFilters = { brands: [], weights: [], hasColor: false, inRavelryStash: false, machineWashable: false };
 
 interface YarnPrefs {
   view: ViewMode;
@@ -71,7 +72,7 @@ function savePrefs(prefs: YarnPrefs) {
 // ─── filter + sort logic ──────────────────────────────────────────────────────
 
 function countActiveFilters(f: YarnFilters): number {
-  return (f.brands.length > 0 ? 1 : 0) + (f.weights.length > 0 ? 1 : 0) + (f.hasColor ? 1 : 0) + (f.inRavelryStash ? 1 : 0);
+  return (f.brands.length > 0 ? 1 : 0) + (f.weights.length > 0 ? 1 : 0) + (f.hasColor ? 1 : 0) + (f.inRavelryStash ? 1 : 0) + (f.machineWashable ? 1 : 0);
 }
 
 function applySort(yarns: YarnSummary[], sort: SortKey): YarnSummary[] {
@@ -103,6 +104,7 @@ function applyFilters(yarns: YarnSummary[], f: YarnFilters): YarnSummary[] {
     if (f.weights.length > 0 && (!y.weight_category || !f.weights.includes(y.weight_category))) return false;
     if (f.hasColor && !y.color_hex) return false;
     if (f.inRavelryStash && !(y.ravelry_stash_id !== null && !y.out_of_stash)) return false;
+    if (f.machineWashable && !y.machine_washable) return false;
     return true;
   });
 }
@@ -428,6 +430,15 @@ function FilterPopover({
                 className="rounded accent-accent"
               />
               {t("yarnPage.filterInRavelryStash")}
+            </label>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.machineWashable}
+                onChange={(e) => onChange({ ...filters, machineWashable: e.target.checked })}
+                className="rounded accent-accent"
+              />
+              {t("yarnPage.filterMachineWashable")}
             </label>
           </div>
 

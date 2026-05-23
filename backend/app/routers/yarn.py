@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import uuid
 from datetime import date, datetime
@@ -16,6 +17,7 @@ from app.models.user import User
 from app.models.yarn import Skein, Yarn
 from app.services import storage
 from app.services.images import resize_to_jpeg
+from app.services.ravelry import _basic_auth_get
 
 router = APIRouter(prefix="/api/yarn", tags=["yarn"])
 
@@ -67,6 +69,8 @@ class YarnSummary(BaseModel):
     ravelry_discontinued: bool | None
     ravelry_machine_washable: bool | None
     ravelry_yarn_company_url: str | None
+    machine_washable: bool | None
+    yarn_attribute_ids: list[int]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -99,6 +103,8 @@ class YarnSummary(BaseModel):
                 "ravelry_discontinued": yarn.ravelry_discontinued,
                 "ravelry_machine_washable": yarn.ravelry_machine_washable,
                 "ravelry_yarn_company_url": yarn.ravelry_yarn_company_url,
+                "machine_washable": yarn.machine_washable,
+                "yarn_attribute_ids": yarn.yarn_attribute_ids or [],
                 "created_at": yarn.created_at,
             }
         )
@@ -153,6 +159,8 @@ class YarnDetail(YarnSummary):
                 "ravelry_discontinued": yarn.ravelry_discontinued,
                 "ravelry_machine_washable": yarn.ravelry_machine_washable,
                 "ravelry_yarn_company_url": yarn.ravelry_yarn_company_url,
+                "machine_washable": yarn.machine_washable,
+                "yarn_attribute_ids": yarn.yarn_attribute_ids or [],
                 "skeins": yarn.skeins,
                 "created_at": yarn.created_at,
             }
@@ -177,6 +185,8 @@ class CreateYarnRequest(BaseModel):
     purchase_price: Decimal | None = None
     purchase_date: date | None = None
     notes: str | None = None
+    machine_washable: bool | None = None
+    yarn_attribute_ids: list[int] | None = None
 
 
 class UpdateYarnRequest(BaseModel):
@@ -197,6 +207,8 @@ class UpdateYarnRequest(BaseModel):
     purchase_price: Decimal | None = None
     purchase_date: date | None = None
     notes: str | None = None
+    machine_washable: bool | None = None
+    yarn_attribute_ids: list[int] | None = None
     ravelry_photo_url: str | None = None
     ravelry_thumbnail_url: str | None = None
 
@@ -258,6 +270,87 @@ def _ext(content_type: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Yarn attribute properties (public catalog, cached)
+# ---------------------------------------------------------------------------
+
+_properties_cache: list | None = None
+
+_props_log = logging.getLogger(__name__)
+
+
+class YarnAttributeSchema(BaseModel):
+    id: int
+    name: str
+    permalink: str
+    description: str | None
+
+
+class YarnAttributeGroupSchema(BaseModel):
+    id: int
+    name: str
+    permalink: str
+    attributes: list[YarnAttributeSchema]
+
+
+async def _fetch_yarn_properties() -> list[YarnAttributeGroupSchema]:
+    """Fetch from Ravelry and overwrite the cache. Raises on failure — caller decides."""
+    global _properties_cache
+    raw = await _basic_auth_get("/yarn_attributes/groups.json")
+    groups = raw.get("yarn_attribute_groups") or []
+    _properties_cache = [
+        YarnAttributeGroupSchema(
+            id=g["id"],
+            name=g["name"],
+            permalink=g.get("permalink") or "",
+            attributes=[
+                YarnAttributeSchema(
+                    id=a["id"],
+                    name=a["name"],
+                    permalink=a.get("permalink") or "",
+                    description=a.get("description"),
+                )
+                for a in (g.get("yarn_attributes") or [])
+            ],
+        )
+        for g in groups
+    ]
+    return _properties_cache
+
+
+async def warm_yarn_properties_cache() -> None:
+    """Initial fetch at startup; swallows failure — lazy fetch on first request."""
+    try:
+        await _fetch_yarn_properties()
+        _props_log.info("yarn_properties_cache_warmed groups=%d", len(_properties_cache or []))
+    except Exception:
+        _props_log.warning("yarn_properties_cache_warm_failed — will retry on first request")
+
+
+async def refresh_yarn_properties_loop() -> None:
+    """Background loop: re-fetches every 12 h. On failure keeps existing cache."""
+    import asyncio as _asyncio
+
+    _INTERVAL = 12 * 3600
+    while True:
+        await _asyncio.sleep(_INTERVAL)
+        try:
+            await _fetch_yarn_properties()
+            _props_log.info("yarn_properties_cache_refreshed groups=%d", len(_properties_cache or []))
+        except Exception:
+            _props_log.warning("yarn_properties_cache_refresh_failed — serving stale cache")
+
+
+@router.get("/properties", response_model=list[YarnAttributeGroupSchema])
+async def get_yarn_properties(
+    current_user: User = Depends(get_current_user),
+) -> list[YarnAttributeGroupSchema]:
+    """Yarn attribute groups — served from cache, lazy-fetched on first request."""
+    if _properties_cache is None:
+        return await _fetch_yarn_properties()
+    return _properties_cache
+
+
+# ---------------------------------------------------------------------------
 # Yarn CRUD
 # ---------------------------------------------------------------------------
 
@@ -268,7 +361,10 @@ async def create_yarn(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> YarnDetail:
-    yarn = Yarn(owner_id=current_user.id, **body.model_dump())
+    data = body.model_dump()
+    if data.get("yarn_attribute_ids") is None:
+        data["yarn_attribute_ids"] = []
+    yarn = Yarn(owner_id=current_user.id, **data)
     db.add(yarn)
     await db.commit()
     yarn = await _get_owned_yarn(yarn.id, current_user, db)

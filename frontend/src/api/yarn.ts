@@ -61,6 +61,8 @@ export interface YarnSummary {
   ravelry_discontinued: boolean | null;
   ravelry_machine_washable: boolean | null;
   ravelry_yarn_company_url: string | null;
+  machine_washable: boolean | null;
+  yarn_attribute_ids: number[];
   created_at: string;
 }
 
@@ -95,6 +97,8 @@ export interface CreateYarnPayload {
   purchase_price?: number;
   purchase_date?: string;
   notes?: string;
+  machine_washable?: boolean | null;
+  yarn_attribute_ids?: number[];
 }
 
 export interface UpdateYarnPayload extends Partial<CreateYarnPayload> {
@@ -220,4 +224,22 @@ export function cloneYarn(id: string, payload: CloneYarnPayload): Promise<YarnDe
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export interface YarnAttribute {
+  id: number;
+  name: string;
+  permalink: string;
+  description: string | null;
+}
+
+export interface YarnAttributeGroup {
+  id: number;
+  name: string;
+  permalink: string;
+  attributes: YarnAttribute[];
+}
+
+export function getYarnProperties(): Promise<YarnAttributeGroup[]> {
+  return req("/api/yarn/properties");
 }
