@@ -1,8 +1,8 @@
 {
   "components": [
     {
-      "bom-ref": "requirements-L16",
-      "description": "requirements line 16: PyJWT[crypto]==2.12.1",
+      "bom-ref": "requirements-L17",
+      "description": "requirements line 17: PyJWT[crypto]==2.12.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -22,8 +22,8 @@
       "version": "2.12.1"
     },
     {
-      "bom-ref": "requirements-L14",
-      "description": "requirements line 14: aiosmtplib==5.1.0",
+      "bom-ref": "requirements-L15",
+      "description": "requirements line 15: aiosmtplib==5.1.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -67,8 +67,8 @@
       "version": "0.31.0"
     },
     {
-      "bom-ref": "requirements-L20",
-      "description": "requirements line 20: boto3==1.38.0",
+      "bom-ref": "requirements-L21",
+      "description": "requirements line 21: boto3==1.38.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -103,8 +103,8 @@
       "version": "5.6.3"
     },
     {
-      "bom-ref": "requirements-L23",
-      "description": "requirements line 23: croniter==3.0.4",
+      "bom-ref": "requirements-L24",
+      "description": "requirements line 24: croniter==3.0.4",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -118,8 +118,8 @@
       "version": "3.0.4"
     },
     {
-      "bom-ref": "requirements-L17",
-      "description": "requirements line 17: cryptography==48.0.0",
+      "bom-ref": "requirements-L18",
+      "description": "requirements line 18: cryptography==48.0.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -133,8 +133,8 @@
       "version": "48.0.0"
     },
     {
-      "bom-ref": "requirements-L15",
-      "description": "requirements line 15: email-validator==2.3.0",
+      "bom-ref": "requirements-L16",
+      "description": "requirements line 16: email-validator==2.3.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -163,8 +163,8 @@
       "version": "0.136.1"
     },
     {
-      "bom-ref": "requirements-L35",
-      "description": "requirements line 35: geoip2==5.2.0",
+      "bom-ref": "requirements-L36",
+      "description": "requirements line 36: geoip2==5.2.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -193,8 +193,8 @@
       "version": "0.28.1"
     },
     {
-      "bom-ref": "requirements-L18",
-      "description": "requirements line 18: itsdangerous==2.2.0",
+      "bom-ref": "requirements-L19",
+      "description": "requirements line 19: itsdangerous==2.2.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -208,8 +208,8 @@
       "version": "2.2.0"
     },
     {
-      "bom-ref": "requirements-L25",
-      "description": "requirements line 25: opentelemetry-api==1.27.0",
+      "bom-ref": "requirements-L26",
+      "description": "requirements line 26: opentelemetry-api==1.27.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -223,8 +223,8 @@
       "version": "1.27.0"
     },
     {
-      "bom-ref": "requirements-L27",
-      "description": "requirements line 27: opentelemetry-exporter-otlp-proto-http==1.27.0",
+      "bom-ref": "requirements-L28",
+      "description": "requirements line 28: opentelemetry-exporter-otlp-proto-http==1.27.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -238,8 +238,8 @@
       "version": "1.27.0"
     },
     {
-      "bom-ref": "requirements-L33",
-      "description": "requirements line 33: opentelemetry-instrumentation-botocore==0.48b0",
+      "bom-ref": "requirements-L34",
+      "description": "requirements line 34: opentelemetry-instrumentation-botocore==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -253,8 +253,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L30",
-      "description": "requirements line 30: opentelemetry-instrumentation-celery==0.48b0",
+      "bom-ref": "requirements-L31",
+      "description": "requirements line 31: opentelemetry-instrumentation-celery==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -268,8 +268,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L28",
-      "description": "requirements line 28: opentelemetry-instrumentation-fastapi==0.48b0",
+      "bom-ref": "requirements-L29",
+      "description": "requirements line 29: opentelemetry-instrumentation-fastapi==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -283,8 +283,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L32",
-      "description": "requirements line 32: opentelemetry-instrumentation-httpx==0.48b0",
+      "bom-ref": "requirements-L33",
+      "description": "requirements line 33: opentelemetry-instrumentation-httpx==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -298,8 +298,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L34",
-      "description": "requirements line 34: opentelemetry-instrumentation-logging==0.48b0",
+      "bom-ref": "requirements-L35",
+      "description": "requirements line 35: opentelemetry-instrumentation-logging==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -313,8 +313,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L31",
-      "description": "requirements line 31: opentelemetry-instrumentation-redis==0.48b0",
+      "bom-ref": "requirements-L32",
+      "description": "requirements line 32: opentelemetry-instrumentation-redis==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -328,8 +328,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L29",
-      "description": "requirements line 29: opentelemetry-instrumentation-sqlalchemy==0.48b0",
+      "bom-ref": "requirements-L30",
+      "description": "requirements line 30: opentelemetry-instrumentation-sqlalchemy==0.48b0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -343,8 +343,8 @@
       "version": "0.48b0"
     },
     {
-      "bom-ref": "requirements-L26",
-      "description": "requirements line 26: opentelemetry-sdk==1.27.0",
+      "bom-ref": "requirements-L27",
+      "description": "requirements line 27: opentelemetry-sdk==1.27.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -358,8 +358,8 @@
       "version": "1.27.0"
     },
     {
-      "bom-ref": "requirements-L13",
-      "description": "requirements line 13: pillow==12.2.0",
+      "bom-ref": "requirements-L14",
+      "description": "requirements line 14: pillow==12.2.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -373,8 +373,8 @@
       "version": "12.2.0"
     },
     {
-      "bom-ref": "requirements-L22",
-      "description": "requirements line 22: pip-audit",
+      "bom-ref": "requirements-L23",
+      "description": "requirements line 23: pip-audit",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -387,8 +387,8 @@
       "type": "library"
     },
     {
-      "bom-ref": "requirements-L21",
-      "description": "requirements line 21: psutil==6.1.1",
+      "bom-ref": "requirements-L22",
+      "description": "requirements line 22: psutil==6.1.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -447,8 +447,8 @@
       "version": "2.14.0"
     },
     {
-      "bom-ref": "requirements-L12",
-      "description": "requirements line 12: python-multipart==0.0.27",
+      "bom-ref": "requirements-L13",
+      "description": "requirements line 13: python-multipart==0.0.27",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -460,6 +460,21 @@
       "purl": "pkg:pypi/python-multipart@0.0.27",
       "type": "library",
       "version": "0.0.27"
+    },
+    {
+      "bom-ref": "requirements-L12",
+      "description": "requirements line 12: ravelpy==0.3.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/ravelpy/"
+        }
+      ],
+      "name": "ravelpy",
+      "purl": "pkg:pypi/ravelpy@0.3.0",
+      "type": "library",
+      "version": "0.3.0"
     },
     {
       "bom-ref": "requirements-L10",
@@ -477,8 +492,8 @@
       "version": "6.4.0"
     },
     {
-      "bom-ref": "requirements-L24",
-      "description": "requirements line 24: setuptools<80",
+      "bom-ref": "requirements-L25",
+      "description": "requirements line 25: setuptools<80",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -512,8 +527,8 @@
       "version": "2.0.49"
     },
     {
-      "bom-ref": "requirements-L19",
-      "description": "requirements line 19: svix==1.92.2",
+      "bom-ref": "requirements-L20",
+      "description": "requirements line 20: svix==1.92.2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -637,6 +652,9 @@
       "ref": "requirements-L35"
     },
     {
+      "ref": "requirements-L36"
+    },
+    {
       "ref": "requirements-L4"
     },
     {
@@ -656,7 +674,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-20T19:56:06.647631+00:00",
+    "timestamp": "2026-05-23T17:02:55.733044+00:00",
     "tools": {
       "components": [
         {
@@ -760,7 +778,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:e0e9abf5-930c-45fe-97ef-b6a39bad7239",
+  "serialNumber": "urn:uuid:46e74f11-3e99-4a41-9648-430f04e6e5e4",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
