@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import BigInteger, Boolean, Date, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
@@ -64,6 +64,8 @@ class Yarn(Base, TimestampMixin, SoftDeleteMixin):
     ravelry_discontinued: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     ravelry_machine_washable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     ravelry_yarn_company_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    machine_washable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    yarn_attribute_ids: Mapped[list[int]] = mapped_column(JSONB, nullable=False, default=list)
     # Set when Ravelry removes the entry from the user's stash but we retain it for history/project references
     out_of_stash: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # User-managed or auto-set (when out_of_stash becomes True); hidden from the default list view

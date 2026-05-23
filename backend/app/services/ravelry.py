@@ -287,6 +287,7 @@ async def import_yarn_from_ravelry(
     yarn_company_url = company.get("url") or None
     unit_yardage_raw = yarn_data.get("yardage")
     unit_yardage = Decimal(str(unit_yardage_raw)) if unit_yardage_raw else None
+    yarn_attribute_ids = [a["id"] for a in (yarn_data.get("yarn_attributes") or []) if "id" in a]
 
     photos = yarn_data.get("photos") or []
     photo_url = None
@@ -313,6 +314,8 @@ async def import_yarn_from_ravelry(
         ravelry_discontinued=discontinued,
         ravelry_machine_washable=machine_washable,
         ravelry_yarn_company_url=yarn_company_url,
+        machine_washable=machine_washable,
+        yarn_attribute_ids=yarn_attribute_ids,
     )
     db.add(yarn)
     await db.commit()
@@ -436,6 +439,7 @@ async def sync_stash(user_id: uuid.UUID, db: AsyncSession) -> dict:
         discontinued: bool = bool(yarn_data.get("discontinued") or False)
         machine_washable: bool | None = yarn_data.get("machine_washable")
         yarn_company_url: str | None = company.get("url") or None
+        yarn_attribute_ids: list[int] = [a["id"] for a in (yarn_data.get("yarn_attributes") or []) if "id" in a]
 
         yarn_photos: list[dict] = yarn_data.get("photos") or []
         stash_photos: list[dict] = entry.get("photos") or []
@@ -481,6 +485,9 @@ async def sync_stash(user_id: uuid.UUID, db: AsyncSession) -> dict:
             existing.ravelry_discontinued = discontinued
             if machine_washable is not None:
                 existing.ravelry_machine_washable = machine_washable
+                existing.machine_washable = machine_washable
+            if yarn_attribute_ids:
+                existing.yarn_attribute_ids = yarn_attribute_ids
             if yarn_company_url:
                 existing.ravelry_yarn_company_url = yarn_company_url
             if existing.color_hex is None and color_hex_guess:
@@ -505,6 +512,8 @@ async def sync_stash(user_id: uuid.UUID, db: AsyncSession) -> dict:
                 ravelry_discontinued=discontinued,
                 ravelry_machine_washable=machine_washable,
                 ravelry_yarn_company_url=yarn_company_url,
+                machine_washable=machine_washable,
+                yarn_attribute_ids=yarn_attribute_ids,
             )
             db.add(existing)
             await db.flush()

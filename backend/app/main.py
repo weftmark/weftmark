@@ -190,6 +190,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     asyncio.create_task(_send_startup_alert(readiness))
     asyncio.create_task(_write_startup_server_event(readiness, start_time))
 
+    from app.routers.yarn import refresh_yarn_properties_loop, warm_yarn_properties_cache
+
+    asyncio.create_task(warm_yarn_properties_cache())
+    asyncio.create_task(refresh_yarn_properties_loop())
+
     yield
 
     stop_detailed_refresh()
