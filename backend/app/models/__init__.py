@@ -16,6 +16,7 @@ from app.models.loom import (
 )
 from app.models.pending_signup import PendingSignup
 from app.models.project import Project, ProjectPhoto, ProjectStep
+from app.models.ravelry import RavelryCredential, RavelryOAuthState
 from app.models.scheduled_task import ScheduledTask
 from app.models.seed_run import SeedRun
 from app.models.server_event import ServerEvent
@@ -51,6 +52,8 @@ __all__ = [
     "ProjectPhoto",
     "ProjectStep",
     "EulaVersion",
+    "RavelryCredential",
+    "RavelryOAuthState",
     "ScheduledTask",
     "ServerEvent",
 ]
