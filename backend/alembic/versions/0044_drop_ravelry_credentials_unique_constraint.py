@@ -13,7 +13,7 @@ Create Date: 2026-05-23
 
 from alembic import op
 
-revision = "0044_drop_ravelry_credentials_unique_constraint"
+revision = "0044_ravelry_drop_dup_uq"
 down_revision = "0043_yarn_ravelry_colorway_photo"
 branch_labels = None
 depends_on = None
