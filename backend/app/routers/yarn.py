@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -55,6 +55,18 @@ class YarnSummary(BaseModel):
     has_photo: bool
     skein_count: int
     available_count: int
+    out_of_stash: bool
+    archived: bool
+    ravelry_stash_id: int | None
+    ravelry_yarn_id: int | None
+    ravelry_photo_url: str | None
+    ravelry_thumbnail_url: str | None
+    ravelry_colorway_photo_url: str | None
+    ravelry_colorway_thumbnail_url: str | None
+    ravelry_permalink: str | None
+    ravelry_discontinued: bool | None
+    ravelry_machine_washable: bool | None
+    ravelry_yarn_company_url: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -75,6 +87,18 @@ class YarnSummary(BaseModel):
                 "has_photo": yarn.photo_path is not None,
                 "skein_count": len(yarn.skeins),
                 "available_count": sum(1 for s in yarn.skeins if s.status == "available"),
+                "out_of_stash": yarn.out_of_stash,
+                "archived": yarn.archived,
+                "ravelry_stash_id": yarn.ravelry_stash_id,
+                "ravelry_yarn_id": yarn.ravelry_yarn_id,
+                "ravelry_photo_url": yarn.ravelry_photo_url,
+                "ravelry_thumbnail_url": yarn.ravelry_thumbnail_url,
+                "ravelry_colorway_photo_url": yarn.ravelry_colorway_photo_url,
+                "ravelry_colorway_thumbnail_url": yarn.ravelry_colorway_thumbnail_url,
+                "ravelry_permalink": yarn.ravelry_permalink,
+                "ravelry_discontinued": yarn.ravelry_discontinued,
+                "ravelry_machine_washable": yarn.ravelry_machine_washable,
+                "ravelry_yarn_company_url": yarn.ravelry_yarn_company_url,
                 "created_at": yarn.created_at,
             }
         )
@@ -117,6 +141,18 @@ class YarnDetail(YarnSummary):
                 "has_photo": yarn.photo_path is not None,
                 "skein_count": len(yarn.skeins),
                 "available_count": sum(1 for s in yarn.skeins if s.status == "available"),
+                "out_of_stash": yarn.out_of_stash,
+                "archived": yarn.archived,
+                "ravelry_stash_id": yarn.ravelry_stash_id,
+                "ravelry_yarn_id": yarn.ravelry_yarn_id,
+                "ravelry_photo_url": yarn.ravelry_photo_url,
+                "ravelry_thumbnail_url": yarn.ravelry_thumbnail_url,
+                "ravelry_colorway_photo_url": yarn.ravelry_colorway_photo_url,
+                "ravelry_colorway_thumbnail_url": yarn.ravelry_colorway_thumbnail_url,
+                "ravelry_permalink": yarn.ravelry_permalink,
+                "ravelry_discontinued": yarn.ravelry_discontinued,
+                "ravelry_machine_washable": yarn.ravelry_machine_washable,
+                "ravelry_yarn_company_url": yarn.ravelry_yarn_company_url,
                 "skeins": yarn.skeins,
                 "created_at": yarn.created_at,
             }
@@ -161,6 +197,8 @@ class UpdateYarnRequest(BaseModel):
     purchase_price: Decimal | None = None
     purchase_date: date | None = None
     notes: str | None = None
+    ravelry_photo_url: str | None = None
+    ravelry_thumbnail_url: str | None = None
 
 
 class CloneYarnRequest(BaseModel):
@@ -239,14 +277,15 @@ async def create_yarn(
 
 @router.get("", response_model=list[YarnSummary])
 async def list_yarn(
+    include_archived: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[YarnSummary]:
+    filters = [Yarn.owner_id == current_user.id, Yarn.deleted_at.is_(None)]
+    if not include_archived:
+        filters.append(Yarn.archived.is_(False))
     result = await db.scalars(
-        select(Yarn)
-        .where(Yarn.owner_id == current_user.id, Yarn.deleted_at.is_(None))
-        .options(selectinload(Yarn.skeins))
-        .order_by(Yarn.brand, Yarn.name)
+        select(Yarn).where(*filters).options(selectinload(Yarn.skeins)).order_by(Yarn.brand, Yarn.name)
     )
     return [YarnSummary.from_yarn(y) for y in result.all()]
 

@@ -30,6 +30,7 @@ from app.routers import (  # noqa: E402
     loom_catalog,
     looms,
     projects,
+    ravelry,
     system,
     users,
     webhooks,
@@ -238,6 +239,7 @@ app.include_router(loom_catalog.public_router)
 app.include_router(loom_catalog.admin_catalog_router)
 app.include_router(looms.router)
 app.include_router(yarn.router)
+app.include_router(ravelry.router)
 app.include_router(collections.router)
 app.include_router(projects.router)
 app.include_router(projects.share_router)

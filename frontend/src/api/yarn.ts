@@ -49,6 +49,18 @@ export interface YarnSummary {
   has_photo: boolean;
   skein_count: number;
   available_count: number;
+  out_of_stash: boolean;
+  archived: boolean;
+  ravelry_stash_id: number | null;
+  ravelry_yarn_id: number | null;
+  ravelry_photo_url: string | null;
+  ravelry_thumbnail_url: string | null;
+  ravelry_colorway_photo_url: string | null;
+  ravelry_colorway_thumbnail_url: string | null;
+  ravelry_permalink: string | null;
+  ravelry_discontinued: boolean | null;
+  ravelry_machine_washable: boolean | null;
+  ravelry_yarn_company_url: string | null;
   created_at: string;
 }
 
@@ -85,7 +97,10 @@ export interface CreateYarnPayload {
   notes?: string;
 }
 
-export type UpdateYarnPayload = Partial<CreateYarnPayload>;
+export interface UpdateYarnPayload extends Partial<CreateYarnPayload> {
+  ravelry_photo_url?: string | null;
+  ravelry_thumbnail_url?: string | null;
+}
 
 export interface AddSkeinsPayload {
   quantity?: number;
@@ -121,8 +136,8 @@ async function req<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export function listYarn(): Promise<YarnSummary[]> {
-  return req("/api/yarn");
+export function listYarn(includeArchived = false): Promise<YarnSummary[]> {
+  return req(`/api/yarn${includeArchived ? "?include_archived=true" : ""}`);
 }
 
 export function getYarn(id: string): Promise<YarnDetail> {

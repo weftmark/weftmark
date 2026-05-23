@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cloneYarn, type YarnDetail } from "@/api/yarn";
 import { Button } from "@/components/ui/button";
+import { ColorPicker } from "@/components/ui/ColorPicker";
 
 interface Props {
   yarn: YarnDetail;
@@ -65,12 +66,7 @@ export function CloneYarnModal({ yarn, onSuccess, onClose }: Props) {
               />
               <label htmlFor="clone-has-color" className="text-sm">Set color</label>
               {hasColor && (
-                <input
-                  type="color"
-                  value={colorHex}
-                  onChange={(e) => setColorHex(e.target.value)}
-                  className="h-8 w-12 rounded border border-input cursor-pointer"
-                />
+                <ColorPicker value={colorHex} onChange={setColorHex} />
               )}
             </div>
           </div>
