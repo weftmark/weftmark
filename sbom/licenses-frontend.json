@@ -142,7 +142,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/clerk-react",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/clerk-react/LICENSE"
   },
-  "@clerk/shared@3.47.5": {
+  "@clerk/shared@3.47.6": {
     "licenses": "MIT",
     "repository": "https://github.com/clerk/javascript",
     "publisher": "Clerk",
@@ -514,7 +514,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/baseline-browser-mapping",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/baseline-browser-mapping/LICENSE.txt"
   },
-  "brace-expansion@5.0.5": {
+  "brace-expansion@5.0.6": {
     "licenses": "MIT",
     "repository": "https://github.com/juliangruber/brace-expansion",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/brace-expansion",
@@ -919,7 +919,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/jiti",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/jiti/LICENSE"
   },
-  "js-cookie@3.0.5": {
+  "js-cookie@3.0.7": {
     "licenses": "MIT",
     "repository": "https://github.com/js-cookie/js-cookie",
     "publisher": "Klaus Hartl",
@@ -1162,6 +1162,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/punycode",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/punycode/LICENSE-MIT.txt"
   },
+  "react-colorful@5.7.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/omgovich/react-colorful",
+    "publisher": "Vlad Shilov",
+    "email": "omgovich@ya.ru",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-colorful",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-colorful/LICENSE"
+  },
   "react-dom@19.2.6": {
     "licenses": "MIT",
     "repository": "https://github.com/facebook/react",
@@ -1370,7 +1378,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements/LICENSE"
   },
-  "weaving-site@0.180.0": {
+  "weaving-site@0.190.0": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",
