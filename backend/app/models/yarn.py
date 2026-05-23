@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Date, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import BigInteger, Boolean, Date, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -53,6 +53,21 @@ class Yarn(Base, TimestampMixin, SoftDeleteMixin):
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    ravelry_stash_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    ravelry_yarn_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    ravelry_photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ravelry_thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ravelry_colorway_photo_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ravelry_colorway_thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ravelry_permalink: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    ravelry_discontinued: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    ravelry_machine_washable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    ravelry_yarn_company_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Set when Ravelry removes the entry from the user's stash but we retain it for history/project references
+    out_of_stash: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # User-managed or auto-set (when out_of_stash becomes True); hidden from the default list view
+    archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     skeins: Mapped[list["Skein"]] = relationship("Skein", back_populates="yarn", order_by="Skein.created_at")
     owner: Mapped["User"] = relationship("User", foreign_keys=[owner_id])  # type: ignore[name-defined]

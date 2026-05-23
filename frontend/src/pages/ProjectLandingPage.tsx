@@ -20,6 +20,7 @@ import { previewUrl } from "@/api/drafts";
 import { getAuthToken } from "@/api/client";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ColorPicker } from "@/components/ui/ColorPicker";
 import { AppIcons } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 import { ShareModal } from "@/components/projects/ShareModal";
@@ -579,13 +580,7 @@ function ColorPaletteSection({
                   {!locked && (
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={displayHex}
-                          onChange={(e) => setReplacement(c.hex, e.target.value)}
-                          className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent p-0.5"
-                          title="Pick replacement color"
-                        />
+                        <ColorPicker value={displayHex} onChange={(hex) => setReplacement(c.hex, hex)} size="sm" />
                         {pending[c.hex] && (
                           <button
                             className="text-xs text-muted-foreground hover:text-foreground"

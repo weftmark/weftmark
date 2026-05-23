@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useClerk } from "@clerk/clerk-react";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { updateSettings, deleteAccount, requestDataExport, getDataExportStatus, getDataExportDownloadUrl, getCurrentEula } from "@/api/users";
+import { getRavelryStatus, getRavelryAuthorizeUrl, disconnectRavelry, syncRavelryStash } from "@/api/ravelry";
 import { downloadAuthed } from "@/api/client";
 import { listDrafts } from "@/api/drafts";
 import { listMyFeedback, SUBMISSION_TYPE_LABELS, type FeedbackRecord } from "@/api/feedback";
@@ -14,7 +15,7 @@ import { EulaContent } from "@/components/EulaContent";
 import { AppIcons } from "@/lib/icons";
 import { TrackerStylePreview, TrackerLivePreview } from "@/components/TrackerStylePreview";
 
-type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history";
+type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history" | "connections";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -22,6 +23,8 @@ export function SettingsPage() {
   const { user, refetch } = useAuth();
   const { section } = useParams<{ section: string }>();
   const activeSection: Section = (section as Section) ?? "appearance";
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const { data: drafts = [] } = useQuery({
     queryKey: ["drafts"],
@@ -78,6 +81,32 @@ export function SettingsPage() {
   const [deleteInput, setDeleteInput] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Ravelry connection status
+  const { data: ravelryStatus, refetch: refetchRavelry } = useQuery({
+    queryKey: ["ravelry-status"],
+    queryFn: getRavelryStatus,
+    enabled: activeSection === "connections",
+  });
+  const [ravelryConnecting, setRavelryConnecting] = useState(false);
+  const [ravelryDisconnecting, setRavelryDisconnecting] = useState(false);
+  const [ravelrySyncing, setRavelrySyncing] = useState(false);
+  const [ravelryNotice, setRavelryNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Handle Ravelry OAuth callback redirect params
+  useEffect(() => {
+    const ravelryParam = searchParams.get("ravelry");
+    if (ravelryParam === "connected") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRavelryNotice({ type: "success", message: t("settings.connections.ravelryConnected") });
+      refetchRavelry();
+      navigate("/settings/connections", { replace: true });
+    } else if (ravelryParam === "error") {
+       
+      setRavelryNotice({ type: "error", message: t("settings.connections.ravelryError") });
+      navigate("/settings/connections", { replace: true });
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user) return null;
 
@@ -569,6 +598,105 @@ export function SettingsPage() {
 
             {/* ── Feedback history ── */}
             {activeSection === "feedback-history" && <FeedbackHistorySection />}
+
+            {/* ── Connections ── */}
+            {activeSection === "connections" && (
+              <Section title={t("settings.sections.connections")} description={t("settings.sections.connectionsDesc")}>
+                {ravelryNotice && (
+                  <div className={`rounded-md px-4 py-2 text-sm mb-4 ${
+                    ravelryNotice.type === "success"
+                      ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                      : "bg-destructive/10 text-destructive"
+                  }`}>
+                    {ravelryNotice.message}
+                  </div>
+                )}
+                <div className="rounded-lg border p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{t("settings.connections.ravelryTitle")}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {ravelryStatus?.connected
+                          ? t("settings.connections.ravelryConnectedAs", { username: ravelryStatus.ravelry_username })
+                          : t("settings.connections.ravelryDisconnected")}
+                      </p>
+                      {ravelryStatus?.connected && ravelryStatus.last_synced_at && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("settings.connections.ravelryLastSync", {
+                            date: new Date(ravelryStatus.last_synced_at).toLocaleString(),
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {ravelryStatus?.connected ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={ravelrySyncing}
+                            onClick={async () => {
+                              setRavelrySyncing(true);
+                              setRavelryNotice(null);
+                              try {
+                                await syncRavelryStash();
+                                setRavelryNotice({ type: "success", message: t("settings.connections.ravelrySyncDone") });
+                                refetchRavelry();
+                              } catch {
+                                setRavelryNotice({ type: "error", message: t("settings.connections.ravelrySyncError") });
+                              } finally {
+                                setRavelrySyncing(false);
+                              }
+                            }}
+                          >
+                            {ravelrySyncing ? t("common.loading") : t("settings.connections.ravelrySync")}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={ravelryDisconnecting}
+                            onClick={async () => {
+                              setRavelryDisconnecting(true);
+                              setRavelryNotice(null);
+                              try {
+                                await disconnectRavelry();
+                                setRavelryNotice({ type: "success", message: t("settings.connections.ravelryDisconnectedSuccess") });
+                                refetchRavelry();
+                              } catch {
+                                setRavelryNotice({ type: "error", message: t("settings.connections.ravelryDisconnectError") });
+                              } finally {
+                                setRavelryDisconnecting(false);
+                              }
+                            }}
+                          >
+                            {t("settings.connections.ravelryDisconnect")}
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={ravelryConnecting}
+                          onClick={async () => {
+                            setRavelryConnecting(true);
+                            setRavelryNotice(null);
+                            try {
+                              const { url } = await getRavelryAuthorizeUrl();
+                              window.location.href = url;
+                            } catch {
+                              setRavelryNotice({ type: "error", message: t("settings.connections.ravelryConnectError") });
+                              setRavelryConnecting(false);
+                            }
+                          }}
+                        >
+                          {ravelryConnecting ? t("common.loading") : t("settings.connections.ravelryConnect")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t("settings.connections.ravelryDescription")}</p>
+                </div>
+              </Section>
+            )}
 
             {/* ── Account ── */}
             {activeSection === "account" && (

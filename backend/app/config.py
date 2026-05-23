@@ -121,6 +121,18 @@ class Settings(BaseSettings):
     maxmind_license_key: str = ""
     geoip_db_path: str = "/app/data/GeoLite2-City.mmdb"
 
+    # Ravelry integration (issue #831)
+    # Read-only developer key — used for yarn/company search without OAuth.
+    # Get from https://www.ravelry.com/pro/developer (Personal API keys section).
+    ravelry_read_access_username: str = ""  # e.g. read-abc123
+    ravelry_read_access_key: str = ""
+
+    # OAuth app credentials — required only for per-user stash sync.
+    # Register a Ravelry Pro app; RAVELRY_OAUTH_REDIRECT_URI must match exactly.
+    ravelry_oauth_client_id: str = ""
+    ravelry_oauth_client_secret: str = ""
+    ravelry_oauth_redirect_uri: str = ""  # e.g. https://app.weftmark.com/api/ravelry/callback
+
     # GitHub Discussions feedback integration (optional — issue #34)
     # PAT with write:discussion + read:discussion scopes on the target repo.
     # Leave empty to store feedback locally only; no error surfaced to users.

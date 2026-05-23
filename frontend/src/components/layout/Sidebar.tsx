@@ -32,6 +32,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   const NAV_ITEMS: NavItem[] = [
     { label: t("nav.dashboard"), href: "/home", icon: AppIcons.dashboard, exact: true },
     { label: t("nav.equipment"), href: "/looms", icon: AppIcons.equipment },
+    { label: t("nav.yarn"), href: "/yarn", icon: AppIcons.yarn },
     { label: t("nav.collections"), href: "/collections", icon: AppIcons.collections },
     { label: t("nav.drafts"), href: "/drafts", icon: AppIcons.drafts },
     { label: t("nav.projects"), href: "/projects", icon: AppIcons.projects },
@@ -40,6 +41,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   const SETTINGS_SECTIONS = [
     { id: "appearance", label: t("settingsSections.appearance") },
     { id: "preferences", label: t("settingsSections.preferences") },
+    { id: "connections", label: t("settingsSections.connections") },
     { id: "privacy", label: t("settingsSections.privacy") },
     { id: "terms", label: t("settingsSections.terms") },
     { id: "account", label: t("settingsSections.account") },
