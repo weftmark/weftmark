@@ -199,9 +199,9 @@ async def run_startup_probes() -> ReadinessResponse:
         )
 
     return _build_readiness_from_results(
-        results,
+        results,  # type: ignore[arg-type]
         webhook_result=None,
-        checked_at=datetime.now(timezone.utc).isoformat(),  # type: ignore[arg-type]
+        checked_at=datetime.now(timezone.utc).isoformat(),
     )
 
 

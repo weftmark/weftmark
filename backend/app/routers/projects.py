@@ -895,11 +895,11 @@ async def get_project(
         generate_drawdown_preview.delay(str(draft.id))
     return _to_detail(
         project,
-        draft,
+        draft,  # type: ignore[arg-type]
         loom,
         photos=list(project.photos),
         loom_version=loom_version,
-        loom_reeds=loom_reeds,  # type: ignore[arg-type]
+        loom_reeds=loom_reeds,
     )
 
 
