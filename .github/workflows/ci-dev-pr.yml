@@ -95,6 +95,13 @@ jobs:
           POSTGRES_USER: weaving_user
           POSTGRES_PASSWORD: ci_test_password
       - run: cd backend && python -m coverage report --fail-under=65
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: weftmark/weftmark
+          files: backend/coverage.xml
+          fail_ci_if_error: false
 
   migration-smoke-test:
     name: Alembic migration smoke test
