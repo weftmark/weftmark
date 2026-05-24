@@ -411,6 +411,36 @@ async def update_yarn(
     return YarnDetail.from_yarn(yarn)
 
 
+class PatchColorwayRequest(BaseModel):
+    color_name: str | None = None
+    colorway_photo_url: str | None = None
+    colorway_thumbnail_url: str | None = None
+    clear_photos: bool = False
+
+
+@router.patch("/{yarn_id}/colorway", response_model=YarnDetail)
+async def patch_yarn_colorway(
+    yarn_id: uuid.UUID,
+    body: PatchColorwayRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> YarnDetail:
+    yarn = await _get_owned_yarn(yarn_id, current_user, db)
+    if body.color_name is not None:
+        yarn.color_name = body.color_name or None
+    if body.clear_photos:
+        yarn.ravelry_colorway_photo_url = None
+        yarn.ravelry_colorway_thumbnail_url = None
+    else:
+        if body.colorway_photo_url is not None:
+            yarn.ravelry_colorway_photo_url = body.colorway_photo_url or None
+        if body.colorway_thumbnail_url is not None:
+            yarn.ravelry_colorway_thumbnail_url = body.colorway_thumbnail_url or None
+    await db.commit()
+    yarn = await _get_owned_yarn(yarn_id, current_user, db)
+    return YarnDetail.from_yarn(yarn)
+
+
 @router.delete("/{yarn_id}", status_code=204)
 async def delete_yarn(
     yarn_id: uuid.UUID,

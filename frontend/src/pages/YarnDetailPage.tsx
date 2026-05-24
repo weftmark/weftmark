@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getYarn, updateYarn } from "@/api/yarn";
-import { getRavelryYarnDetail, type RavelryYarnApiDetail } from "@/api/ravelry";
+import { getYarn, updateYarn, patchYarnColorway } from "@/api/yarn";
+import { getRavelryYarnDetail, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 
@@ -40,6 +40,178 @@ const WEIGHT_LABELS: Record<string, string> = {
   bulky: "Bulky",
   super_bulky: "Super Bulky",
 };
+
+// ---------------------------------------------------------------------------
+// Edit colorway modal
+// ---------------------------------------------------------------------------
+
+function EditColorwayModal({
+  yarn,
+  onClose,
+  onSaved,
+}: {
+  yarn: { id: string; color_name: string | null; ravelry_yarn_id: number | null };
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const [tab, setTab] = useState<"rename" | "link">("rename");
+  const [colorName, setColorName] = useState(yarn.color_name ?? "");
+  const [colorways, setColorways] = useState<RavelryColorway[]>([]);
+  const [colorwaysLoading, setColorwaysLoading] = useState(false);
+  const [colorwayFilter, setColorwayFilter] = useState("");
+  const [selectedColorway, setSelectedColorway] = useState<RavelryColorway | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const filteredColorways = useMemo(() => {
+    if (!colorwayFilter.trim()) return colorways;
+    const q = colorwayFilter.toLowerCase();
+    return colorways.filter((cw) => cw.name.toLowerCase().includes(q));
+  }, [colorways, colorwayFilter]);
+
+  async function loadColorways() {
+    if (!yarn.ravelry_yarn_id || colorways.length > 0) return;
+    setColorwaysLoading(true);
+    try {
+      const { getRavelryYarnDetail: _getRavelryYarnDetail } = await import("@/api/ravelry");
+      const resp = await _getRavelryYarnDetail(yarn.ravelry_yarn_id);
+      setColorways(resp.colorways ?? []);
+    } catch {
+      setError(t("yarnDetailPage.colorwayLoadError"));
+    } finally {
+      setColorwaysLoading(false);
+    }
+  }
+
+  function handleTabChange(next: "rename" | "link") {
+    setTab(next);
+    if (next === "link") loadColorways();
+  }
+
+  function pickColorway(cw: RavelryColorway) {
+    setSelectedColorway(cw);
+    setColorName(cw.name);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const payload: Parameters<typeof patchYarnColorway>[1] = {
+        color_name: colorName.trim() || null,
+      };
+      if (tab === "link" && selectedColorway) {
+        payload.colorway_photo_url = selectedColorway.photos?.[0]?.square_url ?? null;
+        payload.colorway_thumbnail_url = selectedColorway.photos?.[0]?.thumbnail_url ?? null;
+      } else if (tab === "rename") {
+        payload.clear_photos = true;
+      }
+      await patchYarnColorway(yarn.id, payload);
+      onSaved();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("common.error"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-sm font-semibold">{t("yarnDetailPage.editColorwayTitle")}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
+        </div>
+
+        {yarn.ravelry_yarn_id && (
+          <div className="flex border-b border-border">
+            {(["rename", "link"] as const).map((t_) => (
+              <button
+                key={t_}
+                onClick={() => handleTabChange(t_)}
+                className={`flex-1 px-4 py-2.5 text-xs font-medium transition-colors ${
+                  tab === t_
+                    ? "border-b-2 border-accent text-accent"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t_ === "rename" ? t("yarnDetailPage.renameTab") : t("yarnDetailPage.linkRavelryTab")}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+          {tab === "link" && (
+            <>
+              {colorwaysLoading && <p className="text-xs text-muted-foreground">{t("common.loading")}</p>}
+              {!colorwaysLoading && colorways.length > 6 && (
+                <div className="relative">
+                  <input
+                    className={inputCls}
+                    placeholder={t("yarnDetailPage.colorwayFilter")}
+                    value={colorwayFilter}
+                    onChange={(e) => setColorwayFilter(e.target.value)}
+                  />
+                  {colorwayFilter && (
+                    <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs" onClick={() => setColorwayFilter("")}>✕</button>
+                  )}
+                </div>
+              )}
+              {!colorwaysLoading && filteredColorways.length === 0 && (
+                <p className="text-xs text-muted-foreground">{t("yarnDetailPage.noColorways")}</p>
+              )}
+              {filteredColorways.length > 0 && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {filteredColorways.map((cw) => (
+                    <button
+                      key={cw.id}
+                      className={`text-left rounded-md border p-1.5 text-xs transition-colors ${
+                        selectedColorway?.id === cw.id
+                          ? "border-ring bg-accent/10 text-accent"
+                          : "border-border hover:border-ring text-card-foreground"
+                      }`}
+                      onClick={() => pickColorway(cw)}
+                    >
+                      {cw.photos?.[0]?.square_url && (
+                        <img src={cw.photos[0].square_url} alt={cw.name} className="h-10 w-full rounded object-cover mb-1" />
+                      )}
+                      <span className="truncate block leading-tight">{cw.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("yarnDetailPage.colorNameLabel")}</label>
+            <input
+              className={inputCls}
+              placeholder={t("yarnDetailPage.colorNamePlaceholder")}
+              value={colorName}
+              onChange={(e) => setColorName(e.target.value)}
+              autoFocus={tab === "rename"}
+            />
+          </div>
+
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+
+        <div className="flex justify-end gap-2 px-5 py-4 border-t border-border">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>{t("common.cancel")}</Button>
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? t("common.saving") : t("common.save")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Color picker section
@@ -193,6 +365,7 @@ export function YarnDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [showDebug, setShowDebug] = useState(false);
+  const [showEditColorway, setShowEditColorway] = useState(false);
   const [ravelryRawData, setRavelryRawData] = useState<unknown>(null);
   const [ravelryLoading, setRavelryLoading] = useState(false);
 
@@ -273,6 +446,13 @@ export function YarnDetailPage() {
 
       {showDebug && <DevJsonModal data={yarn} onClose={() => setShowDebug(false)} />}
       {ravelryRawData !== null && <DevJsonModal data={ravelryRawData} onClose={() => setRavelryRawData(null)} />}
+      {showEditColorway && (
+        <EditColorwayModal
+          yarn={yarn}
+          onClose={() => setShowEditColorway(false)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ["yarn", id] })}
+        />
+      )}
 
       {/* Hero: photo + title block */}
       <div className="flex gap-5 items-start">
@@ -298,12 +478,17 @@ export function YarnDetailPage() {
           <p className="text-muted-foreground">{yarn.name}</p>
 
           {/* Tags row */}
-          <div className="flex flex-wrap gap-1.5 pt-0.5">
-            {yarn.color_name && (
-              <span className="rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs">
-                {yarn.color_name}
-              </span>
-            )}
+          <div className="flex flex-wrap gap-1.5 pt-0.5 items-center">
+            <button
+              onClick={() => setShowEditColorway(true)}
+              title={t("yarnDetailPage.editColorway")}
+              className="flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs hover:bg-accent/20 hover:text-foreground transition-colors"
+            >
+              {yarn.color_name ?? <span className="italic">{t("yarnDetailPage.noColorway")}</span>}
+              <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M11.5 2.5a1.414 1.414 0 0 1 2 2L5 13H3v-2L11.5 2.5Z" strokeLinejoin="round"/>
+              </svg>
+            </button>
             {yarn.ravelry_discontinued && (
               <span className="rounded-full bg-destructive/10 text-destructive px-2.5 py-0.5 text-xs font-medium">
                 {t("yarnDetailPage.discontinued")}

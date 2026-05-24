@@ -84,7 +84,9 @@
     "back": "Zurück",
     "dismiss": "Schließen",
     "clear": "Löschen",
-    "loading": "Lädt …"
+    "loading": "Lädt …",
+    "saving": "Wird gespeichert…",
+    "error": "Etwas ist schiefgelaufen."
   },
   "settings": {
     "saved": "Gespeichert",
@@ -123,9 +125,18 @@
       "styleVariantNote": "Stilabweichungen werden in einem zukünftigen Update visuell unterschieden.",
       "active": "— aktiv",
       "activityStyles": {
-        "default": { "label": "Standard", "desc": "Standardlayout mit großen Eintrags­karten und Patron-Vorschau." },
-        "compact": { "label": "Kompakt", "desc": "Dichteres Layout für intensives Tracking mit weniger vertikalem Platz." },
-        "high_contrast": { "label": "Hoher Kontrast", "desc": "Höherer visueller Kontrast für einfacheres Lesen bei hellem Licht oder für Barrierefreiheit." }
+        "default": {
+          "label": "Standard",
+          "desc": "Standardlayout mit großen Eintrags­karten und Patron-Vorschau."
+        },
+        "compact": {
+          "label": "Kompakt",
+          "desc": "Dichteres Layout für intensives Tracking mit weniger vertikalem Platz."
+        },
+        "high_contrast": {
+          "label": "Hoher Kontrast",
+          "desc": "Höherer visueller Kontrast für einfacheres Lesen bei hellem Licht oder für Barrierefreiheit."
+        }
       }
     },
     "diagnostics": {
@@ -859,7 +870,17 @@
     "rating": "★ {{avg}} / 5 ({{count}} Bewertungen)",
     "viewOnRavelry": "Auf Ravelry ansehen",
     "manufacturerWebsite": "{{company}} Website",
-    "manufacturerWebsiteFallback": "Hersteller-Website"
+    "manufacturerWebsiteFallback": "Hersteller-Website",
+    "editColorway": "Farbvariante bearbeiten",
+    "editColorwayTitle": "Farbvariante bearbeiten",
+    "noColorway": "Keine Farbvariante",
+    "renameTab": "Umbenennen",
+    "linkRavelryTab": "Mit Ravelry verknüpfen",
+    "colorNameLabel": "Name der Farbvariante",
+    "colorNamePlaceholder": "z. B. Kaki",
+    "colorwayFilter": "Farbvarianten filtern…",
+    "noColorways": "Keine Farbvarianten für dieses Garn gefunden.",
+    "colorwayLoadError": "Farbvarianten konnten nicht geladen werden."
   },
   "loomDetailPage": {
     "loading": "Laden…",

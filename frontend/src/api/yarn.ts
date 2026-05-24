@@ -213,6 +213,21 @@ export function deleteSkein(yarnId: string, skeinId: string): Promise<void> {
   return req(`/api/yarn/${yarnId}/skeins/${skeinId}`, { method: "DELETE" });
 }
 
+export interface PatchColorwayPayload {
+  color_name?: string | null;
+  colorway_photo_url?: string | null;
+  colorway_thumbnail_url?: string | null;
+  clear_photos?: boolean;
+}
+
+export function patchYarnColorway(id: string, payload: PatchColorwayPayload): Promise<YarnDetail> {
+  return req(`/api/yarn/${id}/colorway`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 export interface CloneYarnPayload {
   color_name?: string;
   color_hex?: string;
