@@ -83,7 +83,9 @@
     "cancel": "Annuler",
     "back": "Retour",
     "clear": "Effacer",
-    "loading": "Chargement…"
+    "loading": "Chargement…",
+    "saving": "Enregistrement…",
+    "error": "Une erreur est survenue."
   },
   "settings": {
     "saved": "Enregistré",
@@ -122,9 +124,18 @@
       "styleVariantNote": "Les variantes de style seront visuellement différenciées dans une prochaine mise à jour.",
       "active": "— actif",
       "activityStyles": {
-        "default": { "label": "Par défaut", "desc": "Disposition standard avec cartes de duite en taille réelle et aperçu de l'armure." },
-        "compact": { "label": "Compact", "desc": "Disposition plus dense pour les sessions de suivi intensif avec moins d'espace vertical." },
-        "high_contrast": { "label": "Contraste élevé", "desc": "Contraste visuel plus élevé pour une lecture facilitée sous forte luminosité ou pour l'accessibilité." }
+        "default": {
+          "label": "Par défaut",
+          "desc": "Disposition standard avec cartes de duite en taille réelle et aperçu de l'armure."
+        },
+        "compact": {
+          "label": "Compact",
+          "desc": "Disposition plus dense pour les sessions de suivi intensif avec moins d'espace vertical."
+        },
+        "high_contrast": {
+          "label": "Contraste élevé",
+          "desc": "Contraste visuel plus élevé pour une lecture facilitée sous forte luminosité ou pour l'accessibilité."
+        }
       }
     },
     "diagnostics": {
@@ -858,7 +869,17 @@
     "rating": "★ {{avg}} / 5 ({{count}} avis)",
     "viewOnRavelry": "Voir sur Ravelry",
     "manufacturerWebsite": "Site de {{company}}",
-    "manufacturerWebsiteFallback": "Site du fabricant"
+    "manufacturerWebsiteFallback": "Site du fabricant",
+    "editColorway": "Modifier le coloris",
+    "editColorwayTitle": "Modifier le coloris",
+    "noColorway": "Aucun coloris",
+    "renameTab": "Renommer",
+    "linkRavelryTab": "Lier à Ravelry",
+    "colorNameLabel": "Nom du coloris",
+    "colorNamePlaceholder": "ex. Kaki",
+    "colorwayFilter": "Filtrer les coloris…",
+    "noColorways": "Aucun coloris trouvé pour ce fil.",
+    "colorwayLoadError": "Impossible de charger les coloris."
   },
   "loomDetailPage": {
     "loading": "Chargement…",

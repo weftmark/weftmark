@@ -84,7 +84,9 @@
     "back": "Back",
     "dismiss": "Dismiss",
     "clear": "Clear",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "error": "Something went wrong."
   },
   "settings": {
     "saved": "Saved",
@@ -123,9 +125,18 @@
       "styleVariantNote": "Style variants will be visually differentiated in a future update.",
       "active": "— active",
       "activityStyles": {
-        "default": { "label": "Default", "desc": "Standard layout with full-size pick cards and drawdown preview." },
-        "compact": { "label": "Compact", "desc": "Denser layout for tracking-heavy sessions with less vertical space." },
-        "high_contrast": { "label": "High contrast", "desc": "Higher visual contrast for easier reading under bright light or for accessibility." }
+        "default": {
+          "label": "Default",
+          "desc": "Standard layout with full-size pick cards and drawdown preview."
+        },
+        "compact": {
+          "label": "Compact",
+          "desc": "Denser layout for tracking-heavy sessions with less vertical space."
+        },
+        "high_contrast": {
+          "label": "High contrast",
+          "desc": "Higher visual contrast for easier reading under bright light or for accessibility."
+        }
       }
     },
     "diagnostics": {
@@ -859,7 +870,17 @@
     "rating": "★ {{avg}} / 5 ({{count}} ratings)",
     "viewOnRavelry": "View on Ravelry",
     "manufacturerWebsite": "{{company}} website",
-    "manufacturerWebsiteFallback": "Manufacturer website"
+    "manufacturerWebsiteFallback": "Manufacturer website",
+    "editColorway": "Edit colorway",
+    "editColorwayTitle": "Edit Colorway",
+    "noColorway": "No colorway",
+    "renameTab": "Rename",
+    "linkRavelryTab": "Link to Ravelry",
+    "colorNameLabel": "Colorway name",
+    "colorNamePlaceholder": "e.g. Kaki",
+    "colorwayFilter": "Filter colorways…",
+    "noColorways": "No colorways found for this yarn.",
+    "colorwayLoadError": "Failed to load colorways."
   },
   "loomDetailPage": {
     "loading": "Loading…",

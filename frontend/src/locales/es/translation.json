@@ -83,7 +83,9 @@
     "cancel": "Cancelar",
     "back": "Atrás",
     "clear": "Borrar",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "error": "Algo salió mal."
   },
   "settings": {
     "saved": "Guardado",
@@ -122,9 +124,18 @@
       "styleVariantNote": "Las variantes de estilo se diferenciarán visualmente en una futura actualización.",
       "active": "— activo",
       "activityStyles": {
-        "default": { "label": "Predeterminado", "desc": "Diseño estándar con tarjetas de pasada de tamaño completo y vista previa del ligamento." },
-        "compact": { "label": "Compacto", "desc": "Diseño más denso para sesiones de seguimiento intensivo con menos espacio vertical." },
-        "high_contrast": { "label": "Alto contraste", "desc": "Mayor contraste visual para una lectura más fácil bajo luz intensa o por accesibilidad." }
+        "default": {
+          "label": "Predeterminado",
+          "desc": "Diseño estándar con tarjetas de pasada de tamaño completo y vista previa del ligamento."
+        },
+        "compact": {
+          "label": "Compacto",
+          "desc": "Diseño más denso para sesiones de seguimiento intensivo con menos espacio vertical."
+        },
+        "high_contrast": {
+          "label": "Alto contraste",
+          "desc": "Mayor contraste visual para una lectura más fácil bajo luz intensa o por accesibilidad."
+        }
       }
     },
     "diagnostics": {
@@ -858,7 +869,17 @@
     "rating": "★ {{avg}} / 5 ({{count}} valoraciones)",
     "viewOnRavelry": "Ver en Ravelry",
     "manufacturerWebsite": "Web de {{company}}",
-    "manufacturerWebsiteFallback": "Web del fabricante"
+    "manufacturerWebsiteFallback": "Web del fabricante",
+    "editColorway": "Editar colorway",
+    "editColorwayTitle": "Editar colorway",
+    "noColorway": "Sin colorway",
+    "renameTab": "Renombrar",
+    "linkRavelryTab": "Vincular a Ravelry",
+    "colorNameLabel": "Nombre del colorway",
+    "colorNamePlaceholder": "ej. Kaki",
+    "colorwayFilter": "Filtrar colorways…",
+    "noColorways": "No se encontraron colorways para este hilo.",
+    "colorwayLoadError": "Error al cargar los colorways."
   },
   "loomDetailPage": {
     "loading": "Cargando…",

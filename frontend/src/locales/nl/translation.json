@@ -83,7 +83,9 @@
     "cancel": "Annuleren",
     "back": "Terug",
     "clear": "Wissen",
-    "loading": "Laden…"
+    "loading": "Laden…",
+    "saving": "Opslaan…",
+    "error": "Er is iets misgegaan."
   },
   "settings": {
     "saved": "Opgeslagen",
@@ -122,9 +124,18 @@
       "styleVariantNote": "Stijl­varianten worden visueel onderscheiden in een toekomstige update.",
       "active": "— actief",
       "activityStyles": {
-        "default": { "label": "Standaard", "desc": "Standaard indeling met kaarten op volledige grootte en bindingsvoorbeeld." },
-        "compact": { "label": "Compact", "desc": "Dichtere indeling voor intensieve tracking­sessies met minder verticale ruimte." },
-        "high_contrast": { "label": "Hoog contrast", "desc": "Hoger visueel contrast voor gemakkelijker lezen bij fel licht of voor toegankelijkheid." }
+        "default": {
+          "label": "Standaard",
+          "desc": "Standaard indeling met kaarten op volledige grootte en bindingsvoorbeeld."
+        },
+        "compact": {
+          "label": "Compact",
+          "desc": "Dichtere indeling voor intensieve tracking­sessies met minder verticale ruimte."
+        },
+        "high_contrast": {
+          "label": "Hoog contrast",
+          "desc": "Hoger visueel contrast voor gemakkelijker lezen bij fel licht of voor toegankelijkheid."
+        }
       }
     },
     "diagnostics": {
@@ -858,7 +869,17 @@
     "rating": "★ {{avg}} / 5 ({{count}} beoordelingen)",
     "viewOnRavelry": "Bekijk op Ravelry",
     "manufacturerWebsite": "Website van {{company}}",
-    "manufacturerWebsiteFallback": "Website fabrikant"
+    "manufacturerWebsiteFallback": "Website fabrikant",
+    "editColorway": "Kleurweg bewerken",
+    "editColorwayTitle": "Kleurweg bewerken",
+    "noColorway": "Geen kleurweg",
+    "renameTab": "Hernoemen",
+    "linkRavelryTab": "Koppelen aan Ravelry",
+    "colorNameLabel": "Naam van de kleurweg",
+    "colorNamePlaceholder": "bijv. Kaki",
+    "colorwayFilter": "Kleurwegen filteren…",
+    "noColorways": "Geen kleurwegen gevonden voor dit garen.",
+    "colorwayLoadError": "Kleurwegen konden niet worden geladen."
   },
   "loomDetailPage": {
     "loading": "Laden…",
