@@ -60,7 +60,7 @@ async def _clerk_list_users(secret_key: str, limit: int = 2) -> list[dict]:
             params={"limit": limit},
         )
         r.raise_for_status()
-        return r.json()
+        return r.json()  # type: ignore[no-any-return]
 
 
 async def _clerk_delete_all_users(secret_key: str) -> int:
@@ -96,7 +96,7 @@ async def _clerk_create_user(secret_key: str, email: str, username: str, passwor
             },
         )
         r.raise_for_status()
-        return r.json()
+        return r.json()  # type: ignore[no-any-return]
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ async def _poll_for_clerk_attach(
         async with session_factory() as session:
             user = await session.get(User, user_id)
             if user and user.clerk_user_id is not None:
-                return user
+                return user  # type: ignore[no-any-return]
         if loop.time() >= deadline:
             raise TimeoutError(
                 f"user_id={user_id} never received a clerk_user_id after {timeout}s — "
@@ -323,7 +323,7 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
 
         # 2. Create the Clerk account — the webhook will attach the clerk_user_id.
         try:
-            clerk_user = await _clerk_create_user(settings.clerk_secret_key, email, username, password, display_name)
+            clerk_user = await _clerk_create_user(settings.clerk_secret_key, email, username, password, display_name)  # type: ignore[arg-type]
             clerk_user_id: str = clerk_user["id"]
             _ok(f"{email} created in Clerk (clerk_user_id={clerk_user_id})")
         except httpx.HTTPStatusError as exc:
@@ -345,7 +345,7 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
             sys.exit(1)
 
         if auto_password:
-            generated_passwords.append((email, password))
+            generated_passwords.append((email, password))  # type: ignore[arg-type]
 
     # ── Record seed run ────────────────────────────────────────────────────
     async with session_factory() as session:

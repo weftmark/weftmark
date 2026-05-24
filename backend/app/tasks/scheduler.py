@@ -364,7 +364,7 @@ def run_scheduled_tasks() -> None:
                     if next_fire <= now:
                         dispatch_fn = DISPATCH_FNS.get(task.name)
                         if dispatch_fn:
-                            dispatch_fn(settings, task)
+                            dispatch_fn(settings, task)  # type: ignore[operator]
                             task.last_fired_at = now
                             fired.append(task.name)
                             log.info("scheduled_task_fired name=%s", task.name)

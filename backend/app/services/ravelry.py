@@ -37,7 +37,7 @@ async def _basic_auth_get(path: str, params: dict | None = None) -> dict:
             timeout=15,
         )
         resp.raise_for_status()
-        return resp.json()
+        return resp.json()  # type: ignore[no-any-return]
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ async def consume_oauth_state(state: str, db: AsyncSession) -> RavelryOAuthState
 async def exchange_code(code: str) -> dict:
     """Exchange authorization code for tokens; return raw token response dict."""
     token_resp = await _oauth_client().exchange_code(code)
-    return token_resp.to_dict()
+    return token_resp.to_dict()  # type: ignore[no-any-return]
 
 
 async def refresh_access_token(credential: RavelryCredential, db: AsyncSession) -> None:
@@ -136,7 +136,7 @@ async def _get_valid_token(credential: RavelryCredential, db: AsyncSession) -> s
 async def fetch_ravelry_username(access_token: str) -> str:
     async with RavelryClient.from_oauth_token(access_token) as client:
         _, _, raw = await client.people.me()
-    return raw["user"]["username"]
+    return raw["user"]["username"]  # type: ignore[no-any-return]
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +145,7 @@ async def fetch_ravelry_username(access_token: str) -> str:
 
 
 async def get_credential(user_id: uuid.UUID, db: AsyncSession) -> RavelryCredential | None:
-    return await db.scalar(select(RavelryCredential).where(RavelryCredential.user_id == user_id))
+    return await db.scalar(select(RavelryCredential).where(RavelryCredential.user_id == user_id))  # type: ignore[no-any-return]
 
 
 async def save_credential(user_id: uuid.UUID, token_data: dict, db: AsyncSession) -> RavelryCredential:
@@ -195,7 +195,7 @@ async def fetch_yarn_detail(ravelry_yarn_id: int, cred: RavelryCredential, db: A
             timeout=15,
         )
         resp.raise_for_status()
-        return resp.json()
+        return resp.json()  # type: ignore[no-any-return]
 
 
 async def get_popular_yarn_companies(limit: int = 10) -> list[dict]:

@@ -42,7 +42,7 @@ def dismiss_stale_signups(self, days: int = 30) -> dict:
         with Session(engine) as db:
             result = db.execute(delete(PendingSignup).where(PendingSignup.created_at < cutoff))
             db.commit()
-            dismissed = result.rowcount
+            dismissed = result.rowcount  # type: ignore[attr-defined]
     finally:
         engine.dispose()
     log.info("dismiss_stale_signups dismissed=%d days=%d", dismissed, days)
@@ -79,7 +79,7 @@ def prune_expired_invites(self, retention_days: int = 90) -> dict:
                 )
             )
             db.commit()
-            pruned = result.rowcount
+            pruned = result.rowcount  # type: ignore[attr-defined]
     finally:
         engine.dispose()
     log.info("prune_expired_invites pruned=%d retention_days=%d", pruned, retention_days)
@@ -118,7 +118,7 @@ def prune_audit_log(self, retention_days: int = 90) -> dict:
                     {"cutoff": cutoff, "exempt": exempt, "batch": _AUDIT_LOG_BATCH_SIZE},
                 )
                 db.commit()
-                deleted = result.rowcount
+                deleted = result.rowcount  # type: ignore[attr-defined]
                 total_deleted += deleted
                 if deleted < _AUDIT_LOG_BATCH_SIZE:
                     break
@@ -239,7 +239,7 @@ def daily_health_check(self) -> dict:
                 message=f"Daily health check — {result.status}",
                 details={"probe_status": result.status, "failed_services": failed},
             )
-            evt.elapsed_ms = int((evt.ended_at - evt.started_at).total_seconds() * 1000)
+            evt.elapsed_ms = int((evt.ended_at - evt.started_at).total_seconds() * 1000)  # type: ignore[operator]
             db.add(evt)
             db.commit()
     finally:
@@ -310,7 +310,7 @@ def prune_server_event_log(self, max_age_days: int = 28, max_entries: int = 1000
                 {"cutoff": cutoff},
             )
             db.commit()
-            deleted_age = result.rowcount
+            deleted_age = result.rowcount  # type: ignore[attr-defined]
 
             count_result = db.execute(text("SELECT COUNT(*) FROM server_events"))
             total = count_result.scalar() or 0
@@ -325,7 +325,7 @@ def prune_server_event_log(self, max_age_days: int = 28, max_entries: int = 1000
                     {"overflow": overflow},
                 )
                 db.commit()
-                deleted_overflow = result2.rowcount
+                deleted_overflow = result2.rowcount  # type: ignore[attr-defined]
     finally:
         engine.dispose()
 
@@ -385,7 +385,7 @@ def check_credential_expiry(self) -> dict:
             ]
 
             for cred in credentials:
-                days_remaining = (cred.expires_on - today).days
+                days_remaining = (cred.expires_on - today).days  # type: ignore[operator]
 
                 if days_remaining > 30:
                     skipped += 1
@@ -403,7 +403,7 @@ def check_credential_expiry(self) -> dict:
                         skipped += 1
                         continue
 
-                expires_on_str = cred.expires_on.strftime("%B %d, %Y")
+                expires_on_str = cred.expires_on.strftime("%B %d, %Y")  # type: ignore[union-attr]
                 display_days = max(days_remaining, 0)
 
                 try:

@@ -35,4 +35,4 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if self._production:
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
             response.headers["Content-Security-Policy"] = _CSP_PRODUCTION
-        return response
+        return response  # type: ignore[no-any-return]

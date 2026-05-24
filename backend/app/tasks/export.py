@@ -15,8 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 from celery import Task
 from celery.exceptions import SoftTimeLimitExceeded
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.celery_app import celery_app
 
@@ -52,7 +51,7 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as db:
         req = await db.get(UserExportRequest, request_id)
@@ -83,7 +82,7 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
                     drafts_json.append(
                         {
                             "id": str(d.id),
-                            "title": d.title,
+                            "name": d.name,
                             "created_at": d.created_at.isoformat(),
                             "updated_at": d.updated_at.isoformat(),
                         }
@@ -91,7 +90,7 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
                     if d.wif_path:
                         try:
                             wif_bytes = await storage.aread_file(d.wif_path)
-                            safe = _safe_filename(d.title or str(d.id))
+                            safe = _safe_filename(d.name or str(d.id))
                             zf.writestr(f"{prefix}/drafts/{safe}.wif", wif_bytes)
                         except Exception as exc:
                             log.warning("export_skip_wif draft_id=%s error=%s", d.id, exc)
@@ -108,16 +107,15 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
                     projects_json.append(
                         {
                             "id": str(p.id),
-                            "title": p.title,
+                            "name": p.name,
                             "status": p.status,
-                            "start_date": p.start_date.isoformat() if p.start_date else None,
-                            "end_date": p.end_date.isoformat() if p.end_date else None,
+                            "completed_at": p.completed_at.isoformat() if p.completed_at else None,
                             "notes": p.notes,
                             "created_at": p.created_at.isoformat(),
                         }
                     )
                     photos = (await db.scalars(select(ProjectPhoto).where(ProjectPhoto.project_id == p.id))).all()
-                    safe_proj = _safe_filename(p.title or str(p.id))
+                    safe_proj = _safe_filename(p.name or str(p.id))
                     for i, photo in enumerate(photos):
                         try:
                             photo_bytes = await storage.aread_file(photo.file_path)
@@ -137,9 +135,9 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
                         "id": str(y.id),
                         "name": y.name,
                         "brand": y.brand,
-                        "colorway": y.colorway,
+                        "color_name": y.color_name,
                         "fiber_content": y.fiber_content,
-                        "weight": y.weight,
+                        "weight_category": y.weight_category,
                         "created_at": y.created_at.isoformat(),
                     }
                     for y in yarns
@@ -153,7 +151,7 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
                 looms_json = [
                     {
                         "id": str(lo.id),
-                        "name": lo.name,
+                        "name": f"{lo.manufacturer} {lo.model_name}",
                         "loom_type": lo.loom_type,
                         "created_at": lo.created_at.isoformat(),
                     }

@@ -894,8 +894,13 @@ async def get_project(
     if draft is not None and draft.drawdown_preview_path is None:
         generate_drawdown_preview.delay(str(draft.id))
     return _to_detail(
-        project, draft, loom, photos=list(project.photos), loom_version=loom_version, loom_reeds=loom_reeds
-    )  # type: ignore[arg-type]
+        project,
+        draft,
+        loom,
+        photos=list(project.photos),
+        loom_version=loom_version,
+        loom_reeds=loom_reeds,  # type: ignore[arg-type]
+    )
 
 
 @router.patch("/{project_id}", response_model=ProjectDetail)
@@ -967,7 +972,7 @@ async def update_warp_setup(
     if "num_items" in fields:
         if project.status != "created":
             raise HTTPException(status_code=400, detail="Items can only be changed before weaving starts")
-        project.num_items = max(1, body.num_items)  # type: ignore[arg-type]
+        project.num_items = max(1, body.num_items)  # type: ignore[arg-type, type-var, assignment]
     if "finished_length_per_item" in fields:
         project.finished_length_per_item = body.finished_length_per_item
     if "waste_between_items" in fields:
@@ -1057,7 +1062,7 @@ async def assign_loom(
     await db.refresh(project)
     draft = await db.get(Draft, project.draft_id)
     loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, draft, loom, loom_version=loom_version)
+    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
 @router.post("/{project_id}/start", response_model=ProjectDetail)
@@ -1586,11 +1591,11 @@ async def get_warping_plan(
                         "end": i + 1,
                         "shafts": shafts,
                         "color": t_data.warp_colors[i],
-                        "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,
+                        "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,  # type: ignore[arg-type]
                     }
                     for i, shafts in enumerate(t_data.threading)
                 ]
-                threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]
+                threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]  # type: ignore[arg-type]
                 warp_color_runs = _compute_color_runs(raw_entries)
             except ValueError:
                 pass
