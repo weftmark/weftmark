@@ -1,5 +1,7 @@
 # WeftMark
 
+[![codecov](https://codecov.io/gh/weftmark/weftmark/graph/badge.svg?token=GRAPH_TOKEN)](https://codecov.io/gh/weftmark/weftmark)
+
 **Weaving project management — from design file to finished cloth.**
 
 WeftMark is a web platform for handweavers. Upload your WIF drafts, track picks at the loom, manage your equipment and yarn, and document your work from warp to finishing.
