@@ -168,7 +168,7 @@ async def seed() -> dict:
                     if set_clauses:
                         await session.execute(
                             text(
-                                f"UPDATE loom_references SET {set_clauses}, updated_at = now() "  # nosec B608 — set_clauses built from internal seed data keys, not user input
+                                f"UPDATE loom_references SET {set_clauses}, updated_at = now() "  # nosec B608  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                                 f"WHERE lower(brand) = lower(:brand) AND lower(model_name) = lower(:model)"
                             ),
                             {**params, "brand": brand, "model": model},
@@ -180,7 +180,7 @@ async def seed() -> dict:
                     cols = ", ".join(row.keys())
                     vals = ", ".join(f"cast(:{k} as jsonb)" if k in _ARRAY_FIELDS else f":{k}" for k in row.keys())
                     await session.execute(
-                        text(f"INSERT INTO loom_references ({cols}) VALUES ({vals})"),  # nosec B608 — cols/vals from internal seed data keys
+                        text(f"INSERT INTO loom_references ({cols}) VALUES ({vals})"),  # nosec B608  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                         params,
                     )
                     inserted += 1
