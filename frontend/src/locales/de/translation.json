@@ -44,7 +44,8 @@
     "reconcile": "Abgleich",
     "maintenance": "Wartung",
     "schedule": "Geplante Aufgaben",
-    "exports": "Datenexporte"
+    "exports": "Datenexporte",
+    "credentials": "Zugangsdaten"
   },
   "loomTypes": {
     "floor_loom": "Trittwebstuhl - Trittfolge-Tracking",

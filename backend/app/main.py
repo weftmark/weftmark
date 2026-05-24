@@ -195,6 +195,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     asyncio.create_task(warm_yarn_properties_cache())
     asyncio.create_task(refresh_yarn_properties_loop())
 
+    if settings.config_encryption_key:
+        from app.services.config_file import sync_env_to_file
+
+        try:
+            await asyncio.to_thread(sync_env_to_file, settings.config_file_path, settings.config_encryption_key)
+        except Exception:
+            log.warning("config_file_env_sync_failed — continuing without sync")
+
     yield
 
     stop_detailed_refresh()

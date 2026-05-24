@@ -509,3 +509,32 @@ export interface AdminExportRecord {
 
 export const listExports = () => api.get<AdminExportRecord[]>("/api/admin/exports");
 export const deleteExport = (id: string) => api.delete<void>(`/api/admin/exports/${id}`);
+
+// ---------------------------------------------------------------------------
+// Config file management
+// ---------------------------------------------------------------------------
+
+export interface ConfigFieldState {
+  field: string;
+  value: string | null;  // null for secrets that are set (masked)
+  secret_set: boolean;
+  secret_prefix: string | null;
+  source: "env" | "file" | "default";
+  env_var: string | null;
+}
+
+export interface ConfigStateResponse {
+  fields: ConfigFieldState[];
+  restart_pending: boolean;
+}
+
+export interface ConfigTestResult {
+  ok: boolean;
+  message: string;
+}
+
+export const getConfig = () => api.get<ConfigStateResponse>("/api/admin/config");
+export const saveConfig = (values: Record<string, string | null>) =>
+  api.put<ConfigStateResponse>("/api/admin/config", { values });
+export const testConfigService = (service: string, values: Record<string, string | null>) =>
+  api.post<ConfigTestResult>(`/api/admin/config/test/${service}`, { values });

@@ -44,7 +44,8 @@
     "reconcile": "Réconciliation",
     "maintenance": "Maintenance",
     "schedule": "Tâches planifiées",
-    "exports": "Exports de données"
+    "exports": "Exports de données",
+    "credentials": "Identifiants"
   },
   "loomTypes": {
     "floor_loom": "Métier de basse lisse - suivi des marches",
