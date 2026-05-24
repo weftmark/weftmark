@@ -11,8 +11,7 @@ import uuid
 from celery import Task
 from celery.exceptions import SoftTimeLimitExceeded
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.celery_app import celery_app
 
@@ -45,7 +44,7 @@ async def _delete_user(task: Task, user_id: uuid.UUID) -> None:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     try:
         async with async_session() as db:
@@ -161,8 +160,8 @@ async def _purge_storage(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
         version_ids = [v.id for v in versions.all()]
         if version_ids:
             vp = await db.scalars(select(LoomVersionPhoto).where(LoomVersionPhoto.loom_version_id.in_(version_ids)))
-            for p in vp.all():
-                _safe_delete(storage, p.path)
+            for lp in vp.all():
+                _safe_delete(storage, lp.path)
             vr = await db.scalars(select(LoomVersionReceipt).where(LoomVersionReceipt.loom_version_id.in_(version_ids)))
             for r in vr.all():
                 _safe_delete(storage, r.path)

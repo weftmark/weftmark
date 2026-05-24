@@ -31,7 +31,7 @@ async def _graphql(token: str, query: str, variables: dict) -> dict:
         data = resp.json()
     if "errors" in data:
         raise RuntimeError(f"GitHub GraphQL errors: {data['errors']}")
-    return data["data"]
+    return data["data"]  # type: ignore[no-any-return]
 
 
 async def get_discussion_state(token: str, discussion_url: str) -> str | None:
@@ -108,7 +108,7 @@ async def create_discussion(
         mutation,
         {"input": {"repositoryId": repo_id, "categoryId": category_id, "title": title, "body": body}},
     )
-    return data["createDiscussion"]["discussion"]["url"]
+    return data["createDiscussion"]["discussion"]["url"]  # type: ignore[no-any-return]
 
 
 def _type_label(submission_type: str) -> str:

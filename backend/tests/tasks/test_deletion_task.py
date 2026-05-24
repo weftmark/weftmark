@@ -1,7 +1,7 @@
 """Tests for app.tasks.deletion._delete_user — the async core of the cascade task.
 
 We call _delete_user directly rather than through run_user_deletion so we can
-run it in the test event loop.  create_async_engine and sessionmaker are patched
+run it in the test event loop.  create_async_engine and async_sessionmaker are patched
 so the task uses the test db_session instead of opening its own connection.
 """
 
@@ -61,7 +61,7 @@ def mock_db(db_session: AsyncSession):
     fake_engine.dispose = AsyncMock()
     with (
         patch("app.tasks.deletion.create_async_engine", return_value=fake_engine),
-        patch("app.tasks.deletion.sessionmaker", return_value=_session_factory(db_session)),
+        patch("app.tasks.deletion.async_sessionmaker", return_value=_session_factory(db_session)),
     ):
         yield
 

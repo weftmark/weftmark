@@ -488,7 +488,7 @@ async def list_users(
             .group_by(Loom.owner_id)
         )
     ).all()
-    for row in loom_storage_rows:
+    for row in loom_storage_rows:  # type: ignore[assignment]
         storage_bytes[row.owner_id] = storage_bytes.get(row.owner_id, 0) + int(row.bytes)
 
     return [
@@ -1247,10 +1247,10 @@ async def elevate_to_superuser(
         )
 
     if has_content:
-        await db.execute(Project.__table__.delete().where(Project.owner_id == user_id))
-        await db.execute(Loom.__table__.delete().where(Loom.owner_id == user_id))
-        await db.execute(Draft.__table__.delete().where(Draft.owner_id == user_id))
-        await db.execute(Yarn.__table__.delete().where(Yarn.owner_id == user_id))
+        await db.execute(Project.__table__.delete().where(Project.owner_id == user_id))  # type: ignore[attr-defined]
+        await db.execute(Loom.__table__.delete().where(Loom.owner_id == user_id))  # type: ignore[attr-defined]
+        await db.execute(Draft.__table__.delete().where(Draft.owner_id == user_id))  # type: ignore[attr-defined]
+        await db.execute(Yarn.__table__.delete().where(Yarn.owner_id == user_id))  # type: ignore[attr-defined]
 
     user.is_superuser = True
     await write_audit_log(
@@ -1519,7 +1519,7 @@ async def _redis_server_version() -> str:
         client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
         info = await client.info("server")
         await client.aclose()
-        return info.get("redis_version", "unknown")
+        return info.get("redis_version", "unknown")  # type: ignore[no-any-return]
     except Exception:
         return "unavailable"
 
@@ -2273,7 +2273,7 @@ async def get_deletion_queue(
             id=u.id,
             display_name=u.display_name,
             email=u.email,
-            deletion_state=u.deletion_state,
+            deletion_state=u.deletion_state,  # type: ignore[arg-type]
             deletion_initiated_at=u.deletion_initiated_at,
         )
         for u in rows.all()

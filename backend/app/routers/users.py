@@ -562,8 +562,8 @@ async def _purge_user_storage(db: AsyncSession, user_id: uuid.UUID) -> None:
 
         if version_ids:
             vp = await db.scalars(select(LoomVersionPhoto).where(LoomVersionPhoto.loom_version_id.in_(version_ids)))
-            for p in vp.all():
-                _safe_delete(p.path)
+            for lp in vp.all():
+                _safe_delete(lp.path)
 
             vr = await db.scalars(select(LoomVersionReceipt).where(LoomVersionReceipt.loom_version_id.in_(version_ids)))
             for r in vr.all():

@@ -1,7 +1,7 @@
 """Tests for app.tasks.purge._purge and _safe_delete.
 
 _purge creates its own DB engine via local imports of create_async_engine /
-sessionmaker, so we patch those at the sqlalchemy module level and redirect
+async_sessionmaker, so we patch those at the sqlalchemy module level and redirect
 them to the test db_session.  This lets us exercise the real SQL logic without
 a separate connection.
 """
@@ -48,7 +48,7 @@ def mock_engine_and_session(db_session: AsyncSession):
     fake_engine.dispose = AsyncMock()
     with (
         patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=fake_engine),
-        patch("sqlalchemy.orm.sessionmaker", return_value=_session_factory(db_session)),
+        patch("sqlalchemy.ext.asyncio.async_sessionmaker", return_value=_session_factory(db_session)),
     ):
         yield fake_engine
 

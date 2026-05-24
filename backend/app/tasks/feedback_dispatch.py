@@ -225,7 +225,7 @@ async def _purge_deleted(retention_days: int) -> dict:
         )
         await db.commit()
 
-    deleted = result.rowcount
+    deleted = result.rowcount  # type: ignore[attr-defined]
     log.info("purge_deleted_feedback deleted=%d retention_days=%d", deleted, retention_days)
     return {"deleted": deleted}
 
@@ -271,7 +271,7 @@ async def _sync_states(limit: int) -> dict:
 
         updated = 0
         for row in rows:
-            state = await get_discussion_state(settings.github_feedback_token, row.github_discussion_url)
+            state = await get_discussion_state(settings.github_feedback_token, row.github_discussion_url)  # type: ignore[arg-type]
             if state is not None and state != row.github_discussion_state:
                 row.github_discussion_state = state
                 updated += 1

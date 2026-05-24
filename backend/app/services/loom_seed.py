@@ -117,14 +117,13 @@ def _coerce_entry(raw: dict) -> dict:
 async def seed() -> dict:
     """Upsert loom_references from loom-data-master.json. Returns insert/update/skip counts."""
     from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.config import get_settings
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    Session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    Session = async_sessionmaker(engine, expire_on_commit=False)
 
     json_path = locate_json()
     with json_path.open() as f:

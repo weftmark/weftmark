@@ -376,7 +376,7 @@ async def get_drawdown(
 
         wif_bytes = await storage.aread_file(draft.wif_path)
         try:
-            png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(
+            png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(  # type: ignore[misc]
                 lambda: rendering.render_drawdown_tile(
                     rendering.load_draft(wif_bytes),
                     start_row=_sr,
@@ -620,7 +620,7 @@ async def generate_liftplan(
     # Read from modified file if one exists (to chain onto prior modifications)
     has_mod = draft.wif_modified_path and await storage.afile_exists(draft.wif_modified_path)
     source_path = draft.wif_modified_path if has_mod else draft.wif_path
-    wif_bytes = await storage.aread_file(source_path)
+    wif_bytes = await storage.aread_file(source_path)  # type: ignore[arg-type]
     try:
         updated_bytes = await asyncio.to_thread(wif_parser.compute_liftplan, wif_bytes)
     except ValueError as exc:

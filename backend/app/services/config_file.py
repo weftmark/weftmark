@@ -77,11 +77,11 @@ def _fernet(key: str):
 
 
 def encrypt(value: str, key: str) -> str:
-    return _fernet(key).encrypt(value.encode()).decode()
+    return _fernet(key).encrypt(value.encode()).decode()  # type: ignore[no-any-return]
 
 
 def decrypt(token: str, key: str) -> str:
-    return _fernet(key).decrypt(token.encode()).decode()
+    return _fernet(key).decrypt(token.encode()).decode()  # type: ignore[no-any-return]
 
 
 def load(path: str, encryption_key: str) -> dict[str, Any]:

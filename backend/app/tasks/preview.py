@@ -11,8 +11,7 @@ import logging
 import uuid
 
 from celery import Task
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.celery_app import celery_app
 
@@ -38,7 +37,7 @@ async def _generate_preview(task: Task, draft_id: uuid.UUID) -> None:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     try:
         async with async_session() as db:
@@ -99,7 +98,7 @@ async def _backfill_all_previews() -> dict:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     dispatched = skipped = 0
     try:
@@ -150,7 +149,7 @@ async def _generate_project_preview(task: Task, project_id: uuid.UUID) -> None:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     try:
         async with async_session() as db:
@@ -227,7 +226,7 @@ async def _backfill_all_project_previews() -> dict:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     dispatched = skipped = 0
     try:
@@ -292,7 +291,7 @@ async def _generate_project_svg(task: Task, project_id: uuid.UUID) -> None:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     try:
         async with async_session() as db:
@@ -367,7 +366,7 @@ async def _backfill_all_project_svgs() -> dict:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     dispatched = skipped = 0
     try:
