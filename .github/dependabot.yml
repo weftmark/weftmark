@@ -23,6 +23,11 @@ updates:
     labels:
       - dependencies
       - backend
+    ignore:
+      # kombu[redis] (pulled in by celery[redis]) caps redis at <6.5.
+      # redis 7.x cannot be used until Celery ships a compatible kombu version.
+      - dependency-name: redis
+        versions: [">=7.0"]
     groups:
       backend-deps:
         patterns:
