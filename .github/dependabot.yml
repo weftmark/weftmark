@@ -1,0 +1,50 @@
+# Dependabot configuration — keeps pip and npm dependencies fresh.
+#
+# Both ecosystems use weekly grouped updates to minimise PR volume.
+# PRs target dev and run through ci-dev-pr.yml (full test suite).
+#
+# Auto-merge is intentionally not configured — review manually until
+# the cadence and false-positive rate are understood.
+#
+# The version-bump job in ci-dev-push.yml guards on weftmark-bot[bot];
+# Dependabot's actor is dependabot[bot] — no guard extension needed.
+
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: America/Denver
+    open-pull-requests-limit: 5
+    target-branch: dev
+    labels:
+      - dependencies
+      - backend
+    groups:
+      backend-deps:
+        patterns:
+          - "*"
+    assignees:
+      - gx1400
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: America/Denver
+    open-pull-requests-limit: 5
+    target-branch: dev
+    labels:
+      - dependencies
+      - frontend
+    groups:
+      frontend-deps:
+        patterns:
+          - "*"
+    assignees:
+      - gx1400
