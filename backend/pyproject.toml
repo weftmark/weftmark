@@ -1,0 +1,5 @@
+[tool.bandit]
+targets = ["app"]
+exclude_dirs = ["alembic"]
+severity = "medium"
+confidence = "medium"
