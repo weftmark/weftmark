@@ -32,6 +32,9 @@ from app.models.user_export import UserExportRequest
 from app.models.yarn import Yarn
 from app.services.audit import write_audit_log
 from app.services.clerk import ban_clerk_user, get_clerk_user, list_clerk_users, set_user_metadata, unban_clerk_user
+from app.services.config_file import MANAGED_FIELDS, SECRET_FIELDS, env_source_fields
+from app.services.config_file import load as _load_config
+from app.services.config_file import save as _save_config
 from app.services.email import (
     send_account_approved_email,
     send_account_denied_email,
@@ -2712,3 +2715,200 @@ async def delete_export(
 
     await db.delete(req)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Config file management
+# ---------------------------------------------------------------------------
+
+# Set to True when a config file write occurs; cleared only by process restart.
+_restart_pending: bool = False
+
+
+def set_restart_pending() -> None:
+    global _restart_pending
+    _restart_pending = True
+
+
+def get_restart_pending() -> bool:
+    return _restart_pending
+
+
+_GROUP_MAP: dict[str, list[str]] = {
+    "smtp": ["smtp_host", "smtp_port", "smtp_user", "smtp_password", "smtp_from_email", "smtp_from_name"],
+    "s3": ["s3_endpoint_url", "s3_access_key_id", "s3_secret_access_key", "s3_bucket_name", "s3_region"],
+    "ravelry_read": ["ravelry_read_access_username", "ravelry_read_access_key"],
+    "ravelry_oauth": ["ravelry_oauth_client_id", "ravelry_oauth_client_secret", "ravelry_oauth_redirect_uri"],
+    "github": ["github_feedback_token", "github_feedback_repo"],
+    "cloudflare": ["cf_zero_trust_enabled", "cf_access_client_id", "cf_access_client_secret"],
+    "webhook": ["clerk_webhook_secret", "webhook_base_url"],
+    "geoip": ["maxmind_license_key"],
+    "otel": ["otel_exporter_otlp_endpoint"],
+}
+
+
+class ConfigFieldState(BaseModel):
+    field: str
+    value: str | None  # None for secret fields that are set (masked)
+    secret_set: bool
+    secret_prefix: str | None  # first 8 chars of the secret, for display
+    source: str  # "env" | "file" | "default"
+    env_var: str | None
+
+
+class ConfigStateResponse(BaseModel):
+    fields: list[ConfigFieldState]
+    restart_pending: bool
+
+
+class ConfigSaveRequest(BaseModel):
+    values: dict[str, str | None]
+
+
+class ConfigTestResult(BaseModel):
+    ok: bool
+    message: str
+
+
+def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
+    """Return current effective value and source for every managed field."""
+    encryption_key = settings.config_encryption_key
+    file_values = _load_config(settings.config_file_path, encryption_key) if encryption_key else {}
+    env_sources = env_source_fields()
+
+    result: list[ConfigFieldState] = []
+    for field in MANAGED_FIELDS:
+        env_var = env_sources.get(field)
+        raw_value: str = str(getattr(settings, field, "") or "")
+
+        if env_var:
+            source = "env"
+        elif field in file_values:
+            source = "file"
+        else:
+            source = "default"
+
+        is_secret = field in SECRET_FIELDS
+        result.append(
+            ConfigFieldState(
+                field=field,
+                value=None if (is_secret and raw_value) else raw_value,
+                secret_set=is_secret and bool(raw_value),
+                secret_prefix=raw_value[:8] if (is_secret and raw_value) else None,
+                source=source,
+                env_var=env_var,
+            )
+        )
+    return result
+
+
+@router.get("/config", response_model=ConfigStateResponse)
+async def get_config_state(
+    _: User = Depends(require_superuser),
+) -> ConfigStateResponse:
+    settings = get_settings()
+    return ConfigStateResponse(
+        fields=_get_config_state(settings),
+        restart_pending=_restart_pending,
+    )
+
+
+@router.put("/config", response_model=ConfigStateResponse)
+async def save_config(
+    body: ConfigSaveRequest,
+    _: User = Depends(require_superuser),
+) -> ConfigStateResponse:
+    settings = get_settings()
+    if not settings.config_encryption_key:
+        raise HTTPException(status_code=503, detail="CONFIG_ENCRYPTION_KEY is not set — cannot write config file")
+
+    _save_config(settings.config_file_path, settings.config_encryption_key, body.values)
+    set_restart_pending()
+    return ConfigStateResponse(
+        fields=_get_config_state(settings),
+        restart_pending=True,
+    )
+
+
+@router.post("/config/test/{service}", response_model=ConfigTestResult)
+async def test_config_service(
+    service: str,
+    body: ConfigSaveRequest,
+    _: User = Depends(require_superuser),
+) -> ConfigTestResult:
+    """Test a service connection using the provided (unsaved) values."""
+    v = body.values
+
+    if service == "smtp":
+        try:
+            import smtplib
+
+            host = str(v.get("smtp_host") or "mail.smtp2go.com")
+            port = int(v.get("smtp_port") or 587)
+            user = str(v.get("smtp_user") or "")
+            password = str(v.get("smtp_password") or "")
+            if not user or not password:
+                return ConfigTestResult(ok=False, message="smtp_user and smtp_password are required")
+            with smtplib.SMTP(host, port, timeout=10) as s:
+                s.starttls()
+                s.login(user, password)
+            return ConfigTestResult(ok=True, message=f"Connected to {host}:{port} and authenticated successfully")
+        except Exception as exc:
+            return ConfigTestResult(ok=False, message=str(exc))
+
+    if service == "s3":
+        try:
+            import boto3
+
+            client = boto3.client(
+                "s3",
+                endpoint_url=v.get("s3_endpoint_url") or None,
+                aws_access_key_id=v.get("s3_access_key_id") or None,
+                aws_secret_access_key=v.get("s3_secret_access_key") or None,
+                region_name=v.get("s3_region") or None,
+            )
+            bucket = v.get("s3_bucket_name") or ""
+            if not bucket:
+                return ConfigTestResult(ok=False, message="s3_bucket_name is required")
+            await asyncio.to_thread(client.head_bucket, Bucket=bucket)
+            return ConfigTestResult(ok=True, message=f"Bucket '{bucket}' is accessible")
+        except Exception as exc:
+            return ConfigTestResult(ok=False, message=str(exc))
+
+    if service == "ravelry_read":
+        try:
+            username = v.get("ravelry_read_access_username") or ""
+            key = v.get("ravelry_read_access_key") or ""
+            if not username or not key:
+                return ConfigTestResult(ok=False, message="Username and key are both required")
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    "https://api.ravelry.com/yarn_weights.json",
+                    auth=(username, key),
+                    timeout=10,
+                )
+            if resp.status_code == 200:
+                return ConfigTestResult(ok=True, message="Ravelry read key is valid")
+            return ConfigTestResult(ok=False, message=f"Ravelry returned {resp.status_code}")
+        except Exception as exc:
+            return ConfigTestResult(ok=False, message=str(exc))
+
+    if service == "github":
+        try:
+            token = v.get("github_feedback_token") or ""
+            if not token:
+                return ConfigTestResult(ok=False, message="github_feedback_token is required")
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    "https://api.github.com/user",
+                    headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"},
+                    timeout=10,
+                )
+            if resp.status_code == 200:
+                scopes = resp.headers.get("x-oauth-scopes", "")
+                return ConfigTestResult(ok=True, message=f"Token valid — scopes: {scopes or '(none listed)'}")
+            return ConfigTestResult(ok=False, message=f"GitHub returned {resp.status_code}: {resp.text[:120]}")
+        except Exception as exc:
+            return ConfigTestResult(ok=False, message=str(exc))
+
+    raise HTTPException(status_code=400, detail=f"Unknown service '{service}'")

@@ -2,6 +2,7 @@ x-worker-env: &worker-env
   APP_ENV: ${APP_ENV}
   DEBUG: ${DEBUG}
   LOG_LEVEL: ${LOG_LEVEL}
+  CONFIG_ENCRYPTION_KEY: ${CONFIG_ENCRYPTION_KEY:-}
   POSTGRES_DSN: ${POSTGRES_DSN:-}
   POSTGRES_DSN_DIRECT: ${POSTGRES_DSN_DIRECT:-}
   POSTGRES_HOST: ${POSTGRES_HOST:-db}
@@ -54,6 +55,7 @@ x-worker: &worker-base
   volumes:
     - uploads:/app/uploads
     - geoip_data:/app/data
+    - config_data:/data
   depends_on:
     redis:
       condition: service_healthy
@@ -169,9 +171,11 @@ services:
       RAVELRY_OAUTH_CLIENT_ID: ${RAVELRY_OAUTH_CLIENT_ID:-}
       RAVELRY_OAUTH_CLIENT_SECRET: ${RAVELRY_OAUTH_CLIENT_SECRET:-}
       RAVELRY_OAUTH_REDIRECT_URI: ${RAVELRY_OAUTH_REDIRECT_URI:-}
+      CONFIG_ENCRYPTION_KEY: ${CONFIG_ENCRYPTION_KEY:-}
     volumes:
       - uploads:/app/uploads
       - geoip_data:/app/data
+      - config_data:/data
     depends_on:
       redis:
         condition: service_healthy
@@ -274,3 +278,4 @@ volumes:
   postgres_data:
   uploads:
   geoip_data:
+  config_data:
