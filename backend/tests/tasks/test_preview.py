@@ -118,7 +118,7 @@ def mock_engine_and_session(db_session: AsyncSession):
     fake_engine.dispose = AsyncMock()
     with (
         patch("app.tasks.preview.create_async_engine", return_value=fake_engine),
-        patch("app.tasks.preview.sessionmaker", return_value=_session_factory(db_session)),
+        patch("app.tasks.preview.async_sessionmaker", return_value=_session_factory(db_session)),
     ):
         yield fake_engine
 

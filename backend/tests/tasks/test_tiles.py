@@ -216,7 +216,7 @@ def mock_engine_and_session(db_session: AsyncSession):
     fake_engine.dispose = AsyncMock()
     with (
         patch("sqlalchemy.ext.asyncio.create_async_engine", return_value=fake_engine),
-        patch("sqlalchemy.orm.sessionmaker", return_value=_session_factory(db_session)),
+        patch("sqlalchemy.ext.asyncio.async_sessionmaker", return_value=_session_factory(db_session)),
     ):
         yield fake_engine
 
