@@ -128,7 +128,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -r backend/requirements-dev.txt
       - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-      - run: cd backend && python -m pytest tests/ -v
+      - run: cd backend && python -m pytest tests/ -v --junitxml=junit.xml
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
@@ -142,6 +142,13 @@ jobs:
           slug: weftmark/weftmark
           files: backend/coverage.xml
           fail_ci_if_error: false
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/junit.xml
+          slug: weftmark/weftmark
 
   migration-smoke-test:
     name: Alembic migration smoke test

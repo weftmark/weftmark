@@ -53,6 +53,7 @@ MANIFEST
 .coverage.*
 htmlcov/
 coverage.xml
+junit.xml
 *.coveragerc
 
 # Type checking
