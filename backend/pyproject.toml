@@ -1,3 +1,6 @@
+[tool.pytest.ini_options]
+junit_family = "legacy"
+
 [tool.bandit]
 targets = ["app"]
 exclude_dirs = ["alembic"]
