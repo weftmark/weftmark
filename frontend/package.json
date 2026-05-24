@@ -11,33 +11,33 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.61.6",
-    "@tanstack/react-query": "^5.100.9",
-    "@types/dompurify": "^3.0.5",
+    "@clerk/clerk-react": "^5.61.7",
+    "@tanstack/react-query": "^5.100.14",
+    "@types/dompurify": "^3.2.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.5",
     "i18next": "^26.2.0",
-    "lucide-react": "^1.14.0",
+    "lucide-react": "^1.16.0",
     "react": "^19.0.0",
     "react-colorful": "^5.7.0",
     "react-dom": "^19.0.0",
     "react-i18next": "^17.0.8",
-    "react-router-dom": "^7.0.0",
+    "react-router-dom": "^7.15.1",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
-    "@types/node": "^24.0.0",
-    "@types/react": "^19.0.0",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
     "@types/react-dom": "^19.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.59.2",
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
     "@typescript-eslint/parser": "^8.59.2",
-    "@vitejs/plugin-react": "^6.0.1",
-    "eslint": "^10.3.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "eslint": "^10.4.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.12"
+    "vite": "^8.0.14"
   }
 }
