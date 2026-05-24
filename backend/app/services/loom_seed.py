@@ -167,8 +167,8 @@ async def seed() -> dict:
                     )
                     if set_clauses:
                         await session.execute(
-                            text(
-                                f"UPDATE loom_references SET {set_clauses}, updated_at = now() "  # nosec B608  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                            text(  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text  # noqa: E501
+                                f"UPDATE loom_references SET {set_clauses}, updated_at = now() "  # nosec B608
                                 f"WHERE lower(brand) = lower(:brand) AND lower(model_name) = lower(:model)"
                             ),
                             {**params, "brand": brand, "model": model},
