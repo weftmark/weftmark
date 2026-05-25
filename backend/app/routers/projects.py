@@ -1645,7 +1645,7 @@ def _compute_epi(draft: Draft) -> float | None:
     if draft.wif_measurements:
         spacing = draft.wif_measurements.get("warp_spacing")
         if spacing and spacing > 0:
-            return round(2.54 / spacing, 1)
+            return round(2.54 / float(spacing), 1)
     return None
 
 
