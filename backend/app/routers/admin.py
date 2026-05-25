@@ -2803,7 +2803,7 @@ def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
     return result
 
 
-@router.get("/config", response_model=ConfigStateResponse)
+@router.get("/config")
 async def get_config_state(
     _: User = Depends(require_superuser),
 ) -> ConfigStateResponse:
@@ -2815,11 +2815,16 @@ async def get_config_state(
     )
 
 
-@router.put("/config", response_model=ConfigStateResponse)
+@router.put("/config")
 async def save_config(
     body: ConfigSaveRequest,
     _: User = Depends(require_superuser),
 ) -> ConfigStateResponse:
+    """Save integration config values to the encrypted config file.
+
+    Raises:
+        HTTPException 503: CONFIG_ENCRYPTION_KEY is not set on this server.
+    """
     settings = get_settings()
     if not settings.config_encryption_key:
         raise HTTPException(status_code=503, detail="CONFIG_ENCRYPTION_KEY is not set — cannot write config file")
@@ -2833,7 +2838,7 @@ async def save_config(
     )
 
 
-@router.post("/config/test/{service}", response_model=ConfigTestResult)
+@router.post("/config/test/{service}")
 async def test_config_service(
     service: str,
     body: ConfigSaveRequest,

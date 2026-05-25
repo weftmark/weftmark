@@ -104,7 +104,7 @@ def _assert_safe_path(path: str) -> Path:
     return resolved
 
 
-def load(path: str, encryption_key: str) -> dict[str, Any]:
+def load(path: str, encryption_key: str) -> dict[str, Any]:  # NOSONAR: path validated by _assert_safe_path
     """Load config file, decrypting secret fields. Returns {} if file absent/corrupt."""
     p = _assert_safe_path(path)
     if not p.exists():
@@ -127,7 +127,9 @@ def load(path: str, encryption_key: str) -> dict[str, Any]:
     return result
 
 
-def save(path: str, encryption_key: str, values: dict[str, Any]) -> None:
+def save(  # NOSONAR: path validated by _assert_safe_path
+    path: str, encryption_key: str, values: dict[str, Any]
+) -> None:
     """Merge values into the config file, encrypting secret fields."""
     p = _assert_safe_path(path)
     p.parent.mkdir(parents=True, exist_ok=True)

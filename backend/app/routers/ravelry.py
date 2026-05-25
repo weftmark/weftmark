@@ -18,6 +18,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/ravelry", tags=["ravelry"])
 
 
+def _safe(s: str | None, maxlen: int = 100) -> str:
+    """Strip newlines and truncate before logging user-supplied values."""
+    if s is None:
+        return ""
+    return s.replace("\n", "\\n").replace("\r", "\\r")[:maxlen]
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -91,18 +98,20 @@ async def oauth_callback(
     frontend_url = settings.frontend_url.rstrip("/")
 
     if error:
-        logger.warning("Ravelry OAuth error for state %s: %s — %s", state, error, error_description)
+        logger.warning(
+            "Ravelry OAuth error for state %s: %s — %s", _safe(state), _safe(error), _safe(error_description)
+        )
         await svc.consume_oauth_state(state, db)  # clean up the state record
         return RedirectResponse(url=f"{frontend_url}/settings/connections?ravelry=error&reason=ravelry_denied")
 
     if not code:
-        logger.warning("Ravelry callback missing code and error for state: %s", state)
+        logger.warning("Ravelry callback missing code and error for state: %s", _safe(state))
         await svc.consume_oauth_state(state, db)
         return RedirectResponse(url=f"{frontend_url}/settings/connections?ravelry=error&reason=missing_code")
 
     state_record = await svc.consume_oauth_state(state, db)
     if state_record is None:
-        logger.warning("Ravelry callback received invalid or expired state: %s", state)
+        logger.warning("Ravelry callback received invalid or expired state: %s", _safe(state))
         return RedirectResponse(url=f"{frontend_url}/settings/connections?ravelry=error&reason=invalid_state")
 
     try:
