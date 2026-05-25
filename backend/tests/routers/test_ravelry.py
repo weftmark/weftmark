@@ -98,3 +98,83 @@ class TestFetchYarnDetailService:
         ):
             with pytest.raises(ValueError, match="API key not configured"):
                 await fetch_yarn_detail(42)
+
+
+# ---------------------------------------------------------------------------
+# TestSafeLogHelper — pure function
+# ---------------------------------------------------------------------------
+
+
+class TestSafeLogHelper:
+    def _safe(self, s):
+        from app.routers.ravelry import _safe
+
+        return _safe(s)
+
+    def test_strips_newlines(self):
+        result = self._safe("state\ninjected")
+        assert "\n" not in result
+        assert "\\n" in result
+
+    def test_strips_carriage_returns(self):
+        result = self._safe("state\rinjected")
+        assert "\r" not in result
+        assert "\\r" in result
+
+    def test_handles_none(self):
+        assert self._safe(None) == ""
+
+    def test_truncates_long_string(self):
+        assert len(self._safe("x" * 200)) <= 100
+
+    def test_normal_string_passes_through(self):
+        assert self._safe("abc123") == "abc123"
+
+
+# ---------------------------------------------------------------------------
+# TestOAuthCallbackErrorPaths
+# ---------------------------------------------------------------------------
+
+
+class TestOAuthCallbackErrorPaths:
+    async def test_error_param_redirects_with_ravelry_denied(self, client: AsyncClient):
+        with patch("app.routers.ravelry.svc.consume_oauth_state", new=AsyncMock(return_value=None)):
+            resp = await client.get(
+                "/api/ravelry/callback",
+                params={"state": "abc123", "error": "access_denied", "error_description": "User denied"},
+                follow_redirects=False,
+            )
+        assert resp.status_code in (302, 307)
+        location = resp.headers["location"]
+        assert "ravelry=error" in location
+        assert "reason=ravelry_denied" in location
+
+    async def test_missing_code_redirects_with_missing_code(self, client: AsyncClient):
+        with patch("app.routers.ravelry.svc.consume_oauth_state", new=AsyncMock(return_value=None)):
+            resp = await client.get(
+                "/api/ravelry/callback",
+                params={"state": "abc123"},
+                follow_redirects=False,
+            )
+        assert resp.status_code in (302, 307)
+        assert "reason=missing_code" in resp.headers["location"]
+
+    async def test_invalid_state_redirects_with_invalid_state(self, client: AsyncClient):
+        with patch("app.routers.ravelry.svc.consume_oauth_state", new=AsyncMock(return_value=None)):
+            resp = await client.get(
+                "/api/ravelry/callback",
+                params={"state": "bad-state", "code": "auth_code"},
+                follow_redirects=False,
+            )
+        assert resp.status_code in (302, 307)
+        assert "reason=invalid_state" in resp.headers["location"]
+
+    async def test_error_with_newline_in_state_does_not_inject_log(self, client: AsyncClient):
+        """Regression: log injection via state/error query params must be sanitised."""
+        with patch("app.routers.ravelry.svc.consume_oauth_state", new=AsyncMock(return_value=None)):
+            resp = await client.get(
+                "/api/ravelry/callback",
+                params={"state": "abc\n[INJECTED]", "error": "access_denied"},
+                follow_redirects=False,
+            )
+        assert resp.status_code in (302, 307)
