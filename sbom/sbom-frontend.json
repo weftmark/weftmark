@@ -3,9 +3,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
   "version": 1,
-  "serialNumber": "urn:uuid:d70bcd8f-61ca-4bd0-b945-e49aeff3d5ae",
+  "serialNumber": "urn:uuid:2d464ea6-5d65-498b-abad-c335119da8bd",
   "metadata": {
-    "timestamp": "2026-05-25T07:18:33.190Z",
+    "timestamp": "2026-05-25T11:45:09.542Z",
     "tools": {
       "components": [
         {
@@ -82,9 +82,9 @@
     "component": {
       "type": "application",
       "name": "weaving-site",
-      "version": "0.193.12",
-      "bom-ref": "weaving-site@0.193.12",
-      "purl": "pkg:npm/weaving-site@0.193.12",
+      "version": "0.193.13",
+      "bom-ref": "weaving-site@0.193.13",
+      "purl": "pkg:npm/weaving-site@0.193.13",
       "properties": [
         {
           "name": "cdx:npm:package:private",
@@ -103,7 +103,7 @@
       "name": "clerk-react",
       "group": "@clerk",
       "version": "5.61.7",
-      "bom-ref": "weaving-site@0.193.12|@clerk/clerk-react@5.61.7",
+      "bom-ref": "weaving-site@0.193.13|@clerk/clerk-react@5.61.7",
       "author": "Clerk",
       "description": "Clerk React library",
       "licenses": [
@@ -152,13 +152,12 @@
     },
     {
       "type": "library",
-      "name": "core",
-      "group": "@emnapi",
-      "version": "1.10.0",
-      "bom-ref": "weaving-site@0.193.12|@emnapi/core@1.10.0",
-      "author": "toyobayashi",
-      "description": "emnapi core",
-      "scope": "optional",
+      "name": "react",
+      "group": "@sentry",
+      "version": "10.53.1",
+      "bom-ref": "weaving-site@0.193.13|@sentry/react@10.53.1",
+      "author": "Sentry",
+      "description": "Official Sentry SDK for React.js",
       "licenses": [
         {
           "license": {
@@ -167,30 +166,30 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40emnapi/core@1.10.0",
+      "purl": "pkg:npm/%40sentry/react@10.53.1",
       "externalReferences": [
         {
-          "url": "git+https://github.com/toyobayashi/emnapi.git",
+          "url": "git://github.com/getsentry/sentry-javascript.git",
           "type": "vcs",
           "comment": "as detected from PackageJson property \"repository.url\""
         },
         {
-          "url": "https://github.com/toyobayashi/emnapi#readme",
+          "url": "https://github.com/getsentry/sentry-javascript/tree/master/packages/react",
           "type": "website",
           "comment": "as detected from PackageJson property \"homepage\""
         },
         {
-          "url": "https://github.com/toyobayashi/emnapi/issues",
+          "url": "https://github.com/getsentry/sentry-javascript/issues",
           "type": "issue-tracker",
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@emnapi/core/-/core-1.10.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/react/-/react-10.53.1.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "caae8e909e29f360807cf974bbd99079b40728f26463b5ab22e936d3971362761efa4d99f18061d7516b6d11bf1fa8a18aba9c69c3a09760483bca323102de5f"
+              "content": "96bc0dab94ffcd6f3897ad3cf784e92873dcbc5b9cd48fc79e885e71cd137d856921c618bb0da8ac21e8538bf8c209056895297a055eb5b81d3a98558b22d58c"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -198,138 +197,8 @@
       ],
       "properties": [
         {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:extraneous",
-          "value": "true"
-        },
-        {
           "name": "cdx:npm:package:path",
-          "value": "node_modules/@emnapi/core"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "runtime",
-      "group": "@emnapi",
-      "version": "1.10.0",
-      "bom-ref": "weaving-site@0.193.12|@emnapi/runtime@1.10.0",
-      "author": "toyobayashi",
-      "description": "emnapi runtime",
-      "scope": "optional",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/%40emnapi/runtime@1.10.0",
-      "externalReferences": [
-        {
-          "url": "git+https://github.com/toyobayashi/emnapi.git",
-          "type": "vcs",
-          "comment": "as detected from PackageJson property \"repository.url\""
-        },
-        {
-          "url": "https://github.com/toyobayashi/emnapi#readme",
-          "type": "website",
-          "comment": "as detected from PackageJson property \"homepage\""
-        },
-        {
-          "url": "https://github.com/toyobayashi/emnapi/issues",
-          "type": "issue-tracker",
-          "comment": "as detected from PackageJson property \"bugs.url\""
-        },
-        {
-          "url": "https://registry.npmjs.org/@emnapi/runtime/-/runtime-1.10.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "7b0bd8964f3ac54a06234cd044dabf982fb5e91d5078394a432db52a2de84985cd80b6f8e465753fa03433efecea7c82b8d0ea7b9569698f380735c6c156f014"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:extraneous",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/@emnapi/runtime"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "wasi-threads",
-      "group": "@emnapi",
-      "version": "1.2.1",
-      "bom-ref": "weaving-site@0.193.12|@emnapi/wasi-threads@1.2.1",
-      "author": "toyobayashi",
-      "description": "WASI threads proposal implementation in JavaScript",
-      "scope": "optional",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/%40emnapi/wasi-threads@1.2.1",
-      "externalReferences": [
-        {
-          "url": "git+https://github.com/toyobayashi/emnapi.git",
-          "type": "vcs",
-          "comment": "as detected from PackageJson property \"repository.url\""
-        },
-        {
-          "url": "https://github.com/toyobayashi/emnapi#readme",
-          "type": "website",
-          "comment": "as detected from PackageJson property \"homepage\""
-        },
-        {
-          "url": "https://github.com/toyobayashi/emnapi/issues",
-          "type": "issue-tracker",
-          "comment": "as detected from PackageJson property \"bugs.url\""
-        },
-        {
-          "url": "https://registry.npmjs.org/@emnapi/wasi-threads/-/wasi-threads-1.2.1.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "b93208ece605fbf31eb3f32b708398a79c8eb5230b056488a0b3e9720c22a6888a6e58ba937db6b5ca05b31a082313c3a96d35490180824a38133662d8136fdb"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:extraneous",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/@emnapi/wasi-threads"
+          "value": "node_modules/@sentry/react"
         }
       ]
     },
@@ -338,7 +207,7 @@
       "name": "vite",
       "group": "@tailwindcss",
       "version": "4.3.0",
-      "bom-ref": "weaving-site@0.193.12|@tailwindcss/vite@4.3.0",
+      "bom-ref": "weaving-site@0.193.13|@tailwindcss/vite@4.3.0",
       "description": "A utility-first CSS framework for rapidly building custom user interfaces.",
       "licenses": [
         {
@@ -393,7 +262,7 @@
       "name": "react-query",
       "group": "@tanstack",
       "version": "5.100.14",
-      "bom-ref": "weaving-site@0.193.12|@tanstack/react-query@5.100.14",
+      "bom-ref": "weaving-site@0.193.13|@tanstack/react-query@5.100.14",
       "author": "tannerlinsley",
       "description": "Hooks for managing, caching and syncing asynchronous and remote data in React",
       "licenses": [
@@ -445,7 +314,7 @@
       "name": "dompurify",
       "group": "@types",
       "version": "3.2.0",
-      "bom-ref": "weaving-site@0.193.12|@types/dompurify@3.2.0",
+      "bom-ref": "weaving-site@0.193.13|@types/dompurify@3.2.0",
       "description": "Stub TypeScript definitions entry for dompurify, which provides its own types definitions",
       "licenses": [
         {
@@ -481,7 +350,7 @@
       "name": "node",
       "group": "@types",
       "version": "25.9.1",
-      "bom-ref": "weaving-site@0.193.12|@types/node@25.9.1",
+      "bom-ref": "weaving-site@0.193.13|@types/node@25.9.1",
       "description": "TypeScript definitions for node",
       "licenses": [
         {
@@ -536,7 +405,7 @@
       "name": "react-dom",
       "group": "@types",
       "version": "19.2.3",
-      "bom-ref": "weaving-site@0.193.12|@types/react-dom@19.2.3",
+      "bom-ref": "weaving-site@0.193.13|@types/react-dom@19.2.3",
       "description": "TypeScript definitions for react-dom",
       "licenses": [
         {
@@ -591,7 +460,7 @@
       "name": "react",
       "group": "@types",
       "version": "19.2.15",
-      "bom-ref": "weaving-site@0.193.12|@types/react@19.2.15",
+      "bom-ref": "weaving-site@0.193.13|@types/react@19.2.15",
       "description": "TypeScript definitions for react",
       "licenses": [
         {
@@ -646,7 +515,7 @@
       "name": "eslint-plugin",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/eslint-plugin@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/eslint-plugin@8.59.4",
       "description": "TypeScript plugin for ESLint",
       "licenses": [
         {
@@ -701,7 +570,7 @@
       "name": "parser",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/parser@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/parser@8.59.4",
       "description": "An ESLint custom parser which leverages TypeScript ESTree",
       "licenses": [
         {
@@ -756,7 +625,7 @@
       "name": "plugin-react",
       "group": "@vitejs",
       "version": "6.0.2",
-      "bom-ref": "weaving-site@0.193.12|@vitejs/plugin-react@6.0.2",
+      "bom-ref": "weaving-site@0.193.13|@vitejs/plugin-react@6.0.2",
       "author": "Evan You",
       "description": "The default Vite plugin for React projects",
       "licenses": [
@@ -811,7 +680,7 @@
       "type": "library",
       "name": "class-variance-authority",
       "version": "0.7.1",
-      "bom-ref": "weaving-site@0.193.12|class-variance-authority@0.7.1",
+      "bom-ref": "weaving-site@0.193.13|class-variance-authority@0.7.1",
       "author": "Joe Bell",
       "description": "Class Variance Authority 🧬",
       "licenses": [
@@ -862,7 +731,7 @@
       "type": "library",
       "name": "clsx",
       "version": "2.1.1",
-      "bom-ref": "weaving-site@0.193.12|clsx@2.1.1",
+      "bom-ref": "weaving-site@0.193.13|clsx@2.1.1",
       "author": "Luke Edwards",
       "description": "A tiny (239B) utility for constructing className strings conditionally.",
       "licenses": [
@@ -913,7 +782,7 @@
       "type": "library",
       "name": "dompurify",
       "version": "3.4.5",
-      "bom-ref": "weaving-site@0.193.12|dompurify@3.4.5",
+      "bom-ref": "weaving-site@0.193.13|dompurify@3.4.5",
       "author": "Dr.-Ing. Mario Heiderich, Cure53",
       "description": "DOMPurify is a DOM-only, super-fast, uber-tolerant XSS sanitizer for HTML, MathML and SVG. It's written in JavaScript and works in all modern browsers (Safari, Opera (15+), Internet Explorer (10+), Firefox and Chrome - as well as almost anything else using Blink or WebKit). DOMPurify is written by security people who have vast background in web attacks and XSS. Fear not.",
       "licenses": [
@@ -962,7 +831,7 @@
       "type": "library",
       "name": "eslint-plugin-react-hooks",
       "version": "7.1.1",
-      "bom-ref": "weaving-site@0.193.12|eslint-plugin-react-hooks@7.1.1",
+      "bom-ref": "weaving-site@0.193.13|eslint-plugin-react-hooks@7.1.1",
       "description": "ESLint rules for React Hooks",
       "licenses": [
         {
@@ -1016,7 +885,7 @@
       "type": "library",
       "name": "eslint",
       "version": "10.4.0",
-      "bom-ref": "weaving-site@0.193.12|eslint@10.4.0",
+      "bom-ref": "weaving-site@0.193.13|eslint@10.4.0",
       "author": "Nicholas C. Zakas",
       "description": "An AST-based pattern checker for JavaScript.",
       "licenses": [
@@ -1071,7 +940,7 @@
           "type": "library",
           "name": "eslint-visitor-keys",
           "version": "5.0.1",
-          "bom-ref": "weaving-site@0.193.12|eslint@10.4.0|eslint-visitor-keys@5.0.1",
+          "bom-ref": "weaving-site@0.193.13|eslint@10.4.0|eslint-visitor-keys@5.0.1",
           "author": "Toru Nagashima",
           "description": "Constants and utilities about visitor keys to traverse AST.",
           "licenses": [
@@ -1126,7 +995,7 @@
           "type": "library",
           "name": "ignore",
           "version": "5.3.2",
-          "bom-ref": "weaving-site@0.193.12|eslint@10.4.0|ignore@5.3.2",
+          "bom-ref": "weaving-site@0.193.13|eslint@10.4.0|ignore@5.3.2",
           "author": "kael",
           "description": "Ignore is a manager and filter for .gitignore rules, the one used by eslint, gitbook and many others.",
           "licenses": [
@@ -1183,7 +1052,7 @@
       "type": "library",
       "name": "i18next",
       "version": "26.2.0",
-      "bom-ref": "weaving-site@0.193.12|i18next@26.2.0",
+      "bom-ref": "weaving-site@0.193.13|i18next@26.2.0",
       "author": "Jan Mühlemann",
       "description": "i18next internationalization framework",
       "licenses": [
@@ -1234,7 +1103,7 @@
       "type": "library",
       "name": "lucide-react",
       "version": "1.16.0",
-      "bom-ref": "weaving-site@0.193.12|lucide-react@1.16.0",
+      "bom-ref": "weaving-site@0.193.13|lucide-react@1.16.0",
       "author": "Eric Fennis",
       "description": "A Lucide icon library package for React applications.",
       "licenses": [
@@ -1285,7 +1154,7 @@
       "type": "library",
       "name": "react-colorful",
       "version": "5.7.0",
-      "bom-ref": "weaving-site@0.193.12|react-colorful@5.7.0",
+      "bom-ref": "weaving-site@0.193.13|react-colorful@5.7.0",
       "author": "Vlad Shilov",
       "description": "🎨 A tiny (2,8 KB) color picker component for React and Preact apps. Fast, well-tested, dependency-free, mobile-friendly and accessible",
       "licenses": [
@@ -1336,7 +1205,7 @@
       "type": "library",
       "name": "react-dom",
       "version": "19.2.6",
-      "bom-ref": "weaving-site@0.193.12|react-dom@19.2.6",
+      "bom-ref": "weaving-site@0.193.13|react-dom@19.2.6",
       "description": "React package for working with the DOM.",
       "licenses": [
         {
@@ -1386,7 +1255,7 @@
       "type": "library",
       "name": "react-i18next",
       "version": "17.0.8",
-      "bom-ref": "weaving-site@0.193.12|react-i18next@17.0.8",
+      "bom-ref": "weaving-site@0.193.13|react-i18next@17.0.8",
       "author": "Jan Mühlemann",
       "description": "Internationalization for react done right. Using the i18next i18n ecosystem.",
       "licenses": [
@@ -1437,7 +1306,7 @@
       "type": "library",
       "name": "react-router-dom",
       "version": "7.15.1",
-      "bom-ref": "weaving-site@0.193.12|react-router-dom@7.15.1",
+      "bom-ref": "weaving-site@0.193.13|react-router-dom@7.15.1",
       "author": "Remix Software",
       "description": "Declarative routing for React web applications",
       "licenses": [
@@ -1488,7 +1357,7 @@
       "type": "library",
       "name": "react",
       "version": "19.2.6",
-      "bom-ref": "weaving-site@0.193.12|react@19.2.6",
+      "bom-ref": "weaving-site@0.193.13|react@19.2.6",
       "description": "React is a JavaScript library for building user interfaces.",
       "licenses": [
         {
@@ -1538,7 +1407,7 @@
       "type": "library",
       "name": "tailwind-merge",
       "version": "3.6.0",
-      "bom-ref": "weaving-site@0.193.12|tailwind-merge@3.6.0",
+      "bom-ref": "weaving-site@0.193.13|tailwind-merge@3.6.0",
       "author": "Dany Castillo",
       "description": "Merge Tailwind CSS classes without style conflicts",
       "licenses": [
@@ -1589,7 +1458,7 @@
       "type": "library",
       "name": "tailwindcss",
       "version": "4.3.0",
-      "bom-ref": "weaving-site@0.193.12|tailwindcss@4.3.0",
+      "bom-ref": "weaving-site@0.193.13|tailwindcss@4.3.0",
       "description": "A utility-first CSS framework for rapidly building custom user interfaces.",
       "licenses": [
         {
@@ -1643,7 +1512,7 @@
       "type": "library",
       "name": "typescript",
       "version": "6.0.3",
-      "bom-ref": "weaving-site@0.193.12|typescript@6.0.3",
+      "bom-ref": "weaving-site@0.193.13|typescript@6.0.3",
       "author": "Microsoft Corp.",
       "description": "TypeScript is a language for application scale JavaScript development",
       "licenses": [
@@ -1698,7 +1567,7 @@
       "type": "library",
       "name": "vite",
       "version": "8.0.14",
-      "bom-ref": "weaving-site@0.193.12|vite@8.0.14",
+      "bom-ref": "weaving-site@0.193.13|vite@8.0.14",
       "author": "Evan You",
       "description": "Native-ESM powered web dev build tool",
       "licenses": [
@@ -1753,7 +1622,7 @@
           "type": "library",
           "name": "picomatch",
           "version": "4.0.4",
-          "bom-ref": "weaving-site@0.193.12|vite@8.0.14|picomatch@4.0.4",
+          "bom-ref": "weaving-site@0.193.13|vite@8.0.14|picomatch@4.0.4",
           "author": "Jon Schlinkert",
           "description": "Blazing fast and accurate glob matcher written in JavaScript, with no dependencies and full support for standard and extended Bash glob features, including braces, extglobs, POSIX brackets, and regular expressions.",
           "licenses": [
@@ -1811,7 +1680,7 @@
       "name": "shared",
       "group": "@clerk",
       "version": "3.47.6",
-      "bom-ref": "weaving-site@0.193.12|@clerk/shared@3.47.6",
+      "bom-ref": "weaving-site@0.193.13|@clerk/shared@3.47.6",
       "author": "Clerk",
       "description": "Internal package utils used by the Clerk SDKs",
       "licenses": [
@@ -1862,7 +1731,7 @@
           "type": "library",
           "name": "csstype",
           "version": "3.1.3",
-          "bom-ref": "weaving-site@0.193.12|@clerk/shared@3.47.6|csstype@3.1.3",
+          "bom-ref": "weaving-site@0.193.13|@clerk/shared@3.47.6|csstype@3.1.3",
           "author": "Fredrik Nicol",
           "description": "Strict TypeScript and Flow types for style based on MDN data",
           "licenses": [
@@ -1915,7 +1784,7 @@
       "type": "library",
       "name": "tslib",
       "version": "2.8.1",
-      "bom-ref": "weaving-site@0.193.12|tslib@2.8.1",
+      "bom-ref": "weaving-site@0.193.13|tslib@2.8.1",
       "author": "Microsoft Corp.",
       "description": "Runtime library for TypeScript helper functions",
       "licenses": [
@@ -1964,10 +1833,114 @@
     },
     {
       "type": "library",
+      "name": "browser",
+      "group": "@sentry",
+      "version": "10.53.1",
+      "bom-ref": "weaving-site@0.193.13|@sentry/browser@10.53.1",
+      "author": "Sentry",
+      "description": "Official Sentry SDK for browsers",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40sentry/browser@10.53.1",
+      "externalReferences": [
+        {
+          "url": "git://github.com/getsentry/sentry-javascript.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/tree/master/packages/browser",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/@sentry/browser/-/browser-10.53.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "cd7177ef787350e1b350eaea77cc5bd54dcb422e6e602de6c2ffb3e4e30a5148a7425bb7d2d4d606cef2a72e984dc86d8b1f509586875a56b2505f2f059e548c"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@sentry/browser"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "core",
+      "group": "@sentry",
+      "version": "10.53.1",
+      "bom-ref": "weaving-site@0.193.13|@sentry/core@10.53.1",
+      "author": "Sentry",
+      "description": "Base implementation for all Sentry JavaScript SDKs",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40sentry/core@10.53.1",
+      "externalReferences": [
+        {
+          "url": "git://github.com/getsentry/sentry-javascript.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/tree/master/packages/core",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/@sentry/core/-/core-10.53.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "5c6e1ece5932b803e3042e7ef645c2f78ad75eea984f0f4d4617da0c7b2c6d315a1a7a8147cbd05f65148197d8eee71b79e9510c67c1bb5b32c2853e981d38b8"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@sentry/core"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "node",
       "group": "@tailwindcss",
       "version": "4.3.0",
-      "bom-ref": "weaving-site@0.193.12|@tailwindcss/node@4.3.0",
+      "bom-ref": "weaving-site@0.193.13|@tailwindcss/node@4.3.0",
       "description": "A utility-first CSS framework for rapidly building custom user interfaces.",
       "licenses": [
         {
@@ -2022,7 +1995,7 @@
       "name": "oxide",
       "group": "@tailwindcss",
       "version": "4.3.0",
-      "bom-ref": "weaving-site@0.193.12|@tailwindcss/oxide@4.3.0",
+      "bom-ref": "weaving-site@0.193.13|@tailwindcss/oxide@4.3.0",
       "licenses": [
         {
           "license": {
@@ -2076,7 +2049,7 @@
       "name": "query-core",
       "group": "@tanstack",
       "version": "5.100.14",
-      "bom-ref": "weaving-site@0.193.12|@tanstack/query-core@5.100.14",
+      "bom-ref": "weaving-site@0.193.13|@tanstack/query-core@5.100.14",
       "author": "tannerlinsley",
       "description": "The framework agnostic core that powers TanStack Query",
       "licenses": [
@@ -2127,7 +2100,7 @@
       "type": "library",
       "name": "undici-types",
       "version": "7.24.6",
-      "bom-ref": "weaving-site@0.193.12|undici-types@7.24.6",
+      "bom-ref": "weaving-site@0.193.13|undici-types@7.24.6",
       "description": "A stand-alone types package for Undici",
       "licenses": [
         {
@@ -2181,7 +2154,7 @@
       "type": "library",
       "name": "csstype",
       "version": "3.2.3",
-      "bom-ref": "weaving-site@0.193.12|csstype@3.2.3",
+      "bom-ref": "weaving-site@0.193.13|csstype@3.2.3",
       "author": "Fredrik Nicol",
       "description": "Strict TypeScript and Flow types for style based on MDN data",
       "licenses": [
@@ -2237,7 +2210,7 @@
       "name": "regexpp",
       "group": "@eslint-community",
       "version": "4.12.2",
-      "bom-ref": "weaving-site@0.193.12|@eslint-community/regexpp@4.12.2",
+      "bom-ref": "weaving-site@0.193.13|@eslint-community/regexpp@4.12.2",
       "author": "Toru Nagashima",
       "description": "Regular expression parser for ECMAScript.",
       "licenses": [
@@ -2293,7 +2266,7 @@
       "name": "scope-manager",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/scope-manager@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/scope-manager@8.59.4",
       "description": "TypeScript scope analyser for ESLint",
       "licenses": [
         {
@@ -2348,7 +2321,7 @@
       "name": "type-utils",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/type-utils@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/type-utils@8.59.4",
       "description": "Type utilities for working with TypeScript + ESLint together",
       "licenses": [
         {
@@ -2403,7 +2376,7 @@
       "name": "utils",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/utils@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/utils@8.59.4",
       "description": "Utilities for working with TypeScript + ESLint together",
       "licenses": [
         {
@@ -2458,7 +2431,7 @@
       "name": "visitor-keys",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4",
       "description": "Visitor keys used to help traverse the TypeScript-ESTree AST",
       "licenses": [
         {
@@ -2512,7 +2485,7 @@
           "type": "library",
           "name": "eslint-visitor-keys",
           "version": "5.0.1",
-          "bom-ref": "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4|eslint-visitor-keys@5.0.1",
+          "bom-ref": "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4|eslint-visitor-keys@5.0.1",
           "author": "Toru Nagashima",
           "description": "Constants and utilities about visitor keys to traverse AST.",
           "licenses": [
@@ -2569,7 +2542,7 @@
       "type": "library",
       "name": "ignore",
       "version": "7.0.5",
-      "bom-ref": "weaving-site@0.193.12|ignore@7.0.5",
+      "bom-ref": "weaving-site@0.193.13|ignore@7.0.5",
       "author": "kael",
       "description": "Ignore is a manager and filter for .gitignore rules, the one used by eslint, gitbook and many others.",
       "licenses": [
@@ -2624,7 +2597,7 @@
       "type": "library",
       "name": "natural-compare",
       "version": "1.4.0",
-      "bom-ref": "weaving-site@0.193.12|natural-compare@1.4.0",
+      "bom-ref": "weaving-site@0.193.13|natural-compare@1.4.0",
       "author": "Lauri Rooden",
       "description": "Compare strings containing a mix of letters and numbers in the way a human being would in sort order.",
       "licenses": [
@@ -2679,7 +2652,7 @@
       "type": "library",
       "name": "ts-api-utils",
       "version": "2.5.0",
-      "bom-ref": "weaving-site@0.193.12|ts-api-utils@2.5.0",
+      "bom-ref": "weaving-site@0.193.13|ts-api-utils@2.5.0",
       "author": "JoshuaKGoldberg",
       "description": "Utility functions for working with TypeScript's API. Successor to the wonderful tsutils. 🛠️️",
       "licenses": [
@@ -2735,7 +2708,7 @@
       "name": "types",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/types@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/types@8.59.4",
       "description": "Types for the TypeScript-ESTree AST spec",
       "licenses": [
         {
@@ -2790,7 +2763,7 @@
       "name": "typescript-estree",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/typescript-estree@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/typescript-estree@8.59.4",
       "description": "A parser that converts TypeScript source code into an ESTree compatible form",
       "licenses": [
         {
@@ -2844,7 +2817,7 @@
           "type": "library",
           "name": "semver",
           "version": "7.8.1",
-          "bom-ref": "weaving-site@0.193.12|@typescript-eslint/typescript-estree@8.59.4|semver@7.8.1",
+          "bom-ref": "weaving-site@0.193.13|@typescript-eslint/typescript-estree@8.59.4|semver@7.8.1",
           "author": "GitHub Inc.",
           "description": "The semantic version parser used by npm.",
           "licenses": [
@@ -2901,7 +2874,7 @@
       "type": "library",
       "name": "debug",
       "version": "4.4.3",
-      "bom-ref": "weaving-site@0.193.12|debug@4.4.3",
+      "bom-ref": "weaving-site@0.193.13|debug@4.4.3",
       "author": "Josh Junon",
       "description": "Lightweight debugging utility for Node.js and the browser",
       "licenses": [
@@ -2957,7 +2930,7 @@
       "name": "pluginutils",
       "group": "@rolldown",
       "version": "1.0.1",
-      "bom-ref": "weaving-site@0.193.12|@rolldown/pluginutils@1.0.1",
+      "bom-ref": "weaving-site@0.193.13|@rolldown/pluginutils@1.0.1",
       "description": "Plugin utilities for Rolldown",
       "licenses": [
         {
@@ -3012,7 +2985,7 @@
       "name": "trusted-types",
       "group": "@types",
       "version": "2.0.7",
-      "bom-ref": "weaving-site@0.193.12|@types/trusted-types@2.0.7",
+      "bom-ref": "weaving-site@0.193.13|@types/trusted-types@2.0.7",
       "description": "TypeScript definitions for trusted-types",
       "scope": "optional",
       "licenses": [
@@ -3064,7 +3037,7 @@
       "name": "core",
       "group": "@babel",
       "version": "7.29.0",
-      "bom-ref": "weaving-site@0.193.12|@babel/core@7.29.0",
+      "bom-ref": "weaving-site@0.193.13|@babel/core@7.29.0",
       "author": "The Babel Team",
       "description": "Babel compiler core.",
       "licenses": [
@@ -3120,7 +3093,7 @@
       "name": "parser",
       "group": "@babel",
       "version": "7.29.2",
-      "bom-ref": "weaving-site@0.193.12|@babel/parser@7.29.2",
+      "bom-ref": "weaving-site@0.193.13|@babel/parser@7.29.2",
       "author": "The Babel Team",
       "description": "A JavaScript parser",
       "licenses": [
@@ -3175,7 +3148,7 @@
       "type": "library",
       "name": "hermes-parser",
       "version": "0.25.1",
-      "bom-ref": "weaving-site@0.193.12|hermes-parser@0.25.1",
+      "bom-ref": "weaving-site@0.193.13|hermes-parser@0.25.1",
       "description": "A JavaScript parser built from the Hermes engine",
       "licenses": [
         {
@@ -3229,7 +3202,7 @@
       "type": "library",
       "name": "zod-validation-error",
       "version": "4.0.2",
-      "bom-ref": "weaving-site@0.193.12|zod-validation-error@4.0.2",
+      "bom-ref": "weaving-site@0.193.13|zod-validation-error@4.0.2",
       "author": "Dimitrios C. Michalakos",
       "description": "Wrap zod validation errors in user-friendly readable messages",
       "licenses": [
@@ -3284,7 +3257,7 @@
       "type": "library",
       "name": "zod",
       "version": "4.3.6",
-      "bom-ref": "weaving-site@0.193.12|zod@4.3.6",
+      "bom-ref": "weaving-site@0.193.13|zod@4.3.6",
       "author": "Colin McDonnell",
       "description": "TypeScript-first schema declaration and validation library with static type inference",
       "licenses": [
@@ -3340,7 +3313,7 @@
       "name": "eslint-utils",
       "group": "@eslint-community",
       "version": "4.9.1",
-      "bom-ref": "weaving-site@0.193.12|@eslint-community/eslint-utils@4.9.1",
+      "bom-ref": "weaving-site@0.193.13|@eslint-community/eslint-utils@4.9.1",
       "author": "Toru Nagashima",
       "description": "Utilities for ESLint plugins.",
       "licenses": [
@@ -3396,7 +3369,7 @@
       "name": "config-array",
       "group": "@eslint",
       "version": "0.23.5",
-      "bom-ref": "weaving-site@0.193.12|@eslint/config-array@0.23.5",
+      "bom-ref": "weaving-site@0.193.13|@eslint/config-array@0.23.5",
       "author": "Nicholas C. Zakas",
       "description": "General purpose glob-based configuration matching.",
       "licenses": [
@@ -3452,7 +3425,7 @@
       "name": "config-helpers",
       "group": "@eslint",
       "version": "0.6.0",
-      "bom-ref": "weaving-site@0.193.12|@eslint/config-helpers@0.6.0",
+      "bom-ref": "weaving-site@0.193.13|@eslint/config-helpers@0.6.0",
       "description": "Helper utilities for creating ESLint configuration",
       "licenses": [
         {
@@ -3507,7 +3480,7 @@
       "name": "core",
       "group": "@eslint",
       "version": "1.2.1",
-      "bom-ref": "weaving-site@0.193.12|@eslint/core@1.2.1",
+      "bom-ref": "weaving-site@0.193.13|@eslint/core@1.2.1",
       "author": "Nicholas C. Zakas",
       "description": "Runtime-agnostic core of ESLint",
       "licenses": [
@@ -3563,7 +3536,7 @@
       "name": "plugin-kit",
       "group": "@eslint",
       "version": "0.7.1",
-      "bom-ref": "weaving-site@0.193.12|@eslint/plugin-kit@0.7.1",
+      "bom-ref": "weaving-site@0.193.13|@eslint/plugin-kit@0.7.1",
       "author": "Nicholas C. Zakas",
       "description": "Utilities for building ESLint plugins.",
       "licenses": [
@@ -3619,7 +3592,7 @@
       "name": "node",
       "group": "@humanfs",
       "version": "0.16.8",
-      "bom-ref": "weaving-site@0.193.12|@humanfs/node@0.16.8",
+      "bom-ref": "weaving-site@0.193.13|@humanfs/node@0.16.8",
       "author": "Nicholas C. Zakas",
       "description": "The Node.js bindings of the humanfs library.",
       "licenses": [
@@ -3675,7 +3648,7 @@
       "name": "module-importer",
       "group": "@humanwhocodes",
       "version": "1.0.1",
-      "bom-ref": "weaving-site@0.193.12|@humanwhocodes/module-importer@1.0.1",
+      "bom-ref": "weaving-site@0.193.13|@humanwhocodes/module-importer@1.0.1",
       "author": "Nicholas C. Zaks",
       "description": "Universal module importer for Node.js",
       "licenses": [
@@ -3731,7 +3704,7 @@
       "name": "retry",
       "group": "@humanwhocodes",
       "version": "0.4.3",
-      "bom-ref": "weaving-site@0.193.12|@humanwhocodes/retry@0.4.3",
+      "bom-ref": "weaving-site@0.193.13|@humanwhocodes/retry@0.4.3",
       "author": "Nicholas C. Zaks",
       "description": "A utility to retry failed async methods.",
       "licenses": [
@@ -3787,7 +3760,7 @@
       "name": "estree",
       "group": "@types",
       "version": "1.0.8",
-      "bom-ref": "weaving-site@0.193.12|@types/estree@1.0.8",
+      "bom-ref": "weaving-site@0.193.13|@types/estree@1.0.8",
       "description": "TypeScript definitions for estree",
       "licenses": [
         {
@@ -3841,7 +3814,7 @@
       "type": "library",
       "name": "ajv",
       "version": "6.15.0",
-      "bom-ref": "weaving-site@0.193.12|ajv@6.15.0",
+      "bom-ref": "weaving-site@0.193.13|ajv@6.15.0",
       "author": "Evgeny Poberezkin",
       "description": "Another JSON Schema Validator",
       "licenses": [
@@ -3896,7 +3869,7 @@
       "type": "library",
       "name": "cross-spawn",
       "version": "7.0.6",
-      "bom-ref": "weaving-site@0.193.12|cross-spawn@7.0.6",
+      "bom-ref": "weaving-site@0.193.13|cross-spawn@7.0.6",
       "author": "André Cruz",
       "description": "Cross platform child_process#spawn and child_process#spawnSync",
       "licenses": [
@@ -3951,7 +3924,7 @@
       "type": "library",
       "name": "escape-string-regexp",
       "version": "4.0.0",
-      "bom-ref": "weaving-site@0.193.12|escape-string-regexp@4.0.0",
+      "bom-ref": "weaving-site@0.193.13|escape-string-regexp@4.0.0",
       "author": "Sindre Sorhus",
       "description": "Escape RegExp special characters",
       "licenses": [
@@ -4006,7 +3979,7 @@
       "type": "library",
       "name": "eslint-scope",
       "version": "9.1.2",
-      "bom-ref": "weaving-site@0.193.12|eslint-scope@9.1.2",
+      "bom-ref": "weaving-site@0.193.13|eslint-scope@9.1.2",
       "description": "ECMAScript scope analyzer for ESLint",
       "licenses": [
         {
@@ -4060,7 +4033,7 @@
       "type": "library",
       "name": "espree",
       "version": "11.2.0",
-      "bom-ref": "weaving-site@0.193.12|espree@11.2.0",
+      "bom-ref": "weaving-site@0.193.13|espree@11.2.0",
       "author": "Nicholas C. Zakas",
       "description": "An Esprima-compatible JavaScript parser built on Acorn",
       "licenses": [
@@ -4115,7 +4088,7 @@
           "type": "library",
           "name": "eslint-visitor-keys",
           "version": "5.0.1",
-          "bom-ref": "weaving-site@0.193.12|espree@11.2.0|eslint-visitor-keys@5.0.1",
+          "bom-ref": "weaving-site@0.193.13|espree@11.2.0|eslint-visitor-keys@5.0.1",
           "author": "Toru Nagashima",
           "description": "Constants and utilities about visitor keys to traverse AST.",
           "licenses": [
@@ -4172,7 +4145,7 @@
       "type": "library",
       "name": "esquery",
       "version": "1.7.0",
-      "bom-ref": "weaving-site@0.193.12|esquery@1.7.0",
+      "bom-ref": "weaving-site@0.193.13|esquery@1.7.0",
       "author": "Joel Feenstra",
       "description": "A query library for ECMAScript AST using a CSS selector like query language.",
       "licenses": [
@@ -4227,7 +4200,7 @@
       "type": "library",
       "name": "esutils",
       "version": "2.0.3",
-      "bom-ref": "weaving-site@0.193.12|esutils@2.0.3",
+      "bom-ref": "weaving-site@0.193.13|esutils@2.0.3",
       "description": "utility box for ECMAScript language tools",
       "licenses": [
         {
@@ -4281,7 +4254,7 @@
       "type": "library",
       "name": "fast-deep-equal",
       "version": "3.1.3",
-      "bom-ref": "weaving-site@0.193.12|fast-deep-equal@3.1.3",
+      "bom-ref": "weaving-site@0.193.13|fast-deep-equal@3.1.3",
       "author": "Evgeny Poberezkin",
       "description": "Fast deep equal",
       "licenses": [
@@ -4336,7 +4309,7 @@
       "type": "library",
       "name": "file-entry-cache",
       "version": "8.0.0",
-      "bom-ref": "weaving-site@0.193.12|file-entry-cache@8.0.0",
+      "bom-ref": "weaving-site@0.193.13|file-entry-cache@8.0.0",
       "author": "Jared Wray",
       "description": "Super simple cache for file metadata, useful for process that work o a given series of files and that only need to repeat the job on the changed ones since the previous run of the process",
       "licenses": [
@@ -4391,7 +4364,7 @@
       "type": "library",
       "name": "find-up",
       "version": "5.0.0",
-      "bom-ref": "weaving-site@0.193.12|find-up@5.0.0",
+      "bom-ref": "weaving-site@0.193.13|find-up@5.0.0",
       "author": "Sindre Sorhus",
       "description": "Find a file or directory by walking up parent directories",
       "licenses": [
@@ -4446,7 +4419,7 @@
       "type": "library",
       "name": "glob-parent",
       "version": "6.0.2",
-      "bom-ref": "weaving-site@0.193.12|glob-parent@6.0.2",
+      "bom-ref": "weaving-site@0.193.13|glob-parent@6.0.2",
       "author": "Gulp Team",
       "description": "Extract the non-magic parent path from a glob string.",
       "licenses": [
@@ -4501,7 +4474,7 @@
       "type": "library",
       "name": "imurmurhash",
       "version": "0.1.4",
-      "bom-ref": "weaving-site@0.193.12|imurmurhash@0.1.4",
+      "bom-ref": "weaving-site@0.193.13|imurmurhash@0.1.4",
       "author": "Jens Taylor",
       "description": "An incremental implementation of MurmurHash3",
       "licenses": [
@@ -4556,7 +4529,7 @@
       "type": "library",
       "name": "is-glob",
       "version": "4.0.3",
-      "bom-ref": "weaving-site@0.193.12|is-glob@4.0.3",
+      "bom-ref": "weaving-site@0.193.13|is-glob@4.0.3",
       "author": "Jon Schlinkert",
       "description": "Returns `true` if the given string looks like a glob pattern or an extglob pattern. This makes it easy to create code that only uses external modules like node-glob when necessary, resulting in much faster code execution and initialization time, and a better user experience.",
       "licenses": [
@@ -4611,7 +4584,7 @@
       "type": "library",
       "name": "jiti",
       "version": "2.7.0",
-      "bom-ref": "weaving-site@0.193.12|jiti@2.7.0",
+      "bom-ref": "weaving-site@0.193.13|jiti@2.7.0",
       "description": "Runtime typescript and ESM support for Node.js",
       "licenses": [
         {
@@ -4665,7 +4638,7 @@
       "type": "library",
       "name": "json-stable-stringify-without-jsonify",
       "version": "1.0.1",
-      "bom-ref": "weaving-site@0.193.12|json-stable-stringify-without-jsonify@1.0.1",
+      "bom-ref": "weaving-site@0.193.13|json-stable-stringify-without-jsonify@1.0.1",
       "author": "James Halliday",
       "description": "deterministic JSON.stringify() with custom sorting to get deterministic hashes from stringified results, with no public domain dependencies",
       "licenses": [
@@ -4720,7 +4693,7 @@
       "type": "library",
       "name": "minimatch",
       "version": "10.2.5",
-      "bom-ref": "weaving-site@0.193.12|minimatch@10.2.5",
+      "bom-ref": "weaving-site@0.193.13|minimatch@10.2.5",
       "author": "Isaac Z. Schlueter",
       "description": "a glob matcher in javascript",
       "licenses": [
@@ -4775,7 +4748,7 @@
       "type": "library",
       "name": "optionator",
       "version": "0.9.4",
-      "bom-ref": "weaving-site@0.193.12|optionator@0.9.4",
+      "bom-ref": "weaving-site@0.193.13|optionator@0.9.4",
       "author": "George Zahariev",
       "description": "option parsing and help generation",
       "licenses": [
@@ -4830,7 +4803,7 @@
       "type": "library",
       "name": "scheduler",
       "version": "0.27.0",
-      "bom-ref": "weaving-site@0.193.12|scheduler@0.27.0",
+      "bom-ref": "weaving-site@0.193.13|scheduler@0.27.0",
       "description": "Cooperative scheduler for the browser environment.",
       "licenses": [
         {
@@ -4881,7 +4854,7 @@
       "name": "runtime",
       "group": "@babel",
       "version": "7.29.2",
-      "bom-ref": "weaving-site@0.193.12|@babel/runtime@7.29.2",
+      "bom-ref": "weaving-site@0.193.13|@babel/runtime@7.29.2",
       "author": "The Babel Team",
       "description": "babel's modular runtime helpers",
       "licenses": [
@@ -4932,7 +4905,7 @@
       "type": "library",
       "name": "html-parse-stringify",
       "version": "3.0.1",
-      "bom-ref": "weaving-site@0.193.12|html-parse-stringify@3.0.1",
+      "bom-ref": "weaving-site@0.193.13|html-parse-stringify@3.0.1",
       "author": "Henrik Joreteg",
       "description": "Parses well-formed HTML (meaning all tags closed) into an AST and back. quickly.",
       "licenses": [
@@ -4983,7 +4956,7 @@
       "type": "library",
       "name": "use-sync-external-store",
       "version": "1.6.0",
-      "bom-ref": "weaving-site@0.193.12|use-sync-external-store@1.6.0",
+      "bom-ref": "weaving-site@0.193.13|use-sync-external-store@1.6.0",
       "description": "Backwards compatible shim for React's useSyncExternalStore. Works with any React that supports hooks.",
       "licenses": [
         {
@@ -5033,7 +5006,7 @@
       "type": "library",
       "name": "react-router",
       "version": "7.15.1",
-      "bom-ref": "weaving-site@0.193.12|react-router@7.15.1",
+      "bom-ref": "weaving-site@0.193.13|react-router@7.15.1",
       "author": "Remix Software",
       "description": "Declarative routing for React",
       "licenses": [
@@ -5084,7 +5057,7 @@
       "type": "library",
       "name": "lightningcss",
       "version": "1.32.0",
-      "bom-ref": "weaving-site@0.193.12|lightningcss@1.32.0",
+      "bom-ref": "weaving-site@0.193.13|lightningcss@1.32.0",
       "description": "A CSS parser, transformer, and minifier written in Rust",
       "licenses": [
         {
@@ -5138,7 +5111,7 @@
       "type": "library",
       "name": "postcss",
       "version": "8.5.15",
-      "bom-ref": "weaving-site@0.193.12|postcss@8.5.15",
+      "bom-ref": "weaving-site@0.193.13|postcss@8.5.15",
       "author": "Andrey Sitnik",
       "description": "Tool for transforming styles with JS plugins",
       "licenses": [
@@ -5193,7 +5166,7 @@
       "type": "library",
       "name": "rolldown",
       "version": "1.0.2",
-      "bom-ref": "weaving-site@0.193.12|rolldown@1.0.2",
+      "bom-ref": "weaving-site@0.193.13|rolldown@1.0.2",
       "description": "Fast JavaScript/TypeScript bundler in Rust with Rollup-compatible API.",
       "licenses": [
         {
@@ -5247,7 +5220,7 @@
       "type": "library",
       "name": "tinyglobby",
       "version": "0.2.16",
-      "bom-ref": "weaving-site@0.193.12|tinyglobby@0.2.16",
+      "bom-ref": "weaving-site@0.193.13|tinyglobby@0.2.16",
       "author": "Superchupu",
       "description": "A fast and minimal alternative to globby and fast-glob",
       "licenses": [
@@ -5302,7 +5275,7 @@
           "type": "library",
           "name": "fdir",
           "version": "6.5.0",
-          "bom-ref": "weaving-site@0.193.12|tinyglobby@0.2.16|fdir@6.5.0",
+          "bom-ref": "weaving-site@0.193.13|tinyglobby@0.2.16|fdir@6.5.0",
           "author": "thecodrr",
           "description": "The fastest directory crawler & globbing alternative to glob, fast-glob, & tiny-glob. Crawls 1m files in < 1s",
           "licenses": [
@@ -5357,7 +5330,7 @@
           "type": "library",
           "name": "picomatch",
           "version": "4.0.4",
-          "bom-ref": "weaving-site@0.193.12|tinyglobby@0.2.16|picomatch@4.0.4",
+          "bom-ref": "weaving-site@0.193.13|tinyglobby@0.2.16|picomatch@4.0.4",
           "author": "Jon Schlinkert",
           "description": "Blazing fast and accurate glob matcher written in JavaScript, with no dependencies and full support for standard and extended Bash glob features, including braces, extglobs, POSIX brackets, and regular expressions.",
           "licenses": [
@@ -5414,7 +5387,7 @@
       "type": "library",
       "name": "dequal",
       "version": "2.0.3",
-      "bom-ref": "weaving-site@0.193.12|dequal@2.0.3",
+      "bom-ref": "weaving-site@0.193.13|dequal@2.0.3",
       "author": "Luke Edwards",
       "description": "A tiny (304B to 489B) utility for check for deep equality",
       "licenses": [
@@ -5465,7 +5438,7 @@
       "type": "library",
       "name": "glob-to-regexp",
       "version": "0.4.1",
-      "bom-ref": "weaving-site@0.193.12|glob-to-regexp@0.4.1",
+      "bom-ref": "weaving-site@0.193.13|glob-to-regexp@0.4.1",
       "author": "Nick Fitzgerald",
       "description": "Convert globs to regular expressions",
       "licenses": [
@@ -5516,7 +5489,7 @@
       "type": "library",
       "name": "js-cookie",
       "version": "3.0.7",
-      "bom-ref": "weaving-site@0.193.12|js-cookie@3.0.7",
+      "bom-ref": "weaving-site@0.193.13|js-cookie@3.0.7",
       "author": "Klaus Hartl",
       "description": "A simple, lightweight JavaScript API for handling cookies",
       "licenses": [
@@ -5567,7 +5540,7 @@
       "type": "library",
       "name": "std-env",
       "version": "3.10.0",
-      "bom-ref": "weaving-site@0.193.12|std-env@3.10.0",
+      "bom-ref": "weaving-site@0.193.13|std-env@3.10.0",
       "description": "Runtime agnostic JS utils",
       "licenses": [
         {
@@ -5617,7 +5590,7 @@
       "type": "library",
       "name": "swr",
       "version": "2.3.4",
-      "bom-ref": "weaving-site@0.193.12|swr@2.3.4",
+      "bom-ref": "weaving-site@0.193.13|swr@2.3.4",
       "description": "React Hooks library for remote data fetching",
       "licenses": [
         {
@@ -5665,10 +5638,218 @@
     },
     {
       "type": "library",
+      "name": "browser-utils",
+      "group": "@sentry-internal",
+      "version": "10.53.1",
+      "bom-ref": "weaving-site@0.193.13|@sentry-internal/browser-utils@10.53.1",
+      "author": "Sentry",
+      "description": "Browser Utilities for all Sentry JavaScript SDKs",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40sentry-internal/browser-utils@10.53.1",
+      "externalReferences": [
+        {
+          "url": "git://github.com/getsentry/sentry-javascript.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/tree/master/packages/browser-utils",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/@sentry-internal/browser-utils/-/browser-utils-10.53.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "5f877acbcb0132398d85c0d6e1e301537012b0d20ccfc76a685921c8830dfdd918affc992a76d164f695b95506bc72a39e57e270fa481f4fc72bd2818eb6313f"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@sentry-internal/browser-utils"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "feedback",
+      "group": "@sentry-internal",
+      "version": "10.53.1",
+      "bom-ref": "weaving-site@0.193.13|@sentry-internal/feedback@10.53.1",
+      "author": "Sentry",
+      "description": "Sentry SDK integration for user feedback",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40sentry-internal/feedback@10.53.1",
+      "externalReferences": [
+        {
+          "url": "git://github.com/getsentry/sentry-javascript.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/tree/master/packages/feedback",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/@sentry-internal/feedback/-/feedback-10.53.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "bd5a5323f68460de5df4881979825632a55a374fa216089d4ab60d02c653875512e6c254cc5ff0ae5fbaf0a769982b4544eacdde38809f5a0f4b02f908abc424"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@sentry-internal/feedback"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "replay-canvas",
+      "group": "@sentry-internal",
+      "version": "10.53.1",
+      "bom-ref": "weaving-site@0.193.13|@sentry-internal/replay-canvas@10.53.1",
+      "author": "Sentry",
+      "description": "Replay canvas integration",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40sentry-internal/replay-canvas@10.53.1",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/getsentry/sentry-javascript.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://docs.sentry.io/platforms/javascript/session-replay/",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/@sentry-internal/replay-canvas/-/replay-canvas-10.53.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "6ae78b69fff6a6b131c00efa046539fdb39708a5aab6dea3417580e9625036b98aa4f12d649078ca99e9b28bb431c5d0085f2dbabd98f14d13124c103f5df225"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@sentry-internal/replay-canvas"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "replay",
+      "group": "@sentry-internal",
+      "version": "10.53.1",
+      "bom-ref": "weaving-site@0.193.13|@sentry-internal/replay@10.53.1",
+      "author": "Sentry",
+      "description": "User replays for Sentry",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40sentry-internal/replay@10.53.1",
+      "externalReferences": [
+        {
+          "url": "git+https://github.com/getsentry/sentry-javascript.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://docs.sentry.io/platforms/javascript/session-replay/",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        },
+        {
+          "url": "https://github.com/getsentry/sentry-javascript/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "https://registry.npmjs.org/@sentry-internal/replay/-/replay-10.53.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c193734c162480650f58cb9442fecbeb8f8e266a029f3ec640d893ad314ae845408c95c50424ac3e9fe78627f46cb85b93cfb4838c73eb7dee3a1a57b906c577"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@sentry-internal/replay"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "remapping",
       "group": "@jridgewell",
       "version": "2.3.5",
-      "bom-ref": "weaving-site@0.193.12|@jridgewell/remapping@2.3.5",
+      "bom-ref": "weaving-site@0.193.13|@jridgewell/remapping@2.3.5",
       "author": "Justin Ridgewell",
       "description": "Remap sequential sourcemaps through transformations to point at the original source code",
       "licenses": [
@@ -5723,7 +5904,7 @@
       "type": "library",
       "name": "enhanced-resolve",
       "version": "5.21.3",
-      "bom-ref": "weaving-site@0.193.12|enhanced-resolve@5.21.3",
+      "bom-ref": "weaving-site@0.193.13|enhanced-resolve@5.21.3",
       "author": "Tobias Koppers @sokra",
       "description": "Offers a async require.resolve function. It's highly configurable.",
       "licenses": [
@@ -5778,7 +5959,7 @@
       "type": "library",
       "name": "magic-string",
       "version": "0.30.21",
-      "bom-ref": "weaving-site@0.193.12|magic-string@0.30.21",
+      "bom-ref": "weaving-site@0.193.13|magic-string@0.30.21",
       "author": "Rich Harris",
       "description": "Modify strings, generate sourcemaps",
       "licenses": [
@@ -5833,7 +6014,7 @@
       "type": "library",
       "name": "source-map-js",
       "version": "1.2.1",
-      "bom-ref": "weaving-site@0.193.12|source-map-js@1.2.1",
+      "bom-ref": "weaving-site@0.193.13|source-map-js@1.2.1",
       "author": "Valentin 7rulnik Semirulnik",
       "description": "Generates and consumes source maps",
       "licenses": [
@@ -5889,7 +6070,7 @@
       "name": "oxide-linux-x64-gnu",
       "group": "@tailwindcss",
       "version": "4.3.0",
-      "bom-ref": "weaving-site@0.193.12|@tailwindcss/oxide-linux-x64-gnu@4.3.0",
+      "bom-ref": "weaving-site@0.193.13|@tailwindcss/oxide-linux-x64-gnu@4.3.0",
       "scope": "optional",
       "licenses": [
         {
@@ -5944,7 +6125,7 @@
       "name": "oxide-linux-x64-musl",
       "group": "@tailwindcss",
       "version": "4.3.0",
-      "bom-ref": "weaving-site@0.193.12|@tailwindcss/oxide-linux-x64-musl@4.3.0",
+      "bom-ref": "weaving-site@0.193.13|@tailwindcss/oxide-linux-x64-musl@4.3.0",
       "scope": "optional",
       "licenses": [
         {
@@ -5999,7 +6180,7 @@
       "name": "project-service",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/project-service@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/project-service@8.59.4",
       "description": "Standalone TypeScript project service wrapper for linting.",
       "licenses": [
         {
@@ -6054,7 +6235,7 @@
       "name": "tsconfig-utils",
       "group": "@typescript-eslint",
       "version": "8.59.4",
-      "bom-ref": "weaving-site@0.193.12|@typescript-eslint/tsconfig-utils@8.59.4",
+      "bom-ref": "weaving-site@0.193.13|@typescript-eslint/tsconfig-utils@8.59.4",
       "description": "Utilities for collecting TSConfigs for linting scenarios.",
       "licenses": [
         {
@@ -6108,7 +6289,7 @@
       "type": "library",
       "name": "ms",
       "version": "2.1.3",
-      "bom-ref": "weaving-site@0.193.12|ms@2.1.3",
+      "bom-ref": "weaving-site@0.193.13|ms@2.1.3",
       "description": "Tiny millisecond conversion utility",
       "licenses": [
         {
@@ -6163,7 +6344,7 @@
       "name": "code-frame",
       "group": "@babel",
       "version": "7.29.0",
-      "bom-ref": "weaving-site@0.193.12|@babel/code-frame@7.29.0",
+      "bom-ref": "weaving-site@0.193.13|@babel/code-frame@7.29.0",
       "author": "The Babel Team",
       "description": "Generate errors that contain a code frame that point to source locations.",
       "licenses": [
@@ -6219,7 +6400,7 @@
       "name": "generator",
       "group": "@babel",
       "version": "7.29.1",
-      "bom-ref": "weaving-site@0.193.12|@babel/generator@7.29.1",
+      "bom-ref": "weaving-site@0.193.13|@babel/generator@7.29.1",
       "author": "The Babel Team",
       "description": "Turns an AST into code.",
       "licenses": [
@@ -6275,7 +6456,7 @@
       "name": "helper-compilation-targets",
       "group": "@babel",
       "version": "7.28.6",
-      "bom-ref": "weaving-site@0.193.12|@babel/helper-compilation-targets@7.28.6",
+      "bom-ref": "weaving-site@0.193.13|@babel/helper-compilation-targets@7.28.6",
       "author": "The Babel Team",
       "description": "Helper functions on Babel compilation targets",
       "licenses": [
@@ -6331,7 +6512,7 @@
       "name": "helper-module-transforms",
       "group": "@babel",
       "version": "7.28.6",
-      "bom-ref": "weaving-site@0.193.12|@babel/helper-module-transforms@7.28.6",
+      "bom-ref": "weaving-site@0.193.13|@babel/helper-module-transforms@7.28.6",
       "author": "The Babel Team",
       "description": "Babel helper functions for implementing ES6 module transformations",
       "licenses": [
@@ -6387,7 +6568,7 @@
       "name": "helpers",
       "group": "@babel",
       "version": "7.29.2",
-      "bom-ref": "weaving-site@0.193.12|@babel/helpers@7.29.2",
+      "bom-ref": "weaving-site@0.193.13|@babel/helpers@7.29.2",
       "author": "The Babel Team",
       "description": "Collection of helper functions used by Babel transforms.",
       "licenses": [
@@ -6443,7 +6624,7 @@
       "name": "template",
       "group": "@babel",
       "version": "7.28.6",
-      "bom-ref": "weaving-site@0.193.12|@babel/template@7.28.6",
+      "bom-ref": "weaving-site@0.193.13|@babel/template@7.28.6",
       "author": "The Babel Team",
       "description": "Generate an AST from a string template.",
       "licenses": [
@@ -6499,7 +6680,7 @@
       "name": "traverse",
       "group": "@babel",
       "version": "7.29.0",
-      "bom-ref": "weaving-site@0.193.12|@babel/traverse@7.29.0",
+      "bom-ref": "weaving-site@0.193.13|@babel/traverse@7.29.0",
       "author": "The Babel Team",
       "description": "The Babel Traverse module maintains the overall tree state, and is responsible for replacing, removing, and adding nodes",
       "licenses": [
@@ -6555,7 +6736,7 @@
       "name": "types",
       "group": "@babel",
       "version": "7.29.0",
-      "bom-ref": "weaving-site@0.193.12|@babel/types@7.29.0",
+      "bom-ref": "weaving-site@0.193.13|@babel/types@7.29.0",
       "author": "The Babel Team",
       "description": "Babel Types is a Lodash-esque utility library for AST nodes",
       "licenses": [
@@ -6610,7 +6791,7 @@
       "type": "library",
       "name": "convert-source-map",
       "version": "2.0.0",
-      "bom-ref": "weaving-site@0.193.12|convert-source-map@2.0.0",
+      "bom-ref": "weaving-site@0.193.13|convert-source-map@2.0.0",
       "author": "Thorsten Lorenz",
       "description": "Converts a source-map from/to  different formats and allows adding/changing properties.",
       "licenses": [
@@ -6665,7 +6846,7 @@
       "type": "library",
       "name": "gensync",
       "version": "1.0.0-beta.2",
-      "bom-ref": "weaving-site@0.193.12|gensync@1.0.0-beta.2",
+      "bom-ref": "weaving-site@0.193.13|gensync@1.0.0-beta.2",
       "author": "Logan Smyth",
       "description": "Allows users to use generators in order to write common functions that can be both sync or async.",
       "licenses": [
@@ -6720,7 +6901,7 @@
       "type": "library",
       "name": "json5",
       "version": "2.2.3",
-      "bom-ref": "weaving-site@0.193.12|json5@2.2.3",
+      "bom-ref": "weaving-site@0.193.13|json5@2.2.3",
       "author": "Aseem Kishore",
       "description": "JSON for Humans",
       "licenses": [
@@ -6775,7 +6956,7 @@
       "type": "library",
       "name": "semver",
       "version": "6.3.1",
-      "bom-ref": "weaving-site@0.193.12|semver@6.3.1",
+      "bom-ref": "weaving-site@0.193.13|semver@6.3.1",
       "author": "GitHub Inc.",
       "description": "The semantic version parser used by npm.",
       "licenses": [
@@ -6830,7 +7011,7 @@
       "type": "library",
       "name": "hermes-estree",
       "version": "0.25.1",
-      "bom-ref": "weaving-site@0.193.12|hermes-estree@0.25.1",
+      "bom-ref": "weaving-site@0.193.13|hermes-estree@0.25.1",
       "description": "Flow types for the Flow-ESTree spec produced by the hermes parser",
       "licenses": [
         {
@@ -6884,7 +7065,7 @@
       "type": "library",
       "name": "eslint-visitor-keys",
       "version": "3.4.3",
-      "bom-ref": "weaving-site@0.193.12|eslint-visitor-keys@3.4.3",
+      "bom-ref": "weaving-site@0.193.13|eslint-visitor-keys@3.4.3",
       "author": "Toru Nagashima",
       "description": "Constants and utilities about visitor keys to traverse AST.",
       "licenses": [
@@ -6940,7 +7121,7 @@
       "name": "object-schema",
       "group": "@eslint",
       "version": "3.0.5",
-      "bom-ref": "weaving-site@0.193.12|@eslint/object-schema@3.0.5",
+      "bom-ref": "weaving-site@0.193.13|@eslint/object-schema@3.0.5",
       "author": "Nicholas C. Zakas",
       "description": "An object schema merger/validator",
       "licenses": [
@@ -6996,7 +7177,7 @@
       "name": "json-schema",
       "group": "@types",
       "version": "7.0.15",
-      "bom-ref": "weaving-site@0.193.12|@types/json-schema@7.0.15",
+      "bom-ref": "weaving-site@0.193.13|@types/json-schema@7.0.15",
       "description": "TypeScript definitions for json-schema",
       "licenses": [
         {
@@ -7050,7 +7231,7 @@
       "type": "library",
       "name": "levn",
       "version": "0.4.1",
-      "bom-ref": "weaving-site@0.193.12|levn@0.4.1",
+      "bom-ref": "weaving-site@0.193.13|levn@0.4.1",
       "author": "George Zahariev",
       "description": "Light ECMAScript (JavaScript) Value Notation - human written, concise, typed, flexible",
       "licenses": [
@@ -7106,7 +7287,7 @@
       "name": "core",
       "group": "@humanfs",
       "version": "0.19.2",
-      "bom-ref": "weaving-site@0.193.12|@humanfs/core@0.19.2",
+      "bom-ref": "weaving-site@0.193.13|@humanfs/core@0.19.2",
       "author": "Nicholas C. Zakas",
       "description": "The core of the humanfs library.",
       "licenses": [
@@ -7162,7 +7343,7 @@
       "name": "types",
       "group": "@humanfs",
       "version": "0.15.0",
-      "bom-ref": "weaving-site@0.193.12|@humanfs/types@0.15.0",
+      "bom-ref": "weaving-site@0.193.13|@humanfs/types@0.15.0",
       "author": "Nicholas C. Zakas",
       "description": "The TypeScript types for the hfs project.",
       "licenses": [
@@ -7217,7 +7398,7 @@
       "type": "library",
       "name": "fast-json-stable-stringify",
       "version": "2.1.0",
-      "bom-ref": "weaving-site@0.193.12|fast-json-stable-stringify@2.1.0",
+      "bom-ref": "weaving-site@0.193.13|fast-json-stable-stringify@2.1.0",
       "author": "James Halliday",
       "description": "deterministic `JSON.stringify()` - a faster version of substack's json-stable-strigify without jsonify",
       "licenses": [
@@ -7272,7 +7453,7 @@
       "type": "library",
       "name": "json-schema-traverse",
       "version": "0.4.1",
-      "bom-ref": "weaving-site@0.193.12|json-schema-traverse@0.4.1",
+      "bom-ref": "weaving-site@0.193.13|json-schema-traverse@0.4.1",
       "author": "Evgeny Poberezkin",
       "description": "Traverse JSON Schema passing each schema object to callback",
       "licenses": [
@@ -7327,7 +7508,7 @@
       "type": "library",
       "name": "uri-js",
       "version": "4.4.1",
-      "bom-ref": "weaving-site@0.193.12|uri-js@4.4.1",
+      "bom-ref": "weaving-site@0.193.13|uri-js@4.4.1",
       "author": "Gary Court",
       "description": "An RFC 3986/3987 compliant, scheme extendable URI/IRI parsing/validating/resolving library for JavaScript.",
       "licenses": [
@@ -7382,7 +7563,7 @@
       "type": "library",
       "name": "path-key",
       "version": "3.1.1",
-      "bom-ref": "weaving-site@0.193.12|path-key@3.1.1",
+      "bom-ref": "weaving-site@0.193.13|path-key@3.1.1",
       "author": "Sindre Sorhus",
       "description": "Get the PATH environment variable key cross-platform",
       "licenses": [
@@ -7437,7 +7618,7 @@
       "type": "library",
       "name": "shebang-command",
       "version": "2.0.0",
-      "bom-ref": "weaving-site@0.193.12|shebang-command@2.0.0",
+      "bom-ref": "weaving-site@0.193.13|shebang-command@2.0.0",
       "author": "Kevin Mårtensson",
       "description": "Get the command from a shebang",
       "licenses": [
@@ -7492,7 +7673,7 @@
       "type": "library",
       "name": "which",
       "version": "2.0.2",
-      "bom-ref": "weaving-site@0.193.12|which@2.0.2",
+      "bom-ref": "weaving-site@0.193.13|which@2.0.2",
       "author": "Isaac Z. Schlueter",
       "description": "Like which(1) unix command. Find the first instance of an executable in the PATH.",
       "licenses": [
@@ -7548,7 +7729,7 @@
       "name": "esrecurse",
       "group": "@types",
       "version": "4.3.1",
-      "bom-ref": "weaving-site@0.193.12|@types/esrecurse@4.3.1",
+      "bom-ref": "weaving-site@0.193.13|@types/esrecurse@4.3.1",
       "description": "TypeScript definitions for esrecurse",
       "licenses": [
         {
@@ -7602,7 +7783,7 @@
       "type": "library",
       "name": "esrecurse",
       "version": "4.3.0",
-      "bom-ref": "weaving-site@0.193.12|esrecurse@4.3.0",
+      "bom-ref": "weaving-site@0.193.13|esrecurse@4.3.0",
       "description": "ECMAScript AST recursive visitor",
       "licenses": [
         {
@@ -7656,7 +7837,7 @@
       "type": "library",
       "name": "estraverse",
       "version": "5.3.0",
-      "bom-ref": "weaving-site@0.193.12|estraverse@5.3.0",
+      "bom-ref": "weaving-site@0.193.13|estraverse@5.3.0",
       "description": "ECMAScript JS AST traversal functions",
       "licenses": [
         {
@@ -7710,7 +7891,7 @@
       "type": "library",
       "name": "acorn-jsx",
       "version": "5.3.2",
-      "bom-ref": "weaving-site@0.193.12|acorn-jsx@5.3.2",
+      "bom-ref": "weaving-site@0.193.13|acorn-jsx@5.3.2",
       "description": "Modern, fast React.js JSX parser",
       "licenses": [
         {
@@ -7764,7 +7945,7 @@
       "type": "library",
       "name": "acorn",
       "version": "8.16.0",
-      "bom-ref": "weaving-site@0.193.12|acorn@8.16.0",
+      "bom-ref": "weaving-site@0.193.13|acorn@8.16.0",
       "description": "ECMAScript parser",
       "licenses": [
         {
@@ -7818,7 +7999,7 @@
       "type": "library",
       "name": "flat-cache",
       "version": "4.0.1",
-      "bom-ref": "weaving-site@0.193.12|flat-cache@4.0.1",
+      "bom-ref": "weaving-site@0.193.13|flat-cache@4.0.1",
       "author": "Jared Wray",
       "description": "A stupidly simple key/value storage using files to persist some data",
       "licenses": [
@@ -7873,7 +8054,7 @@
       "type": "library",
       "name": "locate-path",
       "version": "6.0.0",
-      "bom-ref": "weaving-site@0.193.12|locate-path@6.0.0",
+      "bom-ref": "weaving-site@0.193.13|locate-path@6.0.0",
       "author": "Sindre Sorhus",
       "description": "Get the first path that exists on disk of multiple paths",
       "licenses": [
@@ -7928,7 +8109,7 @@
       "type": "library",
       "name": "path-exists",
       "version": "4.0.0",
-      "bom-ref": "weaving-site@0.193.12|path-exists@4.0.0",
+      "bom-ref": "weaving-site@0.193.13|path-exists@4.0.0",
       "author": "Sindre Sorhus",
       "description": "Check if a path exists",
       "licenses": [
@@ -7983,7 +8164,7 @@
       "type": "library",
       "name": "is-extglob",
       "version": "2.1.1",
-      "bom-ref": "weaving-site@0.193.12|is-extglob@2.1.1",
+      "bom-ref": "weaving-site@0.193.13|is-extglob@2.1.1",
       "author": "Jon Schlinkert",
       "description": "Returns true if a string has an extglob.",
       "licenses": [
@@ -8038,7 +8219,7 @@
       "type": "library",
       "name": "brace-expansion",
       "version": "5.0.6",
-      "bom-ref": "weaving-site@0.193.12|brace-expansion@5.0.6",
+      "bom-ref": "weaving-site@0.193.13|brace-expansion@5.0.6",
       "description": "Brace expansion as known from sh/bash",
       "licenses": [
         {
@@ -8092,7 +8273,7 @@
       "type": "library",
       "name": "deep-is",
       "version": "0.1.4",
-      "bom-ref": "weaving-site@0.193.12|deep-is@0.1.4",
+      "bom-ref": "weaving-site@0.193.13|deep-is@0.1.4",
       "author": "Thorsten Lorenz",
       "description": "node's assert.deepEqual algorithm except for NaN being equal to NaN",
       "licenses": [
@@ -8147,7 +8328,7 @@
       "type": "library",
       "name": "fast-levenshtein",
       "version": "2.0.6",
-      "bom-ref": "weaving-site@0.193.12|fast-levenshtein@2.0.6",
+      "bom-ref": "weaving-site@0.193.13|fast-levenshtein@2.0.6",
       "author": "Ramesh Nair",
       "description": "Efficient implementation of Levenshtein algorithm  with locale-specific collator support.",
       "licenses": [
@@ -8202,7 +8383,7 @@
       "type": "library",
       "name": "prelude-ls",
       "version": "1.2.1",
-      "bom-ref": "weaving-site@0.193.12|prelude-ls@1.2.1",
+      "bom-ref": "weaving-site@0.193.13|prelude-ls@1.2.1",
       "author": "George Zahariev",
       "description": "prelude.ls is a functionally oriented utility library. It is powerful and flexible. Almost all of its functions are curried. It is written in, and is the recommended base library for, LiveScript.",
       "licenses": [
@@ -8257,7 +8438,7 @@
       "type": "library",
       "name": "type-check",
       "version": "0.4.0",
-      "bom-ref": "weaving-site@0.193.12|type-check@0.4.0",
+      "bom-ref": "weaving-site@0.193.13|type-check@0.4.0",
       "author": "George Zahariev",
       "description": "type-check allows you to check the types of JavaScript values at runtime with a Haskell like type syntax.",
       "licenses": [
@@ -8312,7 +8493,7 @@
       "type": "library",
       "name": "word-wrap",
       "version": "1.2.5",
-      "bom-ref": "weaving-site@0.193.12|word-wrap@1.2.5",
+      "bom-ref": "weaving-site@0.193.13|word-wrap@1.2.5",
       "author": "Jon Schlinkert",
       "description": "Wrap words to a specified length.",
       "licenses": [
@@ -8367,7 +8548,7 @@
       "type": "library",
       "name": "void-elements",
       "version": "3.1.0",
-      "bom-ref": "weaving-site@0.193.12|void-elements@3.1.0",
+      "bom-ref": "weaving-site@0.193.13|void-elements@3.1.0",
       "author": "hemanth.hm",
       "description": "Array of \"void elements\" defined by the HTML specification.",
       "licenses": [
@@ -8418,7 +8599,7 @@
       "type": "library",
       "name": "cookie",
       "version": "1.1.1",
-      "bom-ref": "weaving-site@0.193.12|cookie@1.1.1",
+      "bom-ref": "weaving-site@0.193.13|cookie@1.1.1",
       "author": "Roman Shtylman",
       "description": "HTTP server cookie parsing and serialization",
       "licenses": [
@@ -8469,7 +8650,7 @@
       "type": "library",
       "name": "set-cookie-parser",
       "version": "2.7.2",
-      "bom-ref": "weaving-site@0.193.12|set-cookie-parser@2.7.2",
+      "bom-ref": "weaving-site@0.193.13|set-cookie-parser@2.7.2",
       "author": "Nathan Friedly",
       "description": "Parses set-cookie headers into objects",
       "licenses": [
@@ -8520,7 +8701,7 @@
       "type": "library",
       "name": "detect-libc",
       "version": "2.1.2",
-      "bom-ref": "weaving-site@0.193.12|detect-libc@2.1.2",
+      "bom-ref": "weaving-site@0.193.13|detect-libc@2.1.2",
       "author": "Lovell Fuller",
       "description": "Node.js module to detect the C standard library (libc) implementation family and version",
       "licenses": [
@@ -8575,7 +8756,7 @@
       "type": "library",
       "name": "lightningcss-linux-x64-gnu",
       "version": "1.32.0",
-      "bom-ref": "weaving-site@0.193.12|lightningcss-linux-x64-gnu@1.32.0",
+      "bom-ref": "weaving-site@0.193.13|lightningcss-linux-x64-gnu@1.32.0",
       "description": "A CSS parser, transformer, and minifier written in Rust",
       "scope": "optional",
       "licenses": [
@@ -8630,7 +8811,7 @@
       "type": "library",
       "name": "lightningcss-linux-x64-musl",
       "version": "1.32.0",
-      "bom-ref": "weaving-site@0.193.12|lightningcss-linux-x64-musl@1.32.0",
+      "bom-ref": "weaving-site@0.193.13|lightningcss-linux-x64-musl@1.32.0",
       "description": "A CSS parser, transformer, and minifier written in Rust",
       "scope": "optional",
       "licenses": [
@@ -8685,7 +8866,7 @@
       "type": "library",
       "name": "nanoid",
       "version": "3.3.12",
-      "bom-ref": "weaving-site@0.193.12|nanoid@3.3.12",
+      "bom-ref": "weaving-site@0.193.13|nanoid@3.3.12",
       "author": "Andrey Sitnik",
       "description": "A tiny (116 bytes), secure URL-friendly unique string ID generator",
       "licenses": [
@@ -8740,7 +8921,7 @@
       "type": "library",
       "name": "picocolors",
       "version": "1.1.1",
-      "bom-ref": "weaving-site@0.193.12|picocolors@1.1.1",
+      "bom-ref": "weaving-site@0.193.13|picocolors@1.1.1",
       "author": "Alexey Raspopov",
       "description": "The tiniest and the fastest library for terminal output formatting with ANSI colors",
       "licenses": [
@@ -8796,7 +8977,7 @@
       "name": "types",
       "group": "@oxc-project",
       "version": "0.132.0",
-      "bom-ref": "weaving-site@0.193.12|@oxc-project/types@0.132.0",
+      "bom-ref": "weaving-site@0.193.13|@oxc-project/types@0.132.0",
       "author": "Boshen and oxc contributors",
       "description": "Types for Oxc AST nodes",
       "licenses": [
@@ -8852,7 +9033,7 @@
       "name": "binding-linux-x64-gnu",
       "group": "@rolldown",
       "version": "1.0.2",
-      "bom-ref": "weaving-site@0.193.12|@rolldown/binding-linux-x64-gnu@1.0.2",
+      "bom-ref": "weaving-site@0.193.13|@rolldown/binding-linux-x64-gnu@1.0.2",
       "description": "Fast JavaScript/TypeScript bundler in Rust with Rollup-compatible API.",
       "scope": "optional",
       "licenses": [
@@ -8908,7 +9089,7 @@
       "name": "binding-linux-x64-musl",
       "group": "@rolldown",
       "version": "1.0.2",
-      "bom-ref": "weaving-site@0.193.12|@rolldown/binding-linux-x64-musl@1.0.2",
+      "bom-ref": "weaving-site@0.193.13|@rolldown/binding-linux-x64-musl@1.0.2",
       "description": "Fast JavaScript/TypeScript bundler in Rust with Rollup-compatible API.",
       "scope": "optional",
       "licenses": [
@@ -8964,7 +9145,7 @@
       "name": "gen-mapping",
       "group": "@jridgewell",
       "version": "0.3.13",
-      "bom-ref": "weaving-site@0.193.12|@jridgewell/gen-mapping@0.3.13",
+      "bom-ref": "weaving-site@0.193.13|@jridgewell/gen-mapping@0.3.13",
       "author": "Justin Ridgewell",
       "description": "Generate source maps",
       "licenses": [
@@ -9020,7 +9201,7 @@
       "name": "trace-mapping",
       "group": "@jridgewell",
       "version": "0.3.31",
-      "bom-ref": "weaving-site@0.193.12|@jridgewell/trace-mapping@0.3.31",
+      "bom-ref": "weaving-site@0.193.13|@jridgewell/trace-mapping@0.3.31",
       "author": "Justin Ridgewell",
       "description": "Trace the original position through a source map",
       "licenses": [
@@ -9075,7 +9256,7 @@
       "type": "library",
       "name": "graceful-fs",
       "version": "4.2.11",
-      "bom-ref": "weaving-site@0.193.12|graceful-fs@4.2.11",
+      "bom-ref": "weaving-site@0.193.13|graceful-fs@4.2.11",
       "description": "A drop-in replacement for fs, making various improvements.",
       "licenses": [
         {
@@ -9129,7 +9310,7 @@
       "type": "library",
       "name": "tapable",
       "version": "2.3.3",
-      "bom-ref": "weaving-site@0.193.12|tapable@2.3.3",
+      "bom-ref": "weaving-site@0.193.13|tapable@2.3.3",
       "author": "Tobias Koppers @sokra",
       "description": "Just a little module for plugins.",
       "licenses": [
@@ -9185,7 +9366,7 @@
       "name": "sourcemap-codec",
       "group": "@jridgewell",
       "version": "1.5.5",
-      "bom-ref": "weaving-site@0.193.12|@jridgewell/sourcemap-codec@1.5.5",
+      "bom-ref": "weaving-site@0.193.13|@jridgewell/sourcemap-codec@1.5.5",
       "author": "Justin Ridgewell",
       "description": "Encode/decode sourcemap mappings",
       "licenses": [
@@ -9241,7 +9422,7 @@
       "name": "helper-validator-identifier",
       "group": "@babel",
       "version": "7.28.5",
-      "bom-ref": "weaving-site@0.193.12|@babel/helper-validator-identifier@7.28.5",
+      "bom-ref": "weaving-site@0.193.13|@babel/helper-validator-identifier@7.28.5",
       "author": "The Babel Team",
       "description": "Validate identifier/keywords name",
       "licenses": [
@@ -9296,7 +9477,7 @@
       "type": "library",
       "name": "js-tokens",
       "version": "4.0.0",
-      "bom-ref": "weaving-site@0.193.12|js-tokens@4.0.0",
+      "bom-ref": "weaving-site@0.193.13|js-tokens@4.0.0",
       "author": "Simon Lydell",
       "description": "A regex that tokenizes JavaScript.",
       "licenses": [
@@ -9351,7 +9532,7 @@
       "type": "library",
       "name": "jsesc",
       "version": "3.1.0",
-      "bom-ref": "weaving-site@0.193.12|jsesc@3.1.0",
+      "bom-ref": "weaving-site@0.193.13|jsesc@3.1.0",
       "author": "Mathias Bynens",
       "description": "Given some data, jsesc returns the shortest possible stringified & ASCII-safe representation of that data.",
       "licenses": [
@@ -9407,7 +9588,7 @@
       "name": "compat-data",
       "group": "@babel",
       "version": "7.29.0",
-      "bom-ref": "weaving-site@0.193.12|@babel/compat-data@7.29.0",
+      "bom-ref": "weaving-site@0.193.13|@babel/compat-data@7.29.0",
       "author": "The Babel Team",
       "description": "The compat-data to determine required Babel plugins",
       "licenses": [
@@ -9463,7 +9644,7 @@
       "name": "helper-validator-option",
       "group": "@babel",
       "version": "7.27.1",
-      "bom-ref": "weaving-site@0.193.12|@babel/helper-validator-option@7.27.1",
+      "bom-ref": "weaving-site@0.193.13|@babel/helper-validator-option@7.27.1",
       "author": "The Babel Team",
       "description": "Validate plugin/preset options",
       "licenses": [
@@ -9518,7 +9699,7 @@
       "type": "library",
       "name": "browserslist",
       "version": "4.28.2",
-      "bom-ref": "weaving-site@0.193.12|browserslist@4.28.2",
+      "bom-ref": "weaving-site@0.193.13|browserslist@4.28.2",
       "author": "Andrey Sitnik",
       "description": "Share target browsers between different front-end tools, like Autoprefixer, Stylelint and babel-env-preset",
       "licenses": [
@@ -9573,7 +9754,7 @@
       "type": "library",
       "name": "lru-cache",
       "version": "5.1.1",
-      "bom-ref": "weaving-site@0.193.12|lru-cache@5.1.1",
+      "bom-ref": "weaving-site@0.193.13|lru-cache@5.1.1",
       "author": "Isaac Z. Schlueter",
       "description": "A cache object that deletes the least-recently-used items.",
       "licenses": [
@@ -9629,7 +9810,7 @@
       "name": "helper-module-imports",
       "group": "@babel",
       "version": "7.28.6",
-      "bom-ref": "weaving-site@0.193.12|@babel/helper-module-imports@7.28.6",
+      "bom-ref": "weaving-site@0.193.13|@babel/helper-module-imports@7.28.6",
       "author": "The Babel Team",
       "description": "Babel helper functions for inserting module loads",
       "licenses": [
@@ -9685,7 +9866,7 @@
       "name": "helper-globals",
       "group": "@babel",
       "version": "7.28.0",
-      "bom-ref": "weaving-site@0.193.12|@babel/helper-globals@7.28.0",
+      "bom-ref": "weaving-site@0.193.13|@babel/helper-globals@7.28.0",
       "author": "The Babel Team",
       "description": "A collection of JavaScript globals for Babel internal usage",
       "licenses": [
@@ -9741,7 +9922,7 @@
       "name": "helper-string-parser",
       "group": "@babel",
       "version": "7.27.1",
-      "bom-ref": "weaving-site@0.193.12|@babel/helper-string-parser@7.27.1",
+      "bom-ref": "weaving-site@0.193.13|@babel/helper-string-parser@7.27.1",
       "author": "The Babel Team",
       "description": "A utility package to parse strings",
       "licenses": [
@@ -9796,7 +9977,7 @@
       "type": "library",
       "name": "punycode",
       "version": "2.3.1",
-      "bom-ref": "weaving-site@0.193.12|punycode@2.3.1",
+      "bom-ref": "weaving-site@0.193.13|punycode@2.3.1",
       "author": "Mathias Bynens",
       "description": "A robust Punycode converter that fully complies to RFC 3492 and RFC 5891, and works on nearly all JavaScript platforms.",
       "licenses": [
@@ -9851,7 +10032,7 @@
       "type": "library",
       "name": "shebang-regex",
       "version": "3.0.0",
-      "bom-ref": "weaving-site@0.193.12|shebang-regex@3.0.0",
+      "bom-ref": "weaving-site@0.193.13|shebang-regex@3.0.0",
       "author": "Sindre Sorhus",
       "description": "Regular expression for matching a shebang line",
       "licenses": [
@@ -9906,7 +10087,7 @@
       "type": "library",
       "name": "isexe",
       "version": "2.0.0",
-      "bom-ref": "weaving-site@0.193.12|isexe@2.0.0",
+      "bom-ref": "weaving-site@0.193.13|isexe@2.0.0",
       "author": "Isaac Z. Schlueter",
       "description": "Minimal module to check if a file is executable.",
       "licenses": [
@@ -9961,7 +10142,7 @@
       "type": "library",
       "name": "flatted",
       "version": "3.4.2",
-      "bom-ref": "weaving-site@0.193.12|flatted@3.4.2",
+      "bom-ref": "weaving-site@0.193.13|flatted@3.4.2",
       "author": "Andrea Giammarchi",
       "description": "A super light and fast circular JSON parser.",
       "licenses": [
@@ -10016,7 +10197,7 @@
       "type": "library",
       "name": "keyv",
       "version": "4.5.4",
-      "bom-ref": "weaving-site@0.193.12|keyv@4.5.4",
+      "bom-ref": "weaving-site@0.193.13|keyv@4.5.4",
       "author": "Jared Wray",
       "description": "Simple key-value storage with support for multiple backends",
       "licenses": [
@@ -10071,7 +10252,7 @@
       "type": "library",
       "name": "p-locate",
       "version": "5.0.0",
-      "bom-ref": "weaving-site@0.193.12|p-locate@5.0.0",
+      "bom-ref": "weaving-site@0.193.13|p-locate@5.0.0",
       "author": "Sindre Sorhus",
       "description": "Get the first fulfilled promise that satisfies the provided testing function",
       "licenses": [
@@ -10126,7 +10307,7 @@
       "type": "library",
       "name": "balanced-match",
       "version": "4.0.4",
-      "bom-ref": "weaving-site@0.193.12|balanced-match@4.0.4",
+      "bom-ref": "weaving-site@0.193.13|balanced-match@4.0.4",
       "description": "Match balanced character pairs, like \"{\" and \"}\"",
       "licenses": [
         {
@@ -10181,7 +10362,7 @@
       "name": "resolve-uri",
       "group": "@jridgewell",
       "version": "3.1.2",
-      "bom-ref": "weaving-site@0.193.12|@jridgewell/resolve-uri@3.1.2",
+      "bom-ref": "weaving-site@0.193.13|@jridgewell/resolve-uri@3.1.2",
       "author": "Justin Ridgewell",
       "description": "Resolve a URI relative to an optional base URI",
       "licenses": [
@@ -10236,7 +10417,7 @@
       "type": "library",
       "name": "baseline-browser-mapping",
       "version": "2.10.21",
-      "bom-ref": "weaving-site@0.193.12|baseline-browser-mapping@2.10.21",
+      "bom-ref": "weaving-site@0.193.13|baseline-browser-mapping@2.10.21",
       "description": "A library for obtaining browser versions with their maximum supported Baseline feature set and Widely Available status.",
       "licenses": [
         {
@@ -10290,7 +10471,7 @@
       "type": "library",
       "name": "caniuse-lite",
       "version": "1.0.30001790",
-      "bom-ref": "weaving-site@0.193.12|caniuse-lite@1.0.30001790",
+      "bom-ref": "weaving-site@0.193.13|caniuse-lite@1.0.30001790",
       "author": "Ben Briggs",
       "description": "A smaller version of caniuse-db, with only the essentials!",
       "licenses": [
@@ -10345,7 +10526,7 @@
       "type": "library",
       "name": "electron-to-chromium",
       "version": "1.5.343",
-      "bom-ref": "weaving-site@0.193.12|electron-to-chromium@1.5.343",
+      "bom-ref": "weaving-site@0.193.13|electron-to-chromium@1.5.343",
       "author": "Kilian Valkhof",
       "description": "Provides a list of electron-to-chromium version mappings",
       "licenses": [
@@ -10400,7 +10581,7 @@
       "type": "library",
       "name": "node-releases",
       "version": "2.0.38",
-      "bom-ref": "weaving-site@0.193.12|node-releases@2.0.38",
+      "bom-ref": "weaving-site@0.193.13|node-releases@2.0.38",
       "author": "Sergey Rubanov",
       "description": "Node.js releases data",
       "licenses": [
@@ -10455,7 +10636,7 @@
       "type": "library",
       "name": "update-browserslist-db",
       "version": "1.2.3",
-      "bom-ref": "weaving-site@0.193.12|update-browserslist-db@1.2.3",
+      "bom-ref": "weaving-site@0.193.13|update-browserslist-db@1.2.3",
       "author": "Andrey Sitnik",
       "description": "CLI tool to update caniuse-lite to refresh target browsers from Browserslist config",
       "licenses": [
@@ -10510,7 +10691,7 @@
       "type": "library",
       "name": "yallist",
       "version": "3.1.1",
-      "bom-ref": "weaving-site@0.193.12|yallist@3.1.1",
+      "bom-ref": "weaving-site@0.193.13|yallist@3.1.1",
       "author": "Isaac Z. Schlueter",
       "description": "Yet Another Linked List",
       "licenses": [
@@ -10565,7 +10746,7 @@
       "type": "library",
       "name": "json-buffer",
       "version": "3.0.1",
-      "bom-ref": "weaving-site@0.193.12|json-buffer@3.0.1",
+      "bom-ref": "weaving-site@0.193.13|json-buffer@3.0.1",
       "author": "Dominic Tarr",
       "description": "JSON parse & stringify that supports binary via bops & base64",
       "licenses": [
@@ -10620,7 +10801,7 @@
       "type": "library",
       "name": "p-limit",
       "version": "3.1.0",
-      "bom-ref": "weaving-site@0.193.12|p-limit@3.1.0",
+      "bom-ref": "weaving-site@0.193.13|p-limit@3.1.0",
       "author": "Sindre Sorhus",
       "description": "Run multiple promise-returning & async functions with limited concurrency",
       "licenses": [
@@ -10675,7 +10856,7 @@
       "type": "library",
       "name": "escalade",
       "version": "3.2.0",
-      "bom-ref": "weaving-site@0.193.12|escalade@3.2.0",
+      "bom-ref": "weaving-site@0.193.13|escalade@3.2.0",
       "author": "Luke Edwards",
       "description": "A tiny (183B to 210B) and fast utility to ascend parent directories",
       "licenses": [
@@ -10730,7 +10911,7 @@
       "type": "library",
       "name": "yocto-queue",
       "version": "0.1.0",
-      "bom-ref": "weaving-site@0.193.12|yocto-queue@0.1.0",
+      "bom-ref": "weaving-site@0.193.13|yocto-queue@0.1.0",
       "author": "Sindre Sorhus",
       "description": "Tiny queue data structure",
       "licenses": [
@@ -10784,1116 +10965,1142 @@
   ],
   "dependencies": [
     {
-      "ref": "weaving-site@0.193.12",
+      "ref": "weaving-site@0.193.13",
       "dependsOn": [
-        "weaving-site@0.193.12|@clerk/clerk-react@5.61.7",
-        "weaving-site@0.193.12|@emnapi/core@1.10.0",
-        "weaving-site@0.193.12|@emnapi/runtime@1.10.0",
-        "weaving-site@0.193.12|@emnapi/wasi-threads@1.2.1",
-        "weaving-site@0.193.12|@tailwindcss/vite@4.3.0",
-        "weaving-site@0.193.12|@tanstack/react-query@5.100.14",
-        "weaving-site@0.193.12|@types/dompurify@3.2.0",
-        "weaving-site@0.193.12|@types/node@25.9.1",
-        "weaving-site@0.193.12|@types/react-dom@19.2.3",
-        "weaving-site@0.193.12|@types/react@19.2.15",
-        "weaving-site@0.193.12|@typescript-eslint/eslint-plugin@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/parser@8.59.4",
-        "weaving-site@0.193.12|@vitejs/plugin-react@6.0.2",
-        "weaving-site@0.193.12|class-variance-authority@0.7.1",
-        "weaving-site@0.193.12|clsx@2.1.1",
-        "weaving-site@0.193.12|dompurify@3.4.5",
-        "weaving-site@0.193.12|eslint-plugin-react-hooks@7.1.1",
-        "weaving-site@0.193.12|eslint@10.4.0",
-        "weaving-site@0.193.12|i18next@26.2.0",
-        "weaving-site@0.193.12|lucide-react@1.16.0",
-        "weaving-site@0.193.12|react-colorful@5.7.0",
-        "weaving-site@0.193.12|react-dom@19.2.6",
-        "weaving-site@0.193.12|react-i18next@17.0.8",
-        "weaving-site@0.193.12|react-router-dom@7.15.1",
-        "weaving-site@0.193.12|react@19.2.6",
-        "weaving-site@0.193.12|tailwind-merge@3.6.0",
-        "weaving-site@0.193.12|tailwindcss@4.3.0",
-        "weaving-site@0.193.12|typescript@6.0.3",
-        "weaving-site@0.193.12|vite@8.0.14"
+        "weaving-site@0.193.13|@clerk/clerk-react@5.61.7",
+        "weaving-site@0.193.13|@sentry/react@10.53.1",
+        "weaving-site@0.193.13|@tailwindcss/vite@4.3.0",
+        "weaving-site@0.193.13|@tanstack/react-query@5.100.14",
+        "weaving-site@0.193.13|@types/dompurify@3.2.0",
+        "weaving-site@0.193.13|@types/node@25.9.1",
+        "weaving-site@0.193.13|@types/react-dom@19.2.3",
+        "weaving-site@0.193.13|@types/react@19.2.15",
+        "weaving-site@0.193.13|@typescript-eslint/eslint-plugin@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/parser@8.59.4",
+        "weaving-site@0.193.13|@vitejs/plugin-react@6.0.2",
+        "weaving-site@0.193.13|class-variance-authority@0.7.1",
+        "weaving-site@0.193.13|clsx@2.1.1",
+        "weaving-site@0.193.13|dompurify@3.4.5",
+        "weaving-site@0.193.13|eslint-plugin-react-hooks@7.1.1",
+        "weaving-site@0.193.13|eslint@10.4.0",
+        "weaving-site@0.193.13|i18next@26.2.0",
+        "weaving-site@0.193.13|lucide-react@1.16.0",
+        "weaving-site@0.193.13|react-colorful@5.7.0",
+        "weaving-site@0.193.13|react-dom@19.2.6",
+        "weaving-site@0.193.13|react-i18next@17.0.8",
+        "weaving-site@0.193.13|react-router-dom@7.15.1",
+        "weaving-site@0.193.13|react@19.2.6",
+        "weaving-site@0.193.13|tailwind-merge@3.6.0",
+        "weaving-site@0.193.13|tailwindcss@4.3.0",
+        "weaving-site@0.193.13|typescript@6.0.3",
+        "weaving-site@0.193.13|vite@8.0.14"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@clerk/clerk-react@5.61.7",
+      "ref": "weaving-site@0.193.13|@clerk/clerk-react@5.61.7",
       "dependsOn": [
-        "weaving-site@0.193.12|@clerk/shared@3.47.6",
-        "weaving-site@0.193.12|react-dom@19.2.6",
-        "weaving-site@0.193.12|react@19.2.6",
-        "weaving-site@0.193.12|tslib@2.8.1"
+        "weaving-site@0.193.13|@clerk/shared@3.47.6",
+        "weaving-site@0.193.13|react-dom@19.2.6",
+        "weaving-site@0.193.13|react@19.2.6",
+        "weaving-site@0.193.13|tslib@2.8.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@emnapi/core@1.10.0",
+      "ref": "weaving-site@0.193.13|@sentry/react@10.53.1",
       "dependsOn": [
-        "weaving-site@0.193.12|@emnapi/wasi-threads@1.2.1",
-        "weaving-site@0.193.12|tslib@2.8.1"
+        "weaving-site@0.193.13|@sentry/browser@10.53.1",
+        "weaving-site@0.193.13|@sentry/core@10.53.1",
+        "weaving-site@0.193.13|react@19.2.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@emnapi/runtime@1.10.0",
+      "ref": "weaving-site@0.193.13|@tailwindcss/vite@4.3.0",
       "dependsOn": [
-        "weaving-site@0.193.12|tslib@2.8.1"
+        "weaving-site@0.193.13|@tailwindcss/node@4.3.0",
+        "weaving-site@0.193.13|@tailwindcss/oxide@4.3.0",
+        "weaving-site@0.193.13|tailwindcss@4.3.0",
+        "weaving-site@0.193.13|vite@8.0.14"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@emnapi/wasi-threads@1.2.1",
+      "ref": "weaving-site@0.193.13|@tanstack/react-query@5.100.14",
       "dependsOn": [
-        "weaving-site@0.193.12|tslib@2.8.1"
+        "weaving-site@0.193.13|@tanstack/query-core@5.100.14",
+        "weaving-site@0.193.13|react@19.2.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@tailwindcss/vite@4.3.0",
+      "ref": "weaving-site@0.193.13|@types/dompurify@3.2.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@tailwindcss/node@4.3.0",
-        "weaving-site@0.193.12|@tailwindcss/oxide@4.3.0",
-        "weaving-site@0.193.12|tailwindcss@4.3.0",
-        "weaving-site@0.193.12|vite@8.0.14"
+        "weaving-site@0.193.13|dompurify@3.4.5"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@tanstack/react-query@5.100.14",
+      "ref": "weaving-site@0.193.13|@types/node@25.9.1",
       "dependsOn": [
-        "weaving-site@0.193.12|@tanstack/query-core@5.100.14",
-        "weaving-site@0.193.12|react@19.2.6"
+        "weaving-site@0.193.13|undici-types@7.24.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@types/dompurify@3.2.0",
+      "ref": "weaving-site@0.193.13|@types/react-dom@19.2.3",
       "dependsOn": [
-        "weaving-site@0.193.12|dompurify@3.4.5"
+        "weaving-site@0.193.13|@types/react@19.2.15"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@types/node@25.9.1",
+      "ref": "weaving-site@0.193.13|@types/react@19.2.15",
       "dependsOn": [
-        "weaving-site@0.193.12|undici-types@7.24.6"
+        "weaving-site@0.193.13|csstype@3.2.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@types/react-dom@19.2.3",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/eslint-plugin@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|@types/react@19.2.15"
+        "weaving-site@0.193.13|@eslint-community/regexpp@4.12.2",
+        "weaving-site@0.193.13|@typescript-eslint/parser@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/scope-manager@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/type-utils@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/utils@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4",
+        "weaving-site@0.193.13|eslint@10.4.0",
+        "weaving-site@0.193.13|ignore@7.0.5",
+        "weaving-site@0.193.13|natural-compare@1.4.0",
+        "weaving-site@0.193.13|ts-api-utils@2.5.0",
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@types/react@19.2.15",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/parser@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|csstype@3.2.3"
+        "weaving-site@0.193.13|@typescript-eslint/scope-manager@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/types@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/typescript-estree@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4",
+        "weaving-site@0.193.13|debug@4.4.3",
+        "weaving-site@0.193.13|eslint@10.4.0",
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/eslint-plugin@8.59.4",
+      "ref": "weaving-site@0.193.13|@vitejs/plugin-react@6.0.2",
       "dependsOn": [
-        "weaving-site@0.193.12|@eslint-community/regexpp@4.12.2",
-        "weaving-site@0.193.12|@typescript-eslint/parser@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/scope-manager@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/type-utils@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/utils@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4",
-        "weaving-site@0.193.12|eslint@10.4.0",
-        "weaving-site@0.193.12|ignore@7.0.5",
-        "weaving-site@0.193.12|natural-compare@1.4.0",
-        "weaving-site@0.193.12|ts-api-utils@2.5.0",
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|@rolldown/pluginutils@1.0.1",
+        "weaving-site@0.193.13|vite@8.0.14"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/parser@8.59.4",
+      "ref": "weaving-site@0.193.13|class-variance-authority@0.7.1",
       "dependsOn": [
-        "weaving-site@0.193.12|@typescript-eslint/scope-manager@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/types@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/typescript-estree@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4",
-        "weaving-site@0.193.12|debug@4.4.3",
-        "weaving-site@0.193.12|eslint@10.4.0",
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|clsx@2.1.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@vitejs/plugin-react@6.0.2",
-      "dependsOn": [
-        "weaving-site@0.193.12|@rolldown/pluginutils@1.0.1",
-        "weaving-site@0.193.12|vite@8.0.14"
-      ]
-    },
-    {
-      "ref": "weaving-site@0.193.12|class-variance-authority@0.7.1",
-      "dependsOn": [
-        "weaving-site@0.193.12|clsx@2.1.1"
-      ]
-    },
-    {
-      "ref": "weaving-site@0.193.12|clsx@2.1.1"
+      "ref": "weaving-site@0.193.13|clsx@2.1.1"
     },
     {
-      "ref": "weaving-site@0.193.12|dompurify@3.4.5",
+      "ref": "weaving-site@0.193.13|dompurify@3.4.5",
       "dependsOn": [
-        "weaving-site@0.193.12|@types/trusted-types@2.0.7"
+        "weaving-site@0.193.13|@types/trusted-types@2.0.7"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|eslint-plugin-react-hooks@7.1.1",
+      "ref": "weaving-site@0.193.13|eslint-plugin-react-hooks@7.1.1",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/core@7.29.0",
-        "weaving-site@0.193.12|@babel/parser@7.29.2",
-        "weaving-site@0.193.12|eslint@10.4.0",
-        "weaving-site@0.193.12|hermes-parser@0.25.1",
-        "weaving-site@0.193.12|zod-validation-error@4.0.2",
-        "weaving-site@0.193.12|zod@4.3.6"
+        "weaving-site@0.193.13|@babel/core@7.29.0",
+        "weaving-site@0.193.13|@babel/parser@7.29.2",
+        "weaving-site@0.193.13|eslint@10.4.0",
+        "weaving-site@0.193.13|hermes-parser@0.25.1",
+        "weaving-site@0.193.13|zod-validation-error@4.0.2",
+        "weaving-site@0.193.13|zod@4.3.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|eslint@10.4.0",
+      "ref": "weaving-site@0.193.13|eslint@10.4.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@eslint-community/eslint-utils@4.9.1",
-        "weaving-site@0.193.12|@eslint-community/regexpp@4.12.2",
-        "weaving-site@0.193.12|@eslint/config-array@0.23.5",
-        "weaving-site@0.193.12|@eslint/config-helpers@0.6.0",
-        "weaving-site@0.193.12|@eslint/core@1.2.1",
-        "weaving-site@0.193.12|@eslint/plugin-kit@0.7.1",
-        "weaving-site@0.193.12|@humanfs/node@0.16.8",
-        "weaving-site@0.193.12|@humanwhocodes/module-importer@1.0.1",
-        "weaving-site@0.193.12|@humanwhocodes/retry@0.4.3",
-        "weaving-site@0.193.12|@types/estree@1.0.8",
-        "weaving-site@0.193.12|ajv@6.15.0",
-        "weaving-site@0.193.12|cross-spawn@7.0.6",
-        "weaving-site@0.193.12|debug@4.4.3",
-        "weaving-site@0.193.12|escape-string-regexp@4.0.0",
-        "weaving-site@0.193.12|eslint-scope@9.1.2",
-        "weaving-site@0.193.12|eslint@10.4.0|eslint-visitor-keys@5.0.1",
-        "weaving-site@0.193.12|espree@11.2.0",
-        "weaving-site@0.193.12|esquery@1.7.0",
-        "weaving-site@0.193.12|esutils@2.0.3",
-        "weaving-site@0.193.12|fast-deep-equal@3.1.3",
-        "weaving-site@0.193.12|file-entry-cache@8.0.0",
-        "weaving-site@0.193.12|find-up@5.0.0",
-        "weaving-site@0.193.12|glob-parent@6.0.2",
-        "weaving-site@0.193.12|eslint@10.4.0|ignore@5.3.2",
-        "weaving-site@0.193.12|imurmurhash@0.1.4",
-        "weaving-site@0.193.12|is-glob@4.0.3",
-        "weaving-site@0.193.12|jiti@2.7.0",
-        "weaving-site@0.193.12|json-stable-stringify-without-jsonify@1.0.1",
-        "weaving-site@0.193.12|minimatch@10.2.5",
-        "weaving-site@0.193.12|natural-compare@1.4.0",
-        "weaving-site@0.193.12|optionator@0.9.4"
+        "weaving-site@0.193.13|@eslint-community/eslint-utils@4.9.1",
+        "weaving-site@0.193.13|@eslint-community/regexpp@4.12.2",
+        "weaving-site@0.193.13|@eslint/config-array@0.23.5",
+        "weaving-site@0.193.13|@eslint/config-helpers@0.6.0",
+        "weaving-site@0.193.13|@eslint/core@1.2.1",
+        "weaving-site@0.193.13|@eslint/plugin-kit@0.7.1",
+        "weaving-site@0.193.13|@humanfs/node@0.16.8",
+        "weaving-site@0.193.13|@humanwhocodes/module-importer@1.0.1",
+        "weaving-site@0.193.13|@humanwhocodes/retry@0.4.3",
+        "weaving-site@0.193.13|@types/estree@1.0.8",
+        "weaving-site@0.193.13|ajv@6.15.0",
+        "weaving-site@0.193.13|cross-spawn@7.0.6",
+        "weaving-site@0.193.13|debug@4.4.3",
+        "weaving-site@0.193.13|escape-string-regexp@4.0.0",
+        "weaving-site@0.193.13|eslint-scope@9.1.2",
+        "weaving-site@0.193.13|eslint@10.4.0|eslint-visitor-keys@5.0.1",
+        "weaving-site@0.193.13|espree@11.2.0",
+        "weaving-site@0.193.13|esquery@1.7.0",
+        "weaving-site@0.193.13|esutils@2.0.3",
+        "weaving-site@0.193.13|fast-deep-equal@3.1.3",
+        "weaving-site@0.193.13|file-entry-cache@8.0.0",
+        "weaving-site@0.193.13|find-up@5.0.0",
+        "weaving-site@0.193.13|glob-parent@6.0.2",
+        "weaving-site@0.193.13|eslint@10.4.0|ignore@5.3.2",
+        "weaving-site@0.193.13|imurmurhash@0.1.4",
+        "weaving-site@0.193.13|is-glob@4.0.3",
+        "weaving-site@0.193.13|jiti@2.7.0",
+        "weaving-site@0.193.13|json-stable-stringify-without-jsonify@1.0.1",
+        "weaving-site@0.193.13|minimatch@10.2.5",
+        "weaving-site@0.193.13|natural-compare@1.4.0",
+        "weaving-site@0.193.13|optionator@0.9.4"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|eslint@10.4.0|eslint-visitor-keys@5.0.1"
+      "ref": "weaving-site@0.193.13|eslint@10.4.0|eslint-visitor-keys@5.0.1"
     },
     {
-      "ref": "weaving-site@0.193.12|eslint@10.4.0|ignore@5.3.2"
+      "ref": "weaving-site@0.193.13|eslint@10.4.0|ignore@5.3.2"
     },
     {
-      "ref": "weaving-site@0.193.12|i18next@26.2.0",
+      "ref": "weaving-site@0.193.13|i18next@26.2.0",
       "dependsOn": [
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|lucide-react@1.16.0",
+      "ref": "weaving-site@0.193.13|lucide-react@1.16.0",
       "dependsOn": [
-        "weaving-site@0.193.12|react@19.2.6"
+        "weaving-site@0.193.13|react@19.2.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|react-colorful@5.7.0",
+      "ref": "weaving-site@0.193.13|react-colorful@5.7.0",
       "dependsOn": [
-        "weaving-site@0.193.12|react-dom@19.2.6",
-        "weaving-site@0.193.12|react@19.2.6"
+        "weaving-site@0.193.13|react-dom@19.2.6",
+        "weaving-site@0.193.13|react@19.2.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|react-dom@19.2.6",
+      "ref": "weaving-site@0.193.13|react-dom@19.2.6",
       "dependsOn": [
-        "weaving-site@0.193.12|react@19.2.6",
-        "weaving-site@0.193.12|scheduler@0.27.0"
+        "weaving-site@0.193.13|react@19.2.6",
+        "weaving-site@0.193.13|scheduler@0.27.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|react-i18next@17.0.8",
+      "ref": "weaving-site@0.193.13|react-i18next@17.0.8",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/runtime@7.29.2",
-        "weaving-site@0.193.12|html-parse-stringify@3.0.1",
-        "weaving-site@0.193.12|i18next@26.2.0",
-        "weaving-site@0.193.12|react@19.2.6",
-        "weaving-site@0.193.12|typescript@6.0.3",
-        "weaving-site@0.193.12|use-sync-external-store@1.6.0"
+        "weaving-site@0.193.13|@babel/runtime@7.29.2",
+        "weaving-site@0.193.13|html-parse-stringify@3.0.1",
+        "weaving-site@0.193.13|i18next@26.2.0",
+        "weaving-site@0.193.13|react@19.2.6",
+        "weaving-site@0.193.13|typescript@6.0.3",
+        "weaving-site@0.193.13|use-sync-external-store@1.6.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|react-router-dom@7.15.1",
+      "ref": "weaving-site@0.193.13|react-router-dom@7.15.1",
       "dependsOn": [
-        "weaving-site@0.193.12|react-dom@19.2.6",
-        "weaving-site@0.193.12|react-router@7.15.1",
-        "weaving-site@0.193.12|react@19.2.6"
+        "weaving-site@0.193.13|react-dom@19.2.6",
+        "weaving-site@0.193.13|react-router@7.15.1",
+        "weaving-site@0.193.13|react@19.2.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|react@19.2.6"
+      "ref": "weaving-site@0.193.13|react@19.2.6"
     },
     {
-      "ref": "weaving-site@0.193.12|tailwind-merge@3.6.0"
+      "ref": "weaving-site@0.193.13|tailwind-merge@3.6.0"
     },
     {
-      "ref": "weaving-site@0.193.12|tailwindcss@4.3.0"
+      "ref": "weaving-site@0.193.13|tailwindcss@4.3.0"
     },
     {
-      "ref": "weaving-site@0.193.12|typescript@6.0.3"
+      "ref": "weaving-site@0.193.13|typescript@6.0.3"
     },
     {
-      "ref": "weaving-site@0.193.12|vite@8.0.14",
+      "ref": "weaving-site@0.193.13|vite@8.0.14",
       "dependsOn": [
-        "weaving-site@0.193.12|@types/node@25.9.1",
-        "weaving-site@0.193.12|jiti@2.7.0",
-        "weaving-site@0.193.12|lightningcss@1.32.0",
-        "weaving-site@0.193.12|vite@8.0.14|picomatch@4.0.4",
-        "weaving-site@0.193.12|postcss@8.5.15",
-        "weaving-site@0.193.12|rolldown@1.0.2",
-        "weaving-site@0.193.12|tinyglobby@0.2.16"
+        "weaving-site@0.193.13|@types/node@25.9.1",
+        "weaving-site@0.193.13|jiti@2.7.0",
+        "weaving-site@0.193.13|lightningcss@1.32.0",
+        "weaving-site@0.193.13|vite@8.0.14|picomatch@4.0.4",
+        "weaving-site@0.193.13|postcss@8.5.15",
+        "weaving-site@0.193.13|rolldown@1.0.2",
+        "weaving-site@0.193.13|tinyglobby@0.2.16"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|vite@8.0.14|picomatch@4.0.4"
+      "ref": "weaving-site@0.193.13|vite@8.0.14|picomatch@4.0.4"
     },
     {
-      "ref": "weaving-site@0.193.12|@clerk/shared@3.47.6",
+      "ref": "weaving-site@0.193.13|@clerk/shared@3.47.6",
       "dependsOn": [
-        "weaving-site@0.193.12|@clerk/shared@3.47.6|csstype@3.1.3",
-        "weaving-site@0.193.12|dequal@2.0.3",
-        "weaving-site@0.193.12|glob-to-regexp@0.4.1",
-        "weaving-site@0.193.12|js-cookie@3.0.7",
-        "weaving-site@0.193.12|react-dom@19.2.6",
-        "weaving-site@0.193.12|react@19.2.6",
-        "weaving-site@0.193.12|std-env@3.10.0",
-        "weaving-site@0.193.12|swr@2.3.4"
+        "weaving-site@0.193.13|@clerk/shared@3.47.6|csstype@3.1.3",
+        "weaving-site@0.193.13|dequal@2.0.3",
+        "weaving-site@0.193.13|glob-to-regexp@0.4.1",
+        "weaving-site@0.193.13|js-cookie@3.0.7",
+        "weaving-site@0.193.13|react-dom@19.2.6",
+        "weaving-site@0.193.13|react@19.2.6",
+        "weaving-site@0.193.13|std-env@3.10.0",
+        "weaving-site@0.193.13|swr@2.3.4"
       ]
+    },
+    {
+      "ref": "weaving-site@0.193.13|@clerk/shared@3.47.6|csstype@3.1.3"
+    },
+    {
+      "ref": "weaving-site@0.193.13|tslib@2.8.1"
     },
     {
-      "ref": "weaving-site@0.193.12|@clerk/shared@3.47.6|csstype@3.1.3"
+      "ref": "weaving-site@0.193.13|@sentry/browser@10.53.1",
+      "dependsOn": [
+        "weaving-site@0.193.13|@sentry-internal/browser-utils@10.53.1",
+        "weaving-site@0.193.13|@sentry-internal/feedback@10.53.1",
+        "weaving-site@0.193.13|@sentry-internal/replay-canvas@10.53.1",
+        "weaving-site@0.193.13|@sentry-internal/replay@10.53.1",
+        "weaving-site@0.193.13|@sentry/core@10.53.1"
+      ]
     },
     {
-      "ref": "weaving-site@0.193.12|tslib@2.8.1"
+      "ref": "weaving-site@0.193.13|@sentry/core@10.53.1"
     },
     {
-      "ref": "weaving-site@0.193.12|@tailwindcss/node@4.3.0",
+      "ref": "weaving-site@0.193.13|@tailwindcss/node@4.3.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@jridgewell/remapping@2.3.5",
-        "weaving-site@0.193.12|enhanced-resolve@5.21.3",
-        "weaving-site@0.193.12|jiti@2.7.0",
-        "weaving-site@0.193.12|lightningcss@1.32.0",
-        "weaving-site@0.193.12|magic-string@0.30.21",
-        "weaving-site@0.193.12|source-map-js@1.2.1",
-        "weaving-site@0.193.12|tailwindcss@4.3.0"
+        "weaving-site@0.193.13|@jridgewell/remapping@2.3.5",
+        "weaving-site@0.193.13|enhanced-resolve@5.21.3",
+        "weaving-site@0.193.13|jiti@2.7.0",
+        "weaving-site@0.193.13|lightningcss@1.32.0",
+        "weaving-site@0.193.13|magic-string@0.30.21",
+        "weaving-site@0.193.13|source-map-js@1.2.1",
+        "weaving-site@0.193.13|tailwindcss@4.3.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@tailwindcss/oxide@4.3.0",
+      "ref": "weaving-site@0.193.13|@tailwindcss/oxide@4.3.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@tailwindcss/oxide-linux-x64-gnu@4.3.0",
-        "weaving-site@0.193.12|@tailwindcss/oxide-linux-x64-musl@4.3.0"
+        "weaving-site@0.193.13|@tailwindcss/oxide-linux-x64-gnu@4.3.0",
+        "weaving-site@0.193.13|@tailwindcss/oxide-linux-x64-musl@4.3.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@tanstack/query-core@5.100.14"
+      "ref": "weaving-site@0.193.13|@tanstack/query-core@5.100.14"
     },
     {
-      "ref": "weaving-site@0.193.12|undici-types@7.24.6"
+      "ref": "weaving-site@0.193.13|undici-types@7.24.6"
     },
     {
-      "ref": "weaving-site@0.193.12|csstype@3.2.3"
+      "ref": "weaving-site@0.193.13|csstype@3.2.3"
     },
     {
-      "ref": "weaving-site@0.193.12|@eslint-community/regexpp@4.12.2"
+      "ref": "weaving-site@0.193.13|@eslint-community/regexpp@4.12.2"
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/scope-manager@8.59.4",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/scope-manager@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|@typescript-eslint/types@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4"
+        "weaving-site@0.193.13|@typescript-eslint/types@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/type-utils@8.59.4",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/type-utils@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|@typescript-eslint/types@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/typescript-estree@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/utils@8.59.4",
-        "weaving-site@0.193.12|debug@4.4.3",
-        "weaving-site@0.193.12|eslint@10.4.0",
-        "weaving-site@0.193.12|ts-api-utils@2.5.0",
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|@typescript-eslint/types@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/typescript-estree@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/utils@8.59.4",
+        "weaving-site@0.193.13|debug@4.4.3",
+        "weaving-site@0.193.13|eslint@10.4.0",
+        "weaving-site@0.193.13|ts-api-utils@2.5.0",
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/utils@8.59.4",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/utils@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|@eslint-community/eslint-utils@4.9.1",
-        "weaving-site@0.193.12|@typescript-eslint/scope-manager@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/types@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/typescript-estree@8.59.4",
-        "weaving-site@0.193.12|eslint@10.4.0",
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|@eslint-community/eslint-utils@4.9.1",
+        "weaving-site@0.193.13|@typescript-eslint/scope-manager@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/types@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/typescript-estree@8.59.4",
+        "weaving-site@0.193.13|eslint@10.4.0",
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|@typescript-eslint/types@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4|eslint-visitor-keys@5.0.1"
+        "weaving-site@0.193.13|@typescript-eslint/types@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4|eslint-visitor-keys@5.0.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4|eslint-visitor-keys@5.0.1"
+      "ref": "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4|eslint-visitor-keys@5.0.1"
     },
     {
-      "ref": "weaving-site@0.193.12|ignore@7.0.5"
+      "ref": "weaving-site@0.193.13|ignore@7.0.5"
     },
     {
-      "ref": "weaving-site@0.193.12|natural-compare@1.4.0"
+      "ref": "weaving-site@0.193.13|natural-compare@1.4.0"
     },
     {
-      "ref": "weaving-site@0.193.12|ts-api-utils@2.5.0",
+      "ref": "weaving-site@0.193.13|ts-api-utils@2.5.0",
       "dependsOn": [
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/types@8.59.4"
+      "ref": "weaving-site@0.193.13|@typescript-eslint/types@8.59.4"
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/typescript-estree@8.59.4",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/typescript-estree@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|@typescript-eslint/project-service@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/tsconfig-utils@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/types@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/visitor-keys@8.59.4",
-        "weaving-site@0.193.12|debug@4.4.3",
-        "weaving-site@0.193.12|minimatch@10.2.5",
-        "weaving-site@0.193.12|@typescript-eslint/typescript-estree@8.59.4|semver@7.8.1",
-        "weaving-site@0.193.12|tinyglobby@0.2.16",
-        "weaving-site@0.193.12|ts-api-utils@2.5.0",
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|@typescript-eslint/project-service@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/tsconfig-utils@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/types@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/visitor-keys@8.59.4",
+        "weaving-site@0.193.13|debug@4.4.3",
+        "weaving-site@0.193.13|minimatch@10.2.5",
+        "weaving-site@0.193.13|@typescript-eslint/typescript-estree@8.59.4|semver@7.8.1",
+        "weaving-site@0.193.13|tinyglobby@0.2.16",
+        "weaving-site@0.193.13|ts-api-utils@2.5.0",
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/typescript-estree@8.59.4|semver@7.8.1"
+      "ref": "weaving-site@0.193.13|@typescript-eslint/typescript-estree@8.59.4|semver@7.8.1"
     },
     {
-      "ref": "weaving-site@0.193.12|debug@4.4.3",
+      "ref": "weaving-site@0.193.13|debug@4.4.3",
       "dependsOn": [
-        "weaving-site@0.193.12|ms@2.1.3"
+        "weaving-site@0.193.13|ms@2.1.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@rolldown/pluginutils@1.0.1"
+      "ref": "weaving-site@0.193.13|@rolldown/pluginutils@1.0.1"
     },
     {
-      "ref": "weaving-site@0.193.12|@types/trusted-types@2.0.7"
+      "ref": "weaving-site@0.193.13|@types/trusted-types@2.0.7"
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/core@7.29.0",
+      "ref": "weaving-site@0.193.13|@babel/core@7.29.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/code-frame@7.29.0",
-        "weaving-site@0.193.12|@babel/generator@7.29.1",
-        "weaving-site@0.193.12|@babel/helper-compilation-targets@7.28.6",
-        "weaving-site@0.193.12|@babel/helper-module-transforms@7.28.6",
-        "weaving-site@0.193.12|@babel/helpers@7.29.2",
-        "weaving-site@0.193.12|@babel/parser@7.29.2",
-        "weaving-site@0.193.12|@babel/template@7.28.6",
-        "weaving-site@0.193.12|@babel/traverse@7.29.0",
-        "weaving-site@0.193.12|@babel/types@7.29.0",
-        "weaving-site@0.193.12|@jridgewell/remapping@2.3.5",
-        "weaving-site@0.193.12|convert-source-map@2.0.0",
-        "weaving-site@0.193.12|debug@4.4.3",
-        "weaving-site@0.193.12|gensync@1.0.0-beta.2",
-        "weaving-site@0.193.12|json5@2.2.3",
-        "weaving-site@0.193.12|semver@6.3.1"
+        "weaving-site@0.193.13|@babel/code-frame@7.29.0",
+        "weaving-site@0.193.13|@babel/generator@7.29.1",
+        "weaving-site@0.193.13|@babel/helper-compilation-targets@7.28.6",
+        "weaving-site@0.193.13|@babel/helper-module-transforms@7.28.6",
+        "weaving-site@0.193.13|@babel/helpers@7.29.2",
+        "weaving-site@0.193.13|@babel/parser@7.29.2",
+        "weaving-site@0.193.13|@babel/template@7.28.6",
+        "weaving-site@0.193.13|@babel/traverse@7.29.0",
+        "weaving-site@0.193.13|@babel/types@7.29.0",
+        "weaving-site@0.193.13|@jridgewell/remapping@2.3.5",
+        "weaving-site@0.193.13|convert-source-map@2.0.0",
+        "weaving-site@0.193.13|debug@4.4.3",
+        "weaving-site@0.193.13|gensync@1.0.0-beta.2",
+        "weaving-site@0.193.13|json5@2.2.3",
+        "weaving-site@0.193.13|semver@6.3.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/parser@7.29.2",
+      "ref": "weaving-site@0.193.13|@babel/parser@7.29.2",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/types@7.29.0"
+        "weaving-site@0.193.13|@babel/types@7.29.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|hermes-parser@0.25.1",
+      "ref": "weaving-site@0.193.13|hermes-parser@0.25.1",
       "dependsOn": [
-        "weaving-site@0.193.12|hermes-estree@0.25.1"
+        "weaving-site@0.193.13|hermes-estree@0.25.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|zod-validation-error@4.0.2",
+      "ref": "weaving-site@0.193.13|zod-validation-error@4.0.2",
       "dependsOn": [
-        "weaving-site@0.193.12|zod@4.3.6"
+        "weaving-site@0.193.13|zod@4.3.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|zod@4.3.6"
+      "ref": "weaving-site@0.193.13|zod@4.3.6"
     },
     {
-      "ref": "weaving-site@0.193.12|@eslint-community/eslint-utils@4.9.1",
+      "ref": "weaving-site@0.193.13|@eslint-community/eslint-utils@4.9.1",
       "dependsOn": [
-        "weaving-site@0.193.12|eslint-visitor-keys@3.4.3",
-        "weaving-site@0.193.12|eslint@10.4.0"
+        "weaving-site@0.193.13|eslint-visitor-keys@3.4.3",
+        "weaving-site@0.193.13|eslint@10.4.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@eslint/config-array@0.23.5",
+      "ref": "weaving-site@0.193.13|@eslint/config-array@0.23.5",
       "dependsOn": [
-        "weaving-site@0.193.12|@eslint/object-schema@3.0.5",
-        "weaving-site@0.193.12|debug@4.4.3",
-        "weaving-site@0.193.12|minimatch@10.2.5"
+        "weaving-site@0.193.13|@eslint/object-schema@3.0.5",
+        "weaving-site@0.193.13|debug@4.4.3",
+        "weaving-site@0.193.13|minimatch@10.2.5"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@eslint/config-helpers@0.6.0",
+      "ref": "weaving-site@0.193.13|@eslint/config-helpers@0.6.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@eslint/core@1.2.1"
+        "weaving-site@0.193.13|@eslint/core@1.2.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@eslint/core@1.2.1",
+      "ref": "weaving-site@0.193.13|@eslint/core@1.2.1",
       "dependsOn": [
-        "weaving-site@0.193.12|@types/json-schema@7.0.15"
+        "weaving-site@0.193.13|@types/json-schema@7.0.15"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@eslint/plugin-kit@0.7.1",
+      "ref": "weaving-site@0.193.13|@eslint/plugin-kit@0.7.1",
       "dependsOn": [
-        "weaving-site@0.193.12|@eslint/core@1.2.1",
-        "weaving-site@0.193.12|levn@0.4.1"
+        "weaving-site@0.193.13|@eslint/core@1.2.1",
+        "weaving-site@0.193.13|levn@0.4.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@humanfs/node@0.16.8",
+      "ref": "weaving-site@0.193.13|@humanfs/node@0.16.8",
       "dependsOn": [
-        "weaving-site@0.193.12|@humanfs/core@0.19.2",
-        "weaving-site@0.193.12|@humanfs/types@0.15.0",
-        "weaving-site@0.193.12|@humanwhocodes/retry@0.4.3"
+        "weaving-site@0.193.13|@humanfs/core@0.19.2",
+        "weaving-site@0.193.13|@humanfs/types@0.15.0",
+        "weaving-site@0.193.13|@humanwhocodes/retry@0.4.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@humanwhocodes/module-importer@1.0.1"
+      "ref": "weaving-site@0.193.13|@humanwhocodes/module-importer@1.0.1"
     },
     {
-      "ref": "weaving-site@0.193.12|@humanwhocodes/retry@0.4.3"
+      "ref": "weaving-site@0.193.13|@humanwhocodes/retry@0.4.3"
     },
     {
-      "ref": "weaving-site@0.193.12|@types/estree@1.0.8"
+      "ref": "weaving-site@0.193.13|@types/estree@1.0.8"
     },
     {
-      "ref": "weaving-site@0.193.12|ajv@6.15.0",
+      "ref": "weaving-site@0.193.13|ajv@6.15.0",
       "dependsOn": [
-        "weaving-site@0.193.12|fast-deep-equal@3.1.3",
-        "weaving-site@0.193.12|fast-json-stable-stringify@2.1.0",
-        "weaving-site@0.193.12|json-schema-traverse@0.4.1",
-        "weaving-site@0.193.12|uri-js@4.4.1"
+        "weaving-site@0.193.13|fast-deep-equal@3.1.3",
+        "weaving-site@0.193.13|fast-json-stable-stringify@2.1.0",
+        "weaving-site@0.193.13|json-schema-traverse@0.4.1",
+        "weaving-site@0.193.13|uri-js@4.4.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|cross-spawn@7.0.6",
+      "ref": "weaving-site@0.193.13|cross-spawn@7.0.6",
       "dependsOn": [
-        "weaving-site@0.193.12|path-key@3.1.1",
-        "weaving-site@0.193.12|shebang-command@2.0.0",
-        "weaving-site@0.193.12|which@2.0.2"
+        "weaving-site@0.193.13|path-key@3.1.1",
+        "weaving-site@0.193.13|shebang-command@2.0.0",
+        "weaving-site@0.193.13|which@2.0.2"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|escape-string-regexp@4.0.0"
+      "ref": "weaving-site@0.193.13|escape-string-regexp@4.0.0"
     },
     {
-      "ref": "weaving-site@0.193.12|eslint-scope@9.1.2",
+      "ref": "weaving-site@0.193.13|eslint-scope@9.1.2",
       "dependsOn": [
-        "weaving-site@0.193.12|@types/esrecurse@4.3.1",
-        "weaving-site@0.193.12|@types/estree@1.0.8",
-        "weaving-site@0.193.12|esrecurse@4.3.0",
-        "weaving-site@0.193.12|estraverse@5.3.0"
+        "weaving-site@0.193.13|@types/esrecurse@4.3.1",
+        "weaving-site@0.193.13|@types/estree@1.0.8",
+        "weaving-site@0.193.13|esrecurse@4.3.0",
+        "weaving-site@0.193.13|estraverse@5.3.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|espree@11.2.0",
+      "ref": "weaving-site@0.193.13|espree@11.2.0",
       "dependsOn": [
-        "weaving-site@0.193.12|acorn-jsx@5.3.2",
-        "weaving-site@0.193.12|acorn@8.16.0",
-        "weaving-site@0.193.12|espree@11.2.0|eslint-visitor-keys@5.0.1"
+        "weaving-site@0.193.13|acorn-jsx@5.3.2",
+        "weaving-site@0.193.13|acorn@8.16.0",
+        "weaving-site@0.193.13|espree@11.2.0|eslint-visitor-keys@5.0.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|espree@11.2.0|eslint-visitor-keys@5.0.1"
+      "ref": "weaving-site@0.193.13|espree@11.2.0|eslint-visitor-keys@5.0.1"
     },
     {
-      "ref": "weaving-site@0.193.12|esquery@1.7.0",
+      "ref": "weaving-site@0.193.13|esquery@1.7.0",
       "dependsOn": [
-        "weaving-site@0.193.12|estraverse@5.3.0"
+        "weaving-site@0.193.13|estraverse@5.3.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|esutils@2.0.3"
+      "ref": "weaving-site@0.193.13|esutils@2.0.3"
     },
     {
-      "ref": "weaving-site@0.193.12|fast-deep-equal@3.1.3"
+      "ref": "weaving-site@0.193.13|fast-deep-equal@3.1.3"
     },
     {
-      "ref": "weaving-site@0.193.12|file-entry-cache@8.0.0",
+      "ref": "weaving-site@0.193.13|file-entry-cache@8.0.0",
       "dependsOn": [
-        "weaving-site@0.193.12|flat-cache@4.0.1"
+        "weaving-site@0.193.13|flat-cache@4.0.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|find-up@5.0.0",
+      "ref": "weaving-site@0.193.13|find-up@5.0.0",
       "dependsOn": [
-        "weaving-site@0.193.12|locate-path@6.0.0",
-        "weaving-site@0.193.12|path-exists@4.0.0"
+        "weaving-site@0.193.13|locate-path@6.0.0",
+        "weaving-site@0.193.13|path-exists@4.0.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|glob-parent@6.0.2",
+      "ref": "weaving-site@0.193.13|glob-parent@6.0.2",
       "dependsOn": [
-        "weaving-site@0.193.12|is-glob@4.0.3"
+        "weaving-site@0.193.13|is-glob@4.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|imurmurhash@0.1.4"
+      "ref": "weaving-site@0.193.13|imurmurhash@0.1.4"
     },
     {
-      "ref": "weaving-site@0.193.12|is-glob@4.0.3",
+      "ref": "weaving-site@0.193.13|is-glob@4.0.3",
       "dependsOn": [
-        "weaving-site@0.193.12|is-extglob@2.1.1"
+        "weaving-site@0.193.13|is-extglob@2.1.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|jiti@2.7.0"
+      "ref": "weaving-site@0.193.13|jiti@2.7.0"
     },
     {
-      "ref": "weaving-site@0.193.12|json-stable-stringify-without-jsonify@1.0.1"
+      "ref": "weaving-site@0.193.13|json-stable-stringify-without-jsonify@1.0.1"
     },
     {
-      "ref": "weaving-site@0.193.12|minimatch@10.2.5",
+      "ref": "weaving-site@0.193.13|minimatch@10.2.5",
       "dependsOn": [
-        "weaving-site@0.193.12|brace-expansion@5.0.6"
+        "weaving-site@0.193.13|brace-expansion@5.0.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|optionator@0.9.4",
+      "ref": "weaving-site@0.193.13|optionator@0.9.4",
       "dependsOn": [
-        "weaving-site@0.193.12|deep-is@0.1.4",
-        "weaving-site@0.193.12|fast-levenshtein@2.0.6",
-        "weaving-site@0.193.12|levn@0.4.1",
-        "weaving-site@0.193.12|prelude-ls@1.2.1",
-        "weaving-site@0.193.12|type-check@0.4.0",
-        "weaving-site@0.193.12|word-wrap@1.2.5"
+        "weaving-site@0.193.13|deep-is@0.1.4",
+        "weaving-site@0.193.13|fast-levenshtein@2.0.6",
+        "weaving-site@0.193.13|levn@0.4.1",
+        "weaving-site@0.193.13|prelude-ls@1.2.1",
+        "weaving-site@0.193.13|type-check@0.4.0",
+        "weaving-site@0.193.13|word-wrap@1.2.5"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|scheduler@0.27.0"
+      "ref": "weaving-site@0.193.13|scheduler@0.27.0"
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/runtime@7.29.2"
+      "ref": "weaving-site@0.193.13|@babel/runtime@7.29.2"
     },
     {
-      "ref": "weaving-site@0.193.12|html-parse-stringify@3.0.1",
+      "ref": "weaving-site@0.193.13|html-parse-stringify@3.0.1",
       "dependsOn": [
-        "weaving-site@0.193.12|void-elements@3.1.0"
+        "weaving-site@0.193.13|void-elements@3.1.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|use-sync-external-store@1.6.0",
+      "ref": "weaving-site@0.193.13|use-sync-external-store@1.6.0",
       "dependsOn": [
-        "weaving-site@0.193.12|react@19.2.6"
+        "weaving-site@0.193.13|react@19.2.6"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|react-router@7.15.1",
+      "ref": "weaving-site@0.193.13|react-router@7.15.1",
       "dependsOn": [
-        "weaving-site@0.193.12|cookie@1.1.1",
-        "weaving-site@0.193.12|react-dom@19.2.6",
-        "weaving-site@0.193.12|react@19.2.6",
-        "weaving-site@0.193.12|set-cookie-parser@2.7.2"
+        "weaving-site@0.193.13|cookie@1.1.1",
+        "weaving-site@0.193.13|react-dom@19.2.6",
+        "weaving-site@0.193.13|react@19.2.6",
+        "weaving-site@0.193.13|set-cookie-parser@2.7.2"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|lightningcss@1.32.0",
+      "ref": "weaving-site@0.193.13|lightningcss@1.32.0",
       "dependsOn": [
-        "weaving-site@0.193.12|detect-libc@2.1.2",
-        "weaving-site@0.193.12|lightningcss-linux-x64-gnu@1.32.0",
-        "weaving-site@0.193.12|lightningcss-linux-x64-musl@1.32.0"
+        "weaving-site@0.193.13|detect-libc@2.1.2",
+        "weaving-site@0.193.13|lightningcss-linux-x64-gnu@1.32.0",
+        "weaving-site@0.193.13|lightningcss-linux-x64-musl@1.32.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|postcss@8.5.15",
+      "ref": "weaving-site@0.193.13|postcss@8.5.15",
       "dependsOn": [
-        "weaving-site@0.193.12|nanoid@3.3.12",
-        "weaving-site@0.193.12|picocolors@1.1.1",
-        "weaving-site@0.193.12|source-map-js@1.2.1"
+        "weaving-site@0.193.13|nanoid@3.3.12",
+        "weaving-site@0.193.13|picocolors@1.1.1",
+        "weaving-site@0.193.13|source-map-js@1.2.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|rolldown@1.0.2",
+      "ref": "weaving-site@0.193.13|rolldown@1.0.2",
       "dependsOn": [
-        "weaving-site@0.193.12|@oxc-project/types@0.132.0",
-        "weaving-site@0.193.12|@rolldown/binding-linux-x64-gnu@1.0.2",
-        "weaving-site@0.193.12|@rolldown/binding-linux-x64-musl@1.0.2",
-        "weaving-site@0.193.12|@rolldown/pluginutils@1.0.1"
+        "weaving-site@0.193.13|@oxc-project/types@0.132.0",
+        "weaving-site@0.193.13|@rolldown/binding-linux-x64-gnu@1.0.2",
+        "weaving-site@0.193.13|@rolldown/binding-linux-x64-musl@1.0.2",
+        "weaving-site@0.193.13|@rolldown/pluginutils@1.0.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|tinyglobby@0.2.16",
+      "ref": "weaving-site@0.193.13|tinyglobby@0.2.16",
       "dependsOn": [
-        "weaving-site@0.193.12|tinyglobby@0.2.16|fdir@6.5.0",
-        "weaving-site@0.193.12|tinyglobby@0.2.16|picomatch@4.0.4"
+        "weaving-site@0.193.13|tinyglobby@0.2.16|fdir@6.5.0",
+        "weaving-site@0.193.13|tinyglobby@0.2.16|picomatch@4.0.4"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|tinyglobby@0.2.16|fdir@6.5.0",
+      "ref": "weaving-site@0.193.13|tinyglobby@0.2.16|fdir@6.5.0",
       "dependsOn": [
-        "weaving-site@0.193.12|tinyglobby@0.2.16|picomatch@4.0.4"
+        "weaving-site@0.193.13|tinyglobby@0.2.16|picomatch@4.0.4"
       ]
+    },
+    {
+      "ref": "weaving-site@0.193.13|tinyglobby@0.2.16|picomatch@4.0.4"
+    },
+    {
+      "ref": "weaving-site@0.193.13|dequal@2.0.3"
+    },
+    {
+      "ref": "weaving-site@0.193.13|glob-to-regexp@0.4.1"
+    },
+    {
+      "ref": "weaving-site@0.193.13|js-cookie@3.0.7"
     },
     {
-      "ref": "weaving-site@0.193.12|tinyglobby@0.2.16|picomatch@4.0.4"
+      "ref": "weaving-site@0.193.13|std-env@3.10.0"
     },
     {
-      "ref": "weaving-site@0.193.12|dequal@2.0.3"
+      "ref": "weaving-site@0.193.13|swr@2.3.4",
+      "dependsOn": [
+        "weaving-site@0.193.13|dequal@2.0.3",
+        "weaving-site@0.193.13|react@19.2.6",
+        "weaving-site@0.193.13|use-sync-external-store@1.6.0"
+      ]
     },
     {
-      "ref": "weaving-site@0.193.12|glob-to-regexp@0.4.1"
+      "ref": "weaving-site@0.193.13|@sentry-internal/browser-utils@10.53.1",
+      "dependsOn": [
+        "weaving-site@0.193.13|@sentry/core@10.53.1"
+      ]
     },
     {
-      "ref": "weaving-site@0.193.12|js-cookie@3.0.7"
+      "ref": "weaving-site@0.193.13|@sentry-internal/feedback@10.53.1",
+      "dependsOn": [
+        "weaving-site@0.193.13|@sentry/core@10.53.1"
+      ]
     },
     {
-      "ref": "weaving-site@0.193.12|std-env@3.10.0"
+      "ref": "weaving-site@0.193.13|@sentry-internal/replay-canvas@10.53.1",
+      "dependsOn": [
+        "weaving-site@0.193.13|@sentry-internal/replay@10.53.1",
+        "weaving-site@0.193.13|@sentry/core@10.53.1"
+      ]
     },
     {
-      "ref": "weaving-site@0.193.12|swr@2.3.4",
+      "ref": "weaving-site@0.193.13|@sentry-internal/replay@10.53.1",
       "dependsOn": [
-        "weaving-site@0.193.12|dequal@2.0.3",
-        "weaving-site@0.193.12|react@19.2.6",
-        "weaving-site@0.193.12|use-sync-external-store@1.6.0"
+        "weaving-site@0.193.13|@sentry-internal/browser-utils@10.53.1",
+        "weaving-site@0.193.13|@sentry/core@10.53.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@jridgewell/remapping@2.3.5",
+      "ref": "weaving-site@0.193.13|@jridgewell/remapping@2.3.5",
       "dependsOn": [
-        "weaving-site@0.193.12|@jridgewell/gen-mapping@0.3.13",
-        "weaving-site@0.193.12|@jridgewell/trace-mapping@0.3.31"
+        "weaving-site@0.193.13|@jridgewell/gen-mapping@0.3.13",
+        "weaving-site@0.193.13|@jridgewell/trace-mapping@0.3.31"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|enhanced-resolve@5.21.3",
+      "ref": "weaving-site@0.193.13|enhanced-resolve@5.21.3",
       "dependsOn": [
-        "weaving-site@0.193.12|graceful-fs@4.2.11",
-        "weaving-site@0.193.12|tapable@2.3.3"
+        "weaving-site@0.193.13|graceful-fs@4.2.11",
+        "weaving-site@0.193.13|tapable@2.3.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|magic-string@0.30.21",
+      "ref": "weaving-site@0.193.13|magic-string@0.30.21",
       "dependsOn": [
-        "weaving-site@0.193.12|@jridgewell/sourcemap-codec@1.5.5"
+        "weaving-site@0.193.13|@jridgewell/sourcemap-codec@1.5.5"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|source-map-js@1.2.1"
+      "ref": "weaving-site@0.193.13|source-map-js@1.2.1"
     },
     {
-      "ref": "weaving-site@0.193.12|@tailwindcss/oxide-linux-x64-gnu@4.3.0"
+      "ref": "weaving-site@0.193.13|@tailwindcss/oxide-linux-x64-gnu@4.3.0"
     },
     {
-      "ref": "weaving-site@0.193.12|@tailwindcss/oxide-linux-x64-musl@4.3.0"
+      "ref": "weaving-site@0.193.13|@tailwindcss/oxide-linux-x64-musl@4.3.0"
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/project-service@8.59.4",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/project-service@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|@typescript-eslint/tsconfig-utils@8.59.4",
-        "weaving-site@0.193.12|@typescript-eslint/types@8.59.4",
-        "weaving-site@0.193.12|debug@4.4.3",
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|@typescript-eslint/tsconfig-utils@8.59.4",
+        "weaving-site@0.193.13|@typescript-eslint/types@8.59.4",
+        "weaving-site@0.193.13|debug@4.4.3",
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@typescript-eslint/tsconfig-utils@8.59.4",
+      "ref": "weaving-site@0.193.13|@typescript-eslint/tsconfig-utils@8.59.4",
       "dependsOn": [
-        "weaving-site@0.193.12|typescript@6.0.3"
+        "weaving-site@0.193.13|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|ms@2.1.3"
+      "ref": "weaving-site@0.193.13|ms@2.1.3"
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/code-frame@7.29.0",
+      "ref": "weaving-site@0.193.13|@babel/code-frame@7.29.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/helper-validator-identifier@7.28.5",
-        "weaving-site@0.193.12|js-tokens@4.0.0",
-        "weaving-site@0.193.12|picocolors@1.1.1"
+        "weaving-site@0.193.13|@babel/helper-validator-identifier@7.28.5",
+        "weaving-site@0.193.13|js-tokens@4.0.0",
+        "weaving-site@0.193.13|picocolors@1.1.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/generator@7.29.1",
+      "ref": "weaving-site@0.193.13|@babel/generator@7.29.1",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/parser@7.29.2",
-        "weaving-site@0.193.12|@babel/types@7.29.0",
-        "weaving-site@0.193.12|@jridgewell/gen-mapping@0.3.13",
-        "weaving-site@0.193.12|@jridgewell/trace-mapping@0.3.31",
-        "weaving-site@0.193.12|jsesc@3.1.0"
+        "weaving-site@0.193.13|@babel/parser@7.29.2",
+        "weaving-site@0.193.13|@babel/types@7.29.0",
+        "weaving-site@0.193.13|@jridgewell/gen-mapping@0.3.13",
+        "weaving-site@0.193.13|@jridgewell/trace-mapping@0.3.31",
+        "weaving-site@0.193.13|jsesc@3.1.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/helper-compilation-targets@7.28.6",
+      "ref": "weaving-site@0.193.13|@babel/helper-compilation-targets@7.28.6",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/compat-data@7.29.0",
-        "weaving-site@0.193.12|@babel/helper-validator-option@7.27.1",
-        "weaving-site@0.193.12|browserslist@4.28.2",
-        "weaving-site@0.193.12|lru-cache@5.1.1",
-        "weaving-site@0.193.12|semver@6.3.1"
+        "weaving-site@0.193.13|@babel/compat-data@7.29.0",
+        "weaving-site@0.193.13|@babel/helper-validator-option@7.27.1",
+        "weaving-site@0.193.13|browserslist@4.28.2",
+        "weaving-site@0.193.13|lru-cache@5.1.1",
+        "weaving-site@0.193.13|semver@6.3.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/helper-module-transforms@7.28.6",
+      "ref": "weaving-site@0.193.13|@babel/helper-module-transforms@7.28.6",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/core@7.29.0",
-        "weaving-site@0.193.12|@babel/helper-module-imports@7.28.6",
-        "weaving-site@0.193.12|@babel/helper-validator-identifier@7.28.5",
-        "weaving-site@0.193.12|@babel/traverse@7.29.0"
+        "weaving-site@0.193.13|@babel/core@7.29.0",
+        "weaving-site@0.193.13|@babel/helper-module-imports@7.28.6",
+        "weaving-site@0.193.13|@babel/helper-validator-identifier@7.28.5",
+        "weaving-site@0.193.13|@babel/traverse@7.29.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/helpers@7.29.2",
+      "ref": "weaving-site@0.193.13|@babel/helpers@7.29.2",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/template@7.28.6",
-        "weaving-site@0.193.12|@babel/types@7.29.0"
+        "weaving-site@0.193.13|@babel/template@7.28.6",
+        "weaving-site@0.193.13|@babel/types@7.29.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/template@7.28.6",
+      "ref": "weaving-site@0.193.13|@babel/template@7.28.6",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/code-frame@7.29.0",
-        "weaving-site@0.193.12|@babel/parser@7.29.2",
-        "weaving-site@0.193.12|@babel/types@7.29.0"
+        "weaving-site@0.193.13|@babel/code-frame@7.29.0",
+        "weaving-site@0.193.13|@babel/parser@7.29.2",
+        "weaving-site@0.193.13|@babel/types@7.29.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/traverse@7.29.0",
+      "ref": "weaving-site@0.193.13|@babel/traverse@7.29.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/code-frame@7.29.0",
-        "weaving-site@0.193.12|@babel/generator@7.29.1",
-        "weaving-site@0.193.12|@babel/helper-globals@7.28.0",
-        "weaving-site@0.193.12|@babel/parser@7.29.2",
-        "weaving-site@0.193.12|@babel/template@7.28.6",
-        "weaving-site@0.193.12|@babel/types@7.29.0",
-        "weaving-site@0.193.12|debug@4.4.3"
+        "weaving-site@0.193.13|@babel/code-frame@7.29.0",
+        "weaving-site@0.193.13|@babel/generator@7.29.1",
+        "weaving-site@0.193.13|@babel/helper-globals@7.28.0",
+        "weaving-site@0.193.13|@babel/parser@7.29.2",
+        "weaving-site@0.193.13|@babel/template@7.28.6",
+        "weaving-site@0.193.13|@babel/types@7.29.0",
+        "weaving-site@0.193.13|debug@4.4.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/types@7.29.0",
+      "ref": "weaving-site@0.193.13|@babel/types@7.29.0",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/helper-string-parser@7.27.1",
-        "weaving-site@0.193.12|@babel/helper-validator-identifier@7.28.5"
+        "weaving-site@0.193.13|@babel/helper-string-parser@7.27.1",
+        "weaving-site@0.193.13|@babel/helper-validator-identifier@7.28.5"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|convert-source-map@2.0.0"
+      "ref": "weaving-site@0.193.13|convert-source-map@2.0.0"
     },
     {
-      "ref": "weaving-site@0.193.12|gensync@1.0.0-beta.2"
+      "ref": "weaving-site@0.193.13|gensync@1.0.0-beta.2"
     },
     {
-      "ref": "weaving-site@0.193.12|json5@2.2.3"
+      "ref": "weaving-site@0.193.13|json5@2.2.3"
     },
     {
-      "ref": "weaving-site@0.193.12|semver@6.3.1"
+      "ref": "weaving-site@0.193.13|semver@6.3.1"
     },
     {
-      "ref": "weaving-site@0.193.12|hermes-estree@0.25.1"
+      "ref": "weaving-site@0.193.13|hermes-estree@0.25.1"
     },
     {
-      "ref": "weaving-site@0.193.12|eslint-visitor-keys@3.4.3"
+      "ref": "weaving-site@0.193.13|eslint-visitor-keys@3.4.3"
     },
     {
-      "ref": "weaving-site@0.193.12|@eslint/object-schema@3.0.5"
+      "ref": "weaving-site@0.193.13|@eslint/object-schema@3.0.5"
     },
     {
-      "ref": "weaving-site@0.193.12|@types/json-schema@7.0.15"
+      "ref": "weaving-site@0.193.13|@types/json-schema@7.0.15"
     },
     {
-      "ref": "weaving-site@0.193.12|levn@0.4.1",
+      "ref": "weaving-site@0.193.13|levn@0.4.1",
       "dependsOn": [
-        "weaving-site@0.193.12|prelude-ls@1.2.1",
-        "weaving-site@0.193.12|type-check@0.4.0"
+        "weaving-site@0.193.13|prelude-ls@1.2.1",
+        "weaving-site@0.193.13|type-check@0.4.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@humanfs/core@0.19.2",
+      "ref": "weaving-site@0.193.13|@humanfs/core@0.19.2",
       "dependsOn": [
-        "weaving-site@0.193.12|@humanfs/types@0.15.0"
+        "weaving-site@0.193.13|@humanfs/types@0.15.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@humanfs/types@0.15.0"
+      "ref": "weaving-site@0.193.13|@humanfs/types@0.15.0"
     },
     {
-      "ref": "weaving-site@0.193.12|fast-json-stable-stringify@2.1.0"
+      "ref": "weaving-site@0.193.13|fast-json-stable-stringify@2.1.0"
     },
     {
-      "ref": "weaving-site@0.193.12|json-schema-traverse@0.4.1"
+      "ref": "weaving-site@0.193.13|json-schema-traverse@0.4.1"
     },
     {
-      "ref": "weaving-site@0.193.12|uri-js@4.4.1",
+      "ref": "weaving-site@0.193.13|uri-js@4.4.1",
       "dependsOn": [
-        "weaving-site@0.193.12|punycode@2.3.1"
+        "weaving-site@0.193.13|punycode@2.3.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|path-key@3.1.1"
+      "ref": "weaving-site@0.193.13|path-key@3.1.1"
     },
     {
-      "ref": "weaving-site@0.193.12|shebang-command@2.0.0",
+      "ref": "weaving-site@0.193.13|shebang-command@2.0.0",
       "dependsOn": [
-        "weaving-site@0.193.12|shebang-regex@3.0.0"
+        "weaving-site@0.193.13|shebang-regex@3.0.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|which@2.0.2",
+      "ref": "weaving-site@0.193.13|which@2.0.2",
       "dependsOn": [
-        "weaving-site@0.193.12|isexe@2.0.0"
+        "weaving-site@0.193.13|isexe@2.0.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@types/esrecurse@4.3.1"
+      "ref": "weaving-site@0.193.13|@types/esrecurse@4.3.1"
     },
     {
-      "ref": "weaving-site@0.193.12|esrecurse@4.3.0",
+      "ref": "weaving-site@0.193.13|esrecurse@4.3.0",
       "dependsOn": [
-        "weaving-site@0.193.12|estraverse@5.3.0"
+        "weaving-site@0.193.13|estraverse@5.3.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|estraverse@5.3.0"
+      "ref": "weaving-site@0.193.13|estraverse@5.3.0"
     },
     {
-      "ref": "weaving-site@0.193.12|acorn-jsx@5.3.2",
+      "ref": "weaving-site@0.193.13|acorn-jsx@5.3.2",
       "dependsOn": [
-        "weaving-site@0.193.12|acorn@8.16.0"
+        "weaving-site@0.193.13|acorn@8.16.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|acorn@8.16.0"
+      "ref": "weaving-site@0.193.13|acorn@8.16.0"
     },
     {
-      "ref": "weaving-site@0.193.12|flat-cache@4.0.1",
+      "ref": "weaving-site@0.193.13|flat-cache@4.0.1",
       "dependsOn": [
-        "weaving-site@0.193.12|flatted@3.4.2",
-        "weaving-site@0.193.12|keyv@4.5.4"
+        "weaving-site@0.193.13|flatted@3.4.2",
+        "weaving-site@0.193.13|keyv@4.5.4"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|locate-path@6.0.0",
+      "ref": "weaving-site@0.193.13|locate-path@6.0.0",
       "dependsOn": [
-        "weaving-site@0.193.12|p-locate@5.0.0"
+        "weaving-site@0.193.13|p-locate@5.0.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|path-exists@4.0.0"
+      "ref": "weaving-site@0.193.13|path-exists@4.0.0"
     },
     {
-      "ref": "weaving-site@0.193.12|is-extglob@2.1.1"
+      "ref": "weaving-site@0.193.13|is-extglob@2.1.1"
     },
     {
-      "ref": "weaving-site@0.193.12|brace-expansion@5.0.6",
+      "ref": "weaving-site@0.193.13|brace-expansion@5.0.6",
       "dependsOn": [
-        "weaving-site@0.193.12|balanced-match@4.0.4"
+        "weaving-site@0.193.13|balanced-match@4.0.4"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|deep-is@0.1.4"
+      "ref": "weaving-site@0.193.13|deep-is@0.1.4"
     },
     {
-      "ref": "weaving-site@0.193.12|fast-levenshtein@2.0.6"
+      "ref": "weaving-site@0.193.13|fast-levenshtein@2.0.6"
     },
     {
-      "ref": "weaving-site@0.193.12|prelude-ls@1.2.1"
+      "ref": "weaving-site@0.193.13|prelude-ls@1.2.1"
     },
     {
-      "ref": "weaving-site@0.193.12|type-check@0.4.0",
+      "ref": "weaving-site@0.193.13|type-check@0.4.0",
       "dependsOn": [
-        "weaving-site@0.193.12|prelude-ls@1.2.1"
+        "weaving-site@0.193.13|prelude-ls@1.2.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|word-wrap@1.2.5"
+      "ref": "weaving-site@0.193.13|word-wrap@1.2.5"
     },
     {
-      "ref": "weaving-site@0.193.12|void-elements@3.1.0"
+      "ref": "weaving-site@0.193.13|void-elements@3.1.0"
     },
     {
-      "ref": "weaving-site@0.193.12|cookie@1.1.1"
+      "ref": "weaving-site@0.193.13|cookie@1.1.1"
     },
     {
-      "ref": "weaving-site@0.193.12|set-cookie-parser@2.7.2"
+      "ref": "weaving-site@0.193.13|set-cookie-parser@2.7.2"
     },
     {
-      "ref": "weaving-site@0.193.12|detect-libc@2.1.2"
+      "ref": "weaving-site@0.193.13|detect-libc@2.1.2"
     },
     {
-      "ref": "weaving-site@0.193.12|lightningcss-linux-x64-gnu@1.32.0"
+      "ref": "weaving-site@0.193.13|lightningcss-linux-x64-gnu@1.32.0"
     },
     {
-      "ref": "weaving-site@0.193.12|lightningcss-linux-x64-musl@1.32.0"
+      "ref": "weaving-site@0.193.13|lightningcss-linux-x64-musl@1.32.0"
     },
     {
-      "ref": "weaving-site@0.193.12|nanoid@3.3.12"
+      "ref": "weaving-site@0.193.13|nanoid@3.3.12"
     },
     {
-      "ref": "weaving-site@0.193.12|picocolors@1.1.1"
+      "ref": "weaving-site@0.193.13|picocolors@1.1.1"
     },
     {
-      "ref": "weaving-site@0.193.12|@oxc-project/types@0.132.0"
+      "ref": "weaving-site@0.193.13|@oxc-project/types@0.132.0"
     },
     {
-      "ref": "weaving-site@0.193.12|@rolldown/binding-linux-x64-gnu@1.0.2"
+      "ref": "weaving-site@0.193.13|@rolldown/binding-linux-x64-gnu@1.0.2"
     },
     {
-      "ref": "weaving-site@0.193.12|@rolldown/binding-linux-x64-musl@1.0.2"
+      "ref": "weaving-site@0.193.13|@rolldown/binding-linux-x64-musl@1.0.2"
     },
     {
-      "ref": "weaving-site@0.193.12|@jridgewell/gen-mapping@0.3.13",
+      "ref": "weaving-site@0.193.13|@jridgewell/gen-mapping@0.3.13",
       "dependsOn": [
-        "weaving-site@0.193.12|@jridgewell/sourcemap-codec@1.5.5",
-        "weaving-site@0.193.12|@jridgewell/trace-mapping@0.3.31"
+        "weaving-site@0.193.13|@jridgewell/sourcemap-codec@1.5.5",
+        "weaving-site@0.193.13|@jridgewell/trace-mapping@0.3.31"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@jridgewell/trace-mapping@0.3.31",
+      "ref": "weaving-site@0.193.13|@jridgewell/trace-mapping@0.3.31",
       "dependsOn": [
-        "weaving-site@0.193.12|@jridgewell/resolve-uri@3.1.2",
-        "weaving-site@0.193.12|@jridgewell/sourcemap-codec@1.5.5"
+        "weaving-site@0.193.13|@jridgewell/resolve-uri@3.1.2",
+        "weaving-site@0.193.13|@jridgewell/sourcemap-codec@1.5.5"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|graceful-fs@4.2.11"
+      "ref": "weaving-site@0.193.13|graceful-fs@4.2.11"
     },
     {
-      "ref": "weaving-site@0.193.12|tapable@2.3.3"
+      "ref": "weaving-site@0.193.13|tapable@2.3.3"
     },
     {
-      "ref": "weaving-site@0.193.12|@jridgewell/sourcemap-codec@1.5.5"
+      "ref": "weaving-site@0.193.13|@jridgewell/sourcemap-codec@1.5.5"
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/helper-validator-identifier@7.28.5"
+      "ref": "weaving-site@0.193.13|@babel/helper-validator-identifier@7.28.5"
     },
     {
-      "ref": "weaving-site@0.193.12|js-tokens@4.0.0"
+      "ref": "weaving-site@0.193.13|js-tokens@4.0.0"
     },
     {
-      "ref": "weaving-site@0.193.12|jsesc@3.1.0"
+      "ref": "weaving-site@0.193.13|jsesc@3.1.0"
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/compat-data@7.29.0"
+      "ref": "weaving-site@0.193.13|@babel/compat-data@7.29.0"
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/helper-validator-option@7.27.1"
+      "ref": "weaving-site@0.193.13|@babel/helper-validator-option@7.27.1"
     },
     {
-      "ref": "weaving-site@0.193.12|browserslist@4.28.2",
+      "ref": "weaving-site@0.193.13|browserslist@4.28.2",
       "dependsOn": [
-        "weaving-site@0.193.12|baseline-browser-mapping@2.10.21",
-        "weaving-site@0.193.12|caniuse-lite@1.0.30001790",
-        "weaving-site@0.193.12|electron-to-chromium@1.5.343",
-        "weaving-site@0.193.12|node-releases@2.0.38",
-        "weaving-site@0.193.12|update-browserslist-db@1.2.3"
+        "weaving-site@0.193.13|baseline-browser-mapping@2.10.21",
+        "weaving-site@0.193.13|caniuse-lite@1.0.30001790",
+        "weaving-site@0.193.13|electron-to-chromium@1.5.343",
+        "weaving-site@0.193.13|node-releases@2.0.38",
+        "weaving-site@0.193.13|update-browserslist-db@1.2.3"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|lru-cache@5.1.1",
+      "ref": "weaving-site@0.193.13|lru-cache@5.1.1",
       "dependsOn": [
-        "weaving-site@0.193.12|yallist@3.1.1"
+        "weaving-site@0.193.13|yallist@3.1.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/helper-module-imports@7.28.6",
+      "ref": "weaving-site@0.193.13|@babel/helper-module-imports@7.28.6",
       "dependsOn": [
-        "weaving-site@0.193.12|@babel/traverse@7.29.0",
-        "weaving-site@0.193.12|@babel/types@7.29.0"
+        "weaving-site@0.193.13|@babel/traverse@7.29.0",
+        "weaving-site@0.193.13|@babel/types@7.29.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/helper-globals@7.28.0"
+      "ref": "weaving-site@0.193.13|@babel/helper-globals@7.28.0"
     },
     {
-      "ref": "weaving-site@0.193.12|@babel/helper-string-parser@7.27.1"
+      "ref": "weaving-site@0.193.13|@babel/helper-string-parser@7.27.1"
     },
     {
-      "ref": "weaving-site@0.193.12|punycode@2.3.1"
+      "ref": "weaving-site@0.193.13|punycode@2.3.1"
     },
     {
-      "ref": "weaving-site@0.193.12|shebang-regex@3.0.0"
+      "ref": "weaving-site@0.193.13|shebang-regex@3.0.0"
     },
     {
-      "ref": "weaving-site@0.193.12|isexe@2.0.0"
+      "ref": "weaving-site@0.193.13|isexe@2.0.0"
     },
     {
-      "ref": "weaving-site@0.193.12|flatted@3.4.2"
+      "ref": "weaving-site@0.193.13|flatted@3.4.2"
     },
     {
-      "ref": "weaving-site@0.193.12|keyv@4.5.4",
+      "ref": "weaving-site@0.193.13|keyv@4.5.4",
       "dependsOn": [
-        "weaving-site@0.193.12|json-buffer@3.0.1"
+        "weaving-site@0.193.13|json-buffer@3.0.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|p-locate@5.0.0",
+      "ref": "weaving-site@0.193.13|p-locate@5.0.0",
       "dependsOn": [
-        "weaving-site@0.193.12|p-limit@3.1.0"
+        "weaving-site@0.193.13|p-limit@3.1.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|balanced-match@4.0.4"
+      "ref": "weaving-site@0.193.13|balanced-match@4.0.4"
     },
     {
-      "ref": "weaving-site@0.193.12|@jridgewell/resolve-uri@3.1.2"
+      "ref": "weaving-site@0.193.13|@jridgewell/resolve-uri@3.1.2"
     },
     {
-      "ref": "weaving-site@0.193.12|baseline-browser-mapping@2.10.21"
+      "ref": "weaving-site@0.193.13|baseline-browser-mapping@2.10.21"
     },
     {
-      "ref": "weaving-site@0.193.12|caniuse-lite@1.0.30001790"
+      "ref": "weaving-site@0.193.13|caniuse-lite@1.0.30001790"
     },
     {
-      "ref": "weaving-site@0.193.12|electron-to-chromium@1.5.343"
+      "ref": "weaving-site@0.193.13|electron-to-chromium@1.5.343"
     },
     {
-      "ref": "weaving-site@0.193.12|node-releases@2.0.38"
+      "ref": "weaving-site@0.193.13|node-releases@2.0.38"
     },
     {
-      "ref": "weaving-site@0.193.12|update-browserslist-db@1.2.3",
+      "ref": "weaving-site@0.193.13|update-browserslist-db@1.2.3",
       "dependsOn": [
-        "weaving-site@0.193.12|browserslist@4.28.2",
-        "weaving-site@0.193.12|escalade@3.2.0",
-        "weaving-site@0.193.12|picocolors@1.1.1"
+        "weaving-site@0.193.13|browserslist@4.28.2",
+        "weaving-site@0.193.13|escalade@3.2.0",
+        "weaving-site@0.193.13|picocolors@1.1.1"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|yallist@3.1.1"
+      "ref": "weaving-site@0.193.13|yallist@3.1.1"
     },
     {
-      "ref": "weaving-site@0.193.12|json-buffer@3.0.1"
+      "ref": "weaving-site@0.193.13|json-buffer@3.0.1"
     },
     {
-      "ref": "weaving-site@0.193.12|p-limit@3.1.0",
+      "ref": "weaving-site@0.193.13|p-limit@3.1.0",
       "dependsOn": [
-        "weaving-site@0.193.12|yocto-queue@0.1.0"
+        "weaving-site@0.193.13|yocto-queue@0.1.0"
       ]
     },
     {
-      "ref": "weaving-site@0.193.12|escalade@3.2.0"
+      "ref": "weaving-site@0.193.13|escalade@3.2.0"
     },
     {
-      "ref": "weaving-site@0.193.12|yocto-queue@0.1.0"
+      "ref": "weaving-site@0.193.13|yocto-queue@0.1.0"
     }
   ]
 }

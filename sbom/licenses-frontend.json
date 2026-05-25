@@ -149,27 +149,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared/LICENSE"
   },
-  "@emnapi/core@1.10.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/toyobayashi/emnapi",
-    "publisher": "toyobayashi",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/core",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/core/LICENSE"
-  },
-  "@emnapi/runtime@1.10.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/toyobayashi/emnapi",
-    "publisher": "toyobayashi",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/runtime",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/runtime/LICENSE"
-  },
-  "@emnapi/wasi-threads@1.2.1": {
-    "licenses": "MIT",
-    "repository": "https://github.com/toyobayashi/emnapi",
-    "publisher": "toyobayashi",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/wasi-threads",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/wasi-threads/LICENSE"
-  },
   "@eslint-community/eslint-utils@4.9.1": {
     "licenses": "MIT",
     "repository": "https://github.com/eslint-community/eslint-utils",
@@ -317,6 +296,55 @@
     "repository": "https://github.com/rolldown/plugins",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/pluginutils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/pluginutils/LICENSE"
+  },
+  "@sentry-internal/browser-utils@10.53.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/getsentry/sentry-javascript",
+    "publisher": "Sentry",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry-internal/browser-utils",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry-internal/browser-utils/LICENSE"
+  },
+  "@sentry-internal/feedback@10.53.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/getsentry/sentry-javascript",
+    "publisher": "Sentry",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry-internal/feedback",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry-internal/feedback/LICENSE"
+  },
+  "@sentry-internal/replay-canvas@10.53.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/getsentry/sentry-javascript",
+    "publisher": "Sentry",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry-internal/replay-canvas",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry-internal/replay-canvas/LICENSE"
+  },
+  "@sentry-internal/replay@10.53.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/getsentry/sentry-javascript",
+    "publisher": "Sentry",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry-internal/replay",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry-internal/replay/LICENSE"
+  },
+  "@sentry/browser@10.53.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/getsentry/sentry-javascript",
+    "publisher": "Sentry",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/browser",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/browser/LICENSE"
+  },
+  "@sentry/core@10.53.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/getsentry/sentry-javascript",
+    "publisher": "Sentry",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/core",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/core/LICENSE"
+  },
+  "@sentry/react@10.53.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/getsentry/sentry-javascript",
+    "publisher": "Sentry",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/react",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/react/LICENSE"
   },
   "@tailwindcss/node@4.3.0": {
     "licenses": "MIT",
@@ -1371,7 +1399,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements/LICENSE"
   },
-  "weaving-site@0.193.12": {
+  "weaving-site@0.193.13": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",
