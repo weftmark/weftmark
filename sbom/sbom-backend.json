@@ -492,6 +492,31 @@
       "version": "6.4.0"
     },
     {
+      "bom-ref": "requirements-L37",
+      "description": "requirements line 37: sentry-sdk[fastapi,celery]==2.60.0",
+      "externalReferences": [
+        {
+          "comment": "implicit dist url",
+          "type": "distribution",
+          "url": "https://pypi.org/simple/sentry-sdk/"
+        }
+      ],
+      "name": "sentry-sdk",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "celery"
+        },
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "fastapi"
+        }
+      ],
+      "purl": "pkg:pypi/sentry-sdk@2.60.0",
+      "type": "library",
+      "version": "2.60.0"
+    },
+    {
       "bom-ref": "requirements-L25",
       "description": "requirements line 25: setuptools<83",
       "externalReferences": [
@@ -655,6 +680,9 @@
       "ref": "requirements-L36"
     },
     {
+      "ref": "requirements-L37"
+    },
+    {
       "ref": "requirements-L4"
     },
     {
@@ -674,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-25T07:18:45.670191+00:00",
+    "timestamp": "2026-05-25T11:45:19.535649+00:00",
     "tools": {
       "components": [
         {
@@ -778,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:0e2d9f5a-0053-4495-a812-99651551300a",
+  "serialNumber": "urn:uuid:f2bc2be3-7d94-4247-b12f-55d337c99abe",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",

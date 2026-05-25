@@ -580,6 +580,11 @@
     "Version": "0.17.0"
   },
   {
+    "License": "MIT",
+    "Name": "sentry-sdk",
+    "Version": "2.60.0"
+  },
+  {
     "License": "MIT License",
     "Name": "six",
     "Version": "1.17.0"
