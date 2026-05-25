@@ -37,9 +37,9 @@ def _task_mock(retries: int = 0):
     return t
 
 
-def _settings_mock(token="fake-github-token"):
+def _settings_mock(github_token="fake-github-token"):  # noqa: S6418
     m = MagicMock()
-    m.github_feedback_token = token
+    m.github_feedback_token = github_token
     m.github_feedback_repo = "owner/repo"
     return m
 
