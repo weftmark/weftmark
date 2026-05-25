@@ -1753,10 +1753,19 @@ function ConfigSection() {
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading configuration…</p>;
   if (!configState) return null;
 
+  const isZeroTrustEnabled =
+    (fieldMap["cf_zero_trust_enabled"]?.value ?? "").toLowerCase() === "true";
+
   const unpopulatedGroups = Object.entries(GROUP_CONFIG)
     .map(([, { label, fields }]) => ({
       label,
       missing: fields.filter((f) => {
+        // Boolean toggle — false is a valid complete state, never "missing"
+        if (f === "cf_zero_trust_enabled") return false;
+        // Zero Trust credentials only matter when Zero Trust is enabled
+        if ((f === "cf_access_client_id" || f === "cf_access_client_secret") && !isZeroTrustEnabled) return false;
+        // webhook_base_url always falls back to api_url — no warning needed
+        if (f === "webhook_base_url") return false;
         const s = fieldMap[f];
         return s && (CONFIG_SECRET_FIELDS.has(f) ? !s.secret_set : !s.value);
       }),
@@ -1775,7 +1784,7 @@ function ConfigSection() {
 
       {unpopulatedGroups.length > 0 && (
         <div className="rounded-md border border-border bg-muted/40 px-4 py-3 space-y-1.5">
-          <p className="text-xs font-medium">Optional services not fully configured:</p>
+          <p className="text-xs font-medium">Configuration incomplete:</p>
           {unpopulatedGroups.map(({ label, missing }) => (
             <p key={label} className="text-xs text-muted-foreground">
               <span className="font-medium text-foreground">{label}</span>
