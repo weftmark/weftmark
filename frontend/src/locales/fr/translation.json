@@ -1166,5 +1166,14 @@
       "frame_loom": "Métier sur cadre",
       "other": "Autre"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Choisir une couleur",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Nom",
+    "namePlaceholder": "ex. sauge, cobalt...",
+    "nameUnknown": "Nom de couleur inconnu"
   }
 }

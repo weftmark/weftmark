@@ -1166,5 +1166,14 @@
       "frame_loom": "Raamweefgetouw",
       "other": "Overige"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Kleur kiezen",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Naam",
+    "namePlaceholder": "bijv. salie, kobalt...",
+    "nameUnknown": "Onbekende kleurnaam"
   }
 }
