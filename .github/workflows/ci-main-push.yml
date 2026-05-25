@@ -218,6 +218,7 @@ jobs:
         run: |
           docker build -f frontend/Dockerfile \
             --build-arg VITE_APP_ENV="production" \
+            --build-arg CODECOV_TOKEN=${{ secrets.CODECOV_TOKEN }} \
             -t ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }} \
             -t ghcr.io/weftmark/weftmark-frontend:latest \
             ./frontend

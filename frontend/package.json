@@ -27,7 +27,13 @@
     "react-router-dom": "^7.15.1",
     "tailwind-merge": "^3.6.0"
   },
+  "overrides": {
+    "@codecov/vite-plugin": {
+      "vite": "$vite"
+    }
+  },
   "devDependencies": {
+    "@codecov/vite-plugin": "^2.0.1",
     "@tailwindcss/vite": "^4.3.0",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
