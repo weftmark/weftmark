@@ -2912,3 +2912,15 @@ async def test_config_service(
             return ConfigTestResult(ok=False, message=str(exc))
 
     raise HTTPException(status_code=400, detail=f"Unknown service '{service}'")
+
+
+@router.post("/sandbox/sentry-test", dependencies=[Depends(require_superuser)])
+async def sandbox_sentry_test():
+    import sentry_sdk
+
+    event_id: str | None = None
+    try:
+        raise RuntimeError("Sentry test error — triggered from Superuser Sandbox (backend)")
+    except RuntimeError as exc:
+        event_id = sentry_sdk.capture_exception(exc)
+    return {"captured": True, "event_id": event_id}

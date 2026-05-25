@@ -31,6 +31,7 @@ import {
   getConfig,
   saveConfig,
   testConfigService,
+  sendBackendSentryTest,
   type ScheduledTask,
   type TaskHistoryItem,
   type ReconcileReport,
@@ -2117,14 +2118,17 @@ function CredentialsTab() {
 }
 
 function SandboxTab() {
-  const [lastError, setLastError] = React.useState<string | null>(null);
+  const [lastFrontendError, setLastFrontendError] = React.useState<string | null>(null);
+  const backendTestMutation = useMutation({
+    mutationFn: sendBackendSentryTest,
+  });
 
-  function throwTestError() {
+  function throwFrontendTestError() {
     try {
-      throw new Error("Sentry test error — triggered from Superuser Sandbox");
+      throw new Error("Sentry test error — triggered from Superuser Sandbox (frontend)");
     } catch (err) {
       Sentry.captureException(err);
-      setLastError(err instanceof Error ? err.message : String(err));
+      setLastFrontendError(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -2136,14 +2140,37 @@ function SandboxTab() {
       </div>
 
       <div className="rounded-md border border-border p-4 space-y-3">
-        <h3 className="text-sm font-medium">Sentry error tracking</h3>
-        <p className="text-xs text-muted-foreground">Captures a test exception and sends it to Sentry. Use this to verify the DSN is wired correctly.</p>
+        <h3 className="text-sm font-medium">Sentry error tracking — frontend</h3>
+        <p className="text-xs text-muted-foreground">Captures a test exception in the browser and sends it to the React Sentry project.</p>
         <div className="flex items-center gap-3">
-          <Button variant="destructive" size="sm" onClick={throwTestError}>
-            Send test error to Sentry
+          <Button variant="destructive" size="sm" onClick={throwFrontendTestError}>
+            Send test error (frontend)
           </Button>
-          {lastError && (
-            <span className="text-xs text-muted-foreground">Sent: <code className="font-mono">{lastError}</code></span>
+          {lastFrontendError && (
+            <span className="text-xs text-muted-foreground">Sent: <code className="font-mono">{lastFrontendError}</code></span>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-md border border-border p-4 space-y-3">
+        <h3 className="text-sm font-medium">Sentry error tracking — backend</h3>
+        <p className="text-xs text-muted-foreground">Captures a test exception in the FastAPI process and sends it to the Python Sentry project.</p>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={backendTestMutation.isPending}
+            onClick={() => backendTestMutation.mutate()}
+          >
+            Send test error (backend)
+          </Button>
+          {backendTestMutation.isSuccess && (
+            <span className="text-xs text-muted-foreground">
+              Sent — event: <code className="font-mono">{backendTestMutation.data?.event_id ?? "no DSN"}</code>
+            </span>
+          )}
+          {backendTestMutation.isError && (
+            <span className="text-xs text-destructive">Request failed</span>
           )}
         </div>
       </div>

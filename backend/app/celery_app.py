@@ -77,6 +77,19 @@ def _make_celery() -> Celery:
 celery_app = _make_celery()
 
 _settings = get_settings()
+
+if _settings.sentry_dsn_fastapi:
+    import os
+
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=_settings.sentry_dsn_fastapi,
+        environment=_settings.sentry_env_override or _settings.app_env or "development",
+        server_name=os.environ.get("OTEL_SERVICE_NAME", "weftmark-worker"),
+        traces_sample_rate=0.1,
+    )
+
 if _settings.otel_exporter_otlp_endpoint:
     from app.telemetry import configure_telemetry
 

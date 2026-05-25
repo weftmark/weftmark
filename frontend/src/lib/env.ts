@@ -2,7 +2,7 @@ declare global {
   interface Window {
     ENV?: {
       CLERK_PUBLISHABLE_KEY?: string;
-      SENTRY_DSN?: string;
+      SENTRY_DSN_REACT?: string;
     };
   }
 }
@@ -12,4 +12,4 @@ export const clerkPublishableKey: string =
 
 export const clerkKeyMissing = !clerkPublishableKey;
 
-export const sentryDsn: string = globalThis.window?.ENV?.SENTRY_DSN || import.meta.env.VITE_SENTRY_DSN || "";
+export const sentryDsn: string = globalThis.window?.ENV?.SENTRY_DSN_REACT || import.meta.env.VITE_SENTRY_DSN_REACT || "";

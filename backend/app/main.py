@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -39,6 +40,17 @@ from app.routers import (  # noqa: E402
 from app.telemetry import configure_telemetry  # noqa: E402
 
 configure_telemetry(settings)
+
+if settings.sentry_dsn_fastapi:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn_fastapi,
+        environment=settings.sentry_env_override or settings.app_env or "development",
+        server_name=os.environ.get("OTEL_SERVICE_NAME", "weftmark-api"),
+        traces_sample_rate=0.1,
+    )
+
 log = logging.getLogger(__name__)
 
 start_time: datetime = datetime.now(timezone.utc)
