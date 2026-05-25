@@ -1,8 +1,11 @@
-"""Tests for the Ravelry router — yarn-detail endpoint and auth guards."""
+"""Tests for the Ravelry router and service — yarn-detail endpoint and auth guards."""
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from httpx import AsyncClient
+
+from app.services.ravelry import fetch_yarn_detail
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -60,3 +63,38 @@ class TestYarnDetail:
             resp = await auth_client.get("/api/ravelry/yarn-detail/42")
 
         assert resp.status_code == 502
+
+
+# ---------------------------------------------------------------------------
+# TestFetchYarnDetailService — service function uses Basic auth
+# ---------------------------------------------------------------------------
+
+
+class TestFetchYarnDetailService:
+    async def test_calls_basic_auth_get_with_colorways_param(self):
+        with patch(
+            "app.services.ravelry._basic_auth_get",
+            new=AsyncMock(return_value=_YARN_DETAIL_RESPONSE),
+        ) as mock_get:
+            result = await fetch_yarn_detail(42)
+
+        mock_get.assert_called_once_with("/yarns/42.json", {"include": "colorways"})
+        assert result == _YARN_DETAIL_RESPONSE
+
+    async def test_returns_response_from_basic_auth_get(self):
+        with patch(
+            "app.services.ravelry._basic_auth_get",
+            new=AsyncMock(return_value=_YARN_DETAIL_RESPONSE),
+        ):
+            result = await fetch_yarn_detail(99)
+
+        assert result["yarn"]["id"] == 42
+        assert len(result["colorways"]) == 2
+
+    async def test_propagates_exception_from_basic_auth_get(self):
+        with patch(
+            "app.services.ravelry._basic_auth_get",
+            new=AsyncMock(side_effect=ValueError("API key not configured")),
+        ):
+            with pytest.raises(ValueError, match="API key not configured"):
+                await fetch_yarn_detail(42)
