@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getYarn, updateYarn, patchYarnColorway } from "@/api/yarn";
+import { getYarn, updateYarn, patchYarnColorway, getYarnProjects, type YarnProjectRef } from "@/api/yarn";
 import { getRavelryYarnDetail, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
@@ -375,6 +375,12 @@ export function YarnDetailPage() {
     enabled: !!id,
   });
 
+  const { data: yarnProjects = [] } = useQuery<YarnProjectRef[]>({
+    queryKey: ["yarn-projects", id],
+    queryFn: () => getYarnProjects(id!),
+    enabled: !!id,
+  });
+
   const { data: ravelryYarnResp } = useQuery({
     queryKey: ["ravelry-yarn-detail", yarn?.ravelry_yarn_id],
     queryFn: async () => {
@@ -579,6 +585,30 @@ export function YarnDetailPage() {
         <section className="rounded-lg border border-border bg-card p-4 space-y-2">
           <h2 className="text-sm font-medium text-card-foreground">{t("yarnDetailPage.notes")}</h2>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{yarn.notes}</p>
+        </section>
+      )}
+
+      {/* Used in projects */}
+      {yarnProjects.length > 0 && (
+        <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h2 className="text-sm font-medium text-card-foreground">{t("yarnDetailPage.usedInProjects")}</h2>
+          <ul className="space-y-1.5">
+            {yarnProjects.map((ref) => (
+              <li key={`${ref.project_id}-${ref.color_hex}`}>
+                <Link
+                  to={`/projects/${ref.project_id}`}
+                  className="flex items-center gap-2 text-sm hover:underline text-card-foreground"
+                >
+                  <span
+                    className="inline-block h-4 w-4 rounded border border-border flex-shrink-0"
+                    style={{ background: ref.color_hex }}
+                  />
+                  <span>{ref.project_name}</span>
+                  <span className="text-xs text-muted-foreground">({ref.project_status})</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

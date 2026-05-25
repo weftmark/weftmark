@@ -475,7 +475,12 @@
     "colWeight": "Poids",
     "colFiber": "Fibre",
     "colSkeins": "Écheveaux",
-    "colAdded": "Ajouté"
+    "colAdded": "Ajouté",
+    "inStash": "En stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Source",
+    "filterInStash": "En stash"
   },
   "addYarnModal": {
     "title": "Ajouter du fil",
@@ -617,7 +622,13 @@
     "tieUpNotAvailable": "Données d'armure non disponibles — ce fichier WIF ne contient pas de section [TIEUP].",
     "tieUpDesc": "Colonnes = lames · Lignes = cadres · Rempli = connecté",
     "viewWeavePlan": "Voir le plan de tissage",
-    "printSavePdf": "Imprimer / Enregistrer en PDF"
+    "printSavePdf": "Imprimer / Enregistrer en PDF",
+    "yarnCol": "Fil",
+    "linkYarn": "Lier un fil",
+    "updateColorFromYarn": "Mettre à jour la couleur depuis le fil ?",
+    "updateColor": "Mettre à jour",
+    "keepColor": "Garder",
+    "undo": "Annuler"
   },
   "projectDetailPage": {
     "loading": "Chargement…",
@@ -880,7 +891,8 @@
     "colorNamePlaceholder": "ex. Kaki",
     "colorwayFilter": "Filtrer les coloris…",
     "noColorways": "Aucun coloris trouvé pour ce fil.",
-    "colorwayLoadError": "Impossible de charger les coloris."
+    "colorwayLoadError": "Impossible de charger les coloris.",
+    "usedInProjects": "Utilisé dans des projets"
   },
   "loomDetailPage": {
     "loading": "Chargement…",
@@ -1175,5 +1187,12 @@
     "modeName": "Nom",
     "namePlaceholder": "ex. sauge, cobalt...",
     "nameUnknown": "Nom de couleur inconnu"
+  },
+  "yarnPicker": {
+    "title": "Lier un fil à la couleur",
+    "searchPlaceholder": "Rechercher par nom, marque ou couleur…",
+    "loading": "Chargement…",
+    "noResults": "Aucun fil trouvé.",
+    "unlink": "Supprimer le lien de fil"
   }
 }

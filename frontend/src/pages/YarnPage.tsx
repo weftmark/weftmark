@@ -188,11 +188,16 @@ function YarnCard({ yarn }: { yarn: YarnSummary }) {
           <p className="text-xs text-muted-foreground">{yarn.unit_yardage} {t("yarnPage.yardsPerUnit")}</p>
         )}
       </div>
-      {yarn.ravelry_stash_id !== null && !yarn.out_of_stash && (
-        <span className="absolute bottom-2 right-3 rounded px-1.5 py-0.5 text-[10px] bg-accent/10 text-accent">
-          {t("yarnPage.inRavelryStash")}
+      <div className="absolute bottom-2 right-2 flex gap-1">
+        {yarn.ravelry_stash_id !== null && !yarn.out_of_stash && (
+          <span className="rounded px-1.5 py-0.5 text-[10px] bg-accent/10 text-accent">
+            {t("yarnPage.inStash")}
+          </span>
+        )}
+        <span className="rounded px-1.5 py-0.5 text-[10px] bg-muted text-muted-foreground">
+          {yarn.ravelry_yarn_id ? t("yarnPage.sourceRavelry") : t("yarnPage.sourceWeftmark")}
         </span>
-      )}
+      </div>
     </Link>
   );
 }
@@ -217,9 +222,19 @@ function YarnGridTile({ yarn }: { yarn: YarnSummary }) {
           {skeinLabel}
         </span>
       </div>
-      <div className="p-2">
+      <div className="p-2 space-y-1">
         <p className="text-xs font-medium truncate">{yarn.brand}</p>
         <p className="text-xs text-muted-foreground truncate">{yarn.name}</p>
+        <div className="flex flex-wrap gap-1">
+          {yarn.ravelry_stash_id !== null && !yarn.out_of_stash && (
+            <span className="rounded px-1 py-0.5 text-[9px] bg-accent/10 text-accent leading-none">
+              {t("yarnPage.inStash")}
+            </span>
+          )}
+          <span className="rounded px-1 py-0.5 text-[9px] bg-muted text-muted-foreground leading-none">
+            {yarn.ravelry_yarn_id ? t("yarnPage.sourceRavelry") : t("yarnPage.sourceWeftmark")}
+          </span>
+        </div>
       </div>
     </Link>
   );
@@ -282,6 +297,9 @@ function YarnTable({
             <th className="px-3 py-2 text-left hidden lg:table-cell text-xs font-medium text-muted-foreground">
               {t("yarnPage.colFiber")}
             </th>
+            <th className="px-3 py-2 text-left hidden sm:table-cell text-xs font-medium text-muted-foreground">
+              {t("yarnPage.colSource")}
+            </th>
             <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">
               {t("yarnPage.colSkeins")}
             </th>
@@ -321,6 +339,18 @@ function YarnTable({
               </td>
               <td className="px-3 py-2 text-muted-foreground text-xs hidden lg:table-cell max-w-[120px]">
                 <span className="truncate block">{yarn.fiber_content ?? "—"}</span>
+              </td>
+              <td className="px-3 py-2 hidden sm:table-cell">
+                <div className="flex flex-wrap gap-1">
+                  {yarn.ravelry_stash_id !== null && !yarn.out_of_stash && (
+                    <span className="rounded px-1.5 py-0.5 text-[10px] bg-accent/10 text-accent leading-none whitespace-nowrap">
+                      {t("yarnPage.inStash")}
+                    </span>
+                  )}
+                  <span className="rounded px-1.5 py-0.5 text-[10px] bg-muted text-muted-foreground leading-none whitespace-nowrap">
+                    {yarn.ravelry_yarn_id ? t("yarnPage.sourceRavelry") : t("yarnPage.sourceWeftmark")}
+                  </span>
+                </div>
               </td>
               <td className="px-3 py-2 text-right text-xs">{yarn.skein_count}</td>
               <td className="px-3 py-2 text-muted-foreground text-xs hidden md:table-cell whitespace-nowrap">
@@ -429,7 +459,7 @@ function FilterPopover({
                 onChange={(e) => onChange({ ...filters, inRavelryStash: e.target.checked })}
                 className="rounded accent-accent"
               />
-              {t("yarnPage.filterInRavelryStash")}
+              {t("yarnPage.filterInStash")}
             </label>
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input

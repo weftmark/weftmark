@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.deps import get_current_user, get_db
+from app.models.project import ProjectYarnColor
 from app.models.user import User
 from app.models.yarn import Skein, Yarn
 from app.services import storage
@@ -605,3 +606,43 @@ async def clone_yarn(
     await db.commit()
     clone = await _get_owned_yarn(clone.id, current_user, db)
     return YarnDetail.from_yarn(clone)
+
+
+# ---------------------------------------------------------------------------
+# Cross-reference: projects using this yarn
+# ---------------------------------------------------------------------------
+
+
+class YarnProjectRef(BaseModel):
+    project_id: uuid.UUID
+    project_name: str
+    project_status: str
+    color_hex: str
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/{yarn_id}/projects", response_model=list[YarnProjectRef])
+async def get_yarn_projects(
+    yarn_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[YarnProjectRef]:
+    yarn = await _get_owned_yarn(yarn_id, current_user, db)
+    stmt = (
+        select(ProjectYarnColor)
+        .where(ProjectYarnColor.yarn_id == yarn.id)
+        .options(selectinload(ProjectYarnColor.project))
+        .order_by(ProjectYarnColor.color_hex)
+    )
+    rows = (await db.scalars(stmt)).all()
+    return [
+        YarnProjectRef(
+            project_id=r.project_id,
+            project_name=r.project.name,
+            project_status=r.project.status,
+            color_hex=r.color_hex,
+        )
+        for r in rows
+        if r.project is not None and r.project.deleted_at is None
+    ]
