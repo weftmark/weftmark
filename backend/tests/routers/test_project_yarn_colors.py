@@ -21,6 +21,7 @@ async def _make_draft(db: AsyncSession, owner_id: uuid.UUID) -> Draft:
         name="Test Draft",
         wif_filename="test.wif",
         wif_path="drafts/test/original.wif",
+        drawdown_preview_path="fake/preview.png",
     )
     db.add(draft)
     await db.flush()
