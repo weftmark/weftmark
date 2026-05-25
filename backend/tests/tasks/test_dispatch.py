@@ -37,9 +37,9 @@ def _task_mock(retries: int = 0):
     return t
 
 
-def _settings_mock(token="fake-github-token"):
+def _settings_mock(github_token="fake-github-token"):  # noqa: S6418
     m = MagicMock()
-    m.github_feedback_token = token
+    m.github_feedback_token = github_token
     m.github_feedback_repo = "owner/repo"
     return m
 
@@ -59,7 +59,7 @@ class TestDispatchNoToken:
 
         with (
             patch("app.database.CeleryAsyncSession", _celery_session_ctx(db_session)),
-            patch("app.config.get_settings", return_value=_settings_mock(token=None)),
+            patch("app.config.get_settings", return_value=_settings_mock(github_token=None)),
         ):
             result = await _dispatch(_task_mock(), str(row.id))
 
@@ -74,7 +74,7 @@ class TestDispatchNoToken:
 
         with (
             patch("app.database.CeleryAsyncSession", _celery_session_ctx(db_session)),
-            patch("app.config.get_settings", return_value=_settings_mock(token=None)),
+            patch("app.config.get_settings", return_value=_settings_mock(github_token=None)),
         ):
             await _dispatch(_task_mock(), str(row.id))
 
@@ -84,7 +84,7 @@ class TestDispatchNoToken:
     async def test_no_token_row_not_in_db_still_returns_skipped(self, db_session):
         with (
             patch("app.database.CeleryAsyncSession", _celery_session_ctx(db_session)),
-            patch("app.config.get_settings", return_value=_settings_mock(token=None)),
+            patch("app.config.get_settings", return_value=_settings_mock(github_token=None)),
         ):
             result = await _dispatch(_task_mock(), str(uuid.uuid4()))
 
