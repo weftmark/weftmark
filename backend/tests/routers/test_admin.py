@@ -2145,3 +2145,20 @@ class TestDeletionQueue:
         data = resp.json()
         assert len(data) == 1
         assert data[0]["deletion_state"] == "stalled"
+
+
+class TestSandbox:
+    async def test_sentry_test_returns_captured(self, superuser_client: AsyncClient, superuser_user: User):
+        resp = await superuser_client.post("/api/admin/sandbox/sentry-test")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["captured"] is True
+        assert "event_id" in data
+
+    async def test_sentry_test_requires_superuser(self, admin_client: AsyncClient):
+        resp = await admin_client.post("/api/admin/sandbox/sentry-test")
+        assert resp.status_code == 403
+
+    async def test_sentry_test_requires_auth(self, client: AsyncClient):
+        resp = await client.post("/api/admin/sandbox/sentry-test")
+        assert resp.status_code in (401, 403)

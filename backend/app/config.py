@@ -182,6 +182,10 @@ class Settings(BaseSettings):
     # Data retention
     soft_delete_retention_days: int = 365
 
+    # Sentry error tracking
+    sentry_dsn_fastapi: str = ""
+    sentry_env_override: str = ""  # overrides app_env for Sentry environment label when set
+
     # Config file — persistent encrypted optional-settings store
     # Generate key: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     config_encryption_key: str = ""

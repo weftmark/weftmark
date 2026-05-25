@@ -45,7 +45,8 @@
     "maintenance": "Mantenimiento",
     "schedule": "Tareas programadas",
     "exports": "Exportaciones de datos",
-    "credentials": "Credenciales"
+    "credentials": "Credenciales",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Telar de piso - seguimiento de pedales",

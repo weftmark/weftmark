@@ -45,7 +45,8 @@
     "maintenance": "Maintenance",
     "schedule": "Tâches planifiées",
     "exports": "Exports de données",
-    "credentials": "Identifiants"
+    "credentials": "Identifiants",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Métier de basse lisse - suivi des marches",

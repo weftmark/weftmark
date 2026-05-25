@@ -79,6 +79,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
     { id: "schedule", label: t("superuserSections.schedule") },
     { id: "exports", label: t("superuserSections.exports") },
     { id: "credentials", label: t("superuserSections.credentials") },
+    { id: "sandbox", label: t("superuserSections.sandbox") },
   ];
 
   function isActive(href: string, exact = false) {

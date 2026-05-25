@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import * as Sentry from "@sentry/react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import {
   getConfig,
   saveConfig,
   testConfigService,
+  sendBackendSentryTest,
   type ScheduledTask,
   type TaskHistoryItem,
   type ReconcileReport,
@@ -62,7 +64,7 @@ function formatUptime(seconds: number): string {
   return parts.join(", ");
 }
 
-type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials";
+type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials" | "sandbox";
 
 // ---------------------------------------------------------------------------
 // EULA tab
@@ -2115,6 +2117,67 @@ function CredentialsTab() {
   );
 }
 
+function SandboxTab() {
+  const [lastFrontendError, setLastFrontendError] = React.useState<string | null>(null);
+  const backendTestMutation = useMutation({
+    mutationFn: sendBackendSentryTest,
+  });
+
+  function throwFrontendTestError() {
+    try {
+      throw new Error("Sentry test error — triggered from Superuser Sandbox (frontend)");
+    } catch (err) {
+      Sentry.captureException(err);
+      setLastFrontendError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold">Sandbox</h2>
+        <p className="text-sm text-muted-foreground mt-1">Internal diagnostics and integration tests. Not visible to regular users.</p>
+      </div>
+
+      <div className="rounded-md border border-border p-4 space-y-3">
+        <h3 className="text-sm font-medium">Sentry error tracking — frontend</h3>
+        <p className="text-xs text-muted-foreground">Captures a test exception in the browser and sends it to the React Sentry project.</p>
+        <div className="flex items-center gap-3">
+          <Button variant="destructive" size="sm" onClick={throwFrontendTestError}>
+            Send test error (frontend)
+          </Button>
+          {lastFrontendError && (
+            <span className="text-xs text-muted-foreground">Sent: <code className="font-mono">{lastFrontendError}</code></span>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-md border border-border p-4 space-y-3">
+        <h3 className="text-sm font-medium">Sentry error tracking — backend</h3>
+        <p className="text-xs text-muted-foreground">Captures a test exception in the FastAPI process and sends it to the Python Sentry project.</p>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={backendTestMutation.isPending}
+            onClick={() => backendTestMutation.mutate()}
+          >
+            Send test error (backend)
+          </Button>
+          {backendTestMutation.isSuccess && (
+            <span className="text-xs text-muted-foreground">
+              Sent — event: <code className="font-mono">{backendTestMutation.data?.event_id ?? "no DSN"}</code>
+            </span>
+          )}
+          {backendTestMutation.isError && (
+            <span className="text-xs text-destructive">Request failed</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SuperuserPage() {
   const { section = "eula" } = useParams<{ section: string }>();
   const activeSection = section as SuperuserSection;
@@ -2151,6 +2214,7 @@ export function SuperuserPage() {
       {activeSection === "schedule" && <ScheduledTasksTab />}
       {activeSection === "exports" && <ExportsTab />}
       {activeSection === "credentials" && <CredentialsTab />}
+      {activeSection === "sandbox" && <SandboxTab />}
     </div>
   );
 }

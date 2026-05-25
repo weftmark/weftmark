@@ -34,3 +34,4 @@ opentelemetry-instrumentation-httpx==0.63b1
 opentelemetry-instrumentation-botocore==0.63b1
 opentelemetry-instrumentation-logging==0.63b1
 geoip2==5.2.0
+sentry-sdk[fastapi,celery]==2.60.0
