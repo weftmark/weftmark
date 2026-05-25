@@ -488,6 +488,8 @@ function ColorPaletteSection({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [yarnPickerHex, setYarnPickerHex] = useState<string | null>(null);
+  // { slotHex, suggestedHex } — offered after a yarn with a color is linked
+  const [colorOffer, setColorOffer] = useState<{ slotHex: string; suggestedHex: string } | null>(null);
 
   function setReplacement(hex: string, replacement: string) {
     const next = { ...pending };
@@ -565,7 +567,7 @@ function ColorPaletteSection({
               return (
                 <tr key={c.hex} className="border-b border-border last:border-0">
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className="inline-block h-5 w-5 rounded border border-border flex-shrink-0"
                         style={{ background: displayHex }}
@@ -576,6 +578,31 @@ function ColorPaletteSection({
                           <span className="ml-1 text-accent"> → {pending[c.hex]}</span>
                         )}
                       </span>
+                      {colorOffer?.slotHex === c.hex && (
+                        <div className="flex items-center gap-1.5 rounded border border-border bg-muted/40 px-2 py-1 text-xs">
+                          <span className="text-muted-foreground">{t("projectLandingPage.updateColorFromYarn")}</span>
+                          <span
+                            className="inline-block h-3.5 w-3.5 rounded-sm border border-border flex-shrink-0"
+                            style={{ background: colorOffer.suggestedHex }}
+                          />
+                          <span className="font-mono text-muted-foreground">{colorOffer.suggestedHex}</span>
+                          <button
+                            className="ml-1 rounded px-1.5 py-0.5 bg-accent text-primary-foreground text-[10px] font-medium hover:opacity-90"
+                            onClick={() => {
+                              setReplacement(c.hex, colorOffer.suggestedHex);
+                              setColorOffer(null);
+                            }}
+                          >
+                            {t("projectLandingPage.updateColor")}
+                          </button>
+                          <button
+                            className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                            onClick={() => setColorOffer(null)}
+                          >
+                            {t("projectLandingPage.keepColor")}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
@@ -672,13 +699,20 @@ function ColorPaletteSection({
         <YarnPickerModal
           colorHex={yarnPickerHex}
           currentYarnId={yarnColors.find((yc) => yc.color_hex === yarnPickerHex)?.yarn_id ?? null}
-          onSelect={(yarnId) => {
+          onSelect={(yarnId, yarn) => {
             onYarnLink(yarnPickerHex, yarnId);
             setYarnPickerHex(null);
+            if (
+              yarn.color_hex &&
+              yarn.color_hex.toLowerCase() !== (pending[yarnPickerHex] ?? yarnPickerHex).toLowerCase()
+            ) {
+              setColorOffer({ slotHex: yarnPickerHex, suggestedHex: yarn.color_hex });
+            }
           }}
           onUnlink={() => {
             onYarnUnlink(yarnPickerHex);
             setYarnPickerHex(null);
+            if (colorOffer?.slotHex === yarnPickerHex) setColorOffer(null);
           }}
           onClose={() => setYarnPickerHex(null)}
           isSaving={isYarnSaving}

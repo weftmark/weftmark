@@ -624,7 +624,10 @@
     "viewWeavePlan": "Weefplan bekijken",
     "printSavePdf": "Afdrukken / Opslaan als PDF",
     "yarnCol": "Garen",
-    "linkYarn": "Garen koppelen"
+    "linkYarn": "Garen koppelen",
+    "updateColorFromYarn": "Kleur overnemen van garen?",
+    "updateColor": "Overnemen",
+    "keepColor": "Behouden"
   },
   "projectDetailPage": {
     "loading": "Laden…",

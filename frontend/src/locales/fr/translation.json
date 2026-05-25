@@ -624,7 +624,10 @@
     "viewWeavePlan": "Voir le plan de tissage",
     "printSavePdf": "Imprimer / Enregistrer en PDF",
     "yarnCol": "Fil",
-    "linkYarn": "Lier un fil"
+    "linkYarn": "Lier un fil",
+    "updateColorFromYarn": "Mettre à jour la couleur depuis le fil ?",
+    "updateColor": "Mettre à jour",
+    "keepColor": "Garder"
   },
   "projectDetailPage": {
     "loading": "Chargement…",

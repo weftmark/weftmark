@@ -9,7 +9,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 interface Props {
   colorHex: string;
   currentYarnId: string | null;
-  onSelect: (yarnId: string) => void;
+  onSelect: (yarnId: string, yarn: YarnSummary) => void;
   onUnlink: () => void;
   onClose: () => void;
   isSaving: boolean;
@@ -90,7 +90,7 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
                     ? "bg-copper-subtle text-copper-on-subtle"
                     : "hover:bg-muted"
                 }`}
-                onClick={() => onSelect(yarn.id)}
+                onClick={() => onSelect(yarn.id, yarn)}
                 disabled={isSaving}
               >
                 {/* Yarn photo / color swatch */}

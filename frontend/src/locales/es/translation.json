@@ -624,7 +624,10 @@
     "viewWeavePlan": "Ver plan de tejido",
     "printSavePdf": "Imprimir / Guardar PDF",
     "yarnCol": "Hilo",
-    "linkYarn": "Vincular hilo"
+    "linkYarn": "Vincular hilo",
+    "updateColorFromYarn": "¿Actualizar color del hilo?",
+    "updateColor": "Actualizar",
+    "keepColor": "Conservar"
   },
   "projectDetailPage": {
     "loading": "Cargando…",

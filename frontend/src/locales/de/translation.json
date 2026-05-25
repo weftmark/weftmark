@@ -625,7 +625,10 @@
     "viewWeavePlan": "Webplan ansehen",
     "printSavePdf": "Drucken / Als PDF speichern",
     "yarnCol": "Garn",
-    "linkYarn": "Garn verknüpfen"
+    "linkYarn": "Garn verknüpfen",
+    "updateColorFromYarn": "Farbe aus Garn übernehmen?",
+    "updateColor": "Übernehmen",
+    "keepColor": "Behalten"
   },
   "projectDetailPage": {
     "loading": "Laden…",

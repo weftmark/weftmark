@@ -625,7 +625,10 @@
     "viewWeavePlan": "View Weave Plan",
     "printSavePdf": "Print / Save PDF",
     "yarnCol": "Yarn",
-    "linkYarn": "Link yarn"
+    "linkYarn": "Link yarn",
+    "updateColorFromYarn": "Update color from yarn?",
+    "updateColor": "Update",
+    "keepColor": "Keep"
   },
   "projectDetailPage": {
     "loading": "Loading…",
