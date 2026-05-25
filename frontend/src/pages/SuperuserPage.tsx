@@ -45,6 +45,7 @@ import {
   type CredentialExpiry,
   type CredentialResource,
   type ConfigTestResult,
+  type ConfigFieldState,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 import { CveBanner } from "@/components/admin/CveBanner";
@@ -1671,6 +1672,114 @@ const CONFIG_FIELD_LABELS: Record<string, string> = {
   otel_exporter_otlp_endpoint: "OTLP Endpoint",
 };
 
+interface ConfigFieldRowProps {
+  field: string;
+  groupFieldCount: number;
+  state: ConfigFieldState | undefined;
+  isZeroTrustEnabled: boolean;
+  drafts: Record<string, string>;
+  setDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  editingFields: Set<string>;
+  setEditingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
+  apiUrl: string;
+}
+
+function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, drafts, setDrafts, editingFields, setEditingFields, apiUrl }: ConfigFieldRowProps) {
+  if ((field === "cf_access_client_id" || field === "cf_access_client_secret") && !isZeroTrustEnabled) return null;
+
+  const isBoolean = BOOLEAN_FIELDS.has(field);
+  const isSecret = CONFIG_SECRET_FIELDS.has(field);
+  const fromEnv = state?.source === "env";
+  const hasDraft = field in drafts;
+  const isSet = isSecret ? (state?.secret_set ?? false) : !!(state?.value);
+  const isFullWidth = groupFieldCount === 1
+    || field === "smtp_from_email"
+    || field === "ravelry_oauth_redirect_uri"
+    || field === "webhook_base_url"
+    || field === "otel_exporter_otlp_endpoint";
+
+  if (isBoolean) {
+    const isOn = hasDraft
+      ? drafts[field] === "true"
+      : (state?.value === "True" || state?.value === "true");
+    return (
+      <div className={`flex items-center justify-between gap-3 py-1 ${isFullWidth ? "sm:col-span-2" : ""}`}>
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
+          {fromEnv && (
+            <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">ENV</span>
+          )}
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isOn}
+          onClick={() => setDrafts((prev) => ({ ...prev, [field]: isOn ? "false" : "true" }))}
+          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isOn ? "bg-accent" : "bg-input"}`}
+        >
+          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
+        </button>
+      </div>
+    );
+  }
+
+  const isPrefixMasked = PREFIX_MASKED_FIELDS.has(field);
+  const isEditing = editingFields.has(field);
+  const showMasked = isPrefixMasked && isSet && !hasDraft && !isEditing;
+  const inputType = isPrefixMasked ? "text" : isSecret ? "password" : "text";
+  const inputValue = isSecret ? (hasDraft ? drafts[field] : "") : (hasDraft ? drafts[field] : (state?.value ?? ""));
+  let placeholder = "";
+  if (isSecret && isSet) placeholder = "Enter new value to replace";
+  else if (field === "webhook_base_url" && !isSet) placeholder = apiUrl || "http://localhost:8000";
+
+  return (
+    <div className={isFullWidth ? "sm:col-span-2" : ""}>
+      <div className="flex items-center gap-1.5 mb-1">
+        <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
+        {fromEnv && (
+          <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">
+            ENV
+          </span>
+        )}
+        {isSet && !fromEnv && !hasDraft && (
+          <span className="text-[10px] border rounded px-1 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 leading-4">
+            Set
+          </span>
+        )}
+        {field === "webhook_base_url" && !isSet && !hasDraft && (
+          <span className="text-[10px] border rounded px-1 text-muted-foreground border-border leading-4">
+            Default
+          </span>
+        )}
+      </div>
+      {showMasked ? (
+        <div
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono text-muted-foreground cursor-text select-none"
+          onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
+          title="Click to change"
+        >
+          {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
+        </div>
+      ) : (
+        <input
+          type={inputType}
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+          value={inputValue}
+          placeholder={placeholder}
+          onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
+          autoComplete="off"
+          autoFocus={isPrefixMasked && isEditing && !hasDraft}
+        />
+      )}
+      {fromEnv && hasDraft && (
+        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+          ENV var active — file value won't take effect until removed from .env
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ConfigSection() {
   const qc = useQueryClient();
   const { data: configState, isLoading } = useQuery({
@@ -1808,102 +1917,20 @@ function ConfigSection() {
             </div>
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {fields.map((field) => {
-                  // Collapse Zero Trust credential fields when the toggle is off
-                  if ((field === "cf_access_client_id" || field === "cf_access_client_secret") && !isZeroTrustEnabled) return null;
-
-                  const state = fieldMap[field];
-                  const isBoolean = BOOLEAN_FIELDS.has(field);
-                  const isSecret = CONFIG_SECRET_FIELDS.has(field);
-                  const fromEnv = state?.source === "env";
-                  const hasDraft = field in drafts;
-                  const isSet = isSecret ? (state?.secret_set ?? false) : !!(state?.value);
-                  const isFullWidth = fields.length === 1
-                    || field === "smtp_from_email"
-                    || field === "ravelry_oauth_redirect_uri"
-                    || field === "webhook_base_url"
-                    || field === "otel_exporter_otlp_endpoint";
-
-                  if (isBoolean) {
-                    const isOn = hasDraft
-                      ? drafts[field] === "true"
-                      : (state?.value === "True" || state?.value === "true");
-                    return (
-                      <div key={field} className={`flex items-center justify-between gap-3 py-1 ${isFullWidth ? "sm:col-span-2" : ""}`}>
-                        <div className="flex items-center gap-1.5">
-                          <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
-                          {fromEnv && (
-                            <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">ENV</span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={isOn}
-                          onClick={() => setDrafts((prev) => ({ ...prev, [field]: isOn ? "false" : "true" }))}
-                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isOn ? "bg-accent" : "bg-input"}`}
-                        >
-                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
-                        </button>
-                      </div>
-                    );
-                  }
-
-                  const isPrefixMasked = PREFIX_MASKED_FIELDS.has(field);
-                  const isEditing = editingFields.has(field);
-                  const showMasked = isPrefixMasked && isSet && !hasDraft && !isEditing;
-
-                  return (
-                    <div key={field} className={isFullWidth ? "sm:col-span-2" : ""}>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
-                        {fromEnv && (
-                          <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">
-                            ENV
-                          </span>
-                        )}
-                        {isSet && !fromEnv && !hasDraft && (
-                          <span className="text-[10px] border rounded px-1 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 leading-4">
-                            Set
-                          </span>
-                        )}
-                        {field === "webhook_base_url" && !isSet && !hasDraft && (
-                          <span className="text-[10px] border rounded px-1 text-muted-foreground border-border leading-4">
-                            Default
-                          </span>
-                        )}
-                      </div>
-                      {showMasked ? (
-                        <div
-                          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono text-muted-foreground cursor-text select-none"
-                          onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
-                          title="Click to change"
-                        >
-                          {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
-                        </div>
-                      ) : (
-                        <input
-                          type={isPrefixMasked ? "text" : isSecret ? "password" : "text"}
-                          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-                          value={isSecret ? (hasDraft ? drafts[field] : "") : (hasDraft ? drafts[field] : (state?.value ?? ""))}
-                          placeholder={
-                            isSecret && isSet ? "Enter new value to replace"
-                            : field === "webhook_base_url" && !isSet ? (configState.api_url || "http://localhost:8000")
-                            : ""
-                          }
-                          onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
-                          autoComplete="off"
-                          autoFocus={isPrefixMasked && isEditing && !hasDraft}
-                        />
-                      )}
-                      {fromEnv && hasDraft && (
-                        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
-                          ENV var active — file value won't take effect until removed from .env
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+                {fields.map((field) => (
+                  <ConfigFieldRow
+                    key={field}
+                    field={field}
+                    groupFieldCount={fields.length}
+                    state={fieldMap[field]}
+                    isZeroTrustEnabled={isZeroTrustEnabled}
+                    drafts={drafts}
+                    setDrafts={setDrafts}
+                    editingFields={editingFields}
+                    setEditingFields={setEditingFields}
+                    apiUrl={configState.api_url}
+                  />
+                ))}
               </div>
 
               {saveError && <p className="text-xs text-destructive">{saveError}</p>}
@@ -2098,22 +2125,22 @@ function CredentialsTab() {
           <div className="w-full max-w-md rounded-lg border bg-background shadow-lg p-6 space-y-4">
             <h3 className="font-semibold">{adding ? "Add credential" : "Edit credential"}</h3>
             <div>
-              <label className="mb-1 block text-sm font-medium">Name <span className="text-destructive">*</span></label>
-              <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Clerk Secret Key" />
+              <label htmlFor="cred-name" className="mb-1 block text-sm font-medium">Name <span className="text-destructive">*</span></label>
+              <input id="cred-name" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Clerk Secret Key" />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Service</label>
-              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formResource} onChange={(e) => setFormResource(e.target.value as CredentialResource)}>
+              <label htmlFor="cred-service" className="mb-1 block text-sm font-medium">Service</label>
+              <select id="cred-service" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formResource} onChange={(e) => setFormResource(e.target.value as CredentialResource)}>
                 {RESOURCE_OPTIONS.map((r) => <option key={r} value={r}>{RESOURCE_LABELS[r]}</option>)}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Expiration date <span className="text-muted-foreground font-normal">(optional)</span></label>
-              <input type="date" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formExpiry} onChange={(e) => setFormExpiry(e.target.value)} />
+              <label htmlFor="cred-expiry" className="mb-1 block text-sm font-medium">Expiration date <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <input id="cred-expiry" type="date" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formExpiry} onChange={(e) => setFormExpiry(e.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
-              <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" rows={2} value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Rotation instructions, link to vault, etc." />
+              <label htmlFor="cred-notes" className="mb-1 block text-sm font-medium">Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <textarea id="cred-notes" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" rows={2} value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Rotation instructions, link to vault, etc." />
             </div>
             {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
             <div className="flex justify-end gap-2 pt-1">

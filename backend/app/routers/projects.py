@@ -1596,6 +1596,59 @@ def _compute_color_runs(entries: list[dict]) -> list[WarpingPlanColorRun]:
     return runs
 
 
+async def _parse_wif_for_warping_plan(
+    wif_bytes: bytes, has_threading: bool
+) -> tuple[
+    list[WarpingPlanEndEntry] | None,
+    list[WarpingPlanColorRun] | None,
+    list[list[int]] | None,
+    int | None,
+    int | None,
+]:
+    threading_entries: list[WarpingPlanEndEntry] | None = None
+    warp_color_runs: list[WarpingPlanColorRun] | None = None
+    tieup_data: list[list[int]] | None = None
+    tieup_num_shafts: int | None = None
+    tieup_num_treadles: int | None = None
+
+    if has_threading:
+        try:
+            t_data = await asyncio.to_thread(wif_parser.parse_threading, wif_bytes)
+            raw_entries = [
+                {
+                    "end": i + 1,
+                    "shafts": shafts,
+                    "color": t_data.warp_colors[i],
+                    "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,  # type: ignore[arg-type]
+                }
+                for i, shafts in enumerate(t_data.threading)
+            ]
+            threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]  # type: ignore[arg-type]
+            warp_color_runs = _compute_color_runs(raw_entries)
+        except ValueError:
+            pass
+
+    try:
+        tu = await asyncio.to_thread(wif_parser.parse_tieup, wif_bytes)
+        tieup_data = tu.tieup
+        tieup_num_shafts = tu.num_shafts
+        tieup_num_treadles = tu.num_treadles
+    except ValueError:
+        pass
+
+    return threading_entries, warp_color_runs, tieup_data, tieup_num_shafts, tieup_num_treadles
+
+
+def _compute_epi(draft: Draft) -> float | None:
+    if draft.epi_override is not None:
+        return draft.epi_override
+    if draft.wif_measurements:
+        spacing = draft.wif_measurements.get("warp_spacing")
+        if spacing and spacing > 0:
+            return round(2.54 / float(spacing), 1)
+    return None
+
+
 @router.get("/{project_id}/warping-plan", response_model=WarpingPlanResponse)
 async def get_warping_plan(
     project_id: uuid.UUID,
@@ -1607,44 +1660,17 @@ async def get_warping_plan(
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
 
-    epi: float | None = draft.epi_override
-    if epi is None and draft.wif_measurements:
-        spacing = draft.wif_measurements.get("warp_spacing")
-        if spacing and spacing > 0:
-            epi = round(2.54 / spacing, 1)
-
-    threading_entries: list[WarpingPlanEndEntry] | None = None
-    warp_color_runs: list[WarpingPlanColorRun] | None = None
-    tieup_data: list[list[int]] | None = None
-    tieup_num_shafts: int | None = None
-    tieup_num_treadles: int | None = None
-
+    threading_entries = warp_color_runs = tieup_data = tieup_num_shafts = tieup_num_treadles = None
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if wif_path and await storage.afile_exists(wif_path):
         wif_bytes = await storage.aread_file(wif_path)
-        if draft.has_threading:
-            try:
-                t_data = await asyncio.to_thread(wif_parser.parse_threading, wif_bytes)
-                raw_entries = [
-                    {
-                        "end": i + 1,
-                        "shafts": shafts,
-                        "color": t_data.warp_colors[i],
-                        "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,  # type: ignore[arg-type]
-                    }
-                    for i, shafts in enumerate(t_data.threading)
-                ]
-                threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]  # type: ignore[arg-type]
-                warp_color_runs = _compute_color_runs(raw_entries)
-            except ValueError:
-                pass
-        try:
-            tu = await asyncio.to_thread(wif_parser.parse_tieup, wif_bytes)
-            tieup_data = tu.tieup
-            tieup_num_shafts = tu.num_shafts
-            tieup_num_treadles = tu.num_treadles
-        except ValueError:
-            pass
+        (
+            threading_entries,
+            warp_color_runs,
+            tieup_data,
+            tieup_num_shafts,
+            tieup_num_treadles,
+        ) = await _parse_wif_for_warping_plan(wif_bytes, bool(draft.has_threading))
 
     return WarpingPlanResponse(
         project_id=project.id,
@@ -1659,7 +1685,7 @@ async def get_warping_plan(
         threading=threading_entries,
         warp_color_runs=warp_color_runs,
         warp_length_cm=draft.warp_length_cm,
-        epi=epi,
+        epi=_compute_epi(draft),
         has_threading=bool(draft.has_threading),
         tieup=tieup_data,
         tieup_num_shafts=tieup_num_shafts,

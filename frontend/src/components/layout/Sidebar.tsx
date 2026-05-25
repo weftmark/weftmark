@@ -24,6 +24,10 @@ interface Props {
 
 type NavGroup = "settings" | "admin" | "superuser";
 
+const SettingsIcon = AppIcons.settings;
+const AdminIcon = AppIcons.admin;
+const SuperuserIcon = AppIcons.superuser;
+
 export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand }: Props) {
   const location = useLocation();
   const { user } = useAuth();
@@ -182,7 +186,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
             className={`w-full ${navCls(expandedGroup === "settings")}`}
             title={desktopCollapsed ? t("nav.settings") : undefined}
           >
-            <AppIcons.settings className={iconCls(expandedGroup === "settings")} strokeWidth={1.75} />
+            <SettingsIcon className={iconCls(expandedGroup === "settings")} strokeWidth={1.75} />
             <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.settings")}</span>
           </button>
 
@@ -215,7 +219,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
               className={`w-full ${navCls(expandedGroup === "admin")}`}
               title={desktopCollapsed ? t("nav.admin") : undefined}
             >
-              <AppIcons.admin className={iconCls(expandedGroup === "admin")} strokeWidth={1.75} />
+              <AdminIcon className={iconCls(expandedGroup === "admin")} strokeWidth={1.75} />
               <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.admin")}</span>
             </button>
           )}
@@ -249,7 +253,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
               className={`w-full ${navCls(expandedGroup === "superuser")}`}
               title={desktopCollapsed ? t("nav.superuser") : undefined}
             >
-              <AppIcons.superuser className={iconCls(expandedGroup === "superuser")} strokeWidth={1.75} />
+              <SuperuserIcon className={iconCls(expandedGroup === "superuser")} strokeWidth={1.75} />
               <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.superuser")}</span>
             </button>
           )}
