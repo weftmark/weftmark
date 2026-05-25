@@ -526,6 +526,7 @@ export interface ConfigFieldState {
 export interface ConfigStateResponse {
   fields: ConfigFieldState[];
   restart_pending: boolean;
+  api_url: string;
 }
 
 export interface ConfigTestResult {

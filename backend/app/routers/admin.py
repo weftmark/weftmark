@@ -2759,6 +2759,7 @@ class ConfigFieldState(BaseModel):
 class ConfigStateResponse(BaseModel):
     fields: list[ConfigFieldState]
     restart_pending: bool
+    api_url: str = ""
 
 
 class ConfigSaveRequest(BaseModel):
@@ -2810,6 +2811,7 @@ async def get_config_state(
     return ConfigStateResponse(
         fields=_get_config_state(settings),
         restart_pending=_restart_pending,
+        api_url=settings.api_url or "",
     )
 
 
@@ -2827,6 +2829,7 @@ async def save_config(
     return ConfigStateResponse(
         fields=_get_config_state(settings),
         restart_pending=True,
+        api_url=settings.api_url or "",
     )
 
 
