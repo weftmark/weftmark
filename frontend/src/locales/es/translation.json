@@ -617,7 +617,9 @@
     "tieUpNotAvailable": "Datos de ligamento no disponibles — este archivo WIF no contiene una sección [TIEUP].",
     "tieUpDesc": "Columnas = pedales · Filas = marcos · Relleno = conectado",
     "viewWeavePlan": "Ver plan de tejido",
-    "printSavePdf": "Imprimir / Guardar PDF"
+    "printSavePdf": "Imprimir / Guardar PDF",
+    "yarnCol": "Hilo",
+    "linkYarn": "Vincular hilo"
   },
   "projectDetailPage": {
     "loading": "Cargando…",
@@ -880,7 +882,8 @@
     "colorNamePlaceholder": "ej. Kaki",
     "colorwayFilter": "Filtrar colorways…",
     "noColorways": "No se encontraron colorways para este hilo.",
-    "colorwayLoadError": "Error al cargar los colorways."
+    "colorwayLoadError": "Error al cargar los colorways.",
+    "usedInProjects": "Usado en proyectos"
   },
   "loomDetailPage": {
     "loading": "Cargando…",
@@ -1175,5 +1178,12 @@
     "modeName": "Nombre",
     "namePlaceholder": "p.ej. salvia, cobalto...",
     "nameUnknown": "Nombre de color desconocido"
+  },
+  "yarnPicker": {
+    "title": "Vincular hilo al color",
+    "searchPlaceholder": "Buscar por nombre, marca o color…",
+    "loading": "Cargando…",
+    "noResults": "No se encontró hilo.",
+    "unlink": "Eliminar vínculo de hilo"
   }
 }

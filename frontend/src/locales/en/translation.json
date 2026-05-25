@@ -618,7 +618,9 @@
     "tieUpNotAvailable": "Tie-up data not available — this WIF file does not contain a [TIEUP] section.",
     "tieUpDesc": "Columns = treadles · Rows = shafts · Filled = connected",
     "viewWeavePlan": "View Weave Plan",
-    "printSavePdf": "Print / Save PDF"
+    "printSavePdf": "Print / Save PDF",
+    "yarnCol": "Yarn",
+    "linkYarn": "Link yarn"
   },
   "projectDetailPage": {
     "loading": "Loading…",
@@ -881,7 +883,8 @@
     "colorNamePlaceholder": "e.g. Kaki",
     "colorwayFilter": "Filter colorways…",
     "noColorways": "No colorways found for this yarn.",
-    "colorwayLoadError": "Failed to load colorways."
+    "colorwayLoadError": "Failed to load colorways.",
+    "usedInProjects": "Used in projects"
   },
   "loomDetailPage": {
     "loading": "Loading…",
@@ -1176,5 +1179,12 @@
     "modeName": "Name",
     "namePlaceholder": "e.g. sage, cobalt...",
     "nameUnknown": "Unknown color name"
+  },
+  "yarnPicker": {
+    "title": "Link yarn to color slot",
+    "searchPlaceholder": "Search by name, brand, or color…",
+    "loading": "Loading…",
+    "noResults": "No yarn found.",
+    "unlink": "Remove yarn link"
   }
 }

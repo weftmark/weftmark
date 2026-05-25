@@ -9,9 +9,11 @@ import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
   getWarpingPlan, completeProject, abandonProject, setProjectReed, updateProjectTags,
+  linkYarnColor, unlinkYarnColor,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
-  type ProjectDetail,
+  type ProjectDetail, type ProjectYarnColor,
 } from "@/api/projects";
+import { YarnPickerModal } from "@/components/projects/YarnPickerModal";
 import { TagInput } from "@/components/ui/TagInput";
 import { TagChips } from "@/components/ui/TagChips";
 import { getReedRecommendation, buildDentPattern, nearestCleanDent } from "@/lib/reedRecommendation";
@@ -447,6 +449,10 @@ function ColorPaletteSection({
   onSave,
   isSaving,
   locked,
+  yarnColors,
+  onYarnLink,
+  onYarnUnlink,
+  isYarnSaving,
 }: {
   projectId: string;
   wifColors: { index: number; hex: string }[];
@@ -457,6 +463,10 @@ function ColorPaletteSection({
   onSave: (replacements: Record<string, string>) => void;
   isSaving: boolean;
   locked?: boolean;
+  yarnColors: ProjectYarnColor[];
+  onYarnLink: (colorHex: string, yarnId: string) => void;
+  onYarnUnlink: (colorHex: string) => void;
+  isYarnSaving: boolean;
 }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
@@ -477,6 +487,7 @@ function ColorPaletteSection({
   const [dirty, setDirty] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [yarnPickerHex, setYarnPickerHex] = useState<string | null>(null);
 
   function setReplacement(hex: string, replacement: string) {
     const next = { ...pending };
@@ -538,6 +549,7 @@ function ColorPaletteSection({
                 <th className="px-3 py-2 text-right">{t("projectLandingPage.estWeftLength")}</th>
               )}
               {!locked && <th className="px-3 py-2 text-left">{t("projectLandingPage.replaceWith")}</th>}
+              {!locked && <th className="px-3 py-2 text-left">{t("projectLandingPage.yarnCol")}</th>}
             </tr>
           </thead>
           <tbody>
@@ -593,6 +605,25 @@ function ColorPaletteSection({
                       </div>
                     </td>
                   )}
+                  {!locked && (() => {
+                    const linked = yarnColors.find((yc) => yc.color_hex === c.hex);
+                    return (
+                      <td className="px-3 py-2">
+                        <button
+                          className="flex items-center gap-1.5 text-xs rounded px-2 py-1 border border-border hover:bg-muted transition-colors"
+                          onClick={() => setYarnPickerHex(c.hex)}
+                          title={linked ? `${linked.yarn_brand} ${linked.yarn_name}` : t("projectLandingPage.linkYarn")}
+                        >
+                          <AppIcons.yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          {linked ? (
+                            <span className="truncate max-w-[100px] text-card-foreground">{linked.yarn_name}</span>
+                          ) : (
+                            <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>
+                          )}
+                        </button>
+                      </td>
+                    );
+                  })()}
                 </tr>
               );
             })}
@@ -634,6 +665,23 @@ function ColorPaletteSection({
         <DrawdownModal
           svgUrl={drawdownSvgUrl(projectId, 8, pending)}
           onClose={() => setPreviewModalOpen(false)}
+        />
+      )}
+
+      {yarnPickerHex && (
+        <YarnPickerModal
+          colorHex={yarnPickerHex}
+          currentYarnId={yarnColors.find((yc) => yc.color_hex === yarnPickerHex)?.yarn_id ?? null}
+          onSelect={(yarnId) => {
+            onYarnLink(yarnPickerHex, yarnId);
+            setYarnPickerHex(null);
+          }}
+          onUnlink={() => {
+            onYarnUnlink(yarnPickerHex);
+            setYarnPickerHex(null);
+          }}
+          onClose={() => setYarnPickerHex(null)}
+          isSaving={isYarnSaving}
         />
       )}
     </section>
@@ -1192,6 +1240,17 @@ export function ProjectLandingPage() {
     onSuccess: (updated) => qc.setQueryData(["project", id], updated),
   });
 
+  const yarnLinkMutation = useMutation({
+    mutationFn: ({ colorHex, yarnId }: { colorHex: string; yarnId: string }) =>
+      linkYarnColor(id!, colorHex, yarnId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["project", id] }),
+  });
+
+  const yarnUnlinkMutation = useMutation({
+    mutationFn: (colorHex: string) => unlinkYarnColor(id!, colorHex),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["project", id] }),
+  });
+
   const tagsMutation = useMutation({
     mutationFn: (tags: string[]) => updateProjectTags(id!, tags),
     onSuccess: (updated) => {
@@ -1493,6 +1552,10 @@ export function ProjectLandingPage() {
           onSave={(r) => colorMutation.mutate(r)}
           isSaving={colorMutation.isPending}
           locked={project.status !== "created"}
+          yarnColors={project.yarn_colors ?? []}
+          onYarnLink={(colorHex, yarnId) => yarnLinkMutation.mutate({ colorHex, yarnId })}
+          onYarnUnlink={(colorHex) => yarnUnlinkMutation.mutate(colorHex)}
+          isYarnSaving={yarnLinkMutation.isPending || yarnUnlinkMutation.isPending}
         />
       )}
 

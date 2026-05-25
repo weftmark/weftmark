@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -80,6 +80,9 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     photos: Mapped[list["ProjectPhoto"]] = relationship(
         "ProjectPhoto", back_populates="project", order_by="ProjectPhoto.display_order"
     )
+    yarn_colors: Mapped[list["ProjectYarnColor"]] = relationship(
+        "ProjectYarnColor", back_populates="project", order_by="ProjectYarnColor.color_hex"
+    )
 
 
 class ProjectStep(Base, TimestampMixin):
@@ -108,3 +111,21 @@ class WeaveSession(Base, TimestampMixin):
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     project: Mapped["Project"] = relationship("Project", back_populates="sessions")
+
+
+class ProjectYarnColor(Base, TimestampMixin):
+    __tablename__ = "project_yarn_colors"
+    __table_args__ = (UniqueConstraint("project_id", "color_hex", name="uq_project_yarn_color"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    yarn_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("yarns.id", ondelete="SET NULL"), nullable=True
+    )
+    color_hex: Mapped[str] = mapped_column(String(7), nullable=False)
+    use_yarn_photo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    project: Mapped["Project"] = relationship("Project", back_populates="yarn_colors")
+    yarn: Mapped["Yarn"] = relationship("Yarn", back_populates="project_yarn_colors")  # type: ignore[name-defined]

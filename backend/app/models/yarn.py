@@ -73,6 +73,7 @@ class Yarn(Base, TimestampMixin, SoftDeleteMixin):
 
     skeins: Mapped[list["Skein"]] = relationship("Skein", back_populates="yarn", order_by="Skein.created_at")
     owner: Mapped["User"] = relationship("User", foreign_keys=[owner_id])  # type: ignore[name-defined]
+    project_yarn_colors: Mapped[list["ProjectYarnColor"]] = relationship("ProjectYarnColor", back_populates="yarn")  # type: ignore[name-defined]
 
 
 class Skein(Base, TimestampMixin):

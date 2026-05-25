@@ -618,7 +618,9 @@
     "tieUpNotAvailable": "Tie-up-Daten nicht verfügbar – diese WIF-Datei enthält keinen [TIEUP]-Abschnitt.",
     "tieUpDesc": "Spalten = Tritte · Zeilen = Schäfte · Ausgefüllt = verbunden",
     "viewWeavePlan": "Webplan ansehen",
-    "printSavePdf": "Drucken / Als PDF speichern"
+    "printSavePdf": "Drucken / Als PDF speichern",
+    "yarnCol": "Garn",
+    "linkYarn": "Garn verknüpfen"
   },
   "projectDetailPage": {
     "loading": "Laden…",
@@ -881,7 +883,8 @@
     "colorNamePlaceholder": "z. B. Kaki",
     "colorwayFilter": "Farbvarianten filtern…",
     "noColorways": "Keine Farbvarianten für dieses Garn gefunden.",
-    "colorwayLoadError": "Farbvarianten konnten nicht geladen werden."
+    "colorwayLoadError": "Farbvarianten konnten nicht geladen werden.",
+    "usedInProjects": "Verwendet in Projekten"
   },
   "loomDetailPage": {
     "loading": "Laden…",
@@ -1176,5 +1179,12 @@
     "modeName": "Name",
     "namePlaceholder": "z.B. sage, kobalt...",
     "nameUnknown": "Unbekannter Farbname"
+  },
+  "yarnPicker": {
+    "title": "Garn mit Farbplatz verknüpfen",
+    "searchPlaceholder": "Nach Name, Marke oder Farbe suchen…",
+    "loading": "Wird geladen…",
+    "noResults": "Kein Garn gefunden.",
+    "unlink": "Garnverknüpfung entfernen"
   }
 }
