@@ -83,6 +83,7 @@ services:
         VITE_CLERK_SIGN_UP_URL: /register
         VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /home
         VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /home
+        VITE_SENTRY_ENV: ${VITE_SENTRY_ENV:-}
     image: weaving_site_frontend:${APP_VERSION:-dev}
     environment:
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}

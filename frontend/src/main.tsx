@@ -12,7 +12,7 @@ initLogger();
 if (sentryDsn) {
   Sentry.init({
     dsn: sentryDsn,
-    environment: import.meta.env.VITE_APP_ENV || "development",
+    environment: import.meta.env.VITE_SENTRY_ENV || import.meta.env.VITE_APP_ENV || "development",
     integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
     tracesSampleRate: 1,
     replaysSessionSampleRate: 0.1,
