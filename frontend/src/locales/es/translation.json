@@ -1166,5 +1166,14 @@
       "frame_loom": "Telar de bastidor",
       "other": "Otro"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Elegir color",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Nombre",
+    "namePlaceholder": "p.ej. salvia, cobalto...",
+    "nameUnknown": "Nombre de color desconocido"
   }
 }

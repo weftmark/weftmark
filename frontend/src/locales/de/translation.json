@@ -1167,5 +1167,14 @@
       "frame_loom": "Rahmenwebstuhl",
       "other": "Sonstige"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Farbe wählen",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Name",
+    "namePlaceholder": "z.B. sage, kobalt...",
+    "nameUnknown": "Unbekannter Farbname"
   }
 }

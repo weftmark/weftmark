@@ -1167,5 +1167,14 @@
       "frame_loom": "Frame Loom",
       "other": "Other"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Pick color",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Name",
+    "namePlaceholder": "e.g. sage, cobalt...",
+    "nameUnknown": "Unknown color name"
   }
 }
