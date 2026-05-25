@@ -45,7 +45,8 @@
     "maintenance": "Maintenance",
     "schedule": "Scheduled Tasks",
     "exports": "Data Exports",
-    "credentials": "Credentials"
+    "credentials": "Credentials",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Floor Loom — treadle tracking",

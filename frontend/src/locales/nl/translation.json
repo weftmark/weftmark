@@ -45,7 +45,8 @@
     "maintenance": "Onderhoud",
     "schedule": "Geplande taken",
     "exports": "Gegevensexports",
-    "credentials": "Inloggegevens"
+    "credentials": "Inloggegevens",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Vloerweefstoel — trapper-tracking",

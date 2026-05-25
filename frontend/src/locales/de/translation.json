@@ -45,7 +45,8 @@
     "maintenance": "Wartung",
     "schedule": "Geplante Aufgaben",
     "exports": "Datenexporte",
-    "credentials": "Zugangsdaten"
+    "credentials": "Zugangsdaten",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Trittwebstuhl - Trittfolge-Tracking",

@@ -86,6 +86,7 @@ services:
     image: weaving_site_frontend:${APP_VERSION:-dev}
     environment:
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     container_name: weaving_site_frontend
     ports:
       - "3000:80"
