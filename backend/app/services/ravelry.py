@@ -183,19 +183,13 @@ async def save_credential(user_id: uuid.UUID, token_data: dict, db: AsyncSession
 # ---------------------------------------------------------------------------
 
 
-async def fetch_yarn_detail(ravelry_yarn_id: int, cred: RavelryCredential, db: AsyncSession) -> dict:
-    """Fetch full yarn detail from Ravelry including colorways."""
-    token = await _get_valid_token(cred, db)
-    # Use direct HTTP call — the ravelpy model strips the top-level `colorways` key
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            f"{_RAVELRY_API}/yarns/{ravelry_yarn_id}.json",
-            params={"include": "colorways"},
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=15,
-        )
-        resp.raise_for_status()
-        return resp.json()  # type: ignore[no-any-return]
+async def fetch_yarn_detail(ravelry_yarn_id: int) -> dict:
+    """Fetch full yarn detail from Ravelry including colorways.
+
+    Colorways are public product data — Basic auth is sufficient; OAuth is not required.
+    Direct HTTP call used because the ravelpy model strips the top-level `colorways` key.
+    """
+    return await _basic_auth_get(f"/yarns/{ravelry_yarn_id}.json", {"include": "colorways"})
 
 
 async def get_popular_yarn_companies(limit: int = 10) -> list[dict]:

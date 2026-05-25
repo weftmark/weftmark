@@ -146,15 +146,11 @@ async def disconnect(
 @router.get("/yarn-detail/{ravelry_yarn_id}")
 async def yarn_detail(
     ravelry_yarn_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(get_current_user),
 ) -> dict:
-    """Proxy a single yarn's full detail from the Ravelry API."""
-    cred = await svc.get_credential(current_user.id, db)
-    if cred is None:
-        raise HTTPException(status_code=404, detail="Not connected to Ravelry")
+    """Proxy a single yarn's full detail from the Ravelry API (no OAuth required)."""
     try:
-        data = await svc.fetch_yarn_detail(ravelry_yarn_id, cred, db)
+        data = await svc.fetch_yarn_detail(ravelry_yarn_id)
     except Exception as exc:
         logger.exception("Ravelry yarn detail fetch failed for yarn %s", ravelry_yarn_id)
         raise HTTPException(status_code=502, detail="Ravelry yarn detail fetch failed") from exc
