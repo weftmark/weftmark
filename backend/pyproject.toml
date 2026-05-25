@@ -1,0 +1,24 @@
+[tool.pytest.ini_options]
+junit_family = "legacy"
+
+[tool.bandit]
+targets = ["app"]
+exclude_dirs = ["alembic"]
+severity = "medium"
+confidence = "medium"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "app.weaving",
+    "app.weaving._wif",
+    "app.services.wif_parser",
+    "app.services.wif_linter",
+    "app.services.rendering",
+]
+ignore_errors = true

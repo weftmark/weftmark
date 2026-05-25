@@ -17,8 +17,19 @@ import {
   getTaskHistory,
   revokeTask,
   runPurgeSoftDeleted,
+  getSoftDeleteQueue,
+  getDeletionQueue,
   listScheduledTasks,
   patchScheduledTask,
+  listExports,
+  deleteExport,
+  listCredentials,
+  createCredential,
+  patchCredential,
+  deleteCredential,
+  getConfig,
+  saveConfig,
+  testConfigService,
   type ScheduledTask,
   type TaskHistoryItem,
   type ReconcileReport,
@@ -27,6 +38,11 @@ import {
   type CveFinding,
   type WorkerStatus,
   type WorkerInfo,
+  type DeletionQueueUser,
+  type AdminExportRecord,
+  type CredentialExpiry,
+  type CredentialResource,
+  type ConfigTestResult,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 import { CveBanner } from "@/components/admin/CveBanner";
@@ -46,7 +62,7 @@ function formatUptime(seconds: number): string {
   return parts.join(", ");
 }
 
-type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule";
+type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials";
 
 // ---------------------------------------------------------------------------
 // EULA tab
@@ -167,6 +183,10 @@ function EulaTab() {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Terms of Service</h1>
+        <p className="text-sm text-muted-foreground">View the current published EULA version and publish a new version that will require all users to re-accept on next login.</p>
+      </div>
       {/* Current version */}
       <div className="space-y-2">
         <h2 className="text-sm font-medium">Current version: {current?.version}</h2>
@@ -385,6 +405,10 @@ function StorageAuditTab() {
 
   return (
     <div className="space-y-4">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Storage Audit</h1>
+        <p className="text-sm text-muted-foreground">Scan R2/S3 for orphaned files that are no longer referenced by any database record and permanently delete them.</p>
+      </div>
       <div className="flex items-center gap-3">
         <Button onClick={startScan} disabled={scanStatus === "running"} size="sm">
           {scanStatus === "running" ? "Scanning…" : "Scan S3 for Orphaned Files"}
@@ -558,6 +582,10 @@ function CveScanTab() {
 
   return (
     <div className="space-y-4">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">CVE Scanner</h1>
+        <p className="text-sm text-muted-foreground">Run pip-audit and OSV.dev scans against Python and npm dependencies. Results populate the warning banner shown on all admin pages.</p>
+      </div>
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
           Scans Python dependencies via pip-audit and npm packages via OSV.dev.
@@ -718,6 +746,10 @@ function WorkersTab() {
 
   return (
     <div className="space-y-4">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Worker Status</h1>
+        <p className="text-sm text-muted-foreground">Live view of Celery worker health, queue depths, active and reserved tasks, and recent task history.</p>
+      </div>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -919,11 +951,75 @@ function TaskHistoryTable() {
   );
 }
 
-function DeletionTab() {
+const DELETION_STATE_STYLE: Record<string, string> = {
+  pending: "border-border text-muted-foreground",
+  in_progress: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  stalled: "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  complete: "border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300",
+};
+
+function DeletionStateBadge({ state }: { state: string }) {
   return (
-    <div className="rounded-lg border border-dashed p-8 text-center">
-      <p className="text-sm font-medium text-muted-foreground">Deletion Queue</p>
-      <p className="text-xs text-muted-foreground mt-1">Coming soon — in-progress and pending user deletion states.</p>
+    <span className={`text-xs px-2 py-0.5 rounded border font-medium ${DELETION_STATE_STYLE[state] ?? "border-border text-muted-foreground"}`}>
+      {state}
+    </span>
+  );
+}
+
+function DeletionTab() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin", "deletion-queue"],
+    queryFn: getDeletionQueue,
+    refetchInterval: 10_000,
+  });
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (error) return <p className="text-sm text-destructive">Failed to load deletion queue.</p>;
+
+  const users = data ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Deletion Queue</h1>
+        <p className="text-sm text-muted-foreground">Users currently in the deletion pipeline and soft-deleted content items awaiting hard purge.</p>
+      </div>
+
+      {users.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No users in the deletion queue.</p>
+      ) : (
+        <div className="rounded-md border overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">Display name</th>
+                <th className="px-3 py-2 text-left font-medium">Email</th>
+                <th className="px-3 py-2 text-left font-medium">State</th>
+                <th className="px-3 py-2 text-left font-medium whitespace-nowrap">Initiated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u: DeletionQueueUser) => (
+                <tr key={u.id} className={`border-t ${u.deletion_state === "stalled" ? "bg-amber-500/5" : ""}`}>
+                  <td className="px-3 py-2 font-medium">{u.display_name}</td>
+                  <td className="px-3 py-2 text-muted-foreground font-mono text-xs">{u.email}</td>
+                  <td className="px-3 py-2">
+                    <DeletionStateBadge state={u.deletion_state} />
+                    {u.deletion_state === "stalled" && (
+                      <span className="ml-1 text-xs text-amber-600 dark:text-amber-400">⚠ check logs</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                    {u.deletion_initiated_at
+                      ? new Date(u.deletion_initiated_at).toLocaleString()
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -932,18 +1028,87 @@ function MaintenanceTab() {
   const queryClient = useQueryClient();
   const [purging, setPurging] = useState(false);
 
+  const { data: queue, isLoading: queueLoading } = useQuery({
+    queryKey: ["admin", "soft-delete-queue"],
+    queryFn: getSoftDeleteQueue,
+  });
+
+  const nothingEligible = queue != null && queue.ready_to_purge.total === 0;
+
   function triggerPurge() {
     setPurging(true);
     runPurgeSoftDeleted()
       .then(() => {
         setPurging(false);
         queryClient.invalidateQueries({ queryKey: ["admin", "task-history"] });
+        queryClient.invalidateQueries({ queryKey: ["admin", "soft-delete-queue"] });
       })
       .catch(() => setPurging(false));
   }
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Maintenance</h1>
+        <p className="text-sm text-muted-foreground">Manual maintenance operations including hard-purging soft-deleted records that have passed the retention window.</p>
+      </div>
+      {/* Soft-delete queue summary */}
+      <div className="rounded-lg border p-5 space-y-3">
+        <div>
+          <p className="text-sm font-medium">Soft-Delete Queue</p>
+          {queue && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Items deleted before{" "}
+              <span className="font-mono">{new Date(queue.cutoff).toLocaleDateString()}</span>
+              {" "}are eligible for purge (retention: {queue.retention_days} days).
+            </p>
+          )}
+        </div>
+
+        {queueLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
+
+        {queue && (
+          nothingEligible && queue.in_retention_window.total === 0 ? (
+            <p className="text-xs text-muted-foreground">No soft-deleted records found.</p>
+          ) : (
+            <div className="rounded-md border overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Type</th>
+                    <th className="px-3 py-2 text-right font-medium text-destructive">Ready to purge</th>
+                    <th className="px-3 py-2 text-right font-medium">In retention window</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(["drafts", "projects", "yarn", "looms"] as const).map((key) => (
+                    <tr key={key} className="border-t">
+                      <td className="px-3 py-2 capitalize">{key}</td>
+                      <td className={`px-3 py-2 text-right tabular-nums font-medium ${queue.ready_to_purge[key] > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {queue.ready_to_purge[key]}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {queue.in_retention_window[key]}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-t bg-muted/40 font-medium">
+                    <td className="px-3 py-2">Total</td>
+                    <td className={`px-3 py-2 text-right tabular-nums ${queue.ready_to_purge.total > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                      {queue.ready_to_purge.total}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                      {queue.in_retention_window.total}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+      </div>
+
+      {/* Purge action */}
       <div className="rounded-lg border p-5 space-y-3">
         <div>
           <p className="text-sm font-medium">Purge Soft-Deleted Records</p>
@@ -958,12 +1123,17 @@ function MaintenanceTab() {
           <Button
             size="sm"
             variant="destructive"
-            disabled={purging}
+            disabled={purging || nothingEligible}
             onClick={triggerPurge}
+            title={nothingEligible ? "Nothing is eligible for purge yet" : undefined}
           >
             {purging ? "Queuing…" : "Run Purge Now"}
           </Button>
-          <p className="text-xs text-muted-foreground">Results appear in the Workers → Task History table.</p>
+          {nothingEligible ? (
+            <p className="text-xs text-muted-foreground">Nothing eligible for purge yet.</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Results appear in the Workers → Task History table.</p>
+          )}
         </div>
       </div>
     </div>
@@ -1013,12 +1183,9 @@ function ReconcileTab() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-sm font-medium">Clerk ↔ DB Reconciliation</h2>
-        <p className="text-xs text-muted-foreground">
-          Cross-references Clerk accounts against the database. Use this to backfill users created
-          directly in the Clerk dashboard.
-        </p>
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Clerk Reconciliation</h1>
+        <p className="text-sm text-muted-foreground">Cross-reference Clerk accounts against the database to find and backfill users created directly in the Clerk dashboard.</p>
       </div>
 
       <Button onClick={runReconcile} disabled={loading} size="sm">
@@ -1214,16 +1381,18 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
           )}
         </div>
 
-        {task.next_runs.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            Next: {task.next_runs.slice(0, 3).map((r) => new Date(r).toLocaleString()).join(" · ")}
-          </p>
-        )}
-        {task.last_fired_at && (
-          <p className="text-xs text-muted-foreground">
-            Last fired: {new Date(task.last_fired_at).toLocaleString()}
-          </p>
-        )}
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+          {task.next_runs.length > 0 && (
+            <span>
+              Next: {task.next_runs.slice(0, 3).map((r) => new Date(r).toLocaleString()).join(" · ")}
+            </span>
+          )}
+          {task.last_fired_at && (
+            <span>
+              Last fired: {new Date(task.last_fired_at).toLocaleString()}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1240,11 +1409,11 @@ function ScheduledTasksTab() {
   if (error) return <p className="text-sm text-destructive">Failed to load scheduled tasks.</p>;
 
   return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Configure recurring background tasks. Settings are stored in Postgres and survive restarts.
-        The scheduler tick runs every 60 seconds via Celery Beat.
-      </p>
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Scheduled Tasks</h1>
+        <p className="text-sm text-muted-foreground">Configure recurring background tasks. Schedules are stored in Postgres and survive restarts; the scheduler tick runs every 60 seconds via Celery Beat.</p>
+      </div>
       {data && data.length === 0 && (
         <p className="text-sm text-muted-foreground">No scheduled tasks configured.</p>
       )}
@@ -1260,13 +1429,718 @@ function ScheduledTasksTab() {
 }
 
 
+// ---------------------------------------------------------------------------
+// Data Exports tab
+// ---------------------------------------------------------------------------
+
+function ExportStatusBadge({ status }: { status: AdminExportRecord["status"] }) {
+  const cls =
+    status === "complete"
+      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+      : status === "failed"
+        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+  return (
+    <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{status}</span>
+  );
+}
+
+function ExportRow({ record, onDeleted }: { record: AdminExportRecord; onDeleted: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const mutation = useMutation({
+    mutationFn: () => deleteExport(record.id),
+    onSuccess: onDeleted,
+  });
+
+  const sizeMb =
+    record.archive_size_bytes != null
+      ? `${(record.archive_size_bytes / 1_048_576).toFixed(2)} MB`
+      : "—";
+
+  const fmt = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString() : "—";
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-medium truncate">
+            {record.user_display_name || <span className="text-muted-foreground italic">no name</span>}
+          </p>
+          <p className="text-sm text-muted-foreground truncate">{record.user_email}</p>
+        </div>
+        <ExportStatusBadge status={record.status} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+        <span className="text-muted-foreground">Requested</span>
+        <span>{fmt(record.requested_at)}</span>
+        <span className="text-muted-foreground">Generated</span>
+        <span>{fmt(record.completed_at)}</span>
+        <span className="text-muted-foreground">Expires</span>
+        <span>{fmt(record.expires_at)}</span>
+        <span className="text-muted-foreground">Size</span>
+        <span>{sizeMb}</span>
+      </div>
+
+      {record.status === "failed" && record.error && (
+        <p className="text-xs text-destructive font-mono bg-destructive/10 rounded px-2 py-1 break-all">
+          {record.error}
+        </p>
+      )}
+
+      <div className="flex justify-end">
+        {confirming ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Delete this record and archive?</span>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending ? "Deleting…" : "Confirm"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
+            Delete
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ExportsTab() {
+  const qc = useQueryClient();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin", "exports"],
+    queryFn: listExports,
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Data Exports</h1>
+        <p className="text-sm text-muted-foreground">
+          All user data export requests. Archives are stored in R2 and expire after 7 days. Delete a record to
+          immediately remove both the DB row and the archive object.
+        </p>
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>}
+      {error && <p className="text-sm text-destructive">Failed to load exports.</p>}
+
+      {!isLoading && data && data.length === 0 && (
+        <p className="text-sm text-muted-foreground py-8 text-center">No export requests found.</p>
+      )}
+
+      {data && data.length > 0 && (
+        <div className="space-y-3">
+          {data.map((record) => (
+            <ExportRow
+              key={record.id}
+              record={record}
+              onDeleted={() => qc.invalidateQueries({ queryKey: ["admin", "exports"] })}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Credentials tab
+// ---------------------------------------------------------------------------
+
+const RESOURCE_LABELS: Record<CredentialResource, string> = {
+  smtp: "SMTP",
+  s3: "S3 / R2",
+  clerk: "Clerk",
+  postgres: "PostgreSQL",
+  app: "App Secret",
+};
+
+const RESOURCE_OPTIONS: CredentialResource[] = ["smtp", "s3", "clerk", "postgres", "app"];
+
+function credentialStatus(daysRemaining: number | null): { label: string; cls: string } {
+  if (daysRemaining === null) return { label: "No expiry", cls: "bg-muted text-muted-foreground" };
+  if (daysRemaining < 0) return { label: "Expired", cls: "bg-destructive/10 text-destructive" };
+  if (daysRemaining <= 7) return { label: "Critical", cls: "bg-destructive/10 text-destructive" };
+  if (daysRemaining <= 30) return { label: "Warning", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" };
+  return { label: "OK", cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" };
+}
+
+const GROUP_CONFIG: Record<string, { label: string; fields: string[]; testService: string | null }> = {
+  smtp: {
+    label: "SMTP / Email",
+    fields: ["smtp_host", "smtp_port", "smtp_user", "smtp_password", "smtp_from_email", "smtp_from_name"],
+    testService: "smtp",
+  },
+  s3: {
+    label: "S3 / Object Storage",
+    fields: ["s3_endpoint_url", "s3_access_key_id", "s3_secret_access_key", "s3_bucket_name", "s3_region"],
+    testService: "s3",
+  },
+  ravelry_read: {
+    label: "Ravelry — Read key",
+    fields: ["ravelry_read_access_username", "ravelry_read_access_key"],
+    testService: "ravelry_read",
+  },
+  ravelry_oauth: {
+    label: "Ravelry — OAuth app",
+    fields: ["ravelry_oauth_client_id", "ravelry_oauth_client_secret", "ravelry_oauth_redirect_uri"],
+    testService: null,
+  },
+  github: {
+    label: "GitHub Feedback",
+    fields: ["github_feedback_token", "github_feedback_repo"],
+    testService: "github",
+  },
+  cloudflare: {
+    label: "Cloudflare Zero Trust",
+    fields: ["cf_zero_trust_enabled", "cf_access_client_id", "cf_access_client_secret"],
+    testService: null,
+  },
+  webhook: {
+    label: "Clerk Webhook",
+    fields: ["webhook_base_url", "clerk_webhook_secret"],
+    testService: null,
+  },
+  geoip: {
+    label: "GeoIP (MaxMind)",
+    fields: ["maxmind_license_key"],
+    testService: null,
+  },
+  otel: {
+    label: "OpenTelemetry",
+    fields: ["otel_exporter_otlp_endpoint"],
+    testService: null,
+  },
+};
+
+const CONFIG_SECRET_FIELDS = new Set([
+  "smtp_password",
+  "s3_secret_access_key",
+  "cf_access_client_secret",
+  "ravelry_read_access_key",
+  "ravelry_oauth_client_secret",
+  "github_feedback_token",
+  "clerk_webhook_secret",
+  "maxmind_license_key",
+]);
+
+// These secrets show prefix + •••••••• when set and reveal as plain text when editing.
+// All other secrets use a standard password field (value always blank).
+const PREFIX_MASKED_FIELDS = new Set(["clerk_webhook_secret", "maxmind_license_key"]);
+
+const BOOLEAN_FIELDS = new Set(["cf_zero_trust_enabled"]);
+
+const CONFIG_FIELD_LABELS: Record<string, string> = {
+  smtp_host: "SMTP Host",
+  smtp_port: "SMTP Port",
+  smtp_user: "SMTP User",
+  smtp_password: "SMTP Password",
+  smtp_from_email: "From Email",
+  smtp_from_name: "From Name",
+  s3_endpoint_url: "Endpoint URL",
+  s3_access_key_id: "Access Key ID",
+  s3_secret_access_key: "Secret Access Key",
+  s3_bucket_name: "Bucket Name",
+  s3_region: "Region",
+  ravelry_read_access_username: "Username",
+  ravelry_read_access_key: "API Key",
+  ravelry_oauth_client_id: "OAuth Client ID",
+  ravelry_oauth_client_secret: "OAuth Client Secret",
+  ravelry_oauth_redirect_uri: "Redirect URI",
+  github_feedback_token: "Personal Access Token",
+  github_feedback_repo: "Repository",
+  cf_zero_trust_enabled: "Zero Trust Enabled",
+  cf_access_client_id: "Access Client ID",
+  cf_access_client_secret: "Access Client Secret",
+  clerk_webhook_secret: "Signing Secret",
+  webhook_base_url: "Base URL",
+  maxmind_license_key: "License Key",
+  otel_exporter_otlp_endpoint: "OTLP Endpoint",
+};
+
+function ConfigSection() {
+  const qc = useQueryClient();
+  const { data: configState, isLoading } = useQuery({
+    queryKey: ["admin", "config"],
+    queryFn: getConfig,
+    staleTime: 30_000,
+  });
+
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [testResults, setTestResults] = useState<Record<string, ConfigTestResult | null>>({});
+  const [testingGroup, setTestingGroup] = useState<string | null>(null);
+  const [savingGroup, setSavingGroup] = useState<string | null>(null);
+  const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
+  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+
+  const fieldMap = Object.fromEntries((configState?.fields ?? []).map((f) => [f.field, f]));
+
+  function clearGroupDrafts(groupKey: string) {
+    const fields = GROUP_CONFIG[groupKey].fields;
+    setDrafts((prev) => {
+      const next = { ...prev };
+      fields.forEach((f) => delete next[f]);
+      return next;
+    });
+    setEditingFields((prev) => {
+      const next = new Set(prev);
+      fields.forEach((f) => next.delete(f));
+      return next;
+    });
+    setTestResults((prev) => ({ ...prev, [groupKey]: null }));
+    setSaveErrors((prev) => ({ ...prev, [groupKey]: "" }));
+  }
+
+  async function handleSave(groupKey: string) {
+    const fields = GROUP_CONFIG[groupKey].fields;
+    const values: Record<string, string | null> = {};
+    for (const field of fields) {
+      if (field in drafts) values[field] = drafts[field] || null;
+    }
+    if (Object.keys(values).length === 0) return;
+    setSavingGroup(groupKey);
+    setSaveErrors((prev) => ({ ...prev, [groupKey]: "" }));
+    try {
+      const result = await saveConfig(values);
+      qc.setQueryData(["admin", "config"], result);
+      clearGroupDrafts(groupKey);
+    } catch (e) {
+      setSaveErrors((prev) => ({ ...prev, [groupKey]: e instanceof Error ? e.message : "Save failed" }));
+    } finally {
+      setSavingGroup(null);
+    }
+  }
+
+  async function handleTest(groupKey: string) {
+    setTestingGroup(groupKey);
+    setTestResults((prev) => ({ ...prev, [groupKey]: null }));
+    const svc = GROUP_CONFIG[groupKey].testService!;
+    const testValues: Record<string, string | null> = {};
+    for (const field of GROUP_CONFIG[groupKey].fields) {
+      if (field in drafts) {
+        testValues[field] = drafts[field] || null;
+      } else {
+        const f = fieldMap[field];
+        testValues[field] = (f && !CONFIG_SECRET_FIELDS.has(field)) ? (f.value ?? null) : null;
+      }
+    }
+    try {
+      const result = await testConfigService(svc, testValues);
+      setTestResults((prev) => ({ ...prev, [groupKey]: result }));
+    } catch (e) {
+      setTestResults((prev) => ({
+        ...prev,
+        [groupKey]: { ok: false, message: e instanceof Error ? e.message : "Test failed" },
+      }));
+    } finally {
+      setTestingGroup(null);
+    }
+  }
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading configuration…</p>;
+  if (!configState) return null;
+
+  const unpopulatedGroups = Object.entries(GROUP_CONFIG)
+    .map(([, { label, fields }]) => ({
+      label,
+      missing: fields.filter((f) => {
+        const s = fieldMap[f];
+        return s && (CONFIG_SECRET_FIELDS.has(f) ? !s.secret_set : !s.value);
+      }),
+    }))
+    .filter((g) => g.missing.length > 0);
+
+  return (
+    <div className="space-y-6 pt-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h2 className="text-base font-semibold">Integration Settings</h2>
+        <p className="text-xs text-muted-foreground">
+          Optional service credentials stored encrypted on disk. Fields with an ENV badge are sourced from environment variables and take priority at runtime.
+          Saved changes require a process restart to take effect.
+        </p>
+      </div>
+
+      {unpopulatedGroups.length > 0 && (
+        <div className="rounded-md border border-border bg-muted/40 px-4 py-3 space-y-1.5">
+          <p className="text-xs font-medium">Optional services not fully configured:</p>
+          {unpopulatedGroups.map(({ label, missing }) => (
+            <p key={label} className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{label}</span>
+              {" — "}
+              {missing.map((f) => CONFIG_FIELD_LABELS[f] ?? f).join(", ")}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {Object.entries(GROUP_CONFIG).map(([groupKey, { label, fields, testService }]) => {
+        const isDirty = fields.some((f) => f in drafts);
+        const saveError = saveErrors[groupKey];
+        const testResult = testResults[groupKey];
+
+        return (
+          <div key={groupKey} className="border rounded-lg overflow-hidden">
+            <div className="px-4 py-2.5 bg-muted/30 border-b">
+              <h3 className="text-sm font-medium">{label}</h3>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {fields.map((field) => {
+                  const state = fieldMap[field];
+                  const isBoolean = BOOLEAN_FIELDS.has(field);
+                  const isSecret = CONFIG_SECRET_FIELDS.has(field);
+                  const fromEnv = state?.source === "env";
+                  const hasDraft = field in drafts;
+                  const isSet = isSecret ? (state?.secret_set ?? false) : !!(state?.value);
+                  const isFullWidth = fields.length === 1
+                    || field === "smtp_from_email"
+                    || field === "ravelry_oauth_redirect_uri"
+                    || field === "webhook_base_url"
+                    || field === "otel_exporter_otlp_endpoint";
+
+                  if (isBoolean) {
+                    const isOn = hasDraft
+                      ? drafts[field] === "true"
+                      : (state?.value === "True" || state?.value === "true");
+                    return (
+                      <div key={field} className={`flex items-center justify-between gap-3 py-1 ${isFullWidth ? "sm:col-span-2" : ""}`}>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
+                          {fromEnv && (
+                            <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">ENV</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={isOn}
+                          onClick={() => setDrafts((prev) => ({ ...prev, [field]: isOn ? "false" : "true" }))}
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isOn ? "bg-accent" : "bg-input"}`}
+                        >
+                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  const isPrefixMasked = PREFIX_MASKED_FIELDS.has(field);
+                  const isEditing = editingFields.has(field);
+                  const showMasked = isPrefixMasked && isSet && !hasDraft && !isEditing;
+
+                  return (
+                    <div key={field} className={isFullWidth ? "sm:col-span-2" : ""}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
+                        {fromEnv && (
+                          <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">
+                            ENV
+                          </span>
+                        )}
+                        {isSecret && isSet && !hasDraft && (
+                          <span className="text-[10px] text-green-600 dark:text-green-400">set</span>
+                        )}
+                      </div>
+                      {showMasked ? (
+                        <div
+                          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono text-muted-foreground cursor-text select-none"
+                          onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
+                          title="Click to change"
+                        >
+                          {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
+                        </div>
+                      ) : (
+                        <input
+                          type={isPrefixMasked ? "text" : isSecret ? "password" : "text"}
+                          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                          value={isSecret ? (hasDraft ? drafts[field] : "") : (hasDraft ? drafts[field] : (state?.value ?? ""))}
+                          placeholder={isSecret && isSet ? "Enter new value to replace" : ""}
+                          onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
+                          autoComplete="off"
+                          autoFocus={isPrefixMasked && isEditing && !hasDraft}
+                        />
+                      )}
+                      {fromEnv && hasDraft && (
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+                          ENV var active — file value won't take effect until removed from .env
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {saveError && <p className="text-xs text-destructive">{saveError}</p>}
+              {testResult && (
+                <p className={`text-xs ${testResult.ok ? "text-green-600 dark:text-green-400" : "text-destructive"}`}>
+                  {testResult.ok ? "✓" : "✗"} {testResult.message}
+                </p>
+              )}
+
+              <div className="flex items-center gap-2 pt-1 border-t">
+                {testService && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    disabled={testingGroup === groupKey}
+                    onClick={() => handleTest(groupKey)}
+                  >
+                    {testingGroup === groupKey ? "Testing…" : "Test"}
+                  </Button>
+                )}
+                <div className="flex-1" />
+                {isDirty && (
+                  <button
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => clearGroupDrafts(groupKey)}
+                  >
+                    Discard
+                  </button>
+                )}
+                <Button
+                  size="sm"
+                  className="h-7 px-3 text-xs"
+                  disabled={!isDirty || savingGroup === groupKey}
+                  onClick={() => handleSave(groupKey)}
+                >
+                  {savingGroup === groupKey ? "Saving…" : "Save"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CredentialsTab() {
+  const queryClient = useQueryClient();
+
+  const { data: credentials = [], isLoading } = useQuery({
+    queryKey: ["admin", "credentials"],
+    queryFn: listCredentials,
+  });
+
+  const [editing, setEditing] = useState<CredentialExpiry | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CredentialExpiry | null>(null);
+  const [formName, setFormName] = useState("");
+  const [formResource, setFormResource] = useState<CredentialResource>("smtp");
+  const [formExpiry, setFormExpiry] = useState("");
+  const [formNotes, setFormNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function openAdd() {
+    setFormName(""); setFormResource("smtp"); setFormExpiry(""); setFormNotes("");
+    setError(null); setAdding(true);
+  }
+
+  function openEdit(c: CredentialExpiry) {
+    setFormName(c.name);
+    setFormResource(c.resource);
+    setFormExpiry(c.expires_on ?? "");
+    setFormNotes(c.notes ?? "");
+    setError(null);
+    setEditing(c);
+  }
+
+  function closeForm() { setAdding(false); setEditing(null); setError(null); }
+
+  async function handleSave() {
+    if (!formName.trim()) { setError("Name is required"); return; }
+    setSaving(true); setError(null);
+    try {
+      const body = {
+        name: formName.trim(),
+        resource: formResource,
+        expires_on: formExpiry || null,
+        notes: formNotes.trim() || null,
+      };
+      if (adding) {
+        await createCredential(body);
+      } else if (editing) {
+        await patchCredential(editing.id, body);
+      }
+      queryClient.invalidateQueries({ queryKey: ["admin", "credentials"] });
+      closeForm();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteCredential(deleteTarget.id);
+      queryClient.invalidateQueries({ queryKey: ["admin", "credentials"] });
+      setDeleteTarget(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const sorted = [...credentials].sort((a, b) => {
+    if (a.days_remaining === null && b.days_remaining === null) return 0;
+    if (a.days_remaining === null) return 1;
+    if (b.days_remaining === null) return -1;
+    return a.days_remaining - b.days_remaining;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1 pb-2 border-b flex-1 mr-4">
+          <h1 className="text-lg font-semibold">Credentials</h1>
+          <p className="text-sm text-muted-foreground">Track expiration dates for secrets and third-party service credentials.</p>
+        </div>
+        <Button size="sm" onClick={openAdd}>Add credential</Button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : sorted.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No credentials tracked yet.</p>
+      ) : (
+        <div className="rounded-md border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Service</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Expires</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+                <th className="px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {sorted.map((c) => {
+                const { label, cls } = credentialStatus(c.days_remaining);
+                return (
+                  <tr key={c.id} className="hover:bg-muted/50">
+                    <td className="px-3 py-2.5 font-medium">{c.name}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{RESOURCE_LABELS[c.resource]}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">
+                      {c.expires_on
+                        ? <>
+                            {new Date(c.expires_on).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                            {c.days_remaining !== null && (
+                              <span className="ml-1.5 text-xs text-muted-foreground">
+                                ({c.days_remaining < 0 ? `${Math.abs(c.days_remaining)}d ago` : `${c.days_remaining}d`})
+                              </span>
+                            )}
+                          </>
+                        : <span className="text-muted-foreground">Never</span>}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <button className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(c)}>Edit</button>
+                      <button className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(c)}>Delete</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <ConfigSection />
+
+      {(adding || editing) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg border bg-background shadow-lg p-6 space-y-4">
+            <h3 className="font-semibold">{adding ? "Add credential" : "Edit credential"}</h3>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Name <span className="text-destructive">*</span></label>
+              <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Clerk Secret Key" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Service</label>
+              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formResource} onChange={(e) => setFormResource(e.target.value as CredentialResource)}>
+                {RESOURCE_OPTIONS.map((r) => <option key={r} value={r}>{RESOURCE_LABELS[r]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Expiration date <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <input type="date" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formExpiry} onChange={(e) => setFormExpiry(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
+              <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" rows={2} value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Rotation instructions, link to vault, etc." />
+            </div>
+            {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={closeForm} disabled={saving}>Cancel</Button>
+              <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border bg-background shadow-lg p-6 space-y-4">
+            <h3 className="font-semibold">Delete credential?</h3>
+            <p className="text-sm text-muted-foreground">This will permanently remove <strong>{deleteTarget.name}</strong> from the tracking list.</p>
+            {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? "Deleting…" : "Delete"}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SuperuserPage() {
   const { section = "eula" } = useParams<{ section: string }>();
   const activeSection = section as SuperuserSection;
 
+  const { data: configState } = useQuery({
+    queryKey: ["admin", "config"],
+    queryFn: getConfig,
+    staleTime: 30_000,
+  });
+
   return (
     <div className="p-6 max-w-4xl mx-auto w-full space-y-6">
       <CveBanner />
+
+      {configState?.restart_pending && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20 px-4 py-3 flex items-start gap-3">
+          <span className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">⚠</span>
+          <div>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Restart required</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+              Integration settings were updated. Saved values will take effect after the next process restart.
+            </p>
+          </div>
+        </div>
+      )}
+
       {activeSection === "eula" && <EulaTab />}
       {activeSection === "storage" && <StorageAuditTab />}
       {activeSection === "cve" && <CveScanTab />}
@@ -1275,6 +2149,8 @@ export function SuperuserPage() {
       {activeSection === "reconcile" && <ReconcileTab />}
       {activeSection === "maintenance" && <MaintenanceTab />}
       {activeSection === "schedule" && <ScheduledTasksTab />}
+      {activeSection === "exports" && <ExportsTab />}
+      {activeSection === "credentials" && <CredentialsTab />}
     </div>
   );
 }

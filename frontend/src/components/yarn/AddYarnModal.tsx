@@ -1,6 +1,20 @@
-import { useState } from "react";
-import { createYarn, weightBothUnits, type CreateYarnPayload } from "@/api/yarn";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { createYarn, getYarnProperties, listYarn, weightBothUnits, type CreateYarnPayload } from "@/api/yarn";
 import { Button } from "@/components/ui/button";
+import { ColorPicker } from "@/components/ui/ColorPicker";
+
+const WEIGHT_CATEGORIES = [
+  "thread", "lace", "fingering", "sport", "dk",
+  "worsted", "aran", "bulky", "super_bulky",
+] as const;
+
+const WEIGHT_LABELS: Record<string, string> = {
+  thread: "Thread", lace: "Lace", fingering: "Fingering", sport: "Sport",
+  dk: "DK", worsted: "Worsted", aran: "Aran", bulky: "Bulky", super_bulky: "Super Bulky",
+};
 
 interface Props {
   onSuccess: () => void;
@@ -8,8 +22,14 @@ interface Props {
 }
 
 export function AddYarnModal({ onSuccess, onClose }: Props) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
   const [brand, setBrand] = useState("");
+  const [brandOpen, setBrandOpen] = useState(false);
   const [name, setName] = useState("");
+  const [nameOpen, setNameOpen] = useState(false);
+  const [weightCategory, setWeightCategory] = useState("");
   const [weightNotation, setWeightNotation] = useState("");
   const [fiberContent, setFiberContent] = useState("");
   const [colorName, setColorName] = useState("");
@@ -24,9 +44,43 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
   const [purchaseSource, setPurchaseSource] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
+  const [machineWashable, setMachineWashable] = useState<boolean | null>(null);
+  const [selectedAttributeIds, setSelectedAttributeIds] = useState<Set<number>>(new Set());
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const { data: propertyGroups = [] } = useQuery({
+    queryKey: ["yarnProperties"],
+    queryFn: getYarnProperties,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const { data: existingYarns = [] } = useQuery({
+    queryKey: ["yarn", { includeArchived: false }],
+    queryFn: () => listYarn(false),
+    staleTime: 60 * 1000,
+  });
+
+  const brandSuggestions = useMemo(() => {
+    const q = brand.trim().toLowerCase();
+    if (!q) return [];
+    return [...new Set(existingYarns.map((y) => y.brand))]
+      .filter((b) => b.toLowerCase().includes(q))
+      .sort();
+  }, [existingYarns, brand]);
+
+  const nameSuggestions = useMemo(() => {
+    const q = name.trim().toLowerCase();
+    if (!q) return [];
+    const brandLower = brand.trim().toLowerCase();
+    const pool = brandLower
+      ? existingYarns.filter((y) => y.brand.toLowerCase() === brandLower)
+      : existingYarns;
+    return [...new Set(pool.map((y) => y.name))]
+      .filter((n) => n.toLowerCase().includes(q))
+      .sort();
+  }, [existingYarns, brand, name]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +91,7 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
       const payload: CreateYarnPayload = {
         brand: brand.trim(),
         name: name.trim(),
+        weight_category: weightCategory || undefined,
         weight_notation: weightNotation.trim() || undefined,
         fiber_content: fiberContent.trim() || undefined,
         color_name: colorName.trim() || undefined,
@@ -51,14 +106,25 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
         purchase_price: purchasePrice ? parseFloat(purchasePrice) : undefined,
         purchase_date: purchaseDate || undefined,
         notes: notes.trim() || undefined,
+        machine_washable: machineWashable,
+        yarn_attribute_ids: selectedAttributeIds.size > 0 ? Array.from(selectedAttributeIds) : undefined,
       };
-      await createYarn(payload);
+      const created = await createYarn(payload);
       onSuccess();
+      navigate(`/yarn/${created.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add yarn");
+      setError(err instanceof Error ? err.message : t("addYarnModal.errorMessage"));
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleAttr = (id: number) => {
+    setSelectedAttributeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
@@ -67,59 +133,167 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-lg border bg-background shadow-lg flex flex-col max-h-[90vh]">
         <div className="px-6 pt-6 pb-4 border-b">
-          <h2 className="text-lg font-semibold">Add yarn</h2>
+          <h2 className="text-lg font-semibold">{t("addYarnModal.title")}</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium">Brand / Manufacturer <span className="text-destructive">*</span></label>
-              <input className={f} value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="Maurice Brassard" required />
+            <div className="relative">
+              <label className="mb-1 block text-sm font-medium">
+                {t("addYarnModal.brandLabel")} <span className="text-destructive">*</span>
+              </label>
+              <input
+                className={f}
+                value={brand}
+                onChange={(e) => { setBrand(e.target.value); setBrandOpen(true); }}
+                onFocus={() => setBrandOpen(true)}
+                onBlur={() => setTimeout(() => setBrandOpen(false), 150)}
+                placeholder={t("addYarnModal.brandPlaceholder")}
+                autoComplete="off"
+                required
+              />
+              {brandOpen && brandSuggestions.length > 0 && (
+                <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover shadow-md text-sm">
+                  {brandSuggestions.map((b) => (
+                    <li
+                      key={b}
+                      className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                      onMouseDown={() => { setBrand(b); setBrandOpen(false); }}
+                    >
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Product name <span className="text-destructive">*</span></label>
-              <input className={f} value={name} onChange={(e) => setName(e.target.value)} placeholder="Cotton 8/2" required />
+            <div className="relative">
+              <label className="mb-1 block text-sm font-medium">
+                {t("addYarnModal.nameLabel")} <span className="text-destructive">*</span>
+              </label>
+              <input
+                className={f}
+                value={name}
+                onChange={(e) => { setName(e.target.value); setNameOpen(true); }}
+                onFocus={() => setNameOpen(true)}
+                onBlur={() => setTimeout(() => setNameOpen(false), 150)}
+                placeholder={t("addYarnModal.namePlaceholder")}
+                autoComplete="off"
+                required
+              />
+              {nameOpen && nameSuggestions.length > 0 && (
+                <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover shadow-md text-sm">
+                  {nameSuggestions.map((n) => (
+                    <li
+                      key={n}
+                      className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                      onMouseDown={() => { setName(n); setNameOpen(false); }}
+                    >
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">Weight notation</label>
-              <input className={f} value={weightNotation} onChange={(e) => setWeightNotation(e.target.value)} placeholder="8/2" />
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.weightCategoryLabel")}</label>
+              <select className={f} value={weightCategory} onChange={(e) => setWeightCategory(e.target.value)}>
+                <option value="">{t("addYarnModal.weightCategoryPlaceholder")}</option>
+                {WEIGHT_CATEGORIES.map((w) => (
+                  <option key={w} value={w}>{WEIGHT_LABELS[w]}</option>
+                ))}
+              </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Fiber content</label>
-              <input className={f} value={fiberContent} onChange={(e) => setFiberContent(e.target.value)} placeholder="100% Cotton" />
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.weightNotationLabel")}</label>
+              <input className={f} value={weightNotation} onChange={(e) => setWeightNotation(e.target.value)} placeholder={t("addYarnModal.weightNotationPlaceholder")} />
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">{t("addYarnModal.fiberLabel")}</label>
+            <input className={f} value={fiberContent} onChange={(e) => setFiberContent(e.target.value)} placeholder={t("addYarnModal.fiberPlaceholder")} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">Color name</label>
-              <input className={f} value={colorName} onChange={(e) => setColorName(e.target.value)} placeholder="Natural" />
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.colorNameLabel")}</label>
+              <input className={f} value={colorName} onChange={(e) => setColorName(e.target.value)} placeholder={t("addYarnModal.colorNamePlaceholder")} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Color swatch</label>
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.colorSwatchLabel")}</label>
               <div className="flex items-center gap-2 pt-1">
                 <input type="checkbox" id="has-color" checked={hasColor} onChange={(e) => setHasColor(e.target.checked)} />
-                <label htmlFor="has-color" className="text-sm">Set color</label>
-                {hasColor && (
-                  <input type="color" value={colorHex} onChange={(e) => setColorHex(e.target.value)} className="h-8 w-12 rounded border border-input cursor-pointer" />
-                )}
+                <label htmlFor="has-color" className="text-sm">{t("addYarnModal.setColorLabel")}</label>
+                {hasColor && <ColorPicker value={colorHex} onChange={setColorHex} />}
               </div>
             </div>
           </div>
 
+          <div>
+            <label className="mb-1 block text-sm font-medium">{t("addYarnModal.machineWashableLabel")}</label>
+            <div className="flex gap-4 pt-1">
+              {([["yes", true], ["no", false], ["unknown", null]] as const).map(([labelKey, val]) => (
+                <label key={labelKey} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="machine_washable"
+                    checked={machineWashable === val}
+                    onChange={() => setMachineWashable(val)}
+                    className="accent-accent"
+                  />
+                  {t(`addYarnModal.machineWashable${labelKey.charAt(0).toUpperCase() + labelKey.slice(1)}`)}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {propertyGroups.length > 0 && (
+            <div>
+              <label className="mb-2 block text-sm font-medium">{t("addYarnModal.propertiesLabel")}</label>
+              <div className="space-y-2">
+                {propertyGroups.map((group) => (
+                  <div key={group.id}>
+                    <p className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">{group.name}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {group.attributes.map((attr) => (
+                        <label key={attr.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedAttributeIds.has(attr.id)}
+                            onChange={() => toggleAttr(attr.id)}
+                            className="accent-accent"
+                          />
+                          {attr.name}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">Yardage / unit</label>
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.yardageLabel")}</label>
               <input type="number" min={0} step="1" className={f} value={unitYardage} onChange={(e) => setUnitYardage(e.target.value)} placeholder="1680" />
             </div>
             <div className="col-span-2">
-              <label className="mb-1 block text-sm font-medium">Weight / unit</label>
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.weightPerUnitLabel")}</label>
               <div className="flex gap-2">
-                <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={unitWeight} onChange={(e) => setUnitWeight(e.target.value)} placeholder={unitWeightUnit === "oz" ? "8.0" : "227"} />
-                <select className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={unitWeightUnit} onChange={(e) => setUnitWeightUnit(e.target.value as "oz" | "g")}>
+                <input
+                  type="number" min={0} step="0.1"
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={unitWeight} onChange={(e) => setUnitWeight(e.target.value)}
+                  placeholder={unitWeightUnit === "oz" ? "8.0" : "227"}
+                />
+                <select
+                  className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  value={unitWeightUnit} onChange={(e) => setUnitWeightUnit(e.target.value as "oz" | "g")}
+                >
                   <option value="oz">oz</option>
                   <option value="g">g</option>
                 </select>
@@ -129,37 +303,37 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">Yards / pound</label>
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.yardsPerPoundLabel")}</label>
               <input type="number" min={0} step="1" className={f} value={yardsPerPound} onChange={(e) => setYardsPerPound(e.target.value)} placeholder="3360" />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Sett min (epi)</label>
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.settMinLabel")}</label>
               <input type="number" min={1} className={f} value={settMin} onChange={(e) => setSettMin(e.target.value)} placeholder="20" />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Sett max (epi)</label>
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.settMaxLabel")}</label>
               <input type="number" min={1} className={f} value={settMax} onChange={(e) => setSettMax(e.target.value)} placeholder="30" />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="mb-1 block text-sm font-medium">Purchase source</label>
-              <input className={f} value={purchaseSource} onChange={(e) => setPurchaseSource(e.target.value)} placeholder="The Woolery" />
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.purchaseSourceLabel")}</label>
+              <input className={f} value={purchaseSource} onChange={(e) => setPurchaseSource(e.target.value)} placeholder={t("addYarnModal.purchaseSourcePlaceholder")} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Price / unit</label>
+              <label className="mb-1 block text-sm font-medium">{t("addYarnModal.priceLabel")}</label>
               <input type="number" min={0} step="0.01" className={f} value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} placeholder="12.00" />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Purchase date</label>
+            <label className="mb-1 block text-sm font-medium">{t("addYarnModal.purchaseDateLabel")}</label>
             <input type="date" className={f} value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Notes</label>
+            <label className="mb-1 block text-sm font-medium">{t("addYarnModal.notesLabel")}</label>
             <textarea className={`${f} resize-none`} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
@@ -167,9 +341,9 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
         </form>
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>{t("common.cancel")}</Button>
           <Button onClick={handleSubmit} disabled={loading || !brand.trim() || !name.trim()}>
-            {loading ? "Saving…" : "Add yarn"}
+            {loading ? t("addYarnModal.savingButton") : t("addYarnModal.saveButton")}
           </Button>
         </div>
       </div>

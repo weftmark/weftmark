@@ -22,16 +22,24 @@ interface Props {
   onDesktopExpand?: () => void;
 }
 
+type NavGroup = "settings" | "admin" | "superuser";
+
 export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand }: Props) {
   const location = useLocation();
   const { user } = useAuth();
   const { signOut } = useClerk();
   const { t } = useTranslation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<NavGroup | null>(null);
+
+  function toggleGroup(group: NavGroup) {
+    setExpandedGroup((prev) => (prev === group ? null : group));
+  }
 
   const NAV_ITEMS: NavItem[] = [
     { label: t("nav.dashboard"), href: "/home", icon: AppIcons.dashboard, exact: true },
     { label: t("nav.equipment"), href: "/looms", icon: AppIcons.equipment },
+    { label: t("nav.yarn"), href: "/yarn", icon: AppIcons.yarn },
     { label: t("nav.collections"), href: "/collections", icon: AppIcons.collections },
     { label: t("nav.drafts"), href: "/drafts", icon: AppIcons.drafts },
     { label: t("nav.projects"), href: "/projects", icon: AppIcons.projects },
@@ -40,6 +48,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   const SETTINGS_SECTIONS = [
     { id: "appearance", label: t("settingsSections.appearance") },
     { id: "preferences", label: t("settingsSections.preferences") },
+    { id: "connections", label: t("settingsSections.connections") },
     { id: "privacy", label: t("settingsSections.privacy") },
     { id: "terms", label: t("settingsSections.terms") },
     { id: "account", label: t("settingsSections.account") },
@@ -55,7 +64,6 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
     { id: "deps", label: t("adminSections.deps") },
     { id: "audit", label: t("adminSections.audit") },
     { id: "feedback", label: t("adminSections.feedback") },
-    { id: "credentials", label: t("adminSections.credentials") },
     { id: "slugs", label: t("adminSections.slugs") },
     { id: "looms", label: t("adminSections.looms") },
   ];
@@ -69,6 +77,8 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
     { id: "reconcile", label: t("superuserSections.reconcile") },
     { id: "maintenance", label: t("superuserSections.maintenance") },
     { id: "schedule", label: t("superuserSections.schedule") },
+    { id: "exports", label: t("superuserSections.exports") },
+    { id: "credentials", label: t("superuserSections.credentials") },
   ];
 
   function isActive(href: string, exact = false) {
@@ -76,8 +86,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
     return location.pathname === href || location.pathname.startsWith(href + "/");
   }
 
-  function navCls(href: string, exact?: boolean) {
-    const active = isActive(href, exact);
+  function navCls(active: boolean) {
     return `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
       active
         ? "bg-accent text-accent-foreground"
@@ -85,10 +94,8 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
     } ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`;
   }
 
-  function iconCls(href: string, exact?: boolean) {
-    return `h-4 w-4 shrink-0 ${
-      isActive(href, exact) ? "text-accent-foreground" : "text-muted-foreground"
-    }`;
+  function iconCls(active: boolean) {
+    return `h-4 w-4 shrink-0 ${active ? "text-accent-foreground" : "text-muted-foreground"}`;
   }
 
   return (
@@ -154,10 +161,10 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
                 key={href}
                 to={href}
                 onClick={onClose}
-                className={navCls(href, exact)}
+                className={navCls(isActive(href, exact))}
                 title={desktopCollapsed ? label : undefined}
               >
-                <Icon className={iconCls(href, exact)} strokeWidth={1.75} />
+                <Icon className={iconCls(isActive(href, exact))} strokeWidth={1.75} />
                 <span className={desktopCollapsed ? "lg:hidden" : ""}>{label}</span>
               </Link>
             ))}
@@ -169,17 +176,16 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
 
         {/* Bottom nav */}
         <div className={`shrink-0 border-t border-border px-3 py-3 space-y-0.5 ${desktopCollapsed ? "lg:px-2" : ""}`}>
-          <Link
-            to="/settings/appearance"
-            onClick={onClose}
-            className={navCls("/settings")}
+          <button
+            onClick={() => toggleGroup("settings")}
+            className={`w-full ${navCls(expandedGroup === "settings")}`}
             title={desktopCollapsed ? t("nav.settings") : undefined}
           >
-            <AppIcons.settings className={iconCls("/settings")} strokeWidth={1.75} />
+            <AppIcons.settings className={iconCls(expandedGroup === "settings")} strokeWidth={1.75} />
             <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.settings")}</span>
-          </Link>
+          </button>
 
-          {isActive("/settings") && !desktopCollapsed && (
+          {expandedGroup === "settings" && !desktopCollapsed && (
             <div className="ml-3 border-l border-border pl-2 space-y-0.5">
               {SETTINGS_SECTIONS.map(({ id, label }) => {
                 const href = `/settings/${id}`;
@@ -203,18 +209,17 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           )}
 
           {user?.is_admin && (
-            <Link
-              to="/admin/users"
-              onClick={onClose}
-              className={navCls("/admin")}
+            <button
+              onClick={() => toggleGroup("admin")}
+              className={`w-full ${navCls(expandedGroup === "admin")}`}
               title={desktopCollapsed ? t("nav.admin") : undefined}
             >
-              <AppIcons.admin className={iconCls("/admin")} strokeWidth={1.75} />
+              <AppIcons.admin className={iconCls(expandedGroup === "admin")} strokeWidth={1.75} />
               <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.admin")}</span>
-            </Link>
+            </button>
           )}
 
-          {user?.is_admin && isActive("/admin") && !desktopCollapsed && (
+          {user?.is_admin && expandedGroup === "admin" && !desktopCollapsed && (
             <div className="ml-3 border-l border-border pl-2 space-y-0.5">
               {ADMIN_SECTIONS.map(({ id, label }) => {
                 const href = `/admin/${id}`;
@@ -238,18 +243,17 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           )}
 
           {user?.is_superuser && (
-            <Link
-              to="/superuser/eula"
-              onClick={onClose}
-              className={navCls("/superuser")}
+            <button
+              onClick={() => toggleGroup("superuser")}
+              className={`w-full ${navCls(expandedGroup === "superuser")}`}
               title={desktopCollapsed ? t("nav.superuser") : undefined}
             >
-              <AppIcons.superuser className={iconCls("/superuser")} strokeWidth={1.75} />
+              <AppIcons.superuser className={iconCls(expandedGroup === "superuser")} strokeWidth={1.75} />
               <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.superuser")}</span>
-            </Link>
+            </button>
           )}
 
-          {user?.is_superuser && isActive("/superuser") && !desktopCollapsed && (
+          {user?.is_superuser && expandedGroup === "superuser" && !desktopCollapsed && (
             <div className="ml-3 border-l border-border pl-2 space-y-0.5">
               {SUPERUSER_SECTIONS.map(({ id, label }) => {
                 const href = `/superuser/${id}`;

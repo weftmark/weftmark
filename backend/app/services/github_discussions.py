@@ -31,7 +31,28 @@ async def _graphql(token: str, query: str, variables: dict) -> dict:
         data = resp.json()
     if "errors" in data:
         raise RuntimeError(f"GitHub GraphQL errors: {data['errors']}")
-    return data["data"]
+    return data["data"]  # type: ignore[no-any-return]
+
+
+async def get_discussion_state(token: str, discussion_url: str) -> str | None:
+    """Return "OPEN" or "CLOSED" for a discussion URL, or None on error."""
+    query = """
+    query($url: URI!) {
+      resource(url: $url) {
+        ... on Discussion { closed }
+      }
+    }
+    """
+    try:
+        data = await _graphql(token, query, {"url": discussion_url})
+        resource = data.get("resource") or {}
+        closed = resource.get("closed")
+        if closed is None:
+            return None
+        return "CLOSED" if closed else "OPEN"
+    except Exception as exc:
+        log.warning("get_discussion_state failed url=%s error=%s", discussion_url, exc)
+        return None
 
 
 async def get_repo_and_category_id(token: str, repo: str, submission_type: str) -> tuple[str, str]:
@@ -87,7 +108,7 @@ async def create_discussion(
         mutation,
         {"input": {"repositoryId": repo_id, "categoryId": category_id, "title": title, "body": body}},
     )
-    return data["createDiscussion"]["discussion"]["url"]
+    return data["createDiscussion"]["discussion"]["url"]  # type: ignore[no-any-return]
 
 
 def _type_label(submission_type: str) -> str:

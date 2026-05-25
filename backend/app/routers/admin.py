@@ -28,9 +28,13 @@ from app.models.pending_signup import PendingSignup
 from app.models.project import Project, ProjectPhoto, ProjectStep
 from app.models.server_event import ServerEvent
 from app.models.user import User
+from app.models.user_export import UserExportRequest
 from app.models.yarn import Yarn
 from app.services.audit import write_audit_log
 from app.services.clerk import ban_clerk_user, get_clerk_user, list_clerk_users, set_user_metadata, unban_clerk_user
+from app.services.config_file import MANAGED_FIELDS, SECRET_FIELDS, env_source_fields
+from app.services.config_file import load as _load_config
+from app.services.config_file import save as _save_config
 from app.services.email import (
     send_account_approved_email,
     send_account_denied_email,
@@ -484,7 +488,7 @@ async def list_users(
             .group_by(Loom.owner_id)
         )
     ).all()
-    for row in loom_storage_rows:
+    for row in loom_storage_rows:  # type: ignore[assignment]
         storage_bytes[row.owner_id] = storage_bytes.get(row.owner_id, 0) + int(row.bytes)
 
     return [
@@ -1243,10 +1247,10 @@ async def elevate_to_superuser(
         )
 
     if has_content:
-        await db.execute(Project.__table__.delete().where(Project.owner_id == user_id))
-        await db.execute(Loom.__table__.delete().where(Loom.owner_id == user_id))
-        await db.execute(Draft.__table__.delete().where(Draft.owner_id == user_id))
-        await db.execute(Yarn.__table__.delete().where(Yarn.owner_id == user_id))
+        await db.execute(Project.__table__.delete().where(Project.owner_id == user_id))  # type: ignore[attr-defined]
+        await db.execute(Loom.__table__.delete().where(Loom.owner_id == user_id))  # type: ignore[attr-defined]
+        await db.execute(Draft.__table__.delete().where(Draft.owner_id == user_id))  # type: ignore[attr-defined]
+        await db.execute(Yarn.__table__.delete().where(Yarn.owner_id == user_id))  # type: ignore[attr-defined]
 
     user.is_superuser = True
     await write_audit_log(
@@ -1515,7 +1519,7 @@ async def _redis_server_version() -> str:
         client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
         info = await client.info("server")
         await client.aclose()
-        return info.get("redis_version", "unknown")
+        return info.get("redis_version", "unknown")  # type: ignore[no-any-return]
     except Exception:
         return "unavailable"
 
@@ -2186,6 +2190,96 @@ async def run_purge_soft_deleted(
     return {"status": "queued", "task_id": task.id}
 
 
+class SoftDeleteBucket(BaseModel):
+    drafts: int
+    projects: int
+    yarn: int
+    looms: int
+    total: int
+
+
+class SoftDeleteQueueResponse(BaseModel):
+    retention_days: int
+    cutoff: datetime
+    ready_to_purge: SoftDeleteBucket
+    in_retention_window: SoftDeleteBucket
+
+
+@router.get("/soft-delete-queue", response_model=SoftDeleteQueueResponse)
+async def get_soft_delete_queue(
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> SoftDeleteQueueResponse:
+    settings = get_settings()
+    retention_days = settings.soft_delete_retention_days
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+
+    async def _count(model, before_cutoff: bool) -> int:
+        if before_cutoff:
+            condition = model.deleted_at.is_not(None) & (model.deleted_at < cutoff)
+        else:
+            condition = model.deleted_at.is_not(None) & (model.deleted_at >= cutoff)
+        result = await db.scalar(select(func.count()).select_from(model).where(condition))
+        return result or 0
+
+    ready_drafts = await _count(Draft, True)
+    ready_projects = await _count(Project, True)
+    ready_yarn = await _count(Yarn, True)
+    ready_looms = await _count(Loom, True)
+
+    window_drafts = await _count(Draft, False)
+    window_projects = await _count(Project, False)
+    window_yarn = await _count(Yarn, False)
+    window_looms = await _count(Loom, False)
+
+    return SoftDeleteQueueResponse(
+        retention_days=retention_days,
+        cutoff=cutoff,
+        ready_to_purge=SoftDeleteBucket(
+            drafts=ready_drafts,
+            projects=ready_projects,
+            yarn=ready_yarn,
+            looms=ready_looms,
+            total=ready_drafts + ready_projects + ready_yarn + ready_looms,
+        ),
+        in_retention_window=SoftDeleteBucket(
+            drafts=window_drafts,
+            projects=window_projects,
+            yarn=window_yarn,
+            looms=window_looms,
+            total=window_drafts + window_projects + window_yarn + window_looms,
+        ),
+    )
+
+
+class DeletionQueueUser(BaseModel):
+    id: uuid.UUID
+    display_name: str
+    email: str
+    deletion_state: str
+    deletion_initiated_at: datetime | None
+
+
+@router.get("/deletion-queue", response_model=list[DeletionQueueUser])
+async def get_deletion_queue(
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> list[DeletionQueueUser]:
+    rows = await db.scalars(
+        select(User).where(User.deletion_state.is_not(None)).order_by(User.deletion_initiated_at.desc())
+    )
+    return [
+        DeletionQueueUser(
+            id=u.id,
+            display_name=u.display_name,
+            email=u.email,
+            deletion_state=u.deletion_state,  # type: ignore[arg-type]
+            deletion_initiated_at=u.deletion_initiated_at,
+        )
+        for u in rows.all()
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Scheduled tasks (superuser only)
 # ---------------------------------------------------------------------------
@@ -2553,3 +2647,268 @@ async def admin_list_project_steps(
         )
         for s in rows.all()
     ]
+
+
+# ---------------------------------------------------------------------------
+# Data exports
+# ---------------------------------------------------------------------------
+
+
+class AdminExportRecord(BaseModel):
+    id: str
+    user_id: str
+    user_email: str
+    user_display_name: str | None
+    status: str
+    requested_at: datetime
+    completed_at: datetime | None
+    expires_at: datetime | None
+    archive_size_bytes: int | None
+    error: str | None
+
+
+@router.get("/exports", response_model=list[AdminExportRecord])
+async def list_exports(
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminExportRecord]:
+    rows = await db.execute(
+        select(UserExportRequest, User)
+        .join(User, User.id == UserExportRequest.user_id)
+        .order_by(UserExportRequest.requested_at.desc())
+        .limit(200)
+    )
+    return [
+        AdminExportRecord(
+            id=str(req.id),
+            user_id=str(req.user_id),
+            user_email=user.email,
+            user_display_name=user.display_name,
+            status=req.status,
+            requested_at=req.requested_at,
+            completed_at=req.updated_at if req.status == "complete" else None,
+            expires_at=req.expires_at,
+            archive_size_bytes=req.archive_size_bytes,
+            error=req.error,
+        )
+        for req, user in rows.all()
+    ]
+
+
+@router.delete("/exports/{export_id}", status_code=204)
+async def delete_export(
+    export_id: uuid.UUID,
+    _: User = Depends(require_superuser),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    req = await db.get(UserExportRequest, export_id)
+    if req is None:
+        raise HTTPException(status_code=404, detail="Export not found")
+
+    if req.archive_path:
+        try:
+            from app.services import storage
+
+            await asyncio.to_thread(storage._delete, req.archive_path)
+        except Exception:
+            log.warning("export_delete_storage_failed export_id=%s", export_id)
+
+    await db.delete(req)
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Config file management
+# ---------------------------------------------------------------------------
+
+# Set to True when a config file write occurs; cleared only by process restart.
+_restart_pending: bool = False
+
+
+def set_restart_pending() -> None:
+    global _restart_pending
+    _restart_pending = True
+
+
+def get_restart_pending() -> bool:
+    return _restart_pending
+
+
+_GROUP_MAP: dict[str, list[str]] = {
+    "smtp": ["smtp_host", "smtp_port", "smtp_user", "smtp_password", "smtp_from_email", "smtp_from_name"],
+    "s3": ["s3_endpoint_url", "s3_access_key_id", "s3_secret_access_key", "s3_bucket_name", "s3_region"],
+    "ravelry_read": ["ravelry_read_access_username", "ravelry_read_access_key"],
+    "ravelry_oauth": ["ravelry_oauth_client_id", "ravelry_oauth_client_secret", "ravelry_oauth_redirect_uri"],
+    "github": ["github_feedback_token", "github_feedback_repo"],
+    "cloudflare": ["cf_zero_trust_enabled", "cf_access_client_id", "cf_access_client_secret"],
+    "webhook": ["clerk_webhook_secret", "webhook_base_url"],
+    "geoip": ["maxmind_license_key"],
+    "otel": ["otel_exporter_otlp_endpoint"],
+}
+
+
+class ConfigFieldState(BaseModel):
+    field: str
+    value: str | None  # None for secret fields that are set (masked)
+    secret_set: bool
+    secret_prefix: str | None  # first 8 chars of the secret, for display
+    source: str  # "env" | "file" | "default"
+    env_var: str | None
+
+
+class ConfigStateResponse(BaseModel):
+    fields: list[ConfigFieldState]
+    restart_pending: bool
+
+
+class ConfigSaveRequest(BaseModel):
+    values: dict[str, str | None]
+
+
+class ConfigTestResult(BaseModel):
+    ok: bool
+    message: str
+
+
+def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
+    """Return current effective value and source for every managed field."""
+    encryption_key = settings.config_encryption_key
+    file_values = _load_config(settings.config_file_path, encryption_key) if encryption_key else {}
+    env_sources = env_source_fields()
+
+    result: list[ConfigFieldState] = []
+    for field in MANAGED_FIELDS:
+        env_var = env_sources.get(field)
+        raw_value: str = str(getattr(settings, field, "") or "")
+
+        if env_var:
+            source = "env"
+        elif field in file_values:
+            source = "file"
+        else:
+            source = "default"
+
+        is_secret = field in SECRET_FIELDS
+        result.append(
+            ConfigFieldState(
+                field=field,
+                value=None if (is_secret and raw_value) else raw_value,
+                secret_set=is_secret and bool(raw_value),
+                secret_prefix=raw_value[:8] if (is_secret and raw_value) else None,
+                source=source,
+                env_var=env_var,
+            )
+        )
+    return result
+
+
+@router.get("/config", response_model=ConfigStateResponse)
+async def get_config_state(
+    _: User = Depends(require_superuser),
+) -> ConfigStateResponse:
+    settings = get_settings()
+    return ConfigStateResponse(
+        fields=_get_config_state(settings),
+        restart_pending=_restart_pending,
+    )
+
+
+@router.put("/config", response_model=ConfigStateResponse)
+async def save_config(
+    body: ConfigSaveRequest,
+    _: User = Depends(require_superuser),
+) -> ConfigStateResponse:
+    settings = get_settings()
+    if not settings.config_encryption_key:
+        raise HTTPException(status_code=503, detail="CONFIG_ENCRYPTION_KEY is not set — cannot write config file")
+
+    _save_config(settings.config_file_path, settings.config_encryption_key, body.values)
+    set_restart_pending()
+    return ConfigStateResponse(
+        fields=_get_config_state(settings),
+        restart_pending=True,
+    )
+
+
+@router.post("/config/test/{service}", response_model=ConfigTestResult)
+async def test_config_service(
+    service: str,
+    body: ConfigSaveRequest,
+    _: User = Depends(require_superuser),
+) -> ConfigTestResult:
+    """Test a service connection using the provided (unsaved) values."""
+    v = body.values
+
+    if service == "smtp":
+        try:
+            import smtplib
+
+            host = str(v.get("smtp_host") or "mail.smtp2go.com")
+            port = int(v.get("smtp_port") or 587)
+            user = str(v.get("smtp_user") or "")
+            password = str(v.get("smtp_password") or "")
+            if not user or not password:
+                return ConfigTestResult(ok=False, message="smtp_user and smtp_password are required")
+            with smtplib.SMTP(host, port, timeout=10) as s:
+                s.starttls()
+                s.login(user, password)
+            return ConfigTestResult(ok=True, message=f"Connected to {host}:{port} and authenticated successfully")
+        except Exception as exc:
+            return ConfigTestResult(ok=False, message=str(exc))
+
+    if service == "s3":
+        try:
+            import boto3
+
+            client = boto3.client(
+                "s3",
+                endpoint_url=v.get("s3_endpoint_url") or None,
+                aws_access_key_id=v.get("s3_access_key_id") or None,
+                aws_secret_access_key=v.get("s3_secret_access_key") or None,
+                region_name=v.get("s3_region") or None,
+            )
+            bucket = v.get("s3_bucket_name") or ""
+            if not bucket:
+                return ConfigTestResult(ok=False, message="s3_bucket_name is required")
+            await asyncio.to_thread(client.head_bucket, Bucket=bucket)
+            return ConfigTestResult(ok=True, message=f"Bucket '{bucket}' is accessible")
+        except Exception as exc:
+            return ConfigTestResult(ok=False, message=str(exc))
+
+    if service == "ravelry_read":
+        try:
+            username = v.get("ravelry_read_access_username") or ""
+            key = v.get("ravelry_read_access_key") or ""
+            if not username or not key:
+                return ConfigTestResult(ok=False, message="Username and key are both required")
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    "https://api.ravelry.com/yarn_weights.json",
+                    auth=(username, key),
+                    timeout=10,
+                )
+            if resp.status_code == 200:
+                return ConfigTestResult(ok=True, message="Ravelry read key is valid")
+            return ConfigTestResult(ok=False, message=f"Ravelry returned {resp.status_code}")
+        except Exception as exc:
+            return ConfigTestResult(ok=False, message=str(exc))
+
+    if service == "github":
+        try:
+            token = v.get("github_feedback_token") or ""
+            if not token:
+                return ConfigTestResult(ok=False, message="github_feedback_token is required")
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    "https://api.github.com/user",
+                    headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"},
+                    timeout=10,
+                )
+            if resp.status_code == 200:
+                scopes = resp.headers.get("x-oauth-scopes", "")
+                return ConfigTestResult(ok=True, message=f"Token valid — scopes: {scopes or '(none listed)'}")
+            return ConfigTestResult(ok=False, message=f"GitHub returned {resp.status_code}: {resp.text[:120]}")
+        except Exception as exc:
+            return ConfigTestResult(ok=False, message=str(exc))
+
+    raise HTTPException(status_code=400, detail=f"Unknown service '{service}'")

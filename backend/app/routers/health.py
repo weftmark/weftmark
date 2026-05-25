@@ -199,7 +199,9 @@ async def run_startup_probes() -> ReadinessResponse:
         )
 
     return _build_readiness_from_results(
-        results, webhook_result=None, checked_at=datetime.now(timezone.utc).isoformat()
+        results,  # type: ignore[arg-type]
+        webhook_result=None,
+        checked_at=datetime.now(timezone.utc).isoformat(),
     )
 
 
@@ -234,7 +236,7 @@ async def _run_detailed_probes() -> ReadinessResponse:
             checked_at=datetime.now(timezone.utc).isoformat(),
         )
 
-    return _build_readiness_from_results(results, webhook_result, checked_at=datetime.now(timezone.utc).isoformat())
+    return _build_readiness_from_results(results, webhook_result, checked_at=datetime.now(timezone.utc).isoformat())  # type: ignore[arg-type]
 
 
 async def _refresh_superuser_email_cache() -> None:

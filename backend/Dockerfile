@@ -36,9 +36,10 @@ ms = [m for m in t.getmembers() if m.name.endswith('GeoLite2-City.mmdb')]; \
     fi
 
 # Drop to non-root — suppresses Celery SecurityWarning and follows least-privilege.
-# chown covers /app/uploads and /app/data so the weekly geo task can write the MMDB.
+# chown covers /app/uploads and /app/data (GeoIP) and /data (config file).
 RUN addgroup --system appuser && adduser --system --ingroup appuser appuser \
-    && chown -R appuser:appuser /app
+    && mkdir -p /data \
+    && chown -R appuser:appuser /app /data
 USER appuser
 
 ENTRYPOINT ["./entrypoint.sh"]

@@ -44,8 +44,7 @@ def prerender_project_tiles(self: Task, project_id: str) -> None:
 
 async def _prerender_draft(task: Task, draft_id: uuid.UUID) -> None:
     from PIL import Image as PILImage
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.config import get_settings
     from app.models.draft import Draft
@@ -54,7 +53,7 @@ async def _prerender_draft(task: Task, draft_id: uuid.UUID) -> None:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     try:
         async with async_session() as db:
@@ -90,8 +89,7 @@ async def _prerender_draft(task: Task, draft_id: uuid.UUID) -> None:
 
 async def _prerender_project(task: Task, project_id: uuid.UUID) -> None:
     from PIL import Image as PILImage
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.config import get_settings
     from app.models.draft import Draft
@@ -101,7 +99,7 @@ async def _prerender_project(task: Task, project_id: uuid.UUID) -> None:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     try:
         async with async_session() as db:

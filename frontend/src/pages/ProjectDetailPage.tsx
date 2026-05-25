@@ -1579,7 +1579,7 @@ export function ProjectDetailPage() {
         )}
 
         {/* Progress bar + item indicator */}
-        {showProgress && !isPlanning && !isCompleted && (
+        {showProgress && !isPlanning && !isCompleted && user?.activity_theme !== "compact" && (
           <div className="w-full px-8 pt-6">
             {isMultiItem && (
               <div className="flex items-center justify-between mb-2">
@@ -2098,16 +2098,17 @@ export function ProjectDetailPage() {
               <div className="space-y-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("projectDetailPage.showHide")}</p>
                 {([
-                  { label: t("projectDetailPage.progressBar"), value: showProgress, key: "proj-view:showProgress", setter: setShowProgress },
+                  { label: t("projectDetailPage.progressBar"), value: showProgress, key: "proj-view:showProgress", setter: setShowProgress, disabled: user?.activity_theme === "compact", disabledTitle: t("settings.appearance.hiddenInCompact") },
                   { label: t("projectDetailPage.drawdownPattern"), value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
                   { label: t("projectDetailPage.weftColorToggle"), value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
                   { label: t("projectDetailPage.prevNextCards"), value: showPickCards, key: "proj-view:showPickCards", setter: setShowPickCards },
-                ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void }[]).map(({ label, value, key, setter }) => (
-                  <div key={label} className="flex items-center justify-between">
+                ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void; disabled?: boolean; disabledTitle?: string }[]).map(({ label, value, key, setter, disabled, disabledTitle }) => (
+                  <div key={label} className={`flex items-center justify-between${disabled ? " opacity-40" : ""}`} title={disabled ? disabledTitle : undefined}>
                     <span className="text-sm">{label}</span>
                     <button
                       role="switch"
                       aria-checked={value}
+                      disabled={disabled}
                       onClick={() => { setter(!value); localStorage.setItem(key, String(!value)); }}
                       className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"}`}
                     >

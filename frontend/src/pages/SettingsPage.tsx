@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useClerk } from "@clerk/clerk-react";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { updateSettings, deleteAccount, getDataExport, getCurrentEula } from "@/api/users";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { updateSettings, deleteAccount, requestDataExport, getDataExportStatus, getDataExportDownloadUrl, getCurrentEula } from "@/api/users";
+import { getRavelryStatus, getRavelryAuthorizeUrl, disconnectRavelry, syncRavelryStash } from "@/api/ravelry";
+import { downloadAuthed } from "@/api/client";
 import { listDrafts } from "@/api/drafts";
 import { listMyFeedback, SUBMISSION_TYPE_LABELS, type FeedbackRecord } from "@/api/feedback";
 import { Button } from "@/components/ui/button";
@@ -12,13 +15,16 @@ import { EulaContent } from "@/components/EulaContent";
 import { AppIcons } from "@/lib/icons";
 import { TrackerStylePreview, TrackerLivePreview } from "@/components/TrackerStylePreview";
 
-type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history";
+type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history" | "connections";
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  const { signOut } = useClerk();
   const { user, refetch } = useAuth();
   const { section } = useParams<{ section: string }>();
   const activeSection: Section = (section as Section) ?? "appearance";
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const { data: drafts = [] } = useQuery({
     queryKey: ["drafts"],
@@ -30,6 +36,18 @@ export function SettingsPage() {
     queryKey: ["eula", "current"],
     queryFn: getCurrentEula,
     staleTime: 5 * 60 * 1000,
+  });
+
+  const queryClient = useQueryClient();
+  const { data: exportStatus } = useQuery({
+    queryKey: ["export-status"],
+    queryFn: getDataExportStatus,
+    refetchInterval: (query) => (query.state.data?.status === "pending" ? 5000 : false),
+    enabled: activeSection === "privacy",
+  });
+  const requestExportMutation = useMutation({
+    mutationFn: requestDataExport,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["export-status"] }),
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -63,7 +81,32 @@ export function SettingsPage() {
   const [deleteInput, setDeleteInput] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [exportInfo, setExportInfo] = useState<string | null>(null);
+
+  // Ravelry connection status
+  const { data: ravelryStatus, refetch: refetchRavelry } = useQuery({
+    queryKey: ["ravelry-status"],
+    queryFn: getRavelryStatus,
+    enabled: activeSection === "connections",
+  });
+  const [ravelryConnecting, setRavelryConnecting] = useState(false);
+  const [ravelryDisconnecting, setRavelryDisconnecting] = useState(false);
+  const [ravelrySyncing, setRavelrySyncing] = useState(false);
+  const [ravelryNotice, setRavelryNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Handle Ravelry OAuth callback redirect params
+  useEffect(() => {
+    const ravelryParam = searchParams.get("ravelry");
+    if (ravelryParam === "connected") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRavelryNotice({ type: "success", message: t("settings.connections.ravelryConnected") });
+      refetchRavelry();
+      navigate("/settings/connections", { replace: true });
+    } else if (ravelryParam === "error") {
+       
+      setRavelryNotice({ type: "error", message: t("settings.connections.ravelryError") });
+      navigate("/settings/connections", { replace: true });
+    }
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user) return null;
 
@@ -105,19 +148,11 @@ export function SettingsPage() {
     setDeleteError(null);
     try {
       await deleteAccount("DELETE MY ACCOUNT");
-      window.location.href = "/login";
+      await signOut();
+      window.location.href = "/";
     } catch (e: unknown) {
       setDeleteError(e instanceof Error ? e.message : "Failed to delete account");
       setDeleting(false);
-    }
-  }
-
-  async function handleDataExport() {
-    try {
-      const result = await getDataExport();
-      setExportInfo(result.message);
-    } catch {
-      setExportInfo(t("common.loading"));
     }
   }
 
@@ -139,7 +174,7 @@ export function SettingsPage() {
             {/* ── Appearance ── */}
             {activeSection === "appearance" && (
               <>
-              <Section title={t("settings.sections.appearance")}>
+              <Section title={t("settings.sections.appearance")} description={t("settings.sections.appearanceDesc")}>
                 <Field label={t("settings.appearance.theme")}>
                   <div className="flex gap-2">
                     {(["light", "dark", "system"] as const).map((t) => (
@@ -223,18 +258,19 @@ export function SettingsPage() {
                   {/* Show/hide toggles */}
                   <div className="space-y-2.5">
                     {([
-                      { label: t("settings.appearance.progressBar"), value: trackerShowProgress, setter: setTrackerShowProgress, key: "tracker_show_progress" as const },
+                      { label: t("settings.appearance.progressBar"), value: trackerShowProgress, setter: setTrackerShowProgress, key: "tracker_show_progress" as const, disabled: activityTheme === "compact", disabledTitle: t("settings.appearance.hiddenInCompact") },
                       { label: t("settings.appearance.drawdownPattern"), value: trackerShowDrawdown, setter: setTrackerShowDrawdown, key: "tracker_show_drawdown" as const },
                       { label: t("settings.appearance.weftColorBar"), value: trackerShowWeftColor, setter: setTrackerShowWeftColor, key: "tracker_show_weft_color" as const },
                       { label: t("settings.appearance.prevNextPickCards"), value: trackerShowPickCards, setter: setTrackerShowPickCards, key: "tracker_show_pick_cards" as const },
-                    ] as { label: string; value: boolean; setter: (v: boolean) => void; key: "tracker_show_progress" | "tracker_show_drawdown" | "tracker_show_weft_color" | "tracker_show_pick_cards" }[]).map(({ label, value, setter, key }) => (
-                      <div key={key} className="flex items-center justify-between">
+                    ] as { label: string; value: boolean; setter: (v: boolean) => void; key: "tracker_show_progress" | "tracker_show_drawdown" | "tracker_show_weft_color" | "tracker_show_pick_cards"; disabled?: boolean; disabledTitle?: string }[]).map(({ label, value, setter, key, disabled, disabledTitle }) => (
+                      <div key={key} className={`flex items-center justify-between ${disabled ? "opacity-40" : ""}`} title={disabledTitle}>
                         <span className="text-sm">{label}</span>
                         <button
                           role="switch"
                           aria-checked={value}
+                          disabled={disabled}
                           onClick={() => { setter(!value); save({ [key]: !value }); }}
-                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"}`}
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"} disabled:cursor-not-allowed`}
                         >
                           <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-1"}`} />
                         </button>
@@ -247,7 +283,7 @@ export function SettingsPage() {
                     <TrackerLivePreview
                       style={activityTheme}
                       colorMode={trackerColorMode}
-                      showProgress={trackerShowProgress}
+                      showProgress={activityTheme === "compact" ? false : trackerShowProgress}
                       showDrawdown={trackerShowDrawdown}
                       showWeftColor={trackerShowWeftColor}
                       showPickCards={trackerShowPickCards}
@@ -284,7 +320,7 @@ export function SettingsPage() {
                 </Field>
               </Section>
 
-              <Section title={t("settings.sections.diagnostics")}>
+              <Section title={t("settings.sections.diagnostics")} description={t("settings.sections.diagnosticsDesc")}>
                 <Field label={t("settings.diagnostics.showVersionNumbers")}>
                   <div className="flex items-center gap-3">
                     <button
@@ -317,7 +353,7 @@ export function SettingsPage() {
 
             {/* ── Preferences ── */}
             {activeSection === "preferences" && (
-              <Section title={t("settings.sections.preferences")}>
+              <Section title={t("settings.sections.preferences")} description={t("settings.sections.preferencesDesc")}>
                 <Field label={t("settings.preferences.displayName")}>
                   <div className="flex gap-2">
                     <input
@@ -383,7 +419,7 @@ export function SettingsPage() {
 
             {/* ── Privacy & data ── */}
             {activeSection === "privacy" && (
-              <Section title={t("settings.sections.privacy")}>
+              <Section title={t("settings.sections.privacy")} description={t("settings.sections.privacyDesc")}>
                 <Field label={t("settings.privacy.optOut")}>
                   <p className="text-xs text-muted-foreground">
                     {t("settings.privacy.optOutHelp")}
@@ -474,12 +510,66 @@ export function SettingsPage() {
                   </ul>
                   <p className="pt-1">{t("settings.privacy.noSell")}</p>
                 </div>
+
+                <Field label={t("settings.account.downloadData")}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => requestExportMutation.mutate()}
+                    disabled={requestExportMutation.isPending || exportStatus?.status === "pending"}
+                  >
+                    {t("settings.account.requestArchive")}
+                  </Button>
+                  {exportStatus?.status === "pending" && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <AppIcons.spinner className="h-4 w-4 animate-spin" />
+                      {t("settings.account.archivePending")}
+                    </div>
+                  )}
+                  {exportStatus?.status === "pending" && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings.account.archiveEmailNotice")}
+                    </p>
+                  )}
+                  {exportStatus?.status === "complete" && exportStatus.request_id && (
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">{t("settings.account.archiveReady")}</p>
+                      {exportStatus.expires_at && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("settings.account.archiveExpires", {
+                            date: new Date(exportStatus.expires_at).toLocaleDateString(),
+                          })}
+                        </p>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          downloadAuthed(
+                            getDataExportDownloadUrl(exportStatus.request_id!),
+                            "weftmark-data-export.zip"
+                          ).catch(() => {})
+                        }
+                      >
+                        {t("settings.account.downloadArchive")}
+                      </Button>
+                    </div>
+                  )}
+                  {exportStatus?.status === "failed" && (
+                    <p className="text-xs text-destructive">
+                      {t("settings.account.archiveFailed")}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.account.archiveNote")}
+                  </p>
+                </Field>
               </Section>
             )}
 
             {/* ── Terms ── */}
             {activeSection === "terms" && (
-              <Section title={t("settings.sections.terms")}>
+              <Section title={t("settings.sections.terms")} description={t("settings.sections.termsDesc")}>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between rounded-lg border p-4">
                     <div>
@@ -509,21 +599,108 @@ export function SettingsPage() {
             {/* ── Feedback history ── */}
             {activeSection === "feedback-history" && <FeedbackHistorySection />}
 
+            {/* ── Connections ── */}
+            {activeSection === "connections" && (
+              <Section title={t("settings.sections.connections")} description={t("settings.sections.connectionsDesc")}>
+                {ravelryNotice && (
+                  <div className={`rounded-md px-4 py-2 text-sm mb-4 ${
+                    ravelryNotice.type === "success"
+                      ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                      : "bg-destructive/10 text-destructive"
+                  }`}>
+                    {ravelryNotice.message}
+                  </div>
+                )}
+                <div className="rounded-lg border p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{t("settings.connections.ravelryTitle")}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {ravelryStatus?.connected
+                          ? t("settings.connections.ravelryConnectedAs", { username: ravelryStatus.ravelry_username })
+                          : t("settings.connections.ravelryDisconnected")}
+                      </p>
+                      {ravelryStatus?.connected && ravelryStatus.last_synced_at && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("settings.connections.ravelryLastSync", {
+                            date: new Date(ravelryStatus.last_synced_at).toLocaleString(),
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      {ravelryStatus?.connected ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={ravelrySyncing}
+                            onClick={async () => {
+                              setRavelrySyncing(true);
+                              setRavelryNotice(null);
+                              try {
+                                await syncRavelryStash();
+                                setRavelryNotice({ type: "success", message: t("settings.connections.ravelrySyncDone") });
+                                refetchRavelry();
+                              } catch {
+                                setRavelryNotice({ type: "error", message: t("settings.connections.ravelrySyncError") });
+                              } finally {
+                                setRavelrySyncing(false);
+                              }
+                            }}
+                          >
+                            {ravelrySyncing ? t("common.loading") : t("settings.connections.ravelrySync")}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={ravelryDisconnecting}
+                            onClick={async () => {
+                              setRavelryDisconnecting(true);
+                              setRavelryNotice(null);
+                              try {
+                                await disconnectRavelry();
+                                setRavelryNotice({ type: "success", message: t("settings.connections.ravelryDisconnectedSuccess") });
+                                refetchRavelry();
+                              } catch {
+                                setRavelryNotice({ type: "error", message: t("settings.connections.ravelryDisconnectError") });
+                              } finally {
+                                setRavelryDisconnecting(false);
+                              }
+                            }}
+                          >
+                            {t("settings.connections.ravelryDisconnect")}
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={ravelryConnecting}
+                          onClick={async () => {
+                            setRavelryConnecting(true);
+                            setRavelryNotice(null);
+                            try {
+                              const { url } = await getRavelryAuthorizeUrl();
+                              window.location.href = url;
+                            } catch {
+                              setRavelryNotice({ type: "error", message: t("settings.connections.ravelryConnectError") });
+                              setRavelryConnecting(false);
+                            }
+                          }}
+                        >
+                          {ravelryConnecting ? t("common.loading") : t("settings.connections.ravelryConnect")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{t("settings.connections.ravelryDescription")}</p>
+                </div>
+              </Section>
+            )}
+
             {/* ── Account ── */}
             {activeSection === "account" && (
-              <Section title={t("settings.sections.account")}>
-                <Field label={t("settings.account.downloadData")}>
-                  <Button variant="outline" size="sm" onClick={handleDataExport}>
-                    {t("settings.account.requestArchive")}
-                  </Button>
-                  {exportInfo && (
-                    <p className="text-xs text-muted-foreground mt-2">{exportInfo}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("settings.account.exportNote")}
-                  </p>
-                </Field>
-
+              <Section title={t("settings.sections.account")} description={t("settings.sections.accountDesc")}>
                 <div className="rounded-lg border border-destructive/30 p-4 space-y-3">
                   <p className="text-sm font-medium text-destructive">{t("settings.account.dangerZone")}</p>
                   <p className="text-sm text-muted-foreground">
@@ -602,11 +779,7 @@ function FeedbackHistorySection() {
   });
 
   return (
-    <Section title={t("settings.sections.feedbackHistory")}>
-      <p className="text-sm text-muted-foreground">
-        {t("settings.feedbackHistory.description")}
-      </p>
-
+    <Section title={t("settings.sections.feedbackHistory")} description={t("settings.feedbackHistory.description")}>
       {isLoading ? (
         <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : submissions.length === 0 ? (
@@ -649,15 +822,27 @@ function FeedbackHistorySection() {
                 <div className="pt-2 space-y-2">
                   <p className="text-sm whitespace-pre-wrap text-foreground">{s.body}</p>
                   {s.github_discussion_url && (
-                    <a
-                      href={s.github_discussion_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-                    >
-                      <AppIcons.externalLink className="h-3.5 w-3.5" />
-                      {t("settings.feedbackHistory.viewDiscussion")}
-                    </a>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <a
+                        href={s.github_discussion_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                      >
+                        <AppIcons.externalLink className="h-3.5 w-3.5" />
+                        {t("settings.feedbackHistory.viewDiscussion")}
+                      </a>
+                      {s.github_discussion_state === "OPEN" && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
+                          {t("settings.feedbackHistory.discussionOpen")}
+                        </span>
+                      )}
+                      {s.github_discussion_state === "CLOSED" && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                          {t("settings.feedbackHistory.discussionClosed")}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -669,10 +854,13 @@ function FeedbackHistorySection() {
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
     <div className="space-y-5">
-      <h2 className="text-base font-semibold border-b pb-2">{title}</h2>
+      <div className="border-b pb-2 space-y-0.5">
+        <h2 className="text-base font-semibold">{title}</h2>
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      </div>
       {children}
     </div>
   );

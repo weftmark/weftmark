@@ -35,8 +35,7 @@ def purge_soft_deleted_records(self: Task, retention_days: int | None = None) ->
 
 async def _purge(retention_days: int) -> dict:
     from sqlalchemy import delete, select
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.config import get_settings
     from app.models.draft import Draft
@@ -48,7 +47,7 @@ async def _purge(retention_days: int) -> dict:
     settings = get_settings()
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
     counts: dict[str, int] = {}
 
     try:
@@ -102,8 +101,8 @@ async def _purge(retention_days: int) -> dict:
                         vp = await db.scalars(
                             select(LoomVersionPhoto).where(LoomVersionPhoto.loom_version_id.in_(version_ids))
                         )
-                        for p in vp.all():
-                            _safe_delete(storage, p.path)
+                        for lp in vp.all():
+                            _safe_delete(storage, lp.path)
                         vr = await db.scalars(
                             select(LoomVersionReceipt).where(LoomVersionReceipt.loom_version_id.in_(version_ids))
                         )

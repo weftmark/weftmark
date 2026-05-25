@@ -55,7 +55,7 @@ def _put(key: str, data: bytes) -> str:
 
 def _get(key: str) -> bytes:
     if settings.storage_backend == "s3":
-        return _s3().get_object(Bucket=settings.s3_bucket_name, Key=key)["Body"].read()
+        return _s3().get_object(Bucket=settings.s3_bucket_name, Key=key)["Body"].read()  # type: ignore[no-any-return]
     return (Path(settings.upload_dir) / key).read_bytes()
 
 

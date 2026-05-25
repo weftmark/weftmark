@@ -23,16 +23,10 @@ import {
   testWebhook,
   getAuditLog,
   getServerEvents,
-  listCredentials,
-  createCredential,
-  patchCredential,
-  deleteCredential,
   listProjectSlugs,
   adminRevokeSlug,
   listProjectSteps,
   type AdminProjectStep,
-  type CredentialExpiry,
-  type CredentialResource,
   type AdminSlugRecord,
   type AdminUser,
   type AdminHealth,
@@ -65,7 +59,7 @@ import {
   type LoomReferenceDetail,
 } from "@/api/looms";
 
-type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "credentials" | "slugs" | "feedback" | "looms";
+type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "slugs" | "feedback" | "looms";
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
@@ -115,7 +109,6 @@ export function AdminPage() {
       {tab === "deps" && <DepsTab />}
       {tab === "audit" && <AuditLogTab />}
       {tab === "feedback" && <FeedbackTab />}
-      {tab === "credentials" && <CredentialsTab />}
       {tab === "slugs" && <SlugsTab />}
       {tab === "looms" && <LoomDatabaseTab />}
     </div>
@@ -298,7 +291,11 @@ function UsersTab() {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Users</h1>
+        <p className="text-sm text-muted-foreground">Manage all registered accounts — approve, adjust roles, and ban or delete users.</p>
+      </div>
       {/* Filter bar */}
       <div className="flex flex-wrap gap-2">
         <input
@@ -499,6 +496,10 @@ function InvitesTab() {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Invites</h1>
+        <p className="text-sm text-muted-foreground">Create invite codes for new users and manage pending self-registration requests.</p>
+      </div>
       {pendingSignups.length > 0 && (
         <div className="space-y-2">
           <h2 className="text-sm font-medium">Waiting to join ({pendingSignups.length})</h2>
@@ -720,7 +721,11 @@ function StatsTab() {
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Stats</h1>
+        <p className="text-sm text-muted-foreground">Aggregate counts across users and content in the database.</p>
+      </div>
       <StatTable title="Users" rows={userRows} />
       <StatTable title="Content" rows={contentRows} />
     </div>
@@ -806,6 +811,10 @@ function HealthTab() {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">System Health</h1>
+        <p className="text-sm text-muted-foreground">Live metrics for CPU, memory, and database response time, sampled every 3 seconds.</p>
+      </div>
       <div className="flex items-center gap-2">
         <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
         <span className="text-xs text-muted-foreground">
@@ -947,7 +956,11 @@ function VersionsTable() {
 
 function DepsTab() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Dependencies</h1>
+        <p className="text-sm text-muted-foreground">Installed package versions for the backend runtime and worker.</p>
+      </div>
       <VersionsTable />
     </div>
   );
@@ -1176,7 +1189,11 @@ function ServicesTab() {
   const getDetail = (name: string) => diagnostics?.find((d) => d.service === name);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Services</h1>
+        <p className="text-sm text-muted-foreground">Connectivity checks and diagnostics for external services and infrastructure components.</p>
+      </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -1331,28 +1348,6 @@ function ServerEventsPanel() {
   );
 }
 // ---------------------------------------------------------------------------
-// Credentials tab
-// ---------------------------------------------------------------------------
-
-const RESOURCE_LABELS: Record<CredentialResource, string> = {
-  smtp: "SMTP",
-  s3: "S3 / R2",
-  clerk: "Clerk",
-  postgres: "PostgreSQL",
-  app: "App Secret",
-};
-
-const RESOURCE_OPTIONS: CredentialResource[] = ["smtp", "s3", "clerk", "postgres", "app"];
-
-function credentialStatus(daysRemaining: number | null): { label: string; cls: string } {
-  if (daysRemaining === null) return { label: "No expiry", cls: "bg-muted text-muted-foreground" };
-  if (daysRemaining < 0) return { label: "Expired", cls: "bg-destructive/10 text-destructive" };
-  if (daysRemaining <= 7) return { label: "Critical", cls: "bg-destructive/10 text-destructive" };
-  if (daysRemaining <= 30) return { label: "Warning", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" };
-  return { label: "OK", cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" };
-}
-
-// ---------------------------------------------------------------------------
 // Slugs tab
 // ---------------------------------------------------------------------------
 
@@ -1369,19 +1364,16 @@ function SlugsTab() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "project-slugs"] }),
   });
 
-  if (isLoading) {
-    return <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>;
-  }
-
-  if (slugs.length === 0) {
-    return <div className="text-sm text-muted-foreground py-8 text-center">No active share links.</div>;
-  }
-
   return (
-    <div className="space-y-8">
-      <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Active share links</h2>
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Share Links</h1>
+        <p className="text-sm text-muted-foreground">All active project share links across users, with options to revoke.</p>
+      </div>
+      {isLoading && <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>}
+      {!isLoading && slugs.length === 0 && <div className="text-sm text-muted-foreground py-8 text-center">No active share links.</div>}
+      {!isLoading && slugs.length > 0 && (<div className="space-y-3">
+      <div className="flex items-center justify-end">
         <span className="text-xs text-muted-foreground">{slugs.length} link{slugs.length !== 1 ? "s" : ""}</span>
       </div>
       <div className="rounded-lg border border-border overflow-x-auto">
@@ -1445,7 +1437,7 @@ function SlugsTab() {
           </tbody>
         </table>
       </div>
-    </div>
+    </div>)}
       <StepLogSection />
     </div>
   );
@@ -1580,9 +1572,12 @@ function FeedbackTab() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-base font-semibold">Feedback submissions</h2>
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Feedback</h1>
+        <p className="text-sm text-muted-foreground">Review all user-submitted feedback, bug reports, and feature requests.</p>
+      </div>
+      <div className="flex items-center justify-end flex-wrap gap-2">
         <div className="flex items-center gap-2 text-sm">
           <select
             className="rounded-md border border-border bg-background px-2 py-1 text-sm"
@@ -1741,199 +1736,6 @@ function FeedbackTab() {
   );
 }
 
-function CredentialsTab() {
-  const { user: currentUser } = useAuth();
-  const queryClient = useQueryClient();
-  const isSuperuser = currentUser?.is_superuser ?? false;
-
-  const { data: credentials = [], isLoading } = useQuery({
-    queryKey: ["admin", "credentials"],
-    queryFn: listCredentials,
-  });
-
-  const [editing, setEditing] = useState<CredentialExpiry | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<CredentialExpiry | null>(null);
-  const [formName, setFormName] = useState("");
-  const [formResource, setFormResource] = useState<CredentialResource>("smtp");
-  const [formExpiry, setFormExpiry] = useState("");
-  const [formNotes, setFormNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  function openAdd() {
-    setFormName(""); setFormResource("smtp"); setFormExpiry(""); setFormNotes("");
-    setError(null); setAdding(true);
-  }
-
-  function openEdit(c: CredentialExpiry) {
-    setFormName(c.name);
-    setFormResource(c.resource);
-    setFormExpiry(c.expires_on ?? "");
-    setFormNotes(c.notes ?? "");
-    setError(null);
-    setEditing(c);
-  }
-
-  function closeForm() { setAdding(false); setEditing(null); setError(null); }
-
-  async function handleSave() {
-    if (!formName.trim()) { setError("Name is required"); return; }
-    setSaving(true); setError(null);
-    try {
-      const body = {
-        name: formName.trim(),
-        resource: formResource,
-        expires_on: formExpiry || null,
-        notes: formNotes.trim() || null,
-      };
-      if (adding) {
-        await createCredential(body);
-      } else if (editing) {
-        await patchCredential(editing.id, body);
-      }
-      queryClient.invalidateQueries({ queryKey: ["admin", "credentials"] });
-      closeForm();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    try {
-      await deleteCredential(deleteTarget.id);
-      queryClient.invalidateQueries({ queryKey: ["admin", "credentials"] });
-      setDeleteTarget(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  const sorted = [...credentials].sort((a, b) => {
-    if (a.days_remaining === null && b.days_remaining === null) return 0;
-    if (a.days_remaining === null) return 1;
-    if (b.days_remaining === null) return -1;
-    return a.days_remaining - b.days_remaining;
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">Managed credentials</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Track expiration dates for secrets and service credentials.</p>
-        </div>
-        {isSuperuser && (
-          <Button size="sm" onClick={openAdd}>Add credential</Button>
-        )}
-      </div>
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No credentials tracked yet.</p>
-      ) : (
-        <div className="rounded-md border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Service</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Expires</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
-                {isSuperuser && <th className="px-3 py-2" />}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {sorted.map((c) => {
-                const { label, cls } = credentialStatus(c.days_remaining);
-                return (
-                  <tr key={c.id} className="hover:bg-muted/50">
-                    <td className="px-3 py-2.5 font-medium">{c.name}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{RESOURCE_LABELS[c.resource]}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {c.expires_on
-                        ? <>
-                            {new Date(c.expires_on).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
-                            {c.days_remaining !== null && (
-                              <span className="ml-1.5 text-xs text-muted-foreground">
-                                ({c.days_remaining < 0 ? `${Math.abs(c.days_remaining)}d ago` : `${c.days_remaining}d`})
-                              </span>
-                            )}
-                          </>
-                        : <span className="text-muted-foreground">Never</span>}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
-                    </td>
-                    {isSuperuser && (
-                      <td className="px-3 py-2.5 text-right">
-                        <button className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(c)}>Edit</button>
-                        <button className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(c)}>Delete</button>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {(adding || editing) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg border bg-background shadow-lg p-6 space-y-4">
-            <h3 className="font-semibold">{adding ? "Add credential" : "Edit credential"}</h3>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Name <span className="text-destructive">*</span></label>
-              <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Clerk Secret Key" />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Service</label>
-              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formResource} onChange={(e) => setFormResource(e.target.value as CredentialResource)}>
-                {RESOURCE_OPTIONS.map((r) => <option key={r} value={r}>{RESOURCE_LABELS[r]}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Expiration date <span className="text-muted-foreground font-normal">(optional)</span></label>
-              <input type="date" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={formExpiry} onChange={(e) => setFormExpiry(e.target.value)} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
-              <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" rows={2} value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Rotation instructions, link to vault, etc." />
-            </div>
-            {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-            <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={closeForm} disabled={saving}>Cancel</Button>
-              <Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg border bg-background shadow-lg p-6 space-y-4">
-            <h3 className="font-semibold">Delete credential?</h3>
-            <p className="text-sm text-muted-foreground">This will permanently remove <strong>{deleteTarget.name}</strong> from the tracking list.</p>
-            {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? "Deleting…" : "Delete"}</Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 // ---------------------------------------------------------------------------
 // Audit log tab
 // ---------------------------------------------------------------------------
@@ -1985,8 +1787,11 @@ function AuditLogTab() {
   });
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Audit Log</h2>
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Audit Log</h1>
+        <p className="text-sm text-muted-foreground">Immutable record of admin actions and significant account events.</p>
+      </div>
 
       <div className="flex gap-2 flex-wrap">
         <select
@@ -2367,13 +2172,11 @@ function LoomDatabaseTab() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold">Loom database</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Admin-maintained catalog of commercially available looms. Used for typeahead in loom creation.
-          </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1 pb-2 border-b flex-1 mr-4">
+          <h1 className="text-lg font-semibold">Loom Database</h1>
+          <p className="text-sm text-muted-foreground">Admin-maintained catalog of commercially available looms, used for typeahead in loom creation.</p>
         </div>
         <Button size="sm" onClick={openAdd}>Add loom</Button>
       </div>

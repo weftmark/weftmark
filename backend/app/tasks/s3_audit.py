@@ -30,8 +30,7 @@ def run_s3_orphan_scan(self: Task) -> dict:
 
 async def _do_scan() -> dict:
     from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.config import get_settings
     from app.models.draft import Draft
@@ -71,7 +70,7 @@ async def _do_scan() -> dict:
             }
 
     engine = create_async_engine(settings.database_url, echo=False)
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     db_paths: set[str] = set()
     try:

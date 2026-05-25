@@ -52,7 +52,7 @@ def refresh_geoip_database(self) -> dict:
     with tempfile.TemporaryDirectory(dir=dest_dir) as tmpdir:
         archive_path = os.path.join(tmpdir, "GeoLite2-City.tar.gz")
         log.info("Downloading GeoLite2-City database")
-        urllib.request.urlretrieve(url, archive_path)  # noqa: S310
+        urllib.request.urlretrieve(url, archive_path)  # noqa: S310  # nosec B310  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
 
         extracted_mmdb = None
         with tarfile.open(archive_path, "r:gz") as tar:

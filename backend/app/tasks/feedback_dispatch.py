@@ -32,6 +32,7 @@ async def _dispatch(task, feedback_id: str) -> dict:
         build_discussion_body,
         build_discussion_title,
         create_discussion,
+        get_discussion_state,
     )
 
     settings = get_settings()
@@ -76,6 +77,7 @@ async def _dispatch(task, feedback_id: str) -> dict:
             row.github_discussion_url = url
             row.dispatch_status = "sent"
             row.dispatch_error = None
+            row.github_discussion_state = await get_discussion_state(settings.github_feedback_token, url)
             await db.commit()
             log.info("feedback_dispatch sent feedback_id=%s url=%s", feedback_id, url)
 
@@ -223,6 +225,59 @@ async def _purge_deleted(retention_days: int) -> dict:
         )
         await db.commit()
 
-    deleted = result.rowcount
+    deleted = result.rowcount  # type: ignore[attr-defined]
     log.info("purge_deleted_feedback deleted=%d retention_days=%d", deleted, retention_days)
     return {"deleted": deleted}
+
+
+@celery_app.task(
+    bind=True,
+    name="app.tasks.feedback_dispatch.sync_discussion_states",
+    max_retries=0,
+    soft_time_limit=120,
+    time_limit=150,
+)
+def sync_discussion_states(self, limit: int = 100) -> dict:
+    """Sync github_discussion_state for all sent feedback with a discussion URL."""
+    return asyncio.run(_sync_states(limit))
+
+
+async def _sync_states(limit: int) -> dict:
+    from sqlalchemy import select
+
+    from app.config import get_settings
+    from app.database import CeleryAsyncSession
+    from app.models.feedback import UserFeedback
+    from app.services.github_discussions import get_discussion_state
+
+    settings = get_settings()
+    if not settings.github_feedback_token:
+        return {"updated": 0, "reason": "no_token"}
+
+    async with CeleryAsyncSession() as db:
+        rows = (
+            (
+                await db.execute(
+                    select(UserFeedback)
+                    .where(UserFeedback.deleted_at.is_(None))
+                    .where(UserFeedback.dispatch_status == "sent")
+                    .where(UserFeedback.github_discussion_url.is_not(None))
+                    .limit(limit)
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+        updated = 0
+        for row in rows:
+            state = await get_discussion_state(settings.github_feedback_token, row.github_discussion_url)  # type: ignore[arg-type]
+            if state is not None and state != row.github_discussion_state:
+                row.github_discussion_state = state
+                updated += 1
+
+        if updated:
+            await db.commit()
+
+    log.info("sync_discussion_states updated=%d", updated)
+    return {"updated": updated}

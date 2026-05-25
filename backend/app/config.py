@@ -1,11 +1,48 @@
+import os
 from functools import lru_cache
+from typing import Any
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+
+
+class _ConfigFileSource(PydanticBaseSettingsSource):
+    """Load managed integration fields from the encrypted config file.
+
+    Priority is below env vars — file values are only used when the env var is absent.
+    All processes (backend, workers, beat) read this source so credentials removed from
+    .env and stored only via the UI are still available everywhere.
+    """
+
+    def get_field_value(self, field: Any, field_name: str) -> tuple[Any, str, bool]:
+        return None, field_name, False
+
+    def __call__(self) -> dict[str, Any]:
+        key = os.environ.get("CONFIG_ENCRYPTION_KEY", "")
+        path = os.environ.get("CONFIG_FILE_PATH", "/data/weftmark_config.json")
+        if not key:
+            return {}
+        try:
+            from app.services.config_file import load
+
+            return load(path, key)
+        except Exception:
+            return {}
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @classmethod
+    def settings_customise_sources(  # type: ignore[override]
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        **_: Any,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (init_settings, env_settings, _ConfigFileSource(settings_cls), dotenv_settings)
 
     # Application
     app_env: str = "dev"
@@ -121,6 +158,18 @@ class Settings(BaseSettings):
     maxmind_license_key: str = ""
     geoip_db_path: str = "/app/data/GeoLite2-City.mmdb"
 
+    # Ravelry integration (issue #831)
+    # Read-only developer key — used for yarn/company search without OAuth.
+    # Get from https://www.ravelry.com/pro/developer (Personal API keys section).
+    ravelry_read_access_username: str = ""  # e.g. read-abc123
+    ravelry_read_access_key: str = ""
+
+    # OAuth app credentials — required only for per-user stash sync.
+    # Register a Ravelry Pro app; RAVELRY_OAUTH_REDIRECT_URI must match exactly.
+    ravelry_oauth_client_id: str = ""
+    ravelry_oauth_client_secret: str = ""
+    ravelry_oauth_redirect_uri: str = ""  # e.g. https://app.weftmark.com/api/ravelry/callback
+
     # GitHub Discussions feedback integration (optional — issue #34)
     # PAT with write:discussion + read:discussion scopes on the target repo.
     # Leave empty to store feedback locally only; no error surfaced to users.
@@ -132,6 +181,11 @@ class Settings(BaseSettings):
 
     # Data retention
     soft_delete_retention_days: int = 365
+
+    # Config file — persistent encrypted optional-settings store
+    # Generate key: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    config_encryption_key: str = ""
+    config_file_path: str = "/data/weftmark_config.json"
 
     # Rendering
     render_max_width: int = 4000

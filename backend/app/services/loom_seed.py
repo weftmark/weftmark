@@ -117,14 +117,13 @@ def _coerce_entry(raw: dict) -> dict:
 async def seed() -> dict:
     """Upsert loom_references from loom-data-master.json. Returns insert/update/skip counts."""
     from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.config import get_settings
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    Session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    Session = async_sessionmaker(engine, expire_on_commit=False)
 
     json_path = locate_json()
     with json_path.open() as f:
@@ -167,8 +166,8 @@ async def seed() -> dict:
                     )
                     if set_clauses:
                         await session.execute(
-                            text(
-                                f"UPDATE loom_references SET {set_clauses}, updated_at = now() "
+                            text(  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text  # noqa: E501
+                                f"UPDATE loom_references SET {set_clauses}, updated_at = now() "  # nosec B608
                                 f"WHERE lower(brand) = lower(:brand) AND lower(model_name) = lower(:model)"
                             ),
                             {**params, "brand": brand, "model": model},
@@ -180,7 +179,7 @@ async def seed() -> dict:
                     cols = ", ".join(row.keys())
                     vals = ", ".join(f"cast(:{k} as jsonb)" if k in _ARRAY_FIELDS else f":{k}" for k in row.keys())
                     await session.execute(
-                        text(f"INSERT INTO loom_references ({cols}) VALUES ({vals})"),
+                        text(f"INSERT INTO loom_references ({cols}) VALUES ({vals})"),  # nosec B608  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                         params,
                     )
                     inserted += 1

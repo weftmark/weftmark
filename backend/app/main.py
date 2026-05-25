@@ -30,6 +30,7 @@ from app.routers import (  # noqa: E402
     loom_catalog,
     looms,
     projects,
+    ravelry,
     system,
     users,
     webhooks,
@@ -189,6 +190,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     asyncio.create_task(_send_startup_alert(readiness))
     asyncio.create_task(_write_startup_server_event(readiness, start_time))
 
+    from app.routers.yarn import refresh_yarn_properties_loop, warm_yarn_properties_cache
+
+    asyncio.create_task(warm_yarn_properties_cache())
+    asyncio.create_task(refresh_yarn_properties_loop())
+
+    if settings.config_encryption_key:
+        from app.services.config_file import sync_env_to_file
+
+        try:
+            await asyncio.to_thread(sync_env_to_file, settings.config_file_path, settings.config_encryption_key)
+        except Exception:
+            log.warning("config_file_env_sync_failed — continuing without sync")
+
     yield
 
     stop_detailed_refresh()
@@ -238,6 +252,7 @@ app.include_router(loom_catalog.public_router)
 app.include_router(loom_catalog.admin_catalog_router)
 app.include_router(looms.router)
 app.include_router(yarn.router)
+app.include_router(ravelry.router)
 app.include_router(collections.router)
 app.include_router(projects.router)
 app.include_router(projects.share_router)
