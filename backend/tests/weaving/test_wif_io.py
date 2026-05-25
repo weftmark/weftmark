@@ -197,6 +197,47 @@ Color=2
 2=2,4
 """
 
+_WIF_NO_COLOR_TABLE = """\
+[WIF]
+Version=1.1
+Date=Jan 01, 2024
+
+[CONTENTS]
+WARP=1
+WEFT=1
+THREADING=1
+TREADLING=1
+TIEUP=1
+WEAVING=1
+
+[WEAVING]
+Rising Shed=true
+Shafts=2
+Treadles=2
+
+[WARP]
+Threads=2
+Units=Inches
+Color=1
+
+[WEFT]
+Threads=2
+Units=Inches
+Color=2
+
+[THREADING]
+1=1
+2=2
+
+[TREADLING]
+1=1
+2=2
+
+[TIEUP]
+1=1
+2=2
+"""
+
 _WIF_NO_COLOR_PALETTE = """\
 [WIF]
 Version=1.1
@@ -261,6 +302,26 @@ class TestWIFReaderEdgeCases:
             assert draft.liftplan is True
             assert len(draft.weft) == 2
             assert len(draft.weft[0].shafts) > 0
+        finally:
+            os.unlink(path)
+
+    def test_reads_without_color_table_section(self):
+        # Regression: WIF with no COLOR TABLE caused TypeError: 'NoneType' object
+        # is not subscriptable in put_warp / put_weft (Sentry WEFTMARK-BACKEND-FASTAPI-1)
+        path = _write_temp_wif(_WIF_NO_COLOR_TABLE)
+        try:
+            draft = WIFReader(path).read()
+            assert len(draft.warp) == 2
+            assert len(draft.weft) == 2
+        finally:
+            os.unlink(path)
+
+    def test_black_fallback_color_without_color_table(self):
+        path = _write_temp_wif(_WIF_NO_COLOR_TABLE)
+        try:
+            draft = WIFReader(path).read()
+            assert draft.warp[0].color is not None
+            assert draft.weft[0].color is not None
         finally:
             os.unlink(path)
 

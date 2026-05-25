@@ -54,7 +54,7 @@ class WIFReader:
         for thread_no in range(1, warp_thread_count + 1):
             if thread_no not in threading_map:
                 continue
-            color = wif_palette[warp_color_map[thread_no] if has_warp_colors else warp_color]
+            color = wif_palette.get(warp_color_map[thread_no] if has_warp_colors else warp_color, [0, 0, 0])
             shaft = None
             if has_threading:
                 shafts = {draft.shafts[sn - 1] for sn in threading_map[thread_no]}
@@ -97,7 +97,7 @@ class WIFReader:
         for thread_no in range(1, weft_thread_count + 1):
             if not ((has_liftplan and thread_no in liftplan_map) or (has_treadling and thread_no in treadling_map)):
                 continue
-            color = wif_palette[weft_color_map[thread_no] if has_weft_colors else weft_color]
+            color = wif_palette.get(weft_color_map[thread_no] if has_weft_colors else weft_color, [0, 0, 0])
             shafts = {draft.shafts[sn - 1] for sn in liftplan_map[thread_no]} if has_liftplan else set()
             treadles = {draft.treadles[tn - 1] for tn in treadling_map[thread_no]} if has_treadling else set()
             draft.add_weft_thread(color=color, shafts=shafts, treadles=treadles)
@@ -127,9 +127,8 @@ class WIFReader:
         else:
             palette_range = 0, 255
 
-        wif_palette: dict[int, list[int]] | None = None
+        wif_palette: dict[int, list[int]] = {}
         if self.getbool("CONTENTS", "COLOR TABLE"):
-            wif_palette = {}
             for color_no, value in self.config.items("COLOR TABLE"):
                 channels = [int(ch) for ch in value.split(",")]
                 channels = [int(round(ch * (255.0 / palette_range[1]))) for ch in channels]
