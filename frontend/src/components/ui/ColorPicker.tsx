@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { HexColorPicker } from "react-colorful";
 import { useTranslation } from "react-i18next";
 
@@ -123,6 +124,7 @@ function resolveColorName(name: string): string | null {
 type Mode = "hex" | "rgb" | "hsl" | "name";
 
 const PICKER_HEIGHT = 360;
+const PICKER_WIDTH = 240;
 
 interface ColorPickerProps {
   value: string;
@@ -134,7 +136,7 @@ interface ColorPickerProps {
 export function ColorPicker({ value, onChange, size = "md", className }: ColorPickerProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [openUp, setOpenUp] = useState(false);
+  const [portalPos, setPortalPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const [mode, setMode] = useState<Mode>("hex");
   const [hexInput, setHexInput] = useState(value);
   const [rgbInput, setRgbInput] = useState<[string, string, string]>(() => {
@@ -149,6 +151,7 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
   const [nameError, setNameError] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   function syncAllInputs(hex: string) {
     setHexInput(hex);
@@ -167,9 +170,10 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: PointerEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      const inSwatch = ref.current?.contains(target) ?? false;
+      const inPopover = popoverRef.current?.contains(target) ?? false;
+      if (!inSwatch && !inPopover) setOpen(false);
     }
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
@@ -178,7 +182,13 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
   function handleToggle() {
     if (!open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setOpenUp(window.innerHeight - rect.bottom < PICKER_HEIGHT);
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - PICKER_WIDTH - 8));
+      if (spaceBelow < PICKER_HEIGHT) {
+        setPortalPos({ bottom: window.innerHeight - rect.top + 4, left });
+      } else {
+        setPortalPos({ top: rect.bottom + 4, left });
+      }
     }
     setOpen((v) => !v);
   }
@@ -265,8 +275,6 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
       ? "h-6 w-10 rounded border border-input cursor-pointer p-0.5"
       : "h-8 w-12 rounded border border-input cursor-pointer";
 
-  const popoverPosition = openUp ? "bottom-full mb-1" : "top-full mt-1";
-
   const modes: { key: Mode; label: string }[] = [
     { key: "hex", label: t("colorPicker.modeHex") },
     { key: "rgb", label: t("colorPicker.modeRgb") },
@@ -299,9 +307,18 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
         onClick={handleToggle}
         aria-label={t("colorPicker.ariaLabel")}
       />
-      {open && (
+      {open && portalPos && createPortal(
         <div
-          className={`absolute left-0 z-50 ${popoverPosition} rounded-lg border border-border bg-card p-3 shadow-lg space-y-2`}
+          ref={popoverRef}
+          style={{
+            position: "fixed",
+            top: portalPos.top,
+            bottom: portalPos.bottom,
+            left: portalPos.left,
+            width: PICKER_WIDTH,
+            zIndex: 9999,
+          }}
+          className="rounded-lg border border-border bg-card p-3 shadow-lg space-y-2"
         >
           <HexColorPicker color={value} onChange={handleWheelChange} />
 
@@ -424,7 +441,8 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
               </div>
             );
           })()}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
