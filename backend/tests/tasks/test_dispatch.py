@@ -59,7 +59,7 @@ class TestDispatchNoToken:
 
         with (
             patch("app.database.CeleryAsyncSession", _celery_session_ctx(db_session)),
-            patch("app.config.get_settings", return_value=_settings_mock(token=None)),
+            patch("app.config.get_settings", return_value=_settings_mock(github_token=None)),
         ):
             result = await _dispatch(_task_mock(), str(row.id))
 
@@ -74,7 +74,7 @@ class TestDispatchNoToken:
 
         with (
             patch("app.database.CeleryAsyncSession", _celery_session_ctx(db_session)),
-            patch("app.config.get_settings", return_value=_settings_mock(token=None)),
+            patch("app.config.get_settings", return_value=_settings_mock(github_token=None)),
         ):
             await _dispatch(_task_mock(), str(row.id))
 
@@ -84,7 +84,7 @@ class TestDispatchNoToken:
     async def test_no_token_row_not_in_db_still_returns_skipped(self, db_session):
         with (
             patch("app.database.CeleryAsyncSession", _celery_session_ctx(db_session)),
-            patch("app.config.get_settings", return_value=_settings_mock(token=None)),
+            patch("app.config.get_settings", return_value=_settings_mock(github_token=None)),
         ):
             result = await _dispatch(_task_mock(), str(uuid.uuid4()))
 
