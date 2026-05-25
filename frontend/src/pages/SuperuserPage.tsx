@@ -1753,8 +1753,9 @@ function ConfigSection() {
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading configuration…</p>;
   if (!configState) return null;
 
-  const isZeroTrustEnabled =
-    (fieldMap["cf_zero_trust_enabled"]?.value ?? "").toLowerCase() === "true";
+  const isZeroTrustEnabled = "cf_zero_trust_enabled" in drafts
+    ? drafts["cf_zero_trust_enabled"] === "true"
+    : (fieldMap["cf_zero_trust_enabled"]?.value ?? "").toLowerCase() === "true";
 
   const unpopulatedGroups = Object.entries(GROUP_CONFIG)
     .map(([, { label, fields }]) => ({
@@ -1808,6 +1809,9 @@ function ConfigSection() {
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {fields.map((field) => {
+                  // Collapse Zero Trust credential fields when the toggle is off
+                  if ((field === "cf_access_client_id" || field === "cf_access_client_secret") && !isZeroTrustEnabled) return null;
+
                   const state = fieldMap[field];
                   const isBoolean = BOOLEAN_FIELDS.has(field);
                   const isSecret = CONFIG_SECRET_FIELDS.has(field);
@@ -1858,8 +1862,15 @@ function ConfigSection() {
                             ENV
                           </span>
                         )}
-                        {isSecret && isSet && !hasDraft && (
-                          <span className="text-[10px] text-green-600 dark:text-green-400">set</span>
+                        {isSet && !fromEnv && !hasDraft && (
+                          <span className="text-[10px] border rounded px-1 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 leading-4">
+                            Set
+                          </span>
+                        )}
+                        {field === "webhook_base_url" && !isSet && !hasDraft && (
+                          <span className="text-[10px] border rounded px-1 text-muted-foreground border-border leading-4">
+                            Default
+                          </span>
                         )}
                       </div>
                       {showMasked ? (
@@ -1875,7 +1886,11 @@ function ConfigSection() {
                           type={isPrefixMasked ? "text" : isSecret ? "password" : "text"}
                           className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                           value={isSecret ? (hasDraft ? drafts[field] : "") : (hasDraft ? drafts[field] : (state?.value ?? ""))}
-                          placeholder={isSecret && isSet ? "Enter new value to replace" : ""}
+                          placeholder={
+                            isSecret && isSet ? "Enter new value to replace"
+                            : field === "webhook_base_url" && !isSet ? (configState.api_url || "http://localhost:8000")
+                            : ""
+                          }
                           onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
                           autoComplete="off"
                           autoFocus={isPrefixMasked && isEditing && !hasDraft}
