@@ -532,7 +532,7 @@
     },
     {
       "bom-ref": "requirements-L3",
-      "description": "requirements line 3: sqlalchemy[asyncio]==2.0.49",
+      "description": "requirements line 3: sqlalchemy[asyncio]==2.0.50",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -547,9 +547,9 @@
           "value": "asyncio"
         }
       ],
-      "purl": "pkg:pypi/sqlalchemy@2.0.49",
+      "purl": "pkg:pypi/sqlalchemy@2.0.50",
       "type": "library",
-      "version": "2.0.49"
+      "version": "2.0.50"
     },
     {
       "bom-ref": "requirements-L20",
@@ -568,7 +568,7 @@
     },
     {
       "bom-ref": "requirements-L2",
-      "description": "requirements line 2: uvicorn[standard]==0.47.0",
+      "description": "requirements line 2: uvicorn[standard]==0.48.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -583,9 +583,9 @@
           "value": "standard"
         }
       ],
-      "purl": "pkg:pypi/uvicorn@0.47.0",
+      "purl": "pkg:pypi/uvicorn@0.48.0",
       "type": "library",
-      "version": "0.47.0"
+      "version": "0.48.0"
     }
   ],
   "dependencies": [
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-25T11:45:19.535649+00:00",
+    "timestamp": "2026-05-25T16:28:23.654651+00:00",
     "tools": {
       "components": [
         {
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:f2bc2be3-7d94-4247-b12f-55d337c99abe",
+  "serialNumber": "urn:uuid:8ae2ae4a-889a-4033-b044-44b733b9fb8f",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
