@@ -13,6 +13,7 @@ import {
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail, type ProjectYarnColor,
 } from "@/api/projects";
+import type { YarnSummary } from "@/api/yarn";
 import { YarnPickerModal } from "@/components/projects/YarnPickerModal";
 import { TagInput } from "@/components/ui/TagInput";
 import { TagChips } from "@/components/ui/TagChips";
@@ -450,9 +451,6 @@ function ColorPaletteSection({
   isSaving,
   locked,
   yarnColors,
-  onYarnLink,
-  onYarnUnlink,
-  isYarnSaving,
 }: {
   projectId: string;
   wifColors: { index: number; hex: string }[];
@@ -460,13 +458,10 @@ function ColorPaletteSection({
   weftStats: { hex: string; count: number; percentage: number }[] | null;
   colorReplacements: Record<string, string> | null;
   warpLengthCm: number | null;
-  onSave: (replacements: Record<string, string>) => void;
+  onSave: (replacements: Record<string, string>, yarnLinks: Record<string, string | null>) => void;
   isSaving: boolean;
   locked?: boolean;
   yarnColors: ProjectYarnColor[];
-  onYarnLink: (colorHex: string, yarnId: string) => void;
-  onYarnUnlink: (colorHex: string) => void;
-  isYarnSaving: boolean;
 }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
@@ -490,6 +485,8 @@ function ColorPaletteSection({
   const [yarnPickerHex, setYarnPickerHex] = useState<string | null>(null);
   // { slotHex, suggestedHex } — offered after a yarn with a color is linked
   const [colorOffer, setColorOffer] = useState<{ slotHex: string; suggestedHex: string } | null>(null);
+  // Staged yarn link changes — key: colorHex, value: { yarnId, yarn } to link, or null to unlink
+  const [pendingYarnLinks, setPendingYarnLinks] = useState<Record<string, { yarnId: string; yarn: YarnSummary } | null>>({});
 
   function setReplacement(hex: string, replacement: string) {
     const next = { ...pending };
@@ -500,6 +497,13 @@ function ColorPaletteSection({
     }
     setPending(next);
     setDirty(true);
+  }
+
+  function handleUndo() {
+    setPending(colorReplacements ?? {});
+    setPendingYarnLinks({});
+    setDirty(false);
+    setColorOffer(null);
   }
 
   if (visibleColors.length === 0) return null;
@@ -528,14 +532,32 @@ function ColorPaletteSection({
               {t("projectLandingPage.preview")}
             </Button>
           )}
-          {!locked && dirty && (
-            <Button
-              size="sm"
-              onClick={() => { onSave(pending); setDirty(false); }}
-              disabled={isSaving}
-            >
-              {isSaving ? t("projectLandingPage.saving") : t("projectLandingPage.saveColors")}
-            </Button>
+          {!locked && (dirty || Object.keys(pendingYarnLinks).length > 0) && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleUndo}
+                disabled={isSaving}
+              >
+                {t("projectLandingPage.undo")}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const links: Record<string, string | null> = {};
+                  for (const [hex, entry] of Object.entries(pendingYarnLinks)) {
+                    links[hex] = entry ? entry.yarnId : null;
+                  }
+                  onSave(pending, links);
+                  setDirty(false);
+                  setPendingYarnLinks({});
+                }}
+                disabled={isSaving}
+              >
+                {isSaving ? t("projectLandingPage.saving") : t("projectLandingPage.saveColors")}
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -633,20 +655,33 @@ function ColorPaletteSection({
                     </td>
                   )}
                   {!locked && (() => {
-                    const linked = yarnColors.find((yc) => yc.color_hex === c.hex);
+                    const hasPending = c.hex in pendingYarnLinks;
+                    const pendingEntry = pendingYarnLinks[c.hex];
+                    const serverLinked = yarnColors.find((yc) => yc.color_hex === c.hex);
+                    const isUnlinkPending = hasPending && pendingEntry === null;
+                    const displayName = hasPending
+                      ? (pendingEntry?.yarn.name ?? null)
+                      : (serverLinked?.yarn_name ?? null);
                     return (
                       <td className="px-3 py-2">
                         <button
-                          className="flex items-center gap-1.5 text-xs rounded px-2 py-1 border border-border hover:bg-muted transition-colors"
+                          className={`flex items-center gap-1.5 text-xs rounded px-2 py-1 border transition-colors ${
+                            hasPending ? "border-accent/60 bg-accent/10 hover:bg-accent/20" : "border-border hover:bg-muted"
+                          }`}
                           onClick={() => setYarnPickerHex(c.hex)}
-                          title={linked ? `${linked.yarn_brand} ${linked.yarn_name}` : t("projectLandingPage.linkYarn")}
+                          title={displayName ?? t("projectLandingPage.linkYarn")}
                         >
                           <AppIcons.yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          {linked ? (
-                            <span className="truncate max-w-[100px] text-card-foreground">{linked.yarn_name}</span>
+                          {isUnlinkPending && serverLinked ? (
+                            <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>
+                          ) : displayName ? (
+                            <span className={`truncate max-w-[100px] ${hasPending ? "text-accent" : "text-card-foreground"}`}>
+                              {displayName}
+                            </span>
                           ) : (
                             <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>
                           )}
+                          {hasPending && <span className="text-[10px] text-accent">•</span>}
                         </button>
                       </td>
                     );
@@ -698,24 +733,30 @@ function ColorPaletteSection({
       {yarnPickerHex && (
         <YarnPickerModal
           colorHex={yarnPickerHex}
-          currentYarnId={yarnColors.find((yc) => yc.color_hex === yarnPickerHex)?.yarn_id ?? null}
+          currentYarnId={
+            yarnPickerHex in pendingYarnLinks
+              ? (pendingYarnLinks[yarnPickerHex]?.yarnId ?? null)
+              : (yarnColors.find((yc) => yc.color_hex === yarnPickerHex)?.yarn_id ?? null)
+          }
           onSelect={(yarnId, yarn) => {
-            onYarnLink(yarnPickerHex, yarnId);
+            const slotHex = yarnPickerHex;
+            setPendingYarnLinks((prev) => ({ ...prev, [slotHex]: { yarnId, yarn } }));
             setYarnPickerHex(null);
-            if (
-              yarn.color_hex &&
-              yarn.color_hex.toLowerCase() !== (pending[yarnPickerHex] ?? yarnPickerHex).toLowerCase()
-            ) {
-              setColorOffer({ slotHex: yarnPickerHex, suggestedHex: yarn.color_hex });
+            if (yarn.color_hex && yarn.color_hex.toLowerCase() !== (pending[slotHex] ?? slotHex).toLowerCase()) {
+              setColorOffer({ slotHex, suggestedHex: yarn.color_hex });
+            } else if (colorOffer?.slotHex === slotHex) {
+              setColorOffer(null);
             }
           }}
           onUnlink={() => {
-            onYarnUnlink(yarnPickerHex);
+            const slotHex = yarnPickerHex;
+            setPendingYarnLinks((prev) => ({ ...prev, [slotHex]: null }));
+            setReplacement(slotHex, slotHex);
             setYarnPickerHex(null);
-            if (colorOffer?.slotHex === yarnPickerHex) setColorOffer(null);
+            if (colorOffer?.slotHex === slotHex) setColorOffer(null);
           }}
           onClose={() => setYarnPickerHex(null)}
-          isSaving={isYarnSaving}
+          isSaving={isSaving}
         />
       )}
     </section>
@@ -1268,20 +1309,20 @@ export function ProjectLandingPage() {
     enabled: !!id,
   });
 
-  const colorMutation = useMutation({
-    mutationFn: (replacements: Record<string, string>) =>
-      setProjectColorReplacements(id!, replacements),
-    onSuccess: (updated) => qc.setQueryData(["project", id], updated),
-  });
-
-  const yarnLinkMutation = useMutation({
-    mutationFn: ({ colorHex, yarnId }: { colorHex: string; yarnId: string }) =>
-      linkYarnColor(id!, colorHex, yarnId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["project", id] }),
-  });
-
-  const yarnUnlinkMutation = useMutation({
-    mutationFn: (colorHex: string) => unlinkYarnColor(id!, colorHex),
+  const saveMutation = useMutation({
+    mutationFn: async ({
+      replacements,
+      yarnLinks,
+    }: {
+      replacements: Record<string, string>;
+      yarnLinks: Record<string, string | null>;
+    }) => {
+      const calls: Promise<unknown>[] = [setProjectColorReplacements(id!, replacements)];
+      for (const [colorHex, yarnId] of Object.entries(yarnLinks)) {
+        calls.push(yarnId !== null ? linkYarnColor(id!, colorHex, yarnId) : unlinkYarnColor(id!, colorHex));
+      }
+      await Promise.all(calls);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["project", id] }),
   });
 
@@ -1583,13 +1624,10 @@ export function ProjectLandingPage() {
           weftStats={project.draft_weft_color_stats}
           colorReplacements={project.color_replacements}
           warpLengthCm={warpLengthCm}
-          onSave={(r) => colorMutation.mutate(r)}
-          isSaving={colorMutation.isPending}
+          onSave={(r, links) => saveMutation.mutate({ replacements: r, yarnLinks: links })}
+          isSaving={saveMutation.isPending}
           locked={project.status !== "created"}
           yarnColors={project.yarn_colors ?? []}
-          onYarnLink={(colorHex, yarnId) => yarnLinkMutation.mutate({ colorHex, yarnId })}
-          onYarnUnlink={(colorHex) => yarnUnlinkMutation.mutate(colorHex)}
-          isYarnSaving={yarnLinkMutation.isPending || yarnUnlinkMutation.isPending}
         />
       )}
 

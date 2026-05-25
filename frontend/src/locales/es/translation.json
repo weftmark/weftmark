@@ -627,7 +627,8 @@
     "linkYarn": "Vincular hilo",
     "updateColorFromYarn": "¿Actualizar color del hilo?",
     "updateColor": "Actualizar",
-    "keepColor": "Conservar"
+    "keepColor": "Conservar",
+    "undo": "Deshacer"
   },
   "projectDetailPage": {
     "loading": "Cargando…",

@@ -627,7 +627,8 @@
     "linkYarn": "Garen koppelen",
     "updateColorFromYarn": "Kleur overnemen van garen?",
     "updateColor": "Overnemen",
-    "keepColor": "Behouden"
+    "keepColor": "Behouden",
+    "undo": "Ongedaan maken"
   },
   "projectDetailPage": {
     "loading": "Laden…",

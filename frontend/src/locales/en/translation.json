@@ -628,7 +628,8 @@
     "linkYarn": "Link yarn",
     "updateColorFromYarn": "Update color from yarn?",
     "updateColor": "Update",
-    "keepColor": "Keep"
+    "keepColor": "Keep",
+    "undo": "Undo"
   },
   "projectDetailPage": {
     "loading": "Loading…",

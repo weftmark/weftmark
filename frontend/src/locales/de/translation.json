@@ -628,7 +628,8 @@
     "linkYarn": "Garn verknüpfen",
     "updateColorFromYarn": "Farbe aus Garn übernehmen?",
     "updateColor": "Übernehmen",
-    "keepColor": "Behalten"
+    "keepColor": "Behalten",
+    "undo": "Rückgängig"
   },
   "projectDetailPage": {
     "loading": "Laden…",

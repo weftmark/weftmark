@@ -627,7 +627,8 @@
     "linkYarn": "Lier un fil",
     "updateColorFromYarn": "Mettre à jour la couleur depuis le fil ?",
     "updateColor": "Mettre à jour",
-    "keepColor": "Garder"
+    "keepColor": "Garder",
+    "undo": "Annuler"
   },
   "projectDetailPage": {
     "loading": "Chargement…",
