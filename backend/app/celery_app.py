@@ -78,7 +78,7 @@ celery_app = _make_celery()
 
 _settings = get_settings()
 
-if _settings.sentry_dsn_fastapi:
+if _settings.sentry_dsn_fastapi:  # pragma: no cover
     import os
 
     import sentry_sdk

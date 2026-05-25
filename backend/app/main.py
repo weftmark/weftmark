@@ -41,7 +41,7 @@ from app.telemetry import configure_telemetry  # noqa: E402
 
 configure_telemetry(settings)
 
-if settings.sentry_dsn_fastapi:
+if settings.sentry_dsn_fastapi:  # pragma: no cover
     import sentry_sdk
 
     sentry_sdk.init(
