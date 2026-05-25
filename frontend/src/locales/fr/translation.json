@@ -475,7 +475,12 @@
     "colWeight": "Poids",
     "colFiber": "Fibre",
     "colSkeins": "Écheveaux",
-    "colAdded": "Ajouté"
+    "colAdded": "Ajouté",
+    "inStash": "En stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Source",
+    "filterInStash": "En stash"
   },
   "addYarnModal": {
     "title": "Ajouter du fil",

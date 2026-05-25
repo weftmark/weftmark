@@ -475,7 +475,12 @@
     "colWeight": "Gewicht",
     "colFiber": "Vezel",
     "colSkeins": "Strengen",
-    "colAdded": "Toegevoegd"
+    "colAdded": "Toegevoegd",
+    "inStash": "In stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Bron",
+    "filterInStash": "In stash"
   },
   "addYarnModal": {
     "title": "Garen toevoegen",

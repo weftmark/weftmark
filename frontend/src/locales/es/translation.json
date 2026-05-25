@@ -475,7 +475,12 @@
     "colWeight": "Peso",
     "colFiber": "Fibra",
     "colSkeins": "Madejas",
-    "colAdded": "Añadido"
+    "colAdded": "Añadido",
+    "inStash": "En stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Origen",
+    "filterInStash": "En stash"
   },
   "addYarnModal": {
     "title": "Añadir hilo",

@@ -476,7 +476,12 @@
     "colWeight": "Weight",
     "colFiber": "Fiber",
     "colSkeins": "Skeins",
-    "colAdded": "Added"
+    "colAdded": "Added",
+    "inStash": "In Stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Source",
+    "filterInStash": "In stash"
   },
   "addYarnModal": {
     "title": "Add yarn",

@@ -476,7 +476,12 @@
     "colWeight": "Gewicht",
     "colFiber": "Faser",
     "colSkeins": "Knäuel",
-    "colAdded": "Hinzugefügt"
+    "colAdded": "Hinzugefügt",
+    "inStash": "Im Stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Quelle",
+    "filterInStash": "Im Stash"
   },
   "addYarnModal": {
     "title": "Garn hinzufügen",
