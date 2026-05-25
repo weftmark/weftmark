@@ -123,7 +123,7 @@ async def seed() -> dict:
 
     settings = get_settings()
     engine = create_async_engine(settings.database_url, echo=False)
-    Session = async_sessionmaker(engine, expire_on_commit=False)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     json_path = locate_json()
     with json_path.open() as f:
@@ -138,7 +138,7 @@ async def seed() -> dict:
 
     inserted = updated = skipped = 0
 
-    async with Session() as session:
+    async with session_factory() as session:
         async with session.begin():
             for raw in entries:
                 row = _coerce_entry(raw)

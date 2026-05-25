@@ -36,17 +36,127 @@ def run_user_export(self: Task, user_id: str, request_id: str) -> None:
     asyncio.run(_build_export(uuid.UUID(user_id), uuid.UUID(request_id)))
 
 
-async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
+async def _export_drafts(db, user_id: uuid.UUID, zf: zipfile.ZipFile, prefix: str) -> list[dict]:
     from sqlalchemy import select
 
-    from app.config import get_settings
-    from app.models.collection import Collection
     from app.models.draft import Draft
-    from app.models.loom import Loom
+    from app.services import storage
+
+    drafts = (await db.scalars(select(Draft).where(Draft.owner_id == user_id, Draft.deleted_at.is_(None)))).all()
+
+    result = []
+    for d in drafts:
+        result.append(
+            {
+                "id": str(d.id),
+                "name": d.name,
+                "created_at": d.created_at.isoformat(),
+                "updated_at": d.updated_at.isoformat(),
+            }
+        )
+        if d.wif_path:
+            try:
+                wif_bytes = await storage.aread_file(d.wif_path)
+                safe = _safe_filename(d.name or str(d.id))
+                zf.writestr(f"{prefix}/drafts/{safe}.wif", wif_bytes)
+            except Exception as exc:
+                log.warning("export_skip_wif draft_id=%s error=%s", d.id, exc)
+    return result
+
+
+async def _export_projects(db, user_id: uuid.UUID, zf: zipfile.ZipFile, prefix: str) -> list[dict]:
+    from sqlalchemy import select
+
     from app.models.project import Project, ProjectPhoto
+    from app.services import storage
+
+    projects = (
+        await db.scalars(select(Project).where(Project.owner_id == user_id, Project.deleted_at.is_(None)))
+    ).all()
+
+    result = []
+    for p in projects:
+        result.append(
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "status": p.status,
+                "completed_at": p.completed_at.isoformat() if p.completed_at else None,
+                "notes": p.notes,
+                "created_at": p.created_at.isoformat(),
+            }
+        )
+        photos = (await db.scalars(select(ProjectPhoto).where(ProjectPhoto.project_id == p.id))).all()
+        safe_proj = _safe_filename(p.name or str(p.id))
+        for i, photo in enumerate(photos):
+            try:
+                photo_bytes = await storage.aread_file(photo.file_path)
+                ext = photo.file_path.rsplit(".", 1)[-1] if "." in photo.file_path else "jpg"
+                zf.writestr(f"{prefix}/projects/{safe_proj}/photos/{i + 1}.{ext}", photo_bytes)
+            except Exception as exc:
+                log.warning("export_skip_photo photo_id=%s error=%s", photo.id, exc)
+    return result
+
+
+async def _export_yarns(db, user_id: uuid.UUID) -> list[dict]:
+    from sqlalchemy import select
+
+    from app.models.yarn import Yarn
+
+    yarns = (await db.scalars(select(Yarn).where(Yarn.owner_id == user_id, Yarn.deleted_at.is_(None)))).all()
+    return [
+        {
+            "id": str(y.id),
+            "name": y.name,
+            "brand": y.brand,
+            "color_name": y.color_name,
+            "fiber_content": y.fiber_content,
+            "weight_category": y.weight_category,
+            "created_at": y.created_at.isoformat(),
+        }
+        for y in yarns
+    ]
+
+
+async def _export_looms(db, user_id: uuid.UUID) -> list[dict]:
+    from sqlalchemy import select
+
+    from app.models.loom import Loom
+
+    looms = (await db.scalars(select(Loom).where(Loom.owner_id == user_id, Loom.deleted_at.is_(None)))).all()
+    return [
+        {
+            "id": str(lo.id),
+            "name": f"{lo.manufacturer} {lo.model_name}",
+            "loom_type": lo.loom_type,
+            "created_at": lo.created_at.isoformat(),
+        }
+        for lo in looms
+    ]
+
+
+async def _export_collections(db, user_id: uuid.UUID) -> list[dict]:
+    from sqlalchemy import select
+
+    from app.models.collection import Collection
+
+    collections = (
+        await db.scalars(select(Collection).where(Collection.owner_id == user_id, Collection.deleted_at.is_(None)))
+    ).all()
+    return [
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "created_at": c.created_at.isoformat(),
+        }
+        for c in collections
+    ]
+
+
+async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
+    from app.config import get_settings
     from app.models.user import User
     from app.models.user_export import UserExportRequest
-    from app.models.yarn import Yarn
     from app.services import storage
 
     settings = get_settings()
@@ -72,110 +182,18 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
             buf = io.BytesIO()
 
             with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                # ── Drafts ────────────────────────────────────────────────────
-                drafts = (
-                    await db.scalars(select(Draft).where(Draft.owner_id == user_id, Draft.deleted_at.is_(None)))
-                ).all()
-
-                drafts_json = []
-                for d in drafts:
-                    drafts_json.append(
-                        {
-                            "id": str(d.id),
-                            "name": d.name,
-                            "created_at": d.created_at.isoformat(),
-                            "updated_at": d.updated_at.isoformat(),
-                        }
-                    )
-                    if d.wif_path:
-                        try:
-                            wif_bytes = await storage.aread_file(d.wif_path)
-                            safe = _safe_filename(d.name or str(d.id))
-                            zf.writestr(f"{prefix}/drafts/{safe}.wif", wif_bytes)
-                        except Exception as exc:
-                            log.warning("export_skip_wif draft_id=%s error=%s", d.id, exc)
-
+                drafts_json = await _export_drafts(db, user_id, zf, prefix)
                 zf.writestr(f"{prefix}/data/drafts.json", json.dumps(drafts_json, indent=2))
 
-                # ── Projects + photos ─────────────────────────────────────────
-                projects = (
-                    await db.scalars(select(Project).where(Project.owner_id == user_id, Project.deleted_at.is_(None)))
-                ).all()
-
-                projects_json = []
-                for p in projects:
-                    projects_json.append(
-                        {
-                            "id": str(p.id),
-                            "name": p.name,
-                            "status": p.status,
-                            "completed_at": p.completed_at.isoformat() if p.completed_at else None,
-                            "notes": p.notes,
-                            "created_at": p.created_at.isoformat(),
-                        }
-                    )
-                    photos = (await db.scalars(select(ProjectPhoto).where(ProjectPhoto.project_id == p.id))).all()
-                    safe_proj = _safe_filename(p.name or str(p.id))
-                    for i, photo in enumerate(photos):
-                        try:
-                            photo_bytes = await storage.aread_file(photo.file_path)
-                            ext = photo.file_path.rsplit(".", 1)[-1] if "." in photo.file_path else "jpg"
-                            zf.writestr(f"{prefix}/projects/{safe_proj}/photos/{i + 1}.{ext}", photo_bytes)
-                        except Exception as exc:
-                            log.warning("export_skip_photo photo_id=%s error=%s", photo.id, exc)
-
+                projects_json = await _export_projects(db, user_id, zf, prefix)
                 zf.writestr(f"{prefix}/data/projects.json", json.dumps(projects_json, indent=2))
 
-                # ── Yarn ─────────────────────────────────────────────────────
-                yarns = (
-                    await db.scalars(select(Yarn).where(Yarn.owner_id == user_id, Yarn.deleted_at.is_(None)))
-                ).all()
-                yarns_json = [
-                    {
-                        "id": str(y.id),
-                        "name": y.name,
-                        "brand": y.brand,
-                        "color_name": y.color_name,
-                        "fiber_content": y.fiber_content,
-                        "weight_category": y.weight_category,
-                        "created_at": y.created_at.isoformat(),
-                    }
-                    for y in yarns
-                ]
-                zf.writestr(f"{prefix}/data/yarn.json", json.dumps(yarns_json, indent=2))
-
-                # ── Looms ─────────────────────────────────────────────────────
-                looms = (
-                    await db.scalars(select(Loom).where(Loom.owner_id == user_id, Loom.deleted_at.is_(None)))
-                ).all()
-                looms_json = [
-                    {
-                        "id": str(lo.id),
-                        "name": f"{lo.manufacturer} {lo.model_name}",
-                        "loom_type": lo.loom_type,
-                        "created_at": lo.created_at.isoformat(),
-                    }
-                    for lo in looms
-                ]
-                zf.writestr(f"{prefix}/data/looms.json", json.dumps(looms_json, indent=2))
-
-                # ── Collections ───────────────────────────────────────────────
-                collections = (
-                    await db.scalars(
-                        select(Collection).where(Collection.owner_id == user_id, Collection.deleted_at.is_(None))
-                    )
-                ).all()
-                collections_json = [
-                    {
-                        "id": str(c.id),
-                        "name": c.name,
-                        "created_at": c.created_at.isoformat(),
-                    }
-                    for c in collections
-                ]
-                zf.writestr(f"{prefix}/data/collections.json", json.dumps(collections_json, indent=2))
-
-                # ── Profile ───────────────────────────────────────────────────
+                zf.writestr(f"{prefix}/data/yarn.json", json.dumps(await _export_yarns(db, user_id), indent=2))
+                zf.writestr(f"{prefix}/data/looms.json", json.dumps(await _export_looms(db, user_id), indent=2))
+                zf.writestr(
+                    f"{prefix}/data/collections.json",
+                    json.dumps(await _export_collections(db, user_id), indent=2),
+                )
                 zf.writestr(
                     f"{prefix}/data/profile.json",
                     json.dumps(
@@ -188,8 +206,6 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
                         indent=2,
                     ),
                 )
-
-                # ── README ────────────────────────────────────────────────────
                 zf.writestr(f"{prefix}/README.txt", _readme(user, date_str))
 
             archive_key = f"exports/{user_id}/{request_id}.zip"
@@ -245,5 +261,5 @@ def _readme(user, date_str: str) -> str:
         "  data/yarn.json           Yarn inventory\n"
         "  data/looms.json          Loom inventory\n"
         "  data/collections.json    Collections\n\n"
-        f"This archive is valid for {EXPORT_TTL_DAYS} days from the export date.\n"
+        f"This archive will be available for {EXPORT_TTL_DAYS} days.\n"
     )
