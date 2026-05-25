@@ -118,4 +118,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - run: docker build -f errors/Dockerfile -t weaving-errors-check ./errors
+      - run: docker build -f errors/Dockerfile -t weaving-errors-check .

@@ -245,5 +245,5 @@ jobs:
         run: |
           docker build -f errors/Dockerfile \
             -t ghcr.io/weftmark/weftmark-errors:latest \
-            ./errors
+            .
           docker push ghcr.io/weftmark/weftmark-errors:latest
