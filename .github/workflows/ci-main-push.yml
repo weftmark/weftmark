@@ -224,3 +224,26 @@ jobs:
             ./frontend
           docker push ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }}
           docker push ghcr.io/weftmark/weftmark-frontend:latest
+
+  docker-publish-errors:
+    name: Publish — error pages (main)
+    runs-on: ubuntu-latest
+    needs: [promote-version-tag]
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push errors image
+        run: |
+          docker build -f errors/Dockerfile \
+            -t ghcr.io/weftmark/weftmark-errors:latest \
+            ./errors
+          docker push ghcr.io/weftmark/weftmark-errors:latest

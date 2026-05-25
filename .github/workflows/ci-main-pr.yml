@@ -112,3 +112,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: docker build -f frontend/Dockerfile -t weaving-frontend-check ./frontend
+
+  docker-build-errors:
+    name: Docker build — error pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: docker build -f errors/Dockerfile -t weaving-errors-check ./errors
