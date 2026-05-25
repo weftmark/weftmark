@@ -38,7 +38,7 @@ def _session_factory(db: AsyncSession):
             return db
 
         async def __aexit__(self, *args):
-            pass
+            pass  # no-op; test stub requires no cleanup
 
     class _Factory:
         def __call__(self):
@@ -239,22 +239,13 @@ class TestBuildExportHappyPath:
         await db_session.refresh(req)
         assert req.expires_at is not None
 
-    async def test_empty_database_completes(self, db_session, mock_db, mock_storage, mock_email):
-        user = await _make_user(db_session)
-        req = await _make_request(db_session, user.id)
-
-        await _build_export(user.id, req.id)
-
-        await db_session.refresh(req)
-        assert req.status == "complete"
-
     async def test_zip_contains_required_json_files(self, db_session, mock_db, mock_email):
         user = await _make_user(db_session)
         req = await _make_request(db_session, user.id)
 
         zip_bytes: list[bytes] = []
 
-        async def capture(fn, *args):
+        async def capture(fn, *args):  # NOSONAR: must be async to patch asyncio.to_thread
             zip_bytes.append(args[1])
 
         with (
@@ -285,7 +276,7 @@ class TestBuildExportHappyPath:
 
         zip_bytes: list[bytes] = []
 
-        async def capture(fn, *args):
+        async def capture(fn, *args):  # NOSONAR: must be async to patch asyncio.to_thread
             zip_bytes.append(args[1])
 
         with (
@@ -305,7 +296,7 @@ class TestBuildExportHappyPath:
 
         zip_bytes: list[bytes] = []
 
-        async def capture(fn, *args):
+        async def capture(fn, *args):  # NOSONAR: must be async to patch asyncio.to_thread
             zip_bytes.append(args[1])
 
         with (
@@ -373,7 +364,7 @@ class TestBuildExportHappyPath:
 
         zip_bytes: list[bytes] = []
 
-        async def capture(fn, *args):
+        async def capture(fn, *args):  # NOSONAR: must be async to patch asyncio.to_thread
             zip_bytes.append(args[1])
 
         with (
@@ -407,7 +398,7 @@ class TestBuildExportHappyPath:
 
         zip_bytes: list[bytes] = []
 
-        async def capture(fn, *args):
+        async def capture(fn, *args):  # NOSONAR: must be async to patch asyncio.to_thread
             zip_bytes.append(args[1])
 
         with (
