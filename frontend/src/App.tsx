@@ -35,6 +35,7 @@ import { SuperuserPage } from "@/pages/SuperuserPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { SignOutPage } from "@/pages/SignOutPage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
+import { NotFoundPage } from "@/pages/NotFoundPage";
 import { PendingPage } from "@/pages/PendingPage";
 import { DevBanner } from "@/components/DevBanner";
 import { ServiceHealthBanner } from "@/components/ServiceHealthBanner";
@@ -127,7 +128,7 @@ export default function App() {
                   <Route path="/superuser/:section" element={<AuthRoute requireSuperuser><SuperuserPage /></AuthRoute>} />
                   <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />
                   <Route path="/settings/:section" element={<AuthRoute><SettingsPage /></AuthRoute>} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<NotFoundPage />} />
                 </SentryRoutes>
               </EulaGate>
             </BrowserRouter>
