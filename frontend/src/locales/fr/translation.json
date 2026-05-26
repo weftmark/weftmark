@@ -1186,7 +1186,8 @@
     "modeHsl": "HSL",
     "modeName": "Nom",
     "namePlaceholder": "ex. sauge, cobalt...",
-    "nameUnknown": "Nom de couleur inconnu"
+    "nameUnknown": "Nom de couleur inconnu",
+    "eyedropperTooltip": "Choisir une couleur à l'écran"
   },
   "yarnPicker": {
     "title": "Lier un fil à la couleur",

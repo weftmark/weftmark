@@ -2,6 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { HexColorPicker } from "react-colorful";
 import { useTranslation } from "react-i18next";
+import { Pipette } from "lucide-react";
+
+declare global {
+  interface Window {
+    EyeDropper?: new () => { open: () => Promise<{ sRGBHex: string }> };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Conversion utilities
@@ -270,6 +277,21 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
     }
   }
 
+  const eyedropperSupported = "EyeDropper" in window;
+
+  async function handleEyedropper() {
+    try {
+      const result = await new window.EyeDropper!().open();
+      const hex = result.sRGBHex.toLowerCase();
+      syncAllInputs(hex);
+      onChange(hex);
+      setNameInput("");
+      setNameError(false);
+    } catch {
+      // User cancelled or browser error — ignore
+    }
+  }
+
   const swatchClass =
     size === "sm"
       ? "h-6 w-10 rounded border border-input cursor-pointer p-0.5"
@@ -322,22 +344,35 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
         >
           <HexColorPicker color={value} onChange={handleWheelChange} />
 
-          {/* Mode tab strip */}
-          <div className="flex gap-0.5">
-            {modes.map(({ key, label }) => (
+          {/* Mode tab strip + eyedropper */}
+          <div className="flex items-center gap-1">
+            <div className="flex gap-0.5 flex-1">
+              {modes.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setMode(key)}
+                  className={`flex-1 rounded px-1 py-0.5 text-xs font-medium transition-colors ${
+                    mode === key
+                      ? "bg-muted text-card-foreground"
+                      : "text-muted-foreground hover:text-card-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {eyedropperSupported && (
               <button
-                key={key}
                 type="button"
-                onClick={() => setMode(key)}
-                className={`flex-1 rounded px-1 py-0.5 text-xs font-medium transition-colors ${
-                  mode === key
-                    ? "bg-muted text-card-foreground"
-                    : "text-muted-foreground hover:text-card-foreground"
-                }`}
+                title={t("colorPicker.eyedropperTooltip")}
+                aria-label={t("colorPicker.eyedropperTooltip")}
+                onClick={handleEyedropper}
+                className="rounded p-0.5 text-muted-foreground hover:text-card-foreground hover:bg-muted transition-colors"
               >
-                {label}
+                <Pipette size={12} />
               </button>
-            ))}
+            )}
           </div>
 
           {/* Hex input */}

@@ -1186,7 +1186,8 @@
     "modeHsl": "HSL",
     "modeName": "Nombre",
     "namePlaceholder": "p.ej. salvia, cobalto...",
-    "nameUnknown": "Nombre de color desconocido"
+    "nameUnknown": "Nombre de color desconocido",
+    "eyedropperTooltip": "Seleccionar color de la pantalla"
   },
   "yarnPicker": {
     "title": "Vincular hilo al color",
