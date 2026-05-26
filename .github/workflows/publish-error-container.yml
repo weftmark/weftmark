@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to publish (e.g. 1.2.0, latest)"
+        description: "Version tag for this image (e.g. 1.2.0). The <env>-latest tag is always pushed automatically alongside this."
         type: string
         required: true
       environment:
