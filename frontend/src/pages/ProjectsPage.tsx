@@ -11,7 +11,7 @@ import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { Button } from "@/components/ui/button";
 import { TagChips } from "@/components/ui/TagChips";
 import { Link } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonCardGrid } from "@/components/ui/skeleton";
 
 const STATUS_COLORS: Record<string, string> = {
   created: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -278,11 +278,7 @@ export function ProjectsPage() {
         </div>
       )}
 
-      {isLoading && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[160px] rounded-lg" />)}
-        </div>
-      )}
+      {isLoading && <SkeletonCardGrid count={4} cardClassName="h-[160px]" gridClassName="grid gap-3 sm:grid-cols-2" />}
       {error && <p className="text-sm text-destructive">{t("projectsPage.loadError")}</p>}
 
       {!isLoading && projects.length === 0 && (

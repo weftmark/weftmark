@@ -9,7 +9,7 @@ import { listLooms } from "@/api/looms";
 import { listCollections } from "@/api/collections";
 import { getActivityHeatmap, type ActivityDay } from "@/api/users";
 import { AppIcons } from "@/lib/icons";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonCardGrid } from "@/components/ui/skeleton";
 
 const RANGE_OPTIONS = [
   { label: "1M", days: 30 },
@@ -341,9 +341,7 @@ export function DashboardPage() {
           </Link>
         </div>
         {loomsLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[72px] rounded-lg" />)}
-          </div>
+          <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />
         ) : looms.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">{t("dashboard.equipment.empty")}</p>
@@ -391,9 +389,7 @@ export function DashboardPage() {
           <Link to="/collections" className="text-xs text-muted-foreground hover:text-foreground">{t("dashboard.viewAll")}</Link>
         </div>
         {collectionsLoading ? (
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[80px] rounded-lg" />)}
-          </div>
+          <SkeletonCardGrid count={3} cardClassName="h-[80px]" gridClassName="grid gap-3 sm:grid-cols-3" />
         ) : collections.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">{t("dashboard.collectionSection.empty")}</p>
@@ -435,9 +431,7 @@ export function DashboardPage() {
           </Link>
         </div>
         {draftsLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[72px] rounded-lg" />)}
-          </div>
+          <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />
         ) : drafts.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">{t("dashboard.drafts.empty")}</p>
