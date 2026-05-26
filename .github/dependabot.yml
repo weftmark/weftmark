@@ -28,6 +28,10 @@ updates:
       # redis 7.x cannot be used until Celery ships a compatible kombu version.
       - dependency-name: redis
         versions: [">=7.0"]
+      # fastapi 0.136.3 is malicious (MAL-2026-4750) — hidden fastar typosquat dep.
+      # Remove this ignore once PyPI yanks the release or a clean 0.136.4+ ships.
+      - dependency-name: fastapi
+        versions: ["0.136.3"]
     groups:
       backend-deps:
         patterns:
