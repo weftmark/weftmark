@@ -1,13 +1,13 @@
 name: Feature CI
 
-# Runs on every push to feature/* and fix/* branches.
+# Runs on every push to feature/*, feat/*, and fix/* branches.
 # Provides fast lint/typecheck feedback before a PR is opened.
 # Full test suite runs when the PR is opened (ci-dev-pr.yml).
 # Hotfix branches use ci-hotfix.yml (full suite) because they target main directly.
 
 on:
   push:
-    branches: ["feature/*", "fix/*"]
+    branches: ["feature/*", "feat/*", "fix/*"]
 
 concurrency:
   group: feature-${{ github.ref }}
