@@ -445,6 +445,12 @@
     "discontinued": "Discontinued",
     "outOfStash": "Out of stash",
     "inRavelryStash": "Ravelry Stash",
+    "notInRavelryStash": "Not in Ravelry stash",
+    "pushToRavelryBulkButton": "Add {{count}} to Ravelry stash",
+    "pushToRavelryModalTitle": "Add to Ravelry stash",
+    "pushToRavelryModalBody": "These yarns will be added to your Ravelry stash:",
+    "pushToRavelryModalConfirm": "Add all",
+    "pushBulkSuccess": "Added {{count}} yarn(s) to Ravelry stash.",
     "colorNotSet": "not set",
     "showArchived": "Show archived",
     "hideArchived": "Hide archived",
@@ -893,7 +899,10 @@
     "colorwayFilter": "Filter colorways…",
     "noColorways": "No colorways found for this yarn.",
     "colorwayLoadError": "Failed to load colorways.",
-    "usedInProjects": "Used in projects"
+    "usedInProjects": "Used in projects",
+    "addToRavelryStash": "Add to Ravelry stash",
+    "inRavelryStash": "In Ravelry stash",
+    "addToRavelryStashError": "Failed to add to Ravelry stash."
   },
   "loomDetailPage": {
     "loading": "Loading…",

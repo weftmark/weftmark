@@ -444,6 +444,12 @@
     "discontinued": "Descontinuado",
     "outOfStash": "Sin existencias",
     "inRavelryStash": "Ravelry Stash",
+    "notInRavelryStash": "No está en el stash de Ravelry",
+    "pushToRavelryBulkButton": "Añadir {{count}} al stash de Ravelry",
+    "pushToRavelryModalTitle": "Añadir al stash de Ravelry",
+    "pushToRavelryModalBody": "Estos hilos se añadirán a tu stash de Ravelry:",
+    "pushToRavelryModalConfirm": "Añadir todo",
+    "pushBulkSuccess": "{{count}} hilo(s) añadido(s) al stash de Ravelry.",
     "colorNotSet": "no definido",
     "showArchived": "Mostrar archivados",
     "hideArchived": "Ocultar archivados",
@@ -892,7 +898,10 @@
     "colorwayFilter": "Filtrar colorways…",
     "noColorways": "No se encontraron colorways para este hilo.",
     "colorwayLoadError": "Error al cargar los colorways.",
-    "usedInProjects": "Usado en proyectos"
+    "usedInProjects": "Usado en proyectos",
+    "addToRavelryStash": "Añadir al stash de Ravelry",
+    "inRavelryStash": "En el stash de Ravelry",
+    "addToRavelryStashError": "No se pudo añadir al stash de Ravelry."
   },
   "loomDetailPage": {
     "loading": "Cargando…",

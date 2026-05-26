@@ -444,6 +444,12 @@
     "discontinued": "Abandonné",
     "outOfStash": "Plus en stock",
     "inRavelryStash": "Ravelry Stash",
+    "notInRavelryStash": "Pas dans le stash Ravelry",
+    "pushToRavelryBulkButton": "Ajouter {{count}} au stash Ravelry",
+    "pushToRavelryModalTitle": "Ajouter au stash Ravelry",
+    "pushToRavelryModalBody": "Ces fils seront ajoutés à votre stash Ravelry :",
+    "pushToRavelryModalConfirm": "Tout ajouter",
+    "pushBulkSuccess": "{{count}} fil(s) ajouté(s) au stash Ravelry.",
     "colorNotSet": "non défini",
     "showArchived": "Afficher les archivés",
     "hideArchived": "Masquer les archivés",
@@ -892,7 +898,10 @@
     "colorwayFilter": "Filtrer les coloris…",
     "noColorways": "Aucun coloris trouvé pour ce fil.",
     "colorwayLoadError": "Impossible de charger les coloris.",
-    "usedInProjects": "Utilisé dans des projets"
+    "usedInProjects": "Utilisé dans des projets",
+    "addToRavelryStash": "Ajouter au stash Ravelry",
+    "inRavelryStash": "Dans le stash Ravelry",
+    "addToRavelryStashError": "Impossible d'ajouter au stash Ravelry."
   },
   "loomDetailPage": {
     "loading": "Chargement…",
