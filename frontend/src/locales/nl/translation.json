@@ -1186,7 +1186,8 @@
     "modeHsl": "HSL",
     "modeName": "Naam",
     "namePlaceholder": "bijv. salie, kobalt...",
-    "nameUnknown": "Onbekende kleurnaam"
+    "nameUnknown": "Onbekende kleurnaam",
+    "eyedropperTooltip": "Kleur van scherm kiezen"
   },
   "yarnPicker": {
     "title": "Garen koppelen aan kleurslot",
