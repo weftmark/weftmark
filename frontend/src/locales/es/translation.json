@@ -1121,6 +1121,11 @@
     "signedOut": "Has cerrado sesión",
     "redirecting": "Redirigiendo a la página de inicio…"
   },
+  "notFoundPage": {
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe o ha sido movida.",
+    "backToHome": "Volver al inicio"
+  },
   "unauthorizedPage": {
     "accessDenied": "Acceso denegado",
     "noPermission": "No tienes permiso para ver esta página.",

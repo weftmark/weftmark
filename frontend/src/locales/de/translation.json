@@ -1122,6 +1122,11 @@
     "signedOut": "Sie wurden abgemeldet",
     "redirecting": "Sie werden zur Startseite weitergeleitet…"
   },
+  "notFoundPage": {
+    "title": "Seite nicht gefunden",
+    "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "backToHome": "Zurück zur Startseite"
+  },
   "unauthorizedPage": {
     "accessDenied": "Zugriff verweigert",
     "noPermission": "Sie haben keine Berechtigung, diese Seite anzuzeigen.",

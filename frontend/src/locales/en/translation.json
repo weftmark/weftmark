@@ -1122,6 +1122,11 @@
     "signedOut": "You've been signed out",
     "redirecting": "Redirecting you to the home page…"
   },
+  "notFoundPage": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or may have been moved.",
+    "backToHome": "Back to home"
+  },
   "unauthorizedPage": {
     "accessDenied": "Access denied",
     "noPermission": "You don't have permission to view this page.",

@@ -1121,6 +1121,11 @@
     "signedOut": "Vous avez été déconnecté",
     "redirecting": "Redirection vers la page d'accueil…"
   },
+  "notFoundPage": {
+    "title": "Page introuvable",
+    "description": "La page que vous recherchez n'existe pas ou a été déplacée.",
+    "backToHome": "Retour à l'accueil"
+  },
   "unauthorizedPage": {
     "accessDenied": "Accès refusé",
     "noPermission": "Vous n'avez pas la permission de consulter cette page.",
