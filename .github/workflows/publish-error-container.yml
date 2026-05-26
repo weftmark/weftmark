@@ -92,6 +92,16 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: false
 
+      - name: Compute image tags
+        id: tags
+        run: |
+          TAGS="ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-${{ inputs.tag }}"
+          TAGS="${TAGS},ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-latest"
+          if [[ "${{ inputs.environment }}" == "prod" ]]; then
+            TAGS="${TAGS},ghcr.io/weftmark/weftmark-errors:latest"
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push (multi-platform)
         id: push
         uses: docker/build-push-action@v6
@@ -100,9 +110,7 @@ jobs:
           file: errors/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-${{ inputs.tag }}
-            ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-latest
+          tags: ${{ steps.tags.outputs.tags }}
 
   summary:
     name: Job summary
@@ -120,5 +128,8 @@ jobs:
           echo "| **Tag** | \`${{ inputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Images pushed** | \`ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-${{ inputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| | \`ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-latest\` |" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${{ inputs.environment }}" == "prod" ]]; then
+            echo "| | \`ghcr.io/weftmark/weftmark-errors:latest\` |" >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "| **Digest** | \`${{ needs.build-scan-push.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Trivy scan** | ✅ No critical CVEs found |" >> "$GITHUB_STEP_SUMMARY"
