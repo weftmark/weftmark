@@ -86,7 +86,7 @@ export default function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} afterSignInUrl="/home" afterSignUpUrl="/pending" afterSignOutUrl="/sign-out">
+    <ClerkProvider publishableKey={clerkPublishableKey} signInFallbackRedirectUrl="/home" signUpFallbackRedirectUrl="/pending" afterSignOutUrl="/sign-out">
       <VersionGate>
         <SystemGate>
         <QueryClientProvider client={queryClient}>
