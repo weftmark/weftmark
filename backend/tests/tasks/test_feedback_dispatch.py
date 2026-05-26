@@ -7,7 +7,7 @@ redirected to the test db_session.
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -266,3 +266,198 @@ class TestRetryFailedWithToken:
         # recent pending (< 10 min old) should be skipped
         assert result["dispatched"] == 0
         mock_dispatch.delay.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _sync_states — sync github_discussion_state (lines 246-283)
+# ---------------------------------------------------------------------------
+
+
+class TestSyncStates:
+    @pytest.mark.asyncio
+    async def test_returns_no_token_when_token_missing(self, monkeypatch):
+        from app.config import get_settings
+        from app.tasks.feedback_dispatch import _sync_states
+
+        monkeypatch.setattr(get_settings(), "github_feedback_token", "")
+        result = await _sync_states(limit=100)
+        assert result["updated"] == 0
+        assert result.get("reason") == "no_token"
+
+    @pytest.mark.asyncio
+    async def test_updates_state_when_discussion_state_changed(self, db_session, test_user, monkeypatch):
+        from app.config import get_settings
+        from app.models.feedback import UserFeedback
+        from app.tasks.feedback_dispatch import _sync_states
+
+        monkeypatch.setattr(get_settings(), "github_feedback_token", "ghp_faketoken")
+
+        fb = UserFeedback(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            submission_type="bug",
+            body="test body",
+            dispatch_status="sent",
+            github_discussion_url="https://github.com/test/repo/discussions/1",
+            github_discussion_state="open",
+        )
+        db_session.add(fb)
+        await db_session.commit()
+
+        with (
+            patch("app.database.CeleryAsyncSession", _session_ctx(db_session)),
+            patch(
+                "app.services.github_discussions.get_discussion_state",
+                new_callable=AsyncMock,
+                return_value="answered",
+            ),
+        ):
+            result = await _sync_states(limit=100)
+
+        assert result["updated"] >= 1
+        await db_session.refresh(fb)
+        assert fb.github_discussion_state == "answered"
+
+    @pytest.mark.asyncio
+    async def test_skips_when_state_unchanged(self, db_session, test_user, monkeypatch):
+        from app.config import get_settings
+        from app.models.feedback import UserFeedback
+        from app.tasks.feedback_dispatch import _sync_states
+
+        monkeypatch.setattr(get_settings(), "github_feedback_token", "ghp_faketoken")
+
+        fb = UserFeedback(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            submission_type="bug",
+            body="test body",
+            dispatch_status="sent",
+            github_discussion_url="https://github.com/test/repo/discussions/2",
+            github_discussion_state="open",
+        )
+        db_session.add(fb)
+        await db_session.commit()
+
+        with (
+            patch("app.database.CeleryAsyncSession", _session_ctx(db_session)),
+            patch(
+                "app.services.github_discussions.get_discussion_state",
+                new_callable=AsyncMock,
+                return_value="open",
+            ),
+        ):
+            result = await _sync_states(limit=100)
+
+        assert result["updated"] == 0
+
+    @pytest.mark.asyncio
+    async def test_empty_when_no_sent_feedback(self, db_session, monkeypatch):
+        from app.config import get_settings
+        from app.tasks.feedback_dispatch import _sync_states
+
+        monkeypatch.setattr(get_settings(), "github_feedback_token", "ghp_faketoken")
+
+        with patch("app.database.CeleryAsyncSession", _session_ctx(db_session)):
+            result = await _sync_states(limit=100)
+
+        assert result["updated"] == 0
+
+
+# ---------------------------------------------------------------------------
+# _dispatch — _send_emails exception does not propagate (lines 95-96)
+# ---------------------------------------------------------------------------
+
+
+class TestDispatchEmailException:
+    @pytest.mark.asyncio
+    async def test_send_emails_exception_does_not_fail_dispatch(self, db_session, test_user, monkeypatch):
+        from app.config import get_settings
+        from app.models.feedback import UserFeedback
+        from app.tasks.feedback_dispatch import _dispatch
+
+        monkeypatch.setattr(get_settings(), "github_feedback_token", "ghp_faketoken")
+        monkeypatch.setattr(get_settings(), "github_feedback_repo", "test/repo")
+
+        fb = UserFeedback(
+            id=uuid.uuid4(),
+            user_id=test_user.id,
+            submission_type="bug",
+            subject="Test bug",
+            body="test body",
+        )
+        db_session.add(fb)
+        await db_session.commit()
+
+        task_mock = MagicMock()
+        task_mock.request.retries = 0
+        task_mock.max_retries = 3
+
+        with (
+            patch("app.database.CeleryAsyncSession", _session_ctx(db_session)),
+            patch(
+                "app.services.github_discussions.create_discussion",
+                new_callable=AsyncMock,
+                return_value="https://github.com/test/repo/discussions/99",
+            ),
+            patch(
+                "app.services.github_discussions.get_discussion_state",
+                new_callable=AsyncMock,
+                return_value="open",
+            ),
+            patch(
+                "app.tasks.feedback_dispatch._send_emails",
+                side_effect=Exception("email server down"),
+            ),
+        ):
+            result = await _dispatch(task_mock, str(fb.id))
+
+        assert result["status"] == "sent"
+
+
+# ---------------------------------------------------------------------------
+# TestCeleryWrappers — cover the asyncio.run(...) lines in each task wrapper
+# ---------------------------------------------------------------------------
+
+
+class TestCeleryWrappers:
+    def test_dispatch_feedback_delegates(self):
+        from app.tasks.feedback_dispatch import dispatch_feedback
+
+        task_mock = MagicMock()
+        task_mock.request.retries = 0
+        task_mock.max_retries = 3
+
+        with patch("app.tasks.feedback_dispatch._dispatch", new=AsyncMock(return_value={"status": "skipped"})):
+            result = dispatch_feedback.run.__func__(task_mock, str(uuid.uuid4()))
+
+        assert result["status"] == "skipped"
+
+    def test_retry_failed_feedback_delegates(self):
+        from app.tasks.feedback_dispatch import retry_failed_feedback
+
+        task_mock = MagicMock()
+
+        with patch("app.tasks.feedback_dispatch._retry_failed", new=AsyncMock(return_value={"dispatched": 0})):
+            result = retry_failed_feedback.run.__func__(task_mock, 10)
+
+        assert result["dispatched"] == 0
+
+    def test_purge_deleted_feedback_delegates(self):
+        from app.tasks.feedback_dispatch import purge_deleted_feedback
+
+        task_mock = MagicMock()
+
+        with patch("app.tasks.feedback_dispatch._purge_deleted", new=AsyncMock(return_value={"deleted": 0})):
+            result = purge_deleted_feedback.run.__func__(task_mock)
+
+        assert result["deleted"] == 0
+
+    def test_sync_discussion_states_delegates(self):
+        from app.tasks.feedback_dispatch import sync_discussion_states
+
+        task_mock = MagicMock()
+
+        with patch("app.tasks.feedback_dispatch._sync_states", new=AsyncMock(return_value={"updated": 0})):
+            result = sync_discussion_states.run.__func__(task_mock)
+
+        assert result["updated"] == 0

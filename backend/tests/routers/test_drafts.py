@@ -1348,3 +1348,504 @@ class TestArchiveDraft:
         draft = await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
         resp = await auth_client.post(f"/api/drafts/{draft.id}/archive")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# POST /api/drafts — file-too-large and CSV tags (lines 137, 158-159)
+# ---------------------------------------------------------------------------
+
+
+class TestCreateDraftEdgeCases:
+    @pytest.fixture(autouse=True)
+    def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+
+    async def test_file_too_large_returns_413(self, auth_client: AsyncClient, monkeypatch):
+        import app.routers.drafts as _drafts
+
+        monkeypatch.setattr(_drafts.settings, "max_upload_size", 10)
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("big.wif", _WIF, "application/octet-stream")},
+            data={"name": "Big Draft"},
+        )
+        assert resp.status_code == 413
+
+    async def test_tags_csv_fallback_parsed(self, auth_client: AsyncClient):
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "Tagged Draft", "tags": "red, Blue, GREEN"},
+        )
+        assert resp.status_code == 201
+        assert sorted(resp.json()["tags"]) == ["blue", "green", "red"]
+
+    async def test_tags_json_array_accepted(self, auth_client: AsyncClient):
+        import json
+
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "JSON Tags", "tags": json.dumps(["Alpha", "Beta"])},
+        )
+        assert resp.status_code == 201
+        assert sorted(resp.json()["tags"]) == ["alpha", "beta"]
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/drafts/{draft_id} — validation branches (lines 253, 258, 261)
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateDraft:
+    async def test_no_fields_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(f"/api/drafts/{draft.id}", json={})
+        assert resp.status_code == 400
+
+    async def test_empty_name_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(f"/api/drafts/{draft.id}", json={"name": "  "})
+        assert resp.status_code == 400
+
+    async def test_empty_description_sets_null(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        draft.description = "old description"
+        await db_session.commit()
+        resp = await auth_client.patch(f"/api/drafts/{draft.id}", json={"description": ""})
+        assert resp.status_code == 200
+        assert resp.json()["description"] is None
+
+    async def test_name_update_succeeds(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(f"/api/drafts/{draft.id}", json={"name": "New Name"})
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "New Name"
+
+    async def test_nonexistent_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(f"/api/drafts/{uuid.uuid4()}", json={"name": "x"})
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.patch(f"/api/drafts/{uuid.uuid4()}", json={"name": "x"})
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /api/drafts/{draft_id}/preview — success path (lines 283-284)
+# ---------------------------------------------------------------------------
+
+
+class TestGetPreviewSuccess:
+    async def test_returns_png_when_preview_exists(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        preview_key = storage.save_preview(draft_id, _fake_png())
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Preview Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            preview_path=preview_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/preview")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+
+# ---------------------------------------------------------------------------
+# GET /api/drafts/{draft_id}/drawdown_preview (lines 293-297)
+# ---------------------------------------------------------------------------
+
+
+class TestGetDrawdownPreview:
+    async def test_returns_404_when_no_drawdown_preview(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown_preview")
+        assert resp.status_code == 404
+
+    async def test_returns_404_for_other_users_draft(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        draft = await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown_preview")
+        assert resp.status_code == 404
+
+    async def test_returns_png_when_preview_exists(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        preview_key = storage.save_drawdown_preview(_fake_png(4, 4))
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Drawdown Preview Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            drawdown_preview_path=preview_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown_preview")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "image/png"
+
+    async def test_unauthenticated_returns_401(
+        self, raw_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await raw_client.get(f"/api/drafts/{draft.id}/drawdown_preview")
+        assert resp.status_code == 401
+
+    async def test_nonexistent_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/drafts/{uuid.uuid4()}/drawdown_preview")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /api/drafts/{draft_id}/preview/svg — rendering exception (lines 313-314)
+# ---------------------------------------------------------------------------
+
+
+class TestGetPreviewSvgRenderingError:
+    async def test_rendering_exception_returns_500(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, monkeypatch
+    ):
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="SVG Error Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        def _raise_load(*_a):
+            raise RuntimeError("corrupt")
+
+        monkeypatch.setattr(rendering, "load_draft", _raise_load)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/preview/svg")
+        assert resp.status_code == 500
+        assert "SVG rendering failed" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# GET /{draft_id}/drawdown (tiled path) — edge cases (lines 340, 342, 405-406)
+# ---------------------------------------------------------------------------
+
+
+class TestGetDrawdownTiledEdgeCases:
+    async def test_no_wif_path_with_start_row_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=4")
+        assert resp.status_code == 404
+
+    async def test_wif_file_missing_from_storage_returns_404(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/missing/file.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=4")
+        assert resp.status_code == 404
+
+    async def test_generic_render_exception_returns_500(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        monkeypatch,
+    ):
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Tiled Error Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            warp_threads=4,
+            weft_threads=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        def _raise_tile(*_a, **_kw):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(rendering, "render_drawdown_tile", _raise_tile)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown?start_row=0&row_count=2")
+        assert resp.status_code == 500
+        assert "Drawdown rendering failed" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# GET /{draft_id}/drawdown (non-tiled path) — storage miss + exception (lines 450, 478-479)
+# ---------------------------------------------------------------------------
+
+
+class TestGetDrawdownNonTiledEdgeCases:
+    async def test_wif_file_missing_from_storage_returns_404(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/missing/original.wif")
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
+        assert resp.status_code == 404
+
+    async def test_generic_render_exception_returns_500(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        monkeypatch,
+    ):
+        import app.services.storage as storage
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Render Error Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            num_shafts=4,
+            num_treadles=4,
+            warp_threads=4,
+            weft_threads=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        def _raise_render(*_a, **_kw):
+            raise RuntimeError("crash")
+
+        monkeypatch.setattr(rendering, "render_drawdown_only", _raise_render)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/drawdown")
+        assert resp.status_code == 500
+        assert "Drawdown rendering failed" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# POST /{draft_id}/generate-liftplan — ValueError (lines 626-627)
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateLiftplanValueError:
+    async def test_compute_liftplan_value_error_returns_400(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        monkeypatch,
+    ):
+        import app.services.storage as storage
+        from app.services import wif_parser
+
+        draft_id = uuid.uuid4()
+        wif_key = storage.save_wif(draft_id, "test.wif", _WIF)
+        draft = Draft(
+            id=draft_id,
+            owner_id=test_user.id,
+            name="Liftplan Error Draft",
+            wif_filename="test.wif",
+            wif_path=wif_key,
+            has_treadling=True,
+            has_tieup=True,
+            has_liftplan=False,
+            num_shafts=4,
+            num_treadles=4,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        def _raise_liftplan(_b):
+            raise ValueError("bad wif")
+
+        monkeypatch.setattr(wif_parser, "compute_liftplan", _raise_liftplan)
+        resp = await auth_client.post(f"/api/drafts/{draft.id}/generate-liftplan")
+        assert resp.status_code == 400
+        assert "bad wif" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# POST /{draft_id}/override-metadata — ValueError from wif_modifier (lines 686-687)
+# ---------------------------------------------------------------------------
+
+
+class TestOverrideMetadataValueError:
+    async def test_set_weaving_int_value_error_returns_400(
+        self,
+        auth_client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+        mock_storage: dict,
+        monkeypatch,
+    ):
+        from app.services import wif_modifier
+
+        mock_storage["drafts/x/original.wif"] = _WIF
+        draft = await _insert_draft(db_session, test_user, wif_path="drafts/x/original.wif")
+
+        def _raise_modifier(*_a, **_kw):
+            raise ValueError("invalid")
+
+        monkeypatch.setattr(wif_modifier, "set_weaving_int", _raise_modifier)
+        resp = await auth_client.post(
+            f"/api/drafts/{draft.id}/override-metadata",
+            json={"field": "num_shafts", "value": 8},
+        )
+        assert resp.status_code == 400
+        assert "invalid" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# PATCH /{draft_id}/measurements (lines 735-762)
+# ---------------------------------------------------------------------------
+
+
+class TestPatchMeasurements:
+    async def test_invalid_unit_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(
+            f"/api/drafts/{draft.id}/measurements",
+            json={"unit": "yards", "warp_length": 10.0},
+        )
+        assert resp.status_code == 400
+
+    async def test_negative_warp_length_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(
+            f"/api/drafts/{draft.id}/measurements",
+            json={"unit": "cm", "warp_length": -5.0},
+        )
+        assert resp.status_code == 400
+
+    async def test_negative_weaving_width_returns_400(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(
+            f"/api/drafts/{draft.id}/measurements",
+            json={"unit": "cm", "weaving_width": -1.0},
+        )
+        assert resp.status_code == 400
+
+    async def test_negative_epi_returns_400(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(
+            f"/api/drafts/{draft.id}/measurements",
+            json={"unit": "cm", "epi": -2.0},
+        )
+        assert resp.status_code == 400
+
+    async def test_patch_warp_length_cm_succeeds(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(
+            f"/api/drafts/{draft.id}/measurements",
+            json={"unit": "cm", "warp_length": 200.0},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["warp_length_cm"] == 200.0
+
+    async def test_patch_warp_length_inches_converts_to_cm(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(
+            f"/api/drafts/{draft.id}/measurements",
+            json={"unit": "in", "warp_length": 10.0},
+        )
+        assert resp.status_code == 200
+        assert abs(resp.json()["warp_length_cm"] - 25.4) < 0.01
+
+    async def test_patch_epi_succeeds(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user, wif_path="d/x.wif")
+        resp = await auth_client.patch(
+            f"/api/drafts/{draft.id}/measurements",
+            json={"unit": "cm", "epi": 12.0},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["epi_override"] == 12.0
+
+    async def test_nonexistent_draft_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(
+            f"/api/drafts/{uuid.uuid4()}/measurements",
+            json={"unit": "cm", "warp_length": 100.0},
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.patch(
+            f"/api/drafts/{uuid.uuid4()}/measurements",
+            json={"unit": "cm", "warp_length": 100.0},
+        )
+        assert resp.status_code == 401
+
+    async def test_other_users_draft_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        draft = await _insert_draft(db_session, admin_user, wif_path="d/other.wif")
+        resp = await auth_client.patch(
+            f"/api/drafts/{draft.id}/measurements",
+            json={"unit": "cm", "warp_length": 100.0},
+        )
+        assert resp.status_code == 404

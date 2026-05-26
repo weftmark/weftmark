@@ -1,6 +1,6 @@
 # Test Coverage and Gaps
 
-**Current overall coverage: 75.52%** (1730 tests, last measured 2026-05-18 — see History for recent versions)
+**Current overall coverage: 90.00%** (2692 tests, last measured 2026-05-25 — see History for recent versions)
 
 > **Coverage regression note:** The 86% figure from v0.85.0 was measured against the `tests/` directory only. It has since been discovered that `app/weaving/tests/` (self-contained weaving unit tests) was not in `testpaths` and those test files were not being run. The 75.52% reflects all 1730 tests (including `app/weaving/tests/`) against the full `app/` source tree.
 
@@ -123,3 +123,4 @@ Reassess coverage completeness when:
 | 2026-05-05 | v0.85.0 | 85.93% | Fixed greenlet coverage tracking (`setup.cfg` `concurrency=greenlet`); prior ~65% numbers were systematic undercounts. 908 tests; 7 new auth webhook unit tests added. |
 | 2026-05-15 | v0.145.0 | ~86% | Coverage stable; new features (color replacements, project landing page, reed inventory, tile pre-render) added without regression. |
 | 2026-05-18 | v0.145.x | 75.52% | `itc 75` run: fixed testpaths to include `app/weaving/tests/`; added tests for rendering SVG/drawdown/clip functions, weaving Draft methods, `parse_threading`, `parse_tieup`, `task_history`, and `clerk_auth`. 1730 tests, 0 failures. |
+| 2026-05-25 | v0.189.0 | 90.00% | `itc 90` run: +962 tests across tasks (preview, tiles, maintenance, s3_audit, feedback_dispatch, purge, reparse), services (wif_parser, wif_linter), and infra (setup.cfg concurrency=thread,greenlet to track asyncio.to_thread closures). 2692 tests, 0 failures. |

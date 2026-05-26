@@ -378,3 +378,31 @@ class TestMalformedNumericFields:
         result = lint(content)
         assert isinstance(result, LintResult)
         assert result.weft_threads is None
+
+
+# ---------------------------------------------------------------------------
+# TestMaxIndexUsed — _max_index_used exception paths (lines 158-159, 169-170)
+# ---------------------------------------------------------------------------
+
+
+class TestMaxIndexUsed:
+    def test_missing_section_returns_none(self):
+        # Covers lines 158-159: config.items() raises NoSectionError → caught, return None
+        from configparser import RawConfigParser
+
+        from app.services.wif_linter import _max_index_used
+
+        config = RawConfigParser()
+        result = _max_index_used(config, "NONEXISTENT_SECTION")
+        assert result is None
+
+    def test_non_numeric_token_is_skipped(self):
+        # Covers lines 169-170: non-numeric token in value → ValueError caught, continue
+        content = (
+            b"[WIF]\nVersion=1.1\n"
+            b"[WEAVING]\nShafts=4\nTreadles=4\n"
+            b"[THREADING]\n1=1\n[TIEUP]\n1=1\n"
+            b"[TREADLING]\n1=abc\n2=2\n"
+        )
+        result = lint(content)
+        assert result.effective_num_treadles == 2
