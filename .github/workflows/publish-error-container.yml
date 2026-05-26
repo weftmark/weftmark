@@ -1,0 +1,124 @@
+name: Publish Error Container
+
+# Manual trigger only — builds and publishes the nginx error/maintenance
+# container to ghcr.io. Gated by branch, confirmation, syntax check,
+# and Trivy CVE scan before any image is pushed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to publish (e.g. 1.2.0, latest)"
+        type: string
+        required: true
+      environment:
+        description: "Target environment"
+        type: choice
+        required: true
+        options:
+          - dev
+          - prod
+      confirm:
+        description: "I confirm this publish is intentional and the correct branch is selected"
+        type: boolean
+        required: true
+        default: false
+
+jobs:
+
+  gate-check:
+    name: Gate checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check confirmation
+        if: ${{ !inputs.confirm }}
+        run: |
+          echo "::error::Publish cancelled — confirm checkbox was not checked."
+          exit 1
+
+      - name: Check branch gate
+        run: |
+          REF="${{ github.ref_name }}"
+          ENV="${{ inputs.environment }}"
+          if [[ "$ENV" == "prod" && "$REF" != "main" ]]; then
+            echo "::error::Production publish must be run from main (got: $REF)"
+            exit 1
+          fi
+          if [[ "$ENV" == "dev" && "$REF" != "dev" ]]; then
+            echo "::error::Dev publish must be run from dev (got: $REF)"
+            exit 1
+          fi
+
+  build-scan-push:
+    name: Build, scan, and push
+    runs-on: ubuntu-latest
+    needs: gate-check
+    permissions:
+      packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Dockerfile (syntax check)
+        run: docker buildx build --check -f errors/Dockerfile .
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image (amd64) for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: errors/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ghcr.io/weftmark/weftmark-errors:scan-target
+
+      - name: Scan for critical CVEs (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/weftmark/weftmark-errors:scan-target
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: false
+
+      - name: Build and push (multi-platform)
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: errors/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-${{ inputs.tag }}
+            ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-latest
+
+  summary:
+    name: Job summary
+    runs-on: ubuntu-latest
+    needs: build-scan-push
+    if: always() && needs.build-scan-push.result == 'success'
+    steps:
+      - name: Write summary
+        run: |
+          echo "## Error Container Published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Environment** | \`${{ inputs.environment }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Tag** | \`${{ inputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Images pushed** | \`ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-${{ inputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | \`ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-latest\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Digest** | \`${{ needs.build-scan-push.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Trivy scan** | ✅ No critical CVEs found |" >> "$GITHUB_STEP_SUMMARY"
