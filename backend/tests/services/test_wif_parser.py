@@ -950,6 +950,13 @@ class TestExtractWeftColorStats:
     def test_invalid_bytes_returns_empty(self):
         assert extract_weft_color_stats(b"\xff\xfe invalid") == []
 
+    def test_empty_picks_returns_empty(self):
+        # Covers line 266: total == 0 → return []
+        # WIF with TREADLING section but no entries → 0 picks
+        content = b"[WIF]\nVersion=1.1\n\n[COLOR PALETTE]\nRange=0,255\n\n[COLOR TABLE]\n1=255,0,0\n\n[TREADLING]\n"
+        result = extract_weft_color_stats(content)
+        assert result == []
+
 
 # ---------------------------------------------------------------------------
 # extract_warp_color_stats
@@ -1049,3 +1056,156 @@ class TestExtractWarpColorStats:
 
     def test_invalid_bytes_returns_empty(self):
         assert extract_warp_color_stats(b"\xff\xfe invalid") == []
+
+    def test_bad_warp_color_default_is_ignored(self):
+        # Covers lines 188-189: Color= is non-numeric → exception caught, default stays None
+        content = _warp_stats_wif(
+            num_threads=2,
+            color_table="1=255,0,0\n",
+            warp_default="notanumber",
+        )
+        result = extract_warp_color_stats(content)
+        assert result == []
+
+    def test_bad_warp_colors_value_is_skipped(self):
+        # Covers lines 196-197: WARP COLORS value non-numeric → ValueError caught
+        content = (
+            b"[WIF]\nVersion=1.1\n\n"
+            b"[WEAVING]\nShafts=2\nTreadles=2\nWarp threads=2\n\n"
+            b"[COLOR PALETTE]\nRange=0,255\n\n"
+            b"[COLOR TABLE]\n1=255,0,0\n\n"
+            b"[WARP COLORS]\n1=notanumber\n2=1\n"
+        )
+        result = extract_warp_color_stats(content)
+        assert isinstance(result, list)
+
+    def test_threading_section_bad_keys_exception_caught(self):
+        # Covers lines 211-212: non-integer THREADING keys → max() raises, caught
+        content = (
+            b"[WIF]\nVersion=1.1\n\n"
+            b"[COLOR PALETTE]\nRange=0,255\n\n"
+            b"[COLOR TABLE]\n1=255,0,0\n\n"
+            b"[WARP]\nColor=1\n\n"
+            b"[THREADING]\nbadkey=1\n"
+        )
+        result = extract_warp_color_stats(content)
+        assert result == []
+
+    def test_threads_without_color_in_table_returns_empty(self):
+        # Covers lines 219-220 (continue) and 223-224 (return []):
+        # no default color + no WARP COLORS → all threads get hex_color=None → empty
+        content = (
+            b"[WIF]\nVersion=1.1\n\n"
+            b"[WEAVING]\nShafts=2\nTreadles=2\nWarp threads=2\n\n"
+            b"[COLOR PALETTE]\nRange=0,255\n\n"
+            b"[COLOR TABLE]\n1=255,0,0\n"
+        )
+        result = extract_warp_color_stats(content)
+        assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: extract_colors exception handlers
+# ---------------------------------------------------------------------------
+
+
+class TestExtractColorsEdgeCases:
+    def test_bad_warp_color_default_is_silently_ignored(self):
+        # Covers lines 118-119: Color= non-numeric → exception caught
+        content = wif(
+            "[WARP]\nThreads=4\nColor=notanumber\n\n[COLOR TABLE]\n1=255,0,0\n\n[COLOR PALETTE]\nRange=0,255\n"
+        )
+        result = extract_colors(content)
+        assert isinstance(result, list)
+
+    def test_bad_warp_colors_value_is_skipped(self):
+        # Covers lines 126-127: WARP COLORS non-numeric → ValueError caught, continue
+        content = wif(
+            "[WARP]\nThreads=2\nColor=1\n\n"
+            "[WARP COLORS]\n1=notanumber\n\n"
+            "[COLOR TABLE]\n1=255,0,0\n\n"
+            "[COLOR PALETTE]\nRange=0,255\n"
+        )
+        result = extract_colors(content)
+        assert isinstance(result, list)
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: parse_threading exception handlers + fallbacks
+# ---------------------------------------------------------------------------
+
+
+class TestParseThreadingEdgeCases:
+    def test_latin1_encoded_wif_is_parsed(self):
+        # Covers lines 308-309: UnicodeDecodeError triggers latin-1 fallback
+        text = "[WIF]\nVersion=1.1\n\n[THREADING]\n1=1\n2=2\n\n[TIEUP]\n1=1\n2=2\n"
+        wif_bytes = (text + "\n; caf\xe9\n").encode("latin-1")
+        result = parse_threading(wif_bytes)
+        assert result.warp_thread_count == 2
+
+    def test_bad_warp_default_color_is_ignored(self):
+        # Covers lines 335-336: WARP Color= non-numeric → exception caught
+        content = wif(
+            "[THREADING]\n1=1\n2=2\n3=3\n4=4\n\n"
+            "[WARP]\nThreads=4\nColor=notanumber\n\n"
+            "[COLOR TABLE]\n1=255,0,0\n\n"
+            "[COLOR PALETTE]\nRange=0,255\n"
+        )
+        result = parse_threading(content)
+        assert result.warp_thread_count == 4
+
+    def test_bad_warp_colors_entry_is_skipped(self):
+        # Covers lines 340-344: WARP COLORS non-numeric → ValueError caught, continue
+        content = wif(
+            "[THREADING]\n1=1\n2=2\n3=3\n4=4\n\n"
+            "[WARP]\nThreads=4\nColor=1\n\n"
+            "[WARP COLORS]\n1=notanumber\n2=1\n\n"
+            "[COLOR TABLE]\n1=255,0,0\n\n"
+            "[COLOR PALETTE]\nRange=0,255\n"
+        )
+        result = parse_threading(content)
+        assert result.warp_thread_count == 4
+
+    def test_no_color_table_returns_empty_color_names(self):
+        # Covers line 465: _color_name_table early-returns when no COLOR TABLE
+        content = wif("[THREADING]\n1=1\n2=2\n3=3\n4=4\n")
+        result = parse_threading(content)
+        assert result.color_names == {}
+
+    def test_color_name_table_extracts_name_token(self):
+        # Covers lines 473-476: non-numeric token in COLOR TABLE value → name extracted
+        content = wif(
+            "[THREADING]\n1=1\n2=2\n3=3\n4=4\n\n[COLOR TABLE]\n1=255,0,0,Red\n\n[COLOR PALETTE]\nRange=0,255\n"
+        )
+        result = parse_threading(content)
+        assert "Red" in result.color_names.values()
+
+    def test_color_name_table_bad_key_is_skipped(self):
+        # Covers line 477: non-integer COLOR TABLE key → outer except catches, continue
+        content = wif(
+            "[THREADING]\n1=1\n2=2\n3=3\n4=4\n\n"
+            "[COLOR TABLE]\nbadkey=255,0,0\n1=0,255,0\n\n"
+            "[COLOR PALETTE]\nRange=0,255\n"
+        )
+        result = parse_threading(content)
+        assert isinstance(result.color_names, dict)
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: parse_tieup — latin-1 fallback + empty section raises
+# ---------------------------------------------------------------------------
+
+
+class TestParseTieupEdgeCases:
+    def test_latin1_encoded_wif_is_parsed(self):
+        # Covers lines 373-374: UnicodeDecodeError triggers latin-1 fallback
+        text = "[WIF]\nVersion=1.1\n\n[TIEUP]\n1=1\n2=2\n\n; caf\xe9\n"
+        wif_bytes = text.encode("latin-1")
+        result = parse_tieup(wif_bytes)
+        assert result.num_treadles >= 2
+
+    def test_empty_tieup_section_raises(self):
+        # Covers line 385: empty TIEUP → raises ValueError
+        content = b"[WIF]\nVersion=1.1\n\n[TIEUP]\n"
+        with pytest.raises(ValueError, match="empty"):
+            parse_tieup(content)

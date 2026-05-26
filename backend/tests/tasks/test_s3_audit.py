@@ -21,7 +21,7 @@ def _session_factory(db: AsyncSession):
             return db
 
         async def __aexit__(self, *args):
-            pass
+            pass  # no cleanup needed
 
     class _Factory:
         def __call__(self, *args, **kwargs):
@@ -312,3 +312,242 @@ class TestDoScanS3Path:
             await _do_scan()
 
         mock_engine_and_session.dispose.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# TestCeleryWrapper — cover line 28 (asyncio.run wrapper)
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# TestDoScanS3PathWithAssets — photo/receipt paths collected from DB models
+# ---------------------------------------------------------------------------
+
+
+class TestDoScanS3PathWithAssets:
+    async def test_yarn_photo_path_not_orphaned(self, db_session, test_user, mock_engine_and_session):
+        # Covers lines 86-87: yarn.photo_path is collected into db_paths
+        import app.services.storage as _storage
+        from app.models.yarn import Yarn
+
+        photo_key = f"yarn/{uuid.uuid4().hex}/photo.jpg"
+        _storage._put(photo_key, b"fake-jpg")
+
+        yarn = Yarn(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            brand="TestBrand",
+            name="TestYarn",
+            photo_path=photo_key,
+        )
+        db_session.add(yarn)
+        await db_session.commit()
+
+        page = {"Contents": [{"Key": photo_key, "Size": 8, "LastModified": datetime.now(timezone.utc)}]}
+        s3 = _mock_s3([page])
+
+        with (
+            patch("app.config.get_settings", return_value=_s3_settings()),
+            patch("boto3.client", return_value=s3),
+            patch("redis.from_url", return_value=MagicMock()),
+        ):
+            result = await _do_scan()
+
+        assert result["orphaned_count"] == 0
+
+    async def test_loom_photo_path_not_orphaned(self, db_session, test_user, mock_engine_and_session):
+        # Covers lines 91-92: loom.photo_path is collected into db_paths
+        import app.services.storage as _storage
+        from app.models.loom import Loom
+
+        photo_key = f"looms/{uuid.uuid4().hex}/photo.jpg"
+        _storage._put(photo_key, b"fake-jpg")
+
+        loom = Loom(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            loom_type="table",
+            manufacturer="BrandX",
+            model_name="TestLoom",
+            photo_path=photo_key,
+        )
+        db_session.add(loom)
+        await db_session.commit()
+
+        page = {"Contents": [{"Key": photo_key, "Size": 8, "LastModified": datetime.now(timezone.utc)}]}
+        s3 = _mock_s3([page])
+
+        with (
+            patch("app.config.get_settings", return_value=_s3_settings()),
+            patch("boto3.client", return_value=s3),
+            patch("redis.from_url", return_value=MagicMock()),
+        ):
+            result = await _do_scan()
+
+        assert result["orphaned_count"] == 0
+
+    async def test_loom_version_photo_path_not_orphaned(self, db_session, test_user, mock_engine_and_session):
+        # Covers lines 96-97: loom_version_photo.path is collected into db_paths
+        from datetime import date
+
+        import app.services.storage as _storage
+        from app.models.loom import Loom, LoomVersion, LoomVersionPhoto
+
+        photo_key = f"loom-version-photos/{uuid.uuid4().hex}/photo.jpg"
+        _storage._put(photo_key, b"fake-jpg")
+
+        loom = Loom(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            loom_type="table",
+            manufacturer="BrandX",
+            model_name="TestLoom2",
+        )
+        db_session.add(loom)
+        await db_session.flush()
+
+        version = LoomVersion(
+            id=uuid.uuid4(),
+            loom_id=loom.id,
+            version_number=1,
+            effective_date=date.today(),
+        )
+        db_session.add(version)
+        await db_session.flush()
+
+        vp = LoomVersionPhoto(
+            id=uuid.uuid4(),
+            loom_version_id=version.id,
+            filename="photo.jpg",
+            path=photo_key,
+        )
+        db_session.add(vp)
+        await db_session.commit()
+
+        page = {"Contents": [{"Key": photo_key, "Size": 8, "LastModified": datetime.now(timezone.utc)}]}
+        s3 = _mock_s3([page])
+
+        with (
+            patch("app.config.get_settings", return_value=_s3_settings()),
+            patch("boto3.client", return_value=s3),
+            patch("redis.from_url", return_value=MagicMock()),
+        ):
+            result = await _do_scan()
+
+        assert result["orphaned_count"] == 0
+
+    async def test_loom_version_receipt_path_not_orphaned(self, db_session, test_user, mock_engine_and_session):
+        # Covers lines 101-102: loom_version_receipt.path is collected into db_paths
+        from datetime import date
+
+        import app.services.storage as _storage
+        from app.models.loom import Loom, LoomVersion, LoomVersionReceipt
+
+        receipt_key = f"loom-version-receipts/{uuid.uuid4().hex}/receipt.pdf"
+        _storage._put(receipt_key, b"fake-pdf")
+
+        loom = Loom(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            loom_type="floor",
+            manufacturer="BrandY",
+            model_name="FloorLoom",
+        )
+        db_session.add(loom)
+        await db_session.flush()
+
+        version = LoomVersion(
+            id=uuid.uuid4(),
+            loom_id=loom.id,
+            version_number=1,
+            effective_date=date.today(),
+        )
+        db_session.add(version)
+        await db_session.flush()
+
+        vr = LoomVersionReceipt(
+            id=uuid.uuid4(),
+            loom_version_id=version.id,
+            filename="receipt.pdf",
+            path=receipt_key,
+        )
+        db_session.add(vr)
+        await db_session.commit()
+
+        page = {"Contents": [{"Key": receipt_key, "Size": 8, "LastModified": datetime.now(timezone.utc)}]}
+        s3 = _mock_s3([page])
+
+        with (
+            patch("app.config.get_settings", return_value=_s3_settings()),
+            patch("boto3.client", return_value=s3),
+            patch("redis.from_url", return_value=MagicMock()),
+        ):
+            result = await _do_scan()
+
+        assert result["orphaned_count"] == 0
+
+    async def test_project_photo_path_not_orphaned(self, db_session, test_user, mock_engine_and_session):
+        # Covers lines 106-107: project_photo.file_path is collected into db_paths
+        import app.services.storage as _storage
+        from app.models.draft import Draft
+        from app.models.project import Project, ProjectPhoto
+
+        photo_key = f"project-photos/{uuid.uuid4().hex}/photo.jpg"
+        _storage._put(photo_key, b"fake-jpg")
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="PPDraft",
+            wif_filename="pp.wif",
+            wif_path="drafts/pp.wif",
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="PPProject",
+            project_type="treadle",
+            total_picks=4,
+        )
+        db_session.add(project)
+        await db_session.flush()
+
+        pp = ProjectPhoto(
+            id=uuid.uuid4(),
+            project_id=project.id,
+            file_path=photo_key,
+            filename="photo.jpg",
+        )
+        db_session.add(pp)
+        await db_session.commit()
+
+        page = {"Contents": [{"Key": photo_key, "Size": 8, "LastModified": datetime.now(timezone.utc)}]}
+        s3 = _mock_s3([page])
+
+        with (
+            patch("app.config.get_settings", return_value=_s3_settings()),
+            patch("boto3.client", return_value=s3),
+            patch("redis.from_url", return_value=MagicMock()),
+        ):
+            result = await _do_scan()
+
+        assert result["orphaned_count"] == 0
+
+
+class TestCeleryWrapper:
+    def test_run_s3_orphan_scan_delegates(self):
+        from app.tasks.s3_audit import run_s3_orphan_scan
+
+        task_mock = MagicMock()
+
+        with patch(
+            "app.tasks.s3_audit._do_scan",
+            new=AsyncMock(return_value={"orphaned_count": 0, "not_applicable": True}),
+        ):
+            result = run_s3_orphan_scan.run.__func__(task_mock)
+
+        assert result["orphaned_count"] == 0

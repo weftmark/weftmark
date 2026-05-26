@@ -565,3 +565,141 @@ class TestYarnPhoto:
             files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
         )
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/yarn/{yarn_id}/colorway (lines 429-442)
+# ---------------------------------------------------------------------------
+
+
+class TestPatchYarnColorway:
+    async def test_update_color_name(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client, color_name="Red")
+        resp = await auth_client.patch(
+            f"/api/yarn/{yarn['id']}/colorway",
+            json={"color_name": "Blue"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["color_name"] == "Blue"
+
+    async def test_clear_color_name_with_empty_string(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client, color_name="Red")
+        resp = await auth_client.patch(
+            f"/api/yarn/{yarn['id']}/colorway",
+            json={"color_name": ""},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["color_name"] is None
+
+    async def test_set_colorway_photo_url(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        resp = await auth_client.patch(
+            f"/api/yarn/{yarn['id']}/colorway",
+            json={"colorway_photo_url": "https://example.com/photo.jpg"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ravelry_colorway_photo_url"] == "https://example.com/photo.jpg"
+
+    async def test_set_colorway_thumbnail_url(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        resp = await auth_client.patch(
+            f"/api/yarn/{yarn['id']}/colorway",
+            json={"colorway_thumbnail_url": "https://example.com/thumb.jpg"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ravelry_colorway_thumbnail_url"] == "https://example.com/thumb.jpg"
+
+    async def test_clear_photos_clears_urls(self, auth_client: AsyncClient):
+        yarn = await _create_yarn(auth_client)
+        await auth_client.patch(
+            f"/api/yarn/{yarn['id']}/colorway",
+            json={
+                "colorway_photo_url": "https://example.com/photo.jpg",
+                "colorway_thumbnail_url": "https://example.com/thumb.jpg",
+            },
+        )
+        resp = await auth_client.patch(
+            f"/api/yarn/{yarn['id']}/colorway",
+            json={"clear_photos": True},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ravelry_colorway_photo_url"] is None
+        assert resp.json()["ravelry_colorway_thumbnail_url"] is None
+
+    async def test_nonexistent_yarn_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.patch(
+            f"/api/yarn/{uuid.uuid4()}/colorway",
+            json={"color_name": "Blue"},
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.patch(
+            f"/api/yarn/{uuid.uuid4()}/colorway",
+            json={"color_name": "Blue"},
+        )
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# PUT /api/yarn/{yarn_id}/photo — image processing exception (lines 475-476)
+# ---------------------------------------------------------------------------
+
+
+class TestYarnPhotoImageError:
+    async def test_corrupt_image_returns_400(self, auth_client: AsyncClient, monkeypatch):
+        from app.routers import yarn as yarn_router
+
+        def _bad_resize(_data):
+            raise RuntimeError("corrupt image")
+
+        yarn = await _create_yarn(auth_client)
+        monkeypatch.setattr(yarn_router, "resize_to_jpeg", _bad_resize)
+        resp = await auth_client.put(
+            f"/api/yarn/{yarn['id']}/photo",
+            files={"file": ("photo.jpg", _make_jpeg(), "image/jpeg")},
+        )
+        assert resp.status_code == 400
+        assert "Could not process image" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# GET /api/yarn/properties — lazy fetch when cache is None (lines 349-351)
+# ---------------------------------------------------------------------------
+
+
+class TestGetYarnPropertiesLazyFetch:
+    async def test_fetches_when_cache_empty(self, auth_client: AsyncClient, monkeypatch):
+        import app.routers.yarn as yarn_router
+
+        monkeypatch.setattr(yarn_router, "_properties_cache", None)
+        mock_result = [
+            {
+                "id": 1,
+                "name": "Weight",
+                "permalink": "weight",
+                "yarn_attributes": [{"id": 10, "name": "DK", "permalink": "dk", "description": None}],
+            }
+        ]
+
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setattr(
+            yarn_router, "_basic_auth_get", AsyncMock(return_value={"yarn_attribute_groups": mock_result})
+        )
+        resp = await auth_client.get("/api/yarn/properties")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["name"] == "Weight"
+
+    async def test_serves_from_cache_when_populated(self, auth_client: AsyncClient, monkeypatch):
+        import app.routers.yarn as yarn_router
+        from app.routers.yarn import YarnAttributeGroupSchema
+
+        cached = [YarnAttributeGroupSchema(id=1, name="Weight", permalink="weight", attributes=[])]
+        monkeypatch.setattr(yarn_router, "_properties_cache", cached)
+        resp = await auth_client.get("/api/yarn/properties")
+        assert resp.status_code == 200
+        assert resp.json()[0]["name"] == "Weight"

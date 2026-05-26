@@ -1448,3 +1448,266 @@ class TestExpireProjectSlugs:
 
         await db_session.refresh(project)
         assert project.share_slug == "not-yet-expired"
+
+
+# ---------------------------------------------------------------------------
+# check_credential_expiry — exception handler (lines 426-427)
+# ---------------------------------------------------------------------------
+
+
+class TestCheckCredentialExpiryExceptionHandler:
+    @pytest.mark.asyncio
+    async def test_exception_in_send_alerts_is_caught(self, db_session):
+        from app.tasks.maintenance import check_credential_expiry
+
+        _cred(db_session, expires_in_days=5, last_alerted_hours_ago=None)
+        await db_session.commit()
+
+        with patch(
+            "app.tasks.maintenance._send_credential_alerts",
+            side_effect=Exception("network down"),
+        ):
+            result = check_credential_expiry.run.__func__(_make_task())
+
+        assert result["alerted"] == 0
+        assert "skipped" in result
+
+
+# ---------------------------------------------------------------------------
+# prune_inactive_project_tiles — exception handler (lines 745-746)
+# ---------------------------------------------------------------------------
+
+
+class TestPruneInactiveProjectTilesExceptionHandler:
+    @pytest.mark.asyncio
+    async def test_storage_exception_is_caught(self, db_session, test_user):
+        import uuid as _uuid
+
+        import app.services.storage as storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.maintenance import prune_inactive_project_tiles
+
+        draft = Draft(
+            id=_uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Draft",
+            wif_filename="test.wif",
+            wif_path=storage.save_wif(_uuid.uuid4(), "test.wif", b"[WIF]"),
+        )
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Tile Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        from sqlalchemy import update as _update
+
+        from app.models.project import Project as _Project
+
+        await db_session.execute(_update(_Project).where(_Project.id == project.id).values(updated_at=_ago(days=20)))
+        await db_session.commit()
+
+        with patch("app.services.storage.delete_project_tiles", side_effect=Exception("S3 error")):
+            result = prune_inactive_project_tiles.run.__func__(_make_task(), inactive_days=10)
+
+        assert isinstance(result, dict)
+
+
+# ---------------------------------------------------------------------------
+# TestDailyHealthCheck — cover lines 185-286
+# ---------------------------------------------------------------------------
+
+
+def _ok_service(name: str = "postgres"):
+    from app.routers.health import ReadinessService
+
+    return ReadinessService(name=name, ok=True, critical=True)
+
+
+def _ok_response():
+    from app.routers.health import ReadinessResponse
+
+    return ReadinessResponse(
+        status="ok",
+        services=[_ok_service("postgres"), _ok_service("s3"), _ok_service("clerk"), _ok_service("smtp")],
+        checked_at="2026-01-01T00:00:00+00:00",
+    )
+
+
+class _MockAsyncSession:
+    async def __aenter__(self):
+        return MagicMock()
+
+    async def __aexit__(self, *_):
+        pass  # no cleanup needed
+
+
+class TestDailyHealthCheck:
+    def _run(self, mock_response):
+        from app.tasks.maintenance import daily_health_check
+
+        with (
+            patch("app.database.AsyncSessionLocal", return_value=_MockAsyncSession()),
+            patch("app.routers.admin._probe_postgres", new=AsyncMock(return_value=_ok_service("postgres"))),
+            patch("app.routers.admin._probe_s3", new=AsyncMock(return_value=_ok_service("s3"))),
+            patch("app.routers.admin._probe_clerk", new=AsyncMock(return_value=_ok_service("clerk"))),
+            patch("app.routers.admin._probe_smtp", new=AsyncMock(return_value=_ok_service("smtp"))),
+            patch(
+                "app.services.clerk_webhook_probe.run_webhook_probe", new=AsyncMock(return_value=_ok_service("webhook"))
+            ),
+            patch("app.routers.health._build_readiness_from_results", return_value=mock_response),
+        ):
+            return daily_health_check.run.__func__(_make_task())
+
+    def test_ok_status_returns_dict(self, db_session):
+        result = self._run(_ok_response())
+        assert result["status"] == "ok"
+        assert result["failed_services"] == []
+
+    def test_returns_failed_services_list(self, db_session):
+        from app.routers.health import ReadinessResponse, ReadinessService
+
+        degraded_svc = ReadinessService(name="smtp", ok=False, critical=False)
+        degraded_response = ReadinessResponse(
+            status="degraded",
+            services=[_ok_service("postgres"), degraded_svc],
+            checked_at="2026-01-01T00:00:00+00:00",
+        )
+
+        with patch("app.services.email.send_health_degraded_alert", new=AsyncMock()):
+            result = self._run(degraded_response)
+
+        assert result["status"] == "degraded"
+        assert "smtp" in result["failed_services"]
+
+    def test_degraded_no_superusers_no_email_sent(self, db_session):
+        from app.routers.health import ReadinessResponse, ReadinessService
+
+        degraded_response = ReadinessResponse(
+            status="degraded",
+            services=[ReadinessService(name="s3", ok=False, critical=False)],
+            checked_at="2026-01-01T00:00:00+00:00",
+        )
+
+        mock_send = MagicMock()
+        with patch("app.services.email.send_health_degraded_alert", mock_send):
+            result = self._run(degraded_response)
+
+        mock_send.assert_not_called()
+        assert result["status"] == "degraded"
+
+    def test_run_exception_returns_error_status(self):
+        # Covers lines 216-217: exception inside _run() → error ReadinessResponse returned
+        from app.tasks.maintenance import daily_health_check
+
+        class _RaisingSession:
+            async def __aenter__(self):
+                raise RuntimeError("db unavailable")
+
+            async def __aexit__(self, *_):
+                pass  # no cleanup needed
+
+        with patch("app.database.AsyncSessionLocal", return_value=_RaisingSession()):
+            result = daily_health_check.run.__func__(_make_task())
+
+        assert result["status"] == "error"
+
+    def test_degraded_with_superuser_sends_email(self):
+        # Covers lines 267-283: superuser in DB + degraded → email send attempted
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+
+        from app.config import get_settings
+        from app.models.user import User
+        from app.routers.health import ReadinessResponse, ReadinessService
+
+        settings = get_settings()
+        engine = create_engine(settings.database_url_sync)
+        superuser_id = uuid.uuid4()
+        try:
+            with Session(engine) as sync_db:
+                su = User(
+                    id=superuser_id,
+                    clerk_user_id=f"user_su_{superuser_id.hex[:8]}",
+                    email="su@example.com",
+                    display_name="Test Superuser",
+                    is_admin=True,
+                    is_superuser=True,
+                    is_active=True,
+                )
+                sync_db.add(su)
+                sync_db.commit()
+
+            degraded_response = ReadinessResponse(
+                status="degraded",
+                services=[ReadinessService(name="s3", ok=False, critical=False)],
+                checked_at="2026-01-01T00:00:00+00:00",
+            )
+
+            mock_send = AsyncMock()
+            with patch("app.services.email.send_health_degraded_alert", mock_send):
+                result = self._run(degraded_response)
+
+            mock_send.assert_called_once()
+            assert result["status"] == "degraded"
+        finally:
+            from sqlalchemy import delete as _del
+
+            with Session(engine) as sync_db:
+                sync_db.execute(_del(User).where(User.id == superuser_id))
+                sync_db.commit()
+            engine.dispose()
+
+    def test_degraded_with_superuser_email_exception_is_swallowed(self):
+        # Covers lines 282-283: email send raises → exception swallowed, status still returned
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session
+
+        from app.config import get_settings
+        from app.models.user import User
+        from app.routers.health import ReadinessResponse, ReadinessService
+
+        settings = get_settings()
+        engine = create_engine(settings.database_url_sync)
+        superuser_id = uuid.uuid4()
+        try:
+            with Session(engine) as sync_db:
+                su = User(
+                    id=superuser_id,
+                    clerk_user_id=f"user_su_{superuser_id.hex[:8]}",
+                    email="su2@example.com",
+                    display_name="Test Superuser 2",
+                    is_admin=True,
+                    is_superuser=True,
+                    is_active=True,
+                )
+                sync_db.add(su)
+                sync_db.commit()
+
+            degraded_response = ReadinessResponse(
+                status="degraded",
+                services=[ReadinessService(name="s3", ok=False, critical=False)],
+                checked_at="2026-01-01T00:00:00+00:00",
+            )
+
+            mock_send = AsyncMock(side_effect=RuntimeError("SMTP down"))
+            with patch("app.services.email.send_health_degraded_alert", mock_send):
+                result = self._run(degraded_response)
+
+            assert result["status"] == "degraded"
+        finally:
+            from sqlalchemy import delete as _del
+
+            with Session(engine) as sync_db:
+                sync_db.execute(_del(User).where(User.id == superuser_id))
+                sync_db.commit()
+            engine.dispose()
