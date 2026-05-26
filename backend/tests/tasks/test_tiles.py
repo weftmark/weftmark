@@ -188,6 +188,74 @@ class TestRenderAndStoreTiles:
         assert count == 0
         save_fn.assert_not_called()
 
+    def test_nonempty_color_replacements_covers_apply_branch(self):
+        # Covers lines 159-160: color_replacements dict is truthy → apply called
+        count = _render(color_replacements={"#c83232": "#3232c8"})
+        assert count >= 1
+
+    def test_empty_draft_returns_zero(self):
+        # Covers lines 164-166: warp_count=0 → early return 0
+        mock_draft = MagicMock()
+        mock_draft.warp = []
+        mock_draft.weft = []
+        mock_draft.shafts = [MagicMock()] * 4
+
+        mock_rendering = MagicMock()
+        mock_rendering.load_draft.return_value = mock_draft
+        mock_rendering.DRAWDOWN_SCALE = 16
+
+        count = _render_and_store_tiles(
+            b"irrelevant",
+            _settings(),
+            mock_rendering,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            entity_id=uuid.uuid4(),
+            entity_label="draft_id",
+        )
+        assert count == 0
+
+    def test_pixel_limit_reduces_effective_scale(self):
+        # Covers lines 180-188: 1000-thread draft triggers pixel-limit cap
+        mock_draft = MagicMock()
+        mock_draft.warp = [MagicMock()] * 1000
+        mock_draft.weft = [MagicMock()] * 1000
+        mock_draft.shafts = [MagicMock()] * 4
+
+        mock_rendering = MagicMock()
+        mock_rendering.load_draft.return_value = mock_draft
+        mock_rendering.DRAWDOWN_SCALE = 16  # effective_scale=16 before cap
+
+        mock_settings = MagicMock()
+        mock_settings.render_max_width = 16000  # yields effective_scale 16 for 1000 threads
+        mock_settings.tile_row_count = 100
+
+        mock_image = MagicMock()
+        mock_image.crop.return_value = mock_image
+        mock_image.transpose.return_value = mock_image
+
+        image_renderer_cls = MagicMock()
+        mock_renderer = MagicMock()
+        image_renderer_cls.return_value = mock_renderer
+        mock_renderer.make_pil_image.return_value = mock_image
+
+        pil_image_cls = MagicMock()
+
+        _render_and_store_tiles(
+            b"irrelevant",
+            mock_settings,
+            mock_rendering,
+            image_renderer_cls,
+            pil_image_cls,
+            MagicMock(),
+            entity_id=uuid.uuid4(),
+            entity_label="draft_id",
+        )
+
+        # scale should have been capped to <= 9 (sqrt(1e8 / 1010000) ≈ 9)
+        assert image_renderer_cls.call_args[1]["scale"] <= 9
+
 
 # ---------------------------------------------------------------------------
 # Helpers shared by prerender tests
@@ -294,6 +362,32 @@ class TestPrerendeerDraft:
         await db_session.commit()
 
         await _prerender_draft(_task_mock(), draft.id)
+        mock_engine_and_session.dispose.assert_called_once()
+
+    async def test_render_failure_triggers_retry_handler(self, db_session, test_user, mock_engine_and_session):
+        # Covers lines 80-85: exception → task.retry → MaxRetriesExceededError caught
+        import app.services.storage as _storage
+        from app.models.draft import Draft
+        from app.tasks.tiles import _prerender_draft
+
+        wif_key = f"drafts/retry-draft-{uuid.uuid4().hex}.wif"
+        _storage._put(wif_key, MINIMAL_WIF)
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Retry Draft",
+            wif_filename="retry.wif",
+            wif_path=wif_key,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        task = _task_mock()
+        with patch("app.services.rendering.load_draft", side_effect=Exception("render error")):
+            await _prerender_draft(task, draft.id)
+
+        task.retry.assert_called_once()
         mock_engine_and_session.dispose.assert_called_once()
 
 
@@ -404,3 +498,95 @@ class TestPrerenderProject:
 
         await _prerender_project(_task_mock(), project.id)
         mock_engine_and_session.dispose.assert_called_once()
+
+    async def test_lift_project_uses_modified_wif_path(self, db_session, test_user, mock_engine_and_session):
+        # Covers lines 115-117: project_type="lift" + wif_modified_path exists → used
+        import app.services.storage as _storage
+        from app.models.draft import Draft
+        from app.models.project import Project
+        from app.tasks.tiles import _prerender_project
+
+        base_key = f"drafts/base-{uuid.uuid4().hex}.wif"
+        modified_key = f"drafts/mod-{uuid.uuid4().hex}.wif"
+        _storage._put(base_key, MINIMAL_WIF)
+        _storage._put(modified_key, MINIMAL_WIF)
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Lift Draft",
+            wif_filename="lift.wif",
+            wif_path=base_key,
+            wif_modified_path=modified_key,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Lift Project",
+            project_type="lift",
+            total_picks=4,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        await _prerender_project(_task_mock(), project.id)
+        mock_engine_and_session.dispose.assert_called_once()
+
+    async def test_render_failure_triggers_retry_handler(self, db_session, test_user, mock_engine_and_session):
+        # Covers lines 137-142: exception → task.retry → MaxRetriesExceededError caught
+        import app.services.storage as _storage
+        from app.models.project import Project
+        from app.tasks.tiles import _prerender_project
+
+        wif_key = f"drafts/retry-proj-{uuid.uuid4().hex}.wif"
+        _storage._put(wif_key, MINIMAL_WIF)
+
+        draft = await self._make_draft(db_session, test_user, wif_key=wif_key)
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Retry Project",
+            project_type="weave",
+            total_picks=4,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        task = _task_mock()
+        with patch("app.services.rendering.load_draft", side_effect=Exception("render error")):
+            await _prerender_project(task, project.id)
+
+        task.retry.assert_called_once()
+        mock_engine_and_session.dispose.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# TestCeleryWrappers — cover lines 30 and 42 (asyncio.run wrappers)
+# ---------------------------------------------------------------------------
+
+
+class TestCeleryWrappers:
+    def test_prerender_drawdown_tiles_delegates(self):
+        from app.tasks.tiles import prerender_drawdown_tiles
+
+        task_mock = MagicMock()
+        task_mock.request.retries = 0
+        task_mock.max_retries = 2
+
+        with patch("app.tasks.tiles._prerender_draft", new=AsyncMock(return_value=None)):
+            prerender_drawdown_tiles.run.__func__(task_mock, str(uuid.uuid4()))
+
+    def test_prerender_project_tiles_delegates(self):
+        from app.tasks.tiles import prerender_project_tiles
+
+        task_mock = MagicMock()
+        task_mock.request.retries = 0
+        task_mock.max_retries = 2
+
+        with patch("app.tasks.tiles._prerender_project", new=AsyncMock(return_value=None)):
+            prerender_project_tiles.run.__func__(task_mock, str(uuid.uuid4()))

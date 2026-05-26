@@ -632,7 +632,7 @@ class TestConsumeInvite:
 
         invite = Invite(
             email="invited@example.com",
-            token="test-token-consume-001",
+            token="test-token-consume-001",  # noqa: S6418
             role="user",
             expires_at=datetime.now(timezone.utc) + timedelta(days=7),
             created_by_id=admin_user.id,

@@ -37,7 +37,7 @@
   {
     "License": "MIT",
     "Name": "SQLAlchemy",
-    "Version": "2.0.49"
+    "Version": "2.0.50"
   },
   {
     "License": "Python Software Foundation License",
@@ -580,6 +580,11 @@
     "Version": "0.17.0"
   },
   {
+    "License": "MIT",
+    "Name": "sentry-sdk",
+    "Version": "2.60.0"
+  },
+  {
     "License": "MIT License",
     "Name": "six",
     "Version": "1.17.0"
@@ -657,7 +662,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "uvicorn",
-    "Version": "0.47.0"
+    "Version": "0.48.0"
   },
   {
     "License": "Apache Software License; MIT License",

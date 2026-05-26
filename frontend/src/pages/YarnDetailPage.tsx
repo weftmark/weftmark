@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getYarn, updateYarn, patchYarnColorway } from "@/api/yarn";
+import { getYarn, updateYarn, patchYarnColorway, getYarnProjects, type YarnProjectRef } from "@/api/yarn";
 import { getRavelryYarnDetail, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
@@ -120,10 +120,21 @@ function EditColorwayModal({
   const inputCls = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      role="presentation"
+      onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-colorway-title"
+        className="w-full max-w-sm rounded-xl border border-border bg-card shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-sm font-semibold">{t("yarnDetailPage.editColorwayTitle")}</h2>
+          <h2 id="edit-colorway-title" className="text-sm font-semibold">{t("yarnDetailPage.editColorwayTitle")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
         </div>
 
@@ -375,6 +386,12 @@ export function YarnDetailPage() {
     enabled: !!id,
   });
 
+  const { data: yarnProjects = [] } = useQuery<YarnProjectRef[]>({
+    queryKey: ["yarn-projects", id],
+    queryFn: () => getYarnProjects(id!),
+    enabled: !!id,
+  });
+
   const { data: ravelryYarnResp } = useQuery({
     queryKey: ["ravelry-yarn-detail", yarn?.ravelry_yarn_id],
     queryFn: async () => {
@@ -579,6 +596,30 @@ export function YarnDetailPage() {
         <section className="rounded-lg border border-border bg-card p-4 space-y-2">
           <h2 className="text-sm font-medium text-card-foreground">{t("yarnDetailPage.notes")}</h2>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{yarn.notes}</p>
+        </section>
+      )}
+
+      {/* Used in projects */}
+      {yarnProjects.length > 0 && (
+        <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h2 className="text-sm font-medium text-card-foreground">{t("yarnDetailPage.usedInProjects")}</h2>
+          <ul className="space-y-1.5">
+            {yarnProjects.map((ref) => (
+              <li key={`${ref.project_id}-${ref.color_hex}`}>
+                <Link
+                  to={`/projects/${ref.project_id}`}
+                  className="flex items-center gap-2 text-sm hover:underline text-card-foreground"
+                >
+                  <span
+                    className="inline-block h-4 w-4 rounded border border-border flex-shrink-0"
+                    style={{ background: ref.color_hex }}
+                  />
+                  <span>{ref.project_name}</span>
+                  <span className="text-xs text-muted-foreground">({ref.project_status})</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

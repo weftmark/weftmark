@@ -124,11 +124,8 @@ async def _delete_user(task: Task, user_id: uuid.UUID) -> None:
         await engine.dispose()
 
 
-async def _purge_storage(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
-    from app.models.draft import Draft
-    from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt
+async def _delete_project_files(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
     from app.models.project import Project, ProjectPhoto
-    from app.models.yarn import Yarn
 
     photos = await db.scalars(
         select(ProjectPhoto).join(Project, ProjectPhoto.project_id == Project.id).where(Project.owner_id == user_id)
@@ -143,14 +140,21 @@ async def _purge_storage(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
         except Exception as exc:
             log.warning("deletion_storage_error project_tiles project_id=%s error=%s", project.id, exc)
 
+
+async def _delete_yarn_files(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
+    from app.models.yarn import Yarn
+
     yarns = await db.scalars(select(Yarn).where(Yarn.owner_id == user_id))
     for y in yarns.all():
         if y.photo_path:
             _safe_delete(storage, y.photo_path)
 
-    looms = await db.scalars(select(Loom).where(Loom.owner_id == user_id))
+
+async def _delete_loom_files(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
+    from app.models.loom import Loom, LoomVersion, LoomVersionPhoto, LoomVersionReceipt
+
     loom_ids = []
-    for loom in looms.all():
+    for loom in (await db.scalars(select(Loom).where(Loom.owner_id == user_id))).all():
         loom_ids.append(loom.id)
         if loom.photo_path:
             _safe_delete(storage, loom.photo_path)
@@ -166,12 +170,23 @@ async def _purge_storage(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
             for r in vr.all():
                 _safe_delete(storage, r.path)
 
+
+async def _delete_draft_files(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
+    from app.models.draft import Draft
+
     drafts = await db.scalars(select(Draft).where(Draft.owner_id == user_id))
     for draft in drafts.all():
         if draft.wif_path:
             _safe_delete(storage, draft.wif_path)
         if draft.preview_path:
             _safe_delete(storage, draft.preview_path)
+
+
+async def _purge_storage(db: AsyncSession, user_id: uuid.UUID, storage) -> None:
+    await _delete_project_files(db, user_id, storage)
+    await _delete_yarn_files(db, user_id, storage)
+    await _delete_loom_files(db, user_id, storage)
+    await _delete_draft_files(db, user_id, storage)
 
 
 def _safe_delete(storage, path: str) -> None:

@@ -5,6 +5,7 @@
 import {
   Activity,
   BookOpen,
+  Check,
   CheckSquare,
   ChevronDown,
   ListChecks,
@@ -96,4 +97,7 @@ export const AppIcons = {
   designLibrary: Layers,
   pickTracking: CheckSquare,
   toolManagement: Wrench,
+
+  // ── Generic ───────────────────────────────────────────────────────────────
+  check: Check,
 } as const;

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import * as Sentry from "@sentry/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { AuthProvider } from "@/context/AuthContext";
@@ -40,6 +41,8 @@ import { ServiceHealthBanner } from "@/components/ServiceHealthBanner";
 import { SystemGate } from "@/components/SystemGate";
 import { clerkPublishableKey, clerkKeyMissing } from "@/lib/env";
 import { useAuth } from "@/hooks/useAuth";
+
+const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AuthRoute({ children, requireAdmin = false, requireSuperuser = false }: { children: ReactNode; requireAdmin?: boolean; requireSuperuser?: boolean }) {
   return (
@@ -83,7 +86,7 @@ export default function App() {
   }
 
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} afterSignInUrl="/home" afterSignUpUrl="/pending" afterSignOutUrl="/sign-out">
+    <ClerkProvider publishableKey={clerkPublishableKey} signInFallbackRedirectUrl="/home" signUpFallbackRedirectUrl="/pending" afterSignOutUrl="/sign-out">
       <VersionGate>
         <SystemGate>
         <QueryClientProvider client={queryClient}>
@@ -92,7 +95,7 @@ export default function App() {
               <DevBanner />
               <ServiceHealthBanner />
               <EulaGate>
-                <Routes>
+                <SentryRoutes>
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/pending" element={<PendingPage />} />
                   <Route path="/register" element={<RegisterPage />} />
@@ -125,7 +128,7 @@ export default function App() {
                   <Route path="/settings" element={<Navigate to="/settings/appearance" replace />} />
                   <Route path="/settings/:section" element={<AuthRoute><SettingsPage /></AuthRoute>} />
                   <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                </SentryRoutes>
               </EulaGate>
             </BrowserRouter>
           </AuthProvider>

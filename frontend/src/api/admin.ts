@@ -526,6 +526,7 @@ export interface ConfigFieldState {
 export interface ConfigStateResponse {
   fields: ConfigFieldState[];
   restart_pending: boolean;
+  api_url: string;
 }
 
 export interface ConfigTestResult {
@@ -538,3 +539,6 @@ export const saveConfig = (values: Record<string, string | null>) =>
   api.put<ConfigStateResponse>("/api/admin/config", { values });
 export const testConfigService = (service: string, values: Record<string, string | null>) =>
   api.post<ConfigTestResult>(`/api/admin/config/test/${service}`, { values });
+
+export const sendBackendSentryTest = () =>
+  api.post<{ captured: boolean; event_id: string | null }>("/api/admin/sandbox/sentry-test", {});

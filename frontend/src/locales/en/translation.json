@@ -45,7 +45,8 @@
     "maintenance": "Maintenance",
     "schedule": "Scheduled Tasks",
     "exports": "Data Exports",
-    "credentials": "Credentials"
+    "credentials": "Credentials",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Floor Loom — treadle tracking",
@@ -475,7 +476,12 @@
     "colWeight": "Weight",
     "colFiber": "Fiber",
     "colSkeins": "Skeins",
-    "colAdded": "Added"
+    "colAdded": "Added",
+    "inStash": "In Stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Source",
+    "filterInStash": "In stash"
   },
   "addYarnModal": {
     "title": "Add yarn",
@@ -617,7 +623,13 @@
     "tieUpNotAvailable": "Tie-up data not available — this WIF file does not contain a [TIEUP] section.",
     "tieUpDesc": "Columns = treadles · Rows = shafts · Filled = connected",
     "viewWeavePlan": "View Weave Plan",
-    "printSavePdf": "Print / Save PDF"
+    "printSavePdf": "Print / Save PDF",
+    "yarnCol": "Yarn",
+    "linkYarn": "Link yarn",
+    "updateColorFromYarn": "Update color from yarn?",
+    "updateColor": "Update",
+    "keepColor": "Keep",
+    "undo": "Undo"
   },
   "projectDetailPage": {
     "loading": "Loading…",
@@ -880,7 +892,8 @@
     "colorNamePlaceholder": "e.g. Kaki",
     "colorwayFilter": "Filter colorways…",
     "noColorways": "No colorways found for this yarn.",
-    "colorwayLoadError": "Failed to load colorways."
+    "colorwayLoadError": "Failed to load colorways.",
+    "usedInProjects": "Used in projects"
   },
   "loomDetailPage": {
     "loading": "Loading…",
@@ -1166,5 +1179,22 @@
       "frame_loom": "Frame Loom",
       "other": "Other"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Pick color",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Name",
+    "namePlaceholder": "e.g. sage, cobalt...",
+    "nameUnknown": "Unknown color name",
+    "eyedropperTooltip": "Pick color from screen"
+  },
+  "yarnPicker": {
+    "title": "Link yarn to color slot",
+    "searchPlaceholder": "Search by name, brand, or color…",
+    "loading": "Loading…",
+    "noResults": "No yarn found.",
+    "unlink": "Remove yarn link"
   }
 }

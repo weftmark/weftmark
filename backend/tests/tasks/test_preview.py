@@ -255,6 +255,23 @@ class TestGeneratePreview:
         with patch("app.services.rendering.load_draft", side_effect=RuntimeError("fail")):
             await _generate_preview(task, draft.id)  # must not raise
 
+    async def test_full_preview_render_exception_is_swallowed(
+        self, db_session, test_user, mock_engine_and_session, mock_storage
+    ):
+        # Covers lines 60-61: render_full_draft raises → warning logged, drawdown still saved
+        draft = await self._make_draft(db_session, test_user, wif_path="drafts/exc.wif")
+        mock_storage["drafts/exc.wif"] = MINIMAL_WIF
+
+        with (
+            patch("app.services.rendering.load_draft", return_value=MagicMock()),
+            patch("app.services.rendering.render_full_draft", side_effect=RuntimeError("full preview failed")),
+            patch("app.services.rendering.render_drawdown_preview", return_value=(b"PNG", 1.0)),
+        ):
+            await _generate_preview(_task_mock(), draft.id)
+
+        await db_session.refresh(draft)
+        assert draft.drawdown_preview_path is not None
+
 
 # ---------------------------------------------------------------------------
 # TestBackfillAllPreviews — _backfill_all_previews
@@ -446,6 +463,32 @@ class TestGenerateProjectPreview:
 
         mock_replace.assert_called_once()
 
+    async def test_lift_project_uses_modified_wif_path(
+        self, db_session, test_user, mock_engine_and_session, mock_storage, mock_rendering
+    ):
+        # Covers line 169: lift project with modified path uses wif_modified_path
+        from app.models.project import Project
+
+        draft = await self._make_draft(db_session, test_user)
+        draft.wif_modified_path = "drafts/proj_modified.wif"
+        await db_session.commit()
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Lift Project",
+            project_type="lift",
+            total_picks=4,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        mock_storage["drafts/proj_modified.wif"] = MINIMAL_WIF
+
+        await _generate_project_preview(_task_mock(), project.id)
+
+        await db_session.refresh(project)
+        assert project.drawdown_preview_path is not None
+
     async def test_engine_disposed(self, db_session, test_user, mock_engine_and_session, mock_storage, mock_rendering):
         draft = await self._make_draft(db_session, test_user)
         project = await self._make_project(db_session, test_user, draft)
@@ -512,6 +555,14 @@ class TestGenerateProjectSVG:
         await db_session.commit()
         await _generate_project_svg(_task_mock(), project.id)
 
+    async def test_deleted_draft_returns_cleanly(self, db_session, test_user, mock_engine_and_session):
+        # Covers line 303: draft.deleted_at is set → return early
+        draft = await self._make_draft(db_session, test_user)
+        draft.deleted_at = datetime.now(timezone.utc)
+        await db_session.commit()
+        project = await self._make_project(db_session, test_user, draft)
+        await _generate_project_svg(_task_mock(), project.id)
+
     async def test_no_wif_in_storage_returns_cleanly(
         self, db_session, test_user, mock_engine_and_session, mock_storage
     ):
@@ -552,6 +603,49 @@ class TestGenerateProjectSVG:
         await _generate_project_svg(_task_mock(), project.id)
 
         mock_engine_and_session.dispose.assert_called_once()
+
+    async def test_lift_project_uses_modified_wif_path(
+        self, db_session, test_user, mock_engine_and_session, mock_storage, mock_rendering
+    ):
+        # Covers line 310: lift project with modified path uses wif_modified_path
+        from app.models.project import Project
+
+        draft = await self._make_draft(db_session, test_user, wif_path="drafts/svg_orig.wif")
+        draft.wif_modified_path = "drafts/svg_modified.wif"
+        await db_session.commit()
+        project = Project(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Lift SVG Project",
+            project_type="lift",
+            total_picks=4,
+        )
+        db_session.add(project)
+        await db_session.commit()
+        mock_storage["drafts/svg_modified.wif"] = MINIMAL_WIF
+
+        await _generate_project_svg(_task_mock(), project.id)
+
+        await db_session.refresh(project)
+        assert project.drawdown_svg_path is not None
+
+    async def test_color_replacements_applied_in_svg(
+        self, db_session, test_user, mock_engine_and_session, mock_storage
+    ):
+        # Covers line 324: apply_color_replacements called inside SVG thread closure
+        draft = await self._make_draft(db_session, test_user)
+        project = await self._make_project(db_session, test_user, draft, color_replacements={"#ff0000": "#00ff00"})
+        mock_storage["drafts/svg.wif"] = MINIMAL_WIF
+
+        with (
+            patch("app.services.rendering.load_draft", return_value=MagicMock()),
+            patch("app.services.rendering.apply_color_replacements") as mock_replace,
+            patch("app.services.rendering.render_drawdown_svg", return_value="<svg/>"),
+        ):
+            await _generate_project_svg(_task_mock(), project.id)
+
+        mock_replace.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -724,3 +818,79 @@ class TestBackfillAllProjectSVGs:
             await _backfill_all_project_svgs()
 
         mock_task.delay.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# TestCeleryWrappers — cover the asyncio.run(...) lines in each task wrapper
+# ---------------------------------------------------------------------------
+
+
+class TestCeleryWrappers:
+    def test_generate_drawdown_preview_delegates(self):
+        from app.tasks.preview import generate_drawdown_preview
+
+        task_mock = MagicMock()
+        task_mock.request.retries = 0
+        task_mock.max_retries = 3
+
+        with patch("app.tasks.preview._generate_preview", new=AsyncMock(return_value=None)):
+            generate_drawdown_preview.run.__func__(task_mock, str(uuid.uuid4()))
+
+    def test_backfill_all_drawdown_previews_delegates(self):
+        from app.tasks.preview import backfill_all_drawdown_previews
+
+        task_mock = MagicMock()
+
+        with patch(
+            "app.tasks.preview._backfill_all_previews",
+            new=AsyncMock(return_value={"queued": 0}),
+        ):
+            result = backfill_all_drawdown_previews.run.__func__(task_mock)
+
+        assert result["queued"] == 0
+
+    def test_generate_project_drawdown_preview_delegates(self):
+        from app.tasks.preview import generate_project_drawdown_preview
+
+        task_mock = MagicMock()
+        task_mock.request.retries = 0
+        task_mock.max_retries = 3
+
+        with patch("app.tasks.preview._generate_project_preview", new=AsyncMock(return_value=None)):
+            generate_project_drawdown_preview.run.__func__(task_mock, str(uuid.uuid4()))
+
+    def test_backfill_all_project_drawdown_previews_delegates(self):
+        from app.tasks.preview import backfill_all_project_drawdown_previews
+
+        task_mock = MagicMock()
+
+        with patch(
+            "app.tasks.preview._backfill_all_project_previews",
+            new=AsyncMock(return_value={"queued": 0}),
+        ):
+            result = backfill_all_project_drawdown_previews.run.__func__(task_mock)
+
+        assert result["queued"] == 0
+
+    def test_generate_project_drawdown_svg_delegates(self):
+        from app.tasks.preview import generate_project_drawdown_svg
+
+        task_mock = MagicMock()
+        task_mock.request.retries = 0
+        task_mock.max_retries = 3
+
+        with patch("app.tasks.preview._generate_project_svg", new=AsyncMock(return_value=None)):
+            generate_project_drawdown_svg.run.__func__(task_mock, str(uuid.uuid4()))
+
+    def test_backfill_all_project_drawdown_svgs_delegates(self):
+        from app.tasks.preview import backfill_all_project_drawdown_svgs
+
+        task_mock = MagicMock()
+
+        with patch(
+            "app.tasks.preview._backfill_all_project_svgs",
+            new=AsyncMock(return_value={"queued": 0}),
+        ):
+            result = backfill_all_project_drawdown_svgs.run.__func__(task_mock)
+
+        assert result["queued"] == 0

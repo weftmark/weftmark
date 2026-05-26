@@ -258,3 +258,14 @@ export interface YarnAttributeGroup {
 export function getYarnProperties(): Promise<YarnAttributeGroup[]> {
   return req("/api/yarn/properties");
 }
+
+export interface YarnProjectRef {
+  project_id: string;
+  project_name: string;
+  project_status: string;
+  color_hex: string;
+}
+
+export function getYarnProjects(yarnId: string): Promise<YarnProjectRef[]> {
+  return req(`/api/yarn/${yarnId}/projects`);
+}

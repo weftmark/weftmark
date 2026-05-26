@@ -539,3 +539,42 @@ class TestPurgeLoomsWithVersions:
         assert all(str(p.id) != str(photo.id) for p in remaining_photos)
         remaining_receipts = (await db_session.scalars(select(LoomVersionReceipt))).all()
         assert all(str(r.id) != str(receipt.id) for r in remaining_receipts)
+
+
+# ---------------------------------------------------------------------------
+# TestCeleryWrappers — cover lines 30-33 (asyncio.run wrapper + early-exit)
+# ---------------------------------------------------------------------------
+
+
+class TestCeleryWrappers:
+    def test_purge_soft_deleted_records_delegates(self):
+        from app.tasks.purge import purge_soft_deleted_records
+
+        task_mock = MagicMock()
+
+        with patch(
+            "app.tasks.purge._purge",
+            new=AsyncMock(return_value={"drafts": 0, "looms": 0, "yarn": 0, "projects": 0}),
+        ):
+            result = purge_soft_deleted_records.run.__func__(task_mock, 30)
+
+        assert result["drafts"] == 0
+
+    def test_purge_uses_settings_default_when_no_arg(self):
+        from app.tasks.purge import purge_soft_deleted_records
+
+        task_mock = MagicMock()
+
+        mock_settings = MagicMock()
+        mock_settings.soft_delete_retention_days = 90
+
+        with (
+            patch(
+                "app.tasks.purge._purge",
+                new=AsyncMock(return_value={"drafts": 0, "looms": 0, "yarn": 0, "projects": 0}),
+            ) as mock_purge,
+            patch("app.config.get_settings", return_value=mock_settings),
+        ):
+            purge_soft_deleted_records.run.__func__(task_mock)
+
+        mock_purge.assert_called_once_with(90)

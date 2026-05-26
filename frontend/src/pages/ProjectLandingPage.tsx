@@ -9,9 +9,12 @@ import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
   getWarpingPlan, completeProject, abandonProject, setProjectReed, updateProjectTags,
+  linkYarnColor, unlinkYarnColor,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
-  type ProjectDetail,
+  type ProjectDetail, type ProjectYarnColor,
 } from "@/api/projects";
+import type { YarnSummary } from "@/api/yarn";
+import { YarnPickerModal } from "@/components/projects/YarnPickerModal";
 import { TagInput } from "@/components/ui/TagInput";
 import { TagChips } from "@/components/ui/TagChips";
 import { getReedRecommendation, buildDentPattern, nearestCleanDent } from "@/lib/reedRecommendation";
@@ -447,6 +450,7 @@ function ColorPaletteSection({
   onSave,
   isSaving,
   locked,
+  yarnColors,
 }: {
   projectId: string;
   wifColors: { index: number; hex: string }[];
@@ -454,9 +458,10 @@ function ColorPaletteSection({
   weftStats: { hex: string; count: number; percentage: number }[] | null;
   colorReplacements: Record<string, string> | null;
   warpLengthCm: number | null;
-  onSave: (replacements: Record<string, string>) => void;
+  onSave: (replacements: Record<string, string>, yarnLinks: Record<string, string | null>) => void;
   isSaving: boolean;
   locked?: boolean;
+  yarnColors: ProjectYarnColor[];
 }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
@@ -477,6 +482,11 @@ function ColorPaletteSection({
   const [dirty, setDirty] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [yarnPickerHex, setYarnPickerHex] = useState<string | null>(null);
+  // { slotHex, suggestedHex } — offered after a yarn with a color is linked
+  const [colorOffer, setColorOffer] = useState<{ slotHex: string; suggestedHex: string } | null>(null);
+  // Staged yarn link changes — key: colorHex, value: { yarnId, yarn } to link, or null to unlink
+  const [pendingYarnLinks, setPendingYarnLinks] = useState<Record<string, { yarnId: string; yarn: YarnSummary } | null>>({});
 
   function setReplacement(hex: string, replacement: string) {
     const next = { ...pending };
@@ -487,6 +497,13 @@ function ColorPaletteSection({
     }
     setPending(next);
     setDirty(true);
+  }
+
+  function handleUndo() {
+    setPending(colorReplacements ?? {});
+    setPendingYarnLinks({});
+    setDirty(false);
+    setColorOffer(null);
   }
 
   if (visibleColors.length === 0) return null;
@@ -515,14 +532,32 @@ function ColorPaletteSection({
               {t("projectLandingPage.preview")}
             </Button>
           )}
-          {!locked && dirty && (
-            <Button
-              size="sm"
-              onClick={() => { onSave(pending); setDirty(false); }}
-              disabled={isSaving}
-            >
-              {isSaving ? t("projectLandingPage.saving") : t("projectLandingPage.saveColors")}
-            </Button>
+          {!locked && (dirty || Object.keys(pendingYarnLinks).length > 0) && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleUndo}
+                disabled={isSaving}
+              >
+                {t("projectLandingPage.undo")}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const links: Record<string, string | null> = {};
+                  for (const [hex, entry] of Object.entries(pendingYarnLinks)) {
+                    links[hex] = entry ? entry.yarnId : null;
+                  }
+                  onSave(pending, links);
+                  setDirty(false);
+                  setPendingYarnLinks({});
+                }}
+                disabled={isSaving}
+              >
+                {isSaving ? t("projectLandingPage.saving") : t("projectLandingPage.saveColors")}
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -538,6 +573,7 @@ function ColorPaletteSection({
                 <th className="px-3 py-2 text-right">{t("projectLandingPage.estWeftLength")}</th>
               )}
               {!locked && <th className="px-3 py-2 text-left">{t("projectLandingPage.replaceWith")}</th>}
+              {!locked && <th className="px-3 py-2 text-left">{t("projectLandingPage.yarnCol")}</th>}
             </tr>
           </thead>
           <tbody>
@@ -553,7 +589,7 @@ function ColorPaletteSection({
               return (
                 <tr key={c.hex} className="border-b border-border last:border-0">
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className="inline-block h-5 w-5 rounded border border-border flex-shrink-0"
                         style={{ background: displayHex }}
@@ -564,6 +600,31 @@ function ColorPaletteSection({
                           <span className="ml-1 text-accent"> → {pending[c.hex]}</span>
                         )}
                       </span>
+                      {colorOffer?.slotHex === c.hex && (
+                        <div className="flex items-center gap-1.5 rounded border border-border bg-muted/40 px-2 py-1 text-xs">
+                          <span className="text-muted-foreground">{t("projectLandingPage.updateColorFromYarn")}</span>
+                          <span
+                            className="inline-block h-3.5 w-3.5 rounded-sm border border-border flex-shrink-0"
+                            style={{ background: colorOffer.suggestedHex }}
+                          />
+                          <span className="font-mono text-muted-foreground">{colorOffer.suggestedHex}</span>
+                          <button
+                            className="ml-1 rounded px-1.5 py-0.5 bg-accent text-primary-foreground text-[10px] font-medium hover:opacity-90"
+                            onClick={() => {
+                              setReplacement(c.hex, colorOffer.suggestedHex);
+                              setColorOffer(null);
+                            }}
+                          >
+                            {t("projectLandingPage.updateColor")}
+                          </button>
+                          <button
+                            className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                            onClick={() => setColorOffer(null)}
+                          >
+                            {t("projectLandingPage.keepColor")}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
@@ -593,6 +654,38 @@ function ColorPaletteSection({
                       </div>
                     </td>
                   )}
+                  {!locked && (() => {
+                    const hasPending = c.hex in pendingYarnLinks;
+                    const pendingEntry = pendingYarnLinks[c.hex];
+                    const serverLinked = yarnColors.find((yc) => yc.color_hex === c.hex);
+                    const isUnlinkPending = hasPending && pendingEntry === null;
+                    const displayName = hasPending
+                      ? (pendingEntry?.yarn.name ?? null)
+                      : (serverLinked?.yarn_name ?? null);
+                    return (
+                      <td className="px-3 py-2">
+                        <button
+                          className={`flex items-center gap-1.5 text-xs rounded px-2 py-1 border transition-colors ${
+                            hasPending ? "border-accent/60 bg-accent/10 hover:bg-accent/20" : "border-border hover:bg-muted"
+                          }`}
+                          onClick={() => setYarnPickerHex(c.hex)}
+                          title={displayName ?? t("projectLandingPage.linkYarn")}
+                        >
+                          <AppIcons.yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          {isUnlinkPending && serverLinked ? (
+                            <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>
+                          ) : displayName ? (
+                            <span className={`truncate max-w-[100px] ${hasPending ? "text-accent" : "text-card-foreground"}`}>
+                              {displayName}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>
+                          )}
+                          {hasPending && <span className="text-[10px] text-accent">•</span>}
+                        </button>
+                      </td>
+                    );
+                  })()}
                 </tr>
               );
             })}
@@ -634,6 +727,36 @@ function ColorPaletteSection({
         <DrawdownModal
           svgUrl={drawdownSvgUrl(projectId, 8, pending)}
           onClose={() => setPreviewModalOpen(false)}
+        />
+      )}
+
+      {yarnPickerHex && (
+        <YarnPickerModal
+          colorHex={yarnPickerHex}
+          currentYarnId={
+            yarnPickerHex in pendingYarnLinks
+              ? (pendingYarnLinks[yarnPickerHex]?.yarnId ?? null)
+              : (yarnColors.find((yc) => yc.color_hex === yarnPickerHex)?.yarn_id ?? null)
+          }
+          onSelect={(yarnId, yarn) => {
+            const slotHex = yarnPickerHex;
+            setPendingYarnLinks((prev) => ({ ...prev, [slotHex]: { yarnId, yarn } }));
+            setYarnPickerHex(null);
+            if (yarn.color_hex && yarn.color_hex.toLowerCase() !== (pending[slotHex] ?? slotHex).toLowerCase()) {
+              setColorOffer({ slotHex, suggestedHex: yarn.color_hex });
+            } else if (colorOffer?.slotHex === slotHex) {
+              setColorOffer(null);
+            }
+          }}
+          onUnlink={() => {
+            const slotHex = yarnPickerHex;
+            setPendingYarnLinks((prev) => ({ ...prev, [slotHex]: null }));
+            setReplacement(slotHex, slotHex);
+            setYarnPickerHex(null);
+            if (colorOffer?.slotHex === slotHex) setColorOffer(null);
+          }}
+          onClose={() => setYarnPickerHex(null)}
+          isSaving={isSaving}
         />
       )}
     </section>
@@ -1186,10 +1309,21 @@ export function ProjectLandingPage() {
     enabled: !!id,
   });
 
-  const colorMutation = useMutation({
-    mutationFn: (replacements: Record<string, string>) =>
-      setProjectColorReplacements(id!, replacements),
-    onSuccess: (updated) => qc.setQueryData(["project", id], updated),
+  const saveMutation = useMutation({
+    mutationFn: async ({
+      replacements,
+      yarnLinks,
+    }: {
+      replacements: Record<string, string>;
+      yarnLinks: Record<string, string | null>;
+    }) => {
+      const calls: Promise<unknown>[] = [setProjectColorReplacements(id!, replacements)];
+      for (const [colorHex, yarnId] of Object.entries(yarnLinks)) {
+        calls.push(yarnId !== null ? linkYarnColor(id!, colorHex, yarnId) : unlinkYarnColor(id!, colorHex));
+      }
+      await Promise.all(calls);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["project", id] }),
   });
 
   const tagsMutation = useMutation({
@@ -1490,9 +1624,10 @@ export function ProjectLandingPage() {
           weftStats={project.draft_weft_color_stats}
           colorReplacements={project.color_replacements}
           warpLengthCm={warpLengthCm}
-          onSave={(r) => colorMutation.mutate(r)}
-          isSaving={colorMutation.isPending}
+          onSave={(r, links) => saveMutation.mutate({ replacements: r, yarnLinks: links })}
+          isSaving={saveMutation.isPending}
           locked={project.status !== "created"}
+          yarnColors={project.yarn_colors ?? []}
         />
       )}
 

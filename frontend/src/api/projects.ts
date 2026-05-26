@@ -87,6 +87,19 @@ export interface ProjectPhoto {
   created_at: string;
 }
 
+export interface ProjectYarnColor {
+  id: string;
+  project_id: string;
+  yarn_id: string | null;
+  color_hex: string;
+  use_yarn_photo: boolean;
+  yarn_brand: string | null;
+  yarn_name: string | null;
+  yarn_color_name: string | null;
+  yarn_color_hex: string | null;
+  yarn_has_photo: boolean;
+}
+
 export interface WifColor {
   index: number;
   r: number;
@@ -147,6 +160,7 @@ export interface ProjectDetail extends ProjectSummary {
   loom_reeds: { id: string; dents_per_inch: number }[];
   reed_dents_per_inch: number | null;
   photos: ProjectPhoto[];
+  yarn_colors: ProjectYarnColor[];
 }
 
 export interface CreateProjectPayload {
@@ -500,4 +514,23 @@ export function sharedProjectPreviewUrl(slug: string): string {
 
 export function sharedProjectSvgUrl(slug: string): string {
   return `/api/share/projects/${slug}/svg`;
+}
+
+export function linkYarnColor(
+  projectId: string,
+  colorHex: string,
+  yarnId: string,
+  useYarnPhoto = false,
+): Promise<ProjectYarnColor> {
+  return req(`/api/projects/${projectId}/yarn-colors/${encodeURIComponent(colorHex)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ yarn_id: yarnId, color_hex: colorHex, use_yarn_photo: useYarnPhoto }),
+  });
+}
+
+export function unlinkYarnColor(projectId: string, colorHex: string): Promise<void> {
+  return req(`/api/projects/${projectId}/yarn-colors/${encodeURIComponent(colorHex)}`, {
+    method: "DELETE",
+  });
 }

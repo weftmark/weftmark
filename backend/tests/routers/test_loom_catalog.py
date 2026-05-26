@@ -3,7 +3,6 @@
 import uuid
 from datetime import date
 
-import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,14 +38,12 @@ async def _make_ref(db: AsyncSession, brand: str = "Schacht", model: str = "Baby
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.anyio
 async def test_public_catalog_list_empty(client: AsyncClient, db_session: AsyncSession):
     resp = await client.get("/api/loom-catalog")
     assert resp.status_code == 200
     assert resp.json() == []
 
 
-@pytest.mark.anyio
 async def test_public_catalog_list_returns_entries(client: AsyncClient, db_session: AsyncSession):
     await _make_ref(db_session)
     resp = await client.get("/api/loom-catalog")
@@ -57,7 +54,6 @@ async def test_public_catalog_list_returns_entries(client: AsyncClient, db_sessi
     assert data[0]["model_name"] == "Baby Wolf"
 
 
-@pytest.mark.anyio
 async def test_public_catalog_search_by_brand(client: AsyncClient, db_session: AsyncSession):
     await _make_ref(db_session, brand="Ashford", model="Jack Loom")
     await _make_ref(db_session, brand="Louet", model="Spring II")
@@ -68,7 +64,6 @@ async def test_public_catalog_search_by_brand(client: AsyncClient, db_session: A
     assert data[0]["brand"] == "Ashford"
 
 
-@pytest.mark.anyio
 async def test_public_catalog_search_by_model(client: AsyncClient, db_session: AsyncSession):
     await _make_ref(db_session, brand="Schacht", model="Baby Wolf")
     await _make_ref(db_session, brand="Schacht", model="Mighty Wolf")
@@ -80,7 +75,6 @@ async def test_public_catalog_search_by_model(client: AsyncClient, db_session: A
     assert data[0]["model_name"] == "Mighty Wolf"
 
 
-@pytest.mark.anyio
 async def test_public_catalog_filter_by_category(client: AsyncClient, db_session: AsyncSession):
     ref1 = LoomReference(brand="TestCatalog", model_name="Rigid Heddle 24", loom_category="rigid_heddle")
     ref2 = LoomReference(brand="TestCatalog", model_name="Floor Loom 4S", loom_category="floor_loom")
@@ -95,7 +89,6 @@ async def test_public_catalog_filter_by_category(client: AsyncClient, db_session
     assert any(d["brand"] == "TestCatalog" and d["model_name"] == "Floor Loom 4S" for d in data)
 
 
-@pytest.mark.anyio
 async def test_public_catalog_detail(client: AsyncClient, db_session: AsyncSession):
     ref = await _make_ref(db_session)
     resp = await client.get(f"/api/loom-catalog/{ref.id}")
@@ -107,7 +100,6 @@ async def test_public_catalog_detail(client: AsyncClient, db_session: AsyncSessi
     assert data["foldable"] is True
 
 
-@pytest.mark.anyio
 async def test_public_catalog_detail_404(client: AsyncClient, db_session: AsyncSession):
     import uuid
 
@@ -120,7 +112,6 @@ async def test_public_catalog_detail_404(client: AsyncClient, db_session: AsyncS
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.anyio
 async def test_admin_create_loom_reference(admin_client: AsyncClient, db_session: AsyncSession):
     payload = {
         "brand": "Harrisville Designs",
@@ -142,7 +133,6 @@ async def test_admin_create_loom_reference(admin_client: AsyncClient, db_session
     assert data["mobility_wheels_included"] is True
 
 
-@pytest.mark.anyio
 async def test_admin_create_duplicate_rejected(admin_client: AsyncClient, db_session: AsyncSession):
     await _make_ref(db_session)
     payload = {"brand": "Schacht", "model_name": "Baby Wolf", "loom_category": "floor_loom"}
@@ -150,7 +140,6 @@ async def test_admin_create_duplicate_rejected(admin_client: AsyncClient, db_ses
     assert resp.status_code == 409
 
 
-@pytest.mark.anyio
 async def test_admin_update_loom_reference(admin_client: AsyncClient, db_session: AsyncSession):
     ref = await _make_ref(db_session)
     resp = await admin_client.patch(
@@ -163,7 +152,6 @@ async def test_admin_update_loom_reference(admin_client: AsyncClient, db_session
     assert data["foldable"] is False
 
 
-@pytest.mark.anyio
 async def test_admin_delete_loom_reference(admin_client: AsyncClient, db_session: AsyncSession):
     ref = await _make_ref(db_session)
     resp = await admin_client.delete(f"/api/admin/loom-catalog/{ref.id}")
@@ -173,7 +161,6 @@ async def test_admin_delete_loom_reference(admin_client: AsyncClient, db_session
     assert resp2.status_code == 404
 
 
-@pytest.mark.anyio
 async def test_non_admin_cannot_create(auth_client: AsyncClient, db_session: AsyncSession):
     payload = {"brand": "Ashford", "model_name": "Test", "loom_category": "floor_loom"}
     resp = await auth_client.post("/api/admin/loom-catalog", json=payload)
@@ -211,7 +198,6 @@ async def _make_loom_with_version(
     return loom, version
 
 
-@pytest.mark.anyio
 async def test_link_version_to_reference(auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
     ref = await _make_ref(db_session)
     loom, version = await _make_loom_with_version(db_session, test_user)
@@ -226,7 +212,6 @@ async def test_link_version_to_reference(auth_client: AsyncClient, db_session: A
     assert data["current_version"]["loom_reference_id"] == str(ref.id)
 
 
-@pytest.mark.anyio
 async def test_unlink_version_from_reference(auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
     ref = await _make_ref(db_session)
     loom, version = await _make_loom_with_version(db_session, test_user, loom_reference_id=ref.id)
@@ -239,7 +224,6 @@ async def test_unlink_version_from_reference(auth_client: AsyncClient, db_sessio
     assert resp.json()["loom_reference_id"] is None
 
 
-@pytest.mark.anyio
 async def test_link_nonexistent_reference_404(auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
     import uuid
 
@@ -252,7 +236,6 @@ async def test_link_nonexistent_reference_404(auth_client: AsyncClient, db_sessi
     assert resp.status_code == 404
 
 
-@pytest.mark.anyio
 async def test_relink_version_to_different_catalog_entry(
     auth_client: AsyncClient, db_session: AsyncSession, test_user: User
 ):
@@ -273,7 +256,6 @@ async def test_relink_version_to_different_catalog_entry(
     assert data["current_version"]["loom_reference_id"] == str(ref_b.id)
 
 
-@pytest.mark.anyio
 async def test_per_version_catalog_links_independent(
     auth_client: AsyncClient, db_session: AsyncSession, test_user: User
 ):
@@ -315,7 +297,6 @@ async def test_per_version_catalog_links_independent(
     assert versions[2]["loom_reference_model_name"] == "Jane 16"
 
 
-@pytest.mark.anyio
 async def test_linked_loom_detail_includes_catalog_names(
     auth_client: AsyncClient, db_session: AsyncSession, test_user: User
 ):
@@ -330,7 +311,6 @@ async def test_linked_loom_detail_includes_catalog_names(
     assert data["loom_reference_model_name"] == "Baby Wolf"
 
 
-@pytest.mark.anyio
 async def test_unlinked_loom_detail_has_null_catalog_names(
     auth_client: AsyncClient, db_session: AsyncSession, test_user: User
 ):
@@ -344,7 +324,6 @@ async def test_unlinked_loom_detail_has_null_catalog_names(
     assert data["loom_reference_model_name"] is None
 
 
-@pytest.mark.anyio
 async def test_list_looms_includes_catalog_names(auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
     """GET /api/looms returns catalog names from the current version for linked looms."""
     ref = await _make_ref(db_session, brand="Schacht", model="Mighty Wolf")

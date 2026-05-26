@@ -45,7 +45,8 @@
     "maintenance": "Maintenance",
     "schedule": "Tâches planifiées",
     "exports": "Exports de données",
-    "credentials": "Identifiants"
+    "credentials": "Identifiants",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Métier de basse lisse - suivi des marches",
@@ -474,7 +475,12 @@
     "colWeight": "Poids",
     "colFiber": "Fibre",
     "colSkeins": "Écheveaux",
-    "colAdded": "Ajouté"
+    "colAdded": "Ajouté",
+    "inStash": "En stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Source",
+    "filterInStash": "En stash"
   },
   "addYarnModal": {
     "title": "Ajouter du fil",
@@ -616,7 +622,13 @@
     "tieUpNotAvailable": "Données d'armure non disponibles — ce fichier WIF ne contient pas de section [TIEUP].",
     "tieUpDesc": "Colonnes = lames · Lignes = cadres · Rempli = connecté",
     "viewWeavePlan": "Voir le plan de tissage",
-    "printSavePdf": "Imprimer / Enregistrer en PDF"
+    "printSavePdf": "Imprimer / Enregistrer en PDF",
+    "yarnCol": "Fil",
+    "linkYarn": "Lier un fil",
+    "updateColorFromYarn": "Mettre à jour la couleur depuis le fil ?",
+    "updateColor": "Mettre à jour",
+    "keepColor": "Garder",
+    "undo": "Annuler"
   },
   "projectDetailPage": {
     "loading": "Chargement…",
@@ -879,7 +891,8 @@
     "colorNamePlaceholder": "ex. Kaki",
     "colorwayFilter": "Filtrer les coloris…",
     "noColorways": "Aucun coloris trouvé pour ce fil.",
-    "colorwayLoadError": "Impossible de charger les coloris."
+    "colorwayLoadError": "Impossible de charger les coloris.",
+    "usedInProjects": "Utilisé dans des projets"
   },
   "loomDetailPage": {
     "loading": "Chargement…",
@@ -1165,5 +1178,22 @@
       "frame_loom": "Métier sur cadre",
       "other": "Autre"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Choisir une couleur",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Nom",
+    "namePlaceholder": "ex. sauge, cobalt...",
+    "nameUnknown": "Nom de couleur inconnu",
+    "eyedropperTooltip": "Choisir une couleur à l'écran"
+  },
+  "yarnPicker": {
+    "title": "Lier un fil à la couleur",
+    "searchPlaceholder": "Rechercher par nom, marque ou couleur…",
+    "loading": "Chargement…",
+    "noResults": "Aucun fil trouvé.",
+    "unlink": "Supprimer le lien de fil"
   }
 }

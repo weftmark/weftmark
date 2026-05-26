@@ -41,6 +41,8 @@ x-worker-env: &worker-env
   RAVELRY_OAUTH_CLIENT_ID: ${RAVELRY_OAUTH_CLIENT_ID:-}
   RAVELRY_OAUTH_CLIENT_SECRET: ${RAVELRY_OAUTH_CLIENT_SECRET:-}
   RAVELRY_OAUTH_REDIRECT_URI: ${RAVELRY_OAUTH_REDIRECT_URI:-}
+  SENTRY_DSN_FASTAPI: ${SENTRY_DSN_FASTAPI:-}
+  SENTRY_ENV_OVERRIDE: ${SENTRY_ENV_OVERRIDE:-}
 
 x-worker: &worker-base
   build:
@@ -83,9 +85,11 @@ services:
         VITE_CLERK_SIGN_UP_URL: /register
         VITE_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /home
         VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /home
+        VITE_SENTRY_ENV_OVERRIDE: ${SENTRY_ENV_OVERRIDE:-}
     image: weaving_site_frontend:${APP_VERSION:-dev}
     environment:
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      SENTRY_DSN_REACT: ${SENTRY_DSN_REACT:-}
     container_name: weaving_site_frontend
     ports:
       - "3000:80"
@@ -172,6 +176,8 @@ services:
       RAVELRY_OAUTH_CLIENT_SECRET: ${RAVELRY_OAUTH_CLIENT_SECRET:-}
       RAVELRY_OAUTH_REDIRECT_URI: ${RAVELRY_OAUTH_REDIRECT_URI:-}
       CONFIG_ENCRYPTION_KEY: ${CONFIG_ENCRYPTION_KEY:-}
+      SENTRY_DSN_FASTAPI: ${SENTRY_DSN_FASTAPI:-}
+      SENTRY_ENV_OVERRIDE: ${SENTRY_ENV_OVERRIDE:-}
     volumes:
       - uploads:/app/uploads
       - geoip_data:/app/data

@@ -201,3 +201,54 @@ class TestReparseAll:
         # Deleted drafts are excluded by the WHERE clause
         assert result["updated"] == 0
         assert result["skipped"] == 0
+
+
+# ---------------------------------------------------------------------------
+# TestCeleryWrapper — cover line 23 (asyncio.run wrapper)
+# ---------------------------------------------------------------------------
+
+
+class TestCeleryWrapper:
+    def test_reparse_all_drafts_delegates(self):
+        from app.tasks.reparse import reparse_all_drafts
+
+        task_mock = MagicMock()
+
+        with patch(
+            "app.tasks.reparse._reparse_all",
+            new=AsyncMock(return_value={"updated": 0, "skipped": 0, "errors": 0}),
+        ):
+            result = reparse_all_drafts.run.__func__(task_mock)
+
+        assert result["errors"] == 0
+
+
+# ---------------------------------------------------------------------------
+# TestReparseErrors — cover lines 68-70 (exception handler per-draft)
+# ---------------------------------------------------------------------------
+
+
+class TestReparseErrors:
+    async def test_parse_error_counted_not_raised(self, db_session, test_user, mock_engine_and_session):
+        import app.services.storage as _storage
+        from app.models.draft import Draft
+        from app.tasks.reparse import _reparse_all
+
+        wif_key = f"drafts/bad-{uuid.uuid4().hex}.wif"
+        _storage._put(wif_key, b"[WIF]\ncorrupted=garbage")
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Bad WIF",
+            wif_filename="bad.wif",
+            wif_path=wif_key,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        with patch("app.services.wif_parser.extract_measurements", side_effect=Exception("parse failed")):
+            result = await _reparse_all()
+
+        assert result["errors"] >= 1
+        assert result["updated"] == 0

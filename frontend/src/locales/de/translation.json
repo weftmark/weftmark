@@ -45,7 +45,8 @@
     "maintenance": "Wartung",
     "schedule": "Geplante Aufgaben",
     "exports": "Datenexporte",
-    "credentials": "Zugangsdaten"
+    "credentials": "Zugangsdaten",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Trittwebstuhl - Trittfolge-Tracking",
@@ -475,7 +476,12 @@
     "colWeight": "Gewicht",
     "colFiber": "Faser",
     "colSkeins": "Knäuel",
-    "colAdded": "Hinzugefügt"
+    "colAdded": "Hinzugefügt",
+    "inStash": "Im Stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Quelle",
+    "filterInStash": "Im Stash"
   },
   "addYarnModal": {
     "title": "Garn hinzufügen",
@@ -617,7 +623,13 @@
     "tieUpNotAvailable": "Tie-up-Daten nicht verfügbar – diese WIF-Datei enthält keinen [TIEUP]-Abschnitt.",
     "tieUpDesc": "Spalten = Tritte · Zeilen = Schäfte · Ausgefüllt = verbunden",
     "viewWeavePlan": "Webplan ansehen",
-    "printSavePdf": "Drucken / Als PDF speichern"
+    "printSavePdf": "Drucken / Als PDF speichern",
+    "yarnCol": "Garn",
+    "linkYarn": "Garn verknüpfen",
+    "updateColorFromYarn": "Farbe aus Garn übernehmen?",
+    "updateColor": "Übernehmen",
+    "keepColor": "Behalten",
+    "undo": "Rückgängig"
   },
   "projectDetailPage": {
     "loading": "Laden…",
@@ -880,7 +892,8 @@
     "colorNamePlaceholder": "z. B. Kaki",
     "colorwayFilter": "Farbvarianten filtern…",
     "noColorways": "Keine Farbvarianten für dieses Garn gefunden.",
-    "colorwayLoadError": "Farbvarianten konnten nicht geladen werden."
+    "colorwayLoadError": "Farbvarianten konnten nicht geladen werden.",
+    "usedInProjects": "Verwendet in Projekten"
   },
   "loomDetailPage": {
     "loading": "Laden…",
@@ -1166,5 +1179,22 @@
       "frame_loom": "Rahmenwebstuhl",
       "other": "Sonstige"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Farbe wählen",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Name",
+    "namePlaceholder": "z.B. sage, kobalt...",
+    "nameUnknown": "Unbekannter Farbname",
+    "eyedropperTooltip": "Farbe vom Bildschirm aufnehmen"
+  },
+  "yarnPicker": {
+    "title": "Garn mit Farbplatz verknüpfen",
+    "searchPlaceholder": "Nach Name, Marke oder Farbe suchen…",
+    "loading": "Wird geladen…",
+    "noResults": "Kein Garn gefunden.",
+    "unlink": "Garnverknüpfung entfernen"
   }
 }

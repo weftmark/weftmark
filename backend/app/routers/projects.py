@@ -16,8 +16,9 @@ from sqlalchemy.orm import selectinload
 from app.deps import get_current_user, get_db
 from app.models.draft import Draft
 from app.models.loom import PROJECT_SUPPORTED_LOOM_TYPES, Loom, LoomVersion
-from app.models.project import Project, ProjectPhoto, ProjectStep, WeaveSession
+from app.models.project import Project, ProjectPhoto, ProjectStep, ProjectYarnColor, WeaveSession
 from app.models.user import User
+from app.models.yarn import Yarn
 from app.services import storage, wif_parser
 from app.services.images import resize_to_jpeg, validate_image_format
 from app.services.storage_quota import check_storage_quota
@@ -47,6 +48,21 @@ class ProjectPhotoSchema(BaseModel):
     filename: str
     display_order: int
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ProjectYarnColorSchema(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    yarn_id: uuid.UUID | None
+    color_hex: str
+    use_yarn_photo: bool
+    yarn_brand: str | None = None
+    yarn_name: str | None = None
+    yarn_color_name: str | None = None
+    yarn_color_hex: str | None = None
+    yarn_has_photo: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -110,6 +126,7 @@ class ProjectDetail(ProjectSummary):
     loom_reeds: list[dict] = []
     reed_dents_per_inch: float | None = None
     photos: list[ProjectPhotoSchema] = []
+    yarn_colors: list[ProjectYarnColorSchema] = []
 
 
 class CreateProjectRequest(BaseModel):
@@ -374,6 +391,22 @@ async def _resolve_loom_version(project: Project, db: AsyncSession) -> LoomVersi
     return None
 
 
+def _yarn_color_schema(pyc: ProjectYarnColor) -> ProjectYarnColorSchema:
+    yarn = pyc.yarn
+    return ProjectYarnColorSchema(
+        id=pyc.id,
+        project_id=pyc.project_id,
+        yarn_id=pyc.yarn_id,
+        color_hex=pyc.color_hex,
+        use_yarn_photo=pyc.use_yarn_photo,
+        yarn_brand=yarn.brand if yarn else None,
+        yarn_name=yarn.name if yarn else None,
+        yarn_color_name=yarn.color_name if yarn else None,
+        yarn_color_hex=yarn.color_hex if yarn else None,
+        yarn_has_photo=yarn.photo_path is not None if yarn else False,
+    )
+
+
 def _to_detail(
     project: Project,
     draft: Draft,
@@ -381,6 +414,7 @@ def _to_detail(
     photos: list[ProjectPhoto] | None = None,
     loom_version: LoomVersion | None = None,
     loom_reeds: list[dict] | None = None,
+    yarn_colors: list[ProjectYarnColor] | None = None,
 ) -> ProjectDetail:
     return ProjectDetail(
         id=project.id,
@@ -435,6 +469,7 @@ def _to_detail(
         tags=project.tags or [],
         loom_reeds=loom_reeds or [],
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
+        yarn_colors=[_yarn_color_schema(yc) for yc in (yarn_colors or [])],
     )
 
 
@@ -873,7 +908,10 @@ async def get_project(
     stmt = (
         select(Project)
         .where(Project.id == project_id, Project.deleted_at.is_(None))
-        .options(selectinload(Project.photos))
+        .options(
+            selectinload(Project.photos),
+            selectinload(Project.yarn_colors).selectinload(ProjectYarnColor.yarn),
+        )
     )
     if not current_user.is_superuser:
         stmt = stmt.where(Project.owner_id == current_user.id)
@@ -900,6 +938,7 @@ async def get_project(
         photos=list(project.photos),
         loom_version=loom_version,
         loom_reeds=loom_reeds,
+        yarn_colors=list(project.yarn_colors),
     )
 
 
@@ -1557,6 +1596,59 @@ def _compute_color_runs(entries: list[dict]) -> list[WarpingPlanColorRun]:
     return runs
 
 
+async def _parse_wif_for_warping_plan(
+    wif_bytes: bytes, has_threading: bool
+) -> tuple[
+    list[WarpingPlanEndEntry] | None,
+    list[WarpingPlanColorRun] | None,
+    list[list[int]] | None,
+    int | None,
+    int | None,
+]:
+    threading_entries: list[WarpingPlanEndEntry] | None = None
+    warp_color_runs: list[WarpingPlanColorRun] | None = None
+    tieup_data: list[list[int]] | None = None
+    tieup_num_shafts: int | None = None
+    tieup_num_treadles: int | None = None
+
+    if has_threading:
+        try:
+            t_data = await asyncio.to_thread(wif_parser.parse_threading, wif_bytes)
+            raw_entries = [
+                {
+                    "end": i + 1,
+                    "shafts": shafts,
+                    "color": t_data.warp_colors[i],
+                    "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,  # type: ignore[arg-type]
+                }
+                for i, shafts in enumerate(t_data.threading)
+            ]
+            threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]  # type: ignore[arg-type]
+            warp_color_runs = _compute_color_runs(raw_entries)
+        except ValueError:
+            pass
+
+    try:
+        tu = await asyncio.to_thread(wif_parser.parse_tieup, wif_bytes)
+        tieup_data = tu.tieup
+        tieup_num_shafts = tu.num_shafts
+        tieup_num_treadles = tu.num_treadles
+    except ValueError:
+        pass
+
+    return threading_entries, warp_color_runs, tieup_data, tieup_num_shafts, tieup_num_treadles
+
+
+def _compute_epi(draft: Draft) -> float | None:
+    if draft.epi_override is not None:
+        return draft.epi_override
+    if draft.wif_measurements:
+        spacing = draft.wif_measurements.get("warp_spacing")
+        if spacing and spacing > 0:
+            return round(2.54 / float(spacing), 1)
+    return None
+
+
 @router.get("/{project_id}/warping-plan", response_model=WarpingPlanResponse)
 async def get_warping_plan(
     project_id: uuid.UUID,
@@ -1568,44 +1660,17 @@ async def get_warping_plan(
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
 
-    epi: float | None = draft.epi_override
-    if epi is None and draft.wif_measurements:
-        spacing = draft.wif_measurements.get("warp_spacing")
-        if spacing and spacing > 0:
-            epi = round(2.54 / spacing, 1)
-
-    threading_entries: list[WarpingPlanEndEntry] | None = None
-    warp_color_runs: list[WarpingPlanColorRun] | None = None
-    tieup_data: list[list[int]] | None = None
-    tieup_num_shafts: int | None = None
-    tieup_num_treadles: int | None = None
-
+    threading_entries = warp_color_runs = tieup_data = tieup_num_shafts = tieup_num_treadles = None
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if wif_path and await storage.afile_exists(wif_path):
         wif_bytes = await storage.aread_file(wif_path)
-        if draft.has_threading:
-            try:
-                t_data = await asyncio.to_thread(wif_parser.parse_threading, wif_bytes)
-                raw_entries = [
-                    {
-                        "end": i + 1,
-                        "shafts": shafts,
-                        "color": t_data.warp_colors[i],
-                        "color_name": t_data.color_names.get(t_data.warp_colors[i]) if t_data.warp_colors[i] else None,  # type: ignore[arg-type]
-                    }
-                    for i, shafts in enumerate(t_data.threading)
-                ]
-                threading_entries = [WarpingPlanEndEntry(**e) for e in raw_entries]  # type: ignore[arg-type]
-                warp_color_runs = _compute_color_runs(raw_entries)
-            except ValueError:
-                pass
-        try:
-            tu = await asyncio.to_thread(wif_parser.parse_tieup, wif_bytes)
-            tieup_data = tu.tieup
-            tieup_num_shafts = tu.num_shafts
-            tieup_num_treadles = tu.num_treadles
-        except ValueError:
-            pass
+        (
+            threading_entries,
+            warp_color_runs,
+            tieup_data,
+            tieup_num_shafts,
+            tieup_num_treadles,
+        ) = await _parse_wif_for_warping_plan(wif_bytes, bool(draft.has_threading))
 
     return WarpingPlanResponse(
         project_id=project.id,
@@ -1620,7 +1685,7 @@ async def get_warping_plan(
         threading=threading_entries,
         warp_color_runs=warp_color_runs,
         warp_length_cm=draft.warp_length_cm,
-        epi=epi,
+        epi=_compute_epi(draft),
         has_threading=bool(draft.has_threading),
         tieup=tieup_data,
         tieup_num_shafts=tieup_num_shafts,
@@ -1756,6 +1821,120 @@ async def get_shared_project_preview(
         raise HTTPException(status_code=404, detail="Preview not yet generated")
     data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
     return Response(content=data, media_type="image/png", headers={"Cache-Control": "public, max-age=300"})
+
+
+# ---------------------------------------------------------------------------
+# Yarn-color linking endpoints
+# ---------------------------------------------------------------------------
+
+
+class LinkYarnColorRequest(BaseModel):
+    yarn_id: uuid.UUID
+    color_hex: str
+    use_yarn_photo: bool = False
+
+
+class PatchYarnColorRequest(BaseModel):
+    use_yarn_photo: bool
+
+
+@router.get("/{project_id}/yarn-colors", response_model=list[ProjectYarnColorSchema])
+async def list_project_yarn_colors(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[ProjectYarnColorSchema]:
+    await _get_owned_project(project_id, current_user, db)
+    stmt = (
+        select(ProjectYarnColor)
+        .where(ProjectYarnColor.project_id == project_id)
+        .options(selectinload(ProjectYarnColor.yarn))
+        .order_by(ProjectYarnColor.color_hex)
+    )
+    rows = (await db.scalars(stmt)).all()
+    return [_yarn_color_schema(r) for r in rows]
+
+
+@router.put("/{project_id}/yarn-colors/{color_hex}", response_model=ProjectYarnColorSchema, status_code=200)
+async def link_yarn_color(
+    project_id: uuid.UUID,
+    color_hex: str,
+    body: LinkYarnColorRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectYarnColorSchema:
+    await _get_owned_project(project_id, current_user, db)
+    yarn = await db.scalar(
+        select(Yarn).where(Yarn.id == body.yarn_id, Yarn.owner_id == current_user.id, Yarn.deleted_at.is_(None))
+    )
+    if yarn is None:
+        raise HTTPException(status_code=404, detail="Yarn not found")
+    existing = await db.scalar(
+        select(ProjectYarnColor).where(
+            ProjectYarnColor.project_id == project_id,
+            ProjectYarnColor.color_hex == color_hex,
+        )
+    )
+    if existing is not None:
+        existing.yarn_id = body.yarn_id
+        existing.use_yarn_photo = body.use_yarn_photo
+        await db.commit()
+        await db.refresh(existing)
+        existing.yarn = yarn
+        return _yarn_color_schema(existing)
+    row = ProjectYarnColor(
+        project_id=project_id,
+        yarn_id=body.yarn_id,
+        color_hex=color_hex,
+        use_yarn_photo=body.use_yarn_photo,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    row.yarn = yarn
+    return _yarn_color_schema(row)
+
+
+@router.patch("/{project_id}/yarn-colors/{color_hex}", response_model=ProjectYarnColorSchema)
+async def patch_yarn_color(
+    project_id: uuid.UUID,
+    color_hex: str,
+    body: PatchYarnColorRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectYarnColorSchema:
+    await _get_owned_project(project_id, current_user, db)
+    row = await db.scalar(
+        select(ProjectYarnColor)
+        .where(ProjectYarnColor.project_id == project_id, ProjectYarnColor.color_hex == color_hex)
+        .options(selectinload(ProjectYarnColor.yarn))
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Yarn color assignment not found")
+    row.use_yarn_photo = body.use_yarn_photo
+    await db.commit()
+    await db.refresh(row)
+    return _yarn_color_schema(row)
+
+
+@router.delete("/{project_id}/yarn-colors/{color_hex}", status_code=204)
+async def unlink_yarn_color(
+    project_id: uuid.UUID,
+    color_hex: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await _get_owned_project(project_id, current_user, db)
+    row = await db.scalar(
+        select(ProjectYarnColor).where(
+            ProjectYarnColor.project_id == project_id,
+            ProjectYarnColor.color_hex == color_hex,
+        )
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Yarn color assignment not found")
+    await db.delete(row)
+    await db.commit()
 
 
 @share_router.get("/projects/{slug}/svg")

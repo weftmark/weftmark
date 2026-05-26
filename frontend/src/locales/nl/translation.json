@@ -45,7 +45,8 @@
     "maintenance": "Onderhoud",
     "schedule": "Geplande taken",
     "exports": "Gegevensexports",
-    "credentials": "Inloggegevens"
+    "credentials": "Inloggegevens",
+    "sandbox": "Sandbox"
   },
   "loomTypes": {
     "floor_loom": "Vloerweefstoel — trapper-tracking",
@@ -474,7 +475,12 @@
     "colWeight": "Gewicht",
     "colFiber": "Vezel",
     "colSkeins": "Strengen",
-    "colAdded": "Toegevoegd"
+    "colAdded": "Toegevoegd",
+    "inStash": "In stash",
+    "sourceRavelry": "ravelry",
+    "sourceWeftmark": "weftmark",
+    "colSource": "Bron",
+    "filterInStash": "In stash"
   },
   "addYarnModal": {
     "title": "Garen toevoegen",
@@ -616,7 +622,13 @@
     "tieUpNotAvailable": "Koppelingsgegevens niet beschikbaar — dit WIF-bestand bevat geen [TIEUP]-sectie.",
     "tieUpDesc": "Kolommen = treden · Rijen = schachten · Gevuld = verbonden",
     "viewWeavePlan": "Weefplan bekijken",
-    "printSavePdf": "Afdrukken / Opslaan als PDF"
+    "printSavePdf": "Afdrukken / Opslaan als PDF",
+    "yarnCol": "Garen",
+    "linkYarn": "Garen koppelen",
+    "updateColorFromYarn": "Kleur overnemen van garen?",
+    "updateColor": "Overnemen",
+    "keepColor": "Behouden",
+    "undo": "Ongedaan maken"
   },
   "projectDetailPage": {
     "loading": "Laden…",
@@ -879,7 +891,8 @@
     "colorNamePlaceholder": "bijv. Kaki",
     "colorwayFilter": "Kleurwegen filteren…",
     "noColorways": "Geen kleurwegen gevonden voor dit garen.",
-    "colorwayLoadError": "Kleurwegen konden niet worden geladen."
+    "colorwayLoadError": "Kleurwegen konden niet worden geladen.",
+    "usedInProjects": "Gebruikt in projecten"
   },
   "loomDetailPage": {
     "loading": "Laden…",
@@ -1165,5 +1178,22 @@
       "frame_loom": "Raamweefgetouw",
       "other": "Overige"
     }
+  },
+  "colorPicker": {
+    "ariaLabel": "Kleur kiezen",
+    "modeHex": "Hex",
+    "modeRgb": "RGB",
+    "modeHsl": "HSL",
+    "modeName": "Naam",
+    "namePlaceholder": "bijv. salie, kobalt...",
+    "nameUnknown": "Onbekende kleurnaam",
+    "eyedropperTooltip": "Kleur van scherm kiezen"
+  },
+  "yarnPicker": {
+    "title": "Garen koppelen aan kleurslot",
+    "searchPlaceholder": "Zoek op naam, merk of kleur…",
+    "loading": "Laden…",
+    "noResults": "Geen garen gevonden.",
+    "unlink": "Garenlink verwijderen"
   }
 }

@@ -10,6 +10,10 @@ name: Dev PR
 on:
   pull_request:
     branches: [dev]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/ci-dev-pr.yml"
 
 concurrency:
   group: dev-pr-${{ github.head_ref }}
@@ -144,11 +148,39 @@ jobs:
           fail_ci_if_error: false
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: backend/junit.xml
           slug: weftmark/weftmark
+          report_type: test_results
+      - name: Upload coverage report for SonarCloud
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-report
+          path: backend/coverage.xml
+          retention-days: 1
+
+  sonarcloud:
+    name: SonarCloud quality gate
+    runs-on: ubuntu-latest
+    needs: [backend-tests]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Download coverage report
+        uses: actions/download-artifact@v6
+        with:
+          name: coverage-report
+          path: backend/
+      - name: SonarCloud scan
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
 
   migration-smoke-test:
     name: Alembic migration smoke test

@@ -2759,6 +2759,7 @@ class ConfigFieldState(BaseModel):
 class ConfigStateResponse(BaseModel):
     fields: list[ConfigFieldState]
     restart_pending: bool
+    api_url: str = ""
 
 
 class ConfigSaveRequest(BaseModel):
@@ -2802,7 +2803,7 @@ def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
     return result
 
 
-@router.get("/config", response_model=ConfigStateResponse)
+@router.get("/config")
 async def get_config_state(
     _: User = Depends(require_superuser),
 ) -> ConfigStateResponse:
@@ -2810,14 +2811,20 @@ async def get_config_state(
     return ConfigStateResponse(
         fields=_get_config_state(settings),
         restart_pending=_restart_pending,
+        api_url=settings.api_url or "",
     )
 
 
-@router.put("/config", response_model=ConfigStateResponse)
+@router.put("/config")
 async def save_config(
     body: ConfigSaveRequest,
     _: User = Depends(require_superuser),
 ) -> ConfigStateResponse:
+    """Save integration config values to the encrypted config file.
+
+    Raises:
+        HTTPException 503: CONFIG_ENCRYPTION_KEY is not set on this server.
+    """
     settings = get_settings()
     if not settings.config_encryption_key:
         raise HTTPException(status_code=503, detail="CONFIG_ENCRYPTION_KEY is not set — cannot write config file")
@@ -2827,88 +2834,114 @@ async def save_config(
     return ConfigStateResponse(
         fields=_get_config_state(settings),
         restart_pending=True,
+        api_url=settings.api_url or "",
     )
 
 
-@router.post("/config/test/{service}", response_model=ConfigTestResult)
+async def _test_smtp(v: dict) -> ConfigTestResult:
+    try:
+        import smtplib
+
+        host = str(v.get("smtp_host") or "mail.smtp2go.com")
+        port = int(v.get("smtp_port") or 587)
+        user = str(v.get("smtp_user") or "")
+        password = str(v.get("smtp_password") or "")
+        if not user or not password:
+            return ConfigTestResult(ok=False, message="smtp_user and smtp_password are required")
+        with smtplib.SMTP(host, port, timeout=10) as s:
+            s.starttls()
+            s.login(user, password)
+        return ConfigTestResult(ok=True, message=f"Connected to {host}:{port} and authenticated successfully")
+    except Exception as exc:
+        return ConfigTestResult(ok=False, message=str(exc))
+
+
+async def _test_s3(v: dict) -> ConfigTestResult:
+    try:
+        import boto3
+
+        client = boto3.client(
+            "s3",
+            endpoint_url=v.get("s3_endpoint_url") or None,
+            aws_access_key_id=v.get("s3_access_key_id") or None,
+            aws_secret_access_key=v.get("s3_secret_access_key") or None,
+            region_name=v.get("s3_region") or None,
+        )
+        bucket = v.get("s3_bucket_name") or ""
+        if not bucket:
+            return ConfigTestResult(ok=False, message="s3_bucket_name is required")
+        await asyncio.to_thread(client.head_bucket, Bucket=bucket)
+        return ConfigTestResult(ok=True, message=f"Bucket '{bucket}' is accessible")
+    except Exception as exc:
+        return ConfigTestResult(ok=False, message=str(exc))
+
+
+async def _test_ravelry_read(v: dict) -> ConfigTestResult:
+    try:
+        username = v.get("ravelry_read_access_username") or ""
+        key = v.get("ravelry_read_access_key") or ""
+        if not username or not key:
+            return ConfigTestResult(ok=False, message="Username and key are both required")
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                "https://api.ravelry.com/yarn_weights.json",
+                auth=(username, key),
+                timeout=10,
+            )
+        if resp.status_code == 200:
+            return ConfigTestResult(ok=True, message="Ravelry read key is valid")
+        return ConfigTestResult(ok=False, message=f"Ravelry returned {resp.status_code}")
+    except Exception as exc:
+        return ConfigTestResult(ok=False, message=str(exc))
+
+
+async def _test_github(v: dict) -> ConfigTestResult:
+    try:
+        token = v.get("github_feedback_token") or ""
+        if not token:
+            return ConfigTestResult(ok=False, message="github_feedback_token is required")
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                "https://api.github.com/user",
+                headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"},
+                timeout=10,
+            )
+        if resp.status_code == 200:
+            scopes = resp.headers.get("x-oauth-scopes", "")
+            return ConfigTestResult(ok=True, message=f"Token valid — scopes: {scopes or '(none listed)'}")
+        return ConfigTestResult(ok=False, message=f"GitHub returned {resp.status_code}: {resp.text[:120]}")
+    except Exception as exc:
+        return ConfigTestResult(ok=False, message=str(exc))
+
+
+_SERVICE_TESTS = {
+    "smtp": _test_smtp,
+    "s3": _test_s3,
+    "ravelry_read": _test_ravelry_read,
+    "github": _test_github,
+}
+
+
+@router.post("/config/test/{service}")
 async def test_config_service(
     service: str,
     body: ConfigSaveRequest,
     _: User = Depends(require_superuser),
 ) -> ConfigTestResult:
     """Test a service connection using the provided (unsaved) values."""
-    v = body.values
+    handler = _SERVICE_TESTS.get(service)
+    if handler is None:
+        raise HTTPException(status_code=400, detail=f"Unknown service '{service}'")
+    return await handler(body.values)
 
-    if service == "smtp":
-        try:
-            import smtplib
 
-            host = str(v.get("smtp_host") or "mail.smtp2go.com")
-            port = int(v.get("smtp_port") or 587)
-            user = str(v.get("smtp_user") or "")
-            password = str(v.get("smtp_password") or "")
-            if not user or not password:
-                return ConfigTestResult(ok=False, message="smtp_user and smtp_password are required")
-            with smtplib.SMTP(host, port, timeout=10) as s:
-                s.starttls()
-                s.login(user, password)
-            return ConfigTestResult(ok=True, message=f"Connected to {host}:{port} and authenticated successfully")
-        except Exception as exc:
-            return ConfigTestResult(ok=False, message=str(exc))
+@router.post("/sandbox/sentry-test", dependencies=[Depends(require_superuser)])
+async def sandbox_sentry_test():
+    import sentry_sdk
 
-    if service == "s3":
-        try:
-            import boto3
-
-            client = boto3.client(
-                "s3",
-                endpoint_url=v.get("s3_endpoint_url") or None,
-                aws_access_key_id=v.get("s3_access_key_id") or None,
-                aws_secret_access_key=v.get("s3_secret_access_key") or None,
-                region_name=v.get("s3_region") or None,
-            )
-            bucket = v.get("s3_bucket_name") or ""
-            if not bucket:
-                return ConfigTestResult(ok=False, message="s3_bucket_name is required")
-            await asyncio.to_thread(client.head_bucket, Bucket=bucket)
-            return ConfigTestResult(ok=True, message=f"Bucket '{bucket}' is accessible")
-        except Exception as exc:
-            return ConfigTestResult(ok=False, message=str(exc))
-
-    if service == "ravelry_read":
-        try:
-            username = v.get("ravelry_read_access_username") or ""
-            key = v.get("ravelry_read_access_key") or ""
-            if not username or not key:
-                return ConfigTestResult(ok=False, message="Username and key are both required")
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    "https://api.ravelry.com/yarn_weights.json",
-                    auth=(username, key),
-                    timeout=10,
-                )
-            if resp.status_code == 200:
-                return ConfigTestResult(ok=True, message="Ravelry read key is valid")
-            return ConfigTestResult(ok=False, message=f"Ravelry returned {resp.status_code}")
-        except Exception as exc:
-            return ConfigTestResult(ok=False, message=str(exc))
-
-    if service == "github":
-        try:
-            token = v.get("github_feedback_token") or ""
-            if not token:
-                return ConfigTestResult(ok=False, message="github_feedback_token is required")
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    "https://api.github.com/user",
-                    headers={"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"},
-                    timeout=10,
-                )
-            if resp.status_code == 200:
-                scopes = resp.headers.get("x-oauth-scopes", "")
-                return ConfigTestResult(ok=True, message=f"Token valid — scopes: {scopes or '(none listed)'}")
-            return ConfigTestResult(ok=False, message=f"GitHub returned {resp.status_code}: {resp.text[:120]}")
-        except Exception as exc:
-            return ConfigTestResult(ok=False, message=str(exc))
-
-    raise HTTPException(status_code=400, detail=f"Unknown service '{service}'")
+    event_id: str | None = None
+    try:
+        raise RuntimeError("Sentry test error — triggered from Superuser Sandbox (backend)")
+    except RuntimeError as exc:
+        event_id = sentry_sdk.capture_exception(exc)
+    return {"captured": True, "event_id": event_id}

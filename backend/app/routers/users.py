@@ -530,52 +530,56 @@ async def get_activity_heatmap(
 # ---------------------------------------------------------------------------
 
 
-async def _purge_user_storage(db: AsyncSession, user_id: uuid.UUID) -> None:
-    """Delete all S3/local files belonging to the user. Storage errors are logged but not fatal."""
-
-    # Project photos
+async def _delete_user_project_files(db: AsyncSession, user_id: uuid.UUID) -> None:
     photos = await db.scalars(
         select(ProjectPhoto).join(Project, ProjectPhoto.project_id == Project.id).where(Project.owner_id == user_id)
     )
     for p in photos.all():
         _safe_delete(p.file_path)
 
-    # Yarn profile photos
+
+async def _delete_user_yarn_files(db: AsyncSession, user_id: uuid.UUID) -> None:
     yarns = await db.scalars(select(Yarn).where(Yarn.owner_id == user_id))
     for y in yarns.all():
         if y.photo_path:
             _safe_delete(y.photo_path)
 
-    # Loom profile photos + version photos/receipts
-    looms = await db.scalars(select(Loom).where(Loom.owner_id == user_id))
+
+async def _delete_user_loom_files(db: AsyncSession, user_id: uuid.UUID) -> None:
     loom_ids = []
-    for loom in looms.all():
+    for loom in (await db.scalars(select(Loom).where(Loom.owner_id == user_id))).all():
         loom_ids.append(loom.id)
         if loom.photo_path:
             _safe_delete(loom.photo_path)
 
     if loom_ids:
-        versions = await db.scalars(select(LoomVersion).where(LoomVersion.loom_id.in_(loom_ids)))
-        version_ids = []
-        for v in versions.all():
-            version_ids.append(v.id)
-
+        version_ids = [
+            v.id for v in (await db.scalars(select(LoomVersion).where(LoomVersion.loom_id.in_(loom_ids)))).all()
+        ]
         if version_ids:
             vp = await db.scalars(select(LoomVersionPhoto).where(LoomVersionPhoto.loom_version_id.in_(version_ids)))
             for lp in vp.all():
                 _safe_delete(lp.path)
-
             vr = await db.scalars(select(LoomVersionReceipt).where(LoomVersionReceipt.loom_version_id.in_(version_ids)))
             for r in vr.all():
                 _safe_delete(r.path)
 
-    # Draft WIF files and previews
+
+async def _delete_user_draft_files(db: AsyncSession, user_id: uuid.UUID) -> None:
     drafts = await db.scalars(select(Draft).where(Draft.owner_id == user_id))
     for draft in drafts.all():
         if draft.wif_path:
             _safe_delete(draft.wif_path)
         if draft.preview_path:
             _safe_delete(draft.preview_path)
+
+
+async def _purge_user_storage(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """Delete all S3/local files belonging to the user. Storage errors are logged but not fatal."""
+    await _delete_user_project_files(db, user_id)
+    await _delete_user_yarn_files(db, user_id)
+    await _delete_user_loom_files(db, user_id)
+    await _delete_user_draft_files(db, user_id)
 
 
 def _safe_delete(path: str) -> None:

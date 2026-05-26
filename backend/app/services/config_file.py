@@ -84,9 +84,29 @@ def decrypt(token: str, key: str) -> str:
     return _fernet(key).decrypt(token.encode()).decode()  # type: ignore[no-any-return]
 
 
-def load(path: str, encryption_key: str) -> dict[str, Any]:
+def _get_allowed_root() -> Path:
+    """Return the trusted directory for config file I/O.
+
+    Derived from CONFIG_FILE_PATH env var (same source as settings.config_file_path)
+    so the root is always stable and independent of any argument passed at call time.
+    Falls back to /data, the standard container mount point.
+    """
+    configured = os.environ.get("CONFIG_FILE_PATH", "")
+    return Path(configured).resolve().parent if configured else Path("/data")
+
+
+def _assert_safe_path(path: str) -> Path:
+    """Resolve *path* and raise ValueError if it escapes the allowed root."""
+    resolved = Path(path).resolve()
+    allowed_root = _get_allowed_root()
+    if not resolved.is_relative_to(allowed_root):
+        raise ValueError(f"Config path outside allowed root '{allowed_root}': {resolved}")
+    return resolved
+
+
+def load(path: str, encryption_key: str) -> dict[str, Any]:  # NOSONAR: path validated by _assert_safe_path
     """Load config file, decrypting secret fields. Returns {} if file absent/corrupt."""
-    p = Path(path)
+    p = _assert_safe_path(path)
     if not p.exists():
         return {}
     try:
@@ -107,9 +127,11 @@ def load(path: str, encryption_key: str) -> dict[str, Any]:
     return result
 
 
-def save(path: str, encryption_key: str, values: dict[str, Any]) -> None:
+def save(  # NOSONAR: path validated by _assert_safe_path
+    path: str, encryption_key: str, values: dict[str, Any]
+) -> None:
     """Merge values into the config file, encrypting secret fields."""
-    p = Path(path)
+    p = _assert_safe_path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
 
     # Load existing to merge (don't wipe fields we're not touching)
