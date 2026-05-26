@@ -207,7 +207,7 @@
   {
     "License": "MIT",
     "Name": "fastapi",
-    "Version": "0.136.3"
+    "Version": "0.136.1"
   },
   {
     "License": "MIT",
@@ -252,7 +252,7 @@
   {
     "License": "MIT",
     "Name": "httptools",
-    "Version": "0.7.1"
+    "Version": "0.8.0"
   },
   {
     "License": "BSD License",

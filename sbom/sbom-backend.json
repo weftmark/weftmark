@@ -149,7 +149,7 @@
     },
     {
       "bom-ref": "requirements-L1",
-      "description": "requirements line 1: fastapi==0.136.3",
+      "description": "requirements line 1: fastapi==0.136.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -158,9 +158,9 @@
         }
       ],
       "name": "fastapi",
-      "purl": "pkg:pypi/fastapi@0.136.3",
+      "purl": "pkg:pypi/fastapi@0.136.1",
       "type": "library",
-      "version": "0.136.3"
+      "version": "0.136.1"
     },
     {
       "bom-ref": "requirements-L36",
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-25T16:28:23.654651+00:00",
+    "timestamp": "2026-05-26T14:05:01.297022+00:00",
     "tools": {
       "components": [
         {
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:8ae2ae4a-889a-4033-b044-44b733b9fb8f",
+  "serialNumber": "urn:uuid:a4ca93e4-1da6-412e-a901-e1528b5a155f",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
