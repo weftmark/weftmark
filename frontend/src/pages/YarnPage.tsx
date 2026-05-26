@@ -17,6 +17,7 @@ import { AddYarnModal } from "@/components/yarn/AddYarnModal";
 import { AddFromRavelryModal } from "@/components/yarn/AddFromRavelryModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -720,7 +721,11 @@ export function YarnPage() {
             : t("yarnPage.syncComplete", { count: syncResult.synced })}
         </p>
       )}
-      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+      {isLoading && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-[120px] rounded-lg" />)}
+        </div>
+      )}
       {error && <p className="text-sm text-destructive">{t("yarnPage.loadError")}</p>}
 
       {/* Empty — no yarn at all */}

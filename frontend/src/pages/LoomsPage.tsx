@@ -8,6 +8,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 import { listProjects } from "@/api/projects";
 import { NewLoomModal } from "@/components/looms/NewLoomModal";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface LoomProjectCounts {
   active: number;
@@ -147,7 +148,11 @@ export function LoomsPage() {
         </Link>
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+      {isLoading && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[160px] rounded-lg" />)}
+        </div>
+      )}
       {error && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {t("loomsPage.loadError")}

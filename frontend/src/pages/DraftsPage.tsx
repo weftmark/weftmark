@@ -7,6 +7,7 @@ import { DraftCard } from "@/components/drafts/DraftCard";
 import { UploadWifModal } from "@/components/drafts/UploadWifModal";
 import { Button } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function DraftsPage() {
   const { t } = useTranslation();
@@ -89,7 +90,11 @@ export function DraftsPage() {
         </div>
       )}
 
-      {isLoading && <p className="text-sm text-muted-foreground">{t("draftsPage.loadingText")}</p>}
+      {isLoading && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[130px] rounded-lg" />)}
+        </div>
+      )}
       {error && <p className="text-sm text-destructive">{t("draftsPage.loadError")}</p>}
 
       {!isLoading && activeDrafts.length === 0 && archivedDrafts.length === 0 && !activeTagFilter && (
