@@ -444,6 +444,12 @@
     "discontinued": "Gestopt",
     "outOfStash": "Niet meer op voorraad",
     "inRavelryStash": "Ravelry Stash",
+    "notInRavelryStash": "Niet in Ravelry-stash",
+    "pushToRavelryBulkButton": "{{count}} toevoegen aan Ravelry-stash",
+    "pushToRavelryModalTitle": "Toevoegen aan Ravelry-stash",
+    "pushToRavelryModalBody": "Deze garens worden toegevoegd aan je Ravelry-stash:",
+    "pushToRavelryModalConfirm": "Alles toevoegen",
+    "pushBulkSuccess": "{{count}} garen(s) toegevoegd aan Ravelry-stash.",
     "colorNotSet": "niet ingesteld",
     "showArchived": "Gearchiveerde tonen",
     "hideArchived": "Gearchiveerde verbergen",
@@ -892,7 +898,10 @@
     "colorwayFilter": "Kleurwegen filteren…",
     "noColorways": "Geen kleurwegen gevonden voor dit garen.",
     "colorwayLoadError": "Kleurwegen konden niet worden geladen.",
-    "usedInProjects": "Gebruikt in projecten"
+    "usedInProjects": "Gebruikt in projecten",
+    "addToRavelryStash": "Toevoegen aan Ravelry-stash",
+    "inRavelryStash": "In Ravelry-stash",
+    "addToRavelryStashError": "Kon niet toevoegen aan Ravelry-stash."
   },
   "loomDetailPage": {
     "loading": "Laden…",

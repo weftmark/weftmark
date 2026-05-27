@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, Link } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getYarn, updateYarn, patchYarnColorway, getYarnProjects, type YarnProjectRef } from "@/api/yarn";
-import { getRavelryYarnDetail, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
+import { getRavelryStatus, getRavelryYarnDetail, pushYarnToStash, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 
@@ -132,6 +132,7 @@ function EditColorwayModal({
         aria-labelledby="edit-colorway-title"
         className="w-full max-w-sm rounded-xl border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 id="edit-colorway-title" className="text-sm font-semibold">{t("yarnDetailPage.editColorwayTitle")}</h2>
@@ -392,6 +393,19 @@ export function YarnDetailPage() {
     enabled: !!id,
   });
 
+  const { data: ravelryStatus } = useQuery({
+    queryKey: ["ravelry-status"],
+    queryFn: getRavelryStatus,
+  });
+
+  const pushMutation = useMutation({
+    mutationFn: () => pushYarnToStash(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["yarn", id] });
+      queryClient.invalidateQueries({ queryKey: ["yarn"] });
+    },
+  });
+
   const { data: ravelryYarnResp } = useQuery({
     queryKey: ["ravelry-yarn-detail", yarn?.ravelry_yarn_id],
     queryFn: async () => {
@@ -520,6 +534,28 @@ export function YarnDetailPage() {
               <span className="rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs">
                 {t("yarnPage.outOfStash")}
               </span>
+            )}
+            {ravelryStatus?.connected && yarn.ravelry_stash_id !== null && ravelryStatus.ravelry_username && (
+              <a
+                href={`https://www.ravelry.com/people/${ravelryStatus.ravelry_username}/stash/${yarn.ravelry_stash_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-accent/10 text-accent px-2.5 py-0.5 text-xs hover:bg-accent/20 transition-colors"
+              >
+                {t("yarnDetailPage.inRavelryStash")} ↗
+              </a>
+            )}
+            {ravelryStatus?.connected && yarn.ravelry_yarn_id !== null && yarn.ravelry_stash_id === null && !yarn.out_of_stash && !yarn.archived && (
+              <button
+                onClick={() => pushMutation.mutate()}
+                disabled={pushMutation.isPending}
+                className="rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs hover:bg-muted/80 disabled:opacity-50 transition-colors"
+              >
+                {pushMutation.isPending ? t("common.loading") : t("yarnDetailPage.addToRavelryStash")}
+              </button>
+            )}
+            {pushMutation.isError && (
+              <span className="text-xs text-destructive">{t("yarnDetailPage.addToRavelryStashError")}</span>
             )}
           </div>
 

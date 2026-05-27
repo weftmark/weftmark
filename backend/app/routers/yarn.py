@@ -120,6 +120,7 @@ class YarnDetail(YarnSummary):
     purchase_source: str | None
     purchase_price: Decimal | None
     purchase_date: date | None
+    dye_lot: str | None
     notes: str | None
     skeins: list[SkeinSchema]
 
@@ -144,6 +145,7 @@ class YarnDetail(YarnSummary):
                 "purchase_source": yarn.purchase_source,
                 "purchase_price": yarn.purchase_price,
                 "purchase_date": yarn.purchase_date,
+                "dye_lot": yarn.dye_lot,
                 "notes": yarn.notes,
                 "has_photo": yarn.photo_path is not None,
                 "skein_count": len(yarn.skeins),
@@ -185,6 +187,7 @@ class CreateYarnRequest(BaseModel):
     purchase_source: str | None = None
     purchase_price: Decimal | None = None
     purchase_date: date | None = None
+    dye_lot: str | None = None
     notes: str | None = None
     machine_washable: bool | None = None
     yarn_attribute_ids: list[int] | None = None
@@ -207,6 +210,7 @@ class UpdateYarnRequest(BaseModel):
     purchase_source: str | None = None
     purchase_price: Decimal | None = None
     purchase_date: date | None = None
+    dye_lot: str | None = None
     notes: str | None = None
     machine_washable: bool | None = None
     yarn_attribute_ids: list[int] | None = None
