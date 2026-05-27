@@ -132,6 +132,7 @@ function EditColorwayModal({
         aria-labelledby="edit-colorway-title"
         className="w-full max-w-sm rounded-xl border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 id="edit-colorway-title" className="text-sm font-semibold">{t("yarnDetailPage.editColorwayTitle")}</h2>
