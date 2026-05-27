@@ -264,13 +264,16 @@ async def _probe_postgres(db: AsyncSession) -> ServiceCheckResult:
 def _s3_conn_meta(settings: "Settings") -> dict[str, str]:
     if settings.storage_backend != "s3":
         return {"backend": "local"}
-    return {
+    meta: dict[str, str] = {
         "backend": "s3",
         "bucket": settings.s3_bucket_name or "(not set)",
         "endpoint": settings.s3_endpoint_url or "AWS default",
         "region": settings.s3_region or "auto",
         "access_key_id": settings.s3_access_key_id or "(not set)",
     }
+    if settings.s3_bucket_owner_account_id:
+        meta["bucket_owner_account_id"] = settings.s3_bucket_owner_account_id
+    return meta
 
 
 async def _probe_s3() -> ServiceCheckResult:
