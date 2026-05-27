@@ -470,7 +470,7 @@
     "sortWeightLight": "Gewicht licht→zwaar",
     "filterLabel": "Filters",
     "filterClearAll": "Alles wissen",
-    "filterHasColor": "Heeft kleurmonster",
+    "filterMissingColor": "Geen kleurmonster",
     "filterInRavelryStash": "In Ravelry-voorraad",
     "filterMachineWashable": "Machinewasbaar",
     "filterWeight": "Gewicht",

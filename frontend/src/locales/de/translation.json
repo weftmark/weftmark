@@ -471,7 +471,7 @@
     "sortWeightLight": "Gewicht leicht→schwer",
     "filterLabel": "Filter",
     "filterClearAll": "Alle löschen",
-    "filterHasColor": "Hat Farbmuster",
+    "filterMissingColor": "Ohne Farbmuster",
     "filterInRavelryStash": "Im Ravelry-Vorrat",
     "filterMachineWashable": "Maschinenwaschbar",
     "filterWeight": "Gewicht",

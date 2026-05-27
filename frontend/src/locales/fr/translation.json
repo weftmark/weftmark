@@ -470,7 +470,7 @@
     "sortWeightLight": "Poids léger→lourd",
     "filterLabel": "Filtres",
     "filterClearAll": "Tout effacer",
-    "filterHasColor": "A un coloris",
+    "filterMissingColor": "Sans coloris",
     "filterInRavelryStash": "Dans le stock Ravelry",
     "filterMachineWashable": "Lavable en machine",
     "filterWeight": "Poids",
