@@ -312,9 +312,7 @@ async def _probe_s3() -> ServiceCheckResult:
 
         # list_objects
         try:
-            client.list_objects_v2(
-                Bucket=bucket, MaxKeys=1, **settings.s3_owner_kwargs
-            )  # NOSONAR — permission probe, not a data fetch
+            client.list_objects_v2(Bucket=bucket, MaxKeys=1, **settings.s3_owner_kwargs)  # NOSONAR
             results.append(("list_objects", True, "ListObjectsV2 permitted"))
         except Exception as e:
             results.append(("list_objects", False, str(e)[:100]))
@@ -2858,19 +2856,24 @@ async def save_config(
 
 
 async def _test_smtp(v: dict) -> ConfigTestResult:
-    try:
-        import smtplib
+    import smtplib
 
-        host = str(v.get("smtp_host") or "mail.smtp2go.com")
-        port = int(v.get("smtp_port") or 587)
-        user = str(v.get("smtp_user") or "")
-        password = str(v.get("smtp_password") or "")
-        if not user or not password:
-            return ConfigTestResult(ok=False, message="smtp_user and smtp_password are required")
+    host = str(v.get("smtp_host") or "mail.smtp2go.com")
+    port = int(v.get("smtp_port") or 587)
+    user = str(v.get("smtp_user") or "")
+    password = str(v.get("smtp_password") or "")
+    if not user or not password:
+        return ConfigTestResult(ok=False, message="smtp_user and smtp_password are required")
+
+    def _connect() -> str:
         with smtplib.SMTP(host, port, timeout=10) as s:
             s.starttls()
             s.login(user, password)
-        return ConfigTestResult(ok=True, message=f"Connected to {host}:{port} and authenticated successfully")
+        return f"Connected to {host}:{port} and authenticated successfully"
+
+    try:
+        msg = await asyncio.to_thread(_connect)
+        return ConfigTestResult(ok=True, message=msg)
     except Exception as exc:
         return ConfigTestResult(ok=False, message=str(exc))
 

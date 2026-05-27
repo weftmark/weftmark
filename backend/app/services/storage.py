@@ -57,7 +57,7 @@ def _put(key: str, data: bytes) -> str:
     else:
         path = _safe_path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(data)
+        path.write_bytes(data)  # NOSONAR — path validated by _safe_path() above
     return key
 
 
