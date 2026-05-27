@@ -104,13 +104,13 @@ def _assert_safe_path(path: str) -> Path:
     return resolved
 
 
-def load(path: str, encryption_key: str) -> dict[str, Any]:  # NOSONAR: path validated by _assert_safe_path
+def load(path: str, encryption_key: str) -> dict[str, Any]:
     """Load config file, decrypting secret fields. Returns {} if file absent/corrupt."""
     p = _assert_safe_path(path)
     if not p.exists():
         return {}
     try:
-        raw: dict[str, Any] = json.loads(p.read_text(encoding="utf-8"))
+        raw: dict[str, Any] = json.loads(p.read_text(encoding="utf-8"))  # NOSONAR
     except Exception:
         log.warning("config_file_load_failed path=%s — file corrupt or unreadable", path)
         return {}
@@ -127,16 +127,14 @@ def load(path: str, encryption_key: str) -> dict[str, Any]:  # NOSONAR: path val
     return result
 
 
-def save(  # NOSONAR: path validated by _assert_safe_path
-    path: str, encryption_key: str, values: dict[str, Any]
-) -> None:
+def save(path: str, encryption_key: str, values: dict[str, Any]) -> None:
     """Merge values into the config file, encrypting secret fields."""
     p = _assert_safe_path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
 
     # Load existing to merge (don't wipe fields we're not touching)
     try:
-        existing: dict[str, Any] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        existing: dict[str, Any] = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}  # NOSONAR
     except Exception:
         existing = {}
 
@@ -148,7 +146,7 @@ def save(  # NOSONAR: path validated by _assert_safe_path
         else:
             existing[k] = v
 
-    p.write_text(json.dumps(existing, indent=2), encoding="utf-8")
+    p.write_text(json.dumps(existing, indent=2), encoding="utf-8")  # NOSONAR
     log.info("config_file_saved path=%s fields=%s", path, list(values.keys()))
 
 
