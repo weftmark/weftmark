@@ -48,6 +48,11 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
+def _safe_log(value: str, maxlen: int = 200) -> str:
+    """Strip newlines and truncate before logging user-supplied values."""
+    return value.replace("\n", "\\n").replace("\r", "\\r")[:maxlen]
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -1823,7 +1828,7 @@ async def cleanup_s3_orphans(
             storage._delete(key)
             deleted += 1
         except Exception as exc:
-            log.warning("s3_cleanup_error key=%s error=%s", key, exc)
+            log.warning("s3_cleanup_error key=%s error=%s", _safe_log(key), exc)
 
     log.info("s3_cleanup_complete admin_id=%s deleted=%d", admin.id, deleted)
     return S3CleanupResponse(deleted=deleted)
@@ -2816,7 +2821,7 @@ async def get_config_state(
 
 
 @router.put("/config")
-async def save_config(
+def save_config(
     body: ConfigSaveRequest,
     _: User = Depends(require_superuser),
 ) -> ConfigStateResponse:
