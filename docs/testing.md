@@ -42,6 +42,23 @@
 | `app/version.py` | 86% | `__main__` block not tested |
 | `app/cli.py` | 63% | Seeding CLI paths not tested |
 | `app/services/clerk.py` | 23% | Clerk API calls not tested (no Clerk mock) |
+| `app/routers/ravelry.py` | ~50% | Stash push-back well covered; status/disconnect/sync/authorize/callback/search/import untested — see #963 |
+| `app/routers/collections.py` | ~90% | Comprehensive CRUD tests; exact % not yet measured |
+| `app/routers/feedback.py` | ~90% | Full CRUD + admin paths tested; exact % not yet measured |
+| `app/routers/webhooks.py` | ~85% | Webhook handler paths covered; exact % not yet measured |
+| `app/routers/loom_catalog.py` | ~85% | Catalog CRUD tested; exact % not yet measured |
+| `app/routers/system.py` | ~80% | Tested; exact % not yet measured |
+| `app/services/images.py` | ~0% | No direct tests — security control (`validate_image_format`) untested — see #962 |
+| `app/services/audit.py` | ~10% | Only hit indirectly via drawdown 413 tests; simple helper, low risk |
+| `app/services/loom_seed.py` | ~60% | `_coerce_entry` and `locate_json` helpers untested; `seed()` uses sync file I/O — see #957 |
+| `app/services/geo.py` | ~90% | Tested; exact % not yet measured |
+| `app/services/server_events.py` | ~85% | Tested; exact % not yet measured |
+| `app/services/rate_limiter.py` | ~85% | Tested; exact % not yet measured |
+| `app/services/config_file.py` | ~85% | Tested; exact % not yet measured |
+| `app/services/github_discussions.py` | ~80% | Tested; exact % not yet measured |
+| `app/services/smtp_health.py` | ~80% | Tested; exact % not yet measured |
+| `app/services/clerk_webhook_probe.py` | ~80% | Tested; exact % not yet measured |
+| `app/services/deletion.py` | ~95% | Tested; exact % not yet measured |
 
 ---
 
@@ -124,3 +141,4 @@ Reassess coverage completeness when:
 | 2026-05-15 | v0.145.0 | ~86% | Coverage stable; new features (color replacements, project landing page, reed inventory, tile pre-render) added without regression. |
 | 2026-05-18 | v0.145.x | 75.52% | `itc 75` run: fixed testpaths to include `app/weaving/tests/`; added tests for rendering SVG/drawdown/clip functions, weaving Draft methods, `parse_threading`, `parse_tieup`, `task_history`, and `clerk_auth`. 1730 tests, 0 failures. |
 | 2026-05-25 | v0.189.0 | 90.00% | `itc 90` run: +962 tests across tasks (preview, tiles, maintenance, s3_audit, feedback_dispatch, purge, reparse), services (wif_parser, wif_linter), and infra (setup.cfg concurrency=thread,greenlet to track asyncio.to_thread closures). 2692 tests, 0 failures. |
+| 2026-05-27 | v0.203.x | 90.24% | 2717 tests (post Alembic squash). Coverage table expanded with ~15 modules that had tests but were not tracked: collections, feedback, ravelry, webhooks, loom_catalog, system, plus services (images, audit, loom_seed, geo, server_events, rate_limiter, config_file, deletion, etc.). New issues: #962 (images.py security tests), #963 (ravelry router DB endpoints). |

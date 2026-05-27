@@ -30,7 +30,7 @@ Local docker stack note:
   POSTGRES_* vars, but this script uses psycopg2 directly). Pass --db-url explicitly:
 
   docker exec weaving_site_backend python migrate_storage_paths.py --dry-run \\
-    --db-url "postgresql://weaving_user:<password>@db:5432/weaving_site"
+    --db-url "postgresql://<user>:<password>@db:5432/weaving_site"
 
   The URL scheme must be plain postgresql:// — not postgresql+asyncpg://.
 
