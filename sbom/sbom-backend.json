@@ -463,7 +463,7 @@
     },
     {
       "bom-ref": "requirements-L12",
-      "description": "requirements line 12: ravelpy==0.3.0",
+      "description": "requirements line 12: ravelpy==0.3.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -472,9 +472,9 @@
         }
       ],
       "name": "ravelpy",
-      "purl": "pkg:pypi/ravelpy@0.3.0",
+      "purl": "pkg:pypi/ravelpy@0.3.1",
       "type": "library",
-      "version": "0.3.0"
+      "version": "0.3.1"
     },
     {
       "bom-ref": "requirements-L10",
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-05-26T14:42:16.236912+00:00",
+    "timestamp": "2026-05-27T03:41:40.957511+00:00",
     "tools": {
       "components": [
         {
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:0e888b3d-6438-469d-9d91-25671f099920",
+  "serialNumber": "urn:uuid:cbc1243a-4ec9-4fa6-b82d-0732a35a5cdd",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",

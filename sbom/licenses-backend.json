@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.14"
+    "Version": "1.43.15"
   },
   {
     "License": "BSD-3-Clause",
@@ -532,7 +532,7 @@
   {
     "License": "MIT",
     "Name": "ravelpy",
-    "Version": "0.3.0"
+    "Version": "0.3.1"
   },
   {
     "License": "MIT",
@@ -577,7 +577,7 @@
   {
     "License": "Apache Software License",
     "Name": "s3transfer",
-    "Version": "0.17.0"
+    "Version": "0.17.1"
   },
   {
     "License": "MIT",
