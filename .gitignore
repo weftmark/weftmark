@@ -19,6 +19,7 @@
 .remotehost
 # .remotehost.example is intentionally tracked
 .sentry-token
+.tokens
 
 # Seed config (contains credentials — seed.example.json is tracked)
 backend/seed.json
