@@ -584,10 +584,6 @@ async def push_yarn_to_stash(yarn_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSe
     Returns the new ravelry_stash_id written back to the yarn record.
     Raises ValueError for eligibility failures, LookupError if yarn not found.
     """
-    cred = await get_credential(user_id, db)
-    if cred is None:
-        raise ValueError(_NO_CREDENTIAL)
-
     yarn = await db.scalar(
         select(Yarn).where(
             Yarn.id == yarn_id,
@@ -597,6 +593,11 @@ async def push_yarn_to_stash(yarn_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSe
     )
     if yarn is None:
         raise LookupError(f"Yarn {yarn_id} not found")
+
+    cred = await get_credential(user_id, db)
+    if cred is None:
+        raise LookupError(_NO_CREDENTIAL)
+
     if yarn.ravelry_yarn_id is None:
         raise ValueError("Yarn is not linked to a Ravelry yarn (Tier 2 — not eligible for push-back)")
     if yarn.ravelry_stash_id is not None:
@@ -634,7 +635,7 @@ async def push_eligible_yarns_to_stash(user_id: uuid.UUID, db: AsyncSession) -> 
     """
     cred = await get_credential(user_id, db)
     if cred is None:
-        raise ValueError(_NO_CREDENTIAL)
+        raise LookupError(_NO_CREDENTIAL)
 
     eligible = (
         await db.scalars(
