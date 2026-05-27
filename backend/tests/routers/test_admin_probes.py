@@ -115,6 +115,37 @@ class TestPgConnMeta:
 
 
 # ---------------------------------------------------------------------------
+# _s3_conn_meta — bucket_owner_account_id branch (lines 274-275)
+# ---------------------------------------------------------------------------
+
+
+class TestS3ConnMeta:
+    def test_includes_preconfigured_owner(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_conn_meta
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "111122223333")
+        monkeypatch.setattr(s, "s3_bucket_name", "my-bucket")
+        monkeypatch.setattr(s, "s3_endpoint_url", "https://r2.example.com")
+        monkeypatch.setattr(s, "s3_region", "auto")
+        monkeypatch.setattr(s, "s3_access_key_id", "key123")
+        result = _s3_conn_meta(s)
+        assert result["bucket_owner_account_id"] == "111122223333"
+
+    def test_omits_owner_when_not_configured(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_conn_meta
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        result = _s3_conn_meta(s)
+        assert "bucket_owner_account_id" not in result
+
+
+# ---------------------------------------------------------------------------
 # _probe_s3 (lines 277-338)
 # ---------------------------------------------------------------------------
 
@@ -229,6 +260,33 @@ class TestProbeS3:
 
         assert result.status == "error"
         assert any(c.name == "connect" for c in result.checks)
+
+    async def test_s3_preconfigured_owner_not_overwritten_by_sts(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _probe_s3
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "111122223333")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {"Contents": []}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "999888777666"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            result = await _probe_s3()
+
+        # Pre-configured value from settings wins; STS-detected value is not injected
+        assert result.meta.get("bucket_owner_account_id") == "111122223333"
 
 
 # ---------------------------------------------------------------------------
@@ -603,3 +661,54 @@ class TestApprovePendingSignupBranches:
 
         await db_session.refresh(invite)
         assert invite.revoked_at is not None
+
+
+# ---------------------------------------------------------------------------
+# _test_smtp — config connection tester (lines 2858-2878)
+# ---------------------------------------------------------------------------
+
+
+class TestConfigServiceSMTP:
+    async def test_missing_credentials_returns_error(self):
+        from app.routers.admin import _test_smtp
+
+        result = await _test_smtp({"smtp_user": "", "smtp_password": ""})
+        assert result.ok is False
+        assert "required" in result.message
+
+    async def test_connect_success_returns_ok(self):
+
+        from app.routers.admin import _test_smtp
+
+        mock_smtp = MagicMock()
+        mock_smtp.__enter__ = MagicMock(return_value=mock_smtp)
+        mock_smtp.__exit__ = MagicMock(return_value=False)
+
+        with patch("smtplib.SMTP", return_value=mock_smtp):
+            result = await _test_smtp(
+                {
+                    "smtp_host": "smtp.example.com",
+                    "smtp_port": "587",
+                    "smtp_user": "user@example.com",
+                    "smtp_password": "secret",
+                }
+            )
+
+        assert result.ok is True
+        assert "Connected" in result.message
+
+    async def test_connect_failure_returns_error(self):
+        from app.routers.admin import _test_smtp
+
+        with patch("smtplib.SMTP", side_effect=ConnectionRefusedError("refused")):
+            result = await _test_smtp(
+                {
+                    "smtp_host": "smtp.example.com",
+                    "smtp_port": "587",
+                    "smtp_user": "user@example.com",
+                    "smtp_password": "secret",
+                }
+            )
+
+        assert result.ok is False
+        assert "refused" in result.message
