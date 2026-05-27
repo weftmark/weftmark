@@ -2821,7 +2821,7 @@ async def get_config_state(
 
 
 @router.put("/config")
-async def save_config(
+def save_config(
     body: ConfigSaveRequest,
     _: User = Depends(require_superuser),
 ) -> ConfigStateResponse:
