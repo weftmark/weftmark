@@ -620,7 +620,9 @@ async def push_yarn_to_stash(yarn_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSe
     async with RavelryClient.from_oauth_token(token) as client:
         _, _, raw = await client.stash.create(cred.ravelry_username, payload)
 
-    stash_id: int = ((raw or {}).get("stash") or {})["id"]
+    stash_id: int | None = ((raw or {}).get("stash") or {}).get("id")
+    if stash_id is None:
+        raise RuntimeError(f"Ravelry stash.create returned no stash id; response: {raw!r}")
     yarn.ravelry_stash_id = stash_id
     await db.commit()
 
@@ -668,7 +670,9 @@ async def push_eligible_yarns_to_stash(user_id: uuid.UUID, db: AsyncSession) -> 
                 payload["notes"] = yarn.notes
             try:
                 _, _, raw = await client.stash.create(cred.ravelry_username, payload)
-                stash_id: int = ((raw or {}).get("stash") or {})["id"]
+                stash_id: int | None = ((raw or {}).get("stash") or {}).get("id")
+                if stash_id is None:
+                    raise RuntimeError(f"Ravelry stash.create returned no stash id; response: {raw!r}")
                 yarn.ravelry_stash_id = stash_id
                 pushed += 1
             except Exception:

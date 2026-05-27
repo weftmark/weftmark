@@ -151,6 +151,65 @@ class TestStashPushSingle:
 
         assert resp.status_code == 404
 
+    async def test_out_of_stash_yarn_returns_422(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        cred = _make_credential(test_user)
+        yarn = _make_yarn(test_user, out_of_stash=True)
+        db_session.add_all([cred, yarn])
+        await db_session.commit()
+        await db_session.refresh(yarn)
+
+        resp = await auth_client.post(f"/api/ravelry/stash-push/{yarn.id}")
+
+        assert resp.status_code == 422
+
+    async def test_ravelry_api_exception_returns_502(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        cred = _make_credential(test_user)
+        yarn = _make_yarn(test_user)
+        db_session.add_all([cred, yarn])
+        await db_session.commit()
+        await db_session.refresh(yarn)
+
+        mock_client = AsyncMock()
+        mock_client.stash.create = AsyncMock(side_effect=RuntimeError("upstream failure"))
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(return_value=mock_client)
+        cm.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.services.ravelry.RavelryClient") as mock_cls:
+            mock_cls.from_oauth_token.return_value = cm
+            resp = await auth_client.post(f"/api/ravelry/stash-push/{yarn.id}")
+
+        assert resp.status_code == 502
+
+    async def test_payload_includes_optional_fields(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        cred = _make_credential(test_user)
+        yarn = _make_yarn(test_user, color_name="Natural", dye_lot="Lot42", notes="Hand wash only")
+        db_session.add_all([cred, yarn])
+        await db_session.commit()
+        await db_session.refresh(yarn)
+
+        mock_client = AsyncMock()
+        mock_client.stash.create = AsyncMock(return_value=(None, None, _STASH_CREATE_RESPONSE))
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(return_value=mock_client)
+        cm.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.services.ravelry.RavelryClient") as mock_cls:
+            mock_cls.from_oauth_token.return_value = cm
+            resp = await auth_client.post(f"/api/ravelry/stash-push/{yarn.id}")
+
+        assert resp.status_code == 200
+        _, payload = mock_client.stash.create.call_args[0]
+        assert payload.get("colorway_name") == "Natural"
+        assert payload.get("dye_lot") == "Lot42"
+        assert payload.get("notes") == "Hand wash only"
+
     async def test_requires_authentication(self, client: AsyncClient):
         resp = await client.post(f"/api/ravelry/stash-push/{uuid.uuid4()}")
         assert resp.status_code in (401, 403)
@@ -203,6 +262,42 @@ class TestStashPushBulk:
     async def test_no_credential_returns_404(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         resp = await auth_client.post("/api/ravelry/stash-push/bulk")
         assert resp.status_code == 404
+
+    async def test_push_failure_counted_as_skipped(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        cred = _make_credential(test_user)
+        yarn = _make_yarn(test_user, name="WillFail")
+        db_session.add_all([cred, yarn])
+        await db_session.commit()
+
+        mock_client = AsyncMock()
+        mock_client.stash.create = AsyncMock(side_effect=RuntimeError("ravelry down"))
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(return_value=mock_client)
+        cm.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.services.ravelry.RavelryClient") as mock_cls:
+            mock_cls.from_oauth_token.return_value = cm
+            resp = await auth_client.post("/api/ravelry/stash-push/bulk")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["pushed"] == 0
+        assert data["skipped"] == 1
+
+    async def test_ravelry_api_exception_returns_502(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        cred = _make_credential(test_user)
+        yarn = _make_yarn(test_user, name="Eligible")
+        db_session.add_all([cred, yarn])
+        await db_session.commit()
+
+        with patch("app.services.ravelry.push_eligible_yarns_to_stash", side_effect=RuntimeError("boom")):
+            resp = await auth_client.post("/api/ravelry/stash-push/bulk")
+
+        assert resp.status_code == 502
 
     async def test_requires_authentication(self, client: AsyncClient):
         resp = await client.post("/api/ravelry/stash-push/bulk")
