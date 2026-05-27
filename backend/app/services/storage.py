@@ -43,11 +43,19 @@ def _s3():
     return _s3_client
 
 
+def _safe_path(key: str) -> Path:
+    """Resolve key within upload_dir, raising ValueError if it escapes the root."""
+    root = Path(settings.upload_dir).resolve()
+    full = (root / key).resolve()
+    full.relative_to(root)  # raises ValueError on path traversal
+    return full
+
+
 def _put(key: str, data: bytes) -> str:
     if settings.storage_backend == "s3":
         _s3().put_object(Bucket=settings.s3_bucket_name, Key=key, Body=data, **settings.s3_owner_kwargs)
     else:
-        path = Path(settings.upload_dir) / key
+        path = _safe_path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
     return key
@@ -56,7 +64,7 @@ def _put(key: str, data: bytes) -> str:
 def _get(key: str) -> bytes:
     if settings.storage_backend == "s3":
         return _s3().get_object(Bucket=settings.s3_bucket_name, Key=key, **settings.s3_owner_kwargs)["Body"].read()  # type: ignore[no-any-return]
-    return (Path(settings.upload_dir) / key).read_bytes()
+    return _safe_path(key).read_bytes()
 
 
 def _delete(key: str) -> None:
@@ -64,7 +72,7 @@ def _delete(key: str) -> None:
         # delete_object is idempotent — no error if key does not exist
         _s3().delete_object(Bucket=settings.s3_bucket_name, Key=key, **settings.s3_owner_kwargs)
     else:
-        full = Path(settings.upload_dir) / key
+        full = _safe_path(key)
         if full.exists():
             full.unlink()
 
@@ -80,7 +88,7 @@ def _exists(key: str | None) -> bool:
             return True
         except ClientError:
             return False
-    return (Path(settings.upload_dir) / key).exists()
+    return _safe_path(key).exists()
 
 
 # ---------------------------------------------------------------------------

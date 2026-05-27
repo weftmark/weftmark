@@ -312,7 +312,9 @@ async def _probe_s3() -> ServiceCheckResult:
 
         # list_objects
         try:
-            client.list_objects_v2(Bucket=bucket, MaxKeys=1, **settings.s3_owner_kwargs)
+            client.list_objects_v2(
+                Bucket=bucket, MaxKeys=1, **settings.s3_owner_kwargs
+            )  # NOSONAR — permission probe, not a data fetch
             results.append(("list_objects", True, "ListObjectsV2 permitted"))
         except Exception as e:
             results.append(("list_objects", False, str(e)[:100]))
