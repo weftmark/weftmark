@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.cli import _clear_local, _poll_for_clerk_attach, cmd_seed
+from app.cli import _clear_local, _clear_s3, _poll_for_clerk_attach, cmd_seed
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -321,3 +321,50 @@ def test_clear_local_creates_missing_directory(tmp_path):
 
     assert upload_dir.exists()
     assert upload_dir.is_dir()
+
+
+# ---------------------------------------------------------------------------
+# _clear_s3 — passes s3_owner_kwargs to delete_objects
+# ---------------------------------------------------------------------------
+
+
+def test_clear_s3_passes_owner_kwargs_to_delete_objects():
+    settings = MagicMock()
+    settings.s3_endpoint_url = "https://s3.example.com"
+    settings.s3_access_key_id = "key"
+    settings.s3_secret_access_key = "secret"
+    settings.s3_region = "us-east-1"
+    settings.s3_bucket_name = "test-bucket"
+    settings.s3_owner_kwargs = {"ExpectedBucketOwner": "123456789012"}
+
+    mock_client = MagicMock()
+    mock_paginator = MagicMock()
+    mock_client.get_paginator.return_value = mock_paginator
+    mock_paginator.paginate.return_value = [
+        {"Contents": [{"Key": "file1.wif"}, {"Key": "file2.png"}]},
+    ]
+
+    with patch("boto3.client", return_value=mock_client):
+        _clear_s3(settings)
+
+    mock_client.delete_objects.assert_called_once_with(
+        Bucket="test-bucket",
+        Delete={"Objects": [{"Key": "file1.wif"}, {"Key": "file2.png"}]},
+        ExpectedBucketOwner="123456789012",
+    )
+
+
+def test_clear_s3_no_objects_skips_delete():
+    settings = MagicMock()
+    settings.s3_owner_kwargs = {}
+    settings.s3_bucket_name = "empty-bucket"
+
+    mock_client = MagicMock()
+    mock_paginator = MagicMock()
+    mock_client.get_paginator.return_value = mock_paginator
+    mock_paginator.paginate.return_value = [{"Contents": []}]
+
+    with patch("boto3.client", return_value=mock_client):
+        _clear_s3(settings)
+
+    mock_client.delete_objects.assert_not_called()
