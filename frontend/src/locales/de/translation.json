@@ -445,6 +445,12 @@
     "discontinued": "Eingestellt",
     "outOfStash": "Nicht mehr vorrätig",
     "inRavelryStash": "Ravelry Stash",
+    "notInRavelryStash": "Nicht im Ravelry-Stash",
+    "pushToRavelryBulkButton": "{{count}} zum Ravelry-Stash hinzufügen",
+    "pushToRavelryModalTitle": "Zum Ravelry-Stash hinzufügen",
+    "pushToRavelryModalBody": "Diese Garne werden deinem Ravelry-Stash hinzugefügt:",
+    "pushToRavelryModalConfirm": "Alle hinzufügen",
+    "pushBulkSuccess": "{{count}} Garn(e) zum Ravelry-Stash hinzugefügt.",
     "colorNotSet": "nicht gesetzt",
     "showArchived": "Archivierte anzeigen",
     "hideArchived": "Archivierte ausblenden",
@@ -465,7 +471,7 @@
     "sortWeightLight": "Gewicht leicht→schwer",
     "filterLabel": "Filter",
     "filterClearAll": "Alle löschen",
-    "filterHasColor": "Hat Farbmuster",
+    "filterMissingColor": "Ohne Farbmuster",
     "filterInRavelryStash": "Im Ravelry-Vorrat",
     "filterMachineWashable": "Maschinenwaschbar",
     "filterWeight": "Gewicht",
@@ -893,7 +899,10 @@
     "colorwayFilter": "Farbvarianten filtern…",
     "noColorways": "Keine Farbvarianten für dieses Garn gefunden.",
     "colorwayLoadError": "Farbvarianten konnten nicht geladen werden.",
-    "usedInProjects": "Verwendet in Projekten"
+    "usedInProjects": "Verwendet in Projekten",
+    "addToRavelryStash": "Zum Ravelry-Stash hinzufügen",
+    "inRavelryStash": "Im Ravelry-Stash",
+    "addToRavelryStashError": "Konnte nicht zum Ravelry-Stash hinzugefügt werden."
   },
   "loomDetailPage": {
     "loading": "Laden…",
@@ -1121,6 +1130,11 @@
     "justAMoment": "Einen Moment…",
     "signedOut": "Sie wurden abgemeldet",
     "redirecting": "Sie werden zur Startseite weitergeleitet…"
+  },
+  "notFoundPage": {
+    "title": "Seite nicht gefunden",
+    "description": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "backToHome": "Zurück zur Startseite"
   },
   "unauthorizedPage": {
     "accessDenied": "Zugriff verweigert",

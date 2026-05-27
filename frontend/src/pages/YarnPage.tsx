@@ -12,11 +12,12 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { listYarn, yarnPhotoUrl, type YarnSummary } from "@/api/yarn";
-import { getRavelryStatus, syncRavelryStash } from "@/api/ravelry";
+import { getRavelryStatus, syncRavelryStash, pushBulkToStash } from "@/api/ravelry";
 import { AddYarnModal } from "@/components/yarn/AddYarnModal";
 import { AddFromRavelryModal } from "@/components/yarn/AddFromRavelryModal";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
+import { SkeletonCardGrid } from "@/components/ui/skeleton";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -42,12 +43,12 @@ type SortKey =
 interface YarnFilters {
   brands: string[];
   weights: string[];
-  hasColor: boolean;
+  missingColor: boolean;
   inRavelryStash: boolean;
   machineWashable: boolean;
 }
 
-const DEFAULT_FILTERS: YarnFilters = { brands: [], weights: [], hasColor: false, inRavelryStash: false, machineWashable: false };
+const DEFAULT_FILTERS: YarnFilters = { brands: [], weights: [], missingColor: false, inRavelryStash: false, machineWashable: false };
 
 interface YarnPrefs {
   view: ViewMode;
@@ -72,7 +73,7 @@ function savePrefs(prefs: YarnPrefs) {
 // ─── filter + sort logic ──────────────────────────────────────────────────────
 
 function countActiveFilters(f: YarnFilters): number {
-  return (f.brands.length > 0 ? 1 : 0) + (f.weights.length > 0 ? 1 : 0) + (f.hasColor ? 1 : 0) + (f.inRavelryStash ? 1 : 0) + (f.machineWashable ? 1 : 0);
+  return (f.brands.length > 0 ? 1 : 0) + (f.weights.length > 0 ? 1 : 0) + (f.missingColor ? 1 : 0) + (f.inRavelryStash ? 1 : 0) + (f.machineWashable ? 1 : 0);
 }
 
 function applySort(yarns: YarnSummary[], sort: SortKey): YarnSummary[] {
@@ -102,7 +103,7 @@ function applyFilters(yarns: YarnSummary[], f: YarnFilters): YarnSummary[] {
   return yarns.filter((y) => {
     if (f.brands.length > 0 && !f.brands.includes(y.brand)) return false;
     if (f.weights.length > 0 && (!y.weight_category || !f.weights.includes(y.weight_category))) return false;
-    if (f.hasColor && !y.color_hex) return false;
+    if (f.missingColor && y.color_hex) return false;
     if (f.inRavelryStash && !(y.ravelry_stash_id !== null && !y.out_of_stash)) return false;
     if (f.machineWashable && !y.machine_washable) return false;
     return true;
@@ -135,7 +136,11 @@ function YarnPhoto({ yarn, className }: { yarn: YarnSummary; className: string }
 
 // ─── card view ────────────────────────────────────────────────────────────────
 
-function YarnCard({ yarn }: { yarn: YarnSummary }) {
+function isStashPushEligible(yarn: YarnSummary) {
+  return yarn.ravelry_yarn_id !== null && yarn.ravelry_stash_id === null && !yarn.out_of_stash && !yarn.archived;
+}
+
+function YarnCard({ yarn, connected }: { yarn: YarnSummary; connected: boolean }) {
   const { t } = useTranslation();
   const skeinLabel =
     yarn.skein_count === 0
@@ -194,6 +199,11 @@ function YarnCard({ yarn }: { yarn: YarnSummary }) {
             {t("yarnPage.inStash")}
           </span>
         )}
+        {connected && isStashPushEligible(yarn) && (
+          <span className="rounded px-1.5 py-0.5 text-[10px] bg-muted/60 text-muted-foreground" title={t("yarnPage.notInRavelryStash")}>
+            r↗
+          </span>
+        )}
         <span className="rounded px-1.5 py-0.5 text-[10px] bg-muted text-muted-foreground">
           {yarn.ravelry_yarn_id ? t("yarnPage.sourceRavelry") : t("yarnPage.sourceWeftmark")}
         </span>
@@ -204,7 +214,7 @@ function YarnCard({ yarn }: { yarn: YarnSummary }) {
 
 // ─── grid view ────────────────────────────────────────────────────────────────
 
-function YarnGridTile({ yarn }: { yarn: YarnSummary }) {
+function YarnGridTile({ yarn, connected }: { yarn: YarnSummary; connected: boolean }) {
   const { t } = useTranslation();
   const skeinLabel =
     yarn.skein_count === 0
@@ -229,6 +239,11 @@ function YarnGridTile({ yarn }: { yarn: YarnSummary }) {
           {yarn.ravelry_stash_id !== null && !yarn.out_of_stash && (
             <span className="rounded px-1 py-0.5 text-[9px] bg-accent/10 text-accent leading-none">
               {t("yarnPage.inStash")}
+            </span>
+          )}
+          {connected && isStashPushEligible(yarn) && (
+            <span className="rounded px-1 py-0.5 text-[9px] bg-muted/60 text-muted-foreground leading-none" title={t("yarnPage.notInRavelryStash")}>
+              r↗
             </span>
           )}
           <span className="rounded px-1 py-0.5 text-[9px] bg-muted text-muted-foreground leading-none">
@@ -446,11 +461,11 @@ function FilterPopover({
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input
                 type="checkbox"
-                checked={filters.hasColor}
-                onChange={(e) => onChange({ ...filters, hasColor: e.target.checked })}
+                checked={filters.missingColor}
+                onChange={(e) => onChange({ ...filters, missingColor: e.target.checked })}
                 className="rounded accent-accent"
               />
-              {t("yarnPage.filterHasColor")}
+              {t("yarnPage.filterMissingColor")}
             </label>
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input
@@ -530,6 +545,8 @@ export function YarnPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<{ synced: number; unchanged: boolean } | null>(null);
+  const [showBulkPushModal, setShowBulkPushModal] = useState(false);
+  const [bulkPushResult, setBulkPushResult] = useState<{ pushed: number } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem(BANNER_KEY) === "1"
   );
@@ -572,6 +589,16 @@ export function YarnPage() {
     },
   });
 
+  const pushBulkMutation = useMutation({
+    mutationFn: pushBulkToStash,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["yarn"] });
+      setShowBulkPushModal(false);
+      setBulkPushResult({ pushed: result.pushed });
+      setTimeout(() => setBulkPushResult(null), 5000);
+    },
+  });
+
   const { data: rawYarns = [], isLoading, error } = useQuery({
     queryKey: ["yarn", { includeArchived: showArchived }],
     queryFn: () => listYarn(showArchived),
@@ -590,6 +617,11 @@ export function YarnPage() {
   const displayYarns = useMemo(
     () => applySort(applyFilters(rawYarns, filters), sort),
     [rawYarns, filters, sort],
+  );
+
+  const eligibleForPush = useMemo(
+    () => rawYarns.filter((y) => connected && isStashPushEligible(y)),
+    [rawYarns, connected],
   );
 
   const handleAdded = () => {
@@ -687,6 +719,16 @@ export function YarnPage() {
           </Button>
         )}
 
+        {connected && eligibleForPush.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBulkPushModal(true)}
+          >
+            {t("yarnPage.pushToRavelryBulkButton", { count: eligibleForPush.length })}
+          </Button>
+        )}
+
         <Button onClick={() => setShowAdd(true)}>{t("yarnPage.newButton")}</Button>
       </div>
 
@@ -720,7 +762,12 @@ export function YarnPage() {
             : t("yarnPage.syncComplete", { count: syncResult.synced })}
         </p>
       )}
-      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+      {bulkPushResult && (
+        <p className="text-sm text-muted-foreground mb-4">
+          {t("yarnPage.pushBulkSuccess", { count: bulkPushResult.pushed })}
+        </p>
+      )}
+      {isLoading && <SkeletonCardGrid count={6} cardClassName="h-[120px]" gridClassName="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" />}
       {error && <p className="text-sm text-destructive">{t("yarnPage.loadError")}</p>}
 
       {/* Empty — no yarn at all */}
@@ -751,12 +798,12 @@ export function YarnPage() {
         <>
           {view === "card" && (
             <div className="space-y-2">
-              {displayYarns.map((y) => <YarnCard key={y.id} yarn={y} />)}
+              {displayYarns.map((y) => <YarnCard key={y.id} yarn={y} connected={connected} />)}
             </div>
           )}
           {view === "grid" && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {displayYarns.map((y) => <YarnGridTile key={y.id} yarn={y} />)}
+              {displayYarns.map((y) => <YarnGridTile key={y.id} yarn={y} connected={connected} />)}
             </div>
           )}
           {view === "table" && (
@@ -777,6 +824,34 @@ export function YarnPage() {
           onSuccess={() => { setShowAddFromRavelry(false); queryClient.invalidateQueries({ queryKey: ["yarn"] }); }}
           onClose={() => setShowAddFromRavelry(false)}
         />
+      )}
+
+      {showBulkPushModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card border border-border rounded-xl shadow-lg max-w-sm w-full mx-4 p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-card-foreground">{t("yarnPage.pushToRavelryModalTitle")}</h2>
+            <p className="text-xs text-muted-foreground">{t("yarnPage.pushToRavelryModalBody")}</p>
+            <ul className="max-h-48 overflow-y-auto space-y-1">
+              {eligibleForPush.map((y) => (
+                <li key={y.id} className="text-xs text-card-foreground truncate">
+                  {y.brand} — {y.name}{y.color_name ? ` (${y.color_name})` : ""}
+                </li>
+              ))}
+            </ul>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setShowBulkPushModal(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                size="sm"
+                disabled={pushBulkMutation.isPending}
+                onClick={() => pushBulkMutation.mutate()}
+              >
+                {pushBulkMutation.isPending ? t("common.loading") : t("yarnPage.pushToRavelryModalConfirm")}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

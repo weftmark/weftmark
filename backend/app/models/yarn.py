@@ -53,6 +53,7 @@ class Yarn(Base, TimestampMixin, SoftDeleteMixin):
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    dye_lot: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     ravelry_stash_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     ravelry_yarn_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)

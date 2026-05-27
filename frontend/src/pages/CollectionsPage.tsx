@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { listCollections, createCollection, type CollectionSummary } from "@/api/collections";
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
+import { SkeletonCardGrid } from "@/components/ui/skeleton";
 
 function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
@@ -163,7 +164,7 @@ export function CollectionsPage() {
         <Button size="sm" onClick={() => setShowNew(true)}>{t("collections.newButton")}</Button>
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+      {isLoading && <SkeletonCardGrid count={4} cardClassName="h-[100px]" />}
       {error && <p className="text-sm text-destructive">{t("collections.loadError")}</p>}
 
       {!isLoading && collections.length === 0 && (

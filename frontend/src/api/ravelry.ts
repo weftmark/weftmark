@@ -122,3 +122,11 @@ export async function importRavelryYarn(payload: {
 }): Promise<{ id: string }> {
   return api.post<{ id: string }>("/api/ravelry/import-yarn", payload);
 }
+
+export async function pushYarnToStash(yarnId: string): Promise<{ ravelry_stash_id: number }> {
+  return api.post<{ ravelry_stash_id: number }>(`/api/ravelry/stash-push/${yarnId}`, {});
+}
+
+export async function pushBulkToStash(): Promise<{ pushed: number; skipped: number }> {
+  return api.post<{ pushed: number; skipped: number }>("/api/ravelry/stash-push/bulk", {});
+}

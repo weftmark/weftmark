@@ -75,6 +75,7 @@ export interface YarnDetail extends YarnSummary {
   purchase_source: string | null;
   purchase_price: string | null;
   purchase_date: string | null;
+  dye_lot: string | null;
   notes: string | null;
   skeins: Skein[];
 }
@@ -96,6 +97,7 @@ export interface CreateYarnPayload {
   purchase_source?: string;
   purchase_price?: number;
   purchase_date?: string;
+  dye_lot?: string | null;
   notes?: string;
   machine_washable?: boolean | null;
   yarn_attribute_ids?: number[];

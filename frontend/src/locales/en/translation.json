@@ -445,6 +445,12 @@
     "discontinued": "Discontinued",
     "outOfStash": "Out of stash",
     "inRavelryStash": "Ravelry Stash",
+    "notInRavelryStash": "Not in Ravelry stash",
+    "pushToRavelryBulkButton": "Add {{count}} to Ravelry stash",
+    "pushToRavelryModalTitle": "Add to Ravelry stash",
+    "pushToRavelryModalBody": "These yarns will be added to your Ravelry stash:",
+    "pushToRavelryModalConfirm": "Add all",
+    "pushBulkSuccess": "Added {{count}} yarn(s) to Ravelry stash.",
     "colorNotSet": "not set",
     "showArchived": "Show archived",
     "hideArchived": "Hide archived",
@@ -465,7 +471,7 @@
     "sortWeightLight": "Weight light→heavy",
     "filterLabel": "Filters",
     "filterClearAll": "Clear all",
-    "filterHasColor": "Has color swatch",
+    "filterMissingColor": "Missing color swatch",
     "filterInRavelryStash": "In Ravelry stash",
     "filterMachineWashable": "Machine washable",
     "filterWeight": "Weight",
@@ -893,7 +899,10 @@
     "colorwayFilter": "Filter colorways…",
     "noColorways": "No colorways found for this yarn.",
     "colorwayLoadError": "Failed to load colorways.",
-    "usedInProjects": "Used in projects"
+    "usedInProjects": "Used in projects",
+    "addToRavelryStash": "Add to Ravelry stash",
+    "inRavelryStash": "In Ravelry stash",
+    "addToRavelryStashError": "Failed to add to Ravelry stash."
   },
   "loomDetailPage": {
     "loading": "Loading…",
@@ -1121,6 +1130,11 @@
     "justAMoment": "Just a moment…",
     "signedOut": "You've been signed out",
     "redirecting": "Redirecting you to the home page…"
+  },
+  "notFoundPage": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or may have been moved.",
+    "backToHome": "Back to home"
   },
   "unauthorizedPage": {
     "accessDenied": "Access denied",

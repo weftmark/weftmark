@@ -20,6 +20,7 @@ from app.models.yarn import Yarn
 logger = logging.getLogger(__name__)
 
 OAUTH_SCOPE = "offline"
+_NO_CREDENTIAL = "No Ravelry credential found for user"
 STATE_TTL_MINUTES = 10
 _RAVELRY_API = "https://api.ravelry.com"
 
@@ -395,7 +396,7 @@ async def sync_stash(user_id: uuid.UUID, db: AsyncSession) -> dict:
 
     cred = await get_credential(user_id, db)
     if cred is None:
-        raise ValueError("No Ravelry credential found for user")
+        raise ValueError(_NO_CREDENTIAL)
 
     token = await _get_valid_token(cred, db)
 
@@ -570,3 +571,114 @@ async def sync_stash(user_id: uuid.UUID, db: AsyncSession) -> dict:
 
     logger.info("Ravelry stash synced for user %s: %d entries", user_id, upsert_count)
     return {"synced": upsert_count, "unchanged": False, "last_synced_at": now}
+
+
+# ---------------------------------------------------------------------------
+# Stash push-back
+# ---------------------------------------------------------------------------
+
+
+async def push_yarn_to_stash(yarn_id: uuid.UUID, user_id: uuid.UUID, db: AsyncSession) -> int:
+    """Push a single Tier 1 yarn to the user's Ravelry stash.
+
+    Returns the new ravelry_stash_id written back to the yarn record.
+    Raises ValueError for eligibility failures, LookupError if yarn not found.
+    """
+    yarn = await db.scalar(
+        select(Yarn).where(
+            Yarn.id == yarn_id,
+            Yarn.owner_id == user_id,
+            Yarn.deleted_at.is_(None),
+        )
+    )
+    if yarn is None:
+        raise LookupError(f"Yarn {yarn_id} not found")
+
+    cred = await get_credential(user_id, db)
+    if cred is None:
+        raise LookupError(_NO_CREDENTIAL)
+
+    if yarn.ravelry_yarn_id is None:
+        raise ValueError("Yarn is not linked to a Ravelry yarn (Tier 2 — not eligible for push-back)")
+    if yarn.ravelry_stash_id is not None:
+        raise ValueError("Yarn is already in Ravelry stash")
+    if yarn.archived:
+        raise ValueError("Archived yarns cannot be pushed to Ravelry stash")
+    if yarn.out_of_stash:
+        raise ValueError("Out-of-stash yarns cannot be pushed to Ravelry stash")
+
+    token = await _get_valid_token(cred, db)
+
+    payload: dict = {"yarn_id": yarn.ravelry_yarn_id}
+    if yarn.color_name:
+        payload["colorway_name"] = yarn.color_name
+    if yarn.dye_lot:
+        payload["dye_lot"] = yarn.dye_lot
+    if yarn.notes:
+        payload["notes"] = yarn.notes
+
+    async with RavelryClient.from_oauth_token(token) as client:
+        _, _, raw = await client.stash.create(cred.ravelry_username, payload)
+
+    stash_id: int | None = ((raw or {}).get("stash") or {}).get("id")
+    if stash_id is None:
+        raise RuntimeError(f"Ravelry stash.create returned no stash id; response: {raw!r}")
+    yarn.ravelry_stash_id = stash_id
+    await db.commit()
+
+    logger.info("Pushed yarn %s to Ravelry stash entry %s for user %s", yarn_id, stash_id, user_id)
+    return stash_id
+
+
+async def push_eligible_yarns_to_stash(user_id: uuid.UUID, db: AsyncSession) -> dict:
+    """Push all eligible Tier 1 yarns to the user's Ravelry stash.
+
+    Returns {pushed: int, skipped: int}.
+    """
+    cred = await get_credential(user_id, db)
+    if cred is None:
+        raise LookupError(_NO_CREDENTIAL)
+
+    eligible = (
+        await db.scalars(
+            select(Yarn).where(
+                Yarn.owner_id == user_id,
+                Yarn.ravelry_yarn_id.is_not(None),
+                Yarn.ravelry_stash_id.is_(None),
+                Yarn.archived.is_(False),
+                Yarn.out_of_stash.is_(False),
+                Yarn.deleted_at.is_(None),
+            )
+        )
+    ).all()
+
+    if not eligible:
+        return {"pushed": 0, "skipped": 0}
+
+    token = await _get_valid_token(cred, db)
+    pushed = 0
+    skipped = 0
+
+    async with RavelryClient.from_oauth_token(token) as client:
+        for yarn in eligible:
+            payload: dict = {"yarn_id": yarn.ravelry_yarn_id}
+            if yarn.color_name:
+                payload["colorway_name"] = yarn.color_name
+            if yarn.dye_lot:
+                payload["dye_lot"] = yarn.dye_lot
+            if yarn.notes:
+                payload["notes"] = yarn.notes
+            try:
+                _, _, raw = await client.stash.create(cred.ravelry_username, payload)
+                stash_id: int | None = ((raw or {}).get("stash") or {}).get("id")
+                if stash_id is None:
+                    raise RuntimeError(f"Ravelry stash.create returned no stash id; response: {raw!r}")
+                yarn.ravelry_stash_id = stash_id
+                pushed += 1
+            except Exception:
+                logger.exception("Failed to push yarn %s to Ravelry stash for user %s", yarn.id, user_id)
+                skipped += 1
+
+    await db.commit()
+    logger.info("Bulk Ravelry stash push for user %s: pushed=%d skipped=%d", user_id, pushed, skipped)
+    return {"pushed": pushed, "skipped": skipped}

@@ -444,6 +444,12 @@
     "discontinued": "Gestopt",
     "outOfStash": "Niet meer op voorraad",
     "inRavelryStash": "Ravelry Stash",
+    "notInRavelryStash": "Niet in Ravelry-stash",
+    "pushToRavelryBulkButton": "{{count}} toevoegen aan Ravelry-stash",
+    "pushToRavelryModalTitle": "Toevoegen aan Ravelry-stash",
+    "pushToRavelryModalBody": "Deze garens worden toegevoegd aan je Ravelry-stash:",
+    "pushToRavelryModalConfirm": "Alles toevoegen",
+    "pushBulkSuccess": "{{count}} garen(s) toegevoegd aan Ravelry-stash.",
     "colorNotSet": "niet ingesteld",
     "showArchived": "Gearchiveerde tonen",
     "hideArchived": "Gearchiveerde verbergen",
@@ -464,7 +470,7 @@
     "sortWeightLight": "Gewicht licht→zwaar",
     "filterLabel": "Filters",
     "filterClearAll": "Alles wissen",
-    "filterHasColor": "Heeft kleurmonster",
+    "filterMissingColor": "Geen kleurmonster",
     "filterInRavelryStash": "In Ravelry-voorraad",
     "filterMachineWashable": "Machinewasbaar",
     "filterWeight": "Gewicht",
@@ -892,7 +898,10 @@
     "colorwayFilter": "Kleurwegen filteren…",
     "noColorways": "Geen kleurwegen gevonden voor dit garen.",
     "colorwayLoadError": "Kleurwegen konden niet worden geladen.",
-    "usedInProjects": "Gebruikt in projecten"
+    "usedInProjects": "Gebruikt in projecten",
+    "addToRavelryStash": "Toevoegen aan Ravelry-stash",
+    "inRavelryStash": "In Ravelry-stash",
+    "addToRavelryStashError": "Kon niet toevoegen aan Ravelry-stash."
   },
   "loomDetailPage": {
     "loading": "Laden…",
@@ -1120,6 +1129,11 @@
     "justAMoment": "Een ogenblik…",
     "signedOut": "U bent afgemeld",
     "redirecting": "U wordt doorgestuurd naar de startpagina…"
+  },
+  "notFoundPage": {
+    "title": "Pagina niet gevonden",
+    "description": "De pagina die u zoekt bestaat niet of is verplaatst.",
+    "backToHome": "Terug naar home"
   },
   "unauthorizedPage": {
     "accessDenied": "Toegang geweigerd",

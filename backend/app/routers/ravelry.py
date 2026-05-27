@@ -1,6 +1,7 @@
 """Ravelry OAuth and stash sync endpoints."""
 
 import logging
+import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,6 +17,8 @@ from app.services import ravelry as svc
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/ravelry", tags=["ravelry"])
+
+_NOT_CONNECTED = "Not connected to Ravelry"
 
 
 def _safe(s: str | None, maxlen: int = 100) -> str:
@@ -61,6 +64,15 @@ class ImportYarnPayload(BaseModel):
     ravelry_yarn_id: int
     color_name: str | None = None
     color_hex: str | None = None
+
+
+class StashPushResult(BaseModel):
+    ravelry_stash_id: int
+
+
+class BulkStashPushResult(BaseModel):
+    pushed: int
+    skipped: int
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +159,7 @@ async def disconnect(
     """Remove stored Ravelry credentials for the current user."""
     cred = await svc.get_credential(current_user.id, db)
     if cred is None:
-        raise HTTPException(status_code=404, detail="Not connected to Ravelry")
+        raise HTTPException(status_code=404, detail=_NOT_CONNECTED)
     await db.delete(cred)
     await db.commit()
 
@@ -248,6 +260,42 @@ async def import_yarn(
     return {"id": str(yarn.id)}
 
 
+@router.post("/stash-push/bulk")
+async def push_bulk_to_stash(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> BulkStashPushResult:
+    """Push all eligible Tier 1 yarns to the user's Ravelry stash."""
+    cred = await svc.get_credential(current_user.id, db)
+    if cred is None:
+        raise HTTPException(status_code=404, detail=_NOT_CONNECTED)
+    try:
+        result = await svc.push_eligible_yarns_to_stash(current_user.id, db)
+    except Exception as exc:
+        logger.exception("Ravelry bulk stash push failed for user %s", current_user.id)
+        raise HTTPException(status_code=502, detail="Ravelry bulk stash push failed") from exc
+    return BulkStashPushResult(**result)
+
+
+@router.post("/stash-push/{yarn_id}")
+async def push_yarn_to_stash(
+    yarn_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StashPushResult:
+    """Push a single yarn to the user's Ravelry stash."""
+    try:
+        stash_id = await svc.push_yarn_to_stash(yarn_id, current_user.id, db)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Ravelry stash push failed for yarn %s", yarn_id)
+        raise HTTPException(status_code=502, detail="Ravelry stash push failed") from exc
+    return StashPushResult(ravelry_stash_id=stash_id)
+
+
 @router.post("/sync", response_model=SyncResult)
 async def sync_stash(
     current_user: User = Depends(get_current_user),
@@ -256,7 +304,7 @@ async def sync_stash(
     """Trigger an on-demand stash sync for the current user."""
     cred = await svc.get_credential(current_user.id, db)
     if cred is None:
-        raise HTTPException(status_code=404, detail="Not connected to Ravelry")
+        raise HTTPException(status_code=404, detail=_NOT_CONNECTED)
     try:
         result = await svc.sync_stash(current_user.id, db)
     except Exception as exc:

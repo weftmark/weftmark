@@ -27,7 +27,7 @@ export function AppLayout({ children }: Props) {
   const desktopCollapsed = isDetailPage && expandedOnPath !== location.pathname;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

@@ -9,6 +9,7 @@ import { listLooms } from "@/api/looms";
 import { listCollections } from "@/api/collections";
 import { getActivityHeatmap, type ActivityDay } from "@/api/users";
 import { AppIcons } from "@/lib/icons";
+import { Skeleton, SkeletonCardGrid } from "@/components/ui/skeleton";
 
 const RANGE_OPTIONS = [
   { label: "1M", days: 30 },
@@ -300,22 +301,22 @@ export function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => listProjects(),
   });
 
-  const { data: drafts = [] } = useQuery({
+  const { data: drafts = [], isLoading: draftsLoading } = useQuery({
     queryKey: ["drafts"],
     queryFn: () => listDrafts(),
   });
 
-  const { data: looms = [] } = useQuery({
+  const { data: looms = [], isLoading: loomsLoading } = useQuery({
     queryKey: ["looms"],
     queryFn: () => listLooms(),
   });
 
-  const { data: collections = [] } = useQuery({
+  const { data: collections = [], isLoading: collectionsLoading } = useQuery({
     queryKey: ["collections"],
     queryFn: () => listCollections(),
   });
@@ -339,7 +340,9 @@ export function DashboardPage() {
             {t("dashboard.viewAll")}
           </Link>
         </div>
-        {looms.length === 0 ? (
+        {loomsLoading ? (
+          <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />
+        ) : looms.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">{t("dashboard.equipment.empty")}</p>
             <Link to="/looms" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
@@ -385,7 +388,9 @@ export function DashboardPage() {
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.collectionSection.heading")}</h2>
           <Link to="/collections" className="text-xs text-muted-foreground hover:text-foreground">{t("dashboard.viewAll")}</Link>
         </div>
-        {collections.length === 0 ? (
+        {collectionsLoading ? (
+          <SkeletonCardGrid count={3} cardClassName="h-[80px]" gridClassName="grid gap-3 sm:grid-cols-3" />
+        ) : collections.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">{t("dashboard.collectionSection.empty")}</p>
             <Link to="/collections" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">{t("dashboard.collectionSection.createFirst")}</Link>
@@ -425,7 +430,9 @@ export function DashboardPage() {
             {t("dashboard.viewAll")}
           </Link>
         </div>
-        {drafts.length === 0 ? (
+        {draftsLoading ? (
+          <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />
+        ) : drafts.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">{t("dashboard.drafts.empty")}</p>
             <Link to="/drafts" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
@@ -470,7 +477,13 @@ export function DashboardPage() {
           </Link>
         </div>
 
-        {activeProjects.length > 0 && (
+        {projectsLoading ? (
+          <div className="space-y-3 mb-3">
+            {[0, 1].map((i) => <Skeleton key={i} className="h-[110px] rounded-lg" />)}
+          </div>
+        ) : null}
+
+        {!projectsLoading && activeProjects.length > 0 && (
           <div className="space-y-3 mb-3">
             {activeProjects.map((a) => {
               const pct =
@@ -523,7 +536,7 @@ export function DashboardPage() {
           </div>
         )}
 
-        {planningProjects.length > 0 && (
+        {!projectsLoading && planningProjects.length > 0 && (
           <div className="space-y-2 mb-3">
             {planningProjects.map((a) => (
               <Link
@@ -544,7 +557,7 @@ export function DashboardPage() {
           </div>
         )}
 
-        {activeProjects.length === 0 && planningProjects.length === 0 && (
+        {!projectsLoading && activeProjects.length === 0 && planningProjects.length === 0 && (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <p className="text-sm text-muted-foreground">{t("dashboard.projects.empty")}</p>
             <Link
