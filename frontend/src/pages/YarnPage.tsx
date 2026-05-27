@@ -43,12 +43,12 @@ type SortKey =
 interface YarnFilters {
   brands: string[];
   weights: string[];
-  hasColor: boolean;
+  missingColor: boolean;
   inRavelryStash: boolean;
   machineWashable: boolean;
 }
 
-const DEFAULT_FILTERS: YarnFilters = { brands: [], weights: [], hasColor: false, inRavelryStash: false, machineWashable: false };
+const DEFAULT_FILTERS: YarnFilters = { brands: [], weights: [], missingColor: false, inRavelryStash: false, machineWashable: false };
 
 interface YarnPrefs {
   view: ViewMode;
@@ -73,7 +73,7 @@ function savePrefs(prefs: YarnPrefs) {
 // ─── filter + sort logic ──────────────────────────────────────────────────────
 
 function countActiveFilters(f: YarnFilters): number {
-  return (f.brands.length > 0 ? 1 : 0) + (f.weights.length > 0 ? 1 : 0) + (f.hasColor ? 1 : 0) + (f.inRavelryStash ? 1 : 0) + (f.machineWashable ? 1 : 0);
+  return (f.brands.length > 0 ? 1 : 0) + (f.weights.length > 0 ? 1 : 0) + (f.missingColor ? 1 : 0) + (f.inRavelryStash ? 1 : 0) + (f.machineWashable ? 1 : 0);
 }
 
 function applySort(yarns: YarnSummary[], sort: SortKey): YarnSummary[] {
@@ -103,7 +103,7 @@ function applyFilters(yarns: YarnSummary[], f: YarnFilters): YarnSummary[] {
   return yarns.filter((y) => {
     if (f.brands.length > 0 && !f.brands.includes(y.brand)) return false;
     if (f.weights.length > 0 && (!y.weight_category || !f.weights.includes(y.weight_category))) return false;
-    if (f.hasColor && !y.color_hex) return false;
+    if (f.missingColor && y.color_hex) return false;
     if (f.inRavelryStash && !(y.ravelry_stash_id !== null && !y.out_of_stash)) return false;
     if (f.machineWashable && !y.machine_washable) return false;
     return true;
@@ -461,11 +461,11 @@ function FilterPopover({
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input
                 type="checkbox"
-                checked={filters.hasColor}
-                onChange={(e) => onChange({ ...filters, hasColor: e.target.checked })}
+                checked={filters.missingColor}
+                onChange={(e) => onChange({ ...filters, missingColor: e.target.checked })}
                 className="rounded accent-accent"
               />
-              {t("yarnPage.filterHasColor")}
+              {t("yarnPage.filterMissingColor")}
             </label>
             <label className="flex items-center gap-2 text-xs cursor-pointer">
               <input

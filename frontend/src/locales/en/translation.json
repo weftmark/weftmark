@@ -471,7 +471,7 @@
     "sortWeightLight": "Weight light→heavy",
     "filterLabel": "Filters",
     "filterClearAll": "Clear all",
-    "filterHasColor": "Has color swatch",
+    "filterMissingColor": "Missing color swatch",
     "filterInRavelryStash": "In Ravelry stash",
     "filterMachineWashable": "Machine washable",
     "filterWeight": "Weight",
