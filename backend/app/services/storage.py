@@ -45,7 +45,7 @@ def _s3():
 
 def _put(key: str, data: bytes) -> str:
     if settings.storage_backend == "s3":
-        _s3().put_object(Bucket=settings.s3_bucket_name, Key=key, Body=data)
+        _s3().put_object(Bucket=settings.s3_bucket_name, Key=key, Body=data, **settings.s3_owner_kwargs)
     else:
         path = Path(settings.upload_dir) / key
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,14 +55,14 @@ def _put(key: str, data: bytes) -> str:
 
 def _get(key: str) -> bytes:
     if settings.storage_backend == "s3":
-        return _s3().get_object(Bucket=settings.s3_bucket_name, Key=key)["Body"].read()  # type: ignore[no-any-return]
+        return _s3().get_object(Bucket=settings.s3_bucket_name, Key=key, **settings.s3_owner_kwargs)["Body"].read()  # type: ignore[no-any-return]
     return (Path(settings.upload_dir) / key).read_bytes()
 
 
 def _delete(key: str) -> None:
     if settings.storage_backend == "s3":
         # delete_object is idempotent — no error if key does not exist
-        _s3().delete_object(Bucket=settings.s3_bucket_name, Key=key)
+        _s3().delete_object(Bucket=settings.s3_bucket_name, Key=key, **settings.s3_owner_kwargs)
     else:
         full = Path(settings.upload_dir) / key
         if full.exists():
@@ -76,7 +76,7 @@ def _exists(key: str | None) -> bool:
         from botocore.exceptions import ClientError
 
         try:
-            _s3().head_object(Bucket=settings.s3_bucket_name, Key=key)
+            _s3().head_object(Bucket=settings.s3_bucket_name, Key=key, **settings.s3_owner_kwargs)
             return True
         except ClientError:
             return False
@@ -217,13 +217,15 @@ def delete_project_tiles(project_id: uuid.UUID) -> int:
     if settings.storage_backend == "s3":
         paginator = _s3().get_paginator("list_objects_v2")
         keys = []
-        for page in paginator.paginate(Bucket=settings.s3_bucket_name, Prefix=prefix):
+        for page in paginator.paginate(Bucket=settings.s3_bucket_name, Prefix=prefix, **settings.s3_owner_kwargs):
             for obj in page.get("Contents", []):
                 keys.append(obj["Key"])
         if keys:
             for i in range(0, len(keys), 1000):
                 batch = [{"Key": k} for k in keys[i : i + 1000]]
-                _s3().delete_objects(Bucket=settings.s3_bucket_name, Delete={"Objects": batch})
+                _s3().delete_objects(
+                    Bucket=settings.s3_bucket_name, Delete={"Objects": batch}, **settings.s3_owner_kwargs
+                )
         return len(keys)
     else:
         prefix_path = Path(settings.upload_dir) / prefix

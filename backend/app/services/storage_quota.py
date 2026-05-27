@@ -43,7 +43,7 @@ def _s3_head(key: str) -> tuple[bool, int | None]:
     from botocore.exceptions import ClientError
 
     try:
-        resp = _s3().head_object(Bucket=settings.s3_bucket_name, Key=key)
+        resp = _s3().head_object(Bucket=settings.s3_bucket_name, Key=key, **settings.s3_owner_kwargs)
         return True, resp.get("ContentLength")
     except ClientError:
         return False, None

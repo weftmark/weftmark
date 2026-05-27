@@ -301,7 +301,7 @@ async def _probe_s3() -> ServiceCheckResult:
 
         # bucket_accessible
         try:
-            client.head_bucket(Bucket=bucket)
+            client.head_bucket(Bucket=bucket, **settings.s3_owner_kwargs)
             results.append(("bucket_accessible", True, f"Bucket '{bucket}' found"))
         except Exception as e:
             results.append(("bucket_accessible", False, str(e)[:100]))
@@ -309,7 +309,7 @@ async def _probe_s3() -> ServiceCheckResult:
 
         # list_objects
         try:
-            client.list_objects_v2(Bucket=bucket, MaxKeys=1)
+            client.list_objects_v2(Bucket=bucket, MaxKeys=1, **settings.s3_owner_kwargs)
             results.append(("list_objects", True, "ListObjectsV2 permitted"))
         except Exception as e:
             results.append(("list_objects", False, str(e)[:100]))
@@ -317,9 +317,9 @@ async def _probe_s3() -> ServiceCheckResult:
         # write + delete (combined — put then clean up)
         test_key = "_health_check"
         try:
-            client.put_object(Bucket=bucket, Key=test_key, Body=b"ok")
+            client.put_object(Bucket=bucket, Key=test_key, Body=b"ok", **settings.s3_owner_kwargs)
             try:
-                client.delete_object(Bucket=bucket, Key=test_key)
+                client.delete_object(Bucket=bucket, Key=test_key, **settings.s3_owner_kwargs)
                 results.append(("write_delete", True, "PutObject + DeleteObject permitted"))
             except Exception as e:
                 results.append(("write_delete", False, f"Put OK but delete failed: {e!s:.80}"))
