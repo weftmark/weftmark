@@ -288,6 +288,80 @@ class TestProbeS3:
         # Pre-configured value from settings wins; STS-detected value is not injected
         assert result.meta.get("bucket_owner_account_id") == "111122223333"
 
+    async def test_probe_s3_run_checks_synchronous_covers_put_and_sts(self, monkeypatch):
+        # asyncio.to_thread dispatches to a ThreadPoolExecutor; coverage.py
+        # misses lines executed in pool threads even with concurrency=thread.
+        # Calling func() directly in the event-loop thread ensures lines 323
+        # (put_object) and 333-335 (STS block) are tracked by coverage.py.
+        from app.config import get_settings
+        from app.routers.admin import _probe_s3
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        async def _sync_to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        with (
+            patch("boto3.client", side_effect=_boto3_client),
+            patch("asyncio.to_thread", side_effect=_sync_to_thread),
+        ):
+            result = await _probe_s3()
+
+        assert result.status == "ok"
+        assert any(c.name == "write_delete" and c.status == "ok" for c in result.checks)
+        assert result.meta.get("bucket_owner_account_id") == "123456789012"
+
+    async def test_probe_s3_run_checks_synchronous_sts_failure(self, monkeypatch):
+        # Companion to the test above: exercises the STS exception-handler path
+        # (line 341 pass) while still running synchronously for coverage tracking.
+        from app.config import get_settings
+        from app.routers.admin import _probe_s3
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.side_effect = Exception("NotSupported")
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        async def _sync_to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        with (
+            patch("boto3.client", side_effect=_boto3_client),
+            patch("asyncio.to_thread", side_effect=_sync_to_thread),
+        ):
+            result = await _probe_s3()
+
+        assert result.status == "ok"
+        assert any(c.name == "write_delete" and c.status == "ok" for c in result.checks)
+        assert result.meta.get("bucket_owner_account_id") == "Not supported"
+
 
 # ---------------------------------------------------------------------------
 # _probe_clerk (lines 349-405)
