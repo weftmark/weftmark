@@ -289,7 +289,7 @@ async def _probe_s3() -> ServiceCheckResult:
         checks.append(ServicePermCheck(name="config", status="error", message="S3_BUCKET_NAME not set"))
         return _make_result("S3", checks, meta=meta)
 
-    def _run_checks() -> list[tuple[str, bool, str]]:
+    def _run_checks() -> tuple[list[tuple[str, bool, str]], str | None]:
         import boto3
 
         client = boto3.client(
@@ -308,7 +308,7 @@ async def _probe_s3() -> ServiceCheckResult:
             results.append(("bucket_accessible", True, f"Bucket '{bucket}' found"))
         except Exception as e:
             results.append(("bucket_accessible", False, str(e)[:100]))
-            return results  # further checks will also fail
+            return results, None  # further checks will also fail
 
         # list_objects
         try:
@@ -329,12 +329,26 @@ async def _probe_s3() -> ServiceCheckResult:
         except Exception as e:
             results.append(("write_delete", False, str(e)[:100]))
 
-        return results
+        # attempt STS to resolve the owning account ID; falls back to "Not supported" on R2
+        detected_owner: str = "Not supported"
+        try:
+            sts = boto3.client(
+                "sts",
+                aws_access_key_id=settings.s3_access_key_id,
+                aws_secret_access_key=settings.s3_secret_access_key,
+            )
+            detected_owner = sts.get_caller_identity()["Account"]
+        except Exception:
+            pass
+
+        return results, detected_owner
 
     try:
-        raw = await asyncio.wait_for(asyncio.to_thread(_run_checks), timeout=10.0)
+        raw, detected_owner = await asyncio.wait_for(asyncio.to_thread(_run_checks), timeout=10.0)
         for name, ok, msg in raw:
             checks.append(ServicePermCheck(name=name, status="ok" if ok else "error", message=msg))
+        if not settings.s3_bucket_owner_account_id and detected_owner is not None:
+            meta["bucket_owner_account_id"] = detected_owner
     except asyncio.TimeoutError:
         checks.append(ServicePermCheck(name="connect", status="error", message="Timed out after 10 s"))
 
