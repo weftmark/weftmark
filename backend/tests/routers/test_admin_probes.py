@@ -149,19 +149,52 @@ class TestProbeS3:
         monkeypatch.setattr(s, "storage_backend", "s3")
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
 
-        mock_client = MagicMock()
-        mock_client.head_bucket.return_value = {}
-        mock_client.list_objects_v2.return_value = {"Contents": []}
-        mock_client.put_object.return_value = {}
-        mock_client.delete_object.return_value = {}
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {"Contents": []}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
 
-        with patch("boto3.client", return_value=mock_client):
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
             result = await _probe_s3()
 
         assert result.status == "ok"
         names = {c.name for c in result.checks}
         assert "bucket_accessible" in names
         assert "write_delete" in names
+        assert result.meta.get("bucket_owner_account_id") == "123456789012"
+
+    async def test_s3_bucket_owner_not_supported_when_sts_fails(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _probe_s3
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {"Contents": []}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.side_effect = Exception("InvalidClientTokenId")
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            result = await _probe_s3()
+
+        assert result.status == "ok"
+        assert result.meta.get("bucket_owner_account_id") == "Not supported"
 
     async def test_s3_bucket_inaccessible_returns_error(self, monkeypatch):
         from app.config import get_settings
