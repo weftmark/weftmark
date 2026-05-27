@@ -6,9 +6,8 @@ echo "Running Alembic migrations..."
 # Run upgrade. If the DB is stuck at a legacy (pre-squash) revision that no
 # longer exists in the migration graph, Alembic will error with "Can't locate
 # revision". In that case, stamp the new baseline (--purge clears the version
-# table and inserts b3c4d5e6f7a8, squashed through activities→projects rename
-# from previous head a1b2c3d4e5f6) and retry — the retry will be a no-op since
-# the schema is already fully up-to-date.
+# table and inserts 0001_squash_902, the full squash through 0048_yarn_dye_lot)
+# and retry — the retry will be a no-op since the schema is already up-to-date.
 set +e
 alembic upgrade head > /tmp/alembic_out.txt 2>&1
 ALEMBIC_EXIT=$?
@@ -17,8 +16,8 @@ cat /tmp/alembic_out.txt
 
 if [ $ALEMBIC_EXIT -ne 0 ]; then
     if grep -q "Can't locate revision" /tmp/alembic_out.txt; then
-        echo "Legacy revision detected — stamping new baseline b3c4d5e6f7a8"
-        alembic stamp b3c4d5e6f7a8 --purge
+        echo "Legacy revision detected — stamping new baseline 0001_squash_902"
+        alembic stamp 0001_squash_902 --purge
         alembic upgrade head
         echo "Migrations complete."
     else
