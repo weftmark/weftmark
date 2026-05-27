@@ -289,10 +289,11 @@ class TestProbeS3:
         assert result.meta.get("bucket_owner_account_id") == "111122223333"
 
     async def test_probe_s3_run_checks_synchronous_covers_put_and_sts(self, monkeypatch):
-        # asyncio.to_thread dispatches to a ThreadPoolExecutor; coverage.py
-        # misses lines executed in pool threads even with concurrency=thread.
-        # Calling func() directly in the event-loop thread ensures lines 323
-        # (put_object) and 333-335 (STS block) are tracked by coverage.py.
+        # asyncio.to_thread dispatches to a ThreadPoolExecutor; in Python 3.12
+        # coverage.py loses tracking of lines in pool threads and also of the
+        # await expression itself.  Patch both asyncio.to_thread (sync lambda)
+        # and asyncio.wait_for (async passthrough) so _run_checks() runs in the
+        # event-loop thread with no yield points — coverage tracks every line.
         from app.config import get_settings
         from app.routers.admin import _probe_s3
 
@@ -313,12 +314,18 @@ class TestProbeS3:
         def _boto3_client(service, **kwargs):
             return mock_sts if service == "sts" else mock_s3
 
-        async def _sync_to_thread(func, *args, **kwargs):
+        # Sync lambda: _run_checks() runs directly in the event-loop thread.
+        def _sync_to_thread(func, *args, **kwargs):
             return func(*args, **kwargs)
+
+        # Async passthrough: receives the raw tuple and returns it without scheduling.
+        async def _sync_wait_for(val, timeout=None):
+            return val
 
         with (
             patch("boto3.client", side_effect=_boto3_client),
-            patch("asyncio.to_thread", side_effect=_sync_to_thread),
+            patch("asyncio.to_thread", new=_sync_to_thread),
+            patch("asyncio.wait_for", new=_sync_wait_for),
         ):
             result = await _probe_s3()
 
@@ -327,8 +334,8 @@ class TestProbeS3:
         assert result.meta.get("bucket_owner_account_id") == "123456789012"
 
     async def test_probe_s3_run_checks_synchronous_sts_failure(self, monkeypatch):
-        # Companion to the test above: exercises the STS exception-handler path
-        # (line 341 pass) while still running synchronously for coverage tracking.
+        # Exercises the STS exception-handler path while still running
+        # synchronously for coverage tracking (same dual-patch strategy).
         from app.config import get_settings
         from app.routers.admin import _probe_s3
 
@@ -349,18 +356,54 @@ class TestProbeS3:
         def _boto3_client(service, **kwargs):
             return mock_sts if service == "sts" else mock_s3
 
-        async def _sync_to_thread(func, *args, **kwargs):
+        def _sync_to_thread(func, *args, **kwargs):
             return func(*args, **kwargs)
+
+        async def _sync_wait_for(val, timeout=None):
+            return val
 
         with (
             patch("boto3.client", side_effect=_boto3_client),
-            patch("asyncio.to_thread", side_effect=_sync_to_thread),
+            patch("asyncio.to_thread", new=_sync_to_thread),
+            patch("asyncio.wait_for", new=_sync_wait_for),
         ):
             result = await _probe_s3()
 
         assert result.status == "ok"
         assert any(c.name == "write_delete" and c.status == "ok" for c in result.checks)
         assert result.meta.get("bucket_owner_account_id") == "Not supported"
+
+    async def test_probe_s3_run_checks_synchronous_head_bucket_failure(self, monkeypatch):
+        # Covers the early-return path inside _run_checks() when head_bucket
+        # raises — exercises line 311 (return results, None) synchronously.
+        from app.config import get_settings
+        from app.routers.admin import _probe_s3
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_name", "bad-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.side_effect = Exception("AccessDenied")
+
+        def _sync_to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        async def _sync_wait_for(val, timeout=None):
+            return val
+
+        with (
+            patch("boto3.client", return_value=mock_s3),
+            patch("asyncio.to_thread", new=_sync_to_thread),
+            patch("asyncio.wait_for", new=_sync_wait_for),
+        ):
+            result = await _probe_s3()
+
+        assert result.status == "error"
+        ba = next(c for c in result.checks if c.name == "bucket_accessible")
+        assert ba.status == "error"
+        assert "AccessDenied" in ba.message
 
 
 # ---------------------------------------------------------------------------
@@ -751,14 +794,22 @@ class TestConfigServiceSMTP:
         assert "required" in result.message
 
     async def test_connect_success_returns_ok(self):
-
+        # Patch asyncio.to_thread with an async shim so coverage.py tracks lines
+        # 2875 (msg = await asyncio.to_thread(_connect)) and 2876 (return ok).
+        # The shim calls _connect() synchronously without spawning a thread.
         from app.routers.admin import _test_smtp
 
         mock_smtp = MagicMock()
         mock_smtp.__enter__ = MagicMock(return_value=mock_smtp)
         mock_smtp.__exit__ = MagicMock(return_value=False)
 
-        with patch("smtplib.SMTP", return_value=mock_smtp):
+        async def _sync_to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        with (
+            patch("smtplib.SMTP", return_value=mock_smtp),
+            patch("asyncio.to_thread", new=_sync_to_thread),
+        ):
             result = await _test_smtp(
                 {
                     "smtp_host": "smtp.example.com",
