@@ -140,7 +140,7 @@ jobs:
           POSTGRES_PASSWORD: ci_test_password
       - run: cd backend && python -m coverage report --fail-under=65
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: weftmark/weftmark
@@ -148,7 +148,7 @@ jobs:
           fail_ci_if_error: false
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: backend/junit.xml
@@ -156,7 +156,7 @@ jobs:
           report_type: test_results
       - name: Upload coverage report for SonarCloud
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: backend/coverage.xml
