@@ -1459,6 +1459,34 @@ class TestCompleteProject:
         resp = await client.post(f"/api/projects/{project.id}/complete")
         assert resp.status_code == 401
 
+    async def test_force_completes_mid_progress(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        # current_pick=1, tracker incomplete — force should succeed
+        resp = await auth_client.post(f"/api/projects/{project.id}/complete?force=true")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "completed"
+
+    async def test_force_preserves_pick_data(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        total = project.total_picks
+        resp = await auth_client.post(f"/api/projects/{project.id}/complete?force=true")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total_picks"] == total
+        assert body["current_pick"] == 1  # unchanged
+
+    async def test_force_false_still_blocks_incomplete(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.post(f"/api/projects/{project.id}/complete?force=false")
+        assert resp.status_code == 400
+
 
 # ---------------------------------------------------------------------------
 # TestAbandonProject

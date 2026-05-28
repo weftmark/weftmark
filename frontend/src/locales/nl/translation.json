@@ -709,6 +709,7 @@
     "markComplete": "Markeren als voltooid",
     "abandon": "Opgeven",
     "confirmComplete": "Dit project als voltooid markeren?",
+    "confirmIncomplete": "Je hebt slechts {{current}} van {{total}} inslagnaden geweven. Project toch als voltooid markeren?",
     "confirmAbandon": "Dit project opgeven?",
     "confirm": "Bevestigen",
     "restartProject": "Project herstarten",

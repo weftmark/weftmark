@@ -1058,6 +1058,7 @@ export function ProjectDetailPage() {
   const [showAssignLoom, setShowAssignLoom] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [confirmComplete, setConfirmComplete] = useState(false);
+  const [confirmIncomplete, setConfirmIncomplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [confirmClone, setConfirmClone] = useState(false);
@@ -1240,6 +1241,13 @@ export function ProjectDetailPage() {
     if (!id) return;
     setActionLoading(true);
     try { await completeProject(id); invalidate(); setConfirmComplete(false); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleForceComplete = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    try { await completeProject(id, true); invalidate(); setConfirmIncomplete(false); }
     finally { setActionLoading(false); }
   };
 
@@ -1900,13 +1908,15 @@ export function ProjectDetailPage() {
           {!isReadOnly && isActiveTracking && (
             <CollapsibleSection title={t("projectDetailPage.actions")}>
               <div className="flex flex-wrap gap-2">
-                {!confirmComplete && !confirmAbandon && (
+                {!confirmComplete && !confirmIncomplete && !confirmAbandon && (
                   <>
-                    {isFinished && (
-                      <Button variant="success" size="sm" onClick={() => setConfirmComplete(true)}>
-                        {t("projectDetailPage.markComplete")}
-                      </Button>
-                    )}
+                    <Button
+                      variant="success"
+                      size="sm"
+                      onClick={() => isFinished ? setConfirmComplete(true) : setConfirmIncomplete(true)}
+                    >
+                      {t("projectDetailPage.markComplete")}
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
                       {t("projectDetailPage.abandon")}
                     </Button>
@@ -1917,6 +1927,20 @@ export function ProjectDetailPage() {
                     <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
                     <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
                     <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+                  </div>
+                )}
+                {confirmIncomplete && (
+                  <div className="space-y-2 w-full">
+                    <p className="text-sm text-muted-foreground">
+                      {t("projectDetailPage.confirmIncomplete", {
+                        current: Math.min(project.current_pick - 1, project.total_picks),
+                        total: project.total_picks,
+                      })}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="success" onClick={handleForceComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+                      <Button size="sm" variant="outline" onClick={() => setConfirmIncomplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+                    </div>
                   </div>
                 )}
                 {confirmAbandon && (

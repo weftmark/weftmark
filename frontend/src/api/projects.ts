@@ -344,8 +344,9 @@ export function stepProject(id: string, direction: "advance" | "reverse"): Promi
   });
 }
 
-export function completeProject(id: string): Promise<ProjectDetail> {
-  return req(`/api/projects/${id}/complete`, { method: "POST" });
+export function completeProject(id: string, force = false): Promise<ProjectDetail> {
+  const qs = force ? "?force=true" : "";
+  return req(`/api/projects/${id}/complete${qs}`, { method: "POST" });
 }
 
 export function abandonProject(id: string): Promise<ProjectDetail> {
