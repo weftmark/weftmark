@@ -709,6 +709,7 @@
     "markComplete": "Marcar como completado",
     "abandon": "Abandonar",
     "confirmComplete": "¿Marcar este proyecto como completado?",
+    "confirmIncomplete": "Solo has tejido {{current}} de {{total}} pasadas. ¿Marcar este proyecto como completado de todas formas?",
     "confirmAbandon": "¿Abandonar este proyecto?",
     "confirm": "Confirmar",
     "restartProject": "Reiniciar proyecto",

@@ -710,6 +710,7 @@
     "markComplete": "Als abgeschlossen markieren",
     "abandon": "Aufgeben",
     "confirmComplete": "Dieses Projekt als abgeschlossen markieren?",
+    "confirmIncomplete": "Du hast erst {{current}} von {{total}} Reihen gewebt. Projekt trotzdem als abgeschlossen markieren?",
     "confirmAbandon": "Dieses Projekt aufgeben?",
     "confirm": "Bestätigen",
     "restartProject": "Projekt neu starten",

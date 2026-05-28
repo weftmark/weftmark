@@ -1274,16 +1274,18 @@ async def jump_item(
 @router.post("/{project_id}/complete", response_model=ProjectDetail)
 async def complete_project(
     project_id: uuid.UUID,
+    force: bool = Query(False, description="Complete even if not all picks are logged"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
-    if project.current_pick <= project.total_picks:
-        raise HTTPException(status_code=400, detail="Not all picks are done — advance to the last pick first")
-    if project.current_item < project.num_items:
-        raise HTTPException(status_code=400, detail="Not all items are done — advance to the last item first")
+    if not force:
+        if project.current_pick <= project.total_picks:
+            raise HTTPException(status_code=400, detail="Not all picks are done — advance to the last pick first")
+        if project.current_item < project.num_items:
+            raise HTTPException(status_code=400, detail="Not all items are done — advance to the last item first")
     project.status = "completed"
     project.completed_at = datetime.now(timezone.utc)
     await _close_open_session(project_id, db)
