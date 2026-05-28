@@ -20,6 +20,7 @@ interface Props {
   onClose: () => void;
   desktopCollapsed?: boolean;
   onDesktopExpand?: () => void;
+  onDesktopCollapse?: () => void;
 }
 
 type NavGroup = "settings" | "admin" | "superuser";
@@ -28,7 +29,7 @@ const SettingsIcon = AppIcons.settings;
 const AdminIcon = AppIcons.admin;
 const SuperuserIcon = AppIcons.superuser;
 
-export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand }: Props) {
+export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand, onDesktopCollapse }: Props) {
   const location = useLocation();
   const { user } = useAuth();
   const { signOut } = useClerk();
@@ -148,6 +149,15 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
             title="Expand navigation"
           >
             <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
+          </button>
+          {/* Desktop collapse button — visible only when sidebar is expanded */}
+          <button
+            onClick={onDesktopCollapse}
+            className={`rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "hidden" : "hidden lg:flex"}`}
+            aria-label="Collapse navigation"
+            title="Collapse navigation"
+          >
+            <AppIcons.chevronDoubleLeft className="h-5 w-5" />
           </button>
         </div>
 
