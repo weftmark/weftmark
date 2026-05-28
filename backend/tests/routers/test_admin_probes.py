@@ -294,7 +294,7 @@ class TestProbeS3:
 
         s = get_settings()
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
-        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
         monkeypatch.setattr(s, "s3_endpoint_url", "")
         monkeypatch.setattr(s, "s3_access_key_id", "key")
         monkeypatch.setattr(s, "s3_secret_access_key", "secret")
@@ -326,7 +326,7 @@ class TestProbeS3:
 
         s = get_settings()
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
-        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
         monkeypatch.setattr(s, "s3_endpoint_url", "")
         monkeypatch.setattr(s, "s3_access_key_id", "key")
         monkeypatch.setattr(s, "s3_secret_access_key", "secret")
@@ -356,7 +356,7 @@ class TestProbeS3:
 
         s = get_settings()
         monkeypatch.setattr(s, "s3_bucket_name", "bad-bucket")
-        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
         monkeypatch.setattr(s, "s3_endpoint_url", "")
         monkeypatch.setattr(s, "s3_access_key_id", "key")
         monkeypatch.setattr(s, "s3_secret_access_key", "secret")
@@ -381,7 +381,7 @@ class TestProbeS3:
 
         s = get_settings()
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
-        monkeypatch.setattr(s, "s3_owner_kwargs", {"ExpectedBucketOwner": "111122223333"})
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "111122223333")
         monkeypatch.setattr(s, "s3_endpoint_url", "")
         monkeypatch.setattr(s, "s3_access_key_id", "key")
         monkeypatch.setattr(s, "s3_secret_access_key", "secret")
@@ -413,7 +413,7 @@ class TestProbeS3:
 
         s = get_settings()
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
-        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
         monkeypatch.setattr(s, "s3_endpoint_url", "")
         monkeypatch.setattr(s, "s3_access_key_id", "key")
         monkeypatch.setattr(s, "s3_secret_access_key", "secret")
@@ -443,7 +443,7 @@ class TestProbeS3:
 
         s = get_settings()
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
-        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
         monkeypatch.setattr(s, "s3_endpoint_url", "")
         monkeypatch.setattr(s, "s3_access_key_id", "key")
         monkeypatch.setattr(s, "s3_secret_access_key", "secret")
@@ -474,7 +474,7 @@ class TestProbeS3:
 
         s = get_settings()
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
-        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
         monkeypatch.setattr(s, "s3_endpoint_url", "")
         monkeypatch.setattr(s, "s3_access_key_id", "key")
         monkeypatch.setattr(s, "s3_secret_access_key", "secret")
