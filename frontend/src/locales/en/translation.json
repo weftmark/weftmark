@@ -87,6 +87,11 @@
     "clear": "Clear",
     "loading": "Loading…",
     "saving": "Saving…",
+    "working": "Working…",
+    "creating": "Creating…",
+    "adding": "Adding…",
+    "optional": "optional",
+    "remove": "Remove",
     "error": "Something went wrong."
   },
   "settings": {
@@ -345,6 +350,38 @@
     "emptyState": "No drafts yet. Upload a WIF file to get started.",
     "noTagMatch": "No drafts tagged \"{{tag}}\".",
     "archived": "Archived ({{count}})"
+  },
+  "createProject": {
+    "title": "New Project",
+    "name": "Name",
+    "namePlaceholder": "Spring scarves…",
+    "tags": "Tags",
+    "tagsPlaceholder": "Add a tag…",
+    "sequenceHint": {
+      "title": "Drafts are added on the project page",
+      "body": "After creating, open the project to add drafts to the sequence before you start weaving."
+    },
+    "loom": "Loom",
+    "noLoom": "No loom",
+    "loomConfig": "Loom configuration",
+    "loomConfigLatest": "Latest ({{name}})",
+    "unsupportedLoomsHidden": "Some looms are hidden (unsupported type).",
+    "warpPlan": "Warp Plan",
+    "finishedLength": "Finished length / item",
+    "numItems": "Items",
+    "wasteBetween": "Waste between items",
+    "warpWaste": "Loom waste",
+    "conflict": {
+      "title": "\"{{name}}\" is already using this loom",
+      "body": "Do you want to complete or abandon the existing project before creating a new one?",
+      "complete": "Complete & create new",
+      "abandon": "Abandon & create new",
+      "clearLoom": "Clear loom"
+    },
+    "error": {
+      "failed": "Failed to create project."
+    },
+    "submit": "Create project"
   },
   "projectsPage": {
     "title": "Projects",
@@ -635,7 +672,20 @@
     "updateColorFromYarn": "Update color from yarn?",
     "updateColor": "Update",
     "keepColor": "Keep",
-    "undo": "Undo"
+    "undo": "Undo",
+    "draftSequence": "Draft Sequence",
+    "noDrafts": "No drafts added yet. Add a draft below to begin.",
+    "selectDraft": "Select a draft…",
+    "addDraft": "Add",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "entryPicks": "{{count}} picks",
+    "multidraft": "{{count}} drafts",
+    "noDraftPreview": "No draft",
+    "beforeStarting": "Before you can start:",
+    "needsDrafts": "Add at least one draft to the sequence",
+    "needsLoom": "Assign a loom (Warp Setup section above)",
+    "couldNotStart": "Could not start project."
   },
   "projectDetailPage": {
     "loading": "Loading…",

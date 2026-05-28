@@ -552,8 +552,15 @@ async def delete_draft(
     from app.models.project import Project
 
     draft = await _get_owned_draft(draft_id, current_user, db)
+    from app.models.project import ProjectDraft
+
     active_projects = (
-        await db.scalars(select(Project).where(Project.draft_id == draft.id, Project.deleted_at.is_(None)))
+        await db.scalars(
+            select(Project)
+            .join(ProjectDraft, ProjectDraft.project_id == Project.id)
+            .where(ProjectDraft.draft_id == draft.id, Project.deleted_at.is_(None))
+            .distinct()
+        )
     ).all()
 
     if active_projects and not force:

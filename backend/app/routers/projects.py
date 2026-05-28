@@ -9,14 +9,14 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.deps import get_current_user, get_db
 from app.models.draft import Draft
-from app.models.loom import PROJECT_SUPPORTED_LOOM_TYPES, Loom, LoomVersion
-from app.models.project import Project, ProjectPhoto, ProjectStep, ProjectYarnColor, WeaveSession
+from app.models.loom import PROJECT_SUPPORTED_LOOM_TYPES, Loom, LoomVersion, loom_tracking_flags
+from app.models.project import Project, ProjectDraft, ProjectPhoto, ProjectStep, ProjectYarnColor, WeaveSession
 from app.models.user import User
 from app.models.yarn import Yarn
 from app.services import storage, wif_parser
@@ -67,20 +67,43 @@ class ProjectYarnColorSchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ProjectDraftSchema(BaseModel):
+    id: uuid.UUID
+    draft_id: uuid.UUID
+    position: int
+    repeats: int
+    current_pick: int
+    draft_name: str
+    draft_total_picks: int  # draft.weft_threads (picks per single pass)
+    section_total_picks: int  # draft_total_picks * repeats
+    is_active: bool  # matches project.current_position
+    has_treadling: bool
+    has_liftplan: bool
+
+    model_config = {"from_attributes": True}
+
+
 class ProjectSummary(BaseModel):
     id: uuid.UUID
     owner_id: uuid.UUID
-    draft_id: uuid.UUID
     loom_id: uuid.UUID | None
     loom_version_id: uuid.UUID | None
     name: str
-    project_type: str
+    project_type: str | None  # null until loom assigned
     status: str
-    current_pick: int
+    current_position: int
+    # Active position conveniences (mirrors tracker expectations)
+    current_pick: int  # active sequence entry's current_pick
     current_item: int
-    total_picks: int
     num_items: int
     length_unit: str
+    # Aggregate progress across the full sequence
+    total_picks: int  # sum of section_total_picks
+    aggregate_current_pick: int  # sum of current_pick across all positions
+    # List-view draft info
+    draft_id: uuid.UUID | None  # primary (position-1) draft id, for thumbnail lookup
+    draft_count: int
+    draft_sequence: list[ProjectDraftSchema] = []
     completed_at: datetime | None
     abandoned_at: datetime | None
     created_at: datetime
@@ -95,29 +118,57 @@ class ProjectSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ProjectDetail(ProjectSummary):
+class ProjectDetail(BaseModel):
+    # All Summary fields
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    loom_id: uuid.UUID | None
+    loom_version_id: uuid.UUID | None
+    name: str
+    project_type: str | None
+    status: str
+    current_position: int
+    current_pick: int
+    current_item: int
+    num_items: int
+    length_unit: str
+    total_picks: int
+    aggregate_current_pick: int
+    draft_id: uuid.UUID | None
+    draft_count: int
+    draft_sequence: list[ProjectDraftSchema] = []
+    completed_at: datetime | None
+    abandoned_at: datetime | None
+    created_at: datetime
+    hide_unused_shafts_treadles: bool
+    has_drawdown_preview: bool = False
+    has_drawdown_svg: bool = False
+    share_slug: str | None = None
+    share_visibility: str = "private"
+    share_expires_at: datetime | None = None
+    tags: list[str] = []
+    # Detail-only fields (from active draft)
     finished_length_per_item: Decimal | None
     waste_between_items: Decimal | None
     warp_waste_allowance: Decimal | None
-    completed_at: datetime | None
     notes: str | None
-    draft_name: str
-    draft_num_shafts: int | None
-    draft_num_treadles: int | None
-    draft_effective_num_treadles: int | None
-    draft_effective_num_shafts: int | None
-    draft_metadata_overrides: dict | None
-    draft_wif_colors: list | None
-    draft_warp_color_stats: list | None
-    draft_weft_color_stats: list | None
-    draft_wif_measurements: dict | None
-    draft_warp_threads: int | None
-    draft_weft_threads: int | None
-    draft_warp_length_cm: float | None
-    draft_weaving_width_override_cm: float | None
-    draft_epi_override: float | None
-    color_replacements: dict | None
-    loom_name: str | None
+    draft_name: str | None = None
+    draft_num_shafts: int | None = None
+    draft_num_treadles: int | None = None
+    draft_effective_num_treadles: int | None = None
+    draft_effective_num_shafts: int | None = None
+    draft_metadata_overrides: dict | None = None
+    draft_wif_colors: list | None = None
+    draft_warp_color_stats: list | None = None
+    draft_weft_color_stats: list | None = None
+    draft_wif_measurements: dict | None = None
+    draft_warp_threads: int | None = None
+    draft_weft_threads: int | None = None
+    draft_warp_length_cm: float | None = None
+    draft_weaving_width_override_cm: float | None = None
+    draft_epi_override: float | None = None
+    color_replacements: dict | None = None
+    loom_name: str | None = None
     loom_num_treadles: int | None = None
     loom_num_shafts: int | None = None
     loom_warp_waste_allowance: Decimal | None = None
@@ -128,11 +179,11 @@ class ProjectDetail(ProjectSummary):
     photos: list[ProjectPhotoSchema] = []
     yarn_colors: list[ProjectYarnColorSchema] = []
 
+    model_config = {"from_attributes": True}
+
 
 class CreateProjectRequest(BaseModel):
     name: str
-    draft_id: uuid.UUID
-    project_type: str  # "treadle" | "lift"
     loom_id: uuid.UUID | None = None
     loom_version_id: uuid.UUID | None = None
     finished_length_per_item: Decimal | None = None
@@ -184,10 +235,26 @@ class StepRequest(BaseModel):
 
 
 class StepResponse(BaseModel):
-    current_pick: int
-    total_picks: int
+    current_pick: int  # active position's current_pick
+    total_picks: int  # active position's section_total_picks
+    position: int  # which sequence position is active
+    aggregate_current_pick: int
+    aggregate_total_picks: int
     current_item: int
     num_items: int
+
+
+class AddSequenceEntryRequest(BaseModel):
+    draft_id: uuid.UUID
+    repeats: int = 1
+
+
+class UpdateSequenceEntryRequest(BaseModel):
+    repeats: int | None = None
+
+
+class ReorderSequenceRequest(BaseModel):
+    ordered_ids: list[uuid.UUID]  # project_drafts.id in desired order
 
 
 class PickRow(BaseModel):
@@ -220,7 +287,7 @@ class WarpingPlanColorRun(BaseModel):
 class WarpingPlanResponse(BaseModel):
     project_id: uuid.UUID
     draft_name: str
-    project_type: str
+    project_type: str | None
     warp_threads: int | None
     total_picks: int | None
     num_shafts: int | None
@@ -266,9 +333,9 @@ class SharedProjectResponse(BaseModel):
     slug: str
     project_name: str
     project_status: str
-    project_type: str
+    project_type: str | None
     owner_display_name: str
-    draft_name: str
+    draft_name: str | None
     draft_num_shafts: int | None
     draft_num_treadles: int | None
     num_items: int
@@ -344,17 +411,14 @@ async def _check_loom_conflict(
         raise HTTPException(status_code=409, detail="This loom already has an active project")
 
 
-async def _wif_path_for_project(draft: Draft, project_type: str) -> str:
+async def _wif_path_for_project(draft: Draft, project_type: str | None) -> str:
     """Return the correct WIF path for a project type.
 
     For lift projects, prefer the liftplan-augmented file when available so
-    that the original upload is never mutated. Falls back to wif_path (covers
-    the case where the liftplan was embedded in the original WIF by the user's
-    design software).
     """
     if project_type == "lift" and draft.wif_modified_path and await storage.afile_exists(draft.wif_modified_path):
         return draft.wif_modified_path
-    return draft.wif_path
+    return draft.wif_path  # type: ignore[return-value]
 
 
 async def _get_owned_project(
@@ -391,6 +455,61 @@ async def _resolve_loom_version(project: Project, db: AsyncSession) -> LoomVersi
     return None
 
 
+async def _load_sequence(project_id: uuid.UUID, db: AsyncSession) -> list[tuple[ProjectDraft, Draft]]:
+    """Load the ordered draft sequence for a project with each entry's Draft record."""
+    entries = (
+        await db.scalars(
+            select(ProjectDraft).where(ProjectDraft.project_id == project_id).order_by(ProjectDraft.position)
+        )
+    ).all()
+    result: list[tuple[ProjectDraft, Draft]] = []
+    for entry in entries:
+        draft = await db.get(Draft, entry.draft_id)
+        if draft is not None:
+            result.append((entry, draft))
+    return result
+
+
+def _active_pair(project: Project, sequence: list[tuple[ProjectDraft, Draft]]) -> tuple[ProjectDraft, Draft] | None:
+    """Return the (entry, draft) for project.current_position, or position 1 as fallback."""
+    for entry, draft in sequence:
+        if entry.position == project.current_position:
+            return entry, draft
+    return sequence[0] if sequence else None
+
+
+def _compute_total_picks(sequence: list[tuple[ProjectDraft, Draft]]) -> int:
+    return sum((d.weft_threads or 0) * e.repeats for e, d in sequence)
+
+
+def _compute_aggregate_current_pick(sequence: list[tuple[ProjectDraft, Draft]]) -> int:
+    return sum(e.current_pick for e, _ in sequence)
+
+
+def _build_sequence_schema(
+    sequence: list[tuple[ProjectDraft, Draft]], current_position: int
+) -> list[ProjectDraftSchema]:
+    result = []
+    for entry, draft in sequence:
+        total = draft.weft_threads or 0
+        result.append(
+            ProjectDraftSchema(
+                id=entry.id,
+                draft_id=entry.draft_id,
+                position=entry.position,
+                repeats=entry.repeats,
+                current_pick=entry.current_pick,
+                draft_name=draft.name,
+                draft_total_picks=total,
+                section_total_picks=total * entry.repeats,
+                is_active=entry.position == current_position,
+                has_treadling=draft.has_treadling,
+                has_liftplan=draft.has_liftplan,
+            )
+        )
+    return result
+
+
 def _yarn_color_schema(pyc: ProjectYarnColor) -> ProjectYarnColorSchema:
     yarn = pyc.yarn
     return ProjectYarnColorSchema(
@@ -409,51 +528,63 @@ def _yarn_color_schema(pyc: ProjectYarnColor) -> ProjectYarnColorSchema:
 
 def _to_detail(
     project: Project,
-    draft: Draft,
+    sequence: list[tuple[ProjectDraft, Draft]],
     loom: Loom | None,
     photos: list[ProjectPhoto] | None = None,
     loom_version: LoomVersion | None = None,
     loom_reeds: list[dict] | None = None,
     yarn_colors: list[ProjectYarnColor] | None = None,
 ) -> ProjectDetail:
+    active = _active_pair(project, sequence)
+    active_entry = active[0] if active else None
+    active_draft = active[1] if active else None
+
+    total_picks = _compute_total_picks(sequence)
+    agg_current = _compute_aggregate_current_pick(sequence)
+    primary_draft_id = sequence[0][0].draft_id if sequence else None
+
     return ProjectDetail(
         id=project.id,
         owner_id=project.owner_id,
-        draft_id=project.draft_id,
         loom_id=project.loom_id,
         loom_version_id=project.loom_version_id,
         name=project.name,
         project_type=project.project_type,
         status=project.status,
-        current_pick=project.current_pick,
+        current_position=project.current_position,
+        current_pick=active_entry.current_pick if active_entry else 0,
         current_item=project.current_item,
-        total_picks=project.total_picks,
-        finished_length_per_item=project.finished_length_per_item,
         num_items=project.num_items,
+        length_unit=project.length_unit,
+        total_picks=total_picks,
+        aggregate_current_pick=agg_current,
+        draft_id=primary_draft_id,
+        draft_count=len(sequence),
+        draft_sequence=_build_sequence_schema(sequence, project.current_position),
+        finished_length_per_item=project.finished_length_per_item,
         waste_between_items=project.waste_between_items,
         warp_waste_allowance=project.warp_waste_allowance,
-        length_unit=project.length_unit,
         completed_at=project.completed_at,
         abandoned_at=project.abandoned_at,
         notes=project.notes,
         created_at=project.created_at,
         hide_unused_shafts_treadles=project.hide_unused_shafts_treadles,
         color_replacements=project.color_replacements,
-        draft_name=draft.name,
-        draft_num_shafts=draft.num_shafts,
-        draft_num_treadles=draft.num_treadles,
-        draft_effective_num_treadles=draft.effective_num_treadles,
-        draft_effective_num_shafts=draft.effective_num_shafts,
-        draft_metadata_overrides=draft.metadata_overrides,
-        draft_wif_colors=draft.wif_colors,
-        draft_warp_color_stats=draft.warp_color_stats,
-        draft_weft_color_stats=draft.weft_color_stats,
-        draft_wif_measurements=draft.wif_measurements,
-        draft_warp_threads=draft.warp_threads,
-        draft_weft_threads=draft.weft_threads,
-        draft_warp_length_cm=draft.warp_length_cm,
-        draft_weaving_width_override_cm=draft.weaving_width_override_cm,
-        draft_epi_override=draft.epi_override,
+        draft_name=active_draft.name if active_draft else None,
+        draft_num_shafts=active_draft.num_shafts if active_draft else None,
+        draft_num_treadles=active_draft.num_treadles if active_draft else None,
+        draft_effective_num_treadles=active_draft.effective_num_treadles if active_draft else None,
+        draft_effective_num_shafts=active_draft.effective_num_shafts if active_draft else None,
+        draft_metadata_overrides=active_draft.metadata_overrides if active_draft else None,
+        draft_wif_colors=active_draft.wif_colors if active_draft else None,
+        draft_warp_color_stats=active_draft.warp_color_stats if active_draft else None,
+        draft_weft_color_stats=active_draft.weft_color_stats if active_draft else None,
+        draft_wif_measurements=active_draft.wif_measurements if active_draft else None,
+        draft_warp_threads=active_draft.warp_threads if active_draft else None,
+        draft_weft_threads=active_draft.weft_threads if active_draft else None,
+        draft_warp_length_cm=active_draft.warp_length_cm if active_draft else None,
+        draft_weaving_width_override_cm=active_draft.weaving_width_override_cm if active_draft else None,
+        draft_epi_override=active_draft.epi_override if active_draft else None,
         loom_name=f"{loom.manufacturer} {loom.model_name}" if loom else None,
         loom_num_treadles=loom_version.num_treadles if loom_version else None,
         loom_num_shafts=loom_version.num_shafts if loom_version else None,
@@ -473,6 +604,47 @@ def _to_detail(
     )
 
 
+def _to_summary(
+    project: Project,
+    sequence: list[tuple[ProjectDraft, Draft]],
+) -> ProjectSummary:
+    active = _active_pair(project, sequence)
+    active_entry = active[0] if active else None
+    total_picks = _compute_total_picks(sequence)
+    agg_current = _compute_aggregate_current_pick(sequence)
+    primary_draft_id = sequence[0][0].draft_id if sequence else None
+
+    return ProjectSummary(
+        id=project.id,
+        owner_id=project.owner_id,
+        loom_id=project.loom_id,
+        loom_version_id=project.loom_version_id,
+        name=project.name,
+        project_type=project.project_type,
+        status=project.status,
+        current_position=project.current_position,
+        current_pick=active_entry.current_pick if active_entry else 0,
+        current_item=project.current_item,
+        num_items=project.num_items,
+        length_unit=project.length_unit,
+        total_picks=total_picks,
+        aggregate_current_pick=agg_current,
+        draft_id=primary_draft_id,
+        draft_count=len(sequence),
+        draft_sequence=_build_sequence_schema(sequence, project.current_position),
+        completed_at=project.completed_at,
+        abandoned_at=project.abandoned_at,
+        created_at=project.created_at,
+        hide_unused_shafts_treadles=project.hide_unused_shafts_treadles,
+        has_drawdown_preview=project.drawdown_preview_path is not None,
+        has_drawdown_svg=project.drawdown_svg_path is not None,
+        share_slug=project.share_slug,
+        share_visibility=project.share_visibility,
+        share_expires_at=project.share_expires_at,
+        tags=project.tags or [],
+    )
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -484,36 +656,11 @@ async def create_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    if body.project_type not in ("treadle", "lift"):
-        raise HTTPException(status_code=400, detail="project_type must be 'treadle' or 'lift'")
-
-    draft = await db.scalar(
-        select(Draft).where(
-            Draft.id == body.draft_id,
-            Draft.owner_id == current_user.id,
-            Draft.deleted_at.is_(None),
-        )
-    )
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
-
-    # Validate project type is supported by the WIF
-    if body.project_type == "treadle" and not draft.has_treadling:
-        raise HTTPException(status_code=400, detail="WIF file has no [TREADLING] section")
-    if body.project_type == "lift" and not draft.has_liftplan:
-        raise HTTPException(status_code=400, detail="WIF file has no [LIFTPLAN] section")
-
-    # Parse pick count from WIF
-    wif_bytes = await storage.aread_file(await _wif_path_for_project(draft, body.project_type))
-    try:
-        pick_data = await asyncio.to_thread(wif_parser.parse_picks, wif_bytes, body.project_type)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
     if body.loom_version_id and not body.loom_id:
         raise HTTPException(status_code=400, detail="loom_version_id requires loom_id")
 
     loom: Loom | None = None
+    project_type: str | None = None
     if body.loom_id:
         loom = await db.scalar(
             select(Loom).where(
@@ -543,16 +690,20 @@ async def create_project(
 
         await _check_loom_conflict(body.loom_id, None, current_user.id, db)
 
+        supports_lift, supports_treadle = loom_tracking_flags(loom.loom_type)
+        if supports_lift:
+            project_type = "lift"
+        elif supports_treadle:
+            project_type = "treadle"
+
     project = Project(
         owner_id=current_user.id,
-        draft_id=body.draft_id,
         loom_id=body.loom_id,
         loom_version_id=body.loom_version_id,
         name=body.name,
-        project_type=body.project_type,
+        project_type=project_type,
         status="created",
-        current_pick=1,
-        total_picks=pick_data.total_picks,
+        current_position=1,
         finished_length_per_item=body.finished_length_per_item,
         num_items=body.num_items,
         waste_between_items=body.waste_between_items,
@@ -564,36 +715,253 @@ async def create_project(
     db.add(project)
     await db.commit()
     await db.refresh(project)
-    if draft.drawdown_preview_path is None:
-        generate_drawdown_preview.delay(str(draft.id))
-    from app.config import get_settings
-    from app.services.task_history import record_queued
 
-    tile_task = prerender_project_tiles.delay(str(project.id))
-    record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_project_tiles", "preview")
-    generate_project_drawdown_preview.delay(str(project.id))
-    generate_project_drawdown_svg.delay(str(project.id))
-    return _to_detail(project, draft, loom)
+    return _to_detail(project, [], loom)
 
 
 @router.get("", response_model=list[ProjectSummary])
 async def list_projects(
-    draft_id: uuid.UUID | None = Query(None),
     loom_id: uuid.UUID | None = Query(None),
     tags: list[str] | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ProjectSummary]:
-    q = select(Project).where(Project.owner_id == current_user.id, Project.deleted_at.is_(None))
-    if draft_id is not None:
-        q = q.where(Project.draft_id == draft_id)
+    q = (
+        select(Project)
+        .where(Project.owner_id == current_user.id, Project.deleted_at.is_(None))
+        .options(selectinload(Project.draft_sequence))
+    )
     if loom_id is not None:
         q = q.where(Project.loom_id == loom_id)
     result = await db.scalars(q.order_by(Project.created_at.desc()))
     projects = result.all()
-    if tags:
-        projects = [p for p in projects if any(t in (p.tags or []) for t in tags)]
-    return [ProjectSummary.model_validate(p) for p in projects]
+
+    summaries: list[ProjectSummary] = []
+    for p in projects:
+        # Build lightweight sequence (no draft details needed for list)
+        seq: list[tuple[ProjectDraft, Draft]] = []
+        for entry in sorted(p.draft_sequence, key=lambda e: e.position):
+            draft = await db.get(Draft, entry.draft_id)
+            if draft is not None:
+                seq.append((entry, draft))
+        summary = _to_summary(p, seq)
+        if tags and not any(t in (p.tags or []) for t in tags):
+            continue
+        summaries.append(summary)
+    return summaries
+
+
+# ---------------------------------------------------------------------------
+# Sequence management
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{project_id}/sequence", response_model=ProjectDetail, status_code=201)
+async def add_sequence_entry(
+    project_id: uuid.UUID,
+    body: AddSequenceEntryRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    project = await _get_owned_project(project_id, current_user, db)
+    if project.status not in ("created",):
+        raise HTTPException(status_code=400, detail="Cannot modify sequence of an active or completed project")
+
+    draft = await db.scalar(
+        select(Draft).where(
+            Draft.id == body.draft_id,
+            Draft.owner_id == current_user.id,
+            Draft.deleted_at.is_(None),
+        )
+    )
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    if body.repeats < 1:
+        raise HTTPException(status_code=400, detail="repeats must be at least 1")
+
+    # Find next position
+    existing = (
+        await db.scalars(
+            select(ProjectDraft)
+            .where(ProjectDraft.project_id == project_id)
+            .order_by(ProjectDraft.position.desc())
+            .limit(1)
+        )
+    ).first()
+    next_position = (existing.position + 1) if existing else 1
+
+    entry = ProjectDraft(
+        project_id=project_id,
+        draft_id=body.draft_id,
+        position=next_position,
+        repeats=body.repeats,
+        current_pick=0,
+    )
+    db.add(entry)
+    await db.commit()
+    await db.refresh(project)
+
+    sequence = await _load_sequence(project_id, db)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+
+    if draft.drawdown_preview_path is None:
+        generate_drawdown_preview.delay(str(draft.id))
+
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
+
+
+@router.patch("/{project_id}/sequence/{seq_id}", response_model=ProjectDetail)
+async def update_sequence_entry(
+    project_id: uuid.UUID,
+    seq_id: uuid.UUID,
+    body: UpdateSequenceEntryRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    project = await _get_owned_project(project_id, current_user, db)
+
+    entry = await db.scalar(
+        select(ProjectDraft).where(ProjectDraft.id == seq_id, ProjectDraft.project_id == project_id)
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Sequence entry not found")
+
+    if body.repeats is not None:
+        if body.repeats < 1:
+            raise HTTPException(status_code=400, detail="repeats must be at least 1")
+        entry.repeats = body.repeats
+
+    await db.commit()
+    await db.refresh(project)
+
+    sequence = await _load_sequence(project_id, db)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
+
+
+@router.delete("/{project_id}/sequence/{seq_id}", response_model=ProjectDetail)
+async def remove_sequence_entry(
+    project_id: uuid.UUID,
+    seq_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    project = await _get_owned_project(project_id, current_user, db)
+    if project.status not in ("created",):
+        raise HTTPException(status_code=400, detail="Cannot modify sequence of an active or completed project")
+
+    entry = await db.scalar(
+        select(ProjectDraft).where(ProjectDraft.id == seq_id, ProjectDraft.project_id == project_id)
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Sequence entry not found")
+
+    removed_position = entry.position
+    await db.delete(entry)
+    await db.flush()  # ensure DELETE is visible before renumbering
+
+    # Re-number remaining entries to keep positions dense
+    remaining = (
+        await db.scalars(
+            select(ProjectDraft)
+            .where(ProjectDraft.project_id == project_id, ProjectDraft.position > removed_position)
+            .order_by(ProjectDraft.position)
+        )
+    ).all()
+    for i, rem in enumerate(remaining):
+        rem.position = removed_position + i
+
+    # Update current_position if it pointed to the removed entry
+    if project.current_position >= removed_position:
+        project.current_position = max(1, project.current_position - 1)
+
+    await db.commit()
+    await db.refresh(project)
+
+    sequence = await _load_sequence(project_id, db)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
+
+
+@router.post("/{project_id}/sequence/reorder", response_model=ProjectDetail)
+async def reorder_sequence(
+    project_id: uuid.UUID,
+    body: ReorderSequenceRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    project = await _get_owned_project(project_id, current_user, db)
+    if project.status not in ("created",):
+        raise HTTPException(status_code=400, detail="Cannot reorder sequence of an active or completed project")
+
+    entries = (await db.scalars(select(ProjectDraft).where(ProjectDraft.project_id == project_id))).all()
+    entry_map = {e.id: e for e in entries}
+
+    if set(body.ordered_ids) != set(entry_map.keys()):
+        raise HTTPException(status_code=400, detail="ordered_ids must contain exactly all current sequence entry IDs")
+
+    # Two-phase UPDATE to avoid unique constraint violations on position swaps.
+    # Phase 1: negate all positions (no collisions since negatives ≠ positives).
+    await db.execute(
+        text("UPDATE project_drafts SET position = -position WHERE project_id = CAST(:project_id AS uuid)"),
+        {"project_id": str(project_id)},
+    )
+    # Phase 2: set final positions one-by-one (no collisions since all are still negative).
+    for new_pos, entry_id in enumerate(body.ordered_ids, start=1):
+        await db.execute(
+            text(
+                "UPDATE project_drafts SET position = :pos, updated_at = now() "
+                "WHERE id = CAST(:entry_id AS uuid) AND project_id = CAST(:project_id AS uuid)"
+            ),
+            {"pos": new_pos, "entry_id": str(entry_id), "project_id": str(project_id)},
+        )
+
+    # Expire all ORM objects so _load_sequence reads fresh DB state after raw SQL updates.
+    db.expire_all()
+    await db.commit()
+    await db.refresh(project)
+
+    sequence = await _load_sequence(project_id, db)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
+
+
+@router.post("/{project_id}/sequence/{seq_id}/activate", response_model=ProjectDetail)
+async def activate_sequence_entry(
+    project_id: uuid.UUID,
+    seq_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    """Set the active sequence position (the one the pick tracker operates on)."""
+    project = await _get_owned_project(project_id, current_user, db)
+    if project.status not in ("created", "active"):
+        raise HTTPException(status_code=400, detail="Project is not active")
+
+    entry = await db.scalar(
+        select(ProjectDraft).where(ProjectDraft.id == seq_id, ProjectDraft.project_id == project_id)
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Sequence entry not found")
+
+    project.current_position = entry.position
+    await db.commit()
+    await db.refresh(project)
+
+    sequence = await _load_sequence(project_id, db)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
+
+
+# ---------------------------------------------------------------------------
+# Drawdown endpoints (use active sequence position's draft)
+# ---------------------------------------------------------------------------
 
 
 @router.get("/{project_id}/drawdown")
@@ -611,10 +979,11 @@ async def get_project_drawdown(
     from app.services.storage import afile_exists, aproject_tile_exists, aread_file, aread_project_tile
 
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
-
-    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+    sequence = await _load_sequence(project_id, db)
+    active = _active_pair(project, sequence)
+    if active is None:
+        raise HTTPException(status_code=404, detail="Project has no draft sequence")
+    _, draft = active
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
@@ -632,9 +1001,6 @@ async def get_project_drawdown(
     else:
         expected_scale = rendering.DRAWDOWN_SCALE
 
-    # Check pre-rendered project tile cache on standard row-boundary alignment.
-    # Only for full-width requests (start_col=None) — column-sliced requests must
-    # go through render_drawdown_tile so they return the correct pixel slice.
     if (
         start_col is None
         and warp_count > 0
@@ -682,8 +1048,6 @@ async def get_project_drawdown(
         actual_start_col = 0
         actual_col_count = warp_count
 
-    # Trigger background tile pre-render on standard boundary miss only when t0 is absent.
-    # Only applies to full-width (non-column-sliced) requests.
     if _sc is None and _sr % tile_row_count == 0 and _rc == tile_row_count:
         if not await aproject_tile_exists(project_id, expected_scale, 0):
             from app.services.task_history import record_queued
@@ -723,9 +1087,11 @@ async def get_project_drawdown_svg(
     from app.services.storage import afile_exists, aread_file
 
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
-    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+    sequence = await _load_sequence(project_id, db)
+    active = _active_pair(project, sequence)
+    if active is None:
+        raise HTTPException(status_code=404, detail="Project has no draft sequence")
+    _, draft = active
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
@@ -779,9 +1145,11 @@ async def get_project_drawdown_preview(
     from app.services.storage import afile_exists, aread_file
 
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
-    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+    sequence = await _load_sequence(project_id, db)
+    active = _active_pair(project, sequence)
+    if active is None:
+        raise HTTPException(status_code=404, detail="Project has no draft sequence")
+    _, draft = active
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
@@ -863,9 +1231,11 @@ async def get_project_drawdown_data(
     from app.services.storage import afile_exists, aread_file
 
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
-    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+    sequence = await _load_sequence(project_id, db)
+    active = _active_pair(project, sequence)
+    if active is None:
+        raise HTTPException(status_code=404, detail="Project has no draft sequence")
+    _, draft = active
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
@@ -919,7 +1289,14 @@ async def get_project(
     project = result.first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
-    draft = await db.get(Draft, project.draft_id)
+
+    sequence = await _load_sequence(project_id, db)
+    active = _active_pair(project, sequence)
+    if active is not None:
+        _, active_draft = active
+        if active_draft.drawdown_preview_path is None:
+            generate_drawdown_preview.delay(str(active_draft.id))
+
     loom_reeds: list[dict] = []
     if project.loom_id:
         loom_stmt = select(Loom).where(Loom.id == project.loom_id).options(selectinload(Loom.reeds))
@@ -929,11 +1306,10 @@ async def get_project(
     else:
         loom = None
     loom_version = await _resolve_loom_version(project, db)
-    if draft is not None and draft.drawdown_preview_path is None:
-        generate_drawdown_preview.delay(str(draft.id))
+
     return _to_detail(
         project,
-        draft,  # type: ignore[arg-type]
+        sequence,
         loom,
         photos=list(project.photos),
         loom_version=loom_version,
@@ -965,10 +1341,10 @@ async def rename_project(
         project.tags = [t.strip().lower() for t in body.tags if t.strip()]
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
     loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
 
 
 @router.patch("/{project_id}/color-replacements", response_model=ProjectDetail)
@@ -978,9 +1354,9 @@ async def set_color_replacements(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    import re
+    import re as re_mod
 
-    hex_re = re.compile(r"^#[0-9a-fA-F]{6}$")
+    hex_re = re_mod.compile(r"^#[0-9a-fA-F]{6}$")
     for k, v in body.color_replacements.items():
         if not hex_re.match(k) or not hex_re.match(v):
             raise HTTPException(status_code=422, detail="color_replacements keys and values must be 6-digit hex colors")
@@ -991,10 +1367,10 @@ async def set_color_replacements(
     prerender_project_tiles.delay(str(project_id))
     generate_project_drawdown_preview.delay(str(project_id))
     generate_project_drawdown_svg.delay(str(project_id))
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
     loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
 
 
 @router.patch("/{project_id}/warp-setup", response_model=ProjectDetail)
@@ -1022,10 +1398,10 @@ async def update_warp_setup(
         project.length_unit = body.length_unit  # type: ignore[assignment]
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
     loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
 
 
 @router.patch("/{project_id}/reed", response_model=ProjectDetail)
@@ -1041,7 +1417,7 @@ async def set_reed(
     project.reed_dents_per_inch = body.reed_dents_per_inch
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom_reeds: list[dict] = []
     if project.loom_id:
         loom_stmt = select(Loom).where(Loom.id == project.loom_id).options(selectinload(Loom.reeds))
@@ -1051,7 +1427,7 @@ async def set_reed(
     else:
         loom = None
     loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, draft, loom, loom_version=loom_version, loom_reeds=loom_reeds)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom, loom_version=loom_version, loom_reeds=loom_reeds)
 
 
 @router.post("/{project_id}/assign-loom", response_model=ProjectDetail)
@@ -1097,11 +1473,19 @@ async def assign_loom(
 
     project.loom_id = body.loom_id
     project.loom_version_id = body.loom_version_id
+
+    # Derive project_type from loom — table_loom → lift, floor_loom → treadle
+    supports_lift, supports_treadle = loom_tracking_flags(loom.loom_type)
+    if supports_lift:
+        project.project_type = "lift"
+    elif supports_treadle:
+        project.project_type = "treadle"
+
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
 
 
 @router.post("/{project_id}/start", response_model=ProjectDetail)
@@ -1110,18 +1494,62 @@ async def start_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    """Transition a project from 'created' to 'active'. Idempotent if already active."""
+    """Validate all gates then transition a project from 'created' to 'active'."""
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Only projects in 'created' or 'active' status can be started")
+
     if project.status == "created":
+        sequence = await _load_sequence(project_id, db)
+
+        # Gate: at least one sequence entry
+        if not sequence:
+            raise HTTPException(status_code=400, detail="Add at least one draft to the sequence before starting")
+
+        # Gate: loom assigned
+        if project.loom_id is None:
+            raise HTTPException(status_code=400, detail="Assign a loom before starting")
+
+        # Gate: loom not in use by another project
+        loom_conflict = await db.scalar(
+            select(Project).where(
+                Project.loom_id == project.loom_id,
+                Project.owner_id == current_user.id,
+                Project.status == "active",
+                Project.deleted_at.is_(None),
+                Project.id != project.id,
+            )
+        )
+        if loom_conflict is not None:
+            raise HTTPException(status_code=409, detail=f"Loom is in use by project '{loom_conflict.name}'")
+
+        # Gate: all drafts have picks > 0 and are compatible with loom type
+        for entry, draft in sequence:
+            if not (draft.weft_threads or 0):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Draft '{draft.name}' has no picks defined — cannot start tracking",
+                )
+            if project.project_type == "treadle" and not draft.has_treadling:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Draft '{draft.name}' is missing a treadling plan required for this loom",
+                )
+            if project.project_type == "lift" and not draft.has_liftplan:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Draft '{draft.name}' is missing a lift plan required for this loom",
+                )
+
         project.status = "active"
         await db.commit()
         await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    else:
+        sequence = await _load_sequence(project_id, db)
+
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
     loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
 
 
 @router.post("/{project_id}/step", response_model=StepResponse)
@@ -1134,27 +1562,40 @@ async def step_project(
     if body.direction not in ("advance", "reverse"):
         raise HTTPException(status_code=400, detail="direction must be 'advance' or 'reverse'")
 
-    # FOR UPDATE serializes concurrent step requests at the DB level, preventing
-    # two simultaneous taps from reading the same current_pick and producing a
-    # duplicate increment.
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
     if project.status == "created":
         project.status = "active"
 
-    from_pick = project.current_pick
+    # Load and lock the active sequence entry
+    seq_entry = await db.scalar(
+        select(ProjectDraft)
+        .where(
+            ProjectDraft.project_id == project_id,
+            ProjectDraft.position == project.current_position,
+        )
+        .with_for_update()
+    )
+    if seq_entry is None:
+        raise HTTPException(status_code=400, detail="No active sequence entry — activate a sequence position first")
+
+    draft = await db.get(Draft, seq_entry.draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="Draft not found")
+
+    section_total = (draft.weft_threads or 0) * seq_entry.repeats
+    from_pick = seq_entry.current_pick
 
     if body.direction == "advance":
-        if project.current_pick > project.total_picks:
-            raise HTTPException(status_code=400, detail="Already at last pick")
-        project.current_pick += 1
+        if seq_entry.current_pick >= section_total:
+            raise HTTPException(status_code=400, detail="Already at last pick of this section")
+        seq_entry.current_pick += 1
     else:
-        if project.current_pick <= 1:
-            raise HTTPException(status_code=400, detail="Already at first pick")
-        project.current_pick -= 1
+        if seq_entry.current_pick <= 0:
+            raise HTTPException(status_code=400, detail="Already at first pick of this section")
+        seq_entry.current_pick -= 1
 
-    # Compute dwell and manage session gap-on-arrival
     now = datetime.now(timezone.utc)
     idle_timeout_ms = current_user.idle_timeout_minutes * 60 * 1_000
 
@@ -1188,16 +1629,29 @@ async def step_project(
 
     step = ProjectStep(
         project_id=project.id,
+        sequence_id=seq_entry.id,
         event_type=body.direction,
         from_pick=from_pick,
-        to_pick=project.current_pick,
+        to_pick=seq_entry.current_pick,
         dwell_ms=dwell_ms,
     )
     db.add(step)
     await db.commit()
+
+    # Compute aggregates for response
+    all_entries = (await db.scalars(select(ProjectDraft).where(ProjectDraft.project_id == project_id))).all()
+    agg_drafts: list[tuple[ProjectDraft, Draft]] = []
+    for e in all_entries:
+        d = await db.get(Draft, e.draft_id)
+        if d:
+            agg_drafts.append((e, d))
+
     return StepResponse(
-        current_pick=project.current_pick,
-        total_picks=project.total_picks,
+        current_pick=seq_entry.current_pick,
+        total_picks=section_total,
+        position=project.current_position,
+        aggregate_current_pick=_compute_aggregate_current_pick(agg_drafts),
+        aggregate_total_picks=_compute_total_picks(agg_drafts),
         current_item=project.current_item,
         num_items=project.num_items,
     )
@@ -1213,12 +1667,25 @@ async def jump_project(
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
-    project.current_pick = max(1, min(body.pick, project.total_picks + 1))
+
+    seq_entry = await db.scalar(
+        select(ProjectDraft).where(
+            ProjectDraft.project_id == project_id,
+            ProjectDraft.position == project.current_position,
+        )
+    )
+    if seq_entry is None:
+        raise HTTPException(status_code=400, detail="No active sequence entry")
+
+    draft = await db.get(Draft, seq_entry.draft_id)
+    section_total = (draft.weft_threads or 0) * seq_entry.repeats if draft else 0
+    seq_entry.current_pick = max(0, min(body.pick, section_total))
+
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom)
 
 
 @router.post("/{project_id}/advance-item", response_model=StepResponse)
@@ -1230,19 +1697,28 @@ async def advance_item(
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
-    if project.current_pick <= project.total_picks:
-        raise HTTPException(status_code=400, detail="Current item is not finished — advance to the last pick first")
+
+    sequence = await _load_sequence(project_id, db)
+    total_picks = _compute_total_picks(sequence)
+    agg_current = _compute_aggregate_current_pick(sequence)
+
+    if agg_current < total_picks:
+        raise HTTPException(status_code=400, detail="Current sequence is not finished — complete all picks first")
     if project.current_item >= project.num_items:
         raise HTTPException(status_code=400, detail="Already on the last item — use complete instead")
-    picks = dict(project.item_picks or {})
-    picks[str(project.current_item)] = project.current_pick
+
+    # Reset all sequence picks to 0 for the next item
+    for entry, _ in sequence:
+        entry.current_pick = 0
     project.current_item += 1
-    project.current_pick = int(picks.get(str(project.current_item), 1))
-    project.item_picks = picks
     await db.commit()
+
     return StepResponse(
-        current_pick=project.current_pick,
-        total_picks=project.total_picks,
+        current_pick=0,
+        total_picks=total_picks,
+        position=project.current_position,
+        aggregate_current_pick=0,
+        aggregate_total_picks=total_picks,
         current_item=project.current_item,
         num_items=project.num_items,
     )
@@ -1258,17 +1734,13 @@ async def jump_item(
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
-    picks = dict(project.item_picks or {})
-    picks[str(project.current_item)] = project.current_pick
     target = max(1, min(body.item, project.num_items))
     project.current_item = target
-    project.current_pick = int(picks.get(str(target), 1))
-    project.item_picks = picks
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom)
 
 
 @router.post("/{project_id}/complete", response_model=ProjectDetail)
@@ -1281,19 +1753,24 @@ async def complete_project(
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+
     if not force:
-        if project.current_pick <= project.total_picks:
+        sequence = await _load_sequence(project_id, db)
+        total_picks = _compute_total_picks(sequence)
+        agg_current = _compute_aggregate_current_pick(sequence)
+        if agg_current < total_picks:
             raise HTTPException(status_code=400, detail="Not all picks are done — advance to the last pick first")
         if project.current_item < project.num_items:
             raise HTTPException(status_code=400, detail="Not all items are done — advance to the last item first")
+
     project.status = "completed"
     project.completed_at = datetime.now(timezone.utc)
     await _close_open_session(project_id, db)
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom)
 
 
 @router.post("/{project_id}/abandon", response_model=ProjectDetail)
@@ -1310,9 +1787,9 @@ async def abandon_project(
     await _close_open_session(project_id, db)
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom)
 
 
 @router.post("/{project_id}/restart", response_model=ProjectDetail)
@@ -1329,11 +1806,9 @@ async def restart_project(
     project.status = "created"
     await db.commit()
     await db.refresh(project)
-    draft = await db.get(Draft, project.draft_id)
+    sequence = await _load_sequence(project_id, db)
     loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    if draft is not None and draft.drawdown_preview_path is None:
-        generate_drawdown_preview.delay(str(draft.id))
-    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+    return _to_detail(project, sequence, loom)
 
 
 @router.get("/{project_id}/metrics", response_model=ProjectMetricsResponse)
@@ -1406,16 +1881,15 @@ async def clone_project(
     source = await _get_owned_project(project_id, current_user, db)
     if source.loom_id:
         await _check_loom_conflict(source.loom_id, None, current_user.id, db)
+
     clone = Project(
         owner_id=current_user.id,
-        draft_id=source.draft_id,
         loom_id=source.loom_id,
         loom_version_id=source.loom_version_id,
         name=source.name,
         project_type=source.project_type,
         status="created",
-        current_pick=1,
-        total_picks=source.total_picks,
+        current_position=1,
         finished_length_per_item=source.finished_length_per_item,
         num_items=source.num_items,
         waste_between_items=source.waste_between_items,
@@ -1423,13 +1897,25 @@ async def clone_project(
         length_unit=source.length_unit,
     )
     db.add(clone)
+    await db.flush()
+
+    # Clone the sequence
+    source_sequence = await _load_sequence(project_id, db)
+    for entry, draft in source_sequence:
+        cloned_entry = ProjectDraft(
+            project_id=clone.id,
+            draft_id=entry.draft_id,
+            position=entry.position,
+            repeats=entry.repeats,
+            current_pick=0,
+        )
+        db.add(cloned_entry)
+
     await db.commit()
     await db.refresh(clone)
-    draft = await db.get(Draft, clone.draft_id)
+    clone_sequence = await _load_sequence(clone.id, db)
     loom = await db.get(Loom, clone.loom_id) if clone.loom_id else None
-    if draft is not None and draft.drawdown_preview_path is None:
-        generate_drawdown_preview.delay(str(draft.id))
-    return _to_detail(clone, draft, loom)  # type: ignore[arg-type]
+    return _to_detail(clone, clone_sequence, loom)
 
 
 @router.delete("/{project_id}", status_code=204)
@@ -1543,9 +2029,14 @@ async def get_picks(
     db: AsyncSession = Depends(get_db),
 ) -> PicksResponse:
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
-    draft = await db.get(Draft, project.draft_id)
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+    if project.project_type is None:
+        raise HTTPException(status_code=400, detail="Project has no type set — assign a loom first")
+
+    sequence = await _load_sequence(project_id, db)
+    active = _active_pair(project, sequence)
+    if active is None:
+        raise HTTPException(status_code=404, detail="Project has no draft sequence")
+    _, draft = active
 
     wif_bytes = await storage.aread_file(await _wif_path_for_project(draft, project.project_type))
     try:
@@ -1658,9 +2149,12 @@ async def get_warping_plan(
     db: AsyncSession = Depends(get_db),
 ) -> WarpingPlanResponse:
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
-    draft = await db.get(Draft, project.draft_id)
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+    sequence = await _load_sequence(project_id, db)
+    # Warping plan uses position-1 draft (primary warp reference)
+    primary = sequence[0] if sequence else None
+    if primary is None:
+        raise HTTPException(status_code=404, detail="Project has no draft sequence")
+    _, draft = primary
 
     threading_entries = warp_color_runs = tieup_data = tieup_num_shafts = tieup_num_treadles = None
     wif_path = await _wif_path_for_project(draft, project.project_type)
@@ -1712,9 +2206,9 @@ async def update_project_share(
         raise HTTPException(status_code=400, detail="visibility must be 'link'")
 
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
-    draft = await db.get(Draft, project.draft_id)
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+    sequence = await _load_sequence(project_id, db)
+    if not sequence:
+        raise HTTPException(status_code=400, detail="Cannot share a project with no drafts")
 
     if project.share_slug is None:
         project.share_slug = await _generate_unique_slug(project.name, db)
@@ -1732,7 +2226,7 @@ async def update_project_share(
             select(ProjectPhoto).where(ProjectPhoto.project_id == project.id).order_by(ProjectPhoto.display_order)
         )
     )
-    return _to_detail(project, draft, loom, photos, loom_version)
+    return _to_detail(project, sequence, loom, photos, loom_version)
 
 
 @router.delete("/{project_id}/share", status_code=204)
@@ -1771,14 +2265,17 @@ async def get_shared_project(
     if project.share_expires_at is not None and project.share_expires_at <= now:
         raise HTTPException(status_code=410, detail="This share link has expired")
 
-    draft = await db.get(Draft, project.draft_id)
-    if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+    sequence = await _load_sequence(project.id, db)
+    active = _active_pair(project, sequence)
+    active_draft = active[1] if active else None
 
     from app.models.user import User as UserModel
 
     owner = await db.get(UserModel, project.owner_id)
     owner_display = owner.display_name if owner and owner.display_name else "Unknown"
+
+    total_picks = _compute_total_picks(sequence)
+    active_entry = active[0] if active else None
 
     return SharedProjectResponse(
         slug=slug,
@@ -1786,12 +2283,12 @@ async def get_shared_project(
         project_status=project.status,
         project_type=project.project_type,
         owner_display_name=owner_display,
-        draft_name=draft.name,
-        draft_num_shafts=draft.effective_num_shafts or draft.num_shafts,
-        draft_num_treadles=draft.effective_num_treadles or draft.num_treadles,
+        draft_name=active_draft.name if active_draft else None,
+        draft_num_shafts=active_draft.effective_num_shafts or active_draft.num_shafts if active_draft else None,
+        draft_num_treadles=active_draft.effective_num_treadles or active_draft.num_treadles if active_draft else None,
         num_items=project.num_items,
-        total_picks=project.total_picks,
-        current_pick=project.current_pick,
+        total_picks=total_picks,
+        current_pick=active_entry.current_pick if active_entry else 0,
         current_item=project.current_item,
         share_visibility=project.share_visibility,
         share_expires_at=project.share_expires_at,
@@ -1801,9 +2298,9 @@ async def get_shared_project(
         has_drawdown_preview=project.drawdown_preview_path is not None,
         has_drawdown_svg=project.drawdown_svg_path is not None,
         color_replacements=project.color_replacements,
-        draft_wif_colors=draft.wif_colors,
-        draft_warp_color_stats=draft.warp_color_stats,
-        draft_weft_color_stats=draft.weft_color_stats,
+        draft_wif_colors=active_draft.wif_colors if active_draft else None,
+        draft_warp_color_stats=active_draft.warp_color_stats if active_draft else None,
+        draft_weft_color_stats=active_draft.weft_color_stats if active_draft else None,
     )
 
 
@@ -1823,6 +2320,28 @@ async def get_shared_project_preview(
         raise HTTPException(status_code=404, detail="Preview not yet generated")
     data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
     return Response(content=data, media_type="image/png", headers={"Cache-Control": "public, max-age=300"})
+
+
+@share_router.get("/projects/{slug}/svg")
+async def get_shared_project_svg(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return the pre-rendered drawdown SVG for a shared project (no auth required)."""
+    project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
+    if project is None or project.share_visibility == "private":
+        raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(timezone.utc)
+    if project.share_expires_at is not None and project.share_expires_at <= now:
+        raise HTTPException(status_code=410, detail="Expired")
+    if not project.drawdown_svg_path:
+        raise HTTPException(status_code=404, detail="SVG not yet generated")
+    svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
+    return Response(
+        content=svg_text,
+        media_type="image/svg+xml; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1937,25 +2456,3 @@ async def unlink_yarn_color(
         raise HTTPException(status_code=404, detail="Yarn color assignment not found")
     await db.delete(row)
     await db.commit()
-
-
-@share_router.get("/projects/{slug}/svg")
-async def get_shared_project_svg(
-    slug: str,
-    db: AsyncSession = Depends(get_db),
-) -> Response:
-    """Return the pre-rendered drawdown SVG for a shared project (no auth required)."""
-    project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
-    if project is None or project.share_visibility == "private":
-        raise HTTPException(status_code=404, detail="Not found")
-    now = datetime.now(timezone.utc)
-    if project.share_expires_at is not None and project.share_expires_at <= now:
-        raise HTTPException(status_code=410, detail="Expired")
-    if not project.drawdown_svg_path:
-        raise HTTPException(status_code=404, detail="SVG not yet generated")
-    svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
-    return Response(
-        content=svg_text,
-        media_type="image/svg+xml; charset=utf-8",
-        headers={"Cache-Control": "public, max-age=300"},
-    )

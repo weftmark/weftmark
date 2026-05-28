@@ -1,17 +1,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createProject, completeProject, abandonProject, listProjects, ApiError, PROJECT_TYPE_LABELS, type ProjectType, type ProjectSummary } from "@/api/projects";
-import { listDrafts } from "@/api/drafts";
+import { createProject, completeProject, abandonProject, listProjects, ApiError, type ProjectSummary } from "@/api/projects";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 import { TagInput } from "@/components/ui/TagInput";
 import { useAuthContext } from "@/context/AuthContext";
-import { measurementSystemToUnit, convertLength, formatLength } from "@/lib/units";
+import { measurementSystemToUnit } from "@/lib/units";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   onSuccess: (id: string) => void;
   onClose: () => void;
-  defaultDraftId?: string;
 }
 
 const CM_PER_IN = 2.54;
@@ -25,11 +24,10 @@ function convertLen(value: string, toUnit: "cm" | "in"): string {
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props) {
+export function CreateProjectModal({ onSuccess, onClose }: Props) {
+  const { t } = useTranslation();
   const { user } = useAuthContext();
   const [name, setName] = useState("");
-  const [draftId, setDraftId] = useState(defaultDraftId ?? "");
-  const [projectType, setProjectType] = useState<ProjectType | "">("");
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
   const [finishedLength, setFinishedLength] = useState("");
@@ -39,8 +37,6 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
   const [lengthUnit, setLengthUnit] = useState<"cm" | "in">(
     measurementSystemToUnit(user?.measurement_system ?? "metric")
   );
-  // Track previous draft ID to detect when draft selection changes.
-  const [prevDraftId, setPrevDraftId] = useState<string | undefined>(undefined);
 
   const handleUnitChange = (newUnit: "cm" | "in") => {
     setFinishedLength((v) => convertLen(v, newUnit));
@@ -53,7 +49,6 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
   const [error, setError] = useState<string | null>(null);
   const [conflictProject, setConflictProject] = useState<ProjectSummary | null>(null);
 
-  const { data: drafts = [] } = useQuery({ queryKey: ["drafts"], queryFn: () => listDrafts() });
   const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: () => listLooms() });
   const { data: loomDetail } = useQuery({
     queryKey: ["loom", loomId],
@@ -61,90 +56,9 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
     enabled: !!loomId,
   });
 
-  const selectedDraft = drafts.find((d) => d.id === draftId);
   const selectedLoom = looms.find((l) => l.id === loomId);
-
-  // Pre-populate finished length when draft selection changes (setState during render — React-approved).
-  const warpLengthDefaultCm = selectedDraft?.warp_length_cm ?? null;
-  if (selectedDraft?.id !== prevDraftId) {
-    setPrevDraftId(selectedDraft?.id);
-    if (selectedDraft?.warp_length_cm != null) {
-      const val = convertLength(selectedDraft.warp_length_cm, "cm", lengthUnit);
-      setFinishedLength(parseFloat(val.toFixed(1)).toString());
-    } else {
-      setFinishedLength("");
-    }
-  }
-
-  // Filter project types by what the WIF supports and loom supports
-  const availableTypes: ProjectType[] = [];
-  if (selectedDraft) {
-    if (selectedDraft.has_treadling) availableTypes.push("treadle");
-    if (selectedDraft.has_liftplan) availableTypes.push("lift");
-  }
-
-  // Filter to types the loom also supports (if a loom is selected)
-  const filteredTypes = selectedLoom
-    ? availableTypes.filter((t) => {
-        if (t === "treadle") return selectedLoom.supports_treadle_tracking;
-        if (t === "lift") return selectedLoom.supports_lift_tracking;
-        return true;
-      })
-    : availableTypes;
-
-  // Auto-select type when only one option
-  const effectiveType: ProjectType | "" =
-    projectType ||
-    (filteredTypes.length === 1 ? filteredTypes[0] : "");
-
   const loomVersions = loomDetail?.versions ?? [];
   const selectedVersion = loomVersions.find((v) => v.id === loomVersionId);
-
-  const loomTreadles = selectedLoom?.current_version?.num_treadles ?? null;
-  const loomShafts = selectedLoom?.current_version?.num_shafts ?? null;
-
-  // Use effective counts (from actual treadling data) for compatibility; fall back to declared
-  const effectiveTreadles = selectedDraft?.effective_num_treadles ?? selectedDraft?.num_treadles ?? null;
-  const effectiveShafts = selectedDraft?.effective_num_shafts ?? selectedDraft?.num_shafts ?? null;
-
-  const treadleMismatch =
-    !!selectedLoom &&
-    (effectiveType === "treadle" || (!effectiveType && availableTypes.includes("treadle"))) &&
-    (effectiveTreadles ?? 0) > 0 &&
-    (loomTreadles ?? 0) > 0 &&
-    (effectiveTreadles ?? 0) > (loomTreadles ?? 0);
-
-  const shaftMismatch =
-    !!selectedLoom &&
-    (effectiveType === "lift" || (!effectiveType && availableTypes.includes("lift"))) &&
-    (effectiveShafts ?? 0) > 0 &&
-    (loomShafts ?? 0) > 0 &&
-    (effectiveShafts ?? 0) > (loomShafts ?? 0);
-
-  // Informational: declared metadata doesn't match actual usage
-  const treadleMetaMismatch =
-    selectedDraft?.num_treadles != null &&
-    selectedDraft?.effective_num_treadles != null &&
-    selectedDraft.num_treadles !== selectedDraft.effective_num_treadles;
-
-  const shaftMetaMismatch =
-    selectedDraft?.num_shafts != null &&
-    selectedDraft?.effective_num_shafts != null &&
-    selectedDraft.num_shafts !== selectedDraft.effective_num_shafts;
-
-  const draftHasWarpLength = selectedDraft?.warp_length_cm != null;
-  const finishedLengthCm = finishedLength !== "" && !isNaN(parseFloat(finishedLength))
-    ? convertLength(parseFloat(finishedLength), lengthUnit, "cm")
-    : null;
-  const warpLengthDefaultLabel = warpLengthDefaultCm != null
-    ? formatLength(convertLength(warpLengthDefaultCm, "cm", lengthUnit), lengthUnit)
-    : null;
-  const finishedLengthDeviatesFromDefault = warpLengthDefaultCm != null
-    && finishedLengthCm != null
-    && Math.abs(finishedLengthCm - warpLengthDefaultCm) > 0.5;
-  const finishedLengthMatchesDefault = warpLengthDefaultCm != null
-    && finishedLengthCm != null
-    && Math.abs(finishedLengthCm - warpLengthDefaultCm) <= 0.5;
 
   const loomWasteInCurrentUnit = (allowance: string | null | undefined, wasteUnit: string): string => {
     if (!allowance) return "";
@@ -154,7 +68,6 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
   const handleLoomChange = (newLoomId: string) => {
     setLoomId(newLoomId);
     setLoomVersionId("");
-    setProjectType("");
     setWarpWaste("");
     setConflictProject(null);
     setError(null);
@@ -162,8 +75,6 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
   const _buildPayload = () => ({
     name: name.trim(),
-    draft_id: draftId,
-    project_type: effectiveType as ProjectType,
     loom_id: loomId || undefined,
     loom_version_id: loomVersionId || undefined,
     finished_length_per_item: finishedLength ? parseFloat(finishedLength) : undefined,
@@ -176,7 +87,6 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!effectiveType) return;
     setError(null);
     setConflictProject(null);
     setLoading(true);
@@ -189,7 +99,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
         const conflict = projects.find((p) => p.loom_id === loomId && p.status === "active") ?? null;
         setConflictProject(conflict);
       } else {
-        setError(err instanceof Error ? err.message : "Failed to create project");
+        setError(err instanceof Error ? err.message : t("createProject.error.failed"));
       }
     } finally {
       setLoading(false);
@@ -197,90 +107,72 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
   };
 
   const handleResolveAndCreate = async (resolve: "complete" | "abandon") => {
-    if (!conflictProject || !effectiveType) return;
+    if (!conflictProject) return;
     setError(null);
     setLoading(true);
     try {
       if (resolve === "complete") {
-        await completeProject(conflictProject.id);
+        await completeProject(conflictProject.id, true);
       } else {
         await abandonProject(conflictProject.id);
       }
       const created = await createProject(_buildPayload());
       onSuccess(created.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create project");
+      setError(err instanceof Error ? err.message : t("createProject.error.failed"));
       setConflictProject(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const canSubmit = name.trim() && draftId && !!effectiveType && !loading;
+  const canSubmit = name.trim() && !loading;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-lg border bg-background shadow-lg flex flex-col max-h-[90vh]">
         <div className="px-6 pt-6 pb-4 border-b">
-          <h2 className="text-lg font-semibold">New project</h2>
+          <h2 className="text-lg font-semibold">{t("createProject.title")}</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
           <div>
-            <label className="mb-1 block text-sm font-medium">Project name <span className="text-destructive">*</span></label>
-            <input className={f} value={name} onChange={(e) => setName(e.target.value)} placeholder="Spring towels — warp 1" required />
+            <label className="mb-1 block text-sm font-medium">{t("createProject.name")} <span className="text-destructive">*</span></label>
+            <input className={f} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("createProject.namePlaceholder")} required />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Tags <span className="text-muted-foreground font-normal">(optional)</span></label>
-            <TagInput tags={tags} onChange={setTags} placeholder="cotton, twill…" />
+            <label className="mb-1 block text-sm font-medium">{t("createProject.tags")} <span className="text-muted-foreground font-normal">({t("common.optional")})</span></label>
+            <TagInput tags={tags} onChange={setTags} placeholder={t("createProject.tagsPlaceholder")} />
+          </div>
+
+          <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+            <p className="font-medium text-foreground">{t("createProject.sequenceHint.title")}</p>
+            <p className="mt-0.5 text-xs text-subdued">{t("createProject.sequenceHint.body")}</p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Draft <span className="text-destructive">*</span></label>
-            {defaultDraftId ? (
-              <p className="py-2 text-sm">{selectedDraft?.name ?? "—"}</p>
-            ) : (
-              <select className={f} value={draftId} onChange={(e) => { setDraftId(e.target.value); setProjectType(""); }} required>
-                <option value="">Select a draft…</option>
-                {drafts.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Loom <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <label className="mb-1 block text-sm font-medium">{t("createProject.loom")} <span className="text-muted-foreground font-normal">({t("common.optional")})</span></label>
             <select className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
-              <option value="">No loom selected</option>
+              <option value="">{t("createProject.noLoom")}</option>
               {looms.filter((l) => SUPPORTED_LOOM_TYPES.has(l.loom_type)).map((l) => (
                 <option key={l.id} value={l.id}>{l.manufacturer} {l.model_name}</option>
               ))}
             </select>
             {looms.some((l) => !SUPPORTED_LOOM_TYPES.has(l.loom_type)) && (
-              <p className="mt-1 text-xs text-muted-foreground">Looms without project tracking support are not shown.</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t("createProject.unsupportedLoomsHidden")}</p>
             )}
           </div>
 
-          {!loomId && selectedDraft && (
-            <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
-              <p className="font-medium text-foreground">No loom selected — preview mode</p>
-              <p className="mt-0.5 text-xs text-subdued">
-                This project will not be linked to equipment. Select a project type below to create a standalone tracking preview. You can create a separate project to preview the other type.
-              </p>
-            </div>
-          )}
-
           {selectedLoom && loomVersions.length > 1 && (
             <div>
-              <label className="mb-1 block text-sm font-medium">Loom configuration</label>
+              <label className="mb-1 block text-sm font-medium">{t("createProject.loomConfig")}</label>
               <select className={f} value={loomVersionId} onChange={(e) => {
                 setLoomVersionId(e.target.value);
                 const v = loomVersions.find((v) => v.id === e.target.value);
                 if (v?.warp_waste_allowance) setWarpWaste(loomWasteInCurrentUnit(v.warp_waste_allowance, v.warp_waste_unit));
               }}>
-                <option value="">Latest ({loomVersions.at(-1)?.name ?? `v${loomVersions.at(-1)?.version_number}`})</option>
+                <option value="">{t("createProject.loomConfigLatest", { name: loomVersions.at(-1)?.name ?? `v${loomVersions.at(-1)?.version_number}` })}</option>
                 {loomVersions.map((v) => (
                   <option key={v.id} value={v.id}>{v.name ?? `Version ${v.version_number}`}</option>
                 ))}
@@ -288,83 +180,12 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
             </div>
           )}
 
-          {(treadleMismatch || shaftMismatch) && selectedLoom && (
-            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2.5 text-sm">
-              <p className="font-medium text-copper-on-subtle">
-                {treadleMismatch ? "Treadle count mismatch" : "Shaft count mismatch"}
-              </p>
-              <p className="mt-0.5 text-xs text-copper-on-subtle">
-                {treadleMismatch
-                  ? `This design uses up to ${effectiveTreadles} treadles, but ${selectedLoom.manufacturer} ${selectedLoom.model_name} only has ${loomTreadles}. Treadle positions beyond ${loomTreadles} cannot be pressed.`
-                  : `This design uses up to ${effectiveShafts} shafts, but ${selectedLoom.manufacturer} ${selectedLoom.model_name} only has ${loomShafts}. Shaft positions beyond ${loomShafts} cannot be raised.`}
-              </p>
-            </div>
-          )}
-
-          {(treadleMetaMismatch || shaftMetaMismatch) && !treadleMismatch && !shaftMismatch && (
-            <div className="rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
-              <p className="font-medium text-foreground">WIF metadata note</p>
-              <p className="mt-0.5 text-xs text-subdued">
-                {treadleMetaMismatch
-                  ? `The WIF file declares ${selectedDraft!.num_treadles} treadles in metadata, but the treadling data only uses ${selectedDraft!.effective_num_treadles}. Loom compatibility uses the actual count (${selectedDraft!.effective_num_treadles}). You can fix the declared count in your design software.`
-                  : `The WIF file declares ${selectedDraft!.num_shafts} shafts in metadata, but the lift plan only uses ${selectedDraft!.effective_num_shafts}. Loom compatibility uses the actual count (${selectedDraft!.effective_num_shafts}). You can fix the declared count in your design software.`}
-              </p>
-            </div>
-          )}
-
-          {selectedDraft && (
-            <div>
-              <label className="mb-1 block text-sm font-medium">Project type <span className="text-destructive">*</span></label>
-              {filteredTypes.length === 0 ? (
-                <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-sm">
-                  {selectedLoom && availableTypes.length > 0 ? (
-                    <>
-                      <p className="font-medium text-destructive">Loom and draft are incompatible</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        This WIF supports {availableTypes.map(t => PROJECT_TYPE_LABELS[t]).join(" and ")}, but the selected loom does not.
-                        {availableTypes.includes("lift") && !selectedLoom.supports_lift_tracking && " The loom does not support lift tracking."}
-                        {availableTypes.includes("treadle") && !selectedLoom.supports_treadle_tracking && " The loom does not support treadle tracking."}
-                        {" "}Try a different loom or go to the draft page to generate a lift plan.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-medium text-destructive">No project types available</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        This WIF has no treadling or lift plan data. Go to the draft page to generate a lift plan if the file has tieup and treadling sections.
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : filteredTypes.length === 1 ? (
-                <p className="text-sm py-2">{PROJECT_TYPE_LABELS[filteredTypes[0]]}</p>
-              ) : (
-                <select className={f} value={effectiveType} onChange={(e) => setProjectType(e.target.value as ProjectType)} required>
-                  <option value="">Select type…</option>
-                  {filteredTypes.map((t) => (
-                    <option key={t} value={t}>{PROJECT_TYPE_LABELS[t]}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          )}
-
           <div className="border-t pt-4">
-            <p className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Warp plan</p>
-            <p className="mb-3 text-xs text-muted-foreground">Warp plan tracking is not yet available. These fields are coming in a future update.</p>
-
-            {selectedDraft && !draftHasWarpLength && (
-              <div className="mb-3 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
-                <p className="font-medium text-foreground">Warp length not set</p>
-                <p className="mt-0.5 text-xs text-subdued">
-                  Set the warp length on the draft page to enable warp waste and spacing calculations.
-                </p>
-              </div>
-            )}
+            <p className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("createProject.warpPlan")}</p>
 
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
-                <label className="mb-1 block text-sm font-medium">Finished length / item</label>
+                <label className="mb-1 block text-sm font-medium">{t("createProject.finishedLength")}</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -384,60 +205,50 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
                     <option value="in">in</option>
                   </select>
                 </div>
-                {finishedLengthDeviatesFromDefault && (
-                  <p className="mt-1 text-xs text-copper-on-subtle">
-                    Changed from WIF warp length ({warpLengthDefaultLabel})
-                  </p>
-                )}
-                {finishedLengthMatchesDefault && (
-                  <p className="mt-1 text-xs text-muted-foreground">Pre-filled from WIF warp length</p>
-                )}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Number of items</label>
+                <label className="mb-1 block text-sm font-medium">{t("createProject.numItems")}</label>
                 <input type="number" min={1} step="1" className={f} value={numItems} onChange={(e) => setNumItems(e.target.value)} />
               </div>
             </div>
 
-            {draftHasWarpLength && (
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                {parseInt(numItems, 10) > 1 && (
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">Waste between items</label>
-                    <div className="flex gap-1">
-                      <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={wasteBetween} onChange={(e) => setWasteBetween(e.target.value)} placeholder="5" />
-                      <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
-                    </div>
-                  </div>
-                )}
-                <div className={parseInt(numItems, 10) <= 1 ? "col-span-2" : ""}>
-                  <label className="mb-1 block text-sm font-medium">Loom warp waste</label>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              {parseInt(numItems, 10) > 1 && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">{t("createProject.wasteBetween")}</label>
                   <div className="flex gap-1">
-                    <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={warpWaste || loomWasteInCurrentUnit(selectedVersion?.warp_waste_allowance ?? loomDetail?.versions.at(-1)?.warp_waste_allowance, selectedVersion?.warp_waste_unit ?? loomDetail?.versions.at(-1)?.warp_waste_unit ?? "cm")} onChange={(e) => setWarpWaste(e.target.value)} placeholder="30" />
+                    <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={wasteBetween} onChange={(e) => setWasteBetween(e.target.value)} placeholder="5" />
                     <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
                   </div>
                 </div>
+              )}
+              <div className={parseInt(numItems, 10) <= 1 ? "col-span-2" : ""}>
+                <label className="mb-1 block text-sm font-medium">{t("createProject.warpWaste")}</label>
+                <div className="flex gap-1">
+                  <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={warpWaste || loomWasteInCurrentUnit(selectedVersion?.warp_waste_allowance ?? loomDetail?.versions.at(-1)?.warp_waste_allowance, selectedVersion?.warp_waste_unit ?? loomDetail?.versions.at(-1)?.warp_waste_unit ?? "cm")} onChange={(e) => setWarpWaste(e.target.value)} placeholder="30" />
+                  <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
+                </div>
               </div>
-            )}
+            </div>
           </div>
 
           {conflictProject && (
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
               <p className="font-medium text-copper-on-subtle">
-                This loom has an active project: <span className="font-semibold">{conflictProject.name}</span>
+                {t("createProject.conflict.title", { name: conflictProject.name })}
               </p>
               <p className="text-copper-on-subtle text-xs">
-                Mark it as completed or abandon it to start this new project, or choose a different loom.
+                {t("createProject.conflict.body")}
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Button type="button" size="sm" onClick={() => handleResolveAndCreate("complete")} disabled={loading}>
-                  {loading ? "Working…" : "Mark completed & continue"}
+                  {loading ? t("common.working") : t("createProject.conflict.complete")}
                 </Button>
                 <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndCreate("abandon")} disabled={loading}>
-                  {loading ? "Working…" : "Abandon & continue"}
+                  {loading ? t("common.working") : t("createProject.conflict.abandon")}
                 </Button>
                 <Button type="button" size="sm" variant="ghost" onClick={() => handleLoomChange("")} disabled={loading}>
-                  Clear loom
+                  {t("createProject.conflict.clearLoom")}
                 </Button>
               </div>
             </div>
@@ -446,9 +257,9 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
         </form>
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>{t("common.cancel")}</Button>
           <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {loading ? "Creating…" : "Start project"}
+            {loading ? t("common.creating") : t("createProject.submit")}
           </Button>
         </div>
       </div>

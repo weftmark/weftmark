@@ -29,6 +29,7 @@ export function DraftsPage() {
   const projectCountsByDraft = projects.reduce<Record<string, { active: number; planning: number; completed: number; abandoned: number }>>(
     (acc, a) => {
       const did = a.draft_id;
+      if (!did) return acc;
       if (!acc[did]) acc[did] = { active: 0, planning: 0, completed: 0, abandoned: 0 };
       if (a.status === "active" && !!a.loom_id) acc[did].active++;
       else if (a.status === "active" && !a.loom_id) acc[did].planning++;

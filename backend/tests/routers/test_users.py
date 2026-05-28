@@ -215,12 +215,9 @@ class TestDeleteAccount:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Test Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=100,
         )
         db_session.add(project)
         await db_session.flush()
@@ -273,12 +270,9 @@ class TestDeleteAccount:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="P",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()
@@ -373,12 +367,9 @@ class TestDeleteAccount:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="P",
             project_type="treadle",
-            status="planning",
-            current_pick=1,
-            total_picks=10,
+            status="created",
         )
         db_session.add(project)
         await db_session.flush()
@@ -540,12 +531,9 @@ class TestActivityHeatmap:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Heatmap Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()
@@ -583,12 +571,9 @@ class TestActivityHeatmap:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Multi Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()
@@ -626,12 +611,9 @@ class TestActivityHeatmap:
 
         project = Project(
             owner_id=admin_user.id,
-            draft_id=draft.id,
             name="Admin Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()
@@ -664,12 +646,9 @@ class TestActivityHeatmap:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Old Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()
@@ -701,12 +680,9 @@ class TestActivityHeatmap:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="E Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()
@@ -731,12 +707,9 @@ class TestActivityHeatmap:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Y Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()
@@ -758,12 +731,9 @@ class TestActivityHeatmap:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="YP Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()
@@ -791,12 +761,9 @@ class TestActivityHeatmap:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="PL Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()

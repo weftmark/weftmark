@@ -368,7 +368,7 @@ export function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{a.name}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {PROJECT_TYPE_LABELS[a.project_type]}
+                        {a.project_type ? PROJECT_TYPE_LABELS[a.project_type] : ""}
                       </p>
                       {a.status === "active" && (
                         <div className="mt-2">

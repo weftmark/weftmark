@@ -107,7 +107,16 @@ async def _prerender_project(task: Task, project_id: uuid.UUID) -> None:
             if project is None or project.deleted_at is not None:
                 return
 
-            draft = await db.get(Draft, project.draft_id)
+            from sqlalchemy import select as sa_select
+
+            from app.models.project import ProjectDraft
+
+            primary_entry = await db.scalar(
+                sa_select(ProjectDraft).where(ProjectDraft.project_id == project_id, ProjectDraft.position == 1)
+            )
+            if primary_entry is None:
+                return
+            draft = await db.get(Draft, primary_entry.draft_id)
             if draft is None or draft.deleted_at is not None:
                 return
 

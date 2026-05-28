@@ -993,7 +993,6 @@ export function DraftDetailPage() {
 
       {showCreateProject && (
         <CreateProjectModal
-          defaultDraftId={id}
           onSuccess={(newId) => {
             setShowCreateProject(false);
             queryClient.invalidateQueries({ queryKey: ["projects", { draftId: id }] });

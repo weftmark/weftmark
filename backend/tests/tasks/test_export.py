@@ -314,13 +314,10 @@ class TestBuildExportHappyPath:
 
     async def test_project_status_and_name_in_json(self, db_session, mock_db, mock_storage, mock_email):
         user = await _make_user(db_session)
-        draft = await _make_draft(db_session, user.id)
         project = Project(
             owner_id=user.id,
-            draft_id=draft.id,
             name="Spring Scarf",
             project_type="treadle",
-            total_picks=200,
             status="completed",
         )
         db_session.add(project)
@@ -452,13 +449,10 @@ class TestBuildExportErrorPaths:
 
     async def test_photo_storage_failure_skipped(self, db_session, mock_db, mock_email):
         user = await _make_user(db_session)
-        draft = await _make_draft(db_session, user.id)
         project = Project(
             owner_id=user.id,
-            draft_id=draft.id,
             name="Photo Project",
             project_type="treadle",
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.flush()

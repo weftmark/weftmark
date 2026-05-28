@@ -927,8 +927,10 @@ function CompletedSummary({
             <><dt className="text-muted-foreground">{t("projectDetailPage.warpWaste")}</dt>
             <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
           )}
-          <dt className="text-muted-foreground">{t("projectDetailPage.type")}</dt>
-          <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
+          {project.project_type && (
+            <><dt className="text-muted-foreground">{t("projectDetailPage.type")}</dt>
+            <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd></>
+          )}
         </dl>
       </div>
 
@@ -951,13 +953,20 @@ function CompletedSummary({
 
       {/* Links */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <Link
-          to={`/drafts/${project.draft_id}`}
-          className="rounded-lg border p-4 hover:border-ring transition-colors block"
-        >
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t("projectDetailPage.draftLink")}</p>
-          <p className="font-medium text-sm">{project.draft_name}</p>
-        </Link>
+        {project.draft_id ? (
+          <Link
+            to={`/drafts/${project.draft_id}`}
+            className="rounded-lg border p-4 hover:border-ring transition-colors block"
+          >
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t("projectDetailPage.draftLink")}</p>
+            <p className="font-medium text-sm">{project.draft_name}</p>
+          </Link>
+        ) : project.draft_name ? (
+          <div className="rounded-lg border p-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t("projectDetailPage.draftLink")}</p>
+            <p className="font-medium text-sm">{project.draft_name}</p>
+          </div>
+        ) : null}
         {project.loom_id && project.loom_name && (
           <Link
             to={`/looms/${project.loom_id}`}
@@ -1111,7 +1120,7 @@ export function ProjectDetailPage() {
 
   const { data: siblingProjects = [] } = useQuery({
     queryKey: ["projects", { draftId: project?.draft_id }],
-    queryFn: () => listProjects({ draftId: project!.draft_id }),
+    queryFn: () => listProjects({ draftId: project!.draft_id! }),
     enabled: isCompleted && !!project?.draft_id,
   });
 
@@ -1666,7 +1675,7 @@ export function ProjectDetailPage() {
                       <PickDisplay
                         pick={picksData.picks[currentPickIndex - 1]}
                         totalCount={displayCount}
-                        projectType={project.project_type}
+                        projectType={project.project_type ?? "treadle"}
                         colorMode={colorMode}
                         showWeftColor={false}
                         compact
@@ -1678,7 +1687,7 @@ export function ProjectDetailPage() {
                 <PickDisplay
                   pick={picksData.picks[currentPickIndex]}
                   totalCount={displayCount}
-                  projectType={project.project_type}
+                  projectType={project.project_type ?? "treadle"}
                   colorMode={colorMode}
                   showWeftColor={showWeftColor}
                 />
@@ -1690,7 +1699,7 @@ export function ProjectDetailPage() {
                       <PickDisplay
                         pick={picksData.picks[currentPickIndex + 1]}
                         totalCount={displayCount}
-                        projectType={project.project_type}
+                        projectType={project.project_type ?? "treadle"}
                         colorMode={colorMode}
                         showWeftColor={false}
                         compact
@@ -1703,7 +1712,7 @@ export function ProjectDetailPage() {
               <PickDisplay
                 pick={picksData.picks[currentPickIndex]}
                 totalCount={displayCount}
-                projectType={project.project_type}
+                projectType={project.project_type ?? "treadle"}
                 colorMode={colorMode}
                 showWeftColor={showWeftColor}
               />
@@ -1731,7 +1740,7 @@ export function ProjectDetailPage() {
           )}
 
           {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
-          {isAbandoned && (
+          {isAbandoned && project.draft_id && (
             <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
               <AbandonedDrawdownView
                 draftId={project.draft_id}
@@ -1867,8 +1876,10 @@ export function ProjectDetailPage() {
 
           <CollapsibleSection title={t("projectDetailPage.details")}>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">{t("projectDetailPage.type")}</dt>
-              <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
+              {project.project_type && (
+                <><dt className="text-muted-foreground">{t("projectDetailPage.type")}</dt>
+                <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd></>
+              )}
               {project.loom_name && (
                 <><dt className="text-muted-foreground">{t("projectDetailPage.loom")}</dt><dd>{project.loom_name}</dd></>
               )}
@@ -2063,7 +2074,7 @@ export function ProjectDetailPage() {
           projectId={project.id}
           hasDrawdownPreview={project.has_drawdown_preview}
           colorReplacements={project.color_replacements}
-          draftName={project.draft_name}
+          draftName={project.draft_name ?? ""}
           onClose={() => setShowDesignPreview(false)}
         />
       )}
@@ -2072,7 +2083,7 @@ export function ProjectDetailPage() {
         <AssignLoomModal
           projectId={project.id}
           activeProjects={allProjects.filter((a) => a.status === "active")}
-          projectType={project.project_type}
+          projectType={project.project_type ?? undefined}
           draftNumTreadles={project.draft_num_treadles}
           draftNumShafts={project.draft_num_shafts}
           draftEffectiveNumTreadles={project.draft_effective_num_treadles}

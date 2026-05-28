@@ -508,10 +508,8 @@ class TestDoScanS3PathWithAssets:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="PPProject",
             project_type="treadle",
-            total_picks=4,
         )
         db_session.add(project)
         await db_session.flush()

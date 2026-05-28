@@ -105,7 +105,7 @@ function ProjectCard({ project, onAssign }: {
                 </span>
               </div>
             </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">{PROJECT_TYPE_LABELS[project.project_type]}</p>
+            {project.project_type && <p className="mt-0.5 text-sm text-muted-foreground">{PROJECT_TYPE_LABELS[project.project_type]}</p>}
             {endDate && (
               <p className="mt-0.5 text-xs text-muted-foreground">{fmtDate(endDate)}</p>
             )}
@@ -162,7 +162,7 @@ function ProjectCard({ project, onAssign }: {
             </button>
             <p className="absolute -top-9 left-0 text-white/70 text-sm truncate max-w-xs">{project.name}</p>
             <AuthedImage
-              src={project.has_drawdown_preview ? projectDrawdownPreviewUrl(project.id) : previewUrl(project.draft_id)}
+              src={project.has_drawdown_preview ? projectDrawdownPreviewUrl(project.id) : (project.draft_id ? previewUrl(project.draft_id) : "")}
               alt={t("projectsPage.previewAriaLabel")}
               className="w-full rounded-lg shadow-2xl"
               style={{ imageRendering: "pixelated" }}

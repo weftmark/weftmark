@@ -153,10 +153,21 @@ async def _generate_project_preview(task: Task, project_id: uuid.UUID) -> None:
 
     try:
         async with async_session() as db:
+            from sqlalchemy import select as sa_select
+
+            from app.models.project import ProjectDraft
+
             project = await db.get(Project, project_id)
             if project is None or project.deleted_at is not None:
                 return
-            draft = await db.get(Draft, project.draft_id)
+
+            # Use the primary (position-1) sequence entry for the preview
+            primary_entry = await db.scalar(
+                sa_select(ProjectDraft).where(ProjectDraft.project_id == project_id, ProjectDraft.position == 1)
+            )
+            if primary_entry is None:
+                return
+            draft = await db.get(Draft, primary_entry.draft_id)
             if draft is None or draft.deleted_at is not None:
                 return
 
@@ -242,8 +253,18 @@ async def _backfill_all_project_previews() -> dict:
                 )
             ).all()
 
+            from sqlalchemy import select as sa_select2
+
+            from app.models.project import ProjectDraft
+
             for project in projects:
-                draft = await db.get(Draft, project.draft_id)
+                primary = await db.scalar(
+                    sa_select2(ProjectDraft).where(ProjectDraft.project_id == project.id, ProjectDraft.position == 1)
+                )
+                if primary is None:
+                    skipped += 1
+                    continue
+                draft = await db.get(Draft, primary.draft_id)
                 if not draft or draft.deleted_at is not None:
                     skipped += 1
                     continue
@@ -295,10 +316,20 @@ async def _generate_project_svg(task: Task, project_id: uuid.UUID) -> None:
 
     try:
         async with async_session() as db:
+            from sqlalchemy import select as sa_select
+
+            from app.models.project import ProjectDraft
+
             project = await db.get(Project, project_id)
             if project is None or project.deleted_at is not None:
                 return
-            draft = await db.get(Draft, project.draft_id)
+
+            primary_entry = await db.scalar(
+                sa_select(ProjectDraft).where(ProjectDraft.project_id == project_id, ProjectDraft.position == 1)
+            )
+            if primary_entry is None:
+                return
+            draft = await db.get(Draft, primary_entry.draft_id)
             if draft is None or draft.deleted_at is not None:
                 return
 
@@ -382,8 +413,18 @@ async def _backfill_all_project_svgs() -> dict:
                 )
             ).all()
 
+            from sqlalchemy import select as sa_select3
+
+            from app.models.project import ProjectDraft
+
             for project in projects:
-                draft = await db.get(Draft, project.draft_id)
+                primary = await db.scalar(
+                    sa_select3(ProjectDraft).where(ProjectDraft.project_id == project.id, ProjectDraft.position == 1)
+                )
+                if primary is None:
+                    skipped += 1
+                    continue
+                draft = await db.get(Draft, primary.draft_id)
                 if not draft or draft.deleted_at is not None:
                     skipped += 1
                     continue

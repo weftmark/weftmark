@@ -8,10 +8,11 @@ import { measurementSystemToUnit, displayLength, formatApproxLength, convertLeng
 import {
   getProject, setProjectColorReplacements, deleteProject, updateProjectNotes,
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
-  getWarpingPlan, completeProject, abandonProject, setProjectReed, updateProjectTags,
+  getWarpingPlan, completeProject, abandonProject, startProject, setProjectReed, updateProjectTags,
   linkYarnColor, unlinkYarnColor,
+  addSequenceEntry, removeSequenceEntry, reorderSequence,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
-  type ProjectDetail, type ProjectYarnColor,
+  type ProjectDetail, type ProjectYarnColor, type ProjectDraftSchema,
 } from "@/api/projects";
 import type { YarnSummary } from "@/api/yarn";
 import { YarnPickerModal } from "@/components/projects/YarnPickerModal";
@@ -19,7 +20,7 @@ import { TagInput } from "@/components/ui/TagInput";
 import { TagChips } from "@/components/ui/TagChips";
 import { getReedRecommendation, buildDentPattern, nearestCleanDent } from "@/lib/reedRecommendation";
 import { TieUpDiagram } from "@/components/TieUpDiagram";
-import { previewUrl } from "@/api/drafts";
+import { previewUrl, listDrafts } from "@/api/drafts";
 import { getAuthToken } from "@/api/client";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -1212,6 +1213,121 @@ function ReedSelector({
 // ShareModal is imported from @/components/projects/ShareModal
 
 // ---------------------------------------------------------------------------
+// Draft sequence section
+// ---------------------------------------------------------------------------
+
+function DraftSequenceSection({
+  project,
+  onUpdated,
+}: {
+  project: ProjectDetail;
+  onUpdated: (updated: ProjectDetail) => void;
+}) {
+  const { t } = useTranslation();
+  const [addDraftId, setAddDraftId] = useState("");
+  const isEditable = project.status === "created";
+
+  const { data: drafts = [] } = useQuery({
+    queryKey: ["drafts"],
+    queryFn: () => listDrafts(),
+    enabled: isEditable,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (draftId: string) => addSequenceEntry(project.id, draftId),
+    onSuccess: (updated) => { onUpdated(updated); setAddDraftId(""); },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (seqId: string) => removeSequenceEntry(project.id, seqId),
+    onSuccess: onUpdated,
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: (orderedIds: string[]) => reorderSequence(project.id, orderedIds),
+    onSuccess: onUpdated,
+  });
+
+  const seq: ProjectDraftSchema[] = project.draft_sequence ?? [];
+
+  function moveEntry(idx: number, direction: -1 | 1) {
+    const ids = seq.map((e) => e.id);
+    const swapIdx = idx + direction;
+    [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
+    reorderMutation.mutate(ids);
+  }
+
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        {t("projectLandingPage.draftSequence")}
+      </h3>
+      {seq.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t("projectLandingPage.noDrafts")}</p>
+      )}
+      {seq.map((entry, idx) => (
+        <div key={entry.id} className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
+          <span className="text-xs font-mono text-muted-foreground w-5 flex-shrink-0">{idx + 1}.</span>
+          <span className="flex-1 text-sm truncate">{entry.draft_name}</span>
+          <span className="text-xs text-muted-foreground flex-shrink-0">
+            {t("projectLandingPage.entryPicks", { count: entry.section_total_picks })}
+          </span>
+          {isEditable && (
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <button
+                onClick={() => moveEntry(idx, -1)}
+                disabled={idx === 0 || reorderMutation.isPending}
+                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                title={t("projectLandingPage.moveUp")}
+              >
+                <AppIcons.chevronRight className="h-3.5 w-3.5 -rotate-90" />
+              </button>
+              <button
+                onClick={() => moveEntry(idx, 1)}
+                disabled={idx === seq.length - 1 || reorderMutation.isPending}
+                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                title={t("projectLandingPage.moveDown")}
+              >
+                <AppIcons.chevronRight className="h-3.5 w-3.5 rotate-90" />
+              </button>
+              <button
+                onClick={() => removeMutation.mutate(entry.id)}
+                disabled={removeMutation.isPending}
+                className="p-0.5 text-destructive hover:text-destructive/70 ml-1"
+                title={t("common.remove")}
+              >
+                <AppIcons.close className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+      {isEditable && (
+        <div className="flex gap-2">
+          <select
+            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={addDraftId}
+            onChange={(e) => setAddDraftId(e.target.value)}
+          >
+            <option value="">{t("projectLandingPage.selectDraft")}</option>
+            {drafts.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            onClick={() => addDraftId && addMutation.mutate(addDraftId)}
+            disabled={!addDraftId || addMutation.isPending}
+          >
+            {addMutation.isPending ? t("common.working") : t("projectLandingPage.addDraft")}
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Notes inline editor
 // ---------------------------------------------------------------------------
 
@@ -1375,9 +1491,21 @@ export function ProjectLandingPage() {
     },
   });
 
+  const startMutation = useMutation({
+    mutationFn: () => startProject(id!),
+    onSuccess: (updated) => {
+      qc.setQueryData(["project", id], updated);
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      navigate(`/projects/${id}/track`);
+    },
+    onError: (err: Error) => {
+      setStatusActionError(err.message ?? t("projectLandingPage.couldNotStart"));
+    },
+  });
+
   const progress = useMemo(() => {
-    if (!project) return null;
-    const done = project.current_pick - 1;
+    if (!project || project.total_picks === 0) return null;
+    const done = project.aggregate_current_pick;
     const pct = Math.min(100, Math.round((done / Math.max(project.total_picks, 1)) * 100));
     return { pct, done, total: project.total_picks };
   }, [project]);
@@ -1401,7 +1529,6 @@ export function ProjectLandingPage() {
     );
   }
 
-  const isActive = project.status === "active" || project.status === "created";
   const m = project.draft_wif_measurements;
   const warpLengthCm = project.draft_warp_length_cm;
 
@@ -1425,9 +1552,11 @@ export function ProjectLandingPage() {
             >
               {PROJECT_STATUS_LABELS[project.status]}
             </span>
-            <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
-              {PROJECT_TYPE_LABELS[project.project_type]}
-            </span>
+            {project.project_type && (
+              <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
+                {PROJECT_TYPE_LABELS[project.project_type]}
+              </span>
+            )}
             {project.share_slug && project.share_visibility !== "private" && (
               <button
                 onClick={() => setShareModalOpen(true)}
@@ -1441,9 +1570,13 @@ export function ProjectLandingPage() {
           </div>
           <h1 className="text-xl font-semibold leading-tight truncate">{project.name}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            <Link to={`/drafts/${project.draft_id}`} className="hover:underline">
-              {project.draft_name}
-            </Link>
+            {project.draft_id ? (
+              <Link to={`/drafts/${project.draft_id}`} className="hover:underline">
+                {project.draft_name ?? t("projectLandingPage.multidraft", { count: project.draft_count })}
+              </Link>
+            ) : project.draft_count > 0 ? (
+              <span>{t("projectLandingPage.multidraft", { count: project.draft_count })}</span>
+            ) : null}
             {project.loom_name && <span> · {project.loom_name}</span>}
           </p>
           {!editingTags && (
@@ -1506,11 +1639,17 @@ export function ProjectLandingPage() {
             onClick={() => setDrawdownOpen(true)}
             title={t("projectLandingPage.clickForDrawdown")}
           >
-            <AuthedImage
-              src={previewUrl(project.draft_id)}
-              alt="Draft preview"
-              className="h-36 w-36 object-contain"
-            />
+            {project.draft_id ? (
+              <AuthedImage
+                src={previewUrl(project.draft_id)}
+                alt="Draft preview"
+                className="h-36 w-36 object-contain"
+              />
+            ) : (
+              <div className="h-36 w-36 flex items-center justify-center text-xs text-muted-foreground">
+                {t("projectLandingPage.noDraftPreview")}
+              </div>
+            )}
           </button>
           {project.project_type === "treadle" && (
             <button
@@ -1642,6 +1781,14 @@ export function ProjectLandingPage() {
         />
       )}
 
+      {/* Draft sequence — editable when created, read-only when active/done */}
+      {(project.status === "created" || project.draft_sequence.length > 0) && (
+        <DraftSequenceSection
+          project={project}
+          onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
+        />
+      )}
+
       {/* Reed selector — always visible */}
       <ReedSelector
         project={project}
@@ -1740,13 +1887,47 @@ export function ProjectLandingPage() {
           >
             {t("projectLandingPage.weavePlan")}
           </Link>
-          {isActive && (
+          {project.status === "created" && (() => {
+            const missingDrafts = project.draft_sequence.length === 0;
+            const missingLoom = !project.loom_id;
+            const canStart = !missingDrafts && !missingLoom;
+            return (
+              <>
+                {(missingDrafts || missingLoom) && (
+                  <div className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm space-y-1 mb-1">
+                    <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{t("projectLandingPage.beforeStarting")}</p>
+                    {missingDrafts && (
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <AppIcons.close className="h-3 w-3 text-destructive flex-shrink-0" />
+                        {t("projectLandingPage.needsDrafts")}
+                      </p>
+                    )}
+                    {missingLoom && (
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <AppIcons.close className="h-3 w-3 text-destructive flex-shrink-0" />
+                        {t("projectLandingPage.needsLoom")}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <Button
+                  variant="success"
+                  disabled={!canStart || startMutation.isPending}
+                  onClick={() => startMutation.mutate()}
+                >
+                  <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
+                  {startMutation.isPending ? t("common.working") : t("projectLandingPage.startWeaving")}
+                </Button>
+              </>
+            );
+          })()}
+          {project.status === "active" && (
             <Link
               to={`/projects/${project.id}/track`}
-              className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
+              className={cn(buttonVariants({ variant: "default" }))}
             >
               <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
-              {project.status === "created" ? t("projectLandingPage.startWeaving") : t("projectLandingPage.track")}
+              {t("projectLandingPage.track")}
             </Link>
           )}
         </div>
@@ -1760,7 +1941,7 @@ export function ProjectLandingPage() {
               ? projectDrawdownSvgUrl(project.id)
               : drawdownSvgUrl(project.id, 8)
           }
-          title={project.draft_name}
+          title={project.draft_name ?? project.name}
           onClose={() => setDrawdownOpen(false)}
         />
       )}
@@ -1768,7 +1949,7 @@ export function ProjectLandingPage() {
       {tieupOpen && (
         <TieUpModal
           projectId={project.id}
-          draftName={project.draft_name}
+          draftName={project.draft_name ?? ""}
           onClose={() => setTieupOpen(false)}
         />
       )}

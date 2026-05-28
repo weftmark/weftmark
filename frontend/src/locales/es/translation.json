@@ -86,6 +86,11 @@
     "clear": "Borrar",
     "loading": "Cargando…",
     "saving": "Guardando…",
+    "working": "Procesando…",
+    "creating": "Creando…",
+    "adding": "Añadiendo…",
+    "optional": "opcional",
+    "remove": "Eliminar",
     "error": "Algo salió mal."
   },
   "settings": {
@@ -344,6 +349,38 @@
     "emptyState": "Sin ligamentos todavía. Sube un archivo WIF para empezar.",
     "noTagMatch": "Sin ligamentos con la etiqueta \"{{tag}}\".",
     "archived": "Archivados ({{count}})"
+  },
+  "createProject": {
+    "title": "Nuevo proyecto",
+    "name": "Nombre",
+    "namePlaceholder": "Bufandas de primavera…",
+    "tags": "Etiquetas",
+    "tagsPlaceholder": "Añadir etiqueta…",
+    "sequenceHint": {
+      "title": "Los ligamentos se añaden en la página del proyecto",
+      "body": "Después de crear, abre el proyecto para añadir ligamentos a la secuencia."
+    },
+    "loom": "Telar",
+    "noLoom": "Sin telar",
+    "loomConfig": "Configuración del telar",
+    "loomConfigLatest": "Última ({{name}})",
+    "unsupportedLoomsHidden": "Algunos telares están ocultos (tipo no compatible).",
+    "warpPlan": "Plan de urdimbre",
+    "finishedLength": "Longitud terminada / pieza",
+    "numItems": "Piezas",
+    "wasteBetween": "Desperdicio entre piezas",
+    "warpWaste": "Pérdida de telar",
+    "conflict": {
+      "title": "\"{{name}}\" ya está usando este telar",
+      "body": "¿Desea completar o abandonar el proyecto existente antes de crear uno nuevo?",
+      "complete": "Completar y crear nuevo",
+      "abandon": "Abandonar y crear nuevo",
+      "clearLoom": "Quitar telar"
+    },
+    "error": {
+      "failed": "No se pudo crear el proyecto."
+    },
+    "submit": "Crear proyecto"
   },
   "projectsPage": {
     "title": "Proyectos",
@@ -634,7 +671,20 @@
     "updateColorFromYarn": "¿Actualizar color del hilo?",
     "updateColor": "Actualizar",
     "keepColor": "Conservar",
-    "undo": "Deshacer"
+    "undo": "Deshacer",
+    "draftSequence": "Secuencia de ligamentos",
+    "noDrafts": "Aún no se han añadido ligamentos.",
+    "selectDraft": "Seleccionar un ligamento…",
+    "addDraft": "Añadir",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "entryPicks": "{{count}} pasadas",
+    "multidraft": "{{count}} ligamentos",
+    "noDraftPreview": "Sin ligamento",
+    "beforeStarting": "Antes de empezar:",
+    "needsDrafts": "Añadir al menos un ligamento a la secuencia",
+    "needsLoom": "Asignar un telar (sección Configuración de urdimbre)",
+    "couldNotStart": "No se pudo iniciar el proyecto."
   },
   "projectDetailPage": {
     "loading": "Cargando…",

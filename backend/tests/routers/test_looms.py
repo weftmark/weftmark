@@ -825,11 +825,9 @@ async def _insert_project_for_loom(
 ) -> Project:
     project = Project(
         owner_id=owner.id,
-        draft_id=draft.id,
         loom_id=loom.id,
         name="Test Project",
         project_type="treadle",
-        total_picks=10,
         status=status,
     )
     db_session.add(project)

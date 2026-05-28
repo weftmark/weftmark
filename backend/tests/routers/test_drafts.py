@@ -1192,15 +1192,17 @@ async def _insert_project_for_draft(
     *,
     status: str = "active",
 ) -> Project:
+    from app.models.project import ProjectDraft
+
     project = Project(
         owner_id=owner.id,
-        draft_id=draft.id,
         name="Test Project",
         project_type="treadle",
-        total_picks=10,
         status=status,
     )
     db_session.add(project)
+    await db_session.flush()
+    db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
     await db_session.commit()
     return project
 
