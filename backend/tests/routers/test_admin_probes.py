@@ -115,6 +115,37 @@ class TestPgConnMeta:
 
 
 # ---------------------------------------------------------------------------
+# _s3_conn_meta — bucket_owner_account_id branch (lines 274-275)
+# ---------------------------------------------------------------------------
+
+
+class TestS3ConnMeta:
+    def test_includes_preconfigured_owner(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_conn_meta
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "111122223333")
+        monkeypatch.setattr(s, "s3_bucket_name", "my-bucket")
+        monkeypatch.setattr(s, "s3_endpoint_url", "https://r2.example.com")
+        monkeypatch.setattr(s, "s3_region", "auto")
+        monkeypatch.setattr(s, "s3_access_key_id", "key123")
+        result = _s3_conn_meta(s)
+        assert result["bucket_owner_account_id"] == "111122223333"
+
+    def test_omits_owner_when_not_configured(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_conn_meta
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        result = _s3_conn_meta(s)
+        assert "bucket_owner_account_id" not in result
+
+
+# ---------------------------------------------------------------------------
 # _probe_s3 (lines 277-338)
 # ---------------------------------------------------------------------------
 
@@ -149,19 +180,52 @@ class TestProbeS3:
         monkeypatch.setattr(s, "storage_backend", "s3")
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
 
-        mock_client = MagicMock()
-        mock_client.head_bucket.return_value = {}
-        mock_client.list_objects_v2.return_value = {"Contents": []}
-        mock_client.put_object.return_value = {}
-        mock_client.delete_object.return_value = {}
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {"Contents": []}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
 
-        with patch("boto3.client", return_value=mock_client):
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
             result = await _probe_s3()
 
         assert result.status == "ok"
         names = {c.name for c in result.checks}
         assert "bucket_accessible" in names
         assert "write_delete" in names
+        assert result.meta.get("bucket_owner_account_id") == "123456789012"
+
+    async def test_s3_bucket_owner_not_supported_when_sts_fails(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _probe_s3
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {"Contents": []}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.side_effect = Exception("InvalidClientTokenId")
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            result = await _probe_s3()
+
+        assert result.status == "ok"
+        assert result.meta.get("bucket_owner_account_id") == "Not supported"
 
     async def test_s3_bucket_inaccessible_returns_error(self, monkeypatch):
         from app.config import get_settings
@@ -196,6 +260,246 @@ class TestProbeS3:
 
         assert result.status == "error"
         assert any(c.name == "connect" for c in result.checks)
+
+    async def test_s3_preconfigured_owner_not_overwritten_by_sts(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _probe_s3
+
+        s = get_settings()
+        monkeypatch.setattr(s, "storage_backend", "s3")
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "111122223333")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {"Contents": []}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "999888777666"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            result = await _probe_s3()
+
+        # Pre-configured value from settings wins; STS-detected value is not injected
+        assert result.meta.get("bucket_owner_account_id") == "111122223333"
+
+    def test_s3_run_checks_all_pass_with_sts(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, detected_owner = _s3_run_checks(s)
+
+        assert detected_owner == "123456789012"
+        names = {name for name, _ok, _msg in results}
+        assert "write_delete" in names
+        assert all(ok for _name, ok, _msg in results)
+
+    def test_s3_run_checks_sts_failure_falls_back(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.side_effect = Exception("NotSupported")
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, detected_owner = _s3_run_checks(s)
+
+        assert detected_owner == "Not supported"
+        assert any(name == "write_delete" and ok for name, ok, _msg in results)
+
+    def test_s3_run_checks_head_bucket_failure_early_return(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "bad-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.side_effect = Exception("AccessDenied")
+
+        with patch("boto3.client", return_value=mock_s3):
+            results, detected_owner = _s3_run_checks(s)
+
+        assert detected_owner is None
+        assert len(results) == 1
+        name, ok, msg = results[0]
+        assert name == "bucket_accessible"
+        assert not ok
+        assert "AccessDenied" in msg
+
+    def test_s3_run_checks_owner_kwargs_forwarded(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "111122223333")
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "111122223333"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            _s3_run_checks(s)
+
+        mock_s3.head_bucket.assert_called_once_with(Bucket="test-bucket", ExpectedBucketOwner="111122223333")
+        mock_s3.put_object.assert_called_once_with(
+            Bucket="test-bucket", Key="_health_check", Body=b"ok", ExpectedBucketOwner="111122223333"
+        )
+
+    def test_s3_run_checks_put_fails(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.side_effect = Exception("AccessDenied")
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, _ = _s3_run_checks(s)
+
+        wd = next(r for r in results if r[0] == "write_delete")
+        assert not wd[1]
+        assert "AccessDenied" in wd[2]
+
+    def test_s3_run_checks_delete_fails(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.side_effect = Exception("DeleteDenied")
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, _ = _s3_run_checks(s)
+
+        wd = next(r for r in results if r[0] == "write_delete")
+        assert not wd[1]
+        assert "delete failed" in wd[2]
+
+    def test_s3_run_checks_list_objects_fails_continues(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.side_effect = Exception("ListDenied")
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, detected_owner = _s3_run_checks(s)
+
+        lo = next(r for r in results if r[0] == "list_objects")
+        assert not lo[1]
+        # put/delete still run despite list_objects failure
+        assert any(r[0] == "write_delete" and r[1] for r in results)
+        assert detected_owner == "123456789012"
 
 
 # ---------------------------------------------------------------------------
@@ -570,3 +874,62 @@ class TestApprovePendingSignupBranches:
 
         await db_session.refresh(invite)
         assert invite.revoked_at is not None
+
+
+# ---------------------------------------------------------------------------
+# _test_smtp — config connection tester (lines 2858-2878)
+# ---------------------------------------------------------------------------
+
+
+class TestConfigServiceSMTP:
+    async def test_missing_credentials_returns_error(self):
+        from app.routers.admin import _test_smtp
+
+        result = await _test_smtp({"smtp_user": "", "smtp_password": ""})
+        assert result.ok is False
+        assert "required" in result.message
+
+    async def test_connect_success_returns_ok(self):
+        # Patch asyncio.to_thread with an async shim so coverage.py tracks lines
+        # 2875 (msg = await asyncio.to_thread(_connect)) and 2876 (return ok).
+        # The shim calls _connect() synchronously without spawning a thread.
+        from app.routers.admin import _test_smtp
+
+        mock_smtp = MagicMock()
+        mock_smtp.__enter__ = MagicMock(return_value=mock_smtp)
+        mock_smtp.__exit__ = MagicMock(return_value=False)
+
+        async def _sync_to_thread(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        with (
+            patch("smtplib.SMTP", return_value=mock_smtp),
+            patch("asyncio.to_thread", new=_sync_to_thread),
+        ):
+            result = await _test_smtp(
+                {
+                    "smtp_host": "smtp.example.com",
+                    "smtp_port": "587",
+                    "smtp_user": "user@example.com",
+                    "smtp_password": "secret",
+                }
+            )
+
+        assert result.ok is True
+        assert "Connected" in result.message
+
+    async def test_connect_failure_returns_error(self):
+        from app.routers.admin import _test_smtp
+
+        with patch("smtplib.SMTP", side_effect=ConnectionRefusedError("refused")):
+            result = await _test_smtp(
+                {
+                    "smtp_host": "smtp.example.com",
+                    "smtp_port": "587",
+                    "smtp_user": "user@example.com",
+                    "smtp_password": "secret",
+                }
+            )
+
+        assert result.ok is False
+        assert "refused" in result.message

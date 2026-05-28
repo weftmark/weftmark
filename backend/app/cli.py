@@ -153,6 +153,7 @@ def _clear_s3(settings: Any) -> None:
             client.delete_objects(
                 Bucket=bucket,
                 Delete={"Objects": [{"Key": o["Key"]} for o in objects]},
+                **settings.s3_owner_kwargs,
             )
             total += len(objects)
     _ok(f"S3 bucket '{bucket}' cleared ({total} objects deleted)")

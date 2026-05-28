@@ -493,6 +493,22 @@ class TestLocalBackendPrimitives:
     def test_exists_returns_false_for_missing_file(self):
         assert _real_exists("absent/file.wif") is False
 
+    def test_put_path_traversal_raises(self):
+        with pytest.raises(ValueError):
+            _real_put("../../etc/passwd", b"evil")
+
+    def test_get_path_traversal_raises(self, tmp_path):
+        with pytest.raises(ValueError):
+            _real_get("../../etc/passwd")
+
+    def test_delete_path_traversal_raises(self):
+        with pytest.raises(ValueError):
+            _real_delete("../../etc/shadow")
+
+    def test_exists_path_traversal_raises(self):
+        with pytest.raises(ValueError):
+            _real_exists("../../etc/hosts")
+
 
 # ---------------------------------------------------------------------------
 # Drawdown tile functions — cover lines 138, 142, 146, 150, 154

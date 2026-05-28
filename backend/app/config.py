@@ -145,6 +145,16 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = ""
     s3_bucket_name: str = ""
     s3_region: str = ""
+    # AWS account ID that owns the S3 bucket — set to enable ExpectedBucketOwner on all S3 calls.
+    # Leave empty for Cloudflare R2 (which does not support this parameter).
+    s3_bucket_owner_account_id: str = ""
+
+    @property
+    def s3_owner_kwargs(self) -> dict:
+        """Extra kwargs to pass to boto3 S3 calls to enforce bucket ownership."""
+        if self.s3_bucket_owner_account_id:
+            return {"ExpectedBucketOwner": self.s3_bucket_owner_account_id}
+        return {}
 
     # Redis / Celery
     redis_url: str = "redis://redis:6379/0"
