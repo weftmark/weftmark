@@ -7,6 +7,7 @@ import {
   searchRavelryYarns,
   getRavelryYarnDetail,
   importRavelryYarn,
+  formatColorwayLabel,
   getPopularRavelryCompanies,
   getPopularRavelryYarns,
   type RavelryCompany,
@@ -158,7 +159,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
   const filteredColorways = useMemo(() => {
     if (!colorwayFilter.trim()) return colorways;
     const q = colorwayFilter.toLowerCase();
-    return colorways.filter((cw) => cw.name.toLowerCase().includes(q));
+    return colorways.filter((cw) => cw.name.toLowerCase().includes(q) || (cw.code ?? "").toLowerCase().includes(q));
   }, [colorways, colorwayFilter]);
 
   // Company search
@@ -244,7 +245,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
       setColorways(active);
       if (active.length === 1) {
         setSelectedColorway(active[0]);
-        setColorName(active[0].name);
+        setColorName(formatColorwayLabel(active[0]));
       }
     } catch {
       setColorways([]);
@@ -255,7 +256,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
 
   function pickColorway(cw: RavelryColorway) {
     setSelectedColorway(cw);
-    setColorName(cw.name);
+    setColorName(formatColorwayLabel(cw));
   }
 
   async function handleImport() {
@@ -529,7 +530,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                       {cw.photos?.[0]?.square_url && (
                         <img src={cw.photos[0].square_url} alt={cw.name} className="h-10 w-full rounded object-cover mb-1" />
                       )}
-                      <span className="truncate block leading-tight">{cw.name}</span>
+                      <span className="truncate block leading-tight">{formatColorwayLabel(cw)}</span>
                     </button>
                   ))}
                 </div>

@@ -92,8 +92,16 @@ export interface RavelryYarnResult {
 export interface RavelryColorway {
   id: number;
   name: string;
+  code: string | null;
   current_status: string;
   photos: { square_url: string | null; thumbnail_url: string | null }[];
+}
+
+export function formatColorwayLabel(cw: RavelryColorway): string {
+  const code = cw.code?.trim() || null;
+  const name = cw.name?.trim() || null;
+  if (code && name) return `${code} ${name}`;
+  return code ?? name ?? "";
 }
 
 export async function getPopularRavelryCompanies(limit = 10): Promise<RavelryCompany[]> {

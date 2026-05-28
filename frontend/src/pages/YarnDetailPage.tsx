@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getYarn, updateYarn, patchYarnColorway, getYarnProjects, type YarnProjectRef } from "@/api/yarn";
-import { getRavelryStatus, getRavelryYarnDetail, pushYarnToStash, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
+import { formatColorwayLabel, getRavelryStatus, getRavelryYarnDetail, pushYarnToStash, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 
@@ -67,7 +67,7 @@ function EditColorwayModal({
   const filteredColorways = useMemo(() => {
     if (!colorwayFilter.trim()) return colorways;
     const q = colorwayFilter.toLowerCase();
-    return colorways.filter((cw) => cw.name.toLowerCase().includes(q));
+    return colorways.filter((cw) => cw.name.toLowerCase().includes(q) || (cw.code ?? "").toLowerCase().includes(q));
   }, [colorways, colorwayFilter]);
 
   async function loadColorways() {
@@ -91,7 +91,7 @@ function EditColorwayModal({
 
   function pickColorway(cw: RavelryColorway) {
     setSelectedColorway(cw);
-    setColorName(cw.name);
+    setColorName(formatColorwayLabel(cw));
   }
 
   async function handleSave() {
@@ -192,7 +192,7 @@ function EditColorwayModal({
                       {cw.photos?.[0]?.square_url && (
                         <img src={cw.photos[0].square_url} alt={cw.name} className="h-10 w-full rounded object-cover mb-1" />
                       )}
-                      <span className="truncate block leading-tight">{cw.name}</span>
+                      <span className="truncate block leading-tight">{formatColorwayLabel(cw)}</span>
                     </button>
                   ))}
                 </div>
