@@ -709,6 +709,7 @@
     "markComplete": "Marquer comme terminé",
     "abandon": "Abandonner",
     "confirmComplete": "Marquer ce projet comme terminé ?",
+    "confirmIncomplete": "Vous n'avez tissé que {{current}} duites sur {{total}}. Marquer ce projet comme terminé quand même ?",
     "confirmAbandon": "Abandonner ce projet ?",
     "confirm": "Confirmer",
     "restartProject": "Redémarrer le projet",

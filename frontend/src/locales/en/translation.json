@@ -710,6 +710,7 @@
     "markComplete": "Mark complete",
     "abandon": "Abandon",
     "confirmComplete": "Mark this project as completed?",
+    "confirmIncomplete": "You've only logged {{current}} of {{total}} picks. Mark this project complete anyway?",
     "confirmAbandon": "Abandon this project?",
     "confirm": "Confirm",
     "restartProject": "Restart project",

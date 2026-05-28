@@ -20,6 +20,7 @@ interface Props {
   onClose: () => void;
   desktopCollapsed?: boolean;
   onDesktopExpand?: () => void;
+  onDesktopCollapse?: () => void;
 }
 
 type NavGroup = "settings" | "admin" | "superuser";
@@ -28,7 +29,7 @@ const SettingsIcon = AppIcons.settings;
 const AdminIcon = AppIcons.admin;
 const SuperuserIcon = AppIcons.superuser;
 
-export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand }: Props) {
+export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand, onDesktopCollapse }: Props) {
   const location = useLocation();
   const { user } = useAuth();
   const { signOut } = useClerk();
@@ -42,11 +43,11 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
 
   const NAV_ITEMS: NavItem[] = [
     { label: t("nav.dashboard"), href: "/home", icon: AppIcons.dashboard, exact: true },
+    { label: t("nav.projects"), href: "/projects", icon: AppIcons.projects },
+    { label: t("nav.drafts"), href: "/drafts", icon: AppIcons.drafts },
+    { label: t("nav.collections"), href: "/collections", icon: AppIcons.collections },
     { label: t("nav.equipment"), href: "/looms", icon: AppIcons.equipment },
     { label: t("nav.yarn"), href: "/yarn", icon: AppIcons.yarn },
-    { label: t("nav.collections"), href: "/collections", icon: AppIcons.collections },
-    { label: t("nav.drafts"), href: "/drafts", icon: AppIcons.drafts },
-    { label: t("nav.projects"), href: "/projects", icon: AppIcons.projects },
   ];
 
   const SETTINGS_SECTIONS = [
@@ -140,15 +141,19 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           >
             <AppIcons.close className="h-4 w-4" />
           </button>
-          {/* Desktop expand button — stacks below logo when collapsed */}
-          <button
-            onClick={onDesktopExpand}
-            className={`rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "hidden lg:flex" : "hidden"}`}
-            aria-label="Expand navigation"
-            title="Expand navigation"
-          >
-            <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
-          </button>
+          {/* Desktop sidebar toggle — only on detail pages where rail/expand applies */}
+          {(desktopCollapsed || onDesktopCollapse) && (
+            <button
+              onClick={desktopCollapsed ? onDesktopExpand : onDesktopCollapse}
+              className={`hidden lg:flex rounded-md text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "p-1" : "p-1.5"}`}
+              aria-label={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
+              title={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
+            >
+              {desktopCollapsed
+                ? <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
+                : <AppIcons.chevronDoubleLeft className="h-5 w-5" />}
+            </button>
+          )}
         </div>
 
         {/* Onboarding checklist — above primary nav, hidden for superusers */}

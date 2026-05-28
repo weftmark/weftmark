@@ -48,6 +48,11 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
+def _safe_log(value: str, maxlen: int = 200) -> str:
+    """Strip newlines and truncate before logging user-supplied values."""
+    return value.replace("\n", "\\n").replace("\r", "\\r")[:maxlen]
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -264,13 +269,72 @@ async def _probe_postgres(db: AsyncSession) -> ServiceCheckResult:
 def _s3_conn_meta(settings: "Settings") -> dict[str, str]:
     if settings.storage_backend != "s3":
         return {"backend": "local"}
-    return {
+    meta: dict[str, str] = {
         "backend": "s3",
         "bucket": settings.s3_bucket_name or "(not set)",
         "endpoint": settings.s3_endpoint_url or "AWS default",
         "region": settings.s3_region or "auto",
         "access_key_id": settings.s3_access_key_id or "(not set)",
     }
+    if settings.s3_bucket_owner_account_id:
+        meta["bucket_owner_account_id"] = settings.s3_bucket_owner_account_id
+    return meta
+
+
+def _s3_run_checks(settings: "Settings") -> tuple[list[tuple[str, bool, str]], str | None]:
+    """Synchronous S3 connectivity checks — dispatched via asyncio.to_thread by _probe_s3."""
+    import boto3
+
+    client = boto3.client(
+        "s3",
+        endpoint_url=settings.s3_endpoint_url or None,
+        aws_access_key_id=settings.s3_access_key_id,
+        aws_secret_access_key=settings.s3_secret_access_key,
+        region_name=settings.s3_region or "auto",
+    )
+    bucket = settings.s3_bucket_name
+    results: list[tuple[str, bool, str]] = []
+
+    # bucket_accessible
+    try:
+        client.head_bucket(Bucket=bucket, **settings.s3_owner_kwargs)
+        results.append(("bucket_accessible", True, f"Bucket '{bucket}' found"))
+    except Exception as e:
+        results.append(("bucket_accessible", False, str(e)[:100]))
+        return results, None  # further checks will also fail
+
+    # list_objects
+    try:
+        client.list_objects_v2(Bucket=bucket, MaxKeys=1, **settings.s3_owner_kwargs)  # NOSONAR
+        results.append(("list_objects", True, "ListObjectsV2 permitted"))
+    except Exception as e:
+        results.append(("list_objects", False, str(e)[:100]))
+
+    # write + delete (combined — put then clean up)
+    test_key = "_health_check"
+    try:
+        client.put_object(Bucket=bucket, Key=test_key, Body=b"ok", **settings.s3_owner_kwargs)
+        try:
+            client.delete_object(Bucket=bucket, Key=test_key, **settings.s3_owner_kwargs)
+            results.append(("write_delete", True, "PutObject + DeleteObject permitted"))
+        except Exception as e:
+            results.append(("write_delete", False, f"Put OK but delete failed: {e!s:.80}"))
+    except Exception as e:
+        results.append(("write_delete", False, str(e)[:100]))
+
+    # attempt STS to resolve the owning account ID; falls back to "Not supported" on R2
+    detected_owner: str = "Not supported"
+    try:
+        sts = boto3.client(
+            "sts",
+            aws_access_key_id=settings.s3_access_key_id,
+            aws_secret_access_key=settings.s3_secret_access_key,
+        )
+        detected_owner = sts.get_caller_identity()["Account"]
+    except Exception:
+        pass
+
+    return results, detected_owner
 
 
 async def _probe_s3() -> ServiceCheckResult:
@@ -286,52 +350,12 @@ async def _probe_s3() -> ServiceCheckResult:
         checks.append(ServicePermCheck(name="config", status="error", message="S3_BUCKET_NAME not set"))
         return _make_result("S3", checks, meta=meta)
 
-    def _run_checks() -> list[tuple[str, bool, str]]:
-        import boto3
-
-        client = boto3.client(
-            "s3",
-            endpoint_url=settings.s3_endpoint_url or None,
-            aws_access_key_id=settings.s3_access_key_id,
-            aws_secret_access_key=settings.s3_secret_access_key,
-            region_name=settings.s3_region or "auto",
-        )
-        bucket = settings.s3_bucket_name
-        results: list[tuple[str, bool, str]] = []
-
-        # bucket_accessible
-        try:
-            client.head_bucket(Bucket=bucket)
-            results.append(("bucket_accessible", True, f"Bucket '{bucket}' found"))
-        except Exception as e:
-            results.append(("bucket_accessible", False, str(e)[:100]))
-            return results  # further checks will also fail
-
-        # list_objects
-        try:
-            client.list_objects_v2(Bucket=bucket, MaxKeys=1)
-            results.append(("list_objects", True, "ListObjectsV2 permitted"))
-        except Exception as e:
-            results.append(("list_objects", False, str(e)[:100]))
-
-        # write + delete (combined — put then clean up)
-        test_key = "_health_check"
-        try:
-            client.put_object(Bucket=bucket, Key=test_key, Body=b"ok")
-            try:
-                client.delete_object(Bucket=bucket, Key=test_key)
-                results.append(("write_delete", True, "PutObject + DeleteObject permitted"))
-            except Exception as e:
-                results.append(("write_delete", False, f"Put OK but delete failed: {e!s:.80}"))
-        except Exception as e:
-            results.append(("write_delete", False, str(e)[:100]))
-
-        return results
-
     try:
-        raw = await asyncio.wait_for(asyncio.to_thread(_run_checks), timeout=10.0)
+        raw, detected_owner = await asyncio.wait_for(asyncio.to_thread(_s3_run_checks, settings), timeout=10.0)
         for name, ok, msg in raw:
             checks.append(ServicePermCheck(name=name, status="ok" if ok else "error", message=msg))
+        if not settings.s3_bucket_owner_account_id and detected_owner is not None:
+            meta["bucket_owner_account_id"] = detected_owner
     except asyncio.TimeoutError:
         checks.append(ServicePermCheck(name="connect", status="error", message="Timed out after 10 s"))
 
@@ -1823,7 +1847,7 @@ async def cleanup_s3_orphans(
             storage._delete(key)
             deleted += 1
         except Exception as exc:
-            log.warning("s3_cleanup_error key=%s error=%s", key, exc)
+            log.warning("s3_cleanup_error key=%s error=%s", _safe_log(key), exc)
 
     log.info("s3_cleanup_complete admin_id=%s deleted=%d", admin.id, deleted)
     return S3CleanupResponse(deleted=deleted)
@@ -2816,7 +2840,7 @@ async def get_config_state(
 
 
 @router.put("/config")
-async def save_config(
+def save_config(
     body: ConfigSaveRequest,
     _: User = Depends(require_superuser),
 ) -> ConfigStateResponse:
@@ -2839,19 +2863,24 @@ async def save_config(
 
 
 async def _test_smtp(v: dict) -> ConfigTestResult:
-    try:
-        import smtplib
+    import smtplib
 
-        host = str(v.get("smtp_host") or "mail.smtp2go.com")
-        port = int(v.get("smtp_port") or 587)
-        user = str(v.get("smtp_user") or "")
-        password = str(v.get("smtp_password") or "")
-        if not user or not password:
-            return ConfigTestResult(ok=False, message="smtp_user and smtp_password are required")
+    host = str(v.get("smtp_host") or "mail.smtp2go.com")
+    port = int(v.get("smtp_port") or 587)
+    user = str(v.get("smtp_user") or "")
+    password = str(v.get("smtp_password") or "")
+    if not user or not password:
+        return ConfigTestResult(ok=False, message="smtp_user and smtp_password are required")
+
+    def _connect() -> str:
         with smtplib.SMTP(host, port, timeout=10) as s:
             s.starttls()
             s.login(user, password)
-        return ConfigTestResult(ok=True, message=f"Connected to {host}:{port} and authenticated successfully")
+        return f"Connected to {host}:{port} and authenticated successfully"
+
+    try:
+        msg = await asyncio.to_thread(_connect)
+        return ConfigTestResult(ok=True, message=msg)
     except Exception as exc:
         return ConfigTestResult(ok=False, message=str(exc))
 

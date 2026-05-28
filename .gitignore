@@ -19,6 +19,7 @@
 .remotehost
 # .remotehost.example is intentionally tracked
 .sentry-token
+.tokens
 
 # Seed config (contains credentials — seed.example.json is tracked)
 backend/seed.json
@@ -54,6 +55,7 @@ MANIFEST
 .coverage.*
 htmlcov/
 coverage.xml
+coverage.json
 junit.xml
 *.coveragerc
 

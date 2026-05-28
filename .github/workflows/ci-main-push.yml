@@ -113,7 +113,7 @@ jobs:
             --output-format JSON --output-file sbom/sbom-backend.json
           pip-licenses --format=json --output-file sbom/licenses-backend.json
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: steps.detect.outputs.changed == 'true'
         with:
           name: sbom-backend-${{ github.sha }}
@@ -156,7 +156,7 @@ jobs:
             --output-format JSON --output-file ../sbom/sbom-frontend.json
           npx license-checker --json --out ../sbom/licenses-frontend.json
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: steps.detect.outputs.changed == 'true'
         with:
           name: sbom-frontend-${{ github.sha }}

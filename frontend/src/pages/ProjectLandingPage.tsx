@@ -1344,15 +1344,17 @@ export function ProjectLandingPage() {
   });
 
   const [confirmComplete, setConfirmComplete] = useState(false);
+  const [confirmIncomplete, setConfirmIncomplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [statusActionError, setStatusActionError] = useState<string | null>(null);
 
   const completeMutation = useMutation({
-    mutationFn: () => completeProject(id!),
+    mutationFn: (force: boolean) => completeProject(id!, force),
     onSuccess: (updated) => {
       qc.setQueryData(["project", id], updated);
       qc.invalidateQueries({ queryKey: ["projects"] });
       setConfirmComplete(false);
+      setConfirmIncomplete(false);
       setStatusActionError(null);
     },
     onError: (err: Error) => {
@@ -1659,10 +1661,23 @@ export function ProjectLandingPage() {
         {confirmComplete && (
           <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
             <span className="flex-1 text-muted-foreground">{t("projectLandingPage.confirmComplete")}</span>
-            <Button size="sm" variant="success" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
+            <Button size="sm" variant="success" onClick={() => completeMutation.mutate(false)} disabled={completeMutation.isPending}>
               {t("projectLandingPage.confirm")}
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setConfirmComplete(false); setStatusActionError(null); }} disabled={completeMutation.isPending}>
+              {t("common.cancel")}
+            </Button>
+          </div>
+        )}
+        {confirmIncomplete && progress && (
+          <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+            <span className="flex-1 text-muted-foreground">
+              {t("projectDetailPage.confirmIncomplete", { current: progress.done, total: progress.total })}
+            </span>
+            <Button size="sm" variant="success" onClick={() => completeMutation.mutate(true)} disabled={completeMutation.isPending}>
+              {t("projectLandingPage.confirm")}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setConfirmIncomplete(false); setStatusActionError(null); }} disabled={completeMutation.isPending}>
               {t("common.cancel")}
             </Button>
           </div>
@@ -1702,11 +1717,19 @@ export function ProjectLandingPage() {
               {t("projectLandingPage.abandon")}
             </Button>
           )}
-          {project.status === "active" && !confirmComplete && (
+          {project.status === "active" && !confirmComplete && !confirmIncomplete && (
             <Button
               variant="outline"
               className="border-green-600 text-green-700 hover:bg-green-600 hover:text-white dark:text-green-400 dark:border-green-500 dark:hover:bg-green-600 dark:hover:text-white"
-              onClick={() => { setConfirmComplete(true); setConfirmAbandon(false); setStatusActionError(null); }}
+              onClick={() => {
+                setConfirmAbandon(false);
+                setStatusActionError(null);
+                if (progress && progress.pct >= 100) {
+                  setConfirmComplete(true);
+                } else {
+                  setConfirmIncomplete(true);
+                }
+              }}
             >
               {t("projectLandingPage.markComplete")}
             </Button>

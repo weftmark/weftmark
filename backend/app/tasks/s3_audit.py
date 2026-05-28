@@ -62,7 +62,7 @@ async def _do_scan() -> dict:
 
     s3_files: dict[str, dict] = {}
     paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=settings.s3_bucket_name):
+    for page in paginator.paginate(Bucket=settings.s3_bucket_name, **settings.s3_owner_kwargs):
         for obj in page.get("Contents", []):
             s3_files[obj["Key"]] = {
                 "size": obj["Size"],

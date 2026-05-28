@@ -140,3 +140,10 @@ class TestZeroTreadlesForLiftplan:
     def test_liftplan_section_preserved(self):
         result = zero_treadles_for_liftplan(_LIFTPLAN_WIF_WITH_TREADLES)
         assert b"[LIFTPLAN]" in result
+
+    def test_latin1_input_accepted(self):
+        # Inject a non-UTF-8 byte (0xe9 = é in latin-1) so the UTF-8 decode
+        # fails and the latin-1 fallback path (lines 65-66) is exercised.
+        wif_with_latin1 = _LIFTPLAN_WIF_WITH_TREADLES.replace(b"TempoWeave", b"Tempo\xe9Weave")
+        result = zero_treadles_for_liftplan(wif_with_latin1)
+        assert b"Treadles=0" in result
