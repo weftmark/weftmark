@@ -470,6 +470,14 @@ async def _load_sequence(project_id: uuid.UUID, db: AsyncSession) -> list[tuple[
     return result
 
 
+async def _sequence_detail(project: Project, project_id: uuid.UUID, db: AsyncSession) -> ProjectDetail:
+    """Load sequence + loom + loom_version and return the standard detail response."""
+    sequence = await _load_sequence(project_id, db)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    loom_version = await _resolve_loom_version(project, db)
+    return _to_detail(project, sequence, loom, loom_version=loom_version)
+
+
 def _active_pair(project: Project, sequence: list[tuple[ProjectDraft, Draft]]) -> tuple[ProjectDraft, Draft] | None:
     """Return the (entry, draft) for project.current_position, or position 1 as fallback."""
     for entry, draft in sequence:
@@ -836,10 +844,7 @@ async def update_sequence_entry(
     await db.commit()
     await db.refresh(project)
 
-    sequence = await _load_sequence(project_id, db)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, sequence, loom, loom_version=loom_version)
+    return await _sequence_detail(project, project_id, db)
 
 
 @router.delete("/{project_id}/sequence/{seq_id}", response_model=ProjectDetail)
@@ -881,10 +886,7 @@ async def remove_sequence_entry(
     await db.commit()
     await db.refresh(project)
 
-    sequence = await _load_sequence(project_id, db)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, sequence, loom, loom_version=loom_version)
+    return await _sequence_detail(project, project_id, db)
 
 
 @router.post("/{project_id}/sequence/reorder", response_model=ProjectDetail)
@@ -925,10 +927,7 @@ async def reorder_sequence(
     await db.commit()
     await db.refresh(project)
 
-    sequence = await _load_sequence(project_id, db)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, sequence, loom, loom_version=loom_version)
+    return await _sequence_detail(project, project_id, db)
 
 
 @router.post("/{project_id}/sequence/{seq_id}/activate", response_model=ProjectDetail)
@@ -953,10 +952,7 @@ async def activate_sequence_entry(
     await db.commit()
     await db.refresh(project)
 
-    sequence = await _load_sequence(project_id, db)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, sequence, loom, loom_version=loom_version)
+    return await _sequence_detail(project, project_id, db)
 
 
 # ---------------------------------------------------------------------------
@@ -1341,10 +1337,7 @@ async def rename_project(
         project.tags = [t.strip().lower() for t in body.tags if t.strip()]
     await db.commit()
     await db.refresh(project)
-    sequence = await _load_sequence(project_id, db)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, sequence, loom, loom_version=loom_version)
+    return await _sequence_detail(project, project_id, db)
 
 
 @router.patch("/{project_id}/color-replacements", response_model=ProjectDetail)
@@ -1367,10 +1360,7 @@ async def set_color_replacements(
     prerender_project_tiles.delay(str(project_id))
     generate_project_drawdown_preview.delay(str(project_id))
     generate_project_drawdown_svg.delay(str(project_id))
-    sequence = await _load_sequence(project_id, db)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, sequence, loom, loom_version=loom_version)
+    return await _sequence_detail(project, project_id, db)
 
 
 @router.patch("/{project_id}/warp-setup", response_model=ProjectDetail)
@@ -1398,10 +1388,7 @@ async def update_warp_setup(
         project.length_unit = body.length_unit  # type: ignore[assignment]
     await db.commit()
     await db.refresh(project)
-    sequence = await _load_sequence(project_id, db)
-    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
-    loom_version = await _resolve_loom_version(project, db)
-    return _to_detail(project, sequence, loom, loom_version=loom_version)
+    return await _sequence_detail(project, project_id, db)
 
 
 @router.patch("/{project_id}/reed", response_model=ProjectDetail)
