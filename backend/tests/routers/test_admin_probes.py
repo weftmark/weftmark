@@ -288,19 +288,17 @@ class TestProbeS3:
         # Pre-configured value from settings wins; STS-detected value is not injected
         assert result.meta.get("bucket_owner_account_id") == "111122223333"
 
-    async def test_probe_s3_run_checks_synchronous_covers_put_and_sts(self, monkeypatch):
-        # asyncio.to_thread dispatches to a ThreadPoolExecutor; in Python 3.12
-        # coverage.py loses tracking of lines in pool threads and also of the
-        # await expression itself.  Patch both asyncio.to_thread (sync lambda)
-        # and asyncio.wait_for (async passthrough) so _run_checks() runs in the
-        # event-loop thread with no yield points — coverage tracks every line.
+    def test_s3_run_checks_all_pass_with_sts(self, monkeypatch):
         from app.config import get_settings
-        from app.routers.admin import _probe_s3
+        from app.routers.admin import _s3_run_checks
 
         s = get_settings()
-        monkeypatch.setattr(s, "storage_backend", "s3")
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
-        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
 
         mock_s3 = MagicMock()
         mock_s3.head_bucket.return_value = {}
@@ -314,35 +312,25 @@ class TestProbeS3:
         def _boto3_client(service, **kwargs):
             return mock_sts if service == "sts" else mock_s3
 
-        # Sync lambda: _run_checks() runs directly in the event-loop thread.
-        def _sync_to_thread(func, *args, **kwargs):
-            return func(*args, **kwargs)
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, detected_owner = _s3_run_checks(s)
 
-        # Async passthrough: receives the raw tuple and returns it without scheduling.
-        async def _sync_wait_for(val, timeout=None):
-            return val
+        assert detected_owner == "123456789012"
+        names = {name for name, _ok, _msg in results}
+        assert "write_delete" in names
+        assert all(ok for _name, ok, _msg in results)
 
-        with (
-            patch("boto3.client", side_effect=_boto3_client),
-            patch("asyncio.to_thread", new=_sync_to_thread),
-            patch("asyncio.wait_for", new=_sync_wait_for),
-        ):
-            result = await _probe_s3()
-
-        assert result.status == "ok"
-        assert any(c.name == "write_delete" and c.status == "ok" for c in result.checks)
-        assert result.meta.get("bucket_owner_account_id") == "123456789012"
-
-    async def test_probe_s3_run_checks_synchronous_sts_failure(self, monkeypatch):
-        # Exercises the STS exception-handler path while still running
-        # synchronously for coverage tracking (same dual-patch strategy).
+    def test_s3_run_checks_sts_failure_falls_back(self, monkeypatch):
         from app.config import get_settings
-        from app.routers.admin import _probe_s3
+        from app.routers.admin import _s3_run_checks
 
         s = get_settings()
-        monkeypatch.setattr(s, "storage_backend", "s3")
         monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
-        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
 
         mock_s3 = MagicMock()
         mock_s3.head_bucket.return_value = {}
@@ -356,54 +344,162 @@ class TestProbeS3:
         def _boto3_client(service, **kwargs):
             return mock_sts if service == "sts" else mock_s3
 
-        def _sync_to_thread(func, *args, **kwargs):
-            return func(*args, **kwargs)
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, detected_owner = _s3_run_checks(s)
 
-        async def _sync_wait_for(val, timeout=None):
-            return val
+        assert detected_owner == "Not supported"
+        assert any(name == "write_delete" and ok for name, ok, _msg in results)
 
-        with (
-            patch("boto3.client", side_effect=_boto3_client),
-            patch("asyncio.to_thread", new=_sync_to_thread),
-            patch("asyncio.wait_for", new=_sync_wait_for),
-        ):
-            result = await _probe_s3()
-
-        assert result.status == "ok"
-        assert any(c.name == "write_delete" and c.status == "ok" for c in result.checks)
-        assert result.meta.get("bucket_owner_account_id") == "Not supported"
-
-    async def test_probe_s3_run_checks_synchronous_head_bucket_failure(self, monkeypatch):
-        # Covers the early-return path inside _run_checks() when head_bucket
-        # raises — exercises line 311 (return results, None) synchronously.
+    def test_s3_run_checks_head_bucket_failure_early_return(self, monkeypatch):
         from app.config import get_settings
-        from app.routers.admin import _probe_s3
+        from app.routers.admin import _s3_run_checks
 
         s = get_settings()
-        monkeypatch.setattr(s, "storage_backend", "s3")
         monkeypatch.setattr(s, "s3_bucket_name", "bad-bucket")
-        monkeypatch.setattr(s, "s3_bucket_owner_account_id", "")
+        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
 
         mock_s3 = MagicMock()
         mock_s3.head_bucket.side_effect = Exception("AccessDenied")
 
-        def _sync_to_thread(func, *args, **kwargs):
-            return func(*args, **kwargs)
+        with patch("boto3.client", return_value=mock_s3):
+            results, detected_owner = _s3_run_checks(s)
 
-        async def _sync_wait_for(val, timeout=None):
-            return val
+        assert detected_owner is None
+        assert len(results) == 1
+        name, ok, msg = results[0]
+        assert name == "bucket_accessible"
+        assert not ok
+        assert "AccessDenied" in msg
 
-        with (
-            patch("boto3.client", return_value=mock_s3),
-            patch("asyncio.to_thread", new=_sync_to_thread),
-            patch("asyncio.wait_for", new=_sync_wait_for),
-        ):
-            result = await _probe_s3()
+    def test_s3_run_checks_owner_kwargs_forwarded(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
 
-        assert result.status == "error"
-        ba = next(c for c in result.checks if c.name == "bucket_accessible")
-        assert ba.status == "error"
-        assert "AccessDenied" in ba.message
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_owner_kwargs", {"ExpectedBucketOwner": "111122223333"})
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "111122223333"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            _s3_run_checks(s)
+
+        mock_s3.head_bucket.assert_called_once_with(Bucket="test-bucket", ExpectedBucketOwner="111122223333")
+        mock_s3.put_object.assert_called_once_with(
+            Bucket="test-bucket", Key="_health_check", Body=b"ok", ExpectedBucketOwner="111122223333"
+        )
+
+    def test_s3_run_checks_put_fails(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.side_effect = Exception("AccessDenied")
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, _ = _s3_run_checks(s)
+
+        wd = next(r for r in results if r[0] == "write_delete")
+        assert not wd[1]
+        assert "AccessDenied" in wd[2]
+
+    def test_s3_run_checks_delete_fails(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.return_value = {}
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.side_effect = Exception("DeleteDenied")
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, _ = _s3_run_checks(s)
+
+        wd = next(r for r in results if r[0] == "write_delete")
+        assert not wd[1]
+        assert "delete failed" in wd[2]
+
+    def test_s3_run_checks_list_objects_fails_continues(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _s3_run_checks
+
+        s = get_settings()
+        monkeypatch.setattr(s, "s3_bucket_name", "test-bucket")
+        monkeypatch.setattr(s, "s3_owner_kwargs", {})
+        monkeypatch.setattr(s, "s3_endpoint_url", "")
+        monkeypatch.setattr(s, "s3_access_key_id", "key")
+        monkeypatch.setattr(s, "s3_secret_access_key", "secret")
+        monkeypatch.setattr(s, "s3_region", "us-east-1")
+
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_s3.list_objects_v2.side_effect = Exception("ListDenied")
+        mock_s3.put_object.return_value = {}
+        mock_s3.delete_object.return_value = {}
+
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+
+        def _boto3_client(service, **kwargs):
+            return mock_sts if service == "sts" else mock_s3
+
+        with patch("boto3.client", side_effect=_boto3_client):
+            results, detected_owner = _s3_run_checks(s)
+
+        lo = next(r for r in results if r[0] == "list_objects")
+        assert not lo[1]
+        # put/delete still run despite list_objects failure
+        assert any(r[0] == "write_delete" and r[1] for r in results)
+        assert detected_owner == "123456789012"
 
 
 # ---------------------------------------------------------------------------

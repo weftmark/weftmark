@@ -276,6 +276,62 @@ def _s3_conn_meta(settings: "Settings") -> dict[str, str]:
     return meta
 
 
+def _s3_run_checks(settings: "Settings") -> tuple[list[tuple[str, bool, str]], str | None]:
+    """Synchronous S3 connectivity checks — dispatched via asyncio.to_thread by _probe_s3."""
+    import boto3
+
+    client = boto3.client(
+        "s3",
+        endpoint_url=settings.s3_endpoint_url or None,
+        aws_access_key_id=settings.s3_access_key_id,
+        aws_secret_access_key=settings.s3_secret_access_key,
+        region_name=settings.s3_region or "auto",
+    )
+    bucket = settings.s3_bucket_name
+    results: list[tuple[str, bool, str]] = []
+
+    # bucket_accessible
+    try:
+        client.head_bucket(Bucket=bucket, **settings.s3_owner_kwargs)
+        results.append(("bucket_accessible", True, f"Bucket '{bucket}' found"))
+    except Exception as e:
+        results.append(("bucket_accessible", False, str(e)[:100]))
+        return results, None  # further checks will also fail
+
+    # list_objects
+    try:
+        client.list_objects_v2(Bucket=bucket, MaxKeys=1, **settings.s3_owner_kwargs)  # NOSONAR
+        results.append(("list_objects", True, "ListObjectsV2 permitted"))
+    except Exception as e:
+        results.append(("list_objects", False, str(e)[:100]))
+
+    # write + delete (combined — put then clean up)
+    test_key = "_health_check"
+    try:
+        client.put_object(Bucket=bucket, Key=test_key, Body=b"ok", **settings.s3_owner_kwargs)
+        try:
+            client.delete_object(Bucket=bucket, Key=test_key, **settings.s3_owner_kwargs)
+            results.append(("write_delete", True, "PutObject + DeleteObject permitted"))
+        except Exception as e:
+            results.append(("write_delete", False, f"Put OK but delete failed: {e!s:.80}"))
+    except Exception as e:
+        results.append(("write_delete", False, str(e)[:100]))
+
+    # attempt STS to resolve the owning account ID; falls back to "Not supported" on R2
+    detected_owner: str = "Not supported"
+    try:
+        sts = boto3.client(
+            "sts",
+            aws_access_key_id=settings.s3_access_key_id,
+            aws_secret_access_key=settings.s3_secret_access_key,
+        )
+        detected_owner = sts.get_caller_identity()["Account"]
+    except Exception:
+        pass
+
+    return results, detected_owner
+
+
 async def _probe_s3() -> ServiceCheckResult:
     settings = get_settings()
     checks: list[ServicePermCheck] = []
@@ -289,62 +345,8 @@ async def _probe_s3() -> ServiceCheckResult:
         checks.append(ServicePermCheck(name="config", status="error", message="S3_BUCKET_NAME not set"))
         return _make_result("S3", checks, meta=meta)
 
-    def _run_checks() -> tuple[list[tuple[str, bool, str]], str | None]:
-        import boto3
-
-        client = boto3.client(
-            "s3",
-            endpoint_url=settings.s3_endpoint_url or None,
-            aws_access_key_id=settings.s3_access_key_id,
-            aws_secret_access_key=settings.s3_secret_access_key,
-            region_name=settings.s3_region or "auto",
-        )
-        bucket = settings.s3_bucket_name
-        results: list[tuple[str, bool, str]] = []
-
-        # bucket_accessible
-        try:
-            client.head_bucket(Bucket=bucket, **settings.s3_owner_kwargs)
-            results.append(("bucket_accessible", True, f"Bucket '{bucket}' found"))
-        except Exception as e:
-            results.append(("bucket_accessible", False, str(e)[:100]))
-            return results, None  # further checks will also fail
-
-        # list_objects
-        try:
-            client.list_objects_v2(Bucket=bucket, MaxKeys=1, **settings.s3_owner_kwargs)  # NOSONAR
-            results.append(("list_objects", True, "ListObjectsV2 permitted"))
-        except Exception as e:
-            results.append(("list_objects", False, str(e)[:100]))
-
-        # write + delete (combined — put then clean up)
-        test_key = "_health_check"
-        try:
-            client.put_object(Bucket=bucket, Key=test_key, Body=b"ok", **settings.s3_owner_kwargs)
-            try:
-                client.delete_object(Bucket=bucket, Key=test_key, **settings.s3_owner_kwargs)
-                results.append(("write_delete", True, "PutObject + DeleteObject permitted"))
-            except Exception as e:
-                results.append(("write_delete", False, f"Put OK but delete failed: {e!s:.80}"))
-        except Exception as e:
-            results.append(("write_delete", False, str(e)[:100]))
-
-        # attempt STS to resolve the owning account ID; falls back to "Not supported" on R2
-        detected_owner: str = "Not supported"
-        try:
-            sts = boto3.client(
-                "sts",
-                aws_access_key_id=settings.s3_access_key_id,
-                aws_secret_access_key=settings.s3_secret_access_key,
-            )
-            detected_owner = sts.get_caller_identity()["Account"]
-        except Exception:
-            pass
-
-        return results, detected_owner
-
     try:
-        raw, detected_owner = await asyncio.wait_for(asyncio.to_thread(_run_checks), timeout=10.0)
+        raw, detected_owner = await asyncio.wait_for(asyncio.to_thread(_s3_run_checks, settings), timeout=10.0)
         for name, ok, msg in raw:
             checks.append(ServicePermCheck(name=name, status="ok" if ok else "error", message=msg))
         if not settings.s3_bucket_owner_account_id and detected_owner is not None:
