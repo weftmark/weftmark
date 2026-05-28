@@ -141,17 +141,19 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           >
             <AppIcons.close className="h-4 w-4" />
           </button>
-          {/* Desktop sidebar toggle — hidden on mobile, always visible on lg+ */}
-          <button
-            onClick={desktopCollapsed ? onDesktopExpand : onDesktopCollapse}
-            className="hidden rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground lg:flex"
-            aria-label={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
-            title={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
-          >
-            {desktopCollapsed
-              ? <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
-              : <AppIcons.chevronDoubleLeft className="h-3.5 w-3.5" />}
-          </button>
+          {/* Desktop sidebar toggle — only on detail pages where rail/expand applies */}
+          {(desktopCollapsed || onDesktopCollapse) && (
+            <button
+              onClick={desktopCollapsed ? onDesktopExpand : onDesktopCollapse}
+              className={`hidden lg:flex rounded-md text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "p-1" : "p-1.5"}`}
+              aria-label={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
+              title={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
+            >
+              {desktopCollapsed
+                ? <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
+                : <AppIcons.chevronDoubleLeft className="h-5 w-5" />}
+            </button>
+          )}
         </div>
 
         {/* Onboarding checklist — above primary nav, hidden for superusers */}

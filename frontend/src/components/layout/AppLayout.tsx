@@ -33,7 +33,7 @@ export function AppLayout({ children }: Props) {
         onClose={() => setSidebarOpen(false)}
         desktopCollapsed={desktopCollapsed}
         onDesktopExpand={() => setExpandedOnPath(location.pathname)}
-        onDesktopCollapse={() => setExpandedOnPath(null)}
+        onDesktopCollapse={isDetailPage && !desktopCollapsed ? () => setExpandedOnPath(null) : undefined}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
