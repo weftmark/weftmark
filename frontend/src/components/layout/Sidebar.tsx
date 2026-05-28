@@ -141,23 +141,16 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           >
             <AppIcons.close className="h-4 w-4" />
           </button>
-          {/* Desktop expand button — stacks below logo when collapsed */}
+          {/* Desktop sidebar toggle — hidden on mobile, always visible on lg+ */}
           <button
-            onClick={onDesktopExpand}
-            className={`rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "hidden lg:flex" : "hidden"}`}
-            aria-label="Expand navigation"
-            title="Expand navigation"
+            onClick={desktopCollapsed ? onDesktopExpand : onDesktopCollapse}
+            className="hidden rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground lg:flex"
+            aria-label={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
+            title={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
           >
-            <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
-          </button>
-          {/* Desktop collapse button — visible only when sidebar is expanded */}
-          <button
-            onClick={onDesktopCollapse}
-            className={`rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "hidden" : "hidden lg:flex"}`}
-            aria-label="Collapse navigation"
-            title="Collapse navigation"
-          >
-            <AppIcons.chevronDoubleLeft className="h-5 w-5" />
+            {desktopCollapsed
+              ? <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
+              : <AppIcons.chevronDoubleLeft className="h-3.5 w-3.5" />}
           </button>
         </div>
 
