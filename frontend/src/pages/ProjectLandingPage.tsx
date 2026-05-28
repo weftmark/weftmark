@@ -31,6 +31,12 @@ import { ShareModal } from "@/components/projects/ShareModal";
 import { addProjectToCollection, removeProjectFromCollection } from "@/api/collections";
 import { AddToCollectionModal } from "@/components/collections/AddToCollectionModal";
 
+// PascalCase aliases so they satisfy the react/jsx-pascal-case rule when used as JSX elements
+const CloseIcon = AppIcons.close;
+const ChevronRightIcon = AppIcons.chevronRight;
+const YarnIcon = AppIcons.yarn;
+const ProjectActiveIcon = AppIcons.projectActive;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -320,7 +326,7 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
             onClick={onClose}
             title="Close"
           >
-            <AppIcons.close className="h-4 w-4" />
+            <CloseIcon className="h-4 w-4" />
           </button>
         </div>
 
@@ -385,7 +391,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="font-semibold text-sm">{t("projectLandingPage.tieUpTitle", { name: draftName })}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
-            <AppIcons.close className="h-4 w-4" />
+            <CloseIcon className="h-4 w-4" />
           </button>
         </div>
         <div className="flex-1 overflow-auto p-5">
@@ -663,6 +669,14 @@ function ColorPaletteSection({
                     const displayName = hasPending
                       ? (pendingEntry?.yarn.name ?? null)
                       : (serverLinked?.yarn_name ?? null);
+                    let yarnLabel;
+                    if (isUnlinkPending && serverLinked) {
+                      yarnLabel = <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>;
+                    } else if (displayName) {
+                      yarnLabel = <span className={`truncate max-w-[100px] ${hasPending ? "text-accent" : "text-card-foreground"}`}>{displayName}</span>;
+                    } else {
+                      yarnLabel = <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>;
+                    }
                     return (
                       <td className="px-3 py-2">
                         <button
@@ -672,16 +686,8 @@ function ColorPaletteSection({
                           onClick={() => setYarnPickerHex(c.hex)}
                           title={displayName ?? t("projectLandingPage.linkYarn")}
                         >
-                          <AppIcons.yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          {isUnlinkPending && serverLinked ? (
-                            <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>
-                          ) : displayName ? (
-                            <span className={`truncate max-w-[100px] ${hasPending ? "text-accent" : "text-card-foreground"}`}>
-                              {displayName}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>
-                          )}
+                          <YarnIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          {yarnLabel}
                           {hasPending && <span className="text-[10px] text-accent">•</span>}
                         </button>
                       </td>
@@ -703,7 +709,7 @@ function ColorPaletteSection({
               className="rounded p-0.5 text-muted-foreground hover:text-foreground"
               onClick={() => setPreviewOpen(false)}
             >
-              <AppIcons.close className="h-4 w-4" />
+              <CloseIcon className="h-4 w-4" />
             </button>
           </div>
           <div className="p-3">
@@ -1220,8 +1226,8 @@ function DraftSequenceSection({
   project,
   onUpdated,
 }: {
-  project: ProjectDetail;
-  onUpdated: (updated: ProjectDetail) => void;
+  readonly project: ProjectDetail;
+  readonly onUpdated: (updated: ProjectDetail) => void;
 }) {
   const { t } = useTranslation();
   const [addDraftId, setAddDraftId] = useState("");
@@ -1280,7 +1286,7 @@ function DraftSequenceSection({
                 className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
                 title={t("projectLandingPage.moveUp")}
               >
-                <AppIcons.chevronRight className="h-3.5 w-3.5 -rotate-90" />
+                <ChevronRightIcon className="h-3.5 w-3.5 -rotate-90" />
               </button>
               <button
                 onClick={() => moveEntry(idx, 1)}
@@ -1288,7 +1294,7 @@ function DraftSequenceSection({
                 className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
                 title={t("projectLandingPage.moveDown")}
               >
-                <AppIcons.chevronRight className="h-3.5 w-3.5 rotate-90" />
+                <ChevronRightIcon className="h-3.5 w-3.5 rotate-90" />
               </button>
               <button
                 onClick={() => removeMutation.mutate(entry.id)}
@@ -1296,7 +1302,7 @@ function DraftSequenceSection({
                 className="p-0.5 text-destructive hover:text-destructive/70 ml-1"
                 title={t("common.remove")}
               >
-                <AppIcons.close className="h-3.5 w-3.5" />
+                <CloseIcon className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
@@ -1406,7 +1412,7 @@ function NotesSection({
 
 export function ProjectLandingPage() {
   const { t } = useTranslation();
-  const { id } = useParams<{ id: string }>();
+  const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const qc = useQueryClient();
@@ -1421,7 +1427,7 @@ export function ProjectLandingPage() {
 
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
-    queryFn: () => getProject(id!),
+    queryFn: () => getProject(id),
     enabled: !!id,
   });
 
@@ -1433,9 +1439,9 @@ export function ProjectLandingPage() {
       replacements: Record<string, string>;
       yarnLinks: Record<string, string | null>;
     }) => {
-      const calls: Promise<unknown>[] = [setProjectColorReplacements(id!, replacements)];
+      const calls: Promise<unknown>[] = [setProjectColorReplacements(id, replacements)];
       for (const [colorHex, yarnId] of Object.entries(yarnLinks)) {
-        calls.push(yarnId !== null ? linkYarnColor(id!, colorHex, yarnId) : unlinkYarnColor(id!, colorHex));
+        calls.push(yarnId !== null ? linkYarnColor(id, colorHex, yarnId) : unlinkYarnColor(id, colorHex));
       }
       await Promise.all(calls);
     },
@@ -1443,7 +1449,7 @@ export function ProjectLandingPage() {
   });
 
   const tagsMutation = useMutation({
-    mutationFn: (tags: string[]) => updateProjectTags(id!, tags),
+    mutationFn: (tags: string[]) => updateProjectTags(id, tags),
     onSuccess: (updated) => {
       qc.setQueryData(["project", id], updated);
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -1452,7 +1458,7 @@ export function ProjectLandingPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteProject(id!),
+    mutationFn: () => deleteProject(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["projects"] });
       navigate("/projects");
@@ -1465,7 +1471,7 @@ export function ProjectLandingPage() {
   const [statusActionError, setStatusActionError] = useState<string | null>(null);
 
   const completeMutation = useMutation({
-    mutationFn: (force: boolean) => completeProject(id!, force),
+    mutationFn: (force: boolean) => completeProject(id, force),
     onSuccess: (updated) => {
       qc.setQueryData(["project", id], updated);
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -1479,7 +1485,7 @@ export function ProjectLandingPage() {
   });
 
   const abandonMutation = useMutation({
-    mutationFn: () => abandonProject(id!),
+    mutationFn: () => abandonProject(id),
     onSuccess: (updated) => {
       qc.setQueryData(["project", id], updated);
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -1492,7 +1498,7 @@ export function ProjectLandingPage() {
   });
 
   const startMutation = useMutation({
-    mutationFn: () => startProject(id!),
+    mutationFn: () => startProject(id),
     onSuccess: (updated) => {
       qc.setQueryData(["project", id], updated);
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -1543,7 +1549,7 @@ export function ProjectLandingPage() {
           className="mt-0.5 flex-shrink-0"
           onClick={() => navigate("/projects")}
         >
-          <AppIcons.chevronRight className="h-4 w-4 rotate-180" />
+          <ChevronRightIcon className="h-4 w-4 rotate-180" />
         </Button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -1570,13 +1576,14 @@ export function ProjectLandingPage() {
           </div>
           <h1 className="text-xl font-semibold leading-tight truncate">{project.name}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {project.draft_id ? (
+            {project.draft_id && (
               <Link to={`/drafts/${project.draft_id}`} className="hover:underline">
                 {project.draft_name ?? t("projectLandingPage.multidraft", { count: project.draft_count })}
               </Link>
-            ) : project.draft_count > 0 ? (
+            )}
+            {!project.draft_id && project.draft_count > 0 && (
               <span>{t("projectLandingPage.multidraft", { count: project.draft_count })}</span>
-            ) : null}
+            )}
             {project.loom_name && <span> · {project.loom_name}</span>}
           </p>
           {!editingTags && (
@@ -1898,13 +1905,13 @@ export function ProjectLandingPage() {
                     <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{t("projectLandingPage.beforeStarting")}</p>
                     {missingDrafts && (
                       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <AppIcons.close className="h-3 w-3 text-destructive flex-shrink-0" />
+                        <CloseIcon className="h-3 w-3 text-destructive flex-shrink-0" />
                         {t("projectLandingPage.needsDrafts")}
                       </p>
                     )}
                     {missingLoom && (
                       <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <AppIcons.close className="h-3 w-3 text-destructive flex-shrink-0" />
+                        <CloseIcon className="h-3 w-3 text-destructive flex-shrink-0" />
                         {t("projectLandingPage.needsLoom")}
                       </p>
                     )}
@@ -1915,7 +1922,7 @@ export function ProjectLandingPage() {
                   disabled={!canStart || startMutation.isPending}
                   onClick={() => startMutation.mutate()}
                 >
-                  <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
+                  <ProjectActiveIcon className="h-4 w-4 mr-1.5" />
                   {startMutation.isPending ? t("common.working") : t("projectLandingPage.startWeaving")}
                 </Button>
               </>
@@ -1926,7 +1933,7 @@ export function ProjectLandingPage() {
               to={`/projects/${project.id}/track`}
               className={cn(buttonVariants({ variant: "default" }))}
             >
-              <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
+              <ProjectActiveIcon className="h-4 w-4 mr-1.5" />
               {t("projectLandingPage.track")}
             </Link>
           )}

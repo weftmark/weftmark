@@ -9,8 +9,8 @@ import { measurementSystemToUnit } from "@/lib/units";
 import { useTranslation } from "react-i18next";
 
 interface Props {
-  onSuccess: (id: string) => void;
-  onClose: () => void;
+  readonly onSuccess: (id: string) => void;
+  readonly onClose: () => void;
 }
 
 const CM_PER_IN = 2.54;

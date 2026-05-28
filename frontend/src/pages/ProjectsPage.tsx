@@ -61,6 +61,13 @@ function ProjectCard({ project, onAssign }: {
     ? Math.round((Math.min(project.current_pick - 1, project.total_picks) / project.total_picks) * 100)
     : 0;
 
+  let previewSrc = "";
+  if (project.has_drawdown_preview) {
+    previewSrc = projectDrawdownPreviewUrl(project.id);
+  } else if (project.draft_id) {
+    previewSrc = previewUrl(project.draft_id);
+  }
+
   return (
     <div className="relative rounded-lg border hover:border-ring transition-colors overflow-hidden">
       {project.has_drawdown_preview && (
@@ -162,7 +169,7 @@ function ProjectCard({ project, onAssign }: {
             </button>
             <p className="absolute -top-9 left-0 text-white/70 text-sm truncate max-w-xs">{project.name}</p>
             <AuthedImage
-              src={project.has_drawdown_preview ? projectDrawdownPreviewUrl(project.id) : (project.draft_id ? previewUrl(project.draft_id) : "")}
+              src={previewSrc}
               alt={t("projectsPage.previewAriaLabel")}
               className="w-full rounded-lg shadow-2xl"
               style={{ imageRendering: "pixelated" }}

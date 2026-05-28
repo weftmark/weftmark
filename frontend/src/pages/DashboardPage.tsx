@@ -325,6 +325,132 @@ export function DashboardPage() {
   const planningProjects = projects.filter((a) => (a.status === "active" || a.status === "created") && !a.loom_id);
   const completedCount = projects.filter((a) => a.status === "completed").length;
 
+  let draftsContent;
+  if (draftsLoading) {
+    draftsContent = <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />;
+  } else if (drafts.length === 0) {
+    draftsContent = (
+      <div className="rounded-lg border border-dashed p-6 text-center">
+        <p className="text-sm text-muted-foreground">{t("dashboard.drafts.empty")}</p>
+        <Link to="/drafts" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
+          {t("dashboard.drafts.uploadFirst")}
+        </Link>
+      </div>
+    );
+  } else {
+    draftsContent = (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {drafts.slice(0, 3).map((draft) => (
+          <Link
+            key={draft.id}
+            to="/drafts"
+            className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
+          >
+            <div className="shrink-0 mt-0.5">
+              <AppIcons.draft className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{draft.name}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground truncate">{draft.wif_filename}</p>
+            </div>
+          </Link>
+        ))}
+        {drafts.length > 3 && (
+          <Link
+            to="/drafts"
+            className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
+          >
+            <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: drafts.length - 3 })}</span>
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  let collectionsContent;
+  if (collectionsLoading) {
+    collectionsContent = <SkeletonCardGrid count={3} cardClassName="h-[80px]" gridClassName="grid gap-3 sm:grid-cols-3" />;
+  } else if (collections.length === 0) {
+    collectionsContent = (
+      <div className="rounded-lg border border-dashed p-6 text-center">
+        <p className="text-sm text-muted-foreground">{t("dashboard.collectionSection.empty")}</p>
+        <Link to="/collections" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">{t("dashboard.collectionSection.createFirst")}</Link>
+      </div>
+    );
+  } else {
+    collectionsContent = (
+      <div className="grid gap-3 sm:grid-cols-3">
+        {collections.slice(0, 3).map((c) => (
+          <Link key={c.id} to={`/collections/${c.id}`} className="rounded-lg border p-4 hover:border-ring transition-colors">
+            <div className="flex items-start gap-2">
+              <AppIcons.collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{c.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("dashboard.collectionSection.itemSummary", {
+                    drafts: t("dashboard.collectionSection.draftCount", { count: c.draft_count }),
+                    projects: t("dashboard.collectionSection.projectCount", { count: c.project_count }),
+                  })}
+                </p>
+              </div>
+            </div>
+          </Link>
+        ))}
+        {collections.length > 3 && (
+          <Link to="/collections" className="rounded-lg border border-dashed p-4 flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors">
+            {t("dashboard.moreItems", { count: collections.length - 3 })}
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  let loomsContent;
+  if (loomsLoading) {
+    loomsContent = <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />;
+  } else if (looms.length === 0) {
+    loomsContent = (
+      <div className="rounded-lg border border-dashed p-6 text-center">
+        <p className="text-sm text-muted-foreground">{t("dashboard.equipment.empty")}</p>
+        <Link to="/looms" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
+          {t("dashboard.equipment.addFirst")}
+        </Link>
+      </div>
+    );
+  } else {
+    loomsContent = (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {looms.slice(0, 3).map((loom) => (
+          <Link
+            key={loom.id}
+            to="/looms"
+            className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
+          >
+            <div className="shrink-0 mt-0.5">
+              {loom.supports_lift_tracking
+                ? <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                : loom.supports_treadle_tracking
+                  ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                  : <AppIcons.equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{loom.model_name}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground truncate">{loom.manufacturer}</p>
+            </div>
+          </Link>
+        ))}
+        {looms.length > 3 && (
+          <Link
+            to="/looms"
+            className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
+          >
+            <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: looms.length - 3 })}</span>
+          </Link>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
       <div>
@@ -459,42 +585,7 @@ export function DashboardPage() {
             {t("dashboard.viewAll")}
           </Link>
         </div>
-        {draftsLoading ? (
-          <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />
-        ) : drafts.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">{t("dashboard.drafts.empty")}</p>
-            <Link to="/drafts" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
-              {t("dashboard.drafts.uploadFirst")}
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {drafts.slice(0, 3).map((draft) => (
-              <Link
-                key={draft.id}
-                to="/drafts"
-                className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
-              >
-                <div className="shrink-0 mt-0.5">
-                  <AppIcons.draft className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{draft.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{draft.wif_filename}</p>
-                </div>
-              </Link>
-            ))}
-            {drafts.length > 3 && (
-              <Link
-                to="/drafts"
-                className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
-              >
-                <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: drafts.length - 3 })}</span>
-              </Link>
-            )}
-          </div>
-        )}
+        {draftsContent}
       </section>
 
       {/* Collections */}
@@ -503,38 +594,7 @@ export function DashboardPage() {
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.collectionSection.heading")}</h2>
           <Link to="/collections" className="text-xs text-muted-foreground hover:text-foreground">{t("dashboard.viewAll")}</Link>
         </div>
-        {collectionsLoading ? (
-          <SkeletonCardGrid count={3} cardClassName="h-[80px]" gridClassName="grid gap-3 sm:grid-cols-3" />
-        ) : collections.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">{t("dashboard.collectionSection.empty")}</p>
-            <Link to="/collections" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">{t("dashboard.collectionSection.createFirst")}</Link>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-3">
-            {collections.slice(0, 3).map((c) => (
-              <Link key={c.id} to={`/collections/${c.id}`} className="rounded-lg border p-4 hover:border-ring transition-colors">
-                <div className="flex items-start gap-2">
-                  <AppIcons.collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("dashboard.collectionSection.itemSummary", {
-                        drafts: t("dashboard.collectionSection.draftCount", { count: c.draft_count }),
-                        projects: t("dashboard.collectionSection.projectCount", { count: c.project_count }),
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-            {collections.length > 3 && (
-              <Link to="/collections" className="rounded-lg border border-dashed p-4 flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors">
-                {t("dashboard.moreItems", { count: collections.length - 3 })}
-              </Link>
-            )}
-          </div>
-        )}
+        {collectionsContent}
       </section>
 
       {/* Equipment */}
@@ -545,46 +605,7 @@ export function DashboardPage() {
             {t("dashboard.viewAll")}
           </Link>
         </div>
-        {loomsLoading ? (
-          <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />
-        ) : looms.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">{t("dashboard.equipment.empty")}</p>
-            <Link to="/looms" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
-              {t("dashboard.equipment.addFirst")}
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {looms.slice(0, 3).map((loom) => (
-              <Link
-                key={loom.id}
-                to="/looms"
-                className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
-              >
-                <div className="shrink-0 mt-0.5">
-                  {loom.supports_lift_tracking
-                    ? <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                    : loom.supports_treadle_tracking
-                      ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                      : <AppIcons.equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{loom.model_name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{loom.manufacturer}</p>
-                </div>
-              </Link>
-            ))}
-            {looms.length > 3 && (
-              <Link
-                to="/looms"
-                className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
-              >
-                <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: looms.length - 3 })}</span>
-              </Link>
-            )}
-          </div>
-        )}
+        {loomsContent}
       </section>
 
       {/* Activity heatmap */}

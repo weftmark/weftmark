@@ -953,7 +953,7 @@ function CompletedSummary({
 
       {/* Links */}
       <div className="grid gap-3 sm:grid-cols-2">
-        {project.draft_id ? (
+        {project.draft_id && (
           <Link
             to={`/drafts/${project.draft_id}`}
             className="rounded-lg border p-4 hover:border-ring transition-colors block"
@@ -961,12 +961,13 @@ function CompletedSummary({
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t("projectDetailPage.draftLink")}</p>
             <p className="font-medium text-sm">{project.draft_name}</p>
           </Link>
-        ) : project.draft_name ? (
+        )}
+        {!project.draft_id && project.draft_name && (
           <div className="rounded-lg border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{t("projectDetailPage.draftLink")}</p>
             <p className="font-medium text-sm">{project.draft_name}</p>
           </div>
-        ) : null}
+        )}
         {project.loom_id && project.loom_name && (
           <Link
             to={`/looms/${project.loom_id}`}
