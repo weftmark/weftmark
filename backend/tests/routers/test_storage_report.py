@@ -36,11 +36,9 @@ async def _make_user_with_files(db_session: AsyncSession) -> User:
 
     project = Project(
         owner_id=user.id,
-        draft_id=draft.id,
         name="Report Project",
         project_type="treadle",
         status="active",
-        total_picks=10,
     )
     db_session.add(project)
     await db_session.flush()

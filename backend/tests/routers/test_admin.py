@@ -62,21 +62,11 @@ class TestListAdminUsers:
     async def test_storage_bytes_reflects_project_photos(
         self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
-        draft = Draft(
-            owner_id=admin_user.id,
-            name="Storage Test Draft",
-            wif_filename="s.wif",
-            wif_path="s.wif",
-        )
-        db_session.add(draft)
-        await db_session.flush()
         project = Project(
             owner_id=admin_user.id,
-            draft_id=draft.id,
             name="Storage Test Project",
             project_type="treadle",
             status="active",
-            total_picks=100,
         )
         db_session.add(project)
         await db_session.flush()
@@ -231,21 +221,11 @@ class TestAdminStats:
         self, admin_client: AsyncClient, db_session: AsyncSession, admin_user: User
     ):
         before = (await admin_client.get("/api/admin/stats")).json()["total_storage_bytes"]
-        draft = Draft(
-            owner_id=admin_user.id,
-            name="Stats Storage Draft",
-            wif_filename="s.wif",
-            wif_path="s.wif",
-        )
-        db_session.add(draft)
-        await db_session.flush()
         project = Project(
             owner_id=admin_user.id,
-            draft_id=draft.id,
             name="Stats Storage Project",
             project_type="treadle",
             status="active",
-            total_picks=100,
         )
         db_session.add(project)
         await db_session.flush()
@@ -1407,31 +1387,11 @@ class TestPatchScheduledTask:
 
 class TestAdminProjectSteps:
     async def _insert_project(self, db: AsyncSession, owner: User) -> Project:
-        import uuid as _uuid
-
-        from app.models.draft import Draft as _Draft
-
-        draft = _Draft(
-            id=_uuid.uuid4(),
-            owner_id=owner.id,
-            name="Step Log Test Draft",
-            wif_filename="t.wif",
-            wif_path="drafts/t.wif",
-            has_treadling=True,
-            has_liftplan=True,
-            num_shafts=4,
-            num_treadles=4,
-            weft_threads=2,
-        )
-        db.add(draft)
         project = Project(
             owner_id=owner.id,
-            draft_id=draft.id,
             name="Step Log Test Project",
             project_type="treadle",
             status="active",
-            current_pick=3,
-            total_picks=10,
         )
         db.add(project)
         await db.commit()
@@ -1685,22 +1645,10 @@ class TestCredentials:
 
 class TestProjectSlugs:
     async def _create_shared_project(self, db: AsyncSession, owner: User) -> "Project":
-        from app.models.draft import Draft
-
-        draft = Draft(
-            owner_id=owner.id,
-            name="Slug Test Draft",
-            wif_filename="slug.wif",
-            wif_path="drafts/slug.wif",
-        )
-        db.add(draft)
-        await db.flush()
         proj = Project(
             owner_id=owner.id,
-            draft_id=draft.id,
             name="Slug Test Project",
             project_type="treadle",
-            total_picks=10,
             share_slug=f"slug-{uuid.uuid4().hex[:8]}",
             share_visibility="public",
         )

@@ -375,20 +375,20 @@ class TestGenerateProjectPreview:
         return draft
 
     async def _make_project(self, db_session, test_user, draft, deleted=False, **kwargs):
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
 
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Test Project",
             project_type="treadle",
-            total_picks=4,
             **kwargs,
         )
         if deleted:
             project.deleted_at = datetime.now(timezone.utc)
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
         return project
 
@@ -475,12 +475,14 @@ class TestGenerateProjectPreview:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Lift Project",
             project_type="lift",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        from app.models.project import ProjectDraft
+
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
         mock_storage["drafts/proj_modified.wif"] = MINIMAL_WIF
 
@@ -520,18 +522,18 @@ class TestGenerateProjectSVG:
         return draft
 
     async def _make_project(self, db_session, test_user, draft, **kwargs):
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
 
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="SVG Project",
             project_type="treadle",
-            total_picks=4,
             **kwargs,
         )
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
         return project
 
@@ -539,16 +541,13 @@ class TestGenerateProjectSVG:
         await _generate_project_svg(_task_mock(), uuid.uuid4())
 
     async def test_deleted_project_returns_cleanly(self, db_session, test_user, mock_engine_and_session):
-        draft = await self._make_draft(db_session, test_user)
         from app.models.project import Project
 
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Del Project",
             project_type="treadle",
-            total_picks=4,
             deleted_at=datetime.now(timezone.utc),
         )
         db_session.add(project)
@@ -616,12 +615,14 @@ class TestGenerateProjectSVG:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Lift SVG Project",
             project_type="lift",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        from app.models.project import ProjectDraft as _PD
+
+        db_session.add(_PD(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
         mock_storage["drafts/svg_modified.wif"] = MINIMAL_WIF
 
@@ -656,7 +657,7 @@ class TestGenerateProjectSVG:
 class TestBackfillAllProjectPreviews:
     async def _make_draft_and_project(self, db_session, test_user, wif_path="drafts/bfp.wif", deleted_draft=False):
         from app.models.draft import Draft
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
 
         draft = Draft(
             id=uuid.uuid4(),
@@ -672,12 +673,12 @@ class TestBackfillAllProjectPreviews:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="BF Project",
             project_type="treadle",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
         return draft, project
 
@@ -725,7 +726,7 @@ class TestBackfillAllProjectPreviews:
 class TestBackfillAllProjectSVGs:
     async def _make_draft_and_project(self, db_session, test_user, wif_path="drafts/bfs.wif", deleted_draft=False):
         from app.models.draft import Draft
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
 
         draft = Draft(
             id=uuid.uuid4(),
@@ -741,12 +742,12 @@ class TestBackfillAllProjectSVGs:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="BFS Project",
             project_type="treadle",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
         return draft, project
 
@@ -789,7 +790,7 @@ class TestBackfillAllProjectSVGs:
 
     async def test_skips_project_with_existing_svg(self, db_session, test_user, mock_engine_and_session, mock_storage):
         from app.models.draft import Draft
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
 
         draft = Draft(
             id=uuid.uuid4(),
@@ -804,13 +805,13 @@ class TestBackfillAllProjectSVGs:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="SVG Done Project",
             project_type="treadle",
-            total_picks=4,
             drawdown_svg_path="projects/existing.svg",
         )
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
         mock_storage["drafts/svgd.wif"] = MINIMAL_WIF
 

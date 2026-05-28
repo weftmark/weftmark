@@ -11,7 +11,9 @@ Covers:
 from __future__ import annotations
 
 import uuid
+from unittest.mock import MagicMock
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +21,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.draft import Draft
 from app.models.project import Project, ProjectDraft
 from app.models.user import User
+
+
+@pytest.fixture(autouse=True)
+def _mock_preview_tasks(monkeypatch):
+    for attr in (
+        "generate_drawdown_preview",
+        "generate_project_drawdown_preview",
+        "generate_project_drawdown_svg",
+        "prerender_project_tiles",
+    ):
+        monkeypatch.setattr(f"app.routers.projects.{attr}", MagicMock())
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -191,9 +205,9 @@ class TestAddSequenceEntry:
         assert draft.drawdown_preview_path is None
         project = await _insert_project(db_session, test_user)
 
-        with patch("app.tasks.preview.generate_drawdown_preview.delay") as mock_delay:
+        with patch("app.routers.projects.generate_drawdown_preview") as mock_task:
             await auth_client.post(f"/api/projects/{project.id}/sequence", json={"draft_id": str(draft.id)})
-            mock_delay.assert_called_once_with(str(draft.id))
+            mock_task.delay.assert_called_once_with(str(draft.id))
 
     async def test_skips_preview_when_already_exists(
         self,
