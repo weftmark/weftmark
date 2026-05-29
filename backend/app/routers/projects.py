@@ -396,22 +396,6 @@ async def _close_open_session(project_id: uuid.UUID, db: AsyncSession) -> None:
         open_session.ended_at = datetime.now(timezone.utc)
 
 
-async def _check_loom_conflict(
-    loom_id: uuid.UUID, exclude_id: uuid.UUID | None, owner_id: uuid.UUID, db: AsyncSession
-) -> None:
-    """Raise 409 if the loom already has an active or not-yet-started project (other than exclude_id)."""
-    q = select(Project).where(
-        Project.loom_id == loom_id,
-        Project.owner_id == owner_id,
-        Project.status.in_(("created", "active")),
-        Project.deleted_at.is_(None),
-    )
-    if exclude_id is not None:
-        q = q.where(Project.id != exclude_id)
-    if await db.scalar(q) is not None:
-        raise HTTPException(status_code=409, detail="This loom already has an active project")
-
-
 async def _wif_path_for_project(draft: Draft, project_type: str | None) -> str:
     """Return the correct WIF path for a project type.
 
@@ -790,8 +774,6 @@ async def create_project(
             )
             if version_ok is None:
                 raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
-
-        await _check_loom_conflict(body.loom_id, None, current_user.id, db)
 
         supports_lift, supports_treadle = loom_tracking_flags(loom.loom_type)
         if supports_lift:
@@ -1555,8 +1537,6 @@ async def assign_loom(
         if version_ok is None:
             raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
 
-    await _check_loom_conflict(body.loom_id, None, current_user.id, db)
-
     project.loom_id = body.loom_id
     project.loom_version_id = body.loom_version_id
 
@@ -1886,8 +1866,6 @@ async def restart_project(
     project = await _get_owned_project(project_id, current_user, db)
     if project.status != "abandoned":
         raise HTTPException(status_code=400, detail="Only abandoned projects can be restarted")
-    if project.loom_id:
-        await _check_loom_conflict(project.loom_id, project.id, current_user.id, db)
     project.status = "created"
     await db.commit()
     await db.refresh(project)
@@ -1964,8 +1942,6 @@ async def clone_project(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     source = await _get_owned_project(project_id, current_user, db)
-    if source.loom_id:
-        await _check_loom_conflict(source.loom_id, None, current_user.id, db)
 
     clone = Project(
         owner_id=current_user.id,

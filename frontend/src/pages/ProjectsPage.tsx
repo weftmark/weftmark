@@ -364,7 +364,6 @@ export function ProjectsPage() {
       {assigningProjectId && (
         <AssignLoomModal
           projectId={assigningProjectId}
-          activeProjects={projects.filter((p) => p.status === "active")}
           onSuccess={() => { setAssigningProjectId(null); queryClient.invalidateQueries({ queryKey: ["projects"] }); }}
           onClose={() => setAssigningProjectId(null)}
         />

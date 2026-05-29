@@ -1113,12 +1113,6 @@ export function ProjectDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreated, id]);
 
-  const { data: allProjects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => listProjects(),
-    enabled: isPlanning || showAssignLoom,
-  });
-
   const { data: siblingProjects = [] } = useQuery({
     queryKey: ["projects", { draftId: project?.draft_id }],
     queryFn: () => listProjects({ draftId: project!.draft_id! }),
@@ -2085,7 +2079,6 @@ export function ProjectDetailPage() {
       {showAssignLoom && (
         <AssignLoomModal
           projectId={project.id}
-          activeProjects={allProjects.filter((a) => a.status === "active")}
           projectType={project.project_type ?? undefined}
           draftNumTreadles={project.draft_num_treadles}
           draftNumShafts={project.draft_num_shafts}

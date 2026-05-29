@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createProject, completeProject, abandonProject, listProjects, ApiError, type ProjectSummary } from "@/api/projects";
+import { createProject } from "@/api/projects";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 import { TagInput } from "@/components/ui/TagInput";
@@ -21,7 +21,6 @@ export function CreateProjectModal({ onSuccess, onClose }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conflictProject, setConflictProject] = useState<ProjectSummary | null>(null);
 
   const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: () => listLooms() });
   const { data: loomDetail } = useQuery({
@@ -36,53 +35,23 @@ export function CreateProjectModal({ onSuccess, onClose }: Props) {
   const handleLoomChange = (newLoomId: string) => {
     setLoomId(newLoomId);
     setLoomVersionId("");
-    setConflictProject(null);
     setError(null);
   };
-
-  const _buildPayload = () => ({
-    name: name.trim(),
-    loom_id: loomId || undefined,
-    loom_version_id: loomVersionId || undefined,
-    tags: tags.length ? tags : undefined,
-  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setConflictProject(null);
     setLoading(true);
     try {
-      const created = await createProject(_buildPayload());
-      onSuccess(created.id);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409 && loomId) {
-        const projects = await listProjects().catch(() => []);
-        const conflict = projects.find((p) => p.loom_id === loomId && p.status === "active") ?? null;
-        setConflictProject(conflict);
-      } else {
-        setError(err instanceof Error ? err.message : t("createProject.error.failed"));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResolveAndCreate = async (resolve: "complete" | "abandon") => {
-    if (!conflictProject) return;
-    setError(null);
-    setLoading(true);
-    try {
-      if (resolve === "complete") {
-        await completeProject(conflictProject.id, true);
-      } else {
-        await abandonProject(conflictProject.id);
-      }
-      const created = await createProject(_buildPayload());
+      const created = await createProject({
+        name: name.trim(),
+        loom_id: loomId || undefined,
+        loom_version_id: loomVersionId || undefined,
+        tags: tags.length ? tags : undefined,
+      });
       onSuccess(created.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("createProject.error.failed"));
-      setConflictProject(null);
     } finally {
       setLoading(false);
     }
@@ -138,27 +107,6 @@ export function CreateProjectModal({ onSuccess, onClose }: Props) {
             </div>
           )}
 
-          {conflictProject && (
-            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
-              <p className="font-medium text-copper-on-subtle">
-                {t("createProject.conflict.title", { name: conflictProject.name })}
-              </p>
-              <p className="text-copper-on-subtle text-xs">
-                {t("createProject.conflict.body")}
-              </p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button type="button" size="sm" onClick={() => handleResolveAndCreate("complete")} disabled={loading}>
-                  {loading ? t("common.working") : t("createProject.conflict.complete")}
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndCreate("abandon")} disabled={loading}>
-                  {loading ? t("common.working") : t("createProject.conflict.abandon")}
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => handleLoomChange("")} disabled={loading}>
-                  {t("createProject.conflict.clearLoom")}
-                </Button>
-              </div>
-            </div>
-          )}
           {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         </form>
 
