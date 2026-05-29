@@ -27,6 +27,7 @@ from app.routers import (  # noqa: E402
     drafts,
     feedback,
     health,
+    impersonation,
     logs,
     loom_catalog,
     looms,
@@ -271,3 +272,4 @@ app.include_router(projects.share_router)
 app.include_router(feedback.router)
 app.include_router(feedback.admin_router)
 app.include_router(admin.router)
+app.include_router(impersonation.router)

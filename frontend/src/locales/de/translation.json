@@ -36,6 +36,7 @@
     "looms": "Webstuhldatenbank"
   },
   "superuserSections": {
+    "users": "Benutzer",
     "eula": "EULA",
     "storage": "Speicher",
     "cve": "CVE-Scan",
@@ -87,7 +88,21 @@
     "clear": "Löschen",
     "loading": "Lädt …",
     "saving": "Wird gespeichert…",
-    "error": "Etwas ist schiefgelaufen."
+    "error": "Etwas ist schiefgelaufen.",
+    "noResults": "Keine Ergebnisse gefunden."
+  },
+  "roles": {
+    "admin": "Admin",
+    "superuser": "Superuser"
+  },
+  "impersonation": {
+    "banner": "Identität von {{name}} wird angenommen",
+    "stopButton": "Identitätswechsel beenden",
+    "searchPlaceholder": "Benutzer suchen…",
+    "impersonateButton": "Identität annehmen",
+    "confirmTitle": "Benutzer imitieren?",
+    "confirmBody": "Du bist dabei, die Identität von {{name}} anzunehmen. Diese Aktion wird protokolliert.",
+    "confirmButton": "Identität annehmen"
   },
   "settings": {
     "saved": "Gespeichert",

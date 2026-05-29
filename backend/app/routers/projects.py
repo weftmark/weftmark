@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.deps import get_current_user, get_db
+from app.deps import get_db, get_effective_user
 from app.models.draft import Draft
 from app.models.loom import PROJECT_SUPPORTED_LOOM_TYPES, Loom, LoomVersion
 from app.models.project import Project, ProjectPhoto, ProjectStep, ProjectYarnColor, WeaveSession
@@ -481,7 +481,7 @@ def _to_detail(
 @router.post("", response_model=ProjectDetail, status_code=201)
 async def create_project(
     body: CreateProjectRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     if body.project_type not in ("treadle", "lift"):
@@ -581,7 +581,7 @@ async def list_projects(
     draft_id: uuid.UUID | None = Query(None),
     loom_id: uuid.UUID | None = Query(None),
     tags: list[str] | None = Query(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ProjectSummary]:
     q = select(Project).where(Project.owner_id == current_user.id, Project.deleted_at.is_(None))
@@ -603,7 +603,7 @@ async def get_project_drawdown(
     row_count: int | None = Query(None, ge=1),
     start_col: int | None = Query(None, ge=0),
     col_count: int | None = Query(None, ge=1),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     from app.config import get_settings
@@ -714,7 +714,7 @@ async def get_project_drawdown_svg(
     project_id: uuid.UUID,
     cell_px: int = Query(20, ge=1, le=30),
     color_replacements: str | None = Query(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     import json
@@ -769,7 +769,7 @@ async def get_project_drawdown_svg(
 async def get_project_drawdown_preview(
     project_id: uuid.UUID,
     color_replacements: str | None = Query(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Full draft PNG (threading + tieup + drawdown), optionally with colour replacements applied."""
@@ -819,7 +819,7 @@ async def get_project_drawdown_preview(
 @router.get("/{project_id}/drawdown_preview")
 async def get_project_drawdown_preview_cached(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Return the pre-rendered drawdown thumbnail PNG for a project, or 404 if not yet generated."""
@@ -837,7 +837,7 @@ async def get_project_drawdown_preview_cached(
 @router.get("/{project_id}/drawdown_svg")
 async def get_project_drawdown_svg_cached(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Return the pre-rendered drawdown SVG for a project, or 404 if not yet generated."""
@@ -856,7 +856,7 @@ async def get_project_drawdown_svg_cached(
 async def get_project_drawdown_data(
     project_id: uuid.UUID,
     cell_px: int = Query(20, ge=4, le=30),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     from app.services import rendering
@@ -902,7 +902,7 @@ async def get_project_drawdown_data(
 @router.get("/{project_id}", response_model=ProjectDetail)
 async def get_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     stmt = (
@@ -946,7 +946,7 @@ async def get_project(
 async def rename_project(
     project_id: uuid.UUID,
     body: RenameProjectRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     if body.name is None and body.notes is None and body.hide_unused_shafts_treadles is None and body.tags is None:
@@ -975,7 +975,7 @@ async def rename_project(
 async def set_color_replacements(
     project_id: uuid.UUID,
     body: ColorReplacementsRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     import re
@@ -1001,7 +1001,7 @@ async def set_color_replacements(
 async def update_warp_setup(
     project_id: uuid.UUID,
     body: WarpSetupRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1032,7 +1032,7 @@ async def update_warp_setup(
 async def set_reed(
     project_id: uuid.UUID,
     body: SetReedRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     if body.reed_dents_per_inch is not None and body.reed_dents_per_inch <= 0:
@@ -1058,7 +1058,7 @@ async def set_reed(
 async def assign_loom(
     project_id: uuid.UUID,
     body: AssignLoomRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1107,7 +1107,7 @@ async def assign_loom(
 @router.post("/{project_id}/start", response_model=ProjectDetail)
 async def start_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     """Transition a project from 'created' to 'active'. Idempotent if already active."""
@@ -1128,7 +1128,7 @@ async def start_project(
 async def step_project(
     project_id: uuid.UUID,
     body: StepRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> StepResponse:
     if body.direction not in ("advance", "reverse"):
@@ -1207,7 +1207,7 @@ async def step_project(
 async def jump_project(
     project_id: uuid.UUID,
     body: JumpRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1224,7 +1224,7 @@ async def jump_project(
 @router.post("/{project_id}/advance-item", response_model=StepResponse)
 async def advance_item(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> StepResponse:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1252,7 +1252,7 @@ async def advance_item(
 async def jump_item(
     project_id: uuid.UUID,
     body: JumpItemRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1275,7 +1275,7 @@ async def jump_item(
 async def complete_project(
     project_id: uuid.UUID,
     force: bool = Query(False, description="Complete even if not all picks are logged"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1299,7 +1299,7 @@ async def complete_project(
 @router.post("/{project_id}/abandon", response_model=ProjectDetail)
 async def abandon_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1318,7 +1318,7 @@ async def abandon_project(
 @router.post("/{project_id}/restart", response_model=ProjectDetail)
 async def restart_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1339,7 +1339,7 @@ async def restart_project(
 @router.get("/{project_id}/metrics", response_model=ProjectMetricsResponse)
 async def get_project_metrics(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectMetricsResponse:
     await _get_owned_project(project_id, current_user, db, allow_superuser=True)
@@ -1400,7 +1400,7 @@ async def get_project_metrics(
 @router.post("/{project_id}/clone", response_model=ProjectDetail, status_code=201)
 async def clone_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     source = await _get_owned_project(project_id, current_user, db)
@@ -1435,7 +1435,7 @@ async def clone_project(
 @router.delete("/{project_id}", status_code=204)
 async def delete_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1447,7 +1447,7 @@ async def delete_project(
 async def upload_project_photo(
     project_id: uuid.UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectPhotoSchema:
     project = await _get_owned_project(project_id, current_user, db)
@@ -1504,7 +1504,7 @@ async def upload_project_photo(
 async def get_project_photo(
     project_id: uuid.UUID,
     photo_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     await _get_owned_project(project_id, current_user, db, allow_superuser=True)
@@ -1522,7 +1522,7 @@ async def get_project_photo(
 async def delete_project_photo(
     project_id: uuid.UUID,
     photo_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await _get_owned_project(project_id, current_user, db)
@@ -1539,7 +1539,7 @@ async def delete_project_photo(
 @router.get("/{project_id}/picks", response_model=PicksResponse)
 async def get_picks(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> PicksResponse:
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
@@ -1654,7 +1654,7 @@ def _compute_epi(draft: Draft) -> float | None:
 @router.get("/{project_id}/warping-plan", response_model=WarpingPlanResponse)
 async def get_warping_plan(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> WarpingPlanResponse:
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
@@ -1705,7 +1705,7 @@ async def get_warping_plan(
 async def update_project_share(
     project_id: uuid.UUID,
     body: ShareProjectRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     if body.visibility != "link":
@@ -1738,7 +1738,7 @@ async def update_project_share(
 @router.delete("/{project_id}/share", status_code=204)
 async def revoke_project_share(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
@@ -1843,7 +1843,7 @@ class PatchYarnColorRequest(BaseModel):
 @router.get("/{project_id}/yarn-colors", response_model=list[ProjectYarnColorSchema])
 async def list_project_yarn_colors(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ProjectYarnColorSchema]:
     await _get_owned_project(project_id, current_user, db)
@@ -1862,7 +1862,7 @@ async def link_yarn_color(
     project_id: uuid.UUID,
     color_hex: str,
     body: LinkYarnColorRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectYarnColorSchema:
     await _get_owned_project(project_id, current_user, db)
@@ -1902,7 +1902,7 @@ async def patch_yarn_color(
     project_id: uuid.UUID,
     color_hex: str,
     body: PatchYarnColorRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectYarnColorSchema:
     await _get_owned_project(project_id, current_user, db)
@@ -1923,7 +1923,7 @@ async def patch_yarn_color(
 async def unlink_yarn_color(
     project_id: uuid.UUID,
     color_hex: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await _get_owned_project(project_id, current_user, db)

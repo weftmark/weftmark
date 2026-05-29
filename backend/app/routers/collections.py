@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.deps import get_current_user, get_db
+from app.deps import get_db, get_effective_user
 from app.models.collection import Collection, CollectionDraft, CollectionProject
 from app.models.draft import Draft
 from app.models.project import Project
@@ -127,7 +127,7 @@ def _summary(c: Collection) -> CollectionSummary:
 @router.post("", status_code=201, response_model=CollectionSummary)
 async def create_collection(
     body: CreateCollectionRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> CollectionSummary:
     c = Collection(owner_id=current_user.id, name=body.name, description=body.description, tags=body.tags)
@@ -148,7 +148,7 @@ async def create_collection(
 
 @router.get("", response_model=list[CollectionSummary])
 async def list_collections(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[CollectionSummary]:
     result = await db.scalars(
@@ -163,7 +163,7 @@ async def list_collections(
 @router.get("/{collection_id}", response_model=CollectionDetail)
 async def get_collection(
     collection_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> CollectionDetail:
     c = await db.scalar(
@@ -226,7 +226,7 @@ async def get_collection(
 async def update_collection(
     collection_id: uuid.UUID,
     body: UpdateCollectionRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> CollectionSummary:
     c = await db.scalar(
@@ -255,7 +255,7 @@ async def update_collection(
 @router.delete("/{collection_id}", status_code=204)
 async def delete_collection(
     collection_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
@@ -272,7 +272,7 @@ async def delete_collection(
 async def add_draft(
     collection_id: uuid.UUID,
     body: AddDraftRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
@@ -297,7 +297,7 @@ async def add_draft(
 async def remove_draft(
     collection_id: uuid.UUID,
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await _get_owned_collection(collection_id, current_user, db)
@@ -323,7 +323,7 @@ async def remove_draft(
 async def add_project(
     collection_id: uuid.UUID,
     body: AddProjectRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
@@ -352,7 +352,7 @@ async def add_project(
 async def remove_project(
     collection_id: uuid.UUID,
     project_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await _get_owned_collection(collection_id, current_user, db)

@@ -152,6 +152,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   ];
 
   const SUPERUSER_SECTIONS = [
+    { id: "users", label: t("superuserSections.users") },
     { id: "eula", label: t("superuserSections.eula") },
     { id: "storage", label: t("superuserSections.storage") },
     { id: "cve", label: t("superuserSections.cve") },

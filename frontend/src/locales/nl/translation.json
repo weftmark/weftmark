@@ -36,6 +36,7 @@
     "looms": "Weefstoel­database"
   },
   "superuserSections": {
+    "users": "Gebruikers",
     "eula": "EULA",
     "storage": "Opslag",
     "cve": "CVE-scan",
@@ -86,7 +87,21 @@
     "clear": "Wissen",
     "loading": "Laden…",
     "saving": "Opslaan…",
-    "error": "Er is iets misgegaan."
+    "error": "Er is iets misgegaan.",
+    "noResults": "Geen resultaten gevonden."
+  },
+  "roles": {
+    "admin": "Admin",
+    "superuser": "Superbeheerder"
+  },
+  "impersonation": {
+    "banner": "U bent {{name}} aan het nabootsen",
+    "stopButton": "Stop nabootsen",
+    "searchPlaceholder": "Gebruikers zoeken…",
+    "impersonateButton": "Nabootsen",
+    "confirmTitle": "Gebruiker nabootsen?",
+    "confirmBody": "U staat op het punt om {{name}} na te bootsen. Deze actie wordt geregistreerd.",
+    "confirmButton": "Nabootsen"
   },
   "settings": {
     "saved": "Opgeslagen",

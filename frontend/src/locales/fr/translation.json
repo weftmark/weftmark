@@ -36,6 +36,7 @@
     "looms": "Base de métiers"
   },
   "superuserSections": {
+    "users": "Utilisateurs",
     "eula": "CLUF",
     "storage": "Stockage",
     "cve": "Scan CVE",
@@ -86,7 +87,21 @@
     "clear": "Effacer",
     "loading": "Chargement…",
     "saving": "Enregistrement…",
-    "error": "Une erreur est survenue."
+    "error": "Une erreur est survenue.",
+    "noResults": "Aucun résultat trouvé."
+  },
+  "roles": {
+    "admin": "Admin",
+    "superuser": "Superutilisateur"
+  },
+  "impersonation": {
+    "banner": "Vous incarnez {{name}}",
+    "stopButton": "Arrêter l'incarnation",
+    "searchPlaceholder": "Rechercher des utilisateurs…",
+    "impersonateButton": "Incarner",
+    "confirmTitle": "Incarner cet utilisateur ?",
+    "confirmBody": "Vous êtes sur le point d'incarner {{name}}. Cette action sera enregistrée.",
+    "confirmButton": "Incarner"
   },
   "settings": {
     "saved": "Enregistré",
