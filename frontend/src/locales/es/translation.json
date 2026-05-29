@@ -678,6 +678,8 @@
     "addDraft": "Añadir",
     "moveUp": "Subir",
     "moveDown": "Bajar",
+    "decreaseRepeats": "Reducir repeticiones",
+    "increaseRepeats": "Aumentar repeticiones",
     "entryPicks": "{{count}} pasadas",
     "multidraft": "{{count}} ligamentos",
     "noDraftPreview": "Sin ligamento",

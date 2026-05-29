@@ -678,6 +678,8 @@
     "addDraft": "Ajouter",
     "moveUp": "Monter",
     "moveDown": "Descendre",
+    "decreaseRepeats": "Diminuer les répétitions",
+    "increaseRepeats": "Augmenter les répétitions",
     "entryPicks": "{{count}} duites",
     "multidraft": "{{count}} armures",
     "noDraftPreview": "Aucune armure",

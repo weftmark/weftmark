@@ -679,6 +679,8 @@
     "addDraft": "Add",
     "moveUp": "Move up",
     "moveDown": "Move down",
+    "decreaseRepeats": "Decrease repeats",
+    "increaseRepeats": "Increase repeats",
     "entryPicks": "{{count}} picks",
     "multidraft": "{{count}} drafts",
     "noDraftPreview": "No draft",

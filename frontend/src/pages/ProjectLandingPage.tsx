@@ -10,7 +10,7 @@ import {
   updateProjectWarpSetup, drawdownSvgUrl, drawdownPreviewUrl, projectDrawdownSvgUrl,
   getWarpingPlan, completeProject, abandonProject, startProject, setProjectReed, updateProjectTags,
   linkYarnColor, unlinkYarnColor,
-  addSequenceEntry, removeSequenceEntry, reorderSequence,
+  addSequenceEntry, updateSequenceEntry, removeSequenceEntry, reorderSequence,
   PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectDetail, type ProjectYarnColor, type ProjectDraftSchema,
 } from "@/api/projects";
@@ -1225,6 +1225,115 @@ function ReedSelector({
 // Draft sequence section
 // ---------------------------------------------------------------------------
 
+function SequenceRow({
+  entry,
+  idx,
+  total,
+  isEditable,
+  projectId,
+  onUpdated,
+  onRemove,
+  onMove,
+  reorderPending,
+  removePending,
+}: {
+  readonly entry: ProjectDraftSchema;
+  readonly idx: number;
+  readonly total: number;
+  readonly isEditable: boolean;
+  readonly projectId: string;
+  readonly onUpdated: (p: ProjectDetail) => void;
+  readonly onRemove: (id: string) => void;
+  readonly onMove: (idx: number, dir: -1 | 1) => void;
+  readonly reorderPending: boolean;
+  readonly removePending: boolean;
+}) {
+  const { t } = useTranslation();
+  const [repeats, setRepeats] = useState(String(entry.repeats));
+
+  const updateMutation = useMutation({
+    mutationFn: (r: number) => updateSequenceEntry(projectId, entry.id, r),
+    onSuccess: onUpdated,
+  });
+
+  function commitRepeats(raw: string) {
+    const n = Math.max(1, parseInt(raw, 10) || 1);
+    setRepeats(String(n));
+    if (n !== entry.repeats) updateMutation.mutate(n);
+  }
+
+  function step(delta: 1 | -1) {
+    const n = Math.max(1, entry.repeats + delta);
+    setRepeats(String(n));
+    if (n !== entry.repeats) updateMutation.mutate(n);
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
+      <span className="text-xs font-mono text-muted-foreground w-5 flex-shrink-0">{idx + 1}.</span>
+      <span className="flex-1 text-sm truncate">{entry.draft_name}</span>
+      <span className="text-xs text-muted-foreground flex-shrink-0">
+        {t("projectLandingPage.entryPicks", { count: entry.section_total_picks })}
+      </span>
+      {isEditable && (
+        <>
+          <div className="flex items-center flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => step(-1)}
+              disabled={entry.repeats <= 1 || updateMutation.isPending}
+              className="h-6 w-6 rounded-l border border-input bg-muted text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-30 flex items-center justify-center"
+              title={t("projectLandingPage.decreaseRepeats")}
+            >−</button>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={repeats}
+              onChange={(e) => setRepeats(e.target.value)}
+              onBlur={(e) => commitRepeats(e.target.value)}
+              className="h-6 w-10 border-y border-input bg-background text-center text-sm focus:outline-none focus:ring-1 focus:ring-ring [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <button
+              type="button"
+              onClick={() => step(1)}
+              disabled={updateMutation.isPending}
+              className="h-6 w-6 rounded-r border border-input bg-muted text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-30 flex items-center justify-center"
+              title={t("projectLandingPage.increaseRepeats")}
+            >+</button>
+          </div>
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            <button
+              onClick={() => onMove(idx, -1)}
+              disabled={idx === 0 || reorderPending}
+              className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+              title={t("projectLandingPage.moveUp")}
+            >
+              <ChevronRightIcon className="h-3.5 w-3.5 -rotate-90" />
+            </button>
+            <button
+              onClick={() => onMove(idx, 1)}
+              disabled={idx === total - 1 || reorderPending}
+              className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+              title={t("projectLandingPage.moveDown")}
+            >
+              <ChevronRightIcon className="h-3.5 w-3.5 rotate-90" />
+            </button>
+            <button
+              onClick={() => onRemove(entry.id)}
+              disabled={removePending}
+              className="p-0.5 text-destructive hover:text-destructive/70 ml-1"
+              title={t("common.remove")}
+            >
+              <CloseIcon className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function DraftSequenceSection({
   project,
   onUpdated,
@@ -1275,41 +1384,19 @@ function DraftSequenceSection({
         <p className="text-sm text-muted-foreground">{t("projectLandingPage.noDrafts")}</p>
       )}
       {seq.map((entry, idx) => (
-        <div key={entry.id} className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
-          <span className="text-xs font-mono text-muted-foreground w-5 flex-shrink-0">{idx + 1}.</span>
-          <span className="flex-1 text-sm truncate">{entry.draft_name}</span>
-          <span className="text-xs text-muted-foreground flex-shrink-0">
-            {t("projectLandingPage.entryPicks", { count: entry.section_total_picks })}
-          </span>
-          {isEditable && (
-            <div className="flex items-center gap-0.5 flex-shrink-0">
-              <button
-                onClick={() => moveEntry(idx, -1)}
-                disabled={idx === 0 || reorderMutation.isPending}
-                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                title={t("projectLandingPage.moveUp")}
-              >
-                <ChevronRightIcon className="h-3.5 w-3.5 -rotate-90" />
-              </button>
-              <button
-                onClick={() => moveEntry(idx, 1)}
-                disabled={idx === seq.length - 1 || reorderMutation.isPending}
-                className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-                title={t("projectLandingPage.moveDown")}
-              >
-                <ChevronRightIcon className="h-3.5 w-3.5 rotate-90" />
-              </button>
-              <button
-                onClick={() => removeMutation.mutate(entry.id)}
-                disabled={removeMutation.isPending}
-                className="p-0.5 text-destructive hover:text-destructive/70 ml-1"
-                title={t("common.remove")}
-              >
-                <CloseIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
-        </div>
+        <SequenceRow
+          key={entry.id}
+          entry={entry}
+          idx={idx}
+          total={seq.length}
+          isEditable={isEditable}
+          projectId={project.id}
+          onUpdated={onUpdated}
+          onRemove={(id) => removeMutation.mutate(id)}
+          onMove={moveEntry}
+          reorderPending={reorderMutation.isPending}
+          removePending={removeMutation.isPending}
+        />
       ))}
       {isEditable && (
         <div className="flex gap-2">
@@ -1766,6 +1853,14 @@ export function ProjectLandingPage() {
         </section>
       )}
 
+      {/* Draft sequence — editable when created, read-only when active/done */}
+      {(project.status === "created" || project.draft_sequence.length > 0) && (
+        <DraftSequenceSection
+          project={project}
+          onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
+        />
+      )}
+
       {/* Color palette */}
       {project.draft_wif_colors && project.draft_wif_colors.length > 0 && (
         <ColorPaletteSection
@@ -1787,14 +1882,6 @@ export function ProjectLandingPage() {
         <WarpSetupSection
           project={project}
           displayUnit={displayUnit}
-          onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
-        />
-      )}
-
-      {/* Draft sequence — editable when created, read-only when active/done */}
-      {(project.status === "created" || project.draft_sequence.length > 0) && (
-        <DraftSequenceSection
-          project={project}
           onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
         />
       )}

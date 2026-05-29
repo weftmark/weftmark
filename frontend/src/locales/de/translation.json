@@ -679,6 +679,8 @@
     "addDraft": "Hinzufügen",
     "moveUp": "Nach oben",
     "moveDown": "Nach unten",
+    "decreaseRepeats": "Wiederholungen verringern",
+    "increaseRepeats": "Wiederholungen erhöhen",
     "entryPicks": "{{count}} Schüsse",
     "multidraft": "{{count}} Entwürfe",
     "noDraftPreview": "Kein Entwurf",
