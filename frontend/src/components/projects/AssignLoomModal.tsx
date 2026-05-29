@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { assignLoom, completeProject, abandonProject, ApiError, type ProjectSummary } from "@/api/projects";
+import { assignLoom } from "@/api/projects";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 
 interface Props {
   projectId: string;
-  activeProjects: ProjectSummary[];
   projectType?: string;
   draftNumTreadles?: number | null;
   draftNumShafts?: number | null;
@@ -18,12 +17,11 @@ interface Props {
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
-export function AssignLoomModal({ projectId, activeProjects, projectType, draftNumTreadles, draftNumShafts, draftEffectiveNumTreadles, draftEffectiveNumShafts, onSuccess, onClose }: Props) {
+export function AssignLoomModal({ projectId, projectType, draftNumTreadles, draftNumShafts, draftEffectiveNumTreadles, draftEffectiveNumShafts, onSuccess, onClose }: Props) {
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [conflictProject, setConflictProject] = useState<ProjectSummary | null>(null);
 
   const { data: looms = [] } = useQuery({ queryKey: ["looms"], queryFn: () => listLooms() });
   const { data: loomDetail } = useQuery({
@@ -38,7 +36,6 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
   const loomTreadles = selectedLoom?.current_version?.num_treadles ?? null;
   const loomShafts = selectedLoom?.current_version?.num_shafts ?? null;
 
-  // Use effective counts for compatibility; fall back to declared
   const effectiveTreadles = draftEffectiveNumTreadles ?? draftNumTreadles ?? null;
   const effectiveShafts = draftEffectiveNumShafts ?? draftNumShafts ?? null;
 
@@ -66,17 +63,6 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
     draftEffectiveNumShafts != null &&
     draftNumShafts !== draftEffectiveNumShafts;
 
-  const handleLoomChange = (newLoomId: string) => {
-    setLoomId(newLoomId);
-    setLoomVersionId("");
-    setError(null);
-    setConflictProject(null);
-    if (newLoomId) {
-      const conflict = activeProjects.find((a) => a.loom_id === newLoomId && a.id !== projectId) ?? null;
-      setConflictProject(conflict);
-    }
-  };
-
   const doAssign = async () => {
     setError(null);
     setLoading(true);
@@ -84,32 +70,7 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
       await assignLoom(projectId, loomId, loomVersionId || undefined);
       onSuccess();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        const conflict = activeProjects.find((a) => a.loom_id === loomId && a.id !== projectId) ?? null;
-        setConflictProject(conflict);
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to assign loom");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResolveAndAssign = async (resolve: "complete" | "abandon") => {
-    if (!conflictProject) return;
-    setError(null);
-    setLoading(true);
-    try {
-      if (resolve === "complete") {
-        await completeProject(conflictProject.id);
-      } else {
-        await abandonProject(conflictProject.id);
-      }
-      await assignLoom(projectId, loomId, loomVersionId || undefined);
-      onSuccess();
-    } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to assign loom");
-      setConflictProject(null);
     } finally {
       setLoading(false);
     }
@@ -125,7 +86,7 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
         <div className="px-6 py-4 space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium">Loom <span className="text-destructive">*</span></label>
-            <select className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
+            <select className={f} value={loomId} onChange={(e) => { setLoomId(e.target.value); setLoomVersionId(""); setError(null); }}>
               <option value="">Select a loom…</option>
               {looms.filter((l) => SUPPORTED_LOOM_TYPES.has(l.loom_type)).map((l) => (
                 <option key={l.id} value={l.id}>{l.manufacturer} {l.model_name}</option>
@@ -172,34 +133,12 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
             </div>
           )}
 
-          {conflictProject && (
-            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
-              <p className="font-medium text-copper-on-subtle">
-                This loom has an active project: <span className="font-semibold">{conflictProject.name}</span>
-              </p>
-              <p className="text-copper-on-subtle text-xs">
-                Mark it as completed or abandon it to assign this loom, or choose a different loom.
-              </p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button type="button" size="sm" onClick={() => handleResolveAndAssign("complete")} disabled={loading}>
-                  {loading ? "Working…" : "Mark completed & assign"}
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndAssign("abandon")} disabled={loading}>
-                  {loading ? "Working…" : "Abandon & assign"}
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => handleLoomChange("")} disabled={loading}>
-                  Clear loom
-                </Button>
-              </div>
-            </div>
-          )}
-
           {error && <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         </div>
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button onClick={doAssign} disabled={!loomId || !!conflictProject || loading}>
+          <Button onClick={doAssign} disabled={!loomId || loading}>
             {loading ? "Assigning…" : "Assign loom"}
           </Button>
         </div>

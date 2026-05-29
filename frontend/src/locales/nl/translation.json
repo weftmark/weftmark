@@ -86,6 +86,11 @@
     "clear": "Wissen",
     "loading": "Laden…",
     "saving": "Opslaan…",
+    "working": "Bezig…",
+    "creating": "Aanmaken…",
+    "adding": "Toevoegen…",
+    "optional": "optioneel",
+    "remove": "Verwijderen",
     "error": "Er is iets misgegaan."
   },
   "settings": {
@@ -344,6 +349,38 @@
     "emptyState": "Nog geen bindingen. Upload een WIF-bestand om te beginnen.",
     "noTagMatch": "Geen bindingen met tag \"{{tag}}\".",
     "archived": "Gearchiveerd ({{count}})"
+  },
+  "createProject": {
+    "title": "Nieuw project",
+    "name": "Naam",
+    "namePlaceholder": "Lentesjalen…",
+    "tags": "Tags",
+    "tagsPlaceholder": "Tag toevoegen…",
+    "sequenceHint": {
+      "title": "Bindingen worden op de projectpagina toegevoegd",
+      "body": "Na het aanmaken kun je bindingen aan de volgorde toevoegen op de projectpagina."
+    },
+    "loom": "Weefgetouw",
+    "noLoom": "Geen weefgetouw",
+    "loomConfig": "Weefgetouwconfiguratie",
+    "loomConfigLatest": "Nieuwste ({{name}})",
+    "unsupportedLoomsHidden": "Sommige weefgetouwen zijn verborgen (niet-ondersteund type).",
+    "warpPlan": "Scheerplan",
+    "finishedLength": "Afgewerkte lengte / stuk",
+    "numItems": "Stuks",
+    "wasteBetween": "Tussenafval",
+    "warpWaste": "Getouwafval",
+    "conflict": {
+      "title": "\"{{name}}\" gebruikt dit weefgetouw al",
+      "body": "Wil je het bestaande project voltooien of opgeven voor je een nieuw aanmaakt?",
+      "complete": "Voltooien & nieuw aanmaken",
+      "abandon": "Opgeven & nieuw aanmaken",
+      "clearLoom": "Weefgetouw verwijderen"
+    },
+    "error": {
+      "failed": "Project kon niet worden aangemaakt."
+    },
+    "submit": "Project aanmaken"
   },
   "projectsPage": {
     "title": "Projecten",
@@ -634,7 +671,22 @@
     "updateColorFromYarn": "Kleur overnemen van garen?",
     "updateColor": "Overnemen",
     "keepColor": "Behouden",
-    "undo": "Ongedaan maken"
+    "undo": "Ongedaan maken",
+    "draftSequence": "Bindingsvolgorde",
+    "noDrafts": "Nog geen bindingen toegevoegd.",
+    "selectDraft": "Selecteer een binding…",
+    "addDraft": "Toevoegen",
+    "moveUp": "Omhoog",
+    "moveDown": "Omlaag",
+    "decreaseRepeats": "Herhalingen verminderen",
+    "increaseRepeats": "Herhalingen verhogen",
+    "entryPicks": "{{count}} inslagen",
+    "multidraft": "{{count}} bindingen",
+    "noDraftPreview": "Geen binding",
+    "beforeStarting": "Vereist voor de start:",
+    "needsDrafts": "Voeg minstens één binding toe aan de volgorde",
+    "needsLoom": "Wijs een weefgetouw toe (sectie Scheeropzet)",
+    "couldNotStart": "Project kon niet worden gestart."
   },
   "projectDetailPage": {
     "loading": "Laden…",

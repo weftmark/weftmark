@@ -421,14 +421,10 @@ class TestPrerenderProject:
         from app.models.project import Project
         from app.tasks.tiles import _prerender_project
 
-        draft = await self._make_draft(db_session, test_user)
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Deleted Project",
-            project_type="weave",
-            total_picks=4,
             deleted_at=datetime.now(timezone.utc),
         )
         db_session.add(project)
@@ -438,7 +434,7 @@ class TestPrerenderProject:
         mock_engine_and_session.dispose.assert_called_once()
 
     async def test_project_with_deleted_draft_returns_cleanly(self, db_session, test_user, mock_engine_and_session):
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
         from app.tasks.tiles import _prerender_project
 
         draft = await self._make_draft(db_session, test_user)
@@ -446,31 +442,29 @@ class TestPrerenderProject:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Draft Deleted",
-            project_type="weave",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
 
         await _prerender_project(_task_mock(), project.id)
         mock_engine_and_session.dispose.assert_called_once()
 
     async def test_project_with_missing_wif_returns_cleanly(self, db_session, test_user, mock_engine_and_session):
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
         from app.tasks.tiles import _prerender_project
 
         draft = await self._make_draft(db_session, test_user, wif_key="drafts/not-stored.wif")
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Missing WIF",
-            project_type="weave",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
 
         await _prerender_project(_task_mock(), project.id)
@@ -478,7 +472,7 @@ class TestPrerenderProject:
 
     async def test_valid_project_runs_to_completion(self, db_session, test_user, mock_engine_and_session):
         import app.services.storage as _storage
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
         from app.tasks.tiles import _prerender_project
 
         wif_key = f"drafts/proj-{uuid.uuid4().hex}.wif"
@@ -488,12 +482,11 @@ class TestPrerenderProject:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Valid Project",
-            project_type="weave",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
 
         await _prerender_project(_task_mock(), project.id)
@@ -525,12 +518,14 @@ class TestPrerenderProject:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Lift Project",
             project_type="lift",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        from app.models.project import ProjectDraft
+
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
 
         await _prerender_project(_task_mock(), project.id)
@@ -549,12 +544,13 @@ class TestPrerenderProject:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Retry Project",
-            project_type="weave",
-            total_picks=4,
         )
         db_session.add(project)
+        await db_session.flush()
+        from app.models.project import ProjectDraft
+
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
 
         task = _task_mock()

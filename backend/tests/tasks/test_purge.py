@@ -340,14 +340,11 @@ class TestPurgeProjects:
 
         from app.models.project import Project
 
-        draft = await self._make_draft(db_session, test_user, suffix="-del")
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Old Project",
             project_type="treadle",
-            total_picks=4,
             deleted_at=_ago(days=30),
         )
         db_session.add(project)
@@ -365,14 +362,11 @@ class TestPurgeProjects:
 
         from app.models.project import Project, ProjectPhoto
 
-        draft = await self._make_draft(db_session, test_user, suffix="-photo")
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Photo Project",
             project_type="treadle",
-            total_picks=4,
             deleted_at=_ago(days=30),
         )
         db_session.add(project)
@@ -399,14 +393,11 @@ class TestPurgeProjects:
 
         from app.models.project import Project
 
-        draft = await self._make_draft(db_session, test_user, suffix="-recent")
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Recent Project",
             project_type="treadle",
-            total_picks=4,
             deleted_at=_ago(days=1),
         )
         db_session.add(project)

@@ -30,7 +30,7 @@ function ProjectRow({ project }: { project: ProjectSummary }) {
     >
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">{project.name}</p>
-        <p className="text-xs text-muted-foreground">{PROJECT_TYPE_LABELS[project.project_type]}{endDate ? ` · ${fmtDate(endDate)}` : ""}</p>
+        <p className="text-xs text-muted-foreground">{project.project_type ? PROJECT_TYPE_LABELS[project.project_type] : ""}{endDate ? ` · ${fmtDate(endDate)}` : ""}</p>
       </div>
       <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_COLORS[badgeKey]}`}>
         {badgeLabel}

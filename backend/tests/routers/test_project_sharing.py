@@ -79,19 +79,20 @@ async def _insert_draft(db: AsyncSession, owner: User) -> Draft:
 
 
 async def _insert_project(db: AsyncSession, owner: User, draft: Draft, **kwargs) -> Project:
+    from app.models.project import ProjectDraft
+
     project = Project(
         owner_id=owner.id,
-        draft_id=draft.id,
         name=kwargs.get("name", "My Weave"),
         project_type="treadle",
         status=kwargs.get("status", "active"),
-        current_pick=1,
-        total_picks=2,
         share_slug=kwargs.get("share_slug"),
         share_visibility=kwargs.get("share_visibility", "private"),
         share_expires_at=kwargs.get("share_expires_at"),
     )
     db.add(project)
+    await db.flush()
+    db.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
     await db.commit()
     return project
 

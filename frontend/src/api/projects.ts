@@ -1,6 +1,20 @@
 export type ProjectType = "treadle" | "lift";
 export type ProjectStatus = "created" | "active" | "completed" | "abandoned";
 
+export interface ProjectDraftSchema {
+  id: string;
+  draft_id: string;
+  position: number;
+  repeats: number;
+  current_pick: number;
+  draft_name: string;
+  draft_total_picks: number;
+  section_total_picks: number;
+  is_active: boolean;
+  has_treadling: boolean;
+  has_liftplan: boolean;
+}
+
 import i18next from "i18next";
 
 export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
@@ -20,17 +34,21 @@ export type ShareVisibility = "private" | "link" | "public";
 export interface ProjectSummary {
   id: string;
   owner_id: string;
-  draft_id: string;
+  draft_id: string | null;
   loom_id: string | null;
   loom_version_id: string | null;
   name: string;
-  project_type: ProjectType;
+  project_type: ProjectType | null;
   status: ProjectStatus;
+  current_position: number;
   current_pick: number;
   current_item: number;
   total_picks: number;
+  aggregate_current_pick: number;
   num_items: number;
   length_unit: string;
+  draft_count: number;
+  draft_sequence: ProjectDraftSchema[];
   completed_at: string | null;
   abandoned_at: string | null;
   created_at: string;
@@ -135,7 +153,7 @@ export interface ProjectDetail extends ProjectSummary {
   warp_waste_allowance: string | null;
   completed_at: string | null;
   notes: string | null;
-  draft_name: string;
+  draft_name: string | null;
   draft_num_shafts: number | null;
   draft_num_treadles: number | null;
   draft_effective_num_treadles: number | null;
@@ -165,8 +183,6 @@ export interface ProjectDetail extends ProjectSummary {
 
 export interface CreateProjectPayload {
   name: string;
-  draft_id: string;
-  project_type: ProjectType;
   loom_id?: string;
   loom_version_id?: string;
   finished_length_per_item?: number;
@@ -180,6 +196,9 @@ export interface CreateProjectPayload {
 export interface StepResponse {
   current_pick: number;
   total_picks: number;
+  position: number;
+  aggregate_current_pick: number;
+  aggregate_total_picks: number;
   current_item: number;
   num_items: number;
 }
@@ -534,4 +553,44 @@ export function unlinkYarnColor(projectId: string, colorHex: string): Promise<vo
   return req(`/api/projects/${projectId}/yarn-colors/${encodeURIComponent(colorHex)}`, {
     method: "DELETE",
   });
+}
+
+export function addSequenceEntry(
+  projectId: string,
+  draftId: string,
+  repeats = 1,
+): Promise<ProjectDetail> {
+  return req(`/api/projects/${projectId}/sequence`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ draft_id: draftId, repeats }),
+  });
+}
+
+export function updateSequenceEntry(
+  projectId: string,
+  seqId: string,
+  repeats: number,
+): Promise<ProjectDetail> {
+  return req(`/api/projects/${projectId}/sequence/${seqId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repeats }),
+  });
+}
+
+export function removeSequenceEntry(projectId: string, seqId: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${projectId}/sequence/${seqId}`, { method: "DELETE" });
+}
+
+export function reorderSequence(projectId: string, orderedIds: string[]): Promise<ProjectDetail> {
+  return req(`/api/projects/${projectId}/sequence/reorder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ordered_ids: orderedIds }),
+  });
+}
+
+export function activateSequenceEntry(projectId: string, seqId: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${projectId}/sequence/${seqId}/activate`, { method: "POST" });
 }

@@ -84,11 +84,9 @@ async def _insert_draft(db: AsyncSession, owner: User, *, tags: list[str] | None
 async def _insert_project(db: AsyncSession, owner: User, draft: Draft, *, tags: list[str] | None = None) -> Project:
     p = Project(
         owner_id=owner.id,
-        draft_id=draft.id,
         name="Test Project",
         project_type="treadle",
         status="created",
-        total_picks=100,
         tags=tags or [],
     )
     db.add(p)

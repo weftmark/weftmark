@@ -5,7 +5,6 @@ import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.draft import Draft
 from app.models.project import Project, ProjectYarnColor
 from app.models.user import User
 from app.models.yarn import Yarn
@@ -15,27 +14,12 @@ from app.models.yarn import Yarn
 # ---------------------------------------------------------------------------
 
 
-async def _make_draft(db: AsyncSession, owner_id: uuid.UUID) -> Draft:
-    draft = Draft(
-        owner_id=owner_id,
-        name="Test Draft",
-        wif_filename="test.wif",
-        wif_path="drafts/test/original.wif",
-        drawdown_preview_path="fake/preview.png",
-    )
-    db.add(draft)
-    await db.flush()
-    return draft
-
-
-async def _make_project(db: AsyncSession, owner_id: uuid.UUID, draft_id: uuid.UUID) -> Project:
+async def _make_project(db: AsyncSession, owner_id: uuid.UUID) -> Project:
     project = Project(
         owner_id=owner_id,
-        draft_id=draft_id,
         name="Test Project",
         project_type="treadle",
         status="created",
-        total_picks=10,
     )
     db.add(project)
     await db.flush()
@@ -62,8 +46,7 @@ async def _make_yarn(db: AsyncSession, owner_id: uuid.UUID, color_hex: str = "#a
 
 class TestLinkYarnColor:
     async def test_link_creates_record(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         yarn = await _make_yarn(db_session, test_user.id)
         await db_session.commit()
 
@@ -79,8 +62,7 @@ class TestLinkYarnColor:
         assert data["yarn_brand"] == "TestBrand"
 
     async def test_link_updates_existing(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         yarn1 = await _make_yarn(db_session, test_user.id, "#111111")
         yarn2 = await _make_yarn(db_session, test_user.id, "#222222")
         await db_session.commit()
@@ -97,8 +79,7 @@ class TestLinkYarnColor:
         assert resp.json()["yarn_id"] == str(yarn2.id)
 
     async def test_link_404_yarn_not_found(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         await db_session.commit()
 
         resp = await auth_client.put(
@@ -126,8 +107,7 @@ class TestLinkYarnColor:
         test_user: User,
         admin_user: User,
     ):
-        draft = await _make_draft(db_session, admin_user.id)
-        project = await _make_project(db_session, admin_user.id, draft.id)
+        project = await _make_project(db_session, admin_user.id)
         yarn = await _make_yarn(db_session, test_user.id)
         await db_session.commit()
 
@@ -145,8 +125,7 @@ class TestLinkYarnColor:
 
 class TestUnlinkYarnColor:
     async def test_unlink_removes_record(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         yarn = await _make_yarn(db_session, test_user.id)
         pyc = ProjectYarnColor(project_id=project.id, yarn_id=yarn.id, color_hex="#aa3322")
         db_session.add(pyc)
@@ -161,8 +140,7 @@ class TestUnlinkYarnColor:
     async def test_unlink_404_when_not_linked(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         await db_session.commit()
 
         resp = await auth_client.delete(f"/api/projects/{project.id}/yarn-colors/%23ffffff")
@@ -176,8 +154,7 @@ class TestUnlinkYarnColor:
 
 class TestListProjectYarnColors:
     async def test_list_returns_linked_yarn(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         yarn = await _make_yarn(db_session, test_user.id)
         db_session.add(ProjectYarnColor(project_id=project.id, yarn_id=yarn.id, color_hex="#aa3322"))
         await db_session.commit()
@@ -192,8 +169,7 @@ class TestListProjectYarnColors:
     async def test_list_empty_when_none_linked(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         await db_session.commit()
 
         resp = await auth_client.get(f"/api/projects/{project.id}/yarn-colors")
@@ -210,8 +186,7 @@ class TestProjectDetailIncludesYarnColors:
     async def test_project_detail_has_yarn_colors_field(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         await db_session.commit()
 
         resp = await auth_client.get(f"/api/projects/{project.id}")
@@ -222,8 +197,7 @@ class TestProjectDetailIncludesYarnColors:
     async def test_project_detail_includes_linked_yarn(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         yarn = await _make_yarn(db_session, test_user.id)
         db_session.add(ProjectYarnColor(project_id=project.id, yarn_id=yarn.id, color_hex="#aa3322"))
         await db_session.commit()
@@ -245,8 +219,7 @@ class TestGetYarnProjects:
     async def test_returns_projects_using_yarn(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
     ):
-        draft = await _make_draft(db_session, test_user.id)
-        project = await _make_project(db_session, test_user.id, draft.id)
+        project = await _make_project(db_session, test_user.id)
         yarn = await _make_yarn(db_session, test_user.id)
         db_session.add(ProjectYarnColor(project_id=project.id, yarn_id=yarn.id, color_hex="#aa3322"))
         await db_session.commit()

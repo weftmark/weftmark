@@ -86,6 +86,11 @@
     "clear": "Effacer",
     "loading": "Chargement…",
     "saving": "Enregistrement…",
+    "working": "En cours…",
+    "creating": "Création…",
+    "adding": "Ajout…",
+    "optional": "facultatif",
+    "remove": "Supprimer",
     "error": "Une erreur est survenue."
   },
   "settings": {
@@ -344,6 +349,38 @@
     "emptyState": "Aucune armure. Téléversez un fichier WIF pour commencer.",
     "noTagMatch": "Aucune armure avec le tag \"{{tag}}\".",
     "archived": "Archivées ({{count}})"
+  },
+  "createProject": {
+    "title": "Nouveau projet",
+    "name": "Nom",
+    "namePlaceholder": "Écharpes de printemps…",
+    "tags": "Tags",
+    "tagsPlaceholder": "Ajouter un tag…",
+    "sequenceHint": {
+      "title": "Les armures sont ajoutées sur la page du projet",
+      "body": "Après la création, ouvrez le projet pour ajouter des armures à la séquence."
+    },
+    "loom": "Métier",
+    "noLoom": "Aucun métier",
+    "loomConfig": "Configuration du métier",
+    "loomConfigLatest": "Dernière ({{name}})",
+    "unsupportedLoomsHidden": "Certains métiers sont masqués (type non supporté).",
+    "warpPlan": "Plan de chaîne",
+    "finishedLength": "Longueur finie / pièce",
+    "numItems": "Pièces",
+    "wasteBetween": "Gaspillage entre les pièces",
+    "warpWaste": "Perte de chaîne",
+    "conflict": {
+      "title": "\"{{name}}\" utilise déjà ce métier",
+      "body": "Voulez-vous terminer ou abandonner le projet existant avant de créer un nouveau ?",
+      "complete": "Terminer & créer nouveau",
+      "abandon": "Abandonner & créer nouveau",
+      "clearLoom": "Effacer le métier"
+    },
+    "error": {
+      "failed": "Impossible de créer le projet."
+    },
+    "submit": "Créer le projet"
   },
   "projectsPage": {
     "title": "Projets",
@@ -634,7 +671,22 @@
     "updateColorFromYarn": "Mettre à jour la couleur depuis le fil ?",
     "updateColor": "Mettre à jour",
     "keepColor": "Garder",
-    "undo": "Annuler"
+    "undo": "Annuler",
+    "draftSequence": "Séquence d'armures",
+    "noDrafts": "Aucune armure ajoutée.",
+    "selectDraft": "Sélectionner une armure…",
+    "addDraft": "Ajouter",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "decreaseRepeats": "Diminuer les répétitions",
+    "increaseRepeats": "Augmenter les répétitions",
+    "entryPicks": "{{count}} duites",
+    "multidraft": "{{count}} armures",
+    "noDraftPreview": "Aucune armure",
+    "beforeStarting": "Avant de commencer :",
+    "needsDrafts": "Ajouter au moins une armure à la séquence",
+    "needsLoom": "Assigner un métier (section Préparation de chaîne)",
+    "couldNotStart": "Impossible de démarrer le projet."
   },
   "projectDetailPage": {
     "loading": "Chargement…",

@@ -366,7 +366,7 @@ class TestBackfillProjectDrawdownPreviews:
 
         import app.services.storage as storage
         from app.models.draft import Draft
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
         from app.tasks.maintenance import backfill_project_drawdown_previews
 
         draft = Draft(
@@ -382,14 +382,13 @@ class TestBackfillProjectDrawdownPreviews:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Active Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
+        await db_session.flush()
+        db_session.add(ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0))
         await db_session.commit()
 
         with patch("app.tasks.preview.generate_drawdown_preview") as mock_preview:
@@ -420,12 +419,9 @@ class TestBackfillProjectDrawdownPreviews:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Completed",
             project_type="treadle",
             status="completed",
-            current_pick=10,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.commit()
@@ -458,12 +454,9 @@ class TestBackfillProjectDrawdownPreviews:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Abandoned",
             project_type="treadle",
             status="abandoned",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.commit()
@@ -496,12 +489,9 @@ class TestBackfillProjectDrawdownPreviews:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Has Preview",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.commit()
@@ -519,7 +509,7 @@ class TestBackfillProjectDrawdownPreviews:
 
         import app.services.storage as storage
         from app.models.draft import Draft
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
         from app.tasks.maintenance import backfill_project_drawdown_previews
 
         draft = Draft(
@@ -534,16 +524,16 @@ class TestBackfillProjectDrawdownPreviews:
         await db_session.flush()
 
         for i in range(3):
+            project = Project(
+                owner_id=test_user.id,
+                name=f"Project {i}",
+                project_type="treadle",
+                status="active",
+            )
+            db_session.add(project)
+            await db_session.flush()
             db_session.add(
-                Project(
-                    owner_id=test_user.id,
-                    draft_id=draft.id,
-                    name=f"Project {i}",
-                    project_type="treadle",
-                    status="active",
-                    current_pick=1,
-                    total_picks=10,
-                )
+                ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0)
             )
         await db_session.commit()
 
@@ -560,7 +550,7 @@ class TestBackfillProjectDrawdownPreviews:
 
         import app.services.storage as storage
         from app.models.draft import Draft
-        from app.models.project import Project
+        from app.models.project import Project, ProjectDraft
         from app.tasks.maintenance import backfill_project_drawdown_previews
 
         for i in range(5):
@@ -574,16 +564,16 @@ class TestBackfillProjectDrawdownPreviews:
             )
             db_session.add(draft)
             await db_session.flush()
+            project = Project(
+                owner_id=test_user.id,
+                name=f"Project {i}",
+                project_type="treadle",
+                status="active",
+            )
+            db_session.add(project)
+            await db_session.flush()
             db_session.add(
-                Project(
-                    owner_id=test_user.id,
-                    draft_id=draft.id,
-                    name=f"Project {i}",
-                    project_type="treadle",
-                    status="active",
-                    current_pick=1,
-                    total_picks=10,
-                )
+                ProjectDraft(project_id=project.id, draft_id=draft.id, position=1, repeats=1, current_pick=0)
             )
         await db_session.commit()
 
@@ -615,12 +605,9 @@ class TestBackfillProjectDrawdownPreviews:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Deleted",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         project.deleted_at = _ago(minutes=5)
         db_session.add(project)
@@ -920,12 +907,9 @@ class TestPruneInactiveProjectTiles:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Stale Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.commit()
@@ -966,12 +950,9 @@ class TestPruneInactiveProjectTiles:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Active Project",
             project_type="treadle",
             status="active",
-            current_pick=5,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.commit()
@@ -1004,12 +985,9 @@ class TestPruneInactiveProjectTiles:
 
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Deleted Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         project.deleted_at = _ago(minutes=5)
         db_session.add(project)
@@ -1394,10 +1372,8 @@ class TestExpireProjectSlugs:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Shared Project",
             project_type="weave",
-            total_picks=4,
             share_slug="test-slug-expired",
             share_visibility="public",
             share_expires_at=_ago(days=1),
@@ -1432,10 +1408,8 @@ class TestExpireProjectSlugs:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Future Shared",
             project_type="weave",
-            total_picks=4,
             share_slug="not-yet-expired",
             share_visibility="public",
             share_expires_at=future_time,
@@ -1499,12 +1473,9 @@ class TestPruneInactiveProjectTilesExceptionHandler:
         await db_session.flush()
         project = Project(
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Tile Project",
             project_type="treadle",
             status="active",
-            current_pick=1,
-            total_picks=10,
         )
         db_session.add(project)
         await db_session.commit()

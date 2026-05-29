@@ -20,6 +20,7 @@ import {
   FileDown,
   FolderOpen,
   Footprints,
+  GripVertical,
   Heart,
   LayoutDashboard,
   Layers,
@@ -73,6 +74,7 @@ export const AppIcons = {
   support: Heart,
 
   // ── UI chrome ─────────────────────────────────────────────────────────────
+  grip: GripVertical,
   edit: Pencil,
   mobileMenu: Menu,
   close: X,

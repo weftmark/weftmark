@@ -203,10 +203,8 @@ class TestPurgeStorage:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Photo Project",
             project_type="treadle",
-            total_picks=4,
         )
         db_session.add(project)
         await db_session.flush()
@@ -245,10 +243,8 @@ class TestPurgeStorage:
         project = Project(
             id=uuid.uuid4(),
             owner_id=test_user.id,
-            draft_id=draft.id,
             name="Tiles Project",
             project_type="treadle",
-            total_picks=4,
         )
         db_session.add(project)
         await db_session.commit()

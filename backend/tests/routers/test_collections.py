@@ -54,11 +54,9 @@ async def _insert_draft(db: AsyncSession, owner: User) -> Draft:
 async def _insert_project(db: AsyncSession, owner: User, draft: Draft) -> Project:
     p = Project(
         owner_id=owner.id,
-        draft_id=draft.id,
         name="Test Project",
         project_type="treadle",
         status="active",
-        total_picks=10,
     )
     db.add(p)
     await db.commit()

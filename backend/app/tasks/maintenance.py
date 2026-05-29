@@ -686,9 +686,12 @@ def backfill_project_drawdown_previews(self, limit: int = 50) -> dict:
     dispatched = 0
     try:
         with Session(engine) as db:
+            from app.models.project import ProjectDraft
+
             draft_ids = db.scalars(
-                select(Project.draft_id)
-                .join(Draft, Draft.id == Project.draft_id)
+                select(ProjectDraft.draft_id)
+                .join(Project, Project.id == ProjectDraft.project_id)
+                .join(Draft, Draft.id == ProjectDraft.draft_id)
                 .where(
                     Project.status == "active",
                     Project.deleted_at.is_(None),

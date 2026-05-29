@@ -87,6 +87,11 @@
     "clear": "Löschen",
     "loading": "Lädt …",
     "saving": "Wird gespeichert…",
+    "working": "Wird verarbeitet…",
+    "creating": "Wird erstellt…",
+    "adding": "Wird hinzugefügt…",
+    "optional": "optional",
+    "remove": "Entfernen",
     "error": "Etwas ist schiefgelaufen."
   },
   "settings": {
@@ -345,6 +350,38 @@
     "emptyState": "Noch keine Entwürfe. Lade eine WIF-Datei hoch, um loszulegen.",
     "noTagMatch": "Keine Entwürfe mit Tag \"{{tag}}\".",
     "archived": "Archiviert ({{count}})"
+  },
+  "createProject": {
+    "title": "Neues Projekt",
+    "name": "Name",
+    "namePlaceholder": "Frühlingsschals…",
+    "tags": "Tags",
+    "tagsPlaceholder": "Tag hinzufügen…",
+    "sequenceHint": {
+      "title": "Entwürfe werden auf der Projektseite hinzugefügt",
+      "body": "Nach dem Erstellen können Sie auf der Projektseite Entwürfe zur Sequenz hinzufügen."
+    },
+    "loom": "Webstuhl",
+    "noLoom": "Kein Webstuhl",
+    "loomConfig": "Webstuhlkonfiguration",
+    "loomConfigLatest": "Neueste ({{name}})",
+    "unsupportedLoomsHidden": "Einige Webstühle sind ausgeblendet (nicht unterstützter Typ).",
+    "warpPlan": "Kettenplan",
+    "finishedLength": "Fertiglänge / Stück",
+    "numItems": "Stücke",
+    "wasteBetween": "Abfall zwischen Stücken",
+    "warpWaste": "Webstuhlverlust",
+    "conflict": {
+      "title": "\"{{name}}\" verwendet diesen Webstuhl bereits",
+      "body": "Möchten Sie das vorhandene Projekt zuerst abschließen oder aufgeben?",
+      "complete": "Abschließen & neu erstellen",
+      "abandon": "Aufgeben & neu erstellen",
+      "clearLoom": "Webstuhl entfernen"
+    },
+    "error": {
+      "failed": "Projekt konnte nicht erstellt werden."
+    },
+    "submit": "Projekt erstellen"
   },
   "projectsPage": {
     "title": "Projekte",
@@ -635,7 +672,22 @@
     "updateColorFromYarn": "Farbe aus Garn übernehmen?",
     "updateColor": "Übernehmen",
     "keepColor": "Behalten",
-    "undo": "Rückgängig"
+    "undo": "Rückgängig",
+    "draftSequence": "Entwurfssequenz",
+    "noDrafts": "Noch keine Entwürfe hinzugefügt.",
+    "selectDraft": "Entwurf auswählen…",
+    "addDraft": "Hinzufügen",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "decreaseRepeats": "Wiederholungen verringern",
+    "increaseRepeats": "Wiederholungen erhöhen",
+    "entryPicks": "{{count}} Schüsse",
+    "multidraft": "{{count}} Entwürfe",
+    "noDraftPreview": "Kein Entwurf",
+    "beforeStarting": "Vor dem Start:",
+    "needsDrafts": "Mindestens einen Entwurf zur Sequenz hinzufügen",
+    "needsLoom": "Webstuhl zuweisen (Abschnitt Ketteneinrichtung)",
+    "couldNotStart": "Projekt konnte nicht gestartet werden."
   },
   "projectDetailPage": {
     "loading": "Laden…",

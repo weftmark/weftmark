@@ -27,27 +27,45 @@ class ProjectPhoto(Base, TimestampMixin):
     project: Mapped["Project"] = relationship("Project", back_populates="photos")
 
 
+class ProjectDraft(Base, TimestampMixin):
+    """One entry in a project's draft sequence — a draft × repeat count at a given position."""
+
+    __tablename__ = "project_drafts"
+    __table_args__ = (UniqueConstraint("project_id", "position", name="uq_project_draft_position"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    draft_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("drafts.id"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-based, dense
+    repeats: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    current_pick: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    project: Mapped["Project"] = relationship("Project", back_populates="draft_sequence")
+
+
 class Project(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "projects"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    draft_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("drafts.id"), nullable=False, index=True)
     loom_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("looms.id"), nullable=True)
     loom_version_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("loom_versions.id"), nullable=True
     )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    project_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "treadle" | "lift"
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    # project_type is derived from loom on assignment; null until a loom is assigned
+    project_type: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "treadle" | "lift"
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="created")
 
-    # Step tracking
-    current_pick: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Active sequence position (1-based, matches project_drafts.position)
+    current_position: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    # Item tracking (multiple physical items on one warp, e.g. 5 towels)
     current_item: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    total_picks: Mapped[int] = mapped_column(Integer, nullable=False)
-    # Stores last known pick per item: {"1": 3, "2": 7}. Updated on item transitions so
-    # jumping back to a previously visited item restores where the weaver left off.
+    # Stores last known pick per item per sequence position: {"1:1": 3, "2:1": 7}
     item_picks: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Warp plan inputs
@@ -71,6 +89,9 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     drawdown_preview_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     drawdown_svg_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    draft_sequence: Mapped[list["ProjectDraft"]] = relationship(
+        "ProjectDraft", back_populates="project", order_by="ProjectDraft.position", cascade="all, delete-orphan"
+    )
     steps: Mapped[list["ProjectStep"]] = relationship(
         "ProjectStep", back_populates="project", order_by="ProjectStep.created_at"
     )
@@ -91,6 +112,9 @@ class ProjectStep(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True
+    )
+    sequence_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("project_drafts.id"), nullable=True, index=True
     )
     event_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "advance" | "reverse"
     from_pick: Mapped[int] = mapped_column(Integer, nullable=False)

@@ -129,6 +129,21 @@ async def _backfill_all_previews() -> dict:
     return result
 
 
+async def _get_primary_draft(project_id: uuid.UUID, db):
+    """Return the Draft at sequence position 1, or None if absent or deleted."""
+    from sqlalchemy import select
+
+    from app.models.draft import Draft
+    from app.models.project import ProjectDraft
+
+    entry = await db.scalar(
+        select(ProjectDraft).where(ProjectDraft.project_id == project_id, ProjectDraft.position == 1)
+    )
+    if entry is None:
+        return None
+    return await db.get(Draft, entry.draft_id)
+
+
 @celery_app.task(
     bind=True,
     max_retries=2,
@@ -143,7 +158,6 @@ def generate_project_drawdown_preview(self: Task, project_id: str) -> None:
 
 async def _generate_project_preview(task: Task, project_id: uuid.UUID) -> None:
     from app.config import get_settings
-    from app.models.draft import Draft
     from app.models.project import Project
     from app.services import rendering, storage
 
@@ -156,7 +170,9 @@ async def _generate_project_preview(task: Task, project_id: uuid.UUID) -> None:
             project = await db.get(Project, project_id)
             if project is None or project.deleted_at is not None:
                 return
-            draft = await db.get(Draft, project.draft_id)
+
+            # Use the primary (position-1) sequence entry for the preview
+            draft = await _get_primary_draft(project_id, db)
             if draft is None or draft.deleted_at is not None:
                 return
 
@@ -220,7 +236,6 @@ async def _backfill_all_project_previews() -> dict:
     from sqlalchemy import select
 
     from app.config import get_settings
-    from app.models.draft import Draft
     from app.models.project import Project
     from app.services import storage
 
@@ -243,8 +258,8 @@ async def _backfill_all_project_previews() -> dict:
             ).all()
 
             for project in projects:
-                draft = await db.get(Draft, project.draft_id)
-                if not draft or draft.deleted_at is not None:
+                draft = await _get_primary_draft(project.id, db)
+                if draft is None or draft.deleted_at is not None:
                     skipped += 1
                     continue
                 if (
@@ -285,7 +300,6 @@ def generate_project_drawdown_svg(self: Task, project_id: str) -> None:
 
 async def _generate_project_svg(task: Task, project_id: uuid.UUID) -> None:
     from app.config import get_settings
-    from app.models.draft import Draft
     from app.models.project import Project
     from app.services import rendering, storage
 
@@ -298,7 +312,8 @@ async def _generate_project_svg(task: Task, project_id: uuid.UUID) -> None:
             project = await db.get(Project, project_id)
             if project is None or project.deleted_at is not None:
                 return
-            draft = await db.get(Draft, project.draft_id)
+
+            draft = await _get_primary_draft(project_id, db)
             if draft is None or draft.deleted_at is not None:
                 return
 
@@ -360,7 +375,6 @@ async def _backfill_all_project_svgs() -> dict:
     from sqlalchemy import select
 
     from app.config import get_settings
-    from app.models.draft import Draft
     from app.models.project import Project
     from app.services import storage
 
@@ -383,8 +397,8 @@ async def _backfill_all_project_svgs() -> dict:
             ).all()
 
             for project in projects:
-                draft = await db.get(Draft, project.draft_id)
-                if not draft or draft.deleted_at is not None:
+                draft = await _get_primary_draft(project.id, db)
+                if draft is None or draft.deleted_at is not None:
                     skipped += 1
                     continue
                 if (
