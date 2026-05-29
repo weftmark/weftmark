@@ -1,6 +1,13 @@
 import { useState, useRef } from "react";
 import { AppIcons } from "@/lib/icons";
 
+function tagColor(tag: string): { background: string; color: string } {
+  let h = 0;
+  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return { background: `hsl(${hue}, 60%, 88%)`, color: `hsl(${hue}, 55%, 30%)` };
+}
+
 interface Props {
   tags: string[];
   onChange: (tags: string[]) => void;
@@ -41,7 +48,8 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag…", disable
       {tags.map((tag) => (
         <span
           key={tag}
-          className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+          className="flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium"
+          style={tagColor(tag)}
         >
           {tag}
           {!disabled && (
