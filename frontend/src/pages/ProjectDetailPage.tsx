@@ -1494,13 +1494,15 @@ export function ProjectDetailPage() {
           >
             {t("projectDetailPage.viewDesign")}
           </button>
-          <Link
-            to={`/projects/${project.id}/warping-plan`}
-            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hidden sm:inline-flex items-center gap-1"
-            title={t("projectDetailPage.weavePlanTitle")}
-          >
-            {t("projectDetailPage.weavePlan")}
-          </Link>
+          {project.draft_count === 1 && (
+            <Link
+              to={`/projects/${project.id}/warping-plan`}
+              className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hidden sm:inline-flex items-center gap-1"
+              title={t("projectDetailPage.weavePlanTitle")}
+            >
+              {t("projectDetailPage.weavePlan")}
+            </Link>
+          )}
           {!isReadOnly && (
             <button
               onClick={() => setShareModalOpen(true)}

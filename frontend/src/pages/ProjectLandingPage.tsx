@@ -365,10 +365,11 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
 // Tie-up modal
 // ---------------------------------------------------------------------------
 
-function TieUpModal({ projectId, draftName, onClose }: {
-  projectId: string;
-  draftName: string;
-  onClose: () => void;
+function TieUpModal({ projectId, draftName, showWarpPlanLink, onClose }: {
+  readonly projectId: string;
+  readonly draftName: string;
+  readonly showWarpPlanLink: boolean;
+  readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
   const { data: plan, isLoading } = useQuery({
@@ -420,24 +421,26 @@ function TieUpModal({ projectId, draftName, onClose }: {
             </>
           )}
         </div>
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
-          <Link
-            to={`/projects/${projectId}/warping-plan`}
-            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-          >
-            {t("projectLandingPage.viewWeavePlan")}
-          </Link>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              window.open(`/projects/${projectId}/warping-plan`, "_blank");
-            }}
-          >
-            <AppIcons.print className="h-4 w-4 mr-1.5" />
-            {t("projectLandingPage.printSavePdf")}
-          </Button>
-        </div>
+        {showWarpPlanLink && (
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
+            <Link
+              to={`/projects/${projectId}/warping-plan`}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              {t("projectLandingPage.viewWeavePlan")}
+            </Link>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                window.open(`/projects/${projectId}/warping-plan`, "_blank");
+              }}
+            >
+              <AppIcons.print className="h-4 w-4 mr-1.5" />
+              {t("projectLandingPage.printSavePdf")}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1888,12 +1891,14 @@ export function ProjectLandingPage() {
               {t("projectLandingPage.markComplete")}
             </Button>
           )}
-          <Link
-            to={`/projects/${project.id}/warping-plan`}
-            className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
-          >
-            {t("projectLandingPage.weavePlan")}
-          </Link>
+          {project.draft_count === 1 && (
+            <Link
+              to={`/projects/${project.id}/warping-plan`}
+              className={cn(buttonVariants({ variant: "outline" }), "ml-auto")}
+            >
+              {t("projectLandingPage.weavePlan")}
+            </Link>
+          )}
           {project.status === "created" && (() => {
             const missingDrafts = project.draft_sequence.length === 0;
             const missingLoom = !project.loom_id;
@@ -1957,6 +1962,7 @@ export function ProjectLandingPage() {
         <TieUpModal
           projectId={project.id}
           draftName={project.draft_name ?? ""}
+          showWarpPlanLink={project.draft_count === 1}
           onClose={() => setTieupOpen(false)}
         />
       )}
