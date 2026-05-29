@@ -1782,8 +1782,8 @@ export function ProjectLandingPage() {
         />
       )}
 
-      {/* Warp setup — editable before weaving starts */}
-      {project.status === "created" && (
+      {/* Warp setup — editable before weaving starts, single-draft only */}
+      {project.status === "created" && project.draft_count === 1 && (
         <WarpSetupSection
           project={project}
           displayUnit={displayUnit}
