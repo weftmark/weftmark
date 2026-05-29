@@ -1247,26 +1247,20 @@ function ReedSelector({
 type SequenceRowBaseProps = {
   entry: ProjectDraftSchema;
   idx: number;
-  total: number;
   isEditable: boolean;
   projectId: string;
   onUpdated: (p: ProjectDetail) => void;
   onRemove: (id: string) => void;
-  onMove: (idx: number, dir: -1 | 1) => void;
-  reorderPending: boolean;
   removePending: boolean;
 };
 
 function SequenceRow({
   entry,
   idx,
-  total,
   isEditable,
   projectId,
   onUpdated,
   onRemove,
-  onMove,
-  reorderPending,
   removePending,
   setNodeRef,
   dragStyle,
@@ -1352,32 +1346,14 @@ function SequenceRow({
               title={t("projectLandingPage.increaseRepeats")}
             >+</button>
           </div>
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            <button
-              onClick={() => onMove(idx, -1)}
-              disabled={idx === 0 || reorderPending}
-              className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-              title={t("projectLandingPage.moveUp")}
-            >
-              <ChevronRightIcon className="h-3.5 w-3.5 -rotate-90" />
-            </button>
-            <button
-              onClick={() => onMove(idx, 1)}
-              disabled={idx === total - 1 || reorderPending}
-              className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
-              title={t("projectLandingPage.moveDown")}
-            >
-              <ChevronRightIcon className="h-3.5 w-3.5 rotate-90" />
-            </button>
-            <button
-              onClick={() => onRemove(entry.id)}
-              disabled={removePending}
-              className="p-0.5 text-destructive hover:text-destructive/70 ml-1"
-              title={t("common.remove")}
-            >
-              <CloseIcon className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <button
+            onClick={() => onRemove(entry.id)}
+            disabled={removePending}
+            className="p-1.5 ml-3 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
+            title={t("common.remove")}
+          >
+            <CloseIcon className="h-3.5 w-3.5" />
+          </button>
         </>
       )}
     </div>
@@ -1439,13 +1415,6 @@ function DraftSequenceSection({
   const seq: ProjectDraftSchema[] = project.draft_sequence ?? [];
   const activeEntry = activeId ? (seq.find((e) => e.id === activeId) ?? null) : null;
 
-  function moveEntry(idx: number, direction: -1 | 1) {
-    const ids = seq.map((e) => e.id);
-    const swapIdx = idx + direction;
-    [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
-    reorderMutation.mutate(ids);
-  }
-
   function handleDragEnd({ active, over }: DragEndEvent) {
     setActiveId(null);
     if (!over || active.id === over.id) return;
@@ -1455,13 +1424,11 @@ function DraftSequenceSection({
     reorderMutation.mutate(arrayMove(seq.map((e) => e.id), oldIndex, newIndex));
   }
 
-  const sharedRowProps: Omit<SequenceRowBaseProps, "entry" | "idx" | "total"> = {
+  const sharedRowProps: Omit<SequenceRowBaseProps, "entry" | "idx"> = {
     isEditable,
     projectId: project.id,
     onUpdated,
     onRemove: (id: string) => removeMutation.mutate(id),
-    onMove: moveEntry,
-    reorderPending: reorderMutation.isPending,
     removePending: removeMutation.isPending,
   };
 
@@ -1487,7 +1454,6 @@ function DraftSequenceSection({
                 key={entry.id}
                 entry={entry}
                 idx={idx}
-                total={seq.length}
                 {...sharedRowProps}
               />
             ))}
@@ -1499,7 +1465,6 @@ function DraftSequenceSection({
               <SequenceRow
                 entry={activeEntry}
                 idx={seq.findIndex((e) => e.id === activeEntry.id)}
-                total={seq.length}
                 {...sharedRowProps}
               />
             </div>
