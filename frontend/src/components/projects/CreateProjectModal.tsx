@@ -4,8 +4,6 @@ import { createProject, completeProject, abandonProject, listProjects, ApiError,
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 import { TagInput } from "@/components/ui/TagInput";
-import { useAuthContext } from "@/context/AuthContext";
-import { measurementSystemToUnit } from "@/lib/units";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -13,37 +11,13 @@ interface Props {
   readonly onClose: () => void;
 }
 
-const CM_PER_IN = 2.54;
-
-function convertLen(value: string, toUnit: "cm" | "in"): string {
-  const v = parseFloat(value);
-  if (!value || isNaN(v)) return value;
-  const result = toUnit === "in" ? v / CM_PER_IN : v * CM_PER_IN;
-  return parseFloat(result.toFixed(2)).toString();
-}
-
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
 export function CreateProjectModal({ onSuccess, onClose }: Props) {
   const { t } = useTranslation();
-  const { user } = useAuthContext();
   const [name, setName] = useState("");
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
-  const [finishedLength, setFinishedLength] = useState("");
-  const [numItems, setNumItems] = useState("1");
-  const [wasteBetween, setWasteBetween] = useState("");
-  const [warpWaste, setWarpWaste] = useState("");
-  const [lengthUnit, setLengthUnit] = useState<"cm" | "in">(
-    measurementSystemToUnit(user?.measurement_system ?? "metric")
-  );
-
-  const handleUnitChange = (newUnit: "cm" | "in") => {
-    setFinishedLength((v) => convertLen(v, newUnit));
-    setWasteBetween((v) => convertLen(v, newUnit));
-    setWarpWaste((v) => convertLen(v, newUnit));
-    setLengthUnit(newUnit);
-  };
   const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,17 +32,10 @@ export function CreateProjectModal({ onSuccess, onClose }: Props) {
 
   const selectedLoom = looms.find((l) => l.id === loomId);
   const loomVersions = loomDetail?.versions ?? [];
-  const selectedVersion = loomVersions.find((v) => v.id === loomVersionId);
-
-  const loomWasteInCurrentUnit = (allowance: string | null | undefined, wasteUnit: string): string => {
-    if (!allowance) return "";
-    return wasteUnit === lengthUnit ? allowance : convertLen(allowance, lengthUnit);
-  };
 
   const handleLoomChange = (newLoomId: string) => {
     setLoomId(newLoomId);
     setLoomVersionId("");
-    setWarpWaste("");
     setConflictProject(null);
     setError(null);
   };
@@ -77,11 +44,6 @@ export function CreateProjectModal({ onSuccess, onClose }: Props) {
     name: name.trim(),
     loom_id: loomId || undefined,
     loom_version_id: loomVersionId || undefined,
-    finished_length_per_item: finishedLength ? parseFloat(finishedLength) : undefined,
-    num_items: parseInt(numItems, 10) || 1,
-    waste_between_items: wasteBetween ? parseFloat(wasteBetween) : undefined,
-    warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
-    length_unit: lengthUnit,
     tags: tags.length ? tags : undefined,
   });
 
@@ -167,11 +129,7 @@ export function CreateProjectModal({ onSuccess, onClose }: Props) {
           {selectedLoom && loomVersions.length > 1 && (
             <div>
               <label className="mb-1 block text-sm font-medium">{t("createProject.loomConfig")}</label>
-              <select className={f} value={loomVersionId} onChange={(e) => {
-                setLoomVersionId(e.target.value);
-                const v = loomVersions.find((v) => v.id === e.target.value);
-                if (v?.warp_waste_allowance) setWarpWaste(loomWasteInCurrentUnit(v.warp_waste_allowance, v.warp_waste_unit));
-              }}>
+              <select className={f} value={loomVersionId} onChange={(e) => setLoomVersionId(e.target.value)}>
                 <option value="">{t("createProject.loomConfigLatest", { name: loomVersions.at(-1)?.name ?? `v${loomVersions.at(-1)?.version_number}` })}</option>
                 {loomVersions.map((v) => (
                   <option key={v.id} value={v.id}>{v.name ?? `Version ${v.version_number}`}</option>
@@ -179,58 +137,6 @@ export function CreateProjectModal({ onSuccess, onClose }: Props) {
               </select>
             </div>
           )}
-
-          <div className="border-t pt-4">
-            <p className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("createProject.warpPlan")}</p>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
-                <label className="mb-1 block text-sm font-medium">{t("createProject.finishedLength")}</label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={finishedLength}
-                    onChange={(e) => setFinishedLength(e.target.value)}
-                    placeholder="50"
-                  />
-                  <select
-                    className="rounded-md border border-input bg-background px-2 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={lengthUnit}
-                    onChange={(e) => handleUnitChange(e.target.value as "cm" | "in")}
-                  >
-                    <option value="cm">cm</option>
-                    <option value="in">in</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">{t("createProject.numItems")}</label>
-                <input type="number" min={1} step="1" className={f} value={numItems} onChange={(e) => setNumItems(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              {parseInt(numItems, 10) > 1 && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium">{t("createProject.wasteBetween")}</label>
-                  <div className="flex gap-1">
-                    <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={wasteBetween} onChange={(e) => setWasteBetween(e.target.value)} placeholder="5" />
-                    <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
-                  </div>
-                </div>
-              )}
-              <div className={parseInt(numItems, 10) <= 1 ? "col-span-2" : ""}>
-                <label className="mb-1 block text-sm font-medium">{t("createProject.warpWaste")}</label>
-                <div className="flex gap-1">
-                  <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={warpWaste || loomWasteInCurrentUnit(selectedVersion?.warp_waste_allowance ?? loomDetail?.versions.at(-1)?.warp_waste_allowance, selectedVersion?.warp_waste_unit ?? loomDetail?.versions.at(-1)?.warp_waste_unit ?? "cm")} onChange={(e) => setWarpWaste(e.target.value)} placeholder="30" />
-                  <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {conflictProject && (
             <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
