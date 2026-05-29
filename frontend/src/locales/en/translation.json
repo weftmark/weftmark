@@ -36,6 +36,7 @@
     "looms": "Loom database"
   },
   "superuserSections": {
+    "users": "Users",
     "eula": "EULA",
     "storage": "Storage",
     "cve": "CVE Scan",
@@ -87,7 +88,21 @@
     "clear": "Clear",
     "loading": "Loading…",
     "saving": "Saving…",
-    "error": "Something went wrong."
+    "error": "Something went wrong.",
+    "noResults": "No results found."
+  },
+  "roles": {
+    "admin": "Admin",
+    "superuser": "Superuser"
+  },
+  "impersonation": {
+    "banner": "Impersonating {{name}}",
+    "stopButton": "Stop impersonating",
+    "searchPlaceholder": "Search users…",
+    "impersonateButton": "Impersonate",
+    "confirmTitle": "Impersonate user?",
+    "confirmBody": "You are about to impersonate {{name}}. This action will be logged.",
+    "confirmButton": "Impersonate"
   },
   "settings": {
     "saved": "Saved",

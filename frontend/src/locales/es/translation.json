@@ -36,6 +36,7 @@
     "looms": "Base de telares"
   },
   "superuserSections": {
+    "users": "Usuarios",
     "eula": "CLUF",
     "storage": "Almacenamiento",
     "cve": "Escaneo CVE",
@@ -86,7 +87,21 @@
     "clear": "Borrar",
     "loading": "Cargando…",
     "saving": "Guardando…",
-    "error": "Algo salió mal."
+    "error": "Algo salió mal.",
+    "noResults": "No se encontraron resultados."
+  },
+  "roles": {
+    "admin": "Admin",
+    "superuser": "Superusuario"
+  },
+  "impersonation": {
+    "banner": "Suplantando a {{name}}",
+    "stopButton": "Dejar de suplantar",
+    "searchPlaceholder": "Buscar usuarios…",
+    "impersonateButton": "Suplantar",
+    "confirmTitle": "¿Suplantar usuario?",
+    "confirmBody": "Estás a punto de suplantar a {{name}}. Esta acción quedará registrada.",
+    "confirmButton": "Suplantar"
   },
   "settings": {
     "saved": "Guardado",

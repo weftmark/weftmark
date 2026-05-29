@@ -2,9 +2,14 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? "";
 
 type TokenGetter = () => Promise<string | null>;
 let _getToken: TokenGetter | null = null;
+let _impersonateUserId: string | null = null;
 
 export function configureApiClient(getter: TokenGetter) {
   _getToken = getter;
+}
+
+export function setImpersonationTarget(userId: string | null) {
+  _impersonateUserId = userId;
 }
 
 export async function getAuthToken(): Promise<string | null> {
@@ -35,6 +40,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (_getToken) {
     const token = await _getToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  if (_impersonateUserId) {
+    headers["X-Impersonate-User-ID"] = _impersonateUserId;
   }
 
   const response = await fetch(`${BASE_URL}${path}`, {
