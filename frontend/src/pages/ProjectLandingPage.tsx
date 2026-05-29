@@ -30,6 +30,24 @@ import { cn } from "@/lib/utils";
 import { ShareModal } from "@/components/projects/ShareModal";
 import { addProjectToCollection, removeProjectFromCollection } from "@/api/collections";
 import { AddToCollectionModal } from "@/components/collections/AddToCollectionModal";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // PascalCase aliases so they satisfy the react/jsx-pascal-case rule when used as JSX elements
 const CloseIcon = AppIcons.close;
@@ -1226,6 +1244,19 @@ function ReedSelector({
 // Draft sequence section
 // ---------------------------------------------------------------------------
 
+type SequenceRowBaseProps = {
+  entry: ProjectDraftSchema;
+  idx: number;
+  total: number;
+  isEditable: boolean;
+  projectId: string;
+  onUpdated: (p: ProjectDetail) => void;
+  onRemove: (id: string) => void;
+  onMove: (idx: number, dir: -1 | 1) => void;
+  reorderPending: boolean;
+  removePending: boolean;
+};
+
 function SequenceRow({
   entry,
   idx,
@@ -1237,29 +1268,19 @@ function SequenceRow({
   onMove,
   reorderPending,
   removePending,
+  setNodeRef,
+  dragStyle,
   isDragging,
-  isOver,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
-}: {
-  readonly entry: ProjectDraftSchema;
-  readonly idx: number;
-  readonly total: number;
-  readonly isEditable: boolean;
-  readonly projectId: string;
-  readonly onUpdated: (p: ProjectDetail) => void;
-  readonly onRemove: (id: string) => void;
-  readonly onMove: (idx: number, dir: -1 | 1) => void;
-  readonly reorderPending: boolean;
-  readonly removePending: boolean;
-  readonly isDragging: boolean;
-  readonly isOver: boolean;
-  readonly onDragStart: () => void;
-  readonly onDragOver: (e: React.DragEvent) => void;
-  readonly onDrop: () => void;
-  readonly onDragEnd: () => void;
+  gripListeners,
+  gripAttributes,
+}: SequenceRowBaseProps & {
+  readonly setNodeRef?: (el: HTMLElement | null) => void;
+  readonly dragStyle?: React.CSSProperties;
+  readonly isDragging?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly gripListeners?: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly gripAttributes?: Record<string, any>;
 }) {
   const { t } = useTranslation();
   const [repeats, setRepeats] = useState(String(entry.repeats));
@@ -1283,19 +1304,21 @@ function SequenceRow({
 
   return (
     <div
-      draggable={isEditable}
-      onDragStart={isEditable ? onDragStart : undefined}
-      onDragOver={isEditable ? onDragOver : undefined}
-      onDrop={isEditable ? onDrop : undefined}
-      onDragEnd={isEditable ? onDragEnd : undefined}
+      ref={setNodeRef}
+      style={dragStyle}
       className={cn(
-        "flex items-center gap-2 rounded-md border bg-card px-3 py-2 transition-colors",
-        isOver ? "border-ring bg-accent/20" : "border-border",
+        "flex items-center gap-2 rounded-md border bg-card px-3 py-2 transition-colors border-border",
         isDragging ? "opacity-40" : "opacity-100",
       )}
     >
       {isEditable && (
-        <GripIcon className="h-4 w-4 text-muted-foreground flex-shrink-0 cursor-grab active:cursor-grabbing" />
+        <span
+          className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none"
+          {...(gripAttributes ?? {})}
+          {...(gripListeners ?? {})}
+        >
+          <GripIcon className="h-4 w-4 text-muted-foreground" />
+        </span>
       )}
       <span className="text-xs font-mono text-muted-foreground w-5 flex-shrink-0">{idx + 1}.</span>
       <span className="flex-1 text-sm truncate">{entry.draft_name}</span>
@@ -1361,6 +1384,20 @@ function SequenceRow({
   );
 }
 
+function SortableSequenceRow(props: SequenceRowBaseProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.entry.id });
+  return (
+    <SequenceRow
+      {...props}
+      setNodeRef={setNodeRef}
+      dragStyle={{ transform: CSS.Transform.toString(transform), transition }}
+      isDragging={isDragging}
+      gripListeners={listeners}
+      gripAttributes={attributes}
+    />
+  );
+}
+
 function DraftSequenceSection({
   project,
   onUpdated,
@@ -1370,8 +1407,7 @@ function DraftSequenceSection({
 }) {
   const { t } = useTranslation();
   const [addDraftId, setAddDraftId] = useState("");
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const isEditable = project.status === "created";
 
   const { data: drafts = [] } = useQuery({
@@ -1395,7 +1431,13 @@ function DraftSequenceSection({
     onSuccess: onUpdated,
   });
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const seq: ProjectDraftSchema[] = project.draft_sequence ?? [];
+  const activeEntry = activeId ? (seq.find((e) => e.id === activeId) ?? null) : null;
 
   function moveEntry(idx: number, direction: -1 | 1) {
     const ids = seq.map((e) => e.id);
@@ -1404,19 +1446,24 @@ function DraftSequenceSection({
     reorderMutation.mutate(ids);
   }
 
-  function handleDrop(dropIdx: number) {
-    if (dragIndex === null || dragIndex === dropIdx) {
-      setDragIndex(null);
-      setOverIndex(null);
-      return;
-    }
-    const ids = seq.map((e) => e.id);
-    const [moved] = ids.splice(dragIndex, 1);
-    ids.splice(dropIdx, 0, moved);
-    reorderMutation.mutate(ids);
-    setDragIndex(null);
-    setOverIndex(null);
+  function handleDragEnd({ active, over }: DragEndEvent) {
+    setActiveId(null);
+    if (!over || active.id === over.id) return;
+    const oldIndex = seq.findIndex((e) => e.id === active.id);
+    const newIndex = seq.findIndex((e) => e.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    reorderMutation.mutate(arrayMove(seq.map((e) => e.id), oldIndex, newIndex));
   }
+
+  const sharedRowProps: Omit<SequenceRowBaseProps, "entry" | "idx" | "total"> = {
+    isEditable,
+    projectId: project.id,
+    onUpdated,
+    onRemove: (id: string) => removeMutation.mutate(id),
+    onMove: moveEntry,
+    reorderPending: reorderMutation.isPending,
+    removePending: removeMutation.isPending,
+  };
 
   return (
     <section className="space-y-2">
@@ -1426,27 +1473,39 @@ function DraftSequenceSection({
       {seq.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("projectLandingPage.noDrafts")}</p>
       )}
-      {seq.map((entry, idx) => (
-        <SequenceRow
-          key={entry.id}
-          entry={entry}
-          idx={idx}
-          total={seq.length}
-          isEditable={isEditable}
-          projectId={project.id}
-          onUpdated={onUpdated}
-          onRemove={(id) => removeMutation.mutate(id)}
-          onMove={moveEntry}
-          reorderPending={reorderMutation.isPending}
-          removePending={removeMutation.isPending}
-          isDragging={dragIndex === idx}
-          isOver={overIndex === idx && dragIndex !== idx}
-          onDragStart={() => setDragIndex(idx)}
-          onDragOver={(e) => { e.preventDefault(); setOverIndex(idx); }}
-          onDrop={() => handleDrop(idx)}
-          onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
-        />
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={(e) => setActiveId(String(e.active.id))}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveId(null)}
+      >
+        <SortableContext items={seq.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {seq.map((entry, idx) => (
+              <SortableSequenceRow
+                key={entry.id}
+                entry={entry}
+                idx={idx}
+                total={seq.length}
+                {...sharedRowProps}
+              />
+            ))}
+          </div>
+        </SortableContext>
+        <DragOverlay>
+          {activeEntry && (
+            <div className="shadow-xl">
+              <SequenceRow
+                entry={activeEntry}
+                idx={seq.findIndex((e) => e.id === activeEntry.id)}
+                total={seq.length}
+                {...sharedRowProps}
+              />
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
       {isEditable && (
         <div className="flex gap-2">
           <select
