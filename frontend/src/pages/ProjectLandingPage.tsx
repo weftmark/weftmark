@@ -1969,6 +1969,12 @@ export function ProjectLandingPage() {
         />
       )}
 
+      {/* Reed selector — always visible */}
+      <ReedSelector
+        project={project}
+        onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
+      />
+
       {/* Color palette */}
       {project.draft_wif_colors && project.draft_wif_colors.length > 0 && (
         <ColorPaletteSection
@@ -1993,12 +1999,6 @@ export function ProjectLandingPage() {
           onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
         />
       )}
-
-      {/* Reed selector — always visible */}
-      <ReedSelector
-        project={project}
-        onUpdated={(updated) => qc.setQueryData(["project", id], updated)}
-      />
 
       {/* Notes */}
       <NotesSection
