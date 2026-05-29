@@ -34,6 +34,7 @@ import { AddToCollectionModal } from "@/components/collections/AddToCollectionMo
 // PascalCase aliases so they satisfy the react/jsx-pascal-case rule when used as JSX elements
 const CloseIcon = AppIcons.close;
 const ChevronRightIcon = AppIcons.chevronRight;
+const GripIcon = AppIcons.grip;
 const YarnIcon = AppIcons.yarn;
 const ProjectActiveIcon = AppIcons.projectActive;
 
@@ -1236,6 +1237,12 @@ function SequenceRow({
   onMove,
   reorderPending,
   removePending,
+  isDragging,
+  isOver,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   readonly entry: ProjectDraftSchema;
   readonly idx: number;
@@ -1247,6 +1254,12 @@ function SequenceRow({
   readonly onMove: (idx: number, dir: -1 | 1) => void;
   readonly reorderPending: boolean;
   readonly removePending: boolean;
+  readonly isDragging: boolean;
+  readonly isOver: boolean;
+  readonly onDragStart: () => void;
+  readonly onDragOver: (e: React.DragEvent) => void;
+  readonly onDrop: () => void;
+  readonly onDragEnd: () => void;
 }) {
   const { t } = useTranslation();
   const [repeats, setRepeats] = useState(String(entry.repeats));
@@ -1269,7 +1282,21 @@ function SequenceRow({
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
+    <div
+      draggable={isEditable}
+      onDragStart={isEditable ? onDragStart : undefined}
+      onDragOver={isEditable ? onDragOver : undefined}
+      onDrop={isEditable ? onDrop : undefined}
+      onDragEnd={isEditable ? onDragEnd : undefined}
+      className={cn(
+        "flex items-center gap-2 rounded-md border bg-card px-3 py-2 transition-colors",
+        isOver ? "border-ring bg-accent/20" : "border-border",
+        isDragging ? "opacity-40" : "opacity-100",
+      )}
+    >
+      {isEditable && (
+        <GripIcon className="h-4 w-4 text-muted-foreground flex-shrink-0 cursor-grab active:cursor-grabbing" />
+      )}
       <span className="text-xs font-mono text-muted-foreground w-5 flex-shrink-0">{idx + 1}.</span>
       <span className="flex-1 text-sm truncate">{entry.draft_name}</span>
       <span className="text-xs text-muted-foreground flex-shrink-0">
@@ -1343,6 +1370,8 @@ function DraftSequenceSection({
 }) {
   const { t } = useTranslation();
   const [addDraftId, setAddDraftId] = useState("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
   const isEditable = project.status === "created";
 
   const { data: drafts = [] } = useQuery({
@@ -1375,6 +1404,20 @@ function DraftSequenceSection({
     reorderMutation.mutate(ids);
   }
 
+  function handleDrop(dropIdx: number) {
+    if (dragIndex === null || dragIndex === dropIdx) {
+      setDragIndex(null);
+      setOverIndex(null);
+      return;
+    }
+    const ids = seq.map((e) => e.id);
+    const [moved] = ids.splice(dragIndex, 1);
+    ids.splice(dropIdx, 0, moved);
+    reorderMutation.mutate(ids);
+    setDragIndex(null);
+    setOverIndex(null);
+  }
+
   return (
     <section className="space-y-2">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1396,6 +1439,12 @@ function DraftSequenceSection({
           onMove={moveEntry}
           reorderPending={reorderMutation.isPending}
           removePending={removeMutation.isPending}
+          isDragging={dragIndex === idx}
+          isOver={overIndex === idx && dragIndex !== idx}
+          onDragStart={() => setDragIndex(idx)}
+          onDragOver={(e) => { e.preventDefault(); setOverIndex(idx); }}
+          onDrop={() => handleDrop(idx)}
+          onDragEnd={() => { setDragIndex(null); setOverIndex(null); }}
         />
       ))}
       {isEditable && (
