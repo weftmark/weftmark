@@ -1437,6 +1437,27 @@ function DraftSequenceSection({
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         {t("projectLandingPage.draftSequence")}
       </h3>
+      {isEditable && (
+        <div className="flex gap-2">
+          <select
+            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={addDraftId}
+            onChange={(e) => setAddDraftId(e.target.value)}
+          >
+            <option value="">{t("projectLandingPage.selectDraft")}</option>
+            {drafts.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            onClick={() => addDraftId && addMutation.mutate(addDraftId)}
+            disabled={!addDraftId || addMutation.isPending}
+          >
+            {addMutation.isPending ? t("common.working") : t("projectLandingPage.addDraft")}
+          </Button>
+        </div>
+      )}
       {seq.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("projectLandingPage.noDrafts")}</p>
       )}
@@ -1471,27 +1492,6 @@ function DraftSequenceSection({
           )}
         </DragOverlay>
       </DndContext>
-      {isEditable && (
-        <div className="flex gap-2">
-          <select
-            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            value={addDraftId}
-            onChange={(e) => setAddDraftId(e.target.value)}
-          >
-            <option value="">{t("projectLandingPage.selectDraft")}</option>
-            {drafts.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-          <Button
-            size="sm"
-            onClick={() => addDraftId && addMutation.mutate(addDraftId)}
-            disabled={!addDraftId || addMutation.isPending}
-          >
-            {addMutation.isPending ? t("common.working") : t("projectLandingPage.addDraft")}
-          </Button>
-        </div>
-      )}
     </section>
   );
 }
