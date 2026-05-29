@@ -545,9 +545,6 @@ def _active_draft_kwargs(active_draft: Draft | None, active_entry: ProjectDraft 
             "draft_effective_num_treadles": None,
             "draft_effective_num_shafts": None,
             "draft_metadata_overrides": None,
-            "draft_wif_colors": None,
-            "draft_warp_color_stats": None,
-            "draft_weft_color_stats": None,
             "draft_wif_measurements": None,
             "draft_warp_threads": None,
             "draft_weft_threads": None,
@@ -563,15 +560,71 @@ def _active_draft_kwargs(active_draft: Draft | None, active_entry: ProjectDraft 
         "draft_effective_num_treadles": active_draft.effective_num_treadles,
         "draft_effective_num_shafts": active_draft.effective_num_shafts,
         "draft_metadata_overrides": active_draft.metadata_overrides,
-        "draft_wif_colors": active_draft.wif_colors,
-        "draft_warp_color_stats": active_draft.warp_color_stats,
-        "draft_weft_color_stats": active_draft.weft_color_stats,
         "draft_wif_measurements": active_draft.wif_measurements,
         "draft_warp_threads": active_draft.warp_threads,
         "draft_weft_threads": active_draft.weft_threads,
         "draft_warp_length_cm": active_draft.warp_length_cm,
         "draft_weaving_width_override_cm": active_draft.weaving_width_override_cm,
         "draft_epi_override": active_draft.epi_override,
+    }
+
+
+def _aggregate_sequence_colors(sequence: list[tuple[ProjectDraft, Draft]]) -> dict:
+    """Merge WIF colors and color stats from all drafts; for single-draft, pass through unchanged."""
+    if not sequence:
+        return {
+            "draft_wif_colors": None,
+            "draft_warp_color_stats": None,
+            "draft_weft_color_stats": None,
+        }
+
+    if len(sequence) == 1:
+        draft = sequence[0][1]
+        return {
+            "draft_wif_colors": draft.wif_colors,
+            "draft_warp_color_stats": draft.warp_color_stats,
+            "draft_weft_color_stats": draft.weft_color_stats,
+        }
+
+    seen: set[str] = set()
+    all_colors: list[dict] = []
+    warp_totals: dict[str, dict] = {}
+    weft_totals: dict[str, dict] = {}
+
+    for _entry, draft in sequence:
+        if draft.wif_colors:
+            for c in draft.wif_colors:
+                h = (c.get("hex") or "").lower()
+                if h and h not in seen:
+                    seen.add(h)
+                    all_colors.append({"index": len(all_colors) + 1, "hex": h})
+        if draft.warp_color_stats:
+            for s in draft.warp_color_stats:
+                h = (s.get("hex") or "").lower()
+                if h:
+                    if h not in warp_totals:
+                        warp_totals[h] = {"hex": h, "count": 0, "percentage": 0.0}
+                    warp_totals[h]["count"] += s.get("count", 0)
+        if draft.weft_color_stats:
+            for s in draft.weft_color_stats:
+                h = (s.get("hex") or "").lower()
+                if h:
+                    if h not in weft_totals:
+                        weft_totals[h] = {"hex": h, "count": 0, "percentage": 0.0}
+                    weft_totals[h]["count"] += s.get("count", 0)
+
+    total_warp = sum(v["count"] for v in warp_totals.values())
+    for v in warp_totals.values():
+        v["percentage"] = round(v["count"] / total_warp * 100, 1) if total_warp else 0.0
+
+    total_weft = sum(v["count"] for v in weft_totals.values())
+    for v in weft_totals.values():
+        v["percentage"] = round(v["count"] / total_weft * 100, 1) if total_weft else 0.0
+
+    return {
+        "draft_wif_colors": all_colors or None,
+        "draft_warp_color_stats": list(warp_totals.values()) or None,
+        "draft_weft_color_stats": list(weft_totals.values()) or None,
     }
 
 
@@ -649,6 +702,7 @@ def _to_detail(
         photos=[ProjectPhotoSchema.model_validate(p) for p in (photos or [])],
         yarn_colors=[_yarn_color_schema(yc) for yc in (yarn_colors or [])],
         **_active_draft_kwargs(active_draft, active_entry),
+        **_aggregate_sequence_colors(sequence),
         **_loom_kwargs(loom, loom_version),
     )
 
@@ -2285,18 +2339,12 @@ def _shared_draft_fields(active_draft: Draft | None, active_entry: ProjectDraft 
             "draft_num_shafts": None,
             "draft_num_treadles": None,
             "current_pick": 0,
-            "draft_wif_colors": None,
-            "draft_warp_color_stats": None,
-            "draft_weft_color_stats": None,
         }
     return {
         "draft_name": active_draft.name,
         "draft_num_shafts": active_draft.effective_num_shafts or active_draft.num_shafts,
         "draft_num_treadles": active_draft.effective_num_treadles or active_draft.num_treadles,
         "current_pick": active_entry.current_pick if active_entry else 0,
-        "draft_wif_colors": active_draft.wif_colors,
-        "draft_warp_color_stats": active_draft.warp_color_stats,
-        "draft_weft_color_stats": active_draft.weft_color_stats,
     }
 
 
@@ -2344,6 +2392,7 @@ async def get_shared_project(
         has_drawdown_svg=project.drawdown_svg_path is not None,
         color_replacements=project.color_replacements,
         **_shared_draft_fields(active[1] if active else None, active[0] if active else None),
+        **_aggregate_sequence_colors(sequence),
     )
 
 
