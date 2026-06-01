@@ -1633,7 +1633,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements/LICENSE"
   },
-  "weaving-site@0.201.0": {
+  "weaving-site@0.205.0": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",
