@@ -47,7 +47,7 @@
   {
     "License": "Apache-2.0 AND MIT",
     "Name": "aiohttp",
-    "Version": "3.13.5"
+    "Version": "3.14.0"
   },
   {
     "License": "Apache Software License",
@@ -57,7 +57,7 @@
   {
     "License": "MIT",
     "Name": "aiosmtplib",
-    "Version": "5.1.0"
+    "Version": "5.1.1"
   },
   {
     "License": "MIT",
@@ -117,12 +117,12 @@
   {
     "License": "Apache-2.0",
     "Name": "boto3",
-    "Version": "1.43.14"
+    "Version": "1.43.19"
   },
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.18"
+    "Version": "1.43.19"
   },
   {
     "License": "BSD-3-Clause",
@@ -527,7 +527,7 @@
   {
     "License": "Apache-2.0",
     "Name": "python-multipart",
-    "Version": "0.0.29"
+    "Version": "0.0.30"
   },
   {
     "License": "MIT",
@@ -577,12 +577,12 @@
   {
     "License": "Apache Software License",
     "Name": "s3transfer",
-    "Version": "0.17.1"
+    "Version": "0.18.0"
   },
   {
     "License": "MIT",
     "Name": "sentry-sdk",
-    "Version": "2.60.0"
+    "Version": "2.61.1"
   },
   {
     "License": "MIT License",
@@ -605,9 +605,9 @@
     "Version": "1.2.1"
   },
   {
-    "License": "MIT License",
+    "License": "MIT",
     "Name": "svix",
-    "Version": "1.94.0"
+    "Version": "1.95.1"
   },
   {
     "License": "MIT",

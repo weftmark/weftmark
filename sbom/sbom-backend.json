@@ -23,7 +23,7 @@
     },
     {
       "bom-ref": "requirements-L15",
-      "description": "requirements line 15: aiosmtplib==5.1.0",
+      "description": "requirements line 15: aiosmtplib==5.1.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -32,9 +32,9 @@
         }
       ],
       "name": "aiosmtplib",
-      "purl": "pkg:pypi/aiosmtplib@5.1.0",
+      "purl": "pkg:pypi/aiosmtplib@5.1.1",
       "type": "library",
-      "version": "5.1.0"
+      "version": "5.1.1"
     },
     {
       "bom-ref": "requirements-L4",
@@ -68,7 +68,7 @@
     },
     {
       "bom-ref": "requirements-L21",
-      "description": "requirements line 21: boto3==1.43.14",
+      "description": "requirements line 21: boto3==1.43.19",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -77,9 +77,9 @@
         }
       ],
       "name": "boto3",
-      "purl": "pkg:pypi/boto3@1.43.14",
+      "purl": "pkg:pypi/boto3@1.43.19",
       "type": "library",
-      "version": "1.43.14"
+      "version": "1.43.19"
     },
     {
       "bom-ref": "requirements-L9",
@@ -448,7 +448,7 @@
     },
     {
       "bom-ref": "requirements-L13",
-      "description": "requirements line 13: python-multipart==0.0.29",
+      "description": "requirements line 13: python-multipart==0.0.30",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -457,9 +457,9 @@
         }
       ],
       "name": "python-multipart",
-      "purl": "pkg:pypi/python-multipart@0.0.29",
+      "purl": "pkg:pypi/python-multipart@0.0.30",
       "type": "library",
-      "version": "0.0.29"
+      "version": "0.0.30"
     },
     {
       "bom-ref": "requirements-L12",
@@ -493,7 +493,7 @@
     },
     {
       "bom-ref": "requirements-L37",
-      "description": "requirements line 37: sentry-sdk[fastapi,celery]==2.60.0",
+      "description": "requirements line 37: sentry-sdk[fastapi,celery]==2.61.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -512,9 +512,9 @@
           "value": "fastapi"
         }
       ],
-      "purl": "pkg:pypi/sentry-sdk@2.60.0",
+      "purl": "pkg:pypi/sentry-sdk@2.61.1",
       "type": "library",
-      "version": "2.60.0"
+      "version": "2.61.1"
     },
     {
       "bom-ref": "requirements-L25",
@@ -553,7 +553,7 @@
     },
     {
       "bom-ref": "requirements-L20",
-      "description": "requirements line 20: svix==1.94.0",
+      "description": "requirements line 20: svix==1.95.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -562,9 +562,9 @@
         }
       ],
       "name": "svix",
-      "purl": "pkg:pypi/svix@1.94.0",
+      "purl": "pkg:pypi/svix@1.95.1",
       "type": "library",
-      "version": "1.94.0"
+      "version": "1.95.1"
     },
     {
       "bom-ref": "requirements-L2",
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-06-01T08:38:40.652510+00:00",
+    "timestamp": "2026-06-02T11:06:29.822168+00:00",
     "tools": {
       "components": [
         {
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:4d4ec80a-fc37-42da-878b-d1164c0ff97d",
+  "serialNumber": "urn:uuid:3dcfb729-c58d-4370-9dd5-9504e749c4ec",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
