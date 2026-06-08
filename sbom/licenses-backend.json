@@ -47,7 +47,7 @@
   {
     "License": "Apache-2.0 AND MIT",
     "Name": "aiohttp",
-    "Version": "3.14.0"
+    "Version": "3.14.1"
   },
   {
     "License": "Apache Software License",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.19"
+    "Version": "1.43.24"
   },
   {
     "License": "BSD-3-Clause",
@@ -187,7 +187,7 @@
   {
     "License": "Apache Software License",
     "Name": "cyclonedx-python-lib",
-    "Version": "11.7.0"
+    "Version": "11.9.0"
   },
   {
     "License": "Python Software Foundation License",
@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.29.0"
+    "Version": "3.29.1"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -262,7 +262,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "idna",
-    "Version": "3.17"
+    "Version": "3.18"
   },
   {
     "License": "ISC License (ISCL)",
