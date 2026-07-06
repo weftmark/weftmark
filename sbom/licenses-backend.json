@@ -42,7 +42,7 @@
   {
     "License": "Python Software Foundation License",
     "Name": "aiohappyeyeballs",
-    "Version": "2.6.2"
+    "Version": "2.7.1"
   },
   {
     "License": "Apache-2.0 AND MIT",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.36"
+    "Version": "1.43.40"
   },
   {
     "License": "BSD-3-Clause",
@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.29.4"
+    "Version": "3.29.5"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -572,7 +572,7 @@
   {
     "License": "MIT",
     "Name": "rpds-py",
-    "Version": "2026.5.1"
+    "Version": "2026.6.3"
   },
   {
     "License": "Apache Software License",
@@ -637,7 +637,7 @@
   {
     "License": "PSF-2.0",
     "Name": "typing_extensions",
-    "Version": "4.15.0"
+    "Version": "4.16.0"
   },
   {
     "License": "Apache-2.0",
