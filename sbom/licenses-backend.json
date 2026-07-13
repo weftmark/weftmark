@@ -82,7 +82,7 @@
   {
     "License": "MIT",
     "Name": "anyio",
-    "Version": "4.14.1"
+    "Version": "4.14.2"
   },
   {
     "License": "Apache Software License",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.40"
+    "Version": "1.43.46"
   },
   {
     "License": "BSD-3-Clause",
@@ -135,9 +135,9 @@
     "Version": "2026.6.17"
   },
   {
-    "License": "MIT",
+    "License": "MIT-0",
     "Name": "cffi",
-    "Version": "2.0.0"
+    "Version": "2.1.0"
   },
   {
     "License": "GNU Lesser General Public License v2 or later (LGPLv2+)",
@@ -147,7 +147,7 @@
   {
     "License": "MIT",
     "Name": "charset-normalizer",
-    "Version": "3.4.7"
+    "Version": "3.4.9"
   },
   {
     "License": "BSD-3-Clause",
@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.29.5"
+    "Version": "3.29.7"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -642,7 +642,7 @@
   {
     "License": "Apache-2.0",
     "Name": "tzdata",
-    "Version": "2026.2"
+    "Version": "2026.3"
   },
   {
     "License": "MIT",
@@ -687,7 +687,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "websockets",
-    "Version": "16.0"
+    "Version": "16.1"
   },
   {
     "License": "BSD-2-Clause",
