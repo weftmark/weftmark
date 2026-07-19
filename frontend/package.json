@@ -30,7 +30,9 @@
   "overrides": {
     "@codecov/vite-plugin": {
       "vite": "$vite"
-    }
+    },
+    "undici": "6.27.0",
+    "@babel/core": "7.29.7"
   },
   "devDependencies": {
     "@codecov/vite-plugin": "^2.0.1",
