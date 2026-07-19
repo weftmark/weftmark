@@ -115,6 +115,13 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
+    # Neon usage dashboard (optional, independent of POSTGRES_DSN — see #1015).
+    # Purely observational: reads Neon's Consumption Metrics API for cost visibility.
+    # Blank by default; leave unset if not using Neon or not interested in this view.
+    neon_api_key: str = ""
+    neon_org_id: str = ""
+    neon_project_id: str = ""  # optional — filters to a single project when set
+
     # Clerk authentication
     clerk_publishable_key: str = ""
     clerk_secret_key: str = ""

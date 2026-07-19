@@ -1630,6 +1630,11 @@ const GROUP_CONFIG: Record<string, { label: string; fields: string[]; testServic
     fields: ["otel_exporter_otlp_endpoint"],
     testService: null,
   },
+  neon: {
+    label: "Neon Usage Dashboard (optional)",
+    fields: ["neon_api_key", "neon_org_id", "neon_project_id"],
+    testService: "neon",
+  },
 };
 
 const CONFIG_SECRET_FIELDS = new Set([
@@ -1641,6 +1646,7 @@ const CONFIG_SECRET_FIELDS = new Set([
   "github_feedback_token",
   "clerk_webhook_secret",
   "maxmind_license_key",
+  "neon_api_key",
 ]);
 
 // These secrets show prefix + •••••••• when set and reveal as plain text when editing.
@@ -1675,6 +1681,9 @@ const CONFIG_FIELD_LABELS: Record<string, string> = {
   webhook_base_url: "Base URL",
   maxmind_license_key: "License Key",
   otel_exporter_otlp_endpoint: "OTLP Endpoint",
+  neon_api_key: "API Key",
+  neon_org_id: "Organization ID",
+  neon_project_id: "Project ID (optional filter)",
 };
 
 interface ConfigFieldRowProps {
