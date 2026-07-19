@@ -182,3 +182,95 @@ async def test_admin_route_uses_real_identity(
     )
     # superuser_user is also admin — real identity still resolves as admin
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_impersonation_invalid_uuid_header(
+    superuser_client: AsyncClient,
+):
+    """A malformed X-Impersonate-User-ID header is rejected with 400."""
+    r = await superuser_client.get(
+        "/api/yarn",
+        headers={"X-Impersonate-User-ID": "not-a-uuid"},
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_impersonation_target_not_found(
+    superuser_client: AsyncClient,
+):
+    """A header referencing a nonexistent user is rejected with 403."""
+    r = await superuser_client.get(
+        "/api/yarn",
+        headers={"X-Impersonate-User-ID": "00000000-0000-0000-0000-000000000000"},
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_impersonation_blocked_for_inactive_target(
+    superuser_client: AsyncClient,
+    db_session: AsyncSession,
+):
+    """Impersonating an inactive/banned user is blocked with 403."""
+    target = User(
+        email="inactive-target@example.com",
+        display_name="Inactive Target",
+        oidc_sub="inactive-target-oidc",
+        is_active=False,
+    )
+    db_session.add(target)
+    await db_session.commit()
+
+    r = await superuser_client.get(
+        "/api/yarn",
+        headers={"X-Impersonate-User-ID": str(target.id)},
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_impersonation_start_target_not_found(
+    superuser_client: AsyncClient,
+):
+    """POST /api/impersonation/start with a nonexistent target returns 404."""
+    r = await superuser_client.post(
+        "/api/impersonation/start",
+        json={"target_user_id": "00000000-0000-0000-0000-000000000000"},
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_impersonation_start_blocked_for_inactive_target(
+    superuser_client: AsyncClient,
+    db_session: AsyncSession,
+):
+    """POST /api/impersonation/start on an inactive/banned user returns 403."""
+    target = User(
+        email="inactive-start-target@example.com",
+        display_name="Inactive Start Target",
+        oidc_sub="inactive-start-target-oidc",
+        is_active=False,
+    )
+    db_session.add(target)
+    await db_session.commit()
+
+    r = await superuser_client.post(
+        "/api/impersonation/start",
+        json={"target_user_id": str(target.id)},
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_impersonation_end_target_not_found(
+    superuser_client: AsyncClient,
+):
+    """POST /api/impersonation/end with a nonexistent target returns 404."""
+    r = await superuser_client.post(
+        "/api/impersonation/end",
+        json={"target_user_id": "00000000-0000-0000-0000-000000000000", "duration_seconds": 0},
+    )
+    assert r.status_code == 404

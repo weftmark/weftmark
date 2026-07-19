@@ -14,6 +14,13 @@ from app.services.audit import write_audit_log
 router = APIRouter(prefix="/api/impersonation", tags=["impersonation"])
 
 
+async def _get_target_user(db: AsyncSession, target_user_id: uuid.UUID) -> User:
+    target = await db.scalar(select(User).where(User.id == target_user_id))
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return target
+
+
 class ImpersonationStartRequest(BaseModel):
     target_user_id: uuid.UUID
 
@@ -42,9 +49,7 @@ async def impersonation_start(
     db: AsyncSession = Depends(get_db),
 ) -> ImpersonationStartResponse:
     """Validate the impersonation target and write the audit log entry."""
-    target = await db.scalar(select(User).where(User.id == body.target_user_id))
-    if target is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    target = await _get_target_user(db, body.target_user_id)
 
     if target.is_superuser:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot impersonate a superuser")
@@ -72,9 +77,7 @@ async def impersonation_end(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Write the impersonation-ended audit log entry."""
-    target = await db.scalar(select(User).where(User.id == body.target_user_id))
-    if target is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    target = await _get_target_user(db, body.target_user_id)
 
     await write_audit_log(
         db,
