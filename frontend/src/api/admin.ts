@@ -536,6 +536,7 @@ export interface ConfigFieldState {
   secret_prefix: string | null;
   source: "env" | "file" | "default";
   env_var: string | null;
+  pending_restart: boolean;
 }
 
 export interface ConfigStateResponse {
@@ -544,9 +545,15 @@ export interface ConfigStateResponse {
   api_url: string;
 }
 
+export interface ConfigTestOption {
+  value: string;
+  label: string;
+}
+
 export interface ConfigTestResult {
   ok: boolean;
   message: string;
+  options?: ConfigTestOption[] | null;
 }
 
 export const getConfig = () => api.get<ConfigStateResponse>("/api/admin/config");

@@ -48,6 +48,7 @@ import {
   type CredentialExpiry,
   type CredentialResource,
   type ConfigTestResult,
+  type ConfigTestOption,
   type ConfigFieldState,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
@@ -1698,9 +1699,10 @@ interface ConfigFieldRowProps {
   editingFields: Set<string>;
   setEditingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
   apiUrl: string;
+  selectOptions?: ConfigTestOption[];
 }
 
-function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, drafts, setDrafts, editingFields, setEditingFields, apiUrl }: ConfigFieldRowProps) {
+function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, drafts, setDrafts, editingFields, setEditingFields, apiUrl, selectOptions }: ConfigFieldRowProps) {
   if ((field === "cf_access_client_id" || field === "cf_access_client_secret") && !isZeroTrustEnabled) return null;
 
   const isBoolean = BOOLEAN_FIELDS.has(field);
@@ -1758,8 +1760,14 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
           </span>
         )}
         {isSet && !fromEnv && !hasDraft && (
-          <span className="text-[10px] border rounded px-1 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 leading-4">
-            Set
+          <span
+            className={`text-[10px] border rounded px-1 leading-4 ${
+              state?.pending_restart
+                ? "text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+                : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+            }`}
+          >
+            {state?.pending_restart ? "Set — pending restart" : "Set"}
           </span>
         )}
         {field === "webhook_base_url" && !isSet && !hasDraft && (
@@ -1776,6 +1784,17 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
         >
           {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
         </div>
+      ) : selectOptions?.length ? (
+        <select
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+          value={inputValue}
+          onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
+        >
+          <option value="">— none (no filter) —</option>
+          {selectOptions.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
       ) : (
         <input
           type={inputType}
@@ -1945,6 +1964,7 @@ function ConfigSection() {
                     editingFields={editingFields}
                     setEditingFields={setEditingFields}
                     apiUrl={configState.api_url}
+                    selectOptions={field === "neon_project_id" ? (testResult?.options ?? undefined) : undefined}
                   />
                 ))}
               </div>

@@ -1640,6 +1640,7 @@ async def get_db_info(
 
 
 NEON_CONSUMPTION_URL = "https://console.neon.tech/api/v2/consumption_history/v2/projects"
+NEON_PROJECTS_URL = "https://console.neon.tech/api/v2/projects"
 
 
 async def _fetch_neon_usage(settings: Settings) -> NeonUsageResponse:
@@ -2863,6 +2864,7 @@ class ConfigFieldState(BaseModel):
     secret_prefix: str | None  # first 8 chars of the secret, for display
     source: str  # "env" | "file" | "default"
     env_var: str | None
+    pending_restart: bool = False  # file has a value the running process hasn't loaded yet
 
 
 class ConfigStateResponse(BaseModel):
@@ -2875,9 +2877,15 @@ class ConfigSaveRequest(BaseModel):
     values: dict[str, str | None]
 
 
+class ConfigTestOption(BaseModel):
+    value: str
+    label: str
+
+
 class ConfigTestResult(BaseModel):
     ok: bool
     message: str
+    options: list[ConfigTestOption] | None = None
 
 
 def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
@@ -2889,7 +2897,8 @@ def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
     result: list[ConfigFieldState] = []
     for field in MANAGED_FIELDS:
         env_var = env_sources.get(field)
-        raw_value: str = str(getattr(settings, field, "") or "")
+        live_value: str = str(getattr(settings, field, "") or "")
+        file_value: str = str(file_values.get(field, "") or "")
 
         if env_var:
             source = "env"
@@ -2897,6 +2906,13 @@ def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
             source = "file"
         else:
             source = "default"
+
+        # A file value the running process's Settings singleton hasn't picked up yet
+        # (constructed once at startup — see #1031) would otherwise render as blank
+        # immediately after save, reading as data loss rather than "saved, pending
+        # restart". Prefer the on-disk value whenever it differs from what's live.
+        pending_restart = source == "file" and file_value != live_value
+        raw_value = file_value if pending_restart else live_value
 
         is_secret = field in SECRET_FIELDS
         result.append(
@@ -2907,6 +2923,7 @@ def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
                 secret_prefix=raw_value[:8] if (is_secret and raw_value) else None,
                 source=source,
                 env_var=env_var,
+                pending_restart=pending_restart,
             )
         )
     return result
@@ -3042,17 +3059,28 @@ async def _test_neon(v: dict) -> ConfigTestResult:
             "org_id": org_id,
             "metrics": "compute_unit_seconds",
         }
+        headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
         async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                NEON_CONSUMPTION_URL,
-                params=params,
-                headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
-                timeout=10,
-            )
-        if resp.status_code == 200:
-            project_count = len(resp.json().get("projects", []))
-            return ConfigTestResult(ok=True, message=f"Connected — {project_count} project(s) visible to this org")
-        return ConfigTestResult(ok=False, message=f"Neon API returned {resp.status_code}: {resp.text[:120]}")
+            resp = await client.get(NEON_CONSUMPTION_URL, params=params, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return ConfigTestResult(ok=False, message=f"Neon API returned {resp.status_code}: {resp.text[:120]}")
+        project_count = len(resp.json().get("projects", []))
+
+        options: list[ConfigTestOption] | None = None
+        try:
+            async with httpx.AsyncClient() as client:
+                proj_resp = await client.get(NEON_PROJECTS_URL, params={"org_id": org_id}, headers=headers, timeout=10)
+            if proj_resp.status_code == 200:
+                options = [
+                    ConfigTestOption(value=p["id"], label=p.get("name") or p["id"])
+                    for p in proj_resp.json().get("projects", [])
+                ]
+        except Exception:
+            pass  # project listing is a nice-to-have — the connection test above already succeeded
+
+        return ConfigTestResult(
+            ok=True, message=f"Connected — {project_count} project(s) visible to this org", options=options
+        )
     except Exception as exc:
         return ConfigTestResult(ok=False, message=str(exc))
 
