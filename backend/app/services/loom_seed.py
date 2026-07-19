@@ -7,6 +7,7 @@ worker process without any sys.path manipulation.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -93,6 +94,11 @@ def locate_json() -> Path:
     raise FileNotFoundError("Could not find loom-data-master.json. Run from the repo root or inside the container.")
 
 
+def _read_json(path: Path) -> dict | list:
+    with path.open() as f:
+        return json.load(f)
+
+
 def _coerce_entry(raw: dict) -> dict:
     row: dict = {}
     for json_key, value in raw.items():
@@ -126,8 +132,7 @@ async def seed() -> dict:
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     json_path = locate_json()
-    with json_path.open() as f:
-        data = json.load(f)
+    data = await asyncio.to_thread(_read_json, json_path)
 
     if isinstance(data, dict) and "looms" in data:
         entries = data["looms"]
