@@ -86,7 +86,24 @@
 
 **Required: canonical-hostname redirect.** Both `weftmark.com` and `www.weftmark.com` resolve and are independently proxied — without a redirect collapsing one into the other, the backend's Clerk `azp` check (which only accepts the single configured `FRONTEND_URL`) rejects every request from whichever hostname isn't canonical, producing a confusing "stuck on pending approval" symptom with no obvious error (see #1011). A Cloudflare Redirect Rule handles this today: `www.weftmark.com` → `301 https://weftmark.com` (preserving path/query — use a dynamic expression, not a static target, or query strings get silently dropped).
 
-**If migrating to a different DNS/CDN provider:** this redirect must be re-created there. It's easy to forget since it's invisible when working and the failure mode doesn't look like a redirect problem. Re-verify with `curl -I https://www.weftmark.com` (expect `301`/`308` → the apex domain) as part of any provider cutover checklist.
+**If migrating to a different DNS/CDN provider:** this redirect must be re-created there. It's easy to forget since it's invisible when working and the failure mode doesn't look like a redirect problem. Re-verify with the checks below as part of any provider cutover checklist — don't assume a redirect rule works just because it was configured; the query-string case below is the one that actually shipped broken once already.
+
+```bash
+# 1. Bare redirect
+curl -I https://www.weftmark.com
+# expect: HTTP 301 (or 308), Location: https://weftmark.com/
+
+# 2. Path preserved
+curl -I https://www.weftmark.com/some/path
+# expect: Location: https://weftmark.com/some/path...
+
+# 3. Query string preserved correctly — a naive concat() expression in Cloudflare
+#    Redirect Rules drops the "?" separator; verify it doesn't regress
+curl -I "https://www.weftmark.com/some/path?foo=bar&baz=qux"
+# expect: Location: https://weftmark.com/some/path?foo=bar&baz=qux  (not "pathfoo=bar...")
+```
+
+If any of these fail: check the DNS/CDN provider's redirect/rule configuration for `www` → apex, and confirm the `www` DNS record is proxied (Cloudflare Redirect Rules only fire on proxied traffic).
 
 ---
 
