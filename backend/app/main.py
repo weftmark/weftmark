@@ -196,17 +196,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     start_time = datetime.now(timezone.utc)
 
     from app.routers.health import run_startup_probes, set_readiness, start_detailed_refresh, stop_detailed_refresh
+    from app.services.background_tasks import fire_and_forget
 
     readiness = await run_startup_probes()
     set_readiness(readiness)
     start_detailed_refresh(initial_status=readiness.status)
-    asyncio.create_task(_send_startup_alert(readiness))
-    asyncio.create_task(_write_startup_server_event(readiness, start_time))
+    fire_and_forget(_send_startup_alert(readiness))
+    fire_and_forget(_write_startup_server_event(readiness, start_time))
 
     from app.routers.yarn import refresh_yarn_properties_loop, warm_yarn_properties_cache
 
-    asyncio.create_task(warm_yarn_properties_cache())
-    asyncio.create_task(refresh_yarn_properties_loop())
+    fire_and_forget(warm_yarn_properties_cache())
+    fire_and_forget(refresh_yarn_properties_loop())
 
     if settings.config_encryption_key:
         from app.services.config_file import sync_env_to_file

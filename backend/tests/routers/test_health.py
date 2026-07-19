@@ -865,11 +865,11 @@ class TestDetailedRefreshLoop:
             with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
                 with patch("app.routers.health._refresh_superuser_email_cache", new_callable=AsyncMock):
                     with patch("app.routers.health._record_health_transition", new_callable=AsyncMock):
-                        with patch("app.routers.health.asyncio.create_task") as mock_create_task:
+                        with patch("app.routers.health.fire_and_forget") as mock_fire_and_forget:
                             with pytest.raises(asyncio.CancelledError):
                                 await _detailed_refresh_loop()
 
-        mock_create_task.assert_called_once()
+        mock_fire_and_forget.assert_called_once()
         assert health_module._last_alert_status == "error"
 
     async def test_recovery_triggers_alert_task(self):
@@ -883,11 +883,11 @@ class TestDetailedRefreshLoop:
             with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
                 with patch("app.routers.health._refresh_superuser_email_cache", new_callable=AsyncMock):
                     with patch("app.routers.health._record_health_transition", new_callable=AsyncMock):
-                        with patch("app.routers.health.asyncio.create_task") as mock_create_task:
+                        with patch("app.routers.health.fire_and_forget") as mock_fire_and_forget:
                             with pytest.raises(asyncio.CancelledError):
                                 await _detailed_refresh_loop()
 
-        mock_create_task.assert_called_once()
+        mock_fire_and_forget.assert_called_once()
 
     async def test_loop_catches_probe_exception_and_continues(self):
         from app.routers.health import _detailed_refresh_loop
