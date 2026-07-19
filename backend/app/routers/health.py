@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.celery_app import WORKER_VERSION_KEY
 from app.config import get_settings
+from app.services.background_tasks import fire_and_forget
 from app.version import VERSION
 
 if TYPE_CHECKING:
@@ -434,7 +435,7 @@ async def _detailed_refresh_loop() -> None:
                     is_recovery = True
 
                 if should_alert:
-                    asyncio.create_task(_dispatch_health_alert(confirmed_result, is_recovery))
+                    fire_and_forget(_dispatch_health_alert(confirmed_result, is_recovery))
                     _last_alert_status = new_status
                     _last_alert_at = now if new_status != "ok" else None
                 else:
