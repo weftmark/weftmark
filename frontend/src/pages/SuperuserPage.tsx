@@ -1690,16 +1690,16 @@ const CONFIG_FIELD_LABELS: Record<string, string> = {
 };
 
 interface ConfigFieldRowProps {
-  field: string;
-  groupFieldCount: number;
-  state: ConfigFieldState | undefined;
-  isZeroTrustEnabled: boolean;
-  drafts: Record<string, string>;
-  setDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  editingFields: Set<string>;
-  setEditingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
-  apiUrl: string;
-  selectOptions?: ConfigTestOption[];
+  readonly field: string;
+  readonly groupFieldCount: number;
+  readonly state: ConfigFieldState | undefined;
+  readonly isZeroTrustEnabled: boolean;
+  readonly drafts: Record<string, string>;
+  readonly setDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  readonly editingFields: Set<string>;
+  readonly setEditingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
+  readonly apiUrl: string;
+  readonly selectOptions?: ConfigTestOption[];
 }
 
 function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, drafts, setDrafts, editingFields, setEditingFields, apiUrl, selectOptions }: ConfigFieldRowProps) {
@@ -1750,6 +1750,41 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
   if (isSecret && isSet) placeholder = "Enter new value to replace";
   else if (field === "webhook_base_url" && !isSet) placeholder = apiUrl || "http://localhost:8000";
 
+  const inputCls = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono";
+  let fieldControl: React.ReactNode;
+  if (showMasked) {
+    fieldControl = (
+      <div
+        className={`${inputCls} text-muted-foreground cursor-text select-none`}
+        onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
+        title="Click to change"
+      >
+        {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
+      </div>
+    );
+  } else if (selectOptions?.length) {
+    fieldControl = (
+      <select className={inputCls} value={inputValue} onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}>
+        <option value="">— none (no filter) —</option>
+        {selectOptions.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    );
+  } else {
+    fieldControl = (
+      <input
+        type={inputType}
+        className={inputCls}
+        value={inputValue}
+        placeholder={placeholder}
+        onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
+        autoComplete="off"
+        autoFocus={isPrefixMasked && isEditing && !hasDraft}
+      />
+    );
+  }
+
   return (
     <div className={isFullWidth ? "sm:col-span-2" : ""}>
       <div className="flex items-center gap-1.5 mb-1">
@@ -1776,36 +1811,7 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
           </span>
         )}
       </div>
-      {showMasked ? (
-        <div
-          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono text-muted-foreground cursor-text select-none"
-          onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
-          title="Click to change"
-        >
-          {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
-        </div>
-      ) : selectOptions?.length ? (
-        <select
-          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-          value={inputValue}
-          onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
-        >
-          <option value="">— none (no filter) —</option>
-          {selectOptions.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={inputType}
-          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-          value={inputValue}
-          placeholder={placeholder}
-          onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
-          autoComplete="off"
-          autoFocus={isPrefixMasked && isEditing && !hasDraft}
-        />
-      )}
+      {fieldControl}
       {fromEnv && hasDraft && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
           ENV var active — file value won't take effect until removed from .env

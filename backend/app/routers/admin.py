@@ -6,7 +6,7 @@ import platform
 import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 import psutil
@@ -2888,6 +2888,26 @@ class ConfigTestResult(BaseModel):
     options: list[ConfigTestOption] | None = None
 
 
+def _resolve_field_source(field: str, env_var: str | None, file_values: dict[str, Any]) -> str:
+    if env_var:
+        return "env"
+    if field in file_values:
+        return "file"
+    return "default"
+
+
+def _resolve_field_value(source: str, live_value: str, file_value: str) -> tuple[str, bool]:
+    """Return (raw_value, pending_restart) for one field.
+
+    A file value the running process's Settings singleton hasn't picked up yet
+    (constructed once at startup — see #1031) would otherwise render as blank
+    immediately after save, reading as data loss rather than "saved, pending
+    restart". Prefer the on-disk value whenever it differs from what's live.
+    """
+    pending_restart = source == "file" and file_value != live_value
+    return (file_value if pending_restart else live_value), pending_restart
+
+
 def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
     """Return current effective value and source for every managed field."""
     encryption_key = settings.config_encryption_key
@@ -2900,19 +2920,8 @@ def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
         live_value: str = str(getattr(settings, field, "") or "")
         file_value: str = str(file_values.get(field, "") or "")
 
-        if env_var:
-            source = "env"
-        elif field in file_values:
-            source = "file"
-        else:
-            source = "default"
-
-        # A file value the running process's Settings singleton hasn't picked up yet
-        # (constructed once at startup — see #1031) would otherwise render as blank
-        # immediately after save, reading as data loss rather than "saved, pending
-        # restart". Prefer the on-disk value whenever it differs from what's live.
-        pending_restart = source == "file" and file_value != live_value
-        raw_value = file_value if pending_restart else live_value
+        source = _resolve_field_source(field, env_var, file_values)
+        raw_value, pending_restart = _resolve_field_value(source, live_value, file_value)
 
         is_secret = field in SECRET_FIELDS
         result.append(
