@@ -44,6 +44,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag…", disable
     <div
       className="flex flex-wrap gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 cursor-text min-h-[36px]"
       onClick={() => inputRef.current?.focus()}
+      onKeyDown={(e) => e.key === "Enter" && inputRef.current?.focus()}
     >
       {tags.map((tag) => (
         <span

@@ -841,7 +841,9 @@ function TaskHistoryRow({ item, onRevoke }: { item: TaskHistoryItem; onRevoke: (
     <>
       <tr
         className={`border-t hover:bg-muted/30 text-xs ${item.error ? "cursor-pointer" : ""}`}
+        tabIndex={item.error ? 0 : undefined}
         onClick={() => item.error && setExpanded((v) => !v)}
+        onKeyDown={(e) => { if (item.error && e.key === "Enter") setExpanded((v) => !v); }}
       >
         <td className="px-3 py-2 font-mono text-muted-foreground whitespace-nowrap">{fmtTime(item.queued_at)}</td>
         <td className="px-3 py-2 font-mono" title={item.name}>{shortName(item.name)}</td>

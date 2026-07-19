@@ -1713,8 +1713,16 @@ function FeedbackTab() {
 
       {/* Detail modal */}
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetail(null)}>
-          <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setDetail(null)}
+          onKeyDown={(e) => e.key === "Escape" && setDetail(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setDetail(null); }}
+          >
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">
                 {SUBMISSION_TYPE_LABELS[detail.submission_type as SubmissionType] ?? detail.submission_type}
@@ -1933,7 +1941,9 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
     <>
       <tr
         className={`hover:bg-muted/30 ${hasDetails ? "cursor-pointer" : ""}`}
+        tabIndex={hasDetails ? 0 : undefined}
         onClick={() => hasDetails && setExpanded((v) => !v)}
+        onKeyDown={(e) => { if (hasDetails && e.key === "Enter") setExpanded((v) => !v); }}
       >
         <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatAuditTime(entry.created_at)}</td>
         <td className="px-3 py-2">

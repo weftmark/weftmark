@@ -842,6 +842,7 @@ function PhotoGrid({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightbox(null)}
+          onKeyDown={(e) => e.key === "Escape" && setLightbox(null)}
         >
           <AuthedImage
             src={projectPhotoUrl(projectId, lightbox)}
@@ -2104,6 +2105,7 @@ export function ProjectDetailPage() {
           <div
             className="fixed inset-0 z-40 bg-black/40"
             onClick={() => setSettingsOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setSettingsOpen(false)}
           />
           <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">

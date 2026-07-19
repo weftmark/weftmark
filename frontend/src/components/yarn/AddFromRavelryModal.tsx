@@ -281,10 +281,15 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
   const clearBtnCls = "absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground leading-none p-0.5";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-16 px-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-16 px-4"
+      onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
       <div
         className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
