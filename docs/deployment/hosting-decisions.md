@@ -84,6 +84,10 @@
 
 **Estimated cost:** $0/mo (free plan covers DNS, CDN, and DDoS protection); ~$11/yr for domain renewal.
 
+**Required: canonical-hostname redirect.** Both `weftmark.com` and `www.weftmark.com` resolve and are independently proxied — without a redirect collapsing one into the other, the backend's Clerk `azp` check (which only accepts the single configured `FRONTEND_URL`) rejects every request from whichever hostname isn't canonical, producing a confusing "stuck on pending approval" symptom with no obvious error (see #1011). A Cloudflare Redirect Rule handles this today: `www.weftmark.com` → `301 https://weftmark.com` (preserving path/query — use a dynamic expression, not a static target, or query strings get silently dropped).
+
+**If migrating to a different DNS/CDN provider:** this redirect must be re-created there. It's easy to forget since it's invisible when working and the failure mode doesn't look like a redirect problem. Re-verify with `curl -I https://www.weftmark.com` (expect `301`/`308` → the apex domain) as part of any provider cutover checklist.
+
 ---
 
 ## 5. Container Registry — GitHub Container Registry (ghcr.io)
