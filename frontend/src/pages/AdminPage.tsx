@@ -1715,7 +1715,6 @@ function FeedbackTab() {
       {detail && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="presentation"
           onClick={() => setDetail(null)}
           onKeyDown={(e) => e.key === "Escape" && setDetail(null)}
         >

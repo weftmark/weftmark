@@ -283,7 +283,6 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-16 px-4"
-      role="presentation"
       onClick={onClose}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >

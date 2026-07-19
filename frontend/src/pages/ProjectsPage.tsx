@@ -151,7 +151,6 @@ function ProjectCard({ project, onAssign }: {
       {showPreview && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          role="presentation"
           onClick={() => setShowPreview(false)}
           onKeyDown={(e) => e.key === "Escape" && setShowPreview(false)}
         >

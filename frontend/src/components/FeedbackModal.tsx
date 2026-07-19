@@ -106,7 +106,6 @@ export function FeedbackModal({ onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
-      role="presentation"
       onClick={onClose}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >

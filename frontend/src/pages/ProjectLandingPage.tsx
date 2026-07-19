@@ -294,7 +294,6 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
     <div
       ref={backdropRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-      role="presentation"
       onClick={onClose}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
@@ -381,7 +380,6 @@ function TieUpModal({ projectId, draftName, onClose }: {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      role="presentation"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >

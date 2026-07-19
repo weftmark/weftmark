@@ -11,7 +11,6 @@ function DevJsonModal({ data, onClose }: { data: unknown; onClose: () => void })
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      role="presentation"
       onClick={onClose}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
@@ -125,7 +124,6 @@ function EditColorwayModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
       onClick={onClose}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >

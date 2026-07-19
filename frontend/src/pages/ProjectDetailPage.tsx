@@ -841,7 +841,6 @@ function PhotoGrid({
       {lightbox && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          role="presentation"
           onClick={() => setLightbox(null)}
           onKeyDown={(e) => e.key === "Escape" && setLightbox(null)}
         >
@@ -2105,7 +2104,6 @@ export function ProjectDetailPage() {
         <>
           <div
             className="fixed inset-0 z-40 bg-black/40"
-            role="presentation"
             onClick={() => setSettingsOpen(false)}
             onKeyDown={(e) => e.key === "Escape" && setSettingsOpen(false)}
           />

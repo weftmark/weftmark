@@ -80,7 +80,6 @@ export function ZoomablePreviewModal({ src, title, onClose, gateConfirmed = true
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col bg-black/60"
-      role="presentation"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
