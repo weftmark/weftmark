@@ -117,7 +117,7 @@
   {
     "License": "Apache-2.0",
     "Name": "boto3",
-    "Version": "1.43.46"
+    "Version": "1.43.51"
   },
   {
     "License": "Apache-2.0",
@@ -207,7 +207,7 @@
   {
     "License": "MIT",
     "Name": "fastapi",
-    "Version": "0.139.0"
+    "Version": "0.139.2"
   },
   {
     "License": "MIT",
@@ -227,7 +227,7 @@
   {
     "License": "Apache-2.0",
     "Name": "geoip2",
-    "Version": "5.2.0"
+    "Version": "5.3.0"
   },
   {
     "License": "Apache Software License",
@@ -342,62 +342,62 @@
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-api",
-    "Version": "1.43.0"
+    "Version": "1.44.0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-exporter-otlp-proto-common",
-    "Version": "1.43.0"
+    "Version": "1.44.0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-exporter-otlp-proto-http",
-    "Version": "1.43.0"
+    "Version": "1.44.0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation-asgi",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation-botocore",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation-celery",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation-fastapi",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation-httpx",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation-logging",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation-redis",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-instrumentation-sqlalchemy",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
@@ -407,22 +407,22 @@
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-proto",
-    "Version": "1.43.0"
+    "Version": "1.44.0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-sdk",
-    "Version": "1.43.0"
+    "Version": "1.44.0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-semantic-conventions",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "Apache-2.0",
     "Name": "opentelemetry-util-http",
-    "Version": "0.64b0"
+    "Version": "0.65b0"
   },
   {
     "License": "MIT License",
@@ -582,7 +582,7 @@
   {
     "License": "MIT",
     "Name": "sentry-sdk",
-    "Version": "2.64.0"
+    "Version": "2.66.0"
   },
   {
     "License": "MIT License",
@@ -607,7 +607,7 @@
   {
     "License": "MIT",
     "Name": "svix",
-    "Version": "1.96.1"
+    "Version": "1.98.0"
   },
   {
     "License": "MIT",
