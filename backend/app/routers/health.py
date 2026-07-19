@@ -16,7 +16,7 @@ from app.version import VERSION
 router = APIRouter(prefix="/api", tags=["health"])
 log = logging.getLogger(__name__)
 
-DETAILED_REFRESH_INTERVAL_S = 1800  # 30 minutes steady-state poll
+DETAILED_REFRESH_INTERVAL_S = 3600  # 1 hour steady-state poll
 
 
 class ReadinessService(BaseModel):
