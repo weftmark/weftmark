@@ -104,10 +104,16 @@ export function FeedbackModal({ onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
+      role="presentation"
+      onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
       <div
         className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         {/* Header */}
         <div className="flex items-center justify-between">

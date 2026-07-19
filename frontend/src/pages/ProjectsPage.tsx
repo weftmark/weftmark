@@ -151,9 +151,15 @@ function ProjectCard({ project, onAssign }: {
       {showPreview && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="presentation"
           onClick={() => setShowPreview(false)}
+          onKeyDown={(e) => e.key === "Escape" && setShowPreview(false)}
         >
-          <div className="relative max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative max-w-xl w-full"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setShowPreview(false); }}
+          >
             <button
               onClick={() => setShowPreview(false)}
               className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"

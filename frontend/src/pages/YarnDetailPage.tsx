@@ -11,11 +11,14 @@ function DevJsonModal({ data, onClose }: { data: unknown; onClose: () => void })
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      role="presentation"
       onClick={onClose}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
       <div
         className="relative bg-card border border-border rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto m-4"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-xs font-mono font-semibold text-accent">DEV — raw data</span>

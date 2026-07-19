@@ -99,11 +99,14 @@ export function CatalogRequestButton({ loom }: Props) {
       {showModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
           onClick={() => { if (!mutation.isPending) setShowModal(false); }}
+          onKeyDown={(e) => { if (e.key === "Escape" && !mutation.isPending) setShowModal(false); }}
         >
           <div
             className="w-full max-w-md rounded-lg border border-border bg-background shadow-xl p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape" && !mutation.isPending) setShowModal(false); }}
           >
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">Request catalog addition</h2>
