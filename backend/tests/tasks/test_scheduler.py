@@ -468,7 +468,7 @@ class TestRunScheduledTasks:
 
         task_obj = MagicMock()
         task_obj.name = "heartbeat"
-        task_obj.cron = "* * * * *"  # every minute — always in the 70-sec window
+        task_obj.cron = "* * * * *"  # every minute — always in the lookback window
 
         dispatch_fn = MagicMock()
         create_engine, Session_cls, engine, _db = _mock_sync_session([task_obj])
