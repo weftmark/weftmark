@@ -26,6 +26,7 @@ SECRET_FIELDS = frozenset(
         "github_feedback_token",
         "clerk_webhook_secret",
         "maxmind_license_key",
+        "neon_api_key",
     }
 )
 
@@ -66,6 +67,10 @@ MANAGED_FIELDS: list[str] = [
     "maxmind_license_key",
     # Observability
     "otel_exporter_otlp_endpoint",
+    # Neon usage dashboard (optional — independent of POSTGRES_DSN, see #1015)
+    "neon_api_key",
+    "neon_org_id",
+    "neon_project_id",
 ]
 
 

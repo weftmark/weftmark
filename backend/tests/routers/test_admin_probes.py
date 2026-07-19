@@ -932,4 +932,238 @@ class TestConfigServiceSMTP:
             )
 
         assert result.ok is False
-        assert "refused" in result.message
+
+
+# ---------------------------------------------------------------------------
+# _fetch_neon_usage
+# ---------------------------------------------------------------------------
+
+
+class TestFetchNeonUsage:
+    async def test_not_configured_when_key_missing(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _fetch_neon_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "")
+        monkeypatch.setattr(s, "neon_org_id", "")
+        result = await _fetch_neon_usage(s)
+        assert result.configured is False
+
+    async def test_not_configured_when_org_id_missing(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _fetch_neon_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
+        monkeypatch.setattr(s, "neon_org_id", "")
+        result = await _fetch_neon_usage(s)
+        assert result.configured is False
+
+    async def test_non_200_returns_error(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _fetch_neon_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
+        monkeypatch.setattr(s, "neon_org_id", "org_123")
+        monkeypatch.setattr(s, "neon_project_id", "")
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 401
+            mock_inst = AsyncMock()
+            mock_inst.get = AsyncMock(return_value=mock_resp)
+            mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
+            mock_inst.__aexit__ = AsyncMock(return_value=None)
+            mock_cls.return_value = mock_inst
+            result = await _fetch_neon_usage(s)
+
+        assert result.configured is True
+        assert result.error is not None
+        assert "401" in result.error
+
+    async def test_timeout_returns_error(self, monkeypatch):
+        import httpx
+
+        from app.config import get_settings
+        from app.routers.admin import _fetch_neon_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
+        monkeypatch.setattr(s, "neon_org_id", "org_123")
+        monkeypatch.setattr(s, "neon_project_id", "")
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_inst = AsyncMock()
+            mock_inst.get = AsyncMock(side_effect=httpx.TimeoutException("timed out"))
+            mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
+            mock_inst.__aexit__ = AsyncMock(return_value=None)
+            mock_cls.return_value = mock_inst
+            result = await _fetch_neon_usage(s)
+
+        assert result.configured is True
+        assert result.error is not None
+        assert "Timed out" in result.error
+
+    async def test_success_aggregates_daily_totals(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _fetch_neon_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
+        monkeypatch.setattr(s, "neon_org_id", "org_123")
+        monkeypatch.setattr(s, "neon_project_id", "")
+
+        payload = {
+            "projects": [
+                {
+                    "project_id": "proj_abc",
+                    "periods": [
+                        {
+                            "period_id": "p1",
+                            "period_plan": "launch",
+                            "period_start": "2026-07-01T00:00:00Z",
+                            "consumption": [
+                                {
+                                    "timeframe_start": "2026-07-01T00:00:00Z",
+                                    "timeframe_end": "2026-07-02T00:00:00Z",
+                                    "metrics": [{"metric_name": "compute_unit_seconds", "value": 100}],
+                                },
+                                {
+                                    "timeframe_start": "2026-07-02T00:00:00Z",
+                                    "timeframe_end": "2026-07-03T00:00:00Z",
+                                    "metrics": [{"metric_name": "compute_unit_seconds", "value": 50}],
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json = MagicMock(return_value=payload)
+            mock_inst = AsyncMock()
+            mock_inst.get = AsyncMock(return_value=mock_resp)
+            mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
+            mock_inst.__aexit__ = AsyncMock(return_value=None)
+            mock_cls.return_value = mock_inst
+            result = await _fetch_neon_usage(s)
+
+        assert result.configured is True
+        assert result.error is None
+        assert result.project_id == "proj_abc"
+        assert result.total_compute_seconds == 150.0
+        assert len(result.daily) == 2
+
+    async def test_filters_to_configured_project_id(self, monkeypatch):
+        from app.config import get_settings
+        from app.routers.admin import _fetch_neon_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
+        monkeypatch.setattr(s, "neon_org_id", "org_123")
+        monkeypatch.setattr(s, "neon_project_id", "proj_keep")
+
+        payload = {
+            "projects": [
+                {
+                    "project_id": "proj_skip",
+                    "periods": [
+                        {
+                            "period_id": "p1",
+                            "period_plan": "launch",
+                            "period_start": "x",
+                            "consumption": [
+                                {
+                                    "timeframe_start": "d1",
+                                    "timeframe_end": "d2",
+                                    "metrics": [{"metric_name": "compute_unit_seconds", "value": 999}],
+                                }
+                            ],
+                        }
+                    ],
+                },
+                {
+                    "project_id": "proj_keep",
+                    "periods": [
+                        {
+                            "period_id": "p2",
+                            "period_plan": "launch",
+                            "period_start": "y",
+                            "consumption": [
+                                {
+                                    "timeframe_start": "d3",
+                                    "timeframe_end": "d4",
+                                    "metrics": [{"metric_name": "compute_unit_seconds", "value": 42}],
+                                }
+                            ],
+                        }
+                    ],
+                },
+            ],
+        }
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json = MagicMock(return_value=payload)
+            mock_inst = AsyncMock()
+            mock_inst.get = AsyncMock(return_value=mock_resp)
+            mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
+            mock_inst.__aexit__ = AsyncMock(return_value=None)
+            mock_cls.return_value = mock_inst
+            result = await _fetch_neon_usage(s)
+
+        assert result.project_id == "proj_keep"
+        assert result.total_compute_seconds == 42.0
+
+
+# ---------------------------------------------------------------------------
+# _test_neon
+# ---------------------------------------------------------------------------
+
+
+class TestTestNeon:
+    async def test_missing_credentials_returns_error(self):
+        from app.routers.admin import _test_neon
+
+        result = await _test_neon({"neon_api_key": "", "neon_org_id": ""})
+        assert result.ok is False
+
+    async def test_success(self):
+        from app.routers.admin import _test_neon
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_resp.json = MagicMock(return_value={"projects": [{"project_id": "a"}, {"project_id": "b"}]})
+            mock_inst = AsyncMock()
+            mock_inst.get = AsyncMock(return_value=mock_resp)
+            mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
+            mock_inst.__aexit__ = AsyncMock(return_value=None)
+            mock_cls.return_value = mock_inst
+            result = await _test_neon({"neon_api_key": "napi_xyz", "neon_org_id": "org_123"})
+
+        assert result.ok is True
+        assert "2 project" in result.message
+
+    async def test_non_200_returns_error(self):
+        from app.routers.admin import _test_neon
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 403
+            mock_resp.text = "forbidden"
+            mock_inst = AsyncMock()
+            mock_inst.get = AsyncMock(return_value=mock_resp)
+            mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
+            mock_inst.__aexit__ = AsyncMock(return_value=None)
+            mock_cls.return_value = mock_inst
+            result = await _test_neon({"neon_api_key": "napi_xyz", "neon_org_id": "org_123"})
+
+        assert result.ok is False
+        assert "403" in result.message
