@@ -177,14 +177,22 @@ def retry_failed_previews(self, limit: int = 50) -> dict:
     return {"retried": retried}
 
 
-@celery_app.task(
-    bind=True,
-    max_retries=0,
-    name="app.tasks.maintenance.daily_health_check",
-)
-def daily_health_check(self) -> dict:
-    import asyncio
+def _record_health_event_and_alert(
+    *,
+    event_type: str,
+    severity: str,
+    message: str,
+    details: dict,
+    ts: datetime,
+    should_alert: bool,
+    probe_rows: list[tuple[str, bool, str]],
+    alert_status: str,
+) -> None:
+    """Write a ServerEvent for a health-style check, and email superusers on failure.
 
+    Shared by daily_health_check and check_www_redirect -- both follow the same
+    probe -> record -> alert-if-failing shape.
+    """
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
@@ -193,6 +201,74 @@ def daily_health_check(self) -> dict:
     from app.version import VERSION
 
     settings = get_settings()
+
+    engine = create_engine(settings.database_url_sync)
+    try:
+        with Session(engine) as db:
+            evt = ServerEvent(
+                event_type=event_type,
+                severity=severity,
+                status="closed",
+                started_at=ts,
+                ended_at=datetime.now(timezone.utc),
+                app_version=VERSION,
+                message=message,
+                details=details,
+            )
+            evt.elapsed_ms = int((evt.ended_at - evt.started_at).total_seconds() * 1000)  # type: ignore[operator]
+            db.add(evt)
+            db.commit()
+    finally:
+        engine.dispose()
+
+    if not should_alert:
+        return
+
+    try:
+        from sqlalchemy import select
+
+        email_engine = create_engine(settings.database_url_sync)
+        try:
+            with Session(email_engine) as db:
+                from app.models.user import User
+
+                emails = [
+                    r
+                    for r in db.scalars(
+                        select(User.email).where(User.is_superuser.is_(True), User.is_active.is_(True))
+                    ).all()
+                    if r
+                ]
+        finally:
+            email_engine.dispose()
+        if emails:
+            import asyncio as _asyncio
+
+            from app.services.email import send_health_degraded_alert
+
+            _asyncio.run(
+                send_health_degraded_alert(
+                    superuser_emails=emails,
+                    env=settings.app_env,
+                    app_base_url=settings.app_base_url or settings.frontend_url,
+                    version=VERSION,
+                    probe_rows=probe_rows,
+                    status=alert_status,
+                    timestamp=ts.isoformat(),
+                )
+            )
+    except Exception:
+        log.exception("%s: failed to send degraded alert email", event_type)
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
+    name="app.tasks.maintenance.daily_health_check",
+)
+def daily_health_check(self) -> dict:
+    import asyncio
+
     ts = datetime.now(timezone.utc)
 
     async def _run():
@@ -226,61 +302,16 @@ def daily_health_check(self) -> dict:
     failed = [s.name for s in result.services if not s.ok]
     sev = "error" if result.status == "error" else ("warn" if result.status == "degraded" else "info")
 
-    engine = create_engine(settings.database_url_sync)
-    try:
-        with Session(engine) as db:
-            evt = ServerEvent(
-                event_type="health.check",
-                severity=sev,
-                status="closed",
-                started_at=ts,
-                ended_at=datetime.now(timezone.utc),
-                app_version=VERSION,
-                message=f"Daily health check — {result.status}",
-                details={"probe_status": result.status, "failed_services": failed},
-            )
-            evt.elapsed_ms = int((evt.ended_at - evt.started_at).total_seconds() * 1000)  # type: ignore[operator]
-            db.add(evt)
-            db.commit()
-    finally:
-        engine.dispose()
-
-    if result.status != "ok":
-        try:
-            from sqlalchemy import select
-
-            email_engine = create_engine(settings.database_url_sync)
-            try:
-                with Session(email_engine) as db:
-                    from app.models.user import User
-
-                    emails = [
-                        r
-                        for r in db.scalars(
-                            select(User.email).where(User.is_superuser.is_(True), User.is_active.is_(True))
-                        ).all()
-                        if r
-                    ]
-            finally:
-                email_engine.dispose()
-            if emails:
-                import asyncio as _asyncio
-
-                from app.services.email import send_health_degraded_alert
-
-                _asyncio.run(
-                    send_health_degraded_alert(
-                        superuser_emails=emails,
-                        env=settings.app_env,
-                        app_base_url=settings.app_base_url or settings.frontend_url,
-                        version=VERSION,
-                        probe_rows=probe_rows,
-                        status=result.status,
-                        timestamp=ts.isoformat(),
-                    )
-                )
-        except Exception:
-            log.exception("daily_health_check: failed to send degraded alert email")
+    _record_health_event_and_alert(
+        event_type="health.check",
+        severity=sev,
+        message=f"Daily health check — {result.status}",
+        details={"probe_status": result.status, "failed_services": failed},
+        ts=ts,
+        should_alert=result.status != "ok",
+        probe_rows=probe_rows,
+        alert_status=result.status,
+    )
 
     log.info("daily_health_check status=%s failed=%s", result.status, failed)
     return {"status": result.status, "failed_services": failed}
@@ -303,12 +334,8 @@ def check_www_redirect(self) -> dict:
     from urllib.parse import urlparse
 
     import httpx
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import Session
 
     from app.config import get_settings
-    from app.models.server_event import ServerEvent
-    from app.version import VERSION
 
     settings = get_settings()
     ts = datetime.now(timezone.utc)
@@ -334,61 +361,16 @@ def check_www_redirect(self) -> dict:
     except Exception as exc:
         detail = str(exc)[:200]
 
-    engine = create_engine(settings.database_url_sync)
-    try:
-        with Session(engine) as db:
-            evt = ServerEvent(
-                event_type="www_redirect.check",
-                severity="info" if ok else "error",
-                status="closed",
-                started_at=ts,
-                ended_at=datetime.now(timezone.utc),
-                app_version=VERSION,
-                message="WWW redirect check passed" if ok else f"WWW redirect check failed — {detail}",
-                details={"ok": ok, "detail": detail, "checked_url": www_url},
-            )
-            evt.elapsed_ms = int((evt.ended_at - evt.started_at).total_seconds() * 1000)  # type: ignore[operator]
-            db.add(evt)
-            db.commit()
-    finally:
-        engine.dispose()
-
-    if not ok:
-        try:
-            from sqlalchemy import select
-
-            email_engine = create_engine(settings.database_url_sync)
-            try:
-                with Session(email_engine) as db:
-                    from app.models.user import User
-
-                    emails = [
-                        r
-                        for r in db.scalars(
-                            select(User.email).where(User.is_superuser.is_(True), User.is_active.is_(True))
-                        ).all()
-                        if r
-                    ]
-            finally:
-                email_engine.dispose()
-            if emails:
-                import asyncio as _asyncio
-
-                from app.services.email import send_health_degraded_alert
-
-                _asyncio.run(
-                    send_health_degraded_alert(
-                        superuser_emails=emails,
-                        env=settings.app_env,
-                        app_base_url=settings.app_base_url or settings.frontend_url,
-                        version=VERSION,
-                        probe_rows=[("WWW Redirect", False, detail)],
-                        status="error",
-                        timestamp=ts.isoformat(),
-                    )
-                )
-        except Exception:
-            log.exception("check_www_redirect: failed to send degraded alert email")
+    _record_health_event_and_alert(
+        event_type="www_redirect.check",
+        severity="info" if ok else "error",
+        message="WWW redirect check passed" if ok else f"WWW redirect check failed — {detail}",
+        details={"ok": ok, "detail": detail, "checked_url": www_url},
+        ts=ts,
+        should_alert=not ok,
+        probe_rows=[("WWW Redirect", False, detail)],
+        alert_status="error",
+    )
 
     log.info("check_www_redirect ok=%s detail=%s", ok, detail)
     return {"ok": ok, "detail": detail}
