@@ -101,7 +101,8 @@
     "impersonateButton": "Incarner",
     "confirmTitle": "Incarner cet utilisateur ?",
     "confirmBody": "Vous êtes sur le point d'incarner {{name}}. Cette action sera enregistrée.",
-    "confirmButton": "Incarner"
+    "confirmButton": "Incarner",
+    "stop": "Arrêter"
   },
   "settings": {
     "saved": "Enregistré",

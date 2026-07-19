@@ -102,7 +102,8 @@
     "impersonateButton": "Identität annehmen",
     "confirmTitle": "Benutzer imitieren?",
     "confirmBody": "Du bist dabei, die Identität von {{name}} anzunehmen. Diese Aktion wird protokolliert.",
-    "confirmButton": "Identität annehmen"
+    "confirmButton": "Identität annehmen",
+    "stop": "Beenden"
   },
   "settings": {
     "saved": "Gespeichert",

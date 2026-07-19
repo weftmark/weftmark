@@ -101,7 +101,8 @@
     "impersonateButton": "Suplantar",
     "confirmTitle": "¿Suplantar usuario?",
     "confirmBody": "Estás a punto de suplantar a {{name}}. Esta acción quedará registrada.",
-    "confirmButton": "Suplantar"
+    "confirmButton": "Suplantar",
+    "stop": "Detener"
   },
   "settings": {
     "saved": "Guardado",

@@ -12,6 +12,10 @@ export function setImpersonationTarget(userId: string | null) {
   _impersonateUserId = userId;
 }
 
+export function getImpersonationTarget(): string | null {
+  return _impersonateUserId;
+}
+
 export async function getAuthToken(): Promise<string | null> {
   if (!_getToken) return null;
   return _getToken();

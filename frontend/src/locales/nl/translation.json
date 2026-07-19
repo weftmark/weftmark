@@ -101,7 +101,8 @@
     "impersonateButton": "Nabootsen",
     "confirmTitle": "Gebruiker nabootsen?",
     "confirmBody": "U staat op het punt om {{name}} na te bootsen. Deze actie wordt geregistreerd.",
-    "confirmButton": "Nabootsen"
+    "confirmButton": "Nabootsen",
+    "stop": "Stoppen"
   },
   "settings": {
     "saved": "Opgeslagen",

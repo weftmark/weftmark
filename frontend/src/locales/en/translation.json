@@ -102,7 +102,8 @@
     "impersonateButton": "Impersonate",
     "confirmTitle": "Impersonate user?",
     "confirmBody": "You are about to impersonate {{name}}. This action will be logged.",
-    "confirmButton": "Impersonate"
+    "confirmButton": "Impersonate",
+    "stop": "Stop"
   },
   "settings": {
     "saved": "Saved",

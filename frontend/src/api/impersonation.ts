@@ -6,9 +6,9 @@ export interface ImpersonationStartResponse {
 }
 
 export function startImpersonationSession(targetUserId: string): Promise<ImpersonationStartResponse> {
-  return api.post<ImpersonationStartResponse>("/impersonation/start", { target_user_id: targetUserId });
+  return api.post<ImpersonationStartResponse>("/api/impersonation/start", { target_user_id: targetUserId });
 }
 
 export function endImpersonationSession(targetUserId: string, durationSeconds: number): Promise<void> {
-  return api.post<void>("/impersonation/end", { target_user_id: targetUserId, duration_seconds: durationSeconds });
+  return api.post<void>("/api/impersonation/end", { target_user_id: targetUserId, duration_seconds: durationSeconds });
 }
