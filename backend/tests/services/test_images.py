@@ -15,6 +15,13 @@ def _make_png_bytes(width: int = 4, height: int = 4) -> bytes:
     return buf.getvalue()
 
 
+def _make_jpeg_bytes(width: int = 4, height: int = 4) -> bytes:
+    img = PILImage.new("RGB", (width, height), color=(100, 150, 200))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
 def _make_gif_bytes(width: int = 4, height: int = 4) -> bytes:
     img = PILImage.new("P", (width, height))
     buf = io.BytesIO()
@@ -26,12 +33,15 @@ class TestValidateImageFormat:
     def test_valid_png_passes(self):
         validate_image_format(_make_png_bytes())  # no exception
 
+    def test_valid_jpeg_passes(self):
+        validate_image_format(_make_jpeg_bytes())  # no exception
+
     def test_non_image_bytes_raise(self):
         with pytest.raises(ValueError, match="Could not decode image"):
             validate_image_format(b"this is not an image")
 
     def test_unsupported_format_raises(self):
-        with pytest.raises(ValueError, match="Unsupported image format"):
+        with pytest.raises(ValueError, match="Unsupported image format: GIF"):
             validate_image_format(_make_gif_bytes())
 
     def test_empty_bytes_raise(self):
