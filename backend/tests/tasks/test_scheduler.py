@@ -23,6 +23,7 @@ from app.tasks.scheduler import (
     _dispatch_server_event_log_pruning,
     _dispatch_stale_signup_dismissal,
     _dispatch_tile_prune,
+    _dispatch_www_redirect_check,
 )
 
 
@@ -261,6 +262,23 @@ class TestDispatchDailyHealthCheck:
             patch("app.services.task_history.record_queued"),
         ):
             result = _dispatch_daily_health_check(_fake_settings())
+        mock_task.delay.assert_called_once()
+        assert result is mock_task.delay.return_value
+
+
+# ---------------------------------------------------------------------------
+# _dispatch_www_redirect_check
+# ---------------------------------------------------------------------------
+
+
+class TestDispatchWwwRedirectCheck:
+    def test_calls_delay(self):
+        mock_task = _mock_task()
+        with (
+            patch("app.tasks.maintenance.check_www_redirect", mock_task),
+            patch("app.services.task_history.record_queued"),
+        ):
+            result = _dispatch_www_redirect_check(_fake_settings())
         mock_task.delay.assert_called_once()
         assert result is mock_task.delay.return_value
 

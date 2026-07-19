@@ -289,6 +289,114 @@ def daily_health_check(self) -> dict:
 @celery_app.task(
     bind=True,
     max_retries=0,
+    name="app.tasks.maintenance.check_www_redirect",
+)
+def check_www_redirect(self) -> dict:
+    """Verify www.<domain> 301-redirects to the canonical apex domain (see #1011).
+
+    Catches DNS/CDN redirect-rule regressions -- an accidentally deleted or
+    disabled rule, a `www` DNS record flipped to unproxied, a re-introduced
+    query-string bug -- that silently break login for anyone who lands on the
+    www host. The failure mode looks like "stuck on pending approval," not an
+    obvious redirect error, so this can go unnoticed without an active check.
+    """
+    from urllib.parse import urlparse
+
+    import httpx
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    from app.config import get_settings
+    from app.models.server_event import ServerEvent
+    from app.version import VERSION
+
+    settings = get_settings()
+    ts = datetime.now(timezone.utc)
+
+    apex = settings.frontend_url.rstrip("/")
+    parsed = urlparse(apex)
+    www_url = f"{parsed.scheme}://www.{parsed.netloc}/?foo=bar"
+
+    ok = False
+    detail = ""
+    try:
+        r = httpx.get(www_url, timeout=10, follow_redirects=False)
+        if r.status_code not in (301, 302, 307, 308):
+            detail = f"expected a redirect, got HTTP {r.status_code}"
+        else:
+            location = r.headers.get("location", "")
+            if not location.startswith(apex):
+                detail = f"redirected to unexpected location: {location!r}"
+            elif "?foo=bar" not in location:
+                detail = f"query string not preserved in redirect: {location!r}"
+            else:
+                ok = True
+    except Exception as exc:
+        detail = str(exc)[:200]
+
+    engine = create_engine(settings.database_url_sync)
+    try:
+        with Session(engine) as db:
+            evt = ServerEvent(
+                event_type="www_redirect.check",
+                severity="info" if ok else "error",
+                status="closed",
+                started_at=ts,
+                ended_at=datetime.now(timezone.utc),
+                app_version=VERSION,
+                message="WWW redirect check passed" if ok else f"WWW redirect check failed — {detail}",
+                details={"ok": ok, "detail": detail, "checked_url": www_url},
+            )
+            evt.elapsed_ms = int((evt.ended_at - evt.started_at).total_seconds() * 1000)  # type: ignore[operator]
+            db.add(evt)
+            db.commit()
+    finally:
+        engine.dispose()
+
+    if not ok:
+        try:
+            from sqlalchemy import select
+
+            email_engine = create_engine(settings.database_url_sync)
+            try:
+                with Session(email_engine) as db:
+                    from app.models.user import User
+
+                    emails = [
+                        r
+                        for r in db.scalars(
+                            select(User.email).where(User.is_superuser.is_(True), User.is_active.is_(True))
+                        ).all()
+                        if r
+                    ]
+            finally:
+                email_engine.dispose()
+            if emails:
+                import asyncio as _asyncio
+
+                from app.services.email import send_health_degraded_alert
+
+                _asyncio.run(
+                    send_health_degraded_alert(
+                        superuser_emails=emails,
+                        env=settings.app_env,
+                        app_base_url=settings.app_base_url or settings.frontend_url,
+                        version=VERSION,
+                        probe_rows=[("WWW Redirect", False, detail)],
+                        status="error",
+                        timestamp=ts.isoformat(),
+                    )
+                )
+        except Exception:
+            log.exception("check_www_redirect: failed to send degraded alert email")
+
+    log.info("check_www_redirect ok=%s detail=%s", ok, detail)
+    return {"ok": ok, "detail": detail}
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
     name="app.tasks.maintenance.prune_server_event_log",
 )
 def prune_server_event_log(self, max_age_days: int = 28, max_entries: int = 1000) -> dict:

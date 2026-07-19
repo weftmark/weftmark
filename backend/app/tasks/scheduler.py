@@ -88,6 +88,17 @@ REGISTRY: dict[str, dict] = {
         "default_cron": "0 2 * * *",
         "default_config": {},
     },
+    "www_redirect_check": {
+        "display_name": "WWW Redirect Check",
+        "description": (
+            "Verifies www.<domain> 301-redirects to the canonical apex domain, including "
+            "query-string preservation. Catches DNS/CDN redirect-rule regressions (#1011) "
+            "that silently break login for anyone landing on the www host. Sends an alert "
+            "email if the check fails."
+        ),
+        "default_cron": "0 9 * * 1",  # weekly, Monday 9am UTC
+        "default_config": {},
+    },
     "server_event_log_pruning": {
         "display_name": "Server Event Log Pruning",
         "description": (
@@ -238,6 +249,15 @@ def _dispatch_daily_health_check(settings, task=None):
     return t
 
 
+def _dispatch_www_redirect_check(settings, task=None):
+    from app.services.task_history import record_queued
+    from app.tasks.maintenance import check_www_redirect
+
+    t = check_www_redirect.delay()
+    record_queued(settings, t.id, "app.tasks.maintenance.check_www_redirect", "scheduled:www_redirect_check")
+    return t
+
+
 def _dispatch_server_event_log_pruning(settings, task=None):
     from app.services.task_history import record_queued
     from app.tasks.maintenance import prune_server_event_log
@@ -323,6 +343,7 @@ DISPATCH_FNS: dict[str, object] = {
     "heartbeat": _dispatch_heartbeat,
     "preview_retry": _dispatch_preview_retry,
     "daily_health_check": _dispatch_daily_health_check,
+    "www_redirect_check": _dispatch_www_redirect_check,
     "server_event_log_pruning": _dispatch_server_event_log_pruning,
     "credential_expiry_check": _dispatch_credential_expiry_check,
     "admin_digest": _dispatch_admin_digest,
