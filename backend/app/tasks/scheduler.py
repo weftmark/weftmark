@@ -345,7 +345,7 @@ def run_scheduled_tasks() -> None:
 
     settings = get_settings()
     now = datetime.now(timezone.utc)
-    window_start = now - timedelta(seconds=70)
+    window_start = now - timedelta(seconds=310)
 
     try:
         from sqlalchemy import create_engine, select

@@ -51,15 +51,15 @@ def _make_celery() -> Celery:
         beat_schedule={
             "run-scheduled-tasks": {
                 "task": "app.tasks.scheduler.run_scheduled_tasks",
-                "schedule": 60.0,
+                "schedule": 300.0,
             },
             "record-business-metrics": {
                 "task": "app.tasks.metrics.record_business_metrics",
-                "schedule": 300.0,
+                "schedule": 3600.0,
             },
             "backfill-project-drawdown-previews": {
                 "task": "app.tasks.maintenance.backfill_project_drawdown_previews",
-                "schedule": 300.0,
+                "schedule": 3600.0,
             },
             "refresh-geoip-database": {
                 "task": "app.tasks.geo.refresh_geoip_database",
