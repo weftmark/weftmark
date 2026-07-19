@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { AppIcons, type LucideIcon } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { useAuth } from "@/hooks/useAuth";
+import { useImpersonation } from "@/context/ImpersonationContext";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { OnboardingChecklist } from "@/components/layout/OnboardingChecklist";
 
@@ -110,6 +111,11 @@ function NavGroupSection({
 export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand, onDesktopCollapse }: Props) {
   const location = useLocation();
   const { user } = useAuth();
+  const { isImpersonating, impersonatedUser, endImpersonation } = useImpersonation();
+  // For nav visibility: use the impersonated user when active, so the primary
+  // nav shows and reflects the impersonated user's role. Admin/superuser
+  // console guards below still use the real `user`.
+  const effectiveUser = isImpersonating ? impersonatedUser : user;
   const { signOut } = useClerk();
   const { t } = useTranslation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -152,6 +158,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   ];
 
   const SUPERUSER_SECTIONS = [
+    { id: "users", label: t("superuserSections.users") },
     { id: "eula", label: t("superuserSections.eula") },
     { id: "storage", label: t("superuserSections.storage") },
     { id: "cve", label: t("superuserSections.cve") },
@@ -218,14 +225,15 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
         </div>
 
         {/* Onboarding checklist — above primary nav, hidden for superusers */}
-        {!user?.is_superuser && (
+        {!effectiveUser?.is_superuser && (
           <div className="shrink-0 pt-2">
             <OnboardingChecklist collapsed={desktopCollapsed} />
           </div>
         )}
 
-        {/* Primary nav — hidden for superusers (they only use /admin) */}
-        {!user?.is_superuser && (
+        {/* Primary nav — hidden for superusers (they only use /admin).
+            Uses effectiveUser so the nav appears during impersonation. */}
+        {!effectiveUser?.is_superuser && (
           <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
             {NAV_ITEMS.map(({ label, href, icon: Icon, exact }) => (
               <Link
@@ -242,8 +250,8 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           </nav>
         )}
 
-        {/* Spacer for superusers */}
-        {user?.is_superuser && <div className="flex-1" />}
+        {/* Spacer for superusers (not during impersonation — primary nav provides flex-1) */}
+        {effectiveUser?.is_superuser && <div className="flex-1" />}
 
         {/* Bottom nav */}
         <div className={`shrink-0 border-t border-border px-3 py-3 space-y-0.5 ${desktopCollapsed ? "lg:px-2" : ""}`}>
@@ -315,6 +323,22 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
             <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.signOut")}</span>
           </button>
         </div>
+
+        {/* Impersonated user identity — shown above real user when impersonating */}
+        {isImpersonating && impersonatedUser && (
+          <div className={`shrink-0 border-t border-amber-500/40 bg-amber-500/10 px-4 py-3 ${desktopCollapsed ? "lg:hidden" : ""}`}>
+            <div className="flex items-center gap-2">
+              <p className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{impersonatedUser.display_name}</p>
+              <button
+                onClick={endImpersonation}
+                className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-500/50 hover:bg-amber-500/20 dark:text-amber-400 transition-colors"
+              >
+                {t("impersonation.stop")}
+              </button>
+            </div>
+            <p className="truncate text-xs text-muted-foreground">{impersonatedUser.email}</p>
+          </div>
+        )}
 
         {/* User identity — hidden on desktop in rail mode */}
         {user && (

@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.deps import get_current_user, get_db
+from app.deps import get_db, get_effective_user
 from app.models.loom import (
     Loom,
     LoomReed,
@@ -406,7 +406,7 @@ def _ext(content_type: str) -> str:
 @router.post("", response_model=LoomDetail, status_code=201)
 async def create_loom(
     body: CreateLoomRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomDetail:
     lift, treadle = loom_tracking_flags(body.loom_type)
@@ -450,7 +450,7 @@ async def create_loom(
 @router.get("", response_model=list[LoomSummary])
 async def list_looms(
     include_retired: bool = Query(False),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[LoomSummary]:
     q = (
@@ -474,7 +474,7 @@ async def list_looms(
 @router.get("/{loom_id}", response_model=LoomDetail)
 async def get_loom(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomDetail:
     loom = await _get_owned_loom(loom_id, current_user, db, allow_superuser=True)
@@ -485,7 +485,7 @@ async def get_loom(
 async def update_loom(
     loom_id: uuid.UUID,
     body: UpdateLoomRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomDetail:
     loom = await _get_owned_loom(loom_id, current_user, db)
@@ -504,7 +504,7 @@ async def update_loom(
 async def delete_loom(
     loom_id: uuid.UUID,
     force: bool = Query(False),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     from app.models.project import Project
@@ -539,7 +539,7 @@ async def delete_loom(
 @router.post("/{loom_id}/retire", status_code=204)
 async def retire_loom(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
@@ -550,7 +550,7 @@ async def retire_loom(
 @router.post("/{loom_id}/unretire", status_code=204)
 async def unretire_loom(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
@@ -567,7 +567,7 @@ async def unretire_loom(
 async def upload_loom_photo(
     loom_id: uuid.UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     _validate_image(file)
@@ -589,7 +589,7 @@ async def upload_loom_photo(
 @router.delete("/{loom_id}/photo", status_code=204)
 async def delete_loom_photo(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
@@ -602,7 +602,7 @@ async def delete_loom_photo(
 @router.get("/{loom_id}/photo")
 async def get_loom_photo(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     loom = await _get_owned_loom(loom_id, current_user, db, allow_superuser=True)
@@ -622,7 +622,7 @@ async def get_loom_photo(
 async def add_version(
     loom_id: uuid.UUID,
     body: AddVersionRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomVersionSchema:
     loom = await _get_owned_loom(loom_id, current_user, db)
@@ -657,7 +657,7 @@ async def upload_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomVersionPhotoSchema:
     _validate_image(file)
@@ -695,7 +695,7 @@ async def get_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     photo_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
@@ -712,7 +712,7 @@ async def delete_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     photo_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
@@ -735,7 +735,7 @@ async def upload_version_receipt(
     version_id: uuid.UUID,
     file: UploadFile = File(...),
     description: str | None = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomVersionReceiptSchema:
     _validate_receipt(file)
@@ -764,7 +764,7 @@ async def get_version_receipt(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     receipt_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
@@ -787,7 +787,7 @@ async def delete_version_receipt(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     receipt_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
@@ -809,7 +809,7 @@ async def update_version(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     body: UpdateVersionRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomVersionSchema:
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
@@ -830,7 +830,7 @@ async def clone_version(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     body: CloneVersionRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomVersionSchema:
     loom, source = await _get_owned_version(loom_id, version_id, current_user, db)
@@ -876,7 +876,7 @@ async def add_accessory(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     body: AddAccessoryRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomVersionAccessorySchema:
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
@@ -892,7 +892,7 @@ async def delete_accessory(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     accessory_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
@@ -912,7 +912,7 @@ async def delete_accessory(
 async def add_reed(
     loom_id: uuid.UUID,
     body: AddReedRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomReedSchema:
     if body.dents_per_inch <= 0:
@@ -935,7 +935,7 @@ async def add_reed(
 async def delete_reed(
     loom_id: uuid.UUID,
     reed_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
@@ -960,7 +960,7 @@ async def link_version_reference(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     body: LinkReferenceRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> LoomDetail:
     """Link (or unlink) a specific loom version to a catalog entry."""
