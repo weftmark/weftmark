@@ -1,10 +1,10 @@
 -r requirements.txt
-pytest==9.0.3
+pytest==9.1.1
 pytest-asyncio==1.4.0
 pytest-cov==7.1.0
-ruff==0.15.15
-fakeredis[aioredis]==2.36.0
+ruff==0.15.21
+fakeredis[aioredis]==2.36.2
 bandit[toml]==1.9.4
-mypy==2.1.0
+mypy==2.2.0
 types-passlib==1.7.7.20260211
 types-python-dateutil==2.9.0.20260518

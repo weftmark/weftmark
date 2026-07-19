@@ -125,13 +125,15 @@ export interface UpdateSkeinPayload {
   notes?: string | null;
 }
 
-import { getAuthToken } from "@/api/client";
+import { getAuthToken, getImpersonationTarget } from "@/api/client";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAuthToken();
+  const impersonateId = getImpersonationTarget();
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string>),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
   };
   const res = await fetch(url, { credentials: "include", ...init, headers });
   if (!res.ok) {
@@ -178,7 +180,11 @@ export async function uploadYarnPhoto(id: string, file: File): Promise<void> {
   const form = new FormData();
   form.append("file", file);
   const token = await getAuthToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const impersonateId = getImpersonationTarget();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
+  };
   const res = await fetch(`/api/yarn/${id}/photo`, {
     method: "PUT",
     credentials: "include",

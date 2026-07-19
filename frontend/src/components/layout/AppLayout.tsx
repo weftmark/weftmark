@@ -6,6 +6,7 @@ import { VersionBadge } from "@/components/layout/VersionFooter";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { useAuth } from "@/hooks/useAuth";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { ImpersonationBanner } from "@/components/layout/ImpersonationBanner";
 import type { ReactNode } from "react";
 
 const DETAIL_PATTERN = /^\/projects\/[^/]+/;
@@ -55,6 +56,7 @@ export function AppLayout({ children }: Props) {
           </button>
         </div>
 
+        <ImpersonationBanner />
         <OfflineBanner />
 
         {/* Detail pages manage their own height/scroll internally; other pages use the scroll wrapper */}

@@ -91,6 +91,46 @@ async def get_optional_user(
         return None
 
 
+async def get_effective_user(
+    request: Request,
+    real_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Like get_current_user but honours X-Impersonate-User-ID for superusers.
+
+    For all non-superusers the header is rejected with 403.
+    Superusers cannot impersonate other superusers or inactive/deleted users.
+    When the header is absent the real user is returned unchanged.
+    Admin/superuser routes should keep Depends(require_admin) / Depends(require_superuser)
+    so they always resolve from the real identity regardless of impersonation.
+    """
+    import uuid as _uuid
+
+    header = request.headers.get("X-Impersonate-User-ID", "")
+    if not header:
+        return real_user
+
+    if not real_user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Superuser required to impersonate")
+
+    try:
+        target_id = _uuid.UUID(header)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid impersonation target ID")
+
+    target = await db.scalar(select(User).where(User.id == target_id))
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Impersonation target not found")
+
+    if target.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot impersonate a superuser")
+
+    if target.deleted_at is not None or not target.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot impersonate an inactive user")
+
+    return target
+
+
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required")

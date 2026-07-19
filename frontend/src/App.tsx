@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { AuthProvider } from "@/context/AuthContext";
+import { ImpersonationProvider } from "@/context/ImpersonationContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import type { ReactNode } from "react";
@@ -92,6 +93,7 @@ export default function App() {
         <SystemGate>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <ImpersonationProvider>
             <BrowserRouter>
               <DevBanner />
               <ServiceHealthBanner />
@@ -132,6 +134,7 @@ export default function App() {
                 </SentryRoutes>
               </EulaGate>
             </BrowserRouter>
+            </ImpersonationProvider>
           </AuthProvider>
         </QueryClientProvider>
         </SystemGate>

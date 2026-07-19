@@ -69,7 +69,7 @@ export interface Draft {
   updated_at: string;
 }
 
-import { getAuthToken } from "@/api/client";
+import { getAuthToken, getImpersonationTarget } from "@/api/client";
 
 export interface DraftDetail extends Draft {
   wif_source_software: string | null;
@@ -78,9 +78,11 @@ export interface DraftDetail extends Draft {
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAuthToken();
+  const impersonateId = getImpersonationTarget();
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string>),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
   };
   const res = await fetch(url, { credentials: "include", ...init, headers });
   if (!res.ok) {
@@ -135,7 +137,11 @@ export async function updateDraft(
 
 export async function deleteDraft(id: string, force = false): Promise<DeleteConflict | void> {
   const token = await getAuthToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const impersonateId = getImpersonationTarget();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
+  };
   const res = await fetch(`/api/drafts/${id}${force ? "?force=true" : ""}`, {
     method: "DELETE",
     credentials: "include",
@@ -177,7 +183,11 @@ export async function generateLiftplan(id: string): Promise<DraftDetail> {
 
 export async function downloadWif(id: string, filename: string): Promise<void> {
   const token = await getAuthToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const impersonateId = getImpersonationTarget();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
+  };
   const res = await fetch(`/api/drafts/${id}/wif`, { credentials: "include", headers });
   if (!res.ok) throw new Error("WIF file not available");
   const blob = await res.blob();
@@ -191,7 +201,11 @@ export async function downloadWif(id: string, filename: string): Promise<void> {
 
 export async function downloadWifModified(id: string, filename: string): Promise<void> {
   const token = await getAuthToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const impersonateId = getImpersonationTarget();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
+  };
   const res = await fetch(`/api/drafts/${id}/wif-modified`, { credentials: "include", headers });
   if (!res.ok) throw new Error("Modified file not available");
   const blob = await res.blob();

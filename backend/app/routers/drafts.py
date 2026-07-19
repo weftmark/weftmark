@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.deps import get_current_user, get_db
+from app.deps import get_db, get_effective_user
 from app.models.draft import Draft
 from app.models.user import User
 from app.services import rendering, storage, wif_linter, wif_modifier, wif_parser
@@ -125,7 +125,7 @@ async def create_draft(
     wif_file: Annotated[UploadFile, File()],
     description: Annotated[str | None, Form()] = None,
     tags: Annotated[str | None, Form()] = None,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
     _rl: None = Depends(_upload_rate_limit),
 ) -> DraftSummary:
@@ -213,7 +213,7 @@ async def create_draft(
 async def list_drafts(
     include_archived: bool = Query(False),
     tags: list[str] | None = Query(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[DraftSummary]:
     q = select(Draft).where(Draft.owner_id == current_user.id, Draft.deleted_at.is_(None))
@@ -235,7 +235,7 @@ async def list_drafts(
 @router.get("/{draft_id}", response_model=DraftDetail)
 async def get_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
@@ -246,7 +246,7 @@ async def get_draft(
 async def update_draft(
     draft_id: uuid.UUID,
     body: UpdateDraftRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
     if body.name is None and body.description is None and body.tags is None:
@@ -274,7 +274,7 @@ async def update_draft(
 @router.get("/{draft_id}/preview")
 async def get_preview(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
@@ -287,7 +287,7 @@ async def get_preview(
 @router.get("/{draft_id}/drawdown_preview")
 async def get_drawdown_preview(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
@@ -300,7 +300,7 @@ async def get_drawdown_preview(
 @router.get("/{draft_id}/preview/svg")
 async def get_preview_svg(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
@@ -326,7 +326,7 @@ async def get_drawdown(
     start_row: int | None = Query(None, ge=0),
     row_count: int | None = Query(None, ge=1),
     hide_unused_shafts_treadles: bool = Query(False),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
@@ -498,7 +498,7 @@ async def get_drawdown(
 @router.get("/{draft_id}/wif")
 async def download_wif(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
@@ -521,7 +521,7 @@ async def download_wif(
 @router.get("/{draft_id}/wif-modified")
 async def download_wif_modified(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
@@ -546,7 +546,7 @@ async def download_wif_modified(
 async def delete_draft(
     draft_id: uuid.UUID,
     force: bool = Query(False),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     from app.models.project import Project
@@ -580,7 +580,7 @@ async def delete_draft(
 @router.post("/{draft_id}/archive", status_code=204)
 async def archive_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     draft = await _get_owned_draft(draft_id, current_user, db)
@@ -591,7 +591,7 @@ async def archive_draft(
 @router.post("/{draft_id}/unarchive", status_code=204)
 async def unarchive_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     draft = await _get_owned_draft(draft_id, current_user, db)
@@ -607,7 +607,7 @@ async def unarchive_draft(
 @router.post("/{draft_id}/generate-liftplan", response_model=DraftDetail)
 async def generate_liftplan(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
     draft = await _get_owned_draft(draft_id, current_user, db)
@@ -660,7 +660,7 @@ class OverrideMetadataRequest(BaseModel):
 async def override_metadata(
     draft_id: uuid.UUID,
     body: OverrideMetadataRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
     if body.field not in _OVERRIDE_FIELDS:
@@ -729,7 +729,7 @@ class PatchMeasurementsRequest(BaseModel):
 async def patch_measurements(
     draft_id: uuid.UUID,
     body: PatchMeasurementsRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> DraftDetail:
     if body.unit not in ("cm", "in"):

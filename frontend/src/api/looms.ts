@@ -167,13 +167,15 @@ export interface CloneVersionPayload {
   include_accessories?: boolean;
 }
 
-import { getAuthToken } from "@/api/client";
+import { getAuthToken, getImpersonationTarget } from "@/api/client";
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAuthToken();
+  const impersonateId = getImpersonationTarget();
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string>),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
   };
   const res = await fetch(url, { credentials: "include", ...init, headers });
   if (!res.ok) {
@@ -226,7 +228,11 @@ export function addLoomVersion(id: string, payload: AddVersionPayload): Promise<
 
 export async function deleteLoom(id: string, force = false): Promise<import("@/api/drafts").DeleteConflict | void> {
   const token = await getAuthToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const impersonateId = getImpersonationTarget();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
+  };
   const res = await fetch(`/api/looms/${id}${force ? "?force=true" : ""}`, {
     method: "DELETE",
     credentials: "include",
@@ -258,7 +264,11 @@ export async function uploadLoomPhoto(id: string, file: File): Promise<void> {
   const form = new FormData();
   form.append("file", file);
   const token = await getAuthToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const impersonateId = getImpersonationTarget();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
+  };
   const res = await fetch(`/api/looms/${id}/photo`, {
     method: "PUT",
     credentials: "include",
@@ -283,7 +293,11 @@ export async function uploadVersionPhoto(loomId: string, versionId: string, file
   const form = new FormData();
   form.append("file", file);
   const token = await getAuthToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const impersonateId = getImpersonationTarget();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
+  };
   const res = await fetch(`/api/looms/${loomId}/versions/${versionId}/photos`, {
     method: "POST",
     credentials: "include",
@@ -315,7 +329,11 @@ export async function uploadVersionReceipt(
   form.append("file", file);
   if (description) form.append("description", description);
   const token = await getAuthToken();
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  const impersonateId = getImpersonationTarget();
+  const headers: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
+  };
   const res = await fetch(`/api/looms/${loomId}/versions/${versionId}/receipts`, {
     method: "POST",
     credentials: "include",

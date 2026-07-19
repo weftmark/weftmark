@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useImpersonation } from "@/context/ImpersonationContext";
 import type { ReactNode } from "react";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 
 export function ProtectedRoute({ children, requireAdmin = false, requireSuperuser = false }: Props) {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const { isImpersonating } = useImpersonation();
   const location = useLocation();
 
   if (isLoading && !user) {
@@ -29,9 +31,11 @@ export function ProtectedRoute({ children, requireAdmin = false, requireSuperuse
   }
 
   // Superusers land in the admin console; allow /settings, /superuser, and
-  // specific resource detail pages for read-only inspection
+  // specific resource detail pages for read-only inspection.
+  // Skip this redirect during impersonation so the superuser can browse as the target user.
   if (
     user?.is_superuser &&
+    !isImpersonating &&
     !requireAdmin &&
     !requireSuperuser &&
     !location.pathname.startsWith("/admin") &&

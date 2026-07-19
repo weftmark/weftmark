@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.deps import get_current_user, get_db
+from app.deps import get_db, get_effective_user
 from app.models.project import ProjectYarnColor
 from app.models.user import User
 from app.models.yarn import Skein, Yarn
@@ -347,7 +347,7 @@ async def refresh_yarn_properties_loop() -> None:
 
 @router.get("/properties", response_model=list[YarnAttributeGroupSchema])
 async def get_yarn_properties(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
 ) -> list[YarnAttributeGroupSchema]:
     """Yarn attribute groups — served from cache, lazy-fetched on first request."""
     if _properties_cache is None:
@@ -363,7 +363,7 @@ async def get_yarn_properties(
 @router.post("", response_model=YarnDetail, status_code=201)
 async def create_yarn(
     body: CreateYarnRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> YarnDetail:
     data = body.model_dump()
@@ -379,7 +379,7 @@ async def create_yarn(
 @router.get("", response_model=list[YarnSummary])
 async def list_yarn(
     include_archived: bool = Query(False),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[YarnSummary]:
     filters = [Yarn.owner_id == current_user.id, Yarn.deleted_at.is_(None)]
@@ -394,7 +394,7 @@ async def list_yarn(
 @router.get("/{yarn_id}", response_model=YarnDetail)
 async def get_yarn(
     yarn_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> YarnDetail:
     yarn = await _get_owned_yarn(yarn_id, current_user, db)
@@ -405,7 +405,7 @@ async def get_yarn(
 async def update_yarn(
     yarn_id: uuid.UUID,
     body: UpdateYarnRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> YarnDetail:
     yarn = await _get_owned_yarn(yarn_id, current_user, db)
@@ -427,7 +427,7 @@ class PatchColorwayRequest(BaseModel):
 async def patch_yarn_colorway(
     yarn_id: uuid.UUID,
     body: PatchColorwayRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> YarnDetail:
     yarn = await _get_owned_yarn(yarn_id, current_user, db)
@@ -449,7 +449,7 @@ async def patch_yarn_colorway(
 @router.delete("/{yarn_id}", status_code=204)
 async def delete_yarn(
     yarn_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     yarn = await _get_owned_yarn(yarn_id, current_user, db)
@@ -466,7 +466,7 @@ async def delete_yarn(
 async def upload_yarn_photo(
     yarn_id: uuid.UUID,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     _validate_image(file)
@@ -487,7 +487,7 @@ async def upload_yarn_photo(
 @router.get("/{yarn_id}/photo")
 async def get_yarn_photo(
     yarn_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     yarn = await _get_owned_yarn(yarn_id, current_user, db)
@@ -501,7 +501,7 @@ async def get_yarn_photo(
 @router.delete("/{yarn_id}/photo", status_code=204)
 async def delete_yarn_photo(
     yarn_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     yarn = await _get_owned_yarn(yarn_id, current_user, db)
@@ -520,7 +520,7 @@ async def delete_yarn_photo(
 async def add_skeins(
     yarn_id: uuid.UUID,
     body: AddSkeinsRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[SkeinSchema]:
     yarn = await _get_owned_yarn(yarn_id, current_user, db)
@@ -550,7 +550,7 @@ async def update_skein(
     yarn_id: uuid.UUID,
     skein_id: uuid.UUID,
     body: UpdateSkeinRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> SkeinSchema:
     yarn, skein = await _get_owned_skein(yarn_id, skein_id, current_user, db)
@@ -565,7 +565,7 @@ async def update_skein(
 async def delete_skein(
     yarn_id: uuid.UUID,
     skein_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     yarn, skein = await _get_owned_skein(yarn_id, skein_id, current_user, db)
@@ -582,7 +582,7 @@ async def delete_skein(
 async def clone_yarn(
     yarn_id: uuid.UUID,
     body: CloneYarnRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> YarnDetail:
     source = await _get_owned_yarn(yarn_id, current_user, db)
@@ -629,7 +629,7 @@ class YarnProjectRef(BaseModel):
 @router.get("/{yarn_id}/projects", response_model=list[YarnProjectRef])
 async def get_yarn_projects(
     yarn_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[YarnProjectRef]:
     yarn = await _get_owned_yarn(yarn_id, current_user, db)
