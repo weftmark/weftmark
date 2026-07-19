@@ -96,7 +96,7 @@ def locate_json() -> Path:
 
 def _read_json(path: Path) -> dict | list:
     with path.open() as f:
-        return json.load(f)
+        return json.load(f)  # type: ignore[no-any-return]
 
 
 def _coerce_entry(raw: dict) -> dict:
