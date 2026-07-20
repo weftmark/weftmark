@@ -1210,7 +1210,10 @@ async def jump_project(
     current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    project = await _get_owned_project(project_id, current_user, db)
+    # FOR UPDATE serializes against concurrent /step and /jump requests on the same
+    # project row — matches step_project (see #1028: jump previously overwrote
+    # current_pick with no lock, letting a stale request clobber newer progress).
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
     project.current_pick = max(1, min(body.pick, project.total_picks + 1))

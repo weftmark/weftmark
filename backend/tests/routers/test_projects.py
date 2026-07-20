@@ -1386,6 +1386,55 @@ class TestJumpProject:
         resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/jump", json={"pick": 1})
         assert resp.status_code == 404
 
+    async def test_locks_row_for_update(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        """Regression test for #1028 — jump previously read the project without a row
+        lock, letting a concurrent/out-of-order request clobber newer progress. Verify
+        the same with_for_update=True path used by step_project is now used here too."""
+        from unittest.mock import AsyncMock, patch
+
+        import app.routers.projects as projects_module
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+
+        original = projects_module._get_owned_project
+        with patch.object(projects_module, "_get_owned_project", new=AsyncMock(wraps=original)) as mock_get:
+            resp = await auth_client.post(f"/api/projects/{project.id}/jump", json={"pick": 2})
+
+        assert resp.status_code == 200
+        mock_get.assert_called_once()
+        assert mock_get.call_args.kwargs.get("with_for_update") is True
+
+    async def test_jump_then_step_produces_consistent_state(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        """Sequential jump + step interleaving must never lose or duplicate progress —
+        true concurrent-request serialization is provided by SELECT FOR UPDATE (see
+        test_locks_row_for_update); here we verify the resulting state is coherent."""
+        draft = await _insert_draft(db_session, test_user)
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="Jump-then-step project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=10,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        jump_body = (await auth_client.post(f"/api/projects/{project.id}/jump", json={"pick": 5})).json()
+        assert jump_body["current_pick"] == 5
+
+        step_body = (await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})).json()
+        assert step_body["current_pick"] == 6
+
+        reverse_body = (
+            await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "reverse"})
+        ).json()
+        assert reverse_body["current_pick"] == 5
+
 
 # ---------------------------------------------------------------------------
 # TestCompleteProject
