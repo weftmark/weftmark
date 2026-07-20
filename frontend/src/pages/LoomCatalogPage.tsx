@@ -104,7 +104,7 @@ export function LoomCatalogPage() {
 
   // Derive dropdown options from the full server result (stable across client filters)
   const manufacturerOptions = useMemo(
-    () => [...new Set(allLooms.map((l) => l.brand))].sort(),
+    () => [...new Set(allLooms.map((l) => l.brand))].sort((a, b) => a.localeCompare(b)),
     [allLooms],
   );
 
@@ -129,7 +129,7 @@ export function LoomCatalogPage() {
     });
   }, [allLooms, loomType, manufacturer, shaftCount]);
 
-  const brands = [...new Set(looms.map((l) => l.brand))].sort();
+  const brands = [...new Set(looms.map((l) => l.brand))].sort((a, b) => a.localeCompare(b));
   const grouped = Object.fromEntries(
     brands.map((brand) => [brand, looms.filter((l) => l.brand === brand)]),
   );

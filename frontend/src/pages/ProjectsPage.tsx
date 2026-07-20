@@ -226,7 +226,7 @@ export function ProjectsPage() {
   const allTags = useMemo(() => {
     const set = new Set<string>();
     projects.forEach((p) => p.tags?.forEach((t) => set.add(t)));
-    return [...set].sort();
+    return [...set].sort((a, b) => a.localeCompare(b));
   }, [projects]);
 
   const filteredProjects = activeTagFilter

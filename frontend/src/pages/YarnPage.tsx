@@ -402,7 +402,7 @@ function FilterPopover({
   }, [open]);
 
   const availableBrands = useMemo(
-    () => [...new Set(allYarns.map((y) => y.brand))].sort(),
+    () => [...new Set(allYarns.map((y) => y.brand))].sort((a, b) => a.localeCompare(b)),
     [allYarns],
   );
   const availableWeights = useMemo(() => {
