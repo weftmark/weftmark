@@ -33,6 +33,15 @@ export function PendingPage() {
     }
   }, [clerkLoaded, isSignedIn, navigate]);
 
+  // Clerk's own status can flip to "active" before the app's backend-derived
+  // isAuthenticated state catches up (or if that never resolves at all — see #1011).
+  // Without this, an already-approved user who lands here has no way out.
+  useEffect(() => {
+    if (clerkStatus === "active") {
+      navigate("/home", { replace: true });
+    }
+  }, [clerkStatus, navigate]);
+
   useEffect(() => {
     if (!clerkLoaded || !isSignedIn || !clerkUser) return;
     if (clerkStatus !== undefined) return;

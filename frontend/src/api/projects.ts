@@ -257,7 +257,7 @@ export interface ProjectMetrics {
   sessions: SessionInfo[];
 }
 
-import { getAuthToken } from "@/api/client";
+import { getAuthToken, getImpersonationTarget } from "@/api/client";
 
 export class ApiError extends Error {
   constructor(
@@ -270,9 +270,11 @@ export class ApiError extends Error {
 
 async function req<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAuthToken();
+  const impersonateId = getImpersonationTarget();
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string>),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(impersonateId ? { "X-Impersonate-User-ID": impersonateId } : {}),
   };
   const res = await fetch(url, { credentials: "include", ...init, headers });
   if (!res.ok) {

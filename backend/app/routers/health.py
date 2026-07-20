@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -11,12 +11,17 @@ from pydantic import BaseModel
 
 from app.celery_app import WORKER_VERSION_KEY
 from app.config import get_settings
+from app.services.background_tasks import fire_and_forget
 from app.version import VERSION
+
+if TYPE_CHECKING:
+    from app.routers.admin import ServiceCheckResult
 
 router = APIRouter(prefix="/api", tags=["health"])
 log = logging.getLogger(__name__)
 
-DETAILED_REFRESH_INTERVAL_S = 300  # 5 minutes steady-state poll
+DETAILED_REFRESH_INTERVAL_S = 300  # 5 minutes steady-state poll (S3, Clerk, SMTP, config, webhook)
+POSTGRES_PROBE_INTERVAL_S = 3600  # 1 hour — Postgres runs on Neon; frequent probes defeat autosuspend
 
 
 class ReadinessService(BaseModel):
@@ -53,6 +58,12 @@ _consecutive_failures: int = 0
 # Superuser email cache — refreshed when DB is healthy; used as fallback when DB is down
 _superuser_email_cache: list[str] = []
 _open_health_event_id: int | None = None
+
+# Postgres probe result cache — reused between real probes so the detailed-refresh
+# loop can still tick every DETAILED_REFRESH_INTERVAL_S for S3/Clerk/SMTP without
+# querying Postgres (and keeping the Neon compute endpoint awake) that often.
+_last_postgres_result: ServiceCheckResult | None = None
+_last_postgres_probe_at: datetime | None = None
 
 
 def set_readiness(result: ReadinessResponse) -> None:
@@ -92,6 +103,9 @@ async def health_detailed() -> JSONResponse:
     """Live service health — refreshed every 5 min by a background task.
 
     Covers PostgreSQL, S3, Clerk API, SMTP, and the Clerk webhook round-trip.
+    Postgres itself is only re-queried once an hour (see POSTGRES_PROBE_INTERVAL_S)
+    to avoid keeping the Neon compute endpoint continuously active; the other
+    services are checked on every refresh.
     Returns the same shape as /health/ready with an added checked_at timestamp.
     During the initial startup window (before first probe), returns 200 with
     status "starting" and a next_check_at estimate so clients can show a neutral
@@ -211,32 +225,51 @@ async def run_startup_probes() -> ReadinessResponse:
 
 
 async def _run_detailed_probes() -> ReadinessResponse:
-    """Run all probes and return a ReadinessResponse with a fresh checked_at."""
+    """Run all probes and return a ReadinessResponse with a fresh checked_at.
+
+    Postgres is only actually queried once every POSTGRES_PROBE_INTERVAL_S — every
+    other tick reuses the last known Postgres result so this loop can still run on
+    DETAILED_REFRESH_INTERVAL_S for S3/Clerk/SMTP/config/webhook without keeping
+    the Neon compute endpoint continuously active.
+    """
+    global _last_postgres_result, _last_postgres_probe_at
     from app.database import AsyncSessionLocal
     from app.routers.admin import _probe_clerk, _probe_config, _probe_postgres, _probe_s3, _probe_smtp
     from app.services.clerk_webhook_probe import run_webhook_probe
 
+    now = datetime.now(timezone.utc)
+    due_for_postgres = (
+        _last_postgres_probe_at is None or (now - _last_postgres_probe_at).total_seconds() >= POSTGRES_PROBE_INTERVAL_S
+    )
+
     try:
         async with AsyncSessionLocal() as db:
-            results, webhook_result = await asyncio.gather(
-                asyncio.gather(
-                    _probe_postgres(db),
-                    _probe_s3(),
-                    _probe_clerk(),
-                    _probe_smtp(),
-                    _probe_config(),
-                    return_exceptions=True,
-                ),
+            probes = [_probe_s3(), _probe_clerk(), _probe_smtp(), _probe_config()]
+            if due_for_postgres:
+                probes.append(_probe_postgres(db))
+            probe_results, webhook_result = await asyncio.gather(
+                asyncio.gather(*probes, return_exceptions=True),
                 run_webhook_probe(),
             )
     except Exception as exc:
         return ReadinessResponse(
             status="error",
             services=[ReadinessService(name="postgres", ok=False, critical=True, message=str(exc)[:120])],
-            checked_at=datetime.now(timezone.utc).isoformat(),
+            checked_at=now.isoformat(),
         )
 
-    return _build_readiness_from_results(results, webhook_result, checked_at=datetime.now(timezone.utc).isoformat())  # type: ignore[arg-type]
+    postgres_result: ServiceCheckResult | BaseException | None
+    if due_for_postgres:
+        *other_results, postgres_result = probe_results
+        if not isinstance(postgres_result, BaseException):
+            _last_postgres_result = postgres_result
+            _last_postgres_probe_at = now
+    else:
+        other_results = probe_results
+        postgres_result = _last_postgres_result
+
+    combined_results = [postgres_result, *other_results]
+    return _build_readiness_from_results(combined_results, webhook_result, checked_at=now.isoformat())  # type: ignore[arg-type]
 
 
 async def _refresh_superuser_email_cache() -> None:
@@ -402,7 +435,7 @@ async def _detailed_refresh_loop() -> None:
                     is_recovery = True
 
                 if should_alert:
-                    asyncio.create_task(_dispatch_health_alert(confirmed_result, is_recovery))
+                    fire_and_forget(_dispatch_health_alert(confirmed_result, is_recovery))
                     _last_alert_status = new_status
                     _last_alert_at = now if new_status != "ok" else None
                 else:

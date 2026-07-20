@@ -583,12 +583,14 @@ function StepControls({
   onStep,
   onJump,
   stepping,
+  jumpDisabled = false,
 }: {
   currentPick: number;
   total: number;
   onStep: (dir: "advance" | "reverse") => void;
   onJump: (pick: number) => void;
   stepping: boolean;
+  jumpDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const atStart = currentPick <= 1;
@@ -600,7 +602,7 @@ function StepControls({
       {/* ‹‹ back 10 — visible on sm+ */}
       <button
         onClick={() => onJump(Math.max(1, currentPick - 10))}
-        disabled={atStart || disabled}
+        disabled={atStart || disabled || jumpDisabled}
         className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 text-primary/70 text-lg font-medium transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Back 10 picks"
         title="Back 10"
@@ -636,7 +638,7 @@ function StepControls({
       {/* ›› forward 10 — visible on sm+ */}
       <button
         onClick={() => onJump(Math.min(total + 1, currentPick + 10))}
-        disabled={pastEnd || disabled}
+        disabled={pastEnd || disabled || jumpDisabled}
         className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 text-primary/70 text-lg font-medium transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
         aria-label="Forward 10 picks"
         title="Forward 10"
@@ -842,6 +844,7 @@ function PhotoGrid({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={() => setLightbox(null)}
+          onKeyDown={(e) => e.key === "Escape" && setLightbox(null)}
         >
           <AuthedImage
             src={projectPhotoUrl(projectId, lightbox)}
@@ -1072,10 +1075,33 @@ export function ProjectDetailPage() {
   const isOnline = useOnlineStatus();
   const { enqueue: enqueueStep, pending: pendingOfflineSteps, drainAll } = useStepQueue();
 
+  // Counts in-flight step + jump requests together. Used to suppress intermediate
+  // server responses during rapid tapping/jumping — only the last response in a
+  // burst settles the cache, so a stale response from either endpoint arriving
+  // late over a flaky connection can't revert a more recent one (see #1028).
+  const pendingStepsRef = useRef(0);
+
   const { data: project, isLoading, error } = useQuery({
     queryKey: ["project", id],
-    queryFn: () => getProject(id!),
+    queryFn: async () => {
+      const fetched = await getProject(id!);
+      // Live cross-device sync (#1035) polls this query every few seconds while
+      // active. If that poll resolves while a step/jump mutation is in flight,
+      // never let it revert the optimistic pick below what's already displayed —
+      // same guard used for out-of-order mutation responses (see #1028).
+      if (pendingStepsRef.current > 0) {
+        const cached = queryClient.getQueryData<typeof fetched>(["project", id]);
+        if (cached) return { ...fetched, current_pick: Math.max(cached.current_pick, fetched.current_pick) };
+      }
+      return fetched;
+    },
     enabled: !!id,
+    // Live cross-device sync (#1035) — only while actively tracked with a loom
+    // assigned; a loom-less "planning" project uses purely local optimistic state
+    // (handleLocalStep/handleLocalJump) and never round-trips current_pick to the
+    // server, so polling it would be pointless. Matches the project-metrics gate below.
+    refetchInterval: (query) =>
+      query.state.data?.status === "active" && !!query.state.data?.loom_id ? 5_000 : false,
   });
 
   const { data: picksData } = useQuery({
@@ -1126,30 +1152,38 @@ export function ProjectDetailPage() {
 
   const handleJump = useCallback(async (pick: number) => {
     if (!id || stepping) return;
+    // Jump is a deliberate correction, not continuous tracking like step — require
+    // connectivity rather than queueing it for later replay against a since-changed
+    // current_pick (see #1028).
+    if (!isOnline) return;
     setStepping(true);
+    pendingStepsRef.current += 1;
     try {
       const updated = await jumpProject(id, pick);
-      // Merge only the fields a jump can change — preserves loom/draft metadata
-      // that determines shaft/treadle display count.
-      queryClient.setQueryData<typeof project>(["project", id], (old) => {
-        if (!old) return updated;
-        return {
-          ...old,
-          current_pick: updated.current_pick,
-          current_item: updated.current_item,
-          total_picks: updated.total_picks,
-          num_items: updated.num_items,
-          status: updated.status,
-        };
-      });
+      pendingStepsRef.current -= 1;
+      if (pendingStepsRef.current === 0) {
+        // Merge only the fields a jump can change — preserves loom/draft metadata
+        // that determines shaft/treadle display count.
+        queryClient.setQueryData<typeof project>(["project", id], (old) => {
+          if (!old) return updated;
+          return {
+            ...old,
+            current_pick: updated.current_pick,
+            current_item: updated.current_item,
+            total_picks: updated.total_picks,
+            num_items: updated.num_items,
+            status: updated.status,
+          };
+        });
+      }
+    } catch {
+      pendingStepsRef.current -= 1;
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
     } finally {
       setStepping(false);
     }
-  }, [id, stepping, queryClient]);
+  }, [id, stepping, isOnline, queryClient]);
 
-  // Counts in-flight step requests. Used to suppress intermediate server responses
-  // during rapid tapping — only the last response in a burst settles the cache.
-  const pendingStepsRef = useRef(0);
   const drainingRef = useRef(false);
 
   // Drain buffered offline steps when connectivity is restored
@@ -1751,7 +1785,7 @@ export function ProjectDetailPage() {
                 <JumpToPick
                   total={project.total_picks}
                   onJump={isPlanning ? handleLocalJump : handleJump}
-                  disabled={stepping}
+                  disabled={stepping || (!isPlanning && !isOnline)}
                 />
               </div>
               {/* Center 1/3 on desktop, top on mobile */}
@@ -1762,6 +1796,7 @@ export function ProjectDetailPage() {
                   onStep={isPlanning ? handleLocalStep : handleStep}
                   onJump={isPlanning ? handleLocalJump : handleJump}
                   stepping={stepping}
+                  jumpDisabled={!isPlanning && !isOnline}
                 />
               </div>
               {/* Right 1/3 reserved for future use */}
@@ -2104,6 +2139,7 @@ export function ProjectDetailPage() {
           <div
             className="fixed inset-0 z-40 bg-black/40"
             onClick={() => setSettingsOpen(false)}
+            onKeyDown={(e) => e.key === "Escape" && setSettingsOpen(false)}
           />
           <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">

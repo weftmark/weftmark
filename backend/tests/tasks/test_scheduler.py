@@ -23,6 +23,7 @@ from app.tasks.scheduler import (
     _dispatch_server_event_log_pruning,
     _dispatch_stale_signup_dismissal,
     _dispatch_tile_prune,
+    _dispatch_www_redirect_check,
 )
 
 
@@ -266,6 +267,23 @@ class TestDispatchDailyHealthCheck:
 
 
 # ---------------------------------------------------------------------------
+# _dispatch_www_redirect_check
+# ---------------------------------------------------------------------------
+
+
+class TestDispatchWwwRedirectCheck:
+    def test_calls_delay(self):
+        mock_task = _mock_task()
+        with (
+            patch("app.tasks.maintenance.check_www_redirect", mock_task),
+            patch("app.services.task_history.record_queued"),
+        ):
+            result = _dispatch_www_redirect_check(_fake_settings())
+        mock_task.delay.assert_called_once()
+        assert result is mock_task.delay.return_value
+
+
+# ---------------------------------------------------------------------------
 # _dispatch_server_event_log_pruning
 # ---------------------------------------------------------------------------
 
@@ -468,7 +486,7 @@ class TestRunScheduledTasks:
 
         task_obj = MagicMock()
         task_obj.name = "heartbeat"
-        task_obj.cron = "* * * * *"  # every minute — always in the 70-sec window
+        task_obj.cron = "* * * * *"  # every minute — always in the lookback window
 
         dispatch_fn = MagicMock()
         create_engine, Session_cls, engine, _db = _mock_sync_session([task_obj])

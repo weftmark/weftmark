@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,6 +21,8 @@ def reset_health_state():
     original_last_alert = health_module._last_alert_status
     original_email_cache = health_module._superuser_email_cache
     original_failures = health_module._consecutive_failures
+    original_pg_result = health_module._last_postgres_result
+    original_pg_probe_at = health_module._last_postgres_probe_at
     yield
     # Cancel any task created during the test before restoring
     if health_module._detailed_task is not None and health_module._detailed_task is not original_task:
@@ -31,6 +34,8 @@ def reset_health_state():
     health_module._last_alert_status = original_last_alert
     health_module._superuser_email_cache = original_email_cache
     health_module._consecutive_failures = original_failures
+    health_module._last_postgres_result = original_pg_result
+    health_module._last_postgres_probe_at = original_pg_probe_at
 
 
 class TestHealth:
@@ -518,6 +523,78 @@ class TestRunDetailedProbes:
         assert result.status == "error"
         assert result.services[0].ok is False
 
+    async def test_skips_postgres_probe_when_recently_checked(self):
+        from app.routers.health import _run_detailed_probes
+
+        cached_result = MagicMock(service="PostgreSQL", status="ok", message="Cached", checks=[])
+        health_module._last_postgres_result = cached_result
+        health_module._last_postgres_probe_at = datetime.now(timezone.utc)
+
+        other_result = MagicMock(service="S3", status="ok", message="ok", checks=[])
+
+        ctx = MagicMock()
+        mock_db = AsyncMock()
+        ctx.__aenter__ = AsyncMock(return_value=mock_db)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.database.AsyncSessionLocal", return_value=ctx):
+            with patch("app.routers.admin._probe_postgres", new_callable=AsyncMock) as mock_pg:
+                with patch("app.routers.admin._probe_s3", new_callable=AsyncMock, return_value=other_result):
+                    with patch("app.routers.admin._probe_clerk", new_callable=AsyncMock, return_value=other_result):
+                        with patch("app.routers.admin._probe_smtp", new_callable=AsyncMock, return_value=other_result):
+                            with patch(
+                                "app.routers.admin._probe_config", new_callable=AsyncMock, return_value=other_result
+                            ):
+                                with patch(
+                                    "app.services.clerk_webhook_probe.run_webhook_probe",
+                                    new_callable=AsyncMock,
+                                    return_value=None,
+                                ):
+                                    result = await _run_detailed_probes()
+
+        mock_pg.assert_not_called()
+        pg_service = next(s for s in result.services if s.name == "PostgreSQL")
+        assert pg_service.ok is True
+        assert pg_service.message == "Cached"
+
+    async def test_probes_postgres_when_interval_elapsed(self):
+        from app.routers.health import POSTGRES_PROBE_INTERVAL_S, _run_detailed_probes
+
+        health_module._last_postgres_result = MagicMock(service="PostgreSQL", status="ok", message="Stale", checks=[])
+        health_module._last_postgres_probe_at = datetime.now(timezone.utc) - timedelta(
+            seconds=POSTGRES_PROBE_INTERVAL_S + 1
+        )
+
+        fresh_result = MagicMock(service="PostgreSQL", status="ok", message="Fresh", checks=[])
+        other_result = MagicMock(service="S3", status="ok", message="ok", checks=[])
+
+        ctx = MagicMock()
+        mock_db = AsyncMock()
+        ctx.__aenter__ = AsyncMock(return_value=mock_db)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.database.AsyncSessionLocal", return_value=ctx):
+            with patch(
+                "app.routers.admin._probe_postgres", new_callable=AsyncMock, return_value=fresh_result
+            ) as mock_pg:
+                with patch("app.routers.admin._probe_s3", new_callable=AsyncMock, return_value=other_result):
+                    with patch("app.routers.admin._probe_clerk", new_callable=AsyncMock, return_value=other_result):
+                        with patch("app.routers.admin._probe_smtp", new_callable=AsyncMock, return_value=other_result):
+                            with patch(
+                                "app.routers.admin._probe_config", new_callable=AsyncMock, return_value=other_result
+                            ):
+                                with patch(
+                                    "app.services.clerk_webhook_probe.run_webhook_probe",
+                                    new_callable=AsyncMock,
+                                    return_value=None,
+                                ):
+                                    result = await _run_detailed_probes()
+
+        mock_pg.assert_called_once()
+        pg_service = next(s for s in result.services if s.name == "PostgreSQL")
+        assert pg_service.message == "Fresh"
+        assert health_module._last_postgres_result is fresh_result
+
 
 # ---------------------------------------------------------------------------
 # TestRecordHealthTransitionDBPaths — DB write paths
@@ -788,11 +865,11 @@ class TestDetailedRefreshLoop:
             with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
                 with patch("app.routers.health._refresh_superuser_email_cache", new_callable=AsyncMock):
                     with patch("app.routers.health._record_health_transition", new_callable=AsyncMock):
-                        with patch("app.routers.health.asyncio.create_task") as mock_create_task:
+                        with patch("app.routers.health.fire_and_forget") as mock_fire_and_forget:
                             with pytest.raises(asyncio.CancelledError):
                                 await _detailed_refresh_loop()
 
-        mock_create_task.assert_called_once()
+        mock_fire_and_forget.assert_called_once()
         assert health_module._last_alert_status == "error"
 
     async def test_recovery_triggers_alert_task(self):
@@ -806,11 +883,11 @@ class TestDetailedRefreshLoop:
             with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
                 with patch("app.routers.health._refresh_superuser_email_cache", new_callable=AsyncMock):
                     with patch("app.routers.health._record_health_transition", new_callable=AsyncMock):
-                        with patch("app.routers.health.asyncio.create_task") as mock_create_task:
+                        with patch("app.routers.health.fire_and_forget") as mock_fire_and_forget:
                             with pytest.raises(asyncio.CancelledError):
                                 await _detailed_refresh_loop()
 
-        mock_create_task.assert_called_once()
+        mock_fire_and_forget.assert_called_once()
 
     async def test_loop_catches_probe_exception_and_continues(self):
         from app.routers.health import _detailed_refresh_loop

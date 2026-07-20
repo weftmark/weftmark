@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { AppIcons, type LucideIcon } from "@/lib/icons";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { useAuth } from "@/hooks/useAuth";
+import { useImpersonation } from "@/context/ImpersonationContext";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { OnboardingChecklist } from "@/components/layout/OnboardingChecklist";
 
@@ -16,11 +17,23 @@ interface NavItem {
 }
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
-  desktopCollapsed?: boolean;
-  onDesktopExpand?: () => void;
-  onDesktopCollapse?: () => void;
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly desktopCollapsed?: boolean;
+  readonly onDesktopExpand?: () => void;
+  readonly onDesktopCollapse?: () => void;
+}
+
+interface NavGroupSectionProps {
+  readonly group: NavGroup;
+  readonly icon: LucideIcon;
+  readonly label: string;
+  readonly expanded: boolean;
+  readonly onToggle: () => void;
+  readonly desktopCollapsed: boolean;
+  readonly onClose: () => void;
+  readonly sections: { id: string; label: string }[];
+  readonly basePath: string;
 }
 
 type NavGroup = "settings" | "admin" | "superuser";
@@ -28,10 +41,81 @@ type NavGroup = "settings" | "admin" | "superuser";
 const SettingsIcon = AppIcons.settings;
 const AdminIcon = AppIcons.admin;
 const SuperuserIcon = AppIcons.superuser;
+const ExpandIcon = AppIcons.chevronDoubleRight;
+const CollapseIcon = AppIcons.chevronDoubleLeft;
+
+function isActive(pathname: string, href: string, exact = false): boolean {
+  if (exact) return pathname === href;
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+function navCls(active: boolean, desktopCollapsed: boolean): string {
+  return `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+    active
+      ? "bg-accent text-accent-foreground"
+      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+  } ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`;
+}
+
+function iconCls(active: boolean): string {
+  return `h-4 w-4 shrink-0 ${active ? "text-accent-foreground" : "text-muted-foreground"}`;
+}
+
+function NavGroupSection({
+  icon: Icon,
+  label,
+  expanded,
+  onToggle,
+  desktopCollapsed,
+  onClose,
+  sections,
+  basePath,
+}: NavGroupSectionProps) {
+  const location = useLocation();
+  return (
+    <>
+      <button
+        onClick={onToggle}
+        className={`w-full ${navCls(expanded, desktopCollapsed)}`}
+        title={desktopCollapsed ? label : undefined}
+      >
+        <Icon className={iconCls(expanded)} strokeWidth={1.75} />
+        <span className={desktopCollapsed ? "lg:hidden" : ""}>{label}</span>
+      </button>
+      {expanded && !desktopCollapsed && (
+        <div className="ml-3 border-l border-border pl-2 space-y-0.5">
+          {sections.map(({ id, label: sectionLabel }) => {
+            const href = `${basePath}/${id}`;
+            const active = location.pathname === href;
+            return (
+              <Link
+                key={id}
+                to={href}
+                onClick={onClose}
+                className={`block rounded-md px-2 py-1.5 text-xs transition-colors ${
+                  active
+                    ? "bg-accent/20 text-accent font-medium"
+                    : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
+                }`}
+              >
+                {sectionLabel}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
 
 export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpand, onDesktopCollapse }: Props) {
   const location = useLocation();
   const { user } = useAuth();
+  const { isImpersonating, impersonatedUser, endImpersonation } = useImpersonation();
+  // For nav visibility: use the impersonated user when active, so the primary
+  // nav shows and reflects the impersonated user's role. Admin/superuser
+  // console guards below still use the real `user`.
+  const effectiveUser = isImpersonating ? impersonatedUser : user;
   const { signOut } = useClerk();
   const { t } = useTranslation();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -74,6 +158,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   ];
 
   const SUPERUSER_SECTIONS = [
+    { id: "users", label: t("superuserSections.users") },
     { id: "eula", label: t("superuserSections.eula") },
     { id: "storage", label: t("superuserSections.storage") },
     { id: "cve", label: t("superuserSections.cve") },
@@ -87,23 +172,6 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
     { id: "sandbox", label: t("superuserSections.sandbox") },
   ];
 
-  function isActive(href: string, exact = false) {
-    if (exact) return location.pathname === href;
-    return location.pathname === href || location.pathname.startsWith(href + "/");
-  }
-
-  function navCls(active: boolean) {
-    return `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-      active
-        ? "bg-accent text-accent-foreground"
-        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-    } ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`;
-  }
-
-  function iconCls(active: boolean) {
-    return `h-4 w-4 shrink-0 ${active ? "text-accent-foreground" : "text-muted-foreground"}`;
-  }
-
   return (
     <>
       {/* Mobile backdrop */}
@@ -111,6 +179,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
         <div
           className="fixed inset-0 z-20 bg-black/40 lg:hidden"
           onClick={onClose}
+          onKeyDown={(e) => e.key === "Escape" && onClose()}
         />
       )}
 
@@ -150,140 +219,81 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
               title={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
             >
               {desktopCollapsed
-                ? <AppIcons.chevronDoubleRight className="h-3.5 w-3.5" />
-                : <AppIcons.chevronDoubleLeft className="h-5 w-5" />}
+                ? <ExpandIcon className="h-3.5 w-3.5" />
+                : <CollapseIcon className="h-5 w-5" />}
             </button>
           )}
         </div>
 
         {/* Onboarding checklist — above primary nav, hidden for superusers */}
-        {!user?.is_superuser && (
+        {!effectiveUser?.is_superuser && (
           <div className="shrink-0 pt-2">
             <OnboardingChecklist collapsed={desktopCollapsed} />
           </div>
         )}
 
-        {/* Primary nav — hidden for superusers (they only use /admin) */}
-        {!user?.is_superuser && (
+        {/* Primary nav — hidden for superusers (they only use /admin).
+            Uses effectiveUser so the nav appears during impersonation. */}
+        {!effectiveUser?.is_superuser && (
           <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
             {NAV_ITEMS.map(({ label, href, icon: Icon, exact }) => (
               <Link
                 key={href}
                 to={href}
                 onClick={onClose}
-                className={navCls(isActive(href, exact))}
+                className={navCls(isActive(location.pathname, href, exact), desktopCollapsed)}
                 title={desktopCollapsed ? label : undefined}
               >
-                <Icon className={iconCls(isActive(href, exact))} strokeWidth={1.75} />
+                <Icon className={iconCls(isActive(location.pathname, href, exact))} strokeWidth={1.75} />
                 <span className={desktopCollapsed ? "lg:hidden" : ""}>{label}</span>
               </Link>
             ))}
           </nav>
         )}
 
-        {/* Spacer for superusers */}
-        {user?.is_superuser && <div className="flex-1" />}
+        {/* Spacer for superusers (not during impersonation — primary nav provides flex-1) */}
+        {effectiveUser?.is_superuser && <div className="flex-1" />}
 
         {/* Bottom nav */}
         <div className={`shrink-0 border-t border-border px-3 py-3 space-y-0.5 ${desktopCollapsed ? "lg:px-2" : ""}`}>
-          <button
-            onClick={() => toggleGroup("settings")}
-            className={`w-full ${navCls(expandedGroup === "settings")}`}
-            title={desktopCollapsed ? t("nav.settings") : undefined}
-          >
-            <SettingsIcon className={iconCls(expandedGroup === "settings")} strokeWidth={1.75} />
-            <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.settings")}</span>
-          </button>
-
-          {expandedGroup === "settings" && !desktopCollapsed && (
-            <div className="ml-3 border-l border-border pl-2 space-y-0.5">
-              {SETTINGS_SECTIONS.map(({ id, label }) => {
-                const href = `/settings/${id}`;
-                const active = location.pathname === href;
-                return (
-                  <Link
-                    key={id}
-                    to={href}
-                    onClick={onClose}
-                    className={`block rounded-md px-2 py-1.5 text-xs transition-colors ${
-                      active
-                        ? "bg-accent/20 text-accent font-medium"
-                        : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+          <NavGroupSection
+            group="settings"
+            icon={SettingsIcon}
+            label={t("nav.settings")}
+            expanded={expandedGroup === "settings"}
+            onToggle={() => toggleGroup("settings")}
+            desktopCollapsed={desktopCollapsed}
+            onClose={onClose}
+            sections={SETTINGS_SECTIONS}
+            basePath="/settings"
+          />
 
           {user?.is_admin && (
-            <button
-              onClick={() => toggleGroup("admin")}
-              className={`w-full ${navCls(expandedGroup === "admin")}`}
-              title={desktopCollapsed ? t("nav.admin") : undefined}
-            >
-              <AdminIcon className={iconCls(expandedGroup === "admin")} strokeWidth={1.75} />
-              <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.admin")}</span>
-            </button>
-          )}
-
-          {user?.is_admin && expandedGroup === "admin" && !desktopCollapsed && (
-            <div className="ml-3 border-l border-border pl-2 space-y-0.5">
-              {ADMIN_SECTIONS.map(({ id, label }) => {
-                const href = `/admin/${id}`;
-                const active = location.pathname === href;
-                return (
-                  <Link
-                    key={id}
-                    to={href}
-                    onClick={onClose}
-                    className={`block rounded-md px-2 py-1.5 text-xs transition-colors ${
-                      active
-                        ? "bg-accent/20 text-accent font-medium"
-                        : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
+            <NavGroupSection
+              group="admin"
+              icon={AdminIcon}
+              label={t("nav.admin")}
+              expanded={expandedGroup === "admin"}
+              onToggle={() => toggleGroup("admin")}
+              desktopCollapsed={desktopCollapsed}
+              onClose={onClose}
+              sections={ADMIN_SECTIONS}
+              basePath="/admin"
+            />
           )}
 
           {user?.is_superuser && (
-            <button
-              onClick={() => toggleGroup("superuser")}
-              className={`w-full ${navCls(expandedGroup === "superuser")}`}
-              title={desktopCollapsed ? t("nav.superuser") : undefined}
-            >
-              <SuperuserIcon className={iconCls(expandedGroup === "superuser")} strokeWidth={1.75} />
-              <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.superuser")}</span>
-            </button>
-          )}
-
-          {user?.is_superuser && expandedGroup === "superuser" && !desktopCollapsed && (
-            <div className="ml-3 border-l border-border pl-2 space-y-0.5">
-              {SUPERUSER_SECTIONS.map(({ id, label }) => {
-                const href = `/superuser/${id}`;
-                const active = location.pathname === href;
-                return (
-                  <Link
-                    key={id}
-                    to={href}
-                    onClick={onClose}
-                    className={`block rounded-md px-2 py-1.5 text-xs transition-colors ${
-                      active
-                        ? "bg-accent/20 text-accent font-medium"
-                        : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
-                    }`}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
+            <NavGroupSection
+              group="superuser"
+              icon={SuperuserIcon}
+              label={t("nav.superuser")}
+              expanded={expandedGroup === "superuser"}
+              onToggle={() => toggleGroup("superuser")}
+              desktopCollapsed={desktopCollapsed}
+              onClose={onClose}
+              sections={SUPERUSER_SECTIONS}
+              basePath="/superuser"
+            />
           )}
 
           <button
@@ -314,6 +324,22 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
             <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.signOut")}</span>
           </button>
         </div>
+
+        {/* Impersonated user identity — shown above real user when impersonating */}
+        {isImpersonating && impersonatedUser && (
+          <div className={`shrink-0 border-t border-amber-500/40 bg-amber-500/10 px-4 py-3 ${desktopCollapsed ? "lg:hidden" : ""}`}>
+            <div className="flex items-center gap-2">
+              <p className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{impersonatedUser.display_name}</p>
+              <button
+                onClick={endImpersonation}
+                className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-500/50 hover:bg-amber-500/20 dark:text-amber-400 transition-colors"
+              >
+                {t("impersonation.stop")}
+              </button>
+            </div>
+            <p className="truncate text-xs text-muted-foreground">{impersonatedUser.email}</p>
+          </div>
+        )}
 
         {/* User identity — hidden on desktop in rail mode */}
         {user && (

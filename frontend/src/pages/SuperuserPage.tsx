@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import * as Sentry from "@sentry/react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "@/hooks/useAuth";
+import { useImpersonation } from "@/context/ImpersonationContext";
 import { Button } from "@/components/ui/button";
 import {
   getAdminEula,
@@ -45,12 +48,15 @@ import {
   type CredentialExpiry,
   type CredentialResource,
   type ConfigTestResult,
+  type ConfigTestOption,
   type ConfigFieldState,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 import { CveBanner } from "@/components/admin/CveBanner";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
+import { listAdminUsers } from "@/api/admin";
+import type { AdminUser } from "@/api/admin";
 
 declare const __FRONTEND_DEPS__: Record<string, string>;
 
@@ -65,7 +71,7 @@ function formatUptime(seconds: number): string {
   return parts.join(", ");
 }
 
-type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials" | "sandbox";
+type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials" | "sandbox" | "users";
 
 // ---------------------------------------------------------------------------
 // EULA tab
@@ -836,7 +842,9 @@ function TaskHistoryRow({ item, onRevoke }: { item: TaskHistoryItem; onRevoke: (
     <>
       <tr
         className={`border-t hover:bg-muted/30 text-xs ${item.error ? "cursor-pointer" : ""}`}
+        tabIndex={item.error ? 0 : undefined}
         onClick={() => item.error && setExpanded((v) => !v)}
+        onKeyDown={(e) => { if (item.error && e.key === "Enter") setExpanded((v) => !v); }}
       >
         <td className="px-3 py-2 font-mono text-muted-foreground whitespace-nowrap">{fmtTime(item.queued_at)}</td>
         <td className="px-3 py-2 font-mono" title={item.name}>{shortName(item.name)}</td>
@@ -1625,6 +1633,11 @@ const GROUP_CONFIG: Record<string, { label: string; fields: string[]; testServic
     fields: ["otel_exporter_otlp_endpoint"],
     testService: null,
   },
+  neon: {
+    label: "Neon Usage Dashboard (optional)",
+    fields: ["neon_api_key", "neon_org_id", "neon_project_id"],
+    testService: "neon",
+  },
 };
 
 const CONFIG_SECRET_FIELDS = new Set([
@@ -1636,6 +1649,7 @@ const CONFIG_SECRET_FIELDS = new Set([
   "github_feedback_token",
   "clerk_webhook_secret",
   "maxmind_license_key",
+  "neon_api_key",
 ]);
 
 // These secrets show prefix + •••••••• when set and reveal as plain text when editing.
@@ -1670,21 +1684,25 @@ const CONFIG_FIELD_LABELS: Record<string, string> = {
   webhook_base_url: "Base URL",
   maxmind_license_key: "License Key",
   otel_exporter_otlp_endpoint: "OTLP Endpoint",
+  neon_api_key: "API Key",
+  neon_org_id: "Organization ID",
+  neon_project_id: "Project ID (optional filter)",
 };
 
 interface ConfigFieldRowProps {
-  field: string;
-  groupFieldCount: number;
-  state: ConfigFieldState | undefined;
-  isZeroTrustEnabled: boolean;
-  drafts: Record<string, string>;
-  setDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  editingFields: Set<string>;
-  setEditingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
-  apiUrl: string;
+  readonly field: string;
+  readonly groupFieldCount: number;
+  readonly state: ConfigFieldState | undefined;
+  readonly isZeroTrustEnabled: boolean;
+  readonly drafts: Record<string, string>;
+  readonly setDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  readonly editingFields: Set<string>;
+  readonly setEditingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
+  readonly apiUrl: string;
+  readonly selectOptions?: ConfigTestOption[];
 }
 
-function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, drafts, setDrafts, editingFields, setEditingFields, apiUrl }: ConfigFieldRowProps) {
+function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, drafts, setDrafts, editingFields, setEditingFields, apiUrl, selectOptions }: ConfigFieldRowProps) {
   if ((field === "cf_access_client_id" || field === "cf_access_client_secret") && !isZeroTrustEnabled) return null;
 
   const isBoolean = BOOLEAN_FIELDS.has(field);
@@ -1732,6 +1750,41 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
   if (isSecret && isSet) placeholder = "Enter new value to replace";
   else if (field === "webhook_base_url" && !isSet) placeholder = apiUrl || "http://localhost:8000";
 
+  const inputCls = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono";
+  let fieldControl: React.ReactNode;
+  if (showMasked) {
+    fieldControl = (
+      <div
+        className={`${inputCls} text-muted-foreground cursor-text select-none`}
+        onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
+        title="Click to change"
+      >
+        {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
+      </div>
+    );
+  } else if (selectOptions?.length) {
+    fieldControl = (
+      <select className={inputCls} value={inputValue} onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}>
+        <option value="">— none (no filter) —</option>
+        {selectOptions.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    );
+  } else {
+    fieldControl = (
+      <input
+        type={inputType}
+        className={inputCls}
+        value={inputValue}
+        placeholder={placeholder}
+        onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
+        autoComplete="off"
+        autoFocus={isPrefixMasked && isEditing && !hasDraft}
+      />
+    );
+  }
+
   return (
     <div className={isFullWidth ? "sm:col-span-2" : ""}>
       <div className="flex items-center gap-1.5 mb-1">
@@ -1742,8 +1795,14 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
           </span>
         )}
         {isSet && !fromEnv && !hasDraft && (
-          <span className="text-[10px] border rounded px-1 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700 leading-4">
-            Set
+          <span
+            className={`text-[10px] border rounded px-1 leading-4 ${
+              state?.pending_restart
+                ? "text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+                : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+            }`}
+          >
+            {state?.pending_restart ? "Set — pending restart" : "Set"}
           </span>
         )}
         {field === "webhook_base_url" && !isSet && !hasDraft && (
@@ -1752,25 +1811,7 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
           </span>
         )}
       </div>
-      {showMasked ? (
-        <div
-          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono text-muted-foreground cursor-text select-none"
-          onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
-          title="Click to change"
-        >
-          {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
-        </div>
-      ) : (
-        <input
-          type={inputType}
-          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-          value={inputValue}
-          placeholder={placeholder}
-          onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
-          autoComplete="off"
-          autoFocus={isPrefixMasked && isEditing && !hasDraft}
-        />
-      )}
+      {fieldControl}
       {fromEnv && hasDraft && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
           ENV var active — file value won't take effect until removed from .env
@@ -1929,6 +1970,7 @@ function ConfigSection() {
                     editingFields={editingFields}
                     setEditingFields={setEditingFields}
                     apiUrl={configState.api_url}
+                    selectOptions={field === "neon_project_id" ? (testResult?.options ?? undefined) : undefined}
                   />
                 ))}
               </div>
@@ -2229,6 +2271,139 @@ function SandboxTab() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Users / impersonation tab
+// ---------------------------------------------------------------------------
+
+function UsersTab() {
+  const { t } = useTranslation();
+  const { user: realUser } = useAuth();
+  const { isImpersonating, impersonatedUser, startImpersonation, endImpersonation } = useImpersonation();
+  const [search, setSearch] = useState("");
+  const [confirmTarget, setConfirmTarget] = useState<AdminUser | null>(null);
+
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ["admin", "users"],
+    queryFn: listAdminUsers,
+    staleTime: 60_000,
+  });
+
+  const filtered = users.filter(
+    (u) =>
+      u.display_name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  async function handleImpersonate(target: AdminUser) {
+    if (!realUser) return;
+    const fakeTargetUser = {
+      id: target.id,
+      email: target.email,
+      display_name: target.display_name,
+      is_admin: target.is_admin,
+      is_superuser: target.is_superuser,
+      theme: "light" as const,
+      activity_theme: null,
+      idle_timeout_minutes: 30,
+      measurement_system: "imperial",
+      ai_training_consent: false,
+      show_version_numbers: false,
+      hide_unused_shafts_treadles: false,
+      tracker_color_mode: "weft",
+      tracker_show_weft_color: true,
+      tracker_show_drawdown: true,
+      tracker_show_progress: true,
+      tracker_show_pick_cards: false,
+      onboarding_dismissed: false,
+      eula_accepted_version: null,
+      current_eula_version: "",
+      storage_used_bytes: 0,
+      storage_quota_bytes: 0,
+    };
+    await startImpersonation(realUser, fakeTargetUser);
+    setConfirmTarget(null);
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">{t("superuserSections.users")}</h2>
+
+      {isImpersonating && impersonatedUser && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20 px-4 py-3 flex items-center justify-between gap-3">
+          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+            {t("impersonation.banner", { name: impersonatedUser.display_name || impersonatedUser.email })}
+          </span>
+          <Button variant="outline" size="sm" onClick={endImpersonation}>
+            {t("impersonation.stopButton")}
+          </Button>
+        </div>
+      )}
+
+      <input
+        type="search"
+        placeholder={t("impersonation.searchPlaceholder")}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+      />
+
+      {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
+
+      <div className="divide-y divide-border rounded-md border border-border">
+        {filtered.map((u) => (
+          <div key={u.id} className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{u.display_name}</p>
+              <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {u.is_superuser && (
+                <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary">
+                  {t("roles.superuser")}
+                </span>
+              )}
+              {u.is_admin && !u.is_superuser && (
+                <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
+                  {t("roles.admin")}
+                </span>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={u.is_superuser || isImpersonating || !u.is_active}
+                onClick={() => setConfirmTarget(u)}
+              >
+                {t("impersonation.impersonateButton")}
+              </Button>
+            </div>
+          </div>
+        ))}
+        {!isLoading && filtered.length === 0 && (
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">{t("common.noResults")}</p>
+        )}
+      </div>
+
+      {/* Confirmation dialog */}
+      {confirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="rounded-lg border border-border bg-card p-6 w-full max-w-sm shadow-xl space-y-4">
+            <h3 className="text-base font-semibold">{t("impersonation.confirmTitle")}</h3>
+            <p className="text-sm text-muted-foreground">
+              {t("impersonation.confirmBody", { name: confirmTarget.display_name || confirmTarget.email })}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setConfirmTarget(null)}>{t("common.cancel")}</Button>
+              <Button variant="default" onClick={() => handleImpersonate(confirmTarget)}>
+                {t("impersonation.confirmButton")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SuperuserPage() {
   const { section = "eula" } = useParams<{ section: string }>();
   const activeSection = section as SuperuserSection;
@@ -2266,6 +2441,7 @@ export function SuperuserPage() {
       {activeSection === "exports" && <ExportsTab />}
       {activeSection === "credentials" && <CredentialsTab />}
       {activeSection === "sandbox" && <SandboxTab />}
+      {activeSection === "users" && <UsersTab />}
     </div>
   );
 }

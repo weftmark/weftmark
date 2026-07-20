@@ -1711,3 +1711,65 @@ class TestDailyHealthCheck:
                 sync_db.execute(_del(User).where(User.id == superuser_id))
                 sync_db.commit()
             engine.dispose()
+
+
+class TestCheckWwwRedirect:
+    def _run(self, monkeypatch, mock_response=None, side_effect=None):
+        from app.config import get_settings
+        from app.tasks.maintenance import check_www_redirect
+
+        monkeypatch.setattr(get_settings(), "frontend_url", "https://weftmark.com")
+        with patch("httpx.get", return_value=mock_response, side_effect=side_effect):
+            return check_www_redirect.run.__func__(_make_task())
+
+    def test_correct_redirect_returns_ok(self, db_session, monkeypatch):
+        resp = MagicMock(status_code=301, headers={"location": "https://weftmark.com/?foo=bar"})
+        result = self._run(monkeypatch, mock_response=resp)
+        assert result["ok"] is True
+
+    def test_non_redirect_status_returns_not_ok(self, db_session, monkeypatch):
+        resp = MagicMock(status_code=200, headers={})
+        result = self._run(monkeypatch, mock_response=resp)
+        assert result["ok"] is False
+        assert "HTTP 200" in result["detail"]
+
+    def test_wrong_location_returns_not_ok(self, db_session, monkeypatch):
+        resp = MagicMock(status_code=301, headers={"location": "https://not-weftmark.example/?foo=bar"})
+        result = self._run(monkeypatch, mock_response=resp)
+        assert result["ok"] is False
+        assert "unexpected location" in result["detail"]
+
+    def test_dropped_query_string_returns_not_ok(self, db_session, monkeypatch):
+        # The exact regression that shipped once already -- concat() without a "?" separator
+        resp = MagicMock(status_code=301, headers={"location": "https://weftmark.com/foo=bar"})
+        result = self._run(monkeypatch, mock_response=resp)
+        assert result["ok"] is False
+        assert "query string not preserved" in result["detail"]
+
+    def test_network_exception_returns_not_ok(self, db_session, monkeypatch):
+        result = self._run(monkeypatch, side_effect=RuntimeError("connection refused"))
+        assert result["ok"] is False
+        assert "connection refused" in result["detail"]
+
+    def test_ok_no_email_sent(self, db_session, monkeypatch):
+        resp = MagicMock(status_code=301, headers={"location": "https://weftmark.com/?foo=bar"})
+        mock_send = MagicMock()
+        with patch("app.services.email.send_health_degraded_alert", mock_send):
+            self._run(monkeypatch, mock_response=resp)
+        mock_send.assert_not_called()
+
+    def test_failure_no_superusers_no_email_sent(self, db_session, monkeypatch):
+        resp = MagicMock(status_code=200, headers={})
+        mock_send = AsyncMock()
+        with patch("app.services.email.send_health_degraded_alert", mock_send):
+            self._run(monkeypatch, mock_response=resp)
+        mock_send.assert_not_called()
+
+    def test_failure_with_superuser_sends_email(self, superuser_user, monkeypatch):
+        resp = MagicMock(status_code=200, headers={})
+        mock_send = AsyncMock()
+        with patch("app.services.email.send_health_degraded_alert", mock_send):
+            result = self._run(monkeypatch, mock_response=resp)
+
+        mock_send.assert_called_once()
+        assert result["ok"] is False

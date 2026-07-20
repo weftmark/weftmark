@@ -19,6 +19,7 @@ import {
   banPendingSignup,
   getAdminServices,
   getAdminDbInfo,
+  getNeonUsage,
   sendTestEmail,
   testWebhook,
   getAuditLog,
@@ -31,6 +32,7 @@ import {
   type AdminUser,
   type AdminHealth,
   type AdminDbInfo,
+  type NeonUsage,
   type AuditLogEntry,
   type InviteRecord,
   type PendingSignup,
@@ -1162,6 +1164,59 @@ function DbInfoPanel() {
   );
 }
 
+function NeonUsagePanel() {
+  const { data } = useQuery<NeonUsage>({
+    queryKey: ["admin", "neon-usage"],
+    queryFn: getNeonUsage,
+    staleTime: 60_000,
+  });
+
+  // Purely optional/observational — hidden entirely unless neon_api_key/neon_org_id
+  // are configured. Independent of which Postgres the app actually connects to.
+  if (!data || !data.configured) return null;
+
+  const totalHours = data.total_compute_seconds / 3600;
+  const maxDaily = Math.max(1, ...data.daily.map((d) => d.compute_seconds));
+
+  return (
+    <div>
+      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+        Neon Compute Usage (last 30 days)
+      </h2>
+      {data.error ? (
+        <div className="border rounded-lg px-4 py-2 bg-background text-sm text-destructive">{data.error}</div>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 bg-background border-b">
+            <span className="text-sm">Total compute time</span>
+            <span className="text-xs font-mono text-muted-foreground">{totalHours.toFixed(1)} hours</span>
+          </div>
+          {data.daily.length > 0 && (
+            <div className="px-4 py-2 bg-background space-y-1">
+              {data.daily.map((d) => (
+                <div key={d.date} className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-muted-foreground w-20 shrink-0">
+                    {new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </span>
+                  <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
+                    <div
+                      className="h-full bg-accent"
+                      style={{ width: `${Math.max(2, (d.compute_seconds / maxDaily) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-mono text-muted-foreground w-16 text-right">
+                    {(d.compute_seconds / 3600).toFixed(2)}h
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ServicesTab() {
   // Live status from /health/detailed — auto-refreshes every 30s
   const [detailed, setDetailed] = useState<ReadinessResponse | null>(null);
@@ -1219,6 +1274,7 @@ function ServicesTab() {
       )}
 
       <DbInfoPanel />
+      <NeonUsagePanel />
       <ServerEventsPanel />
     </div>
   );
@@ -1657,8 +1713,16 @@ function FeedbackTab() {
 
       {/* Detail modal */}
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDetail(null)}>
-          <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setDetail(null)}
+          onKeyDown={(e) => e.key === "Escape" && setDetail(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setDetail(null); }}
+          >
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">
                 {SUBMISSION_TYPE_LABELS[detail.submission_type as SubmissionType] ?? detail.submission_type}
@@ -1877,7 +1941,9 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
     <>
       <tr
         className={`hover:bg-muted/30 ${hasDetails ? "cursor-pointer" : ""}`}
+        tabIndex={hasDetails ? 0 : undefined}
         onClick={() => hasDetails && setExpanded((v) => !v)}
+        onKeyDown={(e) => { if (hasDetails && e.key === "Enter") setExpanded((v) => !v); }}
       >
         <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatAuditTime(entry.created_at)}</td>
         <td className="px-3 py-2">

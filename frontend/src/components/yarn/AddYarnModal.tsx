@@ -67,7 +67,7 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
     if (!q) return [];
     return [...new Set(existingYarns.map((y) => y.brand))]
       .filter((b) => b.toLowerCase().includes(q))
-      .sort();
+      .sort((a, b) => a.localeCompare(b));
   }, [existingYarns, brand]);
 
   const nameSuggestions = useMemo(() => {
@@ -79,7 +79,7 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
       : existingYarns;
     return [...new Set(pool.map((y) => y.name))]
       .filter((n) => n.toLowerCase().includes(q))
-      .sort();
+      .sort((a, b) => a.localeCompare(b));
   }, [existingYarns, brand, name]);
 
   const handleSubmit = async (e: React.FormEvent) => {

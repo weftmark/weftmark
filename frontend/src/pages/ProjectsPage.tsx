@@ -152,8 +152,13 @@ function ProjectCard({ project, onAssign }: {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onClick={() => setShowPreview(false)}
+          onKeyDown={(e) => e.key === "Escape" && setShowPreview(false)}
         >
-          <div className="relative max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="relative max-w-xl w-full"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setShowPreview(false); }}
+          >
             <button
               onClick={() => setShowPreview(false)}
               className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"
@@ -221,7 +226,7 @@ export function ProjectsPage() {
   const allTags = useMemo(() => {
     const set = new Set<string>();
     projects.forEach((p) => p.tags?.forEach((t) => set.add(t)));
-    return [...set].sort();
+    return [...set].sort((a, b) => a.localeCompare(b));
   }, [projects]);
 
   const filteredProjects = activeTagFilter

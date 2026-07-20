@@ -1165,6 +1165,26 @@ class TestAdminServices:
 
 
 # ---------------------------------------------------------------------------
+# GET /api/admin/neon-usage
+# ---------------------------------------------------------------------------
+
+
+class TestNeonUsageEndpoint:
+    async def test_returns_not_configured_by_default(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/neon-usage")
+        assert resp.status_code == 200
+        assert resp.json()["configured"] is False
+
+    async def test_non_admin_returns_403(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/neon-usage")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/api/admin/neon-usage")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
 # POST /api/admin/test-email
 # ---------------------------------------------------------------------------
 
