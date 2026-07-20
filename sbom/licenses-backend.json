@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.31.0"
+    "Version": "3.31.1"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -697,6 +697,6 @@
   {
     "License": "Apache-2.0",
     "Name": "yarl",
-    "Version": "1.24.2"
+    "Version": "1.24.5"
   }
 ]
