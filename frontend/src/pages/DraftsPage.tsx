@@ -42,7 +42,7 @@ export function DraftsPage() {
   const allTags = useMemo(() => {
     const set = new Set<string>();
     drafts.forEach((d) => d.tags?.forEach((t) => set.add(t)));
-    return [...set].sort();
+    return [...set].sort((a, b) => a.localeCompare(b));
   }, [drafts]);
 
   const handleUploadSuccess = () => {
