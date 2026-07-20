@@ -14,6 +14,11 @@ from app.models.project import Project
 from app.models.project import ProjectPhoto as ProjectPhotoModel
 from app.models.user import User
 
+# Default tracker-session token for tests that don't care about lock behavior itself
+# (see TestTrackerLock for lock-specific coverage). Every /step, /jump, /jump-item,
+# /advance-item call requires one (#1029).
+_TRACKER_TOKEN = "test-tracker-session"
+
 
 @pytest.fixture(autouse=True)
 def _mock_preview_task(monkeypatch):
@@ -1243,7 +1248,11 @@ class TestStepProject:
     async def test_advance_increments_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        body = (await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_pick"] == 2
 
     async def test_reverse_decrements_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
@@ -1251,7 +1260,11 @@ class TestStepProject:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.current_pick = 2
         await db_session.commit()
-        body = (await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "reverse"})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/step", json={"direction": "reverse", "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_pick"] == 1
 
     async def test_reverse_at_first_pick_returns_400(
@@ -1259,7 +1272,9 @@ class TestStepProject:
     ):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "reverse"})
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "reverse", "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_advance_past_last_pick_returns_400(
@@ -1269,7 +1284,9 @@ class TestStepProject:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.current_pick = project.total_picks + 1
         await db_session.commit()
-        resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_invalid_direction_returns_400(
@@ -1277,7 +1294,9 @@ class TestStepProject:
     ):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "sideways"})
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "sideways", "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_completed_project_returns_400(
@@ -1287,23 +1306,33 @@ class TestStepProject:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.status = "completed"
         await db_session.commit()
-        resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_not_found_returns_404(self, auth_client: AsyncClient):
-        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/step", json={"direction": "advance"})
+        resp = await auth_client.post(
+            f"/api/projects/{uuid.uuid4()}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        resp = await client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        resp = await client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 401
 
     async def test_response_is_lightweight(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        body = (await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert set(body.keys()) == {"current_pick", "total_picks", "current_item", "num_items"}
 
     async def test_logs_step_to_database(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
@@ -1313,7 +1342,9 @@ class TestStepProject:
 
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
         step = await db_session.scalar(select(ProjectStep).where(ProjectStep.project_id == project.id))
         assert step is not None
         assert step.event_type == "advance"
@@ -1340,10 +1371,186 @@ class TestStepProject:
         await db_session.commit()
         picks = []
         for _ in range(4):
-            resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+            resp = await auth_client.post(
+                f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+            )
             assert resp.status_code == 200
             picks.append(resp.json()["current_pick"])
         assert picks == sorted(set(picks)), f"Duplicate or out-of-order picks: {picks}"
+
+
+# ---------------------------------------------------------------------------
+# TestTrackerLock (#1029)
+# ---------------------------------------------------------------------------
+
+
+async def _claim(client: AsyncClient, project_id, token: str, force: bool = False):
+    return await client.post(
+        f"/api/projects/{project_id}/claim-tracking",
+        json={"tracker_session_id": token, "force": force},
+    )
+
+
+async def _release(client: AsyncClient, project_id, token: str):
+    return await client.post(
+        f"/api/projects/{project_id}/release-tracking",
+        json={"tracker_session_id": token},
+    )
+
+
+class TestTrackerLock:
+    async def test_claim_succeeds_when_free(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await _claim(auth_client, project.id, "token-a")
+        assert resp.status_code == 200
+
+    async def test_claim_idempotent_for_same_token(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        assert (await _claim(auth_client, project.id, "token-a")).status_code == 200
+        assert (await _claim(auth_client, project.id, "token-a")).status_code == 200
+
+    async def test_claim_blocked_by_other_live_token_returns_409(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        assert (await _claim(auth_client, project.id, "token-a")).status_code == 200
+        resp = await _claim(auth_client, project.id, "token-b")
+        assert resp.status_code == 409
+
+    async def test_claim_with_force_steals_lock(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        assert (await _claim(auth_client, project.id, "token-a")).status_code == 200
+        assert (await _claim(auth_client, project.id, "token-b", force=True)).status_code == 200
+        # Subsequent write from the original holder is now blocked.
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step",
+            json={"direction": "advance", "tracker_session_id": "token-a"},
+        )
+        assert resp.status_code == 409
+
+    async def test_step_blocked_by_other_tracker_session_returns_409(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        assert (await _claim(auth_client, project.id, "token-a")).status_code == 200
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step",
+            json={"direction": "advance", "tracker_session_id": "token-b"},
+        )
+        assert resp.status_code == 409
+
+    async def test_step_without_prior_claim_auto_claims(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step",
+            json={"direction": "advance", "tracker_session_id": "token-a"},
+        )
+        assert resp.status_code == 200
+
+    async def test_step_from_holder_refreshes_claim_timestamp(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from sqlalchemy import select
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project_id = project.id
+        assert (await _claim(auth_client, project_id, "token-a")).status_code == 200
+        db_session.expire(project)
+        first = await db_session.execute(select(Project).where(Project.id == project_id))
+        first_claimed_at = first.scalar_one().active_tracker_claimed_at
+
+        resp = await auth_client.post(
+            f"/api/projects/{project_id}/step",
+            json={"direction": "advance", "tracker_session_id": "token-a"},
+        )
+        assert resp.status_code == 200
+        db_session.expire(project)
+        refreshed = (await db_session.execute(select(Project).where(Project.id == project_id))).scalar_one()
+        assert refreshed.active_tracker_session_id == "token-a"
+        assert refreshed.active_tracker_claimed_at >= first_claimed_at
+
+    async def test_expired_lock_self_heals_on_step(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.active_tracker_session_id = "token-a"
+        project.active_tracker_claimed_at = datetime.now(timezone.utc) - timedelta(
+            minutes=test_user.idle_timeout_minutes + 5
+        )
+        await db_session.commit()
+
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step",
+            json={"direction": "advance", "tracker_session_id": "token-b"},
+        )
+        assert resp.status_code == 200
+
+    async def test_advance_item_and_jump_item_gated(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project.current_pick = project.total_picks + 1
+        project.num_items = 2
+        await db_session.commit()
+        assert (await _claim(auth_client, project.id, "token-a")).status_code == 200
+
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": "token-b"}
+        )
+        assert resp.status_code == 409
+
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/jump-item", json={"item": 1, "tracker_session_id": "token-b"}
+        )
+        assert resp.status_code == 409
+
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": "token-a"}
+        )
+        assert resp.status_code == 200
+
+    async def test_release_clears_lock_for_holder(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        assert (await _claim(auth_client, project.id, "token-a")).status_code == 200
+        assert (await _release(auth_client, project.id, "token-a")).status_code == 200
+        # Now free — a different token can claim without force.
+        resp = await _claim(auth_client, project.id, "token-b")
+        assert resp.status_code == 200
+
+    async def test_release_by_non_holder_is_noop(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        from sqlalchemy import select
+
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        project_id = project.id
+        assert (await _claim(auth_client, project_id, "token-a")).status_code == 200
+        assert (await _release(auth_client, project_id, "token-b")).status_code == 200
+        db_session.expire(project)
+        refreshed = (await db_session.execute(select(Project).where(Project.id == project_id))).scalar_one()
+        assert refreshed.active_tracker_session_id == "token-a"
+        # Still locked — a non-force claim from token-b is blocked.
+        resp = await _claim(auth_client, project_id, "token-b")
+        assert resp.status_code == 409
 
 
 # ---------------------------------------------------------------------------
@@ -1355,7 +1562,11 @@ class TestJumpProject:
     async def test_jumps_to_pick(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump", json={"pick": 2})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump", json={"pick": 2, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_pick"] == 2
 
     async def test_clamps_above_total_plus_one(
@@ -1363,13 +1574,21 @@ class TestJumpProject:
     ):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump", json={"pick": 999})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump", json={"pick": 999, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_pick"] == project.total_picks + 1
 
     async def test_clamps_below_one(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump", json={"pick": 0})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump", json={"pick": 0, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_pick"] == 1
 
     async def test_completed_project_returns_400(
@@ -1379,11 +1598,15 @@ class TestJumpProject:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.status = "completed"
         await db_session.commit()
-        resp = await auth_client.post(f"/api/projects/{project.id}/jump", json={"pick": 1})
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/jump", json={"pick": 1, "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_not_found_returns_404(self, auth_client: AsyncClient):
-        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/jump", json={"pick": 1})
+        resp = await auth_client.post(
+            f"/api/projects/{uuid.uuid4()}/jump", json={"pick": 1, "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 404
 
     async def test_locks_row_for_update(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
@@ -1399,7 +1622,9 @@ class TestJumpProject:
 
         original = projects_module._get_owned_project
         with patch.object(projects_module, "_get_owned_project", new=AsyncMock(wraps=original)) as mock_get:
-            resp = await auth_client.post(f"/api/projects/{project.id}/jump", json={"pick": 2})
+            resp = await auth_client.post(
+                f"/api/projects/{project.id}/jump", json={"pick": 2, "tracker_session_id": _TRACKER_TOKEN}
+            )
 
         assert resp.status_code == 200
         mock_get.assert_called_once()
@@ -1424,14 +1649,24 @@ class TestJumpProject:
         db_session.add(project)
         await db_session.commit()
 
-        jump_body = (await auth_client.post(f"/api/projects/{project.id}/jump", json={"pick": 5})).json()
+        jump_body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump", json={"pick": 5, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert jump_body["current_pick"] == 5
 
-        step_body = (await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})).json()
+        step_body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert step_body["current_pick"] == 6
 
         reverse_body = (
-            await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "reverse"})
+            await auth_client.post(
+                f"/api/projects/{project.id}/step", json={"direction": "reverse", "tracker_session_id": _TRACKER_TOKEN}
+            )
         ).json()
         assert reverse_body["current_pick"] == 5
 
@@ -1598,7 +1833,11 @@ class TestAdvanceItem:
         project.current_item = 1
         project.current_pick = project.total_picks + 1
         await db_session.commit()
-        body = (await auth_client.post(f"/api/projects/{project.id}/advance-item")).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_item"] == 2
         assert body["current_pick"] == 1
 
@@ -1612,14 +1851,18 @@ class TestAdvanceItem:
         project.current_pick = project.total_picks + 1
         await db_session.commit()
         # Advance to item 2
-        await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        await auth_client.post(f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN})
         # Work a bit on item 2
         project2 = await db_session.get(type(project), project.id)
         assert project2 is not None
         project2.current_pick = 2
         await db_session.commit()
         # Jump back to item 1 — should restore to total_picks + 1 (completed state)
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump-item", json={"item": 1, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_item"] == 1
         assert body["current_pick"] == project.total_picks + 1
 
@@ -1636,9 +1879,13 @@ class TestAdvanceItem:
         # Advance from item 2 (at end) to item 3 — item 2's pick (2) should be saved
         project.current_pick = project.total_picks + 1
         await db_session.commit()
-        await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        await auth_client.post(f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN})
         # Jump back to item 2 — should restore pick 2
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 2})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump-item", json={"item": 2, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_pick"] == project.total_picks + 1  # saved at end
 
     async def test_response_includes_num_items(
@@ -1650,7 +1897,11 @@ class TestAdvanceItem:
         project.current_item = 1
         project.current_pick = project.total_picks + 1
         await db_session.commit()
-        body = (await auth_client.post(f"/api/projects/{project.id}/advance-item")).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["num_items"] == 3
 
     async def test_fails_if_not_at_item_end_returns_400(
@@ -1662,7 +1913,9 @@ class TestAdvanceItem:
         project.current_item = 1
         # current_pick still at 1, not at item end
         await db_session.commit()
-        resp = await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_fails_if_on_last_item_returns_400(
@@ -1674,7 +1927,9 @@ class TestAdvanceItem:
         project.current_item = 3
         project.current_pick = project.total_picks + 1
         await db_session.commit()
-        resp = await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_single_item_project_returns_400(
@@ -1684,7 +1939,9 @@ class TestAdvanceItem:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.current_pick = project.total_picks + 1
         await db_session.commit()
-        resp = await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_inactive_project_returns_400(
@@ -1694,17 +1951,23 @@ class TestAdvanceItem:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.status = "completed"
         await db_session.commit()
-        resp = await auth_client.post(f"/api/projects/{project.id}/advance-item")
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_not_found_returns_404(self, auth_client: AsyncClient):
-        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/advance-item")
+        resp = await auth_client.post(
+            f"/api/projects/{uuid.uuid4()}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        resp = await client.post(f"/api/projects/{project.id}/advance-item")
+        resp = await client.post(
+            f"/api/projects/{project.id}/advance-item", json={"tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 401
 
 
@@ -1721,7 +1984,11 @@ class TestJumpItem:
         project.current_item = 3
         project.current_pick = 2
         await db_session.commit()
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 2})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump-item", json={"item": 2, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_item"] == 2
         assert body["current_pick"] == 1  # item 2 never visited → defaults to 1
 
@@ -1735,7 +2002,11 @@ class TestJumpItem:
         project.current_pick = 7
         project.item_picks = {"1": project.total_picks + 1}  # item 1 was completed
         await db_session.commit()
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump-item", json={"item": 1, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_item"] == 1
         assert body["current_pick"] == project.total_picks + 1
 
@@ -1749,7 +2020,9 @@ class TestJumpItem:
         project.current_item = 2
         project.current_pick = 7
         await db_session.commit()
-        await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})
+        await auth_client.post(
+            f"/api/projects/{project.id}/jump-item", json={"item": 1, "tracker_session_id": _TRACKER_TOKEN}
+        )
         await db_session.refresh(project)
         assert project.item_picks.get("2") == 7
 
@@ -1758,7 +2031,11 @@ class TestJumpItem:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.num_items = 3
         await db_session.commit()
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 99})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump-item", json={"item": 99, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_item"] == 3
 
     async def test_clamps_below_one(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
@@ -1766,7 +2043,11 @@ class TestJumpItem:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.num_items = 3
         await db_session.commit()
-        body = (await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 0})).json()
+        body = (
+            await auth_client.post(
+                f"/api/projects/{project.id}/jump-item", json={"item": 0, "tracker_session_id": _TRACKER_TOKEN}
+            )
+        ).json()
         assert body["current_item"] == 1
 
     async def test_inactive_project_returns_400(
@@ -1776,17 +2057,23 @@ class TestJumpItem:
         project = await _insert_active_project(db_session, test_user, draft, None)
         project.status = "completed"
         await db_session.commit()
-        resp = await auth_client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/jump-item", json={"item": 1, "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 400
 
     async def test_not_found_returns_404(self, auth_client: AsyncClient):
-        resp = await auth_client.post(f"/api/projects/{uuid.uuid4()}/jump-item", json={"item": 1})
+        resp = await auth_client.post(
+            f"/api/projects/{uuid.uuid4()}/jump-item", json={"item": 1, "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 404
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        resp = await client.post(f"/api/projects/{project.id}/jump-item", json={"item": 1})
+        resp = await client.post(
+            f"/api/projects/{project.id}/jump-item", json={"item": 1, "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 401
 
 
@@ -2251,7 +2538,9 @@ class TestWeaveSessions:
 
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
         session = await db_session.scalar(select(WeaveSession).where(WeaveSession.project_id == project.id))
         assert session is not None
         assert session.ended_at is None
@@ -2266,8 +2555,12 @@ class TestWeaveSessions:
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
 
-        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
-        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
+        await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
 
         sessions = (await db_session.scalars(select(WeaveSession).where(WeaveSession.project_id == project.id))).all()
         assert len(sessions) == 1
@@ -2311,7 +2604,9 @@ class TestWeaveSessions:
         await db_session.commit()
 
         # Trigger a new step — gap is > 30 min, so should close old session and open new
-        resp = await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        resp = await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
         assert resp.status_code == 200
 
         await db_session.refresh(old_session)
@@ -2349,7 +2644,9 @@ class TestWeaveSessions:
         )
         await db_session.commit()
 
-        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
+        await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
 
         new_step = await db_session.scalar(
             select(ProjectStep)
@@ -2429,9 +2726,15 @@ class TestProjectMetrics:
     ):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
-        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
-        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "advance"})
-        await auth_client.post(f"/api/projects/{project.id}/step", json={"direction": "reverse"})
+        await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
+        await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "advance", "tracker_session_id": _TRACKER_TOKEN}
+        )
+        await auth_client.post(
+            f"/api/projects/{project.id}/step", json={"direction": "reverse", "tracker_session_id": _TRACKER_TOKEN}
+        )
         body = (await auth_client.get(f"/api/projects/{project.id}/metrics")).json()
         assert body["total_advance_steps"] == 2
         assert body["total_reverse_steps"] == 1

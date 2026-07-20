@@ -732,6 +732,8 @@
     "resumeFromPick": "Reprendre à partir de la duite {{pick}} ?",
     "loomHasActive": "Ce métier a un projet actif :",
     "resolveToRestart": "Résolvez-le pour redémarrer celui-ci.",
+    "trackerLockedElsewhere": "Ce projet est actuellement suivi depuis un autre appareil.",
+    "takeOverTracking": "Prendre le relais",
     "working": "En cours…",
     "markCompletedAndRestart": "Terminer & redémarrer",
     "abandonAndRestart": "Abandonner & redémarrer",

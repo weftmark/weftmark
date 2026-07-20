@@ -733,6 +733,8 @@
     "resumeFromPick": "Ab Schuss {{pick}} fortsetzen?",
     "loomHasActive": "Dieser Webstuhl hat ein aktives Projekt:",
     "resolveToRestart": "Löse es auf, um dieses neu zu starten.",
+    "trackerLockedElsewhere": "Dieses Projekt wird gerade von einem anderen Gerät verfolgt.",
+    "takeOverTracking": "Übernehmen",
     "working": "Wird verarbeitet…",
     "markCompletedAndRestart": "Abschließen & neu starten",
     "abandonAndRestart": "Aufgeben & neu starten",

@@ -732,6 +732,8 @@
     "resumeFromPick": "Hervatten vanaf inslag {{pick}}?",
     "loomHasActive": "Dit weefgetouw heeft een actief project:",
     "resolveToRestart": "Los het op om dit opnieuw te starten.",
+    "trackerLockedElsewhere": "Dit project wordt momenteel vanaf een ander apparaat bijgehouden.",
+    "takeOverTracking": "Overnemen",
     "working": "Bezig…",
     "markCompletedAndRestart": "Voltooien & herstarten",
     "abandonAndRestart": "Opgeven & herstarten",

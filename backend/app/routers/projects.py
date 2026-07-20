@@ -3,7 +3,7 @@ import mimetypes
 import re
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -173,14 +173,30 @@ class SetReedRequest(BaseModel):
 
 class JumpRequest(BaseModel):
     pick: int
+    tracker_session_id: str
 
 
 class JumpItemRequest(BaseModel):
     item: int
+    tracker_session_id: str
 
 
 class StepRequest(BaseModel):
     direction: str  # "advance" | "reverse"
+    tracker_session_id: str
+
+
+class AdvanceItemRequest(BaseModel):
+    tracker_session_id: str
+
+
+class ClaimTrackingRequest(BaseModel):
+    tracker_session_id: str
+    force: bool = False
+
+
+class ReleaseTrackingRequest(BaseModel):
+    tracker_session_id: str
 
 
 class StepResponse(BaseModel):
@@ -342,6 +358,29 @@ async def _check_loom_conflict(
         q = q.where(Project.id != exclude_id)
     if await db.scalar(q) is not None:
         raise HTTPException(status_code=409, detail="This loom already has an active project")
+
+
+async def _check_tracker_lock(project: Project, tracker_session_id: str, current_user: User) -> None:
+    """Raise 409 if a different, still-live tracker session holds the lock.
+
+    Otherwise (re)stamp the claim for the calling token — acts as a heartbeat so an
+    actively-writing device never loses its own lock to idle-timeout. A lock is "live"
+    if claimed within idle_timeout_minutes; past that it's treated as an abandoned/crashed
+    session and silently self-heals to whichever device asks next. See #1029.
+    """
+    if project.active_tracker_session_id is None or project.active_tracker_session_id == tracker_session_id:
+        project.active_tracker_session_id = tracker_session_id
+        project.active_tracker_claimed_at = datetime.now(timezone.utc)
+        return
+    claimed_at = project.active_tracker_claimed_at
+    if claimed_at is not None and claimed_at.tzinfo is None:
+        claimed_at = claimed_at.replace(tzinfo=timezone.utc)
+    idle_timeout = timedelta(minutes=current_user.idle_timeout_minutes)
+    if claimed_at is None or datetime.now(timezone.utc) - claimed_at >= idle_timeout:
+        project.active_tracker_session_id = tracker_session_id
+        project.active_tracker_claimed_at = datetime.now(timezone.utc)
+        return
+    raise HTTPException(status_code=409, detail="This project is being tracked from another device")
 
 
 async def _wif_path_for_project(draft: Draft, project_type: str) -> str:
@@ -1124,6 +1163,64 @@ async def start_project(
     return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
+@router.post("/{project_id}/claim-tracking", response_model=ProjectDetail)
+async def claim_tracking(
+    project_id: uuid.UUID,
+    body: ClaimTrackingRequest,
+    current_user: User = Depends(get_effective_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    """Claim the tracker lock for this device (see #1029).
+
+    Silently succeeds if the lock is free, already held by this same tracker_session_id,
+    or has gone stale (older than idle_timeout_minutes). Otherwise 409s unless force=true,
+    which is only ever sent after the user explicitly confirms a "take over" prompt.
+    """
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
+    now = datetime.now(timezone.utc)
+    is_free_or_self = (
+        project.active_tracker_session_id is None or project.active_tracker_session_id == body.tracker_session_id
+    )
+    is_expired = False
+    if not is_free_or_self and project.active_tracker_claimed_at is not None:
+        claimed_at = project.active_tracker_claimed_at
+        if claimed_at.tzinfo is None:
+            claimed_at = claimed_at.replace(tzinfo=timezone.utc)
+        is_expired = now - claimed_at >= timedelta(minutes=current_user.idle_timeout_minutes)
+    if not (is_free_or_self or is_expired or body.force):
+        raise HTTPException(status_code=409, detail="This project is being tracked from another device")
+    project.active_tracker_session_id = body.tracker_session_id
+    project.active_tracker_claimed_at = now
+    await db.commit()
+    await db.refresh(project)
+    draft = await db.get(Draft, project.draft_id)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+
+
+@router.post("/{project_id}/release-tracking", response_model=ProjectDetail)
+async def release_tracking(
+    project_id: uuid.UUID,
+    body: ReleaseTrackingRequest,
+    current_user: User = Depends(get_effective_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProjectDetail:
+    """Release the tracker lock — a no-op if this device doesn't currently hold it.
+
+    Called best-effort on tracker-screen unmount. Idempotency here matters: a stale
+    unmount firing after another device already took over must not clobber that claim.
+    """
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
+    if project.active_tracker_session_id == body.tracker_session_id:
+        project.active_tracker_session_id = None
+        project.active_tracker_claimed_at = None
+        await db.commit()
+        await db.refresh(project)
+    draft = await db.get(Draft, project.draft_id)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+
+
 @router.post("/{project_id}/step", response_model=StepResponse)
 async def step_project(
     project_id: uuid.UUID,
@@ -1140,6 +1237,7 @@ async def step_project(
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    await _check_tracker_lock(project, body.tracker_session_id, current_user)
     if project.status == "created":
         project.status = "active"
 
@@ -1216,6 +1314,7 @@ async def jump_project(
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    await _check_tracker_lock(project, body.tracker_session_id, current_user)
     project.current_pick = max(1, min(body.pick, project.total_picks + 1))
     await db.commit()
     await db.refresh(project)
@@ -1227,12 +1326,14 @@ async def jump_project(
 @router.post("/{project_id}/advance-item", response_model=StepResponse)
 async def advance_item(
     project_id: uuid.UUID,
+    body: AdvanceItemRequest,
     current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> StepResponse:
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    await _check_tracker_lock(project, body.tracker_session_id, current_user)
     if project.current_pick <= project.total_picks:
         raise HTTPException(status_code=400, detail="Current item is not finished — advance to the last pick first")
     if project.current_item >= project.num_items:
@@ -1258,9 +1359,10 @@ async def jump_item(
     current_user: User = Depends(get_effective_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    await _check_tracker_lock(project, body.tracker_session_id, current_user)
     picks = dict(project.item_picks or {})
     picks[str(project.current_item)] = project.current_pick
     target = max(1, min(body.item, project.num_items))
