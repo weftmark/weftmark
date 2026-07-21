@@ -1,0 +1,39 @@
+name: SonarCloud full scan
+
+# On-demand full re-analysis of the dev branch (not just a PR's new-code
+# diff). Manually triggered — not part of any CI push/PR gate, so it never
+# adds time to a merge or a PR check.
+#
+# Without occasionally re-running this, dev's SonarCloud snapshot never
+# advances past whenever it last ran, which both leaves long-fixed issues
+# showing as open on the dashboard and — because each PR's "new code" period
+# is computed against that stale baseline — causes SonarCloud to keep
+# attributing unrelated pre-existing findings to whichever PR happens to
+# touch a line near them (see #1030, #1032, #1033, #1034). Run this after a
+# batch of merges, or whenever the SonarCloud dashboard looks stale.
+#
+# Deliberately just checkout + scan, no pytest run: SonarCloud's coverage
+# ingestion is optional, and Codecov (wired into ci-dev-pr.yml) already
+# owns real coverage tracking.
+#
+# Required secrets:
+#   SONAR_TOKEN — SonarCloud analysis token
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sonarcloud:
+    name: SonarCloud full re-scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: dev
+          fetch-depth: 0
+      - name: SonarCloud scan
+        uses: SonarSource/sonarqube-scan-action@v8.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
