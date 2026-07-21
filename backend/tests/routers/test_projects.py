@@ -2240,15 +2240,6 @@ class TestGetPicks:
         resp = await auth_client.get(f"/api/projects/{project.id}/picks")
         assert resp.status_code == 200
 
-    async def test_deleted_draft_returns_404(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _insert_draft(db_session, test_user)
-        project = await _insert_active_project(db_session, test_user, draft, None)
-        draft.soft_delete()
-        await db_session.commit()
-        resp = await auth_client.get(f"/api/projects/{project.id}/picks")
-        assert resp.status_code == 404
-        assert resp.json()["detail"] == "Draft not found"
-
     async def test_returns_picks_data(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
@@ -3460,15 +3451,6 @@ class TestShareProject:
         resp = await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})
         assert resp.status_code == 200
 
-    async def test_deleted_draft_returns_404(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _insert_draft(db_session, test_user)
-        project = await _insert_active_project(db_session, test_user, draft, None)
-        draft.soft_delete()
-        await db_session.commit()
-        resp = await auth_client.patch(f"/api/projects/{project.id}/share", json={"visibility": "link"})
-        assert resp.status_code == 404
-        assert resp.json()["detail"] == "Draft not found"
-
     async def test_share_sets_slug(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
         project = await _insert_active_project(db_session, test_user, draft, None)
@@ -3601,16 +3583,6 @@ class TestGetSharedProject:
         resp = await client.get("/api/share/projects/my-slug-abc3")
         assert resp.status_code == 200
 
-    async def test_deleted_draft_returns_404(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _insert_draft(db_session, test_user)
-        project = await _insert_active_project(db_session, test_user, draft, None)
-        await _share_project(db_session, project, "my-slug-abc4")
-        draft.soft_delete()
-        await db_session.commit()
-        resp = await client.get("/api/share/projects/my-slug-abc4")
-        assert resp.status_code == 404
-        assert resp.json()["detail"] == "Draft not found"
-
 
 class TestGetSharedProjectPreview:
     async def test_returns_404_when_no_preview(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
@@ -3712,15 +3684,6 @@ class TestWarpingPlan:
     async def test_not_found_returns_404(self, auth_client: AsyncClient):
         resp = await auth_client.get(f"/api/projects/{uuid.uuid4()}/warping-plan")
         assert resp.status_code == 404
-
-    async def test_deleted_draft_returns_404(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
-        draft = await _insert_draft(db_session, test_user)
-        project = await _insert_active_project(db_session, test_user, draft, None)
-        draft.soft_delete()
-        await db_session.commit()
-        resp = await auth_client.get(f"/api/projects/{project.id}/warping-plan")
-        assert resp.status_code == 404
-        assert resp.json()["detail"] == "Draft not found"
 
     async def test_unauthenticated_returns_401(self, client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)

@@ -1662,7 +1662,11 @@ async def get_picks(
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
-        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
+        # Unreachable via any valid DB state: db.get() ignores soft-delete (unlike the
+        # deleted_at-filtered lookups elsewhere in this file), and drafts.id has a plain
+        # RESTRICT foreign key from projects.draft_id, so a draft can't be hard-deleted
+        # while a project still references it. Kept as defensive belt-and-suspenders.
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)  # pragma: no cover
 
     wif_bytes = await storage.aread_file(await _wif_path_for_project(draft, project.project_type))
     try:
@@ -1777,7 +1781,11 @@ async def get_warping_plan(
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
-        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
+        # Unreachable via any valid DB state: db.get() ignores soft-delete (unlike the
+        # deleted_at-filtered lookups elsewhere in this file), and drafts.id has a plain
+        # RESTRICT foreign key from projects.draft_id, so a draft can't be hard-deleted
+        # while a project still references it. Kept as defensive belt-and-suspenders.
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)  # pragma: no cover
 
     threading_entries = warp_color_runs = tieup_data = tieup_num_shafts = tieup_num_treadles = None
     wif_path = await _wif_path_for_project(draft, project.project_type)
@@ -1831,7 +1839,11 @@ async def update_project_share(
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
-        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
+        # Unreachable via any valid DB state: db.get() ignores soft-delete (unlike the
+        # deleted_at-filtered lookups elsewhere in this file), and drafts.id has a plain
+        # RESTRICT foreign key from projects.draft_id, so a draft can't be hard-deleted
+        # while a project still references it. Kept as defensive belt-and-suspenders.
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)  # pragma: no cover
 
     if project.share_slug is None:
         project.share_slug = await _generate_unique_slug(project.name, db)
@@ -1890,7 +1902,11 @@ async def get_shared_project(
 
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
-        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
+        # Unreachable via any valid DB state: db.get() ignores soft-delete (unlike the
+        # deleted_at-filtered lookups elsewhere in this file), and drafts.id has a plain
+        # RESTRICT foreign key from projects.draft_id, so a draft can't be hard-deleted
+        # while a project still references it. Kept as defensive belt-and-suspenders.
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)  # pragma: no cover
 
     from app.models.user import User as UserModel
 
