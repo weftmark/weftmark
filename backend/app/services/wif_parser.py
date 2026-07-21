@@ -184,21 +184,7 @@ def extract_warp_color_stats(wif_bytes: bytes) -> list[dict]:
         if not colors:
             return []
 
-        default_warp_color: str | None = None
-        if config.has_section("WARP"):
-            try:
-                default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
-                default_warp_color = colors.get(default_idx)
-            except Exception:
-                pass
-
-        warp_color_map: dict[int, int] = {}
-        if config.has_section(_SECTION_WARP_COLORS):
-            for k, v in config.items(_SECTION_WARP_COLORS):
-                try:
-                    warp_color_map[int(k)] = int(v.split(",")[0].strip())
-                except ValueError:
-                    continue
+        warp_color_map, default_warp_color = _extract_warp_colors(config, colors)
 
         num_warp: int | None = None
         if config.has_section("WEAVING"):
@@ -330,22 +316,7 @@ def parse_threading(wif_bytes: bytes) -> ThreadingData:
 
     scale = _color_scale(config)
     colors = _color_table(config, scale)
-
-    default_warp_color: str | None = None
-    if config.has_section("WARP"):
-        try:
-            default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
-            default_warp_color = colors.get(default_idx)
-        except Exception:
-            pass
-
-    warp_color_map: dict[int, int] = {}
-    if config.has_section(_SECTION_WARP_COLORS):
-        for k, v in config.items(_SECTION_WARP_COLORS):
-            try:
-                warp_color_map[int(k)] = int(v.split(",")[0].strip())
-            except ValueError:
-                continue
+    warp_color_map, default_warp_color = _extract_warp_colors(config, colors)
 
     warp_colors: list[str | None] = [
         colors.get(warp_color_map[i]) if i in warp_color_map else default_warp_color for i in range(1, max_end + 1)
@@ -460,6 +431,30 @@ def _color_table(config: RawConfigParser, scale: int) -> dict[int, str]:
         except (ValueError, ZeroDivisionError):
             continue
     return table
+
+
+def _extract_warp_colors(config: RawConfigParser, colors: dict[int, str]) -> tuple[dict[int, int], str | None]:
+    """Parse [WARP] Color= default and [WARP COLORS] section.
+
+    Returns (per-end color-table-index map, default color for ends with no explicit entry).
+    """
+    default_warp_color: str | None = None
+    if config.has_section("WARP"):
+        try:
+            default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
+            default_warp_color = colors.get(default_idx)
+        except Exception:
+            pass
+
+    warp_color_map: dict[int, int] = {}
+    if config.has_section(_SECTION_WARP_COLORS):
+        for k, v in config.items(_SECTION_WARP_COLORS):
+            try:
+                warp_color_map[int(k)] = int(v.split(",")[0].strip())
+            except ValueError:
+                continue
+
+    return warp_color_map, default_warp_color
 
 
 def _color_name_table(config: RawConfigParser) -> dict[int, str]:

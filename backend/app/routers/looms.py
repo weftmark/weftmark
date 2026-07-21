@@ -59,6 +59,20 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 MAX_VERSION_PHOTOS = 5
 
 
+def _safe_content_type(path: str, allowed: set[str]) -> str:
+    """Guess the content type for a stored file, constrained to a known-safe allowlist.
+
+    mimetypes.guess_type() only ever returns one of Python's fixed, built-in MIME
+    strings (or None) — the path's extension never appears verbatim in the result —
+    but SonarCloud's taint analysis (pythonsecurity:S5131) can't see that, so it flags
+    the guessed value flowing into the response's media_type as reflected/unsanitized.
+    Constraining to the same allowlist already enforced at upload time makes the
+    safety explicit rather than relying on stdlib behavior the scanner can't verify.
+    """
+    guessed = mimetypes.guess_type(path)[0]
+    return guessed if guessed in allowed else _DEFAULT_CONTENT_TYPE
+
+
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
@@ -612,7 +626,7 @@ async def get_loom_photo(
     if not loom.photo_path or not storage.file_exists(loom.photo_path):
         raise HTTPException(status_code=404, detail="No photo")
     data = storage.read_file(loom.photo_path)
-    ct = mimetypes.guess_type(loom.photo_path)[0] or _DEFAULT_CONTENT_TYPE
+    ct = _safe_content_type(loom.photo_path, ALLOWED_IMAGE_TYPES)
     return Response(content=data, media_type=ct)
 
 
@@ -706,7 +720,7 @@ async def get_version_photo(
     if photo is None or not storage.file_exists(photo.path):
         raise HTTPException(status_code=404, detail="Photo not found")
     data = storage.read_file(photo.path)
-    ct = mimetypes.guess_type(photo.path)[0] or _DEFAULT_CONTENT_TYPE
+    ct = _safe_content_type(photo.path, ALLOWED_IMAGE_TYPES)
     return Response(content=data, media_type=ct)
 
 
@@ -775,7 +789,7 @@ async def get_version_receipt(
     if receipt is None or not storage.file_exists(receipt.path):
         raise HTTPException(status_code=404, detail="Receipt not found")
     data = storage.read_file(receipt.path)
-    ct = mimetypes.guess_type(receipt.path)[0] or _DEFAULT_CONTENT_TYPE
+    ct = _safe_content_type(receipt.path, ALLOWED_RECEIPT_TYPES)
     # PDFs open inline in browser; images too
     disposition = "inline" if ct in ("application/pdf", *ALLOWED_IMAGE_TYPES) else "attachment"
     return Response(
