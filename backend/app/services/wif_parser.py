@@ -11,6 +11,10 @@ from opentelemetry import trace
 
 tracer = trace.get_tracer(__name__)
 
+_SECTION_COLOR_TABLE = "COLOR TABLE"
+_SECTION_WARP_COLORS = "WARP COLORS"
+_SECTION_WEFT_COLORS = "WEFT COLORS"
+
 # WIF unit → (canonical label, cm multiplier)
 _UNIT_CONVERSIONS: dict[str, tuple[str, float]] = {
     "centimeters": ("cm", 1.0),
@@ -105,7 +109,7 @@ def extract_colors(wif_bytes: bytes) -> list[dict]:
         config.optionxform = str
         config.read_string(text)
 
-        if not config.has_section("COLOR TABLE"):
+        if not config.has_section(_SECTION_COLOR_TABLE):
             return []
 
         # Collect palette indices actually referenced in the design.
@@ -118,7 +122,7 @@ def extract_colors(wif_bytes: bytes) -> list[dict]:
                 except Exception:
                     pass
 
-        for sect in ("WEFT COLORS", "WARP COLORS"):
+        for sect in (_SECTION_WEFT_COLORS, _SECTION_WARP_COLORS):
             if config.has_section(sect):
                 for _, v in config.items(sect):
                     try:
@@ -132,7 +136,7 @@ def extract_colors(wif_bytes: bytes) -> list[dict]:
         scale = _color_scale(config)
         colors: list[dict] = []
 
-        for k, v in config.items("COLOR TABLE"):
+        for k, v in config.items(_SECTION_COLOR_TABLE):
             try:
                 idx = int(k)
                 if idx not in used:
@@ -180,21 +184,7 @@ def extract_warp_color_stats(wif_bytes: bytes) -> list[dict]:
         if not colors:
             return []
 
-        default_warp_color: str | None = None
-        if config.has_section("WARP"):
-            try:
-                default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
-                default_warp_color = colors.get(default_idx)
-            except Exception:
-                pass
-
-        warp_color_map: dict[int, int] = {}
-        if config.has_section("WARP COLORS"):
-            for k, v in config.items("WARP COLORS"):
-                try:
-                    warp_color_map[int(k)] = int(v.split(",")[0].strip())
-                except ValueError:
-                    continue
+        warp_color_map, default_warp_color = _extract_warp_colors(config, colors)
 
         num_warp: int | None = None
         if config.has_section("WEAVING"):
@@ -326,22 +316,7 @@ def parse_threading(wif_bytes: bytes) -> ThreadingData:
 
     scale = _color_scale(config)
     colors = _color_table(config, scale)
-
-    default_warp_color: str | None = None
-    if config.has_section("WARP"):
-        try:
-            default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
-            default_warp_color = colors.get(default_idx)
-        except Exception:
-            pass
-
-    warp_color_map: dict[int, int] = {}
-    if config.has_section("WARP COLORS"):
-        for k, v in config.items("WARP COLORS"):
-            try:
-                warp_color_map[int(k)] = int(v.split(",")[0].strip())
-            except ValueError:
-                continue
+    warp_color_map, default_warp_color = _extract_warp_colors(config, colors)
 
     warp_colors: list[str | None] = [
         colors.get(warp_color_map[i]) if i in warp_color_map else default_warp_color for i in range(1, max_end + 1)
@@ -433,9 +408,9 @@ def _color_table(config: RawConfigParser, scale: int) -> dict[int, str]:
     stopping numeric parsing at the first non-integer token.
     """
     table: dict[int, str] = {}
-    if not config.has_section("COLOR TABLE"):
+    if not config.has_section(_SECTION_COLOR_TABLE):
         return table
-    for k, v in config.items("COLOR TABLE"):
+    for k, v in config.items(_SECTION_COLOR_TABLE):
         try:
             idx = int(k)
             parts: list[int] = []
@@ -458,12 +433,36 @@ def _color_table(config: RawConfigParser, scale: int) -> dict[int, str]:
     return table
 
 
+def _extract_warp_colors(config: RawConfigParser, colors: dict[int, str]) -> tuple[dict[int, int], str | None]:
+    """Parse [WARP] Color= default and [WARP COLORS] section.
+
+    Returns (per-end color-table-index map, default color for ends with no explicit entry).
+    """
+    default_warp_color: str | None = None
+    if config.has_section("WARP"):
+        try:
+            default_idx = int(config.get("WARP", "Color").split(",")[0].strip())
+            default_warp_color = colors.get(default_idx)
+        except Exception:
+            pass
+
+    warp_color_map: dict[int, int] = {}
+    if config.has_section(_SECTION_WARP_COLORS):
+        for k, v in config.items(_SECTION_WARP_COLORS):
+            try:
+                warp_color_map[int(k)] = int(v.split(",")[0].strip())
+            except ValueError:
+                continue
+
+    return warp_color_map, default_warp_color
+
+
 def _color_name_table(config: RawConfigParser) -> dict[int, str]:
     """Extract optional color names from [COLOR TABLE] (first non-numeric token after RGB)."""
     names: dict[int, str] = {}
-    if not config.has_section("COLOR TABLE"):
+    if not config.has_section(_SECTION_COLOR_TABLE):
         return names
-    for k, v in config.items("COLOR TABLE"):
+    for k, v in config.items(_SECTION_COLOR_TABLE):
         try:
             idx = int(k)
             for p in v.split(","):
@@ -520,8 +519,8 @@ def parse_picks(wif_bytes: bytes, project_type: str) -> PickData:
                 pass
 
         weft_color_map: dict[int, int] = {}
-        if config.has_section("WEFT COLORS"):
-            for k, v in config.items("WEFT COLORS"):
+        if config.has_section(_SECTION_WEFT_COLORS):
+            for k, v in config.items(_SECTION_WEFT_COLORS):
                 try:
                     # Spec: read only the first integer (palette index)
                     weft_color_map[int(k)] = int(v.split(",")[0].strip())

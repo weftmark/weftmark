@@ -23,6 +23,11 @@ from app.tasks.tiles import prerender_drawdown_tiles
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 settings = get_settings()
 
+_MEDIA_TYPE_PNG = "image/png"
+_NO_WIF_FILE = "No WIF file for this draft"
+_IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable"
+_PREVIEW_TASK_NAME = "app.tasks.preview.generate_drawdown_preview"
+
 _upload_rate_limit = rate_limit("wif_upload", max_requests=30, window_seconds=3600)
 
 
@@ -198,7 +203,7 @@ async def create_draft(
         from app.services.task_history import record_queued
 
         task = generate_drawdown_preview.delay(str(draft.id))
-        record_queued(get_settings(), task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+        record_queued(get_settings(), task.id, _PREVIEW_TASK_NAME, "preview")
         tile_task = prerender_drawdown_tiles.delay(str(draft.id))
         record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
     return DraftSummary.from_draft(draft)
@@ -281,7 +286,7 @@ async def get_preview(
     if not await storage.afile_exists(draft.preview_path):
         raise HTTPException(status_code=404, detail="Preview not available")
     png = await storage.aread_file(draft.preview_path)  # type: ignore[arg-type]
-    return Response(content=png, media_type="image/png")
+    return Response(content=png, media_type=_MEDIA_TYPE_PNG)
 
 
 @router.get("/{draft_id}/drawdown_preview")
@@ -294,7 +299,7 @@ async def get_drawdown_preview(
     if not draft.drawdown_preview_path or not await storage.afile_exists(draft.drawdown_preview_path):
         raise HTTPException(status_code=404, detail="Drawdown preview not available")
     png = await storage.aread_drawdown_preview(draft.drawdown_preview_path)
-    return Response(content=png, media_type="image/png")
+    return Response(content=png, media_type=_MEDIA_TYPE_PNG)
 
 
 @router.get("/{draft_id}/preview/svg")
@@ -305,7 +310,7 @@ async def get_preview_svg(
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_path:
-        raise HTTPException(status_code=404, detail="No WIF file for this draft")
+        raise HTTPException(status_code=404, detail=_NO_WIF_FILE)
     wif_bytes = await storage.aread_file(draft.wif_path)
     try:
         wif_draft = await asyncio.to_thread(rendering.load_draft, wif_bytes)
@@ -337,7 +342,7 @@ async def get_drawdown(
     # Tiled request: check pre-rendered tile cache first, then render on-demand
     if start_row is not None or row_count is not None:
         if not draft.wif_path:
-            raise HTTPException(status_code=404, detail="No WIF file for this draft")
+            raise HTTPException(status_code=404, detail=_NO_WIF_FILE)
         if not await storage.afile_exists(draft.wif_path):
             raise HTTPException(status_code=404, detail="WIF file not found in storage")
 
@@ -364,13 +369,13 @@ async def get_drawdown(
             actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
             return Response(
                 content=cached_png,
-                media_type="image/png",
+                media_type=_MEDIA_TYPE_PNG,
                 headers={
                     "X-Pixels-Per-Row": str(expected_scale),
                     "X-Total-Rows": str(weft_count),
                     "X-Start-Row": str(_sr),
                     "X-Row-Count": str(actual_rc),
-                    "Cache-Control": "public, max-age=31536000, immutable",
+                    "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
                 },
             )
 
@@ -416,7 +421,7 @@ async def get_drawdown(
 
         return Response(
             content=png,
-            media_type="image/png",
+            media_type=_MEDIA_TYPE_PNG,
             headers={
                 "X-Pixels-Per-Row": str(actual_scale),
                 "X-Total-Rows": str(total_rows),
@@ -433,18 +438,18 @@ async def get_drawdown(
         total_rows = draft.weft_threads or 0
         return Response(
             content=png,
-            media_type="image/png",
+            media_type=_MEDIA_TYPE_PNG,
             headers={
                 "X-Pixels-Per-Row": str(scale),
                 "X-Total-Rows": str(total_rows),
-                "Cache-Control": "public, max-age=31536000, immutable",
+                "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
                 "ETag": f'"{draft_id}"',
             },
         )
 
     # Fall back to live render
     if not draft.wif_path:
-        raise HTTPException(status_code=404, detail="No WIF file for this draft")
+        raise HTTPException(status_code=404, detail=_NO_WIF_FILE)
 
     if not await storage.afile_exists(draft.wif_path):
         raise HTTPException(status_code=404, detail="WIF file not found in storage")
@@ -480,11 +485,11 @@ async def get_drawdown(
 
     return Response(
         content=png,
-        media_type="image/png",
+        media_type=_MEDIA_TYPE_PNG,
         headers={
             "X-Pixels-Per-Row": str(actual_scale),
             "X-Total-Rows": str(total_rows),
-            "Cache-Control": "public, max-age=31536000, immutable",
+            "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
             "ETag": f'"{draft_id}"',
         },
     )
@@ -637,7 +642,7 @@ async def generate_liftplan(
     from app.config import get_settings
     from app.services.task_history import record_queued
 
-    record_queued(get_settings(), _prev_task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+    record_queued(get_settings(), _prev_task.id, _PREVIEW_TASK_NAME, "preview")
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -709,7 +714,7 @@ async def override_metadata(
     from app.config import get_settings
     from app.services.task_history import record_queued
 
-    record_queued(get_settings(), _prev_task2.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+    record_queued(get_settings(), _prev_task2.id, _PREVIEW_TASK_NAME, "preview")
     return DraftDetail(**_draft_detail_data(draft))
 
 

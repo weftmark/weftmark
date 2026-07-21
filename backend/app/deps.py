@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 
 _LAST_ACTIVE_THROTTLE = timedelta(minutes=5)
 _BEARER_PREFIX = "Bearer "
+_USER_NOT_FOUND = "User not found"
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -50,7 +51,7 @@ async def get_current_user(
     user = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id))
     if user is None:
         log.info("auth_failure reason=user_not_found clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_USER_NOT_FOUND)
 
     if user.deleted_at is not None:
         log.info(
@@ -60,15 +61,15 @@ async def get_current_user(
             method,
             path,
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_USER_NOT_FOUND)
 
     if user.clerk_errored:
         log.info("auth_failure reason=clerk_errored clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_USER_NOT_FOUND)
 
     if not user.is_active:
         log.info("auth_failure reason=user_inactive clerk_user_id=%s method=%s path=%s", clerk_user_id, method, path)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_USER_NOT_FOUND)
 
     now = datetime.now(timezone.utc)
     if user.last_active_at is None or (now - user.last_active_at) > _LAST_ACTIVE_THROTTLE:

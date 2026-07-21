@@ -48,6 +48,11 @@ from app.version import VERSION
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
+_USER_NOT_FOUND = "User not found"
+_NOT_SET = "(not set)"
+_MISSING_OR_UNEXPECTED_FORMAT = "Missing or unexpected format"
+_PENDING_SIGNUP_NOT_FOUND = "Pending signup not found"
+
 
 def _safe_log(value: str, maxlen: int = 200) -> str:
     """Strip newlines and truncate before logging user-supplied values."""
@@ -272,10 +277,10 @@ def _s3_conn_meta(settings: "Settings") -> dict[str, str]:
         return {"backend": "local"}
     meta: dict[str, str] = {
         "backend": "s3",
-        "bucket": settings.s3_bucket_name or "(not set)",
+        "bucket": settings.s3_bucket_name or _NOT_SET,
         "endpoint": settings.s3_endpoint_url or "AWS default",
         "region": settings.s3_region or "auto",
-        "access_key_id": settings.s3_access_key_id or "(not set)",
+        "access_key_id": settings.s3_access_key_id or _NOT_SET,
     }
     if settings.s3_bucket_owner_account_id:
         meta["bucket_owner_account_id"] = settings.s3_bucket_owner_account_id
@@ -366,7 +371,7 @@ async def _probe_s3() -> ServiceCheckResult:
 def _clerk_conn_meta(settings: "Settings") -> dict[str, str]:
     pk = settings.clerk_publishable_key
     return {
-        "publishable_key": pk or "(not set)",
+        "publishable_key": pk or _NOT_SET,
         "environment": "live" if pk and pk.startswith("pk_live_") else "test",
     }
 
@@ -384,7 +389,7 @@ async def _probe_clerk() -> ServiceCheckResult:
         sk_peek = sk[len(sk_pfx) : len(sk_pfx) + 6]
         sk_msg = f"Set ({sk_pfx}{sk_peek}…)"
     else:
-        sk_msg = "Missing or unexpected format"
+        sk_msg = _MISSING_OR_UNEXPECTED_FORMAT
     checks.append(ServicePermCheck(name="secret_key", status="ok" if sk_ok else "error", message=sk_msg))
 
     # Config: publishable key
@@ -393,7 +398,7 @@ async def _probe_clerk() -> ServiceCheckResult:
         ServicePermCheck(
             name="publishable_key",
             status="ok" if pk_ok else "error",
-            message="Set (pk_…)" if pk_ok else "Missing or unexpected format",
+            message="Set (pk_…)" if pk_ok else _MISSING_OR_UNEXPECTED_FORMAT,
         )
     )
 
@@ -403,7 +408,7 @@ async def _probe_clerk() -> ServiceCheckResult:
         ServicePermCheck(
             name="webhook_secret",
             status="ok" if wh_ok else "error",
-            message="Set (whsec_…)" if wh_ok else "Missing or unexpected format",
+            message="Set (whsec_…)" if wh_ok else _MISSING_OR_UNEXPECTED_FORMAT,
         )
     )
 
@@ -556,7 +561,7 @@ async def patch_user(
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="Cannot modify your own account")
 
@@ -673,7 +678,7 @@ async def ban_user(
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="Cannot ban your own account")
     if not user.clerk_user_id:
@@ -725,7 +730,7 @@ async def unban_user(
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if not user.clerk_user_id:
         raise HTTPException(status_code=400, detail="User has no Clerk account")
 
@@ -786,7 +791,7 @@ async def delete_user(
 
     user = await db.scalar(select(User).where(User.id == user_id))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if user.id == requesting_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account via admin panel")
     if user.deletion_state is not None:
@@ -818,7 +823,7 @@ async def get_user_storage_report(
 
     user = await db.scalar(select(User).where(User.id == user_id))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
 
     raw_files = await get_user_files_report(db, user_id, verify_s3=verify_s3)
     files = [StorageReportFile(**f) for f in raw_files]
@@ -931,11 +936,11 @@ async def get_health(
 
 def _smtp_conn_meta(settings: "Settings") -> dict[str, str]:
     return {
-        "host": settings.smtp_host or "(not set)",
+        "host": settings.smtp_host or _NOT_SET,
         "port": str(settings.smtp_port),
-        "user": settings.smtp_user or "(not set)",
-        "from": settings.smtp_from_email or "(not set)",
-        "from_name": settings.smtp_from_name or "(not set)",
+        "user": settings.smtp_user or _NOT_SET,
+        "from": settings.smtp_from_email or _NOT_SET,
+        "from_name": settings.smtp_from_name or _NOT_SET,
     }
 
 
@@ -1227,7 +1232,7 @@ async def elevate_to_superuser(
 ) -> dict:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if not user.is_admin:
         raise HTTPException(status_code=400, detail="User must be an admin before being elevated to superuser")
     if user.is_superuser:
@@ -1324,7 +1329,7 @@ async def approve_pending_signup(
 ) -> dict:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
-        raise HTTPException(status_code=404, detail="Pending signup not found")
+        raise HTTPException(status_code=404, detail=_PENDING_SIGNUP_NOT_FOUND)
 
     existing = await db.scalar(
         select(User).where(User.clerk_user_id == signup.clerk_user_id, User.deleted_at.is_(None))
@@ -1406,7 +1411,7 @@ async def ban_pending_signup(
 ) -> None:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
-        raise HTTPException(status_code=404, detail="Pending signup not found")
+        raise HTTPException(status_code=404, detail=_PENDING_SIGNUP_NOT_FOUND)
     email, display_name, clerk_user_id = signup.email, signup.display_name, signup.clerk_user_id
     await write_audit_log(db, event_type="signup.banned", actor=admin, target_email=email)
     await db.delete(signup)
@@ -1427,7 +1432,7 @@ async def dismiss_pending_signup(
 ) -> None:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
-        raise HTTPException(status_code=404, detail="Pending signup not found")
+        raise HTTPException(status_code=404, detail=_PENDING_SIGNUP_NOT_FOUND)
     email, display_name, clerk_user_id = signup.email, signup.display_name, signup.clerk_user_id
     await write_audit_log(db, event_type="signup.dismissed", actor=admin, target_email=email)
     await db.delete(signup)

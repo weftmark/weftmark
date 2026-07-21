@@ -30,6 +30,9 @@ from app.services.storage_quota import check_storage_quota
 
 router = APIRouter(prefix="/api/looms", tags=["looms"])
 
+_FILE_TOO_LARGE = "File too large (max 5 MB)"
+_DEFAULT_CONTENT_TYPE = "application/octet-stream"
+
 
 def _content_disposition(disposition: str, filename: str) -> str:
     """Build a Content-Disposition header with RFC 5987 encoded filename."""
@@ -54,6 +57,30 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 MAX_VERSION_PHOTOS = 5
+
+
+_EXTENSION_CONTENT_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".pdf": "application/pdf",
+}
+
+
+def _safe_content_type(path: str, allowed: set[str]) -> str:
+    """Resolve the content type for a stored file from a fixed extension table.
+
+    Looks up the file extension in a hardcoded literal rather than calling
+    mimetypes.guess_type() — the returned value is always one of the fixed strings
+    above, never derived from the path itself, so SonarCloud's taint analysis
+    (pythonsecurity:S5131) has nothing to flag. Also constrained to the same
+    allowlist already enforced at upload time.
+    """
+    ext = path[path.rfind(".") :].lower() if "." in path else ""
+    content_type = _EXTENSION_CONTENT_TYPES.get(ext, _DEFAULT_CONTENT_TYPE)
+    return content_type if content_type in allowed else _DEFAULT_CONTENT_TYPE
 
 
 # ---------------------------------------------------------------------------
@@ -574,7 +601,7 @@ async def upload_loom_photo(
     loom = await _get_owned_loom(loom_id, current_user, db)
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+        raise HTTPException(status_code=400, detail=_FILE_TOO_LARGE)
     _validate_image_bytes(data)
     try:
         data = resize_to_jpeg(data)
@@ -609,7 +636,7 @@ async def get_loom_photo(
     if not loom.photo_path or not storage.file_exists(loom.photo_path):
         raise HTTPException(status_code=404, detail="No photo")
     data = storage.read_file(loom.photo_path)
-    ct = mimetypes.guess_type(loom.photo_path)[0] or "application/octet-stream"
+    ct = _safe_content_type(loom.photo_path, ALLOWED_IMAGE_TYPES)
     return Response(content=data, media_type=ct)
 
 
@@ -666,7 +693,7 @@ async def upload_version_photo(
         raise HTTPException(status_code=400, detail=f"Maximum {MAX_VERSION_PHOTOS} photos per configuration")
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+        raise HTTPException(status_code=400, detail=_FILE_TOO_LARGE)
     _validate_image_bytes(data)
     try:
         data = resize_to_jpeg(data)
@@ -703,7 +730,7 @@ async def get_version_photo(
     if photo is None or not storage.file_exists(photo.path):
         raise HTTPException(status_code=404, detail="Photo not found")
     data = storage.read_file(photo.path)
-    ct = mimetypes.guess_type(photo.path)[0] or "application/octet-stream"
+    ct = _safe_content_type(photo.path, ALLOWED_IMAGE_TYPES)
     return Response(content=data, media_type=ct)
 
 
@@ -742,7 +769,7 @@ async def upload_version_receipt(
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+        raise HTTPException(status_code=400, detail=_FILE_TOO_LARGE)
     receipt_id = uuid.uuid4()
     ext = _ext(file.content_type or "")
     path = storage.save_version_receipt(loom_id, version_id, receipt_id, ext, data)
@@ -772,7 +799,7 @@ async def get_version_receipt(
     if receipt is None or not storage.file_exists(receipt.path):
         raise HTTPException(status_code=404, detail="Receipt not found")
     data = storage.read_file(receipt.path)
-    ct = mimetypes.guess_type(receipt.path)[0] or "application/octet-stream"
+    ct = _safe_content_type(receipt.path, ALLOWED_RECEIPT_TYPES)
     # PDFs open inline in browser; images too
     disposition = "inline" if ct in ("application/pdf", *ALLOWED_IMAGE_TYPES) else "attachment"
     return Response(

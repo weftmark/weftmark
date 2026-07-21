@@ -30,6 +30,11 @@ class _ConfigFileSource(PydanticBaseSettingsSource):
             return {}
 
 
+_SCHEME_POSTGRES = "postgres://"
+_SCHEME_POSTGRESQL = "postgresql://"
+_SCHEME_POSTGRESQL_ASYNCPG = "postgresql+asyncpg://"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -77,8 +82,8 @@ class Settings(BaseSettings):
         if self.postgres_dsn:
             from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-            url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
-            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            url = self.postgres_dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)
+            url = url.replace(_SCHEME_POSTGRESQL, _SCHEME_POSTGRESQL_ASYNCPG, 1)
             # asyncpg uses ssl=true/require, not libpq's sslmode=; drop channel_binding entirely
             parsed = urlparse(url)
             params: dict[str, str] = {}
@@ -89,15 +94,15 @@ class Settings(BaseSettings):
                     params[k] = v[0]
             return urlunparse(parsed._replace(query=urlencode(params)))
         return (
-            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
+            f"{_SCHEME_POSTGRESQL_ASYNCPG}{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
     @property
     def database_url_sync(self) -> str:
         if self.postgres_dsn:
-            url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
-            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+            url = self.postgres_dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)
+            return url.replace(_SCHEME_POSTGRESQL_ASYNCPG, _SCHEME_POSTGRESQL, 1)
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -108,8 +113,8 @@ class Settings(BaseSettings):
         """Direct (non-pooled) connection for Alembic DDL migrations."""
         dsn = self.postgres_dsn_direct or self.postgres_dsn
         if dsn:
-            url = dsn.replace("postgres://", "postgresql://", 1)
-            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+            url = dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)
+            return url.replace(_SCHEME_POSTGRESQL_ASYNCPG, _SCHEME_POSTGRESQL, 1)
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"

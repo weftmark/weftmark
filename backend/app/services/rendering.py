@@ -19,6 +19,13 @@ from app.weaving._wif import WIFReader
 
 tracer = trace.get_tracer(__name__)
 
+_ATTR_SCALE = "render.scale"
+_ATTR_WARP_THREADS = "render.warp_threads"
+_ATTR_WEFT_THREADS = "render.weft_threads"
+_ATTR_WIDTH_PX = "render.width_px"
+_ATTR_HEIGHT_PX = "render.height_px"
+_NO_DRAWDOWN_DATA = "Draft has no drawdown data to render"
+
 DRAWDOWN_SCALE = 20
 
 # We generate images from WIF data we control — PIL's decompression bomb check
@@ -64,12 +71,12 @@ def render_full_draft(draft: Draft, scale: int = 10) -> bytes:
     scale = safe_preview_scale(draft, scale)
     renderer = ImageRenderer(draft, scale=scale)
     with tracer.start_as_current_span("render.full_draft") as span:
-        span.set_attribute("render.scale", scale)
-        span.set_attribute("render.warp_threads", len(draft.warp))
-        span.set_attribute("render.weft_threads", len(draft.weft))
+        span.set_attribute(_ATTR_SCALE, scale)
+        span.set_attribute(_ATTR_WARP_THREADS, len(draft.warp))
+        span.set_attribute(_ATTR_WEFT_THREADS, len(draft.weft))
         im = renderer.make_pil_image()
-        span.set_attribute("render.width_px", im.width)
-        span.set_attribute("render.height_px", im.height)
+        span.set_attribute(_ATTR_WIDTH_PX, im.width)
+        span.set_attribute(_ATTR_HEIGHT_PX, im.height)
     out = io.BytesIO()
     im.save(out, format="PNG")
     return out.getvalue()
@@ -79,9 +86,9 @@ def render_full_draft_svg(draft: Draft, scale: int = 10) -> str:
     """Render the full draft (threading + tie-up/liftplan + drawdown) as an SVG string."""
     renderer = SVGRenderer(draft, scale=scale)
     with tracer.start_as_current_span("render.full_draft_svg") as span:
-        span.set_attribute("render.scale", scale)
-        span.set_attribute("render.warp_threads", len(draft.warp))
-        span.set_attribute("render.weft_threads", len(draft.weft))
+        span.set_attribute(_ATTR_SCALE, scale)
+        span.set_attribute(_ATTR_WARP_THREADS, len(draft.warp))
+        span.set_attribute(_ATTR_WEFT_THREADS, len(draft.weft))
         svg = renderer.render_to_string()
         span.set_attribute("render.svg_bytes", len(svg.encode()))
     return svg
@@ -91,12 +98,12 @@ def render_full_draft_liftplan(draft: Draft, scale: int = 10) -> bytes:
     """Render the full draft using the liftplan view."""
     renderer = ImageRenderer(draft, liftplan=True, scale=scale)
     with tracer.start_as_current_span("render.full_draft_liftplan") as span:
-        span.set_attribute("render.scale", scale)
-        span.set_attribute("render.warp_threads", len(draft.warp))
-        span.set_attribute("render.weft_threads", len(draft.weft))
+        span.set_attribute(_ATTR_SCALE, scale)
+        span.set_attribute(_ATTR_WARP_THREADS, len(draft.warp))
+        span.set_attribute(_ATTR_WEFT_THREADS, len(draft.weft))
         im = renderer.make_pil_image()
-        span.set_attribute("render.width_px", im.width)
-        span.set_attribute("render.height_px", im.height)
+        span.set_attribute(_ATTR_WIDTH_PX, im.width)
+        span.set_attribute(_ATTR_HEIGHT_PX, im.height)
     out = io.BytesIO()
     im.save(out, format="PNG")
     return out.getvalue()
@@ -134,16 +141,16 @@ def render_drawdown_preview(draft: Draft, max_px: int = 800) -> tuple[bytes, int
     warp_count = len(draft.warp)
     weft_count = len(draft.weft)
     if warp_count <= 0 or weft_count <= 0:
-        raise ValueError("Draft has no drawdown data to render")
+        raise ValueError(_NO_DRAWDOWN_DATA)
 
     scale = max(1, min(DRAWDOWN_SCALE, max_px // warp_count))
     with tracer.start_as_current_span("render.drawdown_preview") as span:
-        span.set_attribute("render.scale", scale)
-        span.set_attribute("render.warp_threads", warp_count)
-        span.set_attribute("render.weft_threads", weft_count)
+        span.set_attribute(_ATTR_SCALE, scale)
+        span.set_attribute(_ATTR_WARP_THREADS, warp_count)
+        span.set_attribute(_ATTR_WEFT_THREADS, weft_count)
         png_bytes = render_drawdown_png(draft, scale=scale)
-        span.set_attribute("render.width_px", warp_count * scale)
-        span.set_attribute("render.height_px", weft_count * scale)
+        span.set_attribute(_ATTR_WIDTH_PX, warp_count * scale)
+        span.set_attribute(_ATTR_HEIGHT_PX, weft_count * scale)
     return png_bytes, scale
 
 
@@ -178,7 +185,7 @@ def render_drawdown_tile(
     weft_count = len(draft.weft)
 
     if warp_count <= 0 or weft_count <= 0:
-        raise ValueError("Draft has no drawdown data to render")
+        raise ValueError(_NO_DRAWDOWN_DATA)
 
     _s = get_settings()
     max_scale = min(_s.render_max_width // warp_count, scale)
@@ -202,14 +209,14 @@ def render_drawdown_tile(
 
     renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
     with tracer.start_as_current_span("render.drawdown_tile") as span:
-        span.set_attribute("render.scale", scale)
-        span.set_attribute("render.warp_threads", warp_count)
-        span.set_attribute("render.weft_threads", weft_count)
+        span.set_attribute(_ATTR_SCALE, scale)
+        span.set_attribute(_ATTR_WARP_THREADS, warp_count)
+        span.set_attribute(_ATTR_WEFT_THREADS, weft_count)
         span.set_attribute("render.tile_start_row", actual_start)
         span.set_attribute("render.tile_row_count", actual_row_count)
         full_im = renderer.make_pil_image()
-        span.set_attribute("render.width_px", warp_count * scale)
-        span.set_attribute("render.height_px", actual_row_count * scale)
+        span.set_attribute(_ATTR_WIDTH_PX, warp_count * scale)
+        span.set_attribute(_ATTR_HEIGHT_PX, actual_row_count * scale)
 
     offsetx = margin
     offsety = margin + (6 + len(draft.shafts)) * scale
@@ -243,8 +250,8 @@ def render_drawdown_data(draft: Draft, cell_px: int = 20) -> dict:
     """Return float geometry as a dict for JSON delivery to the canvas renderer."""
     with tracer.start_as_current_span("render.drawdown_data") as span:
         span.set_attribute("render.cell_px", cell_px)
-        span.set_attribute("render.warp_threads", len(draft.warp))
-        span.set_attribute("render.weft_threads", len(draft.weft))
+        span.set_attribute(_ATTR_WARP_THREADS, len(draft.warp))
+        span.set_attribute(_ATTR_WEFT_THREADS, len(draft.weft))
         data = _drawdown_data(draft, cell_px=cell_px)
         span.set_attribute("render.float_count", len(data["floats"]))
     return data
@@ -258,8 +265,8 @@ def render_drawdown_svg(draft: Draft, cell_px: int = 20) -> str:
     """
     with tracer.start_as_current_span("render.drawdown_svg") as span:
         span.set_attribute("render.cell_px", cell_px)
-        span.set_attribute("render.warp_threads", len(draft.warp))
-        span.set_attribute("render.weft_threads", len(draft.weft))
+        span.set_attribute(_ATTR_WARP_THREADS, len(draft.warp))
+        span.set_attribute(_ATTR_WEFT_THREADS, len(draft.weft))
         svg = _drawdown_svg(draft, cell_px=cell_px)
         span.set_attribute("render.svg_bytes", len(svg.encode()))
     return svg
@@ -309,7 +316,7 @@ def render_drawdown_only(
     weft_count = len(draft.weft)
 
     if warp_count <= 0 or weft_count <= 0:
-        raise ValueError("Draft has no drawdown data to render")
+        raise ValueError(_NO_DRAWDOWN_DATA)
 
     _s = get_settings()
     # Reduce scale to the largest integer that fits within the configured pixel limits.
@@ -333,12 +340,12 @@ def render_drawdown_only(
 
     renderer = ImageRenderer(draft, scale=scale, margin_pixels=margin)
     with tracer.start_as_current_span("render.drawdown_only") as span:
-        span.set_attribute("render.scale", scale)
-        span.set_attribute("render.warp_threads", warp_count)
-        span.set_attribute("render.weft_threads", weft_count)
+        span.set_attribute(_ATTR_SCALE, scale)
+        span.set_attribute(_ATTR_WARP_THREADS, warp_count)
+        span.set_attribute(_ATTR_WEFT_THREADS, weft_count)
         full_im = renderer.make_pil_image()
-        span.set_attribute("render.width_px", drawdown_w)
-        span.set_attribute("render.height_px", drawdown_h)
+        span.set_attribute(_ATTR_WIDTH_PX, drawdown_w)
+        span.set_attribute(_ATTR_HEIGHT_PX, drawdown_h)
 
     # The drawdown occupies the left portion of the image starting at x=0
     # (warp threads 0..N-1 at x = thread_idx * scale).
