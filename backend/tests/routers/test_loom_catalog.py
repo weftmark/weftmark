@@ -152,6 +152,15 @@ async def test_admin_update_loom_reference(admin_client: AsyncClient, db_session
     assert data["foldable"] is False
 
 
+async def test_admin_update_loom_reference_not_found_returns_404(admin_client: AsyncClient):
+    resp = await admin_client.patch(
+        f"/api/admin/loom-catalog/{uuid.uuid4()}",
+        json={"origin_country": "Canada"},
+    )
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Loom reference not found"
+
+
 async def test_admin_delete_loom_reference(admin_client: AsyncClient, db_session: AsyncSession):
     ref = await _make_ref(db_session)
     resp = await admin_client.delete(f"/api/admin/loom-catalog/{ref.id}")
@@ -159,6 +168,12 @@ async def test_admin_delete_loom_reference(admin_client: AsyncClient, db_session
 
     resp2 = await admin_client.get(f"/api/loom-catalog/{ref.id}")
     assert resp2.status_code == 404
+
+
+async def test_admin_delete_loom_reference_not_found_returns_404(admin_client: AsyncClient):
+    resp = await admin_client.delete(f"/api/admin/loom-catalog/{uuid.uuid4()}")
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Loom reference not found"
 
 
 async def test_non_admin_cannot_create(auth_client: AsyncClient, db_session: AsyncSession):

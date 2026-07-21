@@ -853,11 +853,7 @@ async def get_project_drawdown_preview(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Preview rendering failed: {exc}") from exc
 
-    return Response(
-        content=png_bytes,
-        media_type=_MEDIA_TYPE_PNG,
-        headers={"Cache-Control": "private, max-age=60"},
-    )
+    return Response(content=png_bytes, media_type=_MEDIA_TYPE_PNG, headers={"Cache-Control": "private, max-age=60"})
 
 
 @router.get("/{project_id}/drawdown_preview")
@@ -871,11 +867,7 @@ async def get_project_drawdown_preview_cached(
     if not project.drawdown_preview_path:
         raise HTTPException(status_code=404, detail="Preview not yet generated")
     data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
-    return Response(
-        content=data,
-        media_type=_MEDIA_TYPE_PNG,
-        headers={"Cache-Control": "private, max-age=86400"},
-    )
+    return Response(content=data, media_type=_MEDIA_TYPE_PNG, headers={"Cache-Control": "private, max-age=86400"})
 
 
 @router.get("/{project_id}/drawdown_svg")
@@ -889,11 +881,7 @@ async def get_project_drawdown_svg_cached(
     if not project.drawdown_svg_path:
         raise HTTPException(status_code=404, detail="SVG not yet generated")
     svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
-    return Response(
-        content=svg_text,
-        media_type=_MEDIA_TYPE_SVG,
-        headers={"Cache-Control": "private, max-age=86400"},
-    )
+    return Response(content=svg_text, media_type=_MEDIA_TYPE_SVG, headers={"Cache-Control": "private, max-age=86400"})
 
 
 @router.get("/{project_id}/drawdown/data")
@@ -2094,8 +2082,4 @@ async def get_shared_project_svg(
     if not project.drawdown_svg_path:
         raise HTTPException(status_code=404, detail="SVG not yet generated")
     svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
-    return Response(
-        content=svg_text,
-        media_type=_MEDIA_TYPE_SVG,
-        headers={"Cache-Control": "public, max-age=300"},
-    )
+    return Response(content=svg_text, media_type=_MEDIA_TYPE_SVG, headers={"Cache-Control": "public, max-age=300"})
