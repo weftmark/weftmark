@@ -59,18 +59,28 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 MAX_VERSION_PHOTOS = 5
 
 
-def _safe_content_type(path: str, allowed: set[str]) -> str:
-    """Guess the content type for a stored file, constrained to a known-safe allowlist.
+_EXTENSION_CONTENT_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".pdf": "application/pdf",
+}
 
-    mimetypes.guess_type() only ever returns one of Python's fixed, built-in MIME
-    strings (or None) — the path's extension never appears verbatim in the result —
-    but SonarCloud's taint analysis (pythonsecurity:S5131) can't see that, so it flags
-    the guessed value flowing into the response's media_type as reflected/unsanitized.
-    Constraining to the same allowlist already enforced at upload time makes the
-    safety explicit rather than relying on stdlib behavior the scanner can't verify.
+
+def _safe_content_type(path: str, allowed: set[str]) -> str:
+    """Resolve the content type for a stored file from a fixed extension table.
+
+    Looks up the file extension in a hardcoded literal rather than calling
+    mimetypes.guess_type() — the returned value is always one of the fixed strings
+    above, never derived from the path itself, so SonarCloud's taint analysis
+    (pythonsecurity:S5131) has nothing to flag. Also constrained to the same
+    allowlist already enforced at upload time.
     """
-    guessed = mimetypes.guess_type(path)[0]
-    return guessed if guessed in allowed else _DEFAULT_CONTENT_TYPE
+    ext = path[path.rfind(".") :].lower() if "." in path else ""
+    content_type = _EXTENSION_CONTENT_TYPES.get(ext, _DEFAULT_CONTENT_TYPE)
+    return content_type if content_type in allowed else _DEFAULT_CONTENT_TYPE
 
 
 # ---------------------------------------------------------------------------
