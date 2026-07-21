@@ -522,7 +522,17 @@ def _to_detail(
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=ProjectDetail, status_code=201)
+@router.post(
+    "",
+    response_model=ProjectDetail,
+    status_code=201,
+    responses={
+        400: {"description": "project_type must be 'treadle' or 'lift'"},
+        404: {"description": "Loom not found"},
+        409: {"description": "This loom already has an active project"},
+        422: {"description": "Loom type does not support project tracking"},
+    },
+)
 async def create_project(
     body: CreateProjectRequest,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -640,7 +650,10 @@ async def list_projects(
     return [ProjectSummary.model_validate(p) for p in projects]
 
 
-@router.get("/{project_id}/drawdown")
+@router.get(
+    "/{project_id}/drawdown",
+    responses={404: {"description": "Draft not found"}, 500: {"description": "Drawdown rendering failed"}},
+)
 async def get_project_drawdown(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -753,7 +766,14 @@ async def get_project_drawdown(
     )
 
 
-@router.get("/{project_id}/drawdown/svg")
+@router.get(
+    "/{project_id}/drawdown/svg",
+    responses={
+        400: {"description": "Invalid color_replacements JSON"},
+        404: {"description": "Draft not found"},
+        500: {"description": "SVG rendering failed"},
+    },
+)
 async def get_project_drawdown_svg(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -809,7 +829,14 @@ async def get_project_drawdown_svg(
     )
 
 
-@router.get("/{project_id}/drawdown/preview")
+@router.get(
+    "/{project_id}/drawdown/preview",
+    responses={
+        400: {"description": "Invalid color_replacements JSON"},
+        404: {"description": "Draft not found"},
+        500: {"description": "Preview rendering failed"},
+    },
+)
 async def get_project_drawdown_preview(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -856,7 +883,10 @@ async def get_project_drawdown_preview(
     return Response(content=png_bytes, media_type=_MEDIA_TYPE_PNG, headers={"Cache-Control": "private, max-age=60"})
 
 
-@router.get("/{project_id}/drawdown_preview")
+@router.get(
+    "/{project_id}/drawdown_preview",
+    responses={404: {"description": "Preview not yet generated"}},
+)
 async def get_project_drawdown_preview_cached(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -870,7 +900,10 @@ async def get_project_drawdown_preview_cached(
     return Response(content=data, media_type=_MEDIA_TYPE_PNG, headers={"Cache-Control": "private, max-age=86400"})
 
 
-@router.get("/{project_id}/drawdown_svg")
+@router.get(
+    "/{project_id}/drawdown_svg",
+    responses={404: {"description": "SVG not yet generated"}},
+)
 async def get_project_drawdown_svg_cached(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -884,7 +917,10 @@ async def get_project_drawdown_svg_cached(
     return Response(content=svg_text, media_type=_MEDIA_TYPE_SVG, headers={"Cache-Control": "private, max-age=86400"})
 
 
-@router.get("/{project_id}/drawdown/data")
+@router.get(
+    "/{project_id}/drawdown/data",
+    responses={404: {"description": "Draft not found"}, 500: {"description": "Drawdown data rendering failed"}},
+)
 async def get_project_drawdown_data(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -931,7 +967,11 @@ async def get_project_drawdown_data(
     )
 
 
-@router.get("/{project_id}", response_model=ProjectDetail)
+@router.get(
+    "/{project_id}",
+    response_model=ProjectDetail,
+    responses={404: {"description": "Project not found"}},
+)
 async def get_project(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -974,7 +1014,11 @@ async def get_project(
     )
 
 
-@router.patch("/{project_id}", response_model=ProjectDetail)
+@router.patch(
+    "/{project_id}",
+    response_model=ProjectDetail,
+    responses={400: {"description": "At least one field must be provided"}, 404: {"description": "Project not found"}},
+)
 async def rename_project(
     project_id: uuid.UUID,
     body: RenameProjectRequest,
@@ -1003,7 +1047,14 @@ async def rename_project(
     return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
-@router.patch("/{project_id}/color-replacements", response_model=ProjectDetail)
+@router.patch(
+    "/{project_id}/color-replacements",
+    response_model=ProjectDetail,
+    responses={
+        404: {"description": "Project not found"},
+        422: {"description": "color_replacements keys and values must be 6-digit hex colors"},
+    },
+)
 async def set_color_replacements(
     project_id: uuid.UUID,
     body: ColorReplacementsRequest,
@@ -1029,7 +1080,11 @@ async def set_color_replacements(
     return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
-@router.patch("/{project_id}/warp-setup", response_model=ProjectDetail)
+@router.patch(
+    "/{project_id}/warp-setup",
+    response_model=ProjectDetail,
+    responses={400: {"description": "At least one field must be provided"}, 404: {"description": "Project not found"}},
+)
 async def update_warp_setup(
     project_id: uuid.UUID,
     body: WarpSetupRequest,
@@ -1060,7 +1115,11 @@ async def update_warp_setup(
     return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
-@router.patch("/{project_id}/reed", response_model=ProjectDetail)
+@router.patch(
+    "/{project_id}/reed",
+    response_model=ProjectDetail,
+    responses={400: {"description": "reed_dents_per_inch must be positive"}, 404: {"description": "Project not found"}},
+)
 async def set_reed(
     project_id: uuid.UUID,
     body: SetReedRequest,
@@ -1086,7 +1145,16 @@ async def set_reed(
     return _to_detail(project, draft, loom, loom_version=loom_version, loom_reeds=loom_reeds)  # type: ignore[arg-type]
 
 
-@router.post("/{project_id}/assign-loom", response_model=ProjectDetail)
+@router.post(
+    "/{project_id}/assign-loom",
+    response_model=ProjectDetail,
+    responses={
+        400: {"description": "Project is not active"},
+        404: {"description": "Loom not found"},
+        409: {"description": "This loom already has an active project"},
+        422: {"description": "Loom type does not support project tracking"},
+    },
+)
 async def assign_loom(
     project_id: uuid.UUID,
     body: AssignLoomRequest,
@@ -1136,7 +1204,14 @@ async def assign_loom(
     return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
-@router.post("/{project_id}/start", response_model=ProjectDetail)
+@router.post(
+    "/{project_id}/start",
+    response_model=ProjectDetail,
+    responses={
+        400: {"description": "Only projects in 'created' or 'active' status can be started"},
+        404: {"description": "Project not found"},
+    },
+)
 async def start_project(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1158,7 +1233,10 @@ async def start_project(
 
 @router.post(
     "/{project_id}/claim-tracking",
-    responses={409: {"description": "This project is being tracked from another device"}},
+    responses={
+        409: {"description": "This project is being tracked from another device"},
+        404: {"description": "Project not found"},
+    },
 )
 async def claim_tracking(
     project_id: uuid.UUID,
@@ -1194,7 +1272,10 @@ async def claim_tracking(
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
-@router.post("/{project_id}/release-tracking")
+@router.post(
+    "/{project_id}/release-tracking",
+    responses={404: {"description": "Project not found"}},
+)
 async def release_tracking(
     project_id: uuid.UUID,
     body: ReleaseTrackingRequest,
@@ -1220,7 +1301,11 @@ async def release_tracking(
 @router.post(
     "/{project_id}/step",
     response_model=StepResponse,
-    responses={409: {"description": "This project is being tracked from another device"}},
+    responses={
+        409: {"description": "This project is being tracked from another device"},
+        400: {"description": "direction must be 'advance' or 'reverse'"},
+        404: {"description": "Project not found"},
+    },
 )
 async def step_project(
     project_id: uuid.UUID,
@@ -1304,7 +1389,11 @@ async def step_project(
 @router.post(
     "/{project_id}/jump",
     response_model=ProjectDetail,
-    responses={409: {"description": "This project is being tracked from another device"}},
+    responses={
+        409: {"description": "This project is being tracked from another device"},
+        400: {"description": "Project is not active"},
+        404: {"description": "Project not found"},
+    },
 )
 async def jump_project(
     project_id: uuid.UUID,
@@ -1330,7 +1419,11 @@ async def jump_project(
 @router.post(
     "/{project_id}/advance-item",
     response_model=StepResponse,
-    responses={409: {"description": "This project is being tracked from another device"}},
+    responses={
+        409: {"description": "This project is being tracked from another device"},
+        400: {"description": "Project is not active"},
+        404: {"description": "Project not found"},
+    },
 )
 async def advance_item(
     project_id: uuid.UUID,
@@ -1363,7 +1456,11 @@ async def advance_item(
 @router.post(
     "/{project_id}/jump-item",
     response_model=ProjectDetail,
-    responses={409: {"description": "This project is being tracked from another device"}},
+    responses={
+        409: {"description": "This project is being tracked from another device"},
+        400: {"description": "Project is not active"},
+        404: {"description": "Project not found"},
+    },
 )
 async def jump_item(
     project_id: uuid.UUID,
@@ -1388,7 +1485,11 @@ async def jump_item(
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
-@router.post("/{project_id}/complete", response_model=ProjectDetail)
+@router.post(
+    "/{project_id}/complete",
+    response_model=ProjectDetail,
+    responses={400: {"description": "Project is not active"}, 404: {"description": "Project not found"}},
+)
 async def complete_project(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1413,7 +1514,11 @@ async def complete_project(
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
-@router.post("/{project_id}/abandon", response_model=ProjectDetail)
+@router.post(
+    "/{project_id}/abandon",
+    response_model=ProjectDetail,
+    responses={400: {"description": "Project is not active"}, 404: {"description": "Project not found"}},
+)
 async def abandon_project(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1432,7 +1537,15 @@ async def abandon_project(
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
-@router.post("/{project_id}/restart", response_model=ProjectDetail)
+@router.post(
+    "/{project_id}/restart",
+    response_model=ProjectDetail,
+    responses={
+        400: {"description": "Only abandoned projects can be restarted"},
+        404: {"description": "Project not found"},
+        409: {"description": "This loom already has an active project"},
+    },
+)
 async def restart_project(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1453,7 +1566,11 @@ async def restart_project(
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
-@router.get("/{project_id}/metrics", response_model=ProjectMetricsResponse)
+@router.get(
+    "/{project_id}/metrics",
+    response_model=ProjectMetricsResponse,
+    responses={404: {"description": "Project not found"}},
+)
 async def get_project_metrics(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1514,7 +1631,15 @@ async def get_project_metrics(
     )
 
 
-@router.post("/{project_id}/clone", response_model=ProjectDetail, status_code=201)
+@router.post(
+    "/{project_id}/clone",
+    response_model=ProjectDetail,
+    status_code=201,
+    responses={
+        404: {"description": "Project not found"},
+        409: {"description": "This loom already has an active project"},
+    },
+)
 async def clone_project(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1549,7 +1674,11 @@ async def clone_project(
     return _to_detail(clone, draft, loom)  # type: ignore[arg-type]
 
 
-@router.delete("/{project_id}", status_code=204)
+@router.delete(
+    "/{project_id}",
+    status_code=204,
+    responses={404: {"description": "Project not found"}},
+)
 async def delete_project(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1560,7 +1689,15 @@ async def delete_project(
     await db.commit()
 
 
-@router.post("/{project_id}/photos", response_model=ProjectPhotoSchema, status_code=201)
+@router.post(
+    "/{project_id}/photos",
+    response_model=ProjectPhotoSchema,
+    status_code=201,
+    responses={
+        400: {"description": "Only JPEG, PNG, WebP, and HEIC images are allowed"},
+        404: {"description": "Project not found"},
+    },
+)
 async def upload_project_photo(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1617,7 +1754,10 @@ async def upload_project_photo(
     return ProjectPhotoSchema.model_validate(photo)
 
 
-@router.get("/{project_id}/photos/{photo_id}")
+@router.get(
+    "/{project_id}/photos/{photo_id}",
+    responses={404: {"description": "Photo not found"}},
+)
 async def get_project_photo(
     project_id: uuid.UUID,
     photo_id: uuid.UUID,
@@ -1635,7 +1775,11 @@ async def get_project_photo(
     return Response(content=data, media_type=ct)
 
 
-@router.delete("/{project_id}/photos/{photo_id}", status_code=204)
+@router.delete(
+    "/{project_id}/photos/{photo_id}",
+    status_code=204,
+    responses={404: {"description": "Photo not found"}},
+)
 async def delete_project_photo(
     project_id: uuid.UUID,
     photo_id: uuid.UUID,
@@ -1653,7 +1797,11 @@ async def delete_project_photo(
     await db.commit()
 
 
-@router.get("/{project_id}/picks", response_model=PicksResponse)
+@router.get(
+    "/{project_id}/picks",
+    response_model=PicksResponse,
+    responses={400: {"description": "Invalid pick data"}, 404: {"description": "Draft not found"}},
+)
 async def get_picks(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1772,7 +1920,11 @@ def _compute_epi(draft: Draft) -> float | None:
     return None
 
 
-@router.get("/{project_id}/warping-plan", response_model=WarpingPlanResponse)
+@router.get(
+    "/{project_id}/warping-plan",
+    response_model=WarpingPlanResponse,
+    responses={404: {"description": "Draft not found"}},
+)
 async def get_warping_plan(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1826,7 +1978,15 @@ async def get_warping_plan(
 # ---------------------------------------------------------------------------
 
 
-@router.patch("/{project_id}/share", response_model=ProjectDetail)
+@router.patch(
+    "/{project_id}/share",
+    response_model=ProjectDetail,
+    responses={
+        400: {"description": "visibility must be 'link'"},
+        404: {"description": "Draft not found"},
+        500: {"description": "Could not generate unique share slug"},
+    },
+)
 async def update_project_share(
     project_id: uuid.UUID,
     body: ShareProjectRequest,
@@ -1864,7 +2024,11 @@ async def update_project_share(
     return _to_detail(project, draft, loom, photos, loom_version)
 
 
-@router.delete("/{project_id}/share", status_code=204)
+@router.delete(
+    "/{project_id}/share",
+    status_code=204,
+    responses={404: {"description": "Project not found"}},
+)
 async def revoke_project_share(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -1882,7 +2046,11 @@ async def revoke_project_share(
 # ---------------------------------------------------------------------------
 
 
-@share_router.get("/projects/{slug}", response_model=SharedProjectResponse)
+@share_router.get(
+    "/projects/{slug}",
+    response_model=SharedProjectResponse,
+    responses={404: {"description": "Shared project not found"}, 410: {"description": "This share link has expired"}},
+)
 async def get_shared_project(
     slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1940,7 +2108,10 @@ async def get_shared_project(
     )
 
 
-@share_router.get("/projects/{slug}/preview")
+@share_router.get(
+    "/projects/{slug}/preview",
+    responses={404: {"description": "Not found"}, 410: {"description": "Expired"}},
+)
 async def get_shared_project_preview(
     slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1973,7 +2144,10 @@ class PatchYarnColorRequest(BaseModel):
     use_yarn_photo: bool
 
 
-@router.get("/{project_id}/yarn-colors")
+@router.get(
+    "/{project_id}/yarn-colors",
+    responses={404: {"description": "Project not found"}},
+)
 async def list_project_yarn_colors(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -2083,7 +2257,10 @@ async def unlink_yarn_color(
     await db.commit()
 
 
-@share_router.get("/projects/{slug}/svg")
+@share_router.get(
+    "/projects/{slug}/svg",
+    responses={404: {"description": "Not found"}, 410: {"description": "Expired"}},
+)
 async def get_shared_project_svg(
     slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
