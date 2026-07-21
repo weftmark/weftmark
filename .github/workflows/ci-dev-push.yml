@@ -1,12 +1,22 @@
 name: Dev push
 
 # Post-merge bookkeeping for pushes to dev.
-# Tests already passed on the PR — this workflow only does SBOM updates
-# and version bumping. No validation jobs run here.
+# Tests already passed on the PR — this workflow only does SBOM updates,
+# version bumping, and a full SonarCloud re-scan. No PR-gating validation
+# (lint/typecheck/etc.) runs here.
 #
 # sbom-backend and sbom-frontend run in parallel — they write to separate
 # files so git pull --rebase handles ordering without conflicts.
 # bump-version waits for both before running.
+#
+# sonarcloud re-analyzes the whole dev branch (not just the PR's new-code
+# diff) so the project-wide issue list and the "new code" baseline used by
+# every subsequent PR stay current. Without this, dev's SonarCloud snapshot
+# never advances past whenever it last ran, which both leaves long-fixed
+# issues showing as open on the dashboard and — because each PR's "new code"
+# period is computed against that stale baseline — causes SonarCloud to keep
+# attributing unrelated pre-existing findings to whichever PR happens to
+# touch a line near them (see #1030, #1032, #1033, #1034).
 #
 # All jobs are skipped when weftmark-bot[bot] pushes (version bump commits
 # would otherwise re-trigger this workflow infinitely).
@@ -14,13 +24,16 @@ name: Dev push
 # into merge commit bodies and suppress PR workflows on the target branch.
 #
 # On scheduled runs (weekly Monday 03:00 UTC) both SBOMs are regenerated
-# unconditionally regardless of whether package files changed. This ensures
-# the backend SBOM stays current even when requirements.txt is unchanged for
-# extended periods (backend packages change less often than frontend npm deps).
+# unconditionally regardless of whether package files changed, and the
+# SonarCloud scan runs too, as a safety net in case a push-triggered scan
+# was ever skipped or failed silently. This ensures the backend SBOM stays
+# current even when requirements.txt is unchanged for extended periods
+# (backend packages change less often than frontend npm deps).
 #
 # Required secrets:
 #   WEFTMARK_BOT_CLIENT_ID   — GitHub App client ID
 #   WEFTMARK_BOT_PRIVATE_KEY — GitHub App private key
+#   SONAR_TOKEN              — SonarCloud analysis token
 
 on:
   push:
@@ -160,6 +173,47 @@ jobs:
           name: sbom-frontend-${{ github.sha }}
           path: sbom/sbom-frontend.json
           retention-days: 90
+
+  sonarcloud:
+    name: SonarCloud full re-scan
+    runs-on: ubuntu-latest
+    if: github.actor != 'weftmark-bot[bot]'
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: weaving_site
+          POSTGRES_USER: weaving_user
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements-dev.txt
+      - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+      - name: Run backend tests for coverage
+        run: cd backend && python -m pytest tests/ -q
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: weaving_user
+          POSTGRES_PASSWORD: ci_test_password
+      - name: SonarCloud scan
+        uses: SonarSource/sonarqube-scan-action@v8.1.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
 
   bump-version:
     name: Bump version
