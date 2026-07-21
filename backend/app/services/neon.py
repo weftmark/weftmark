@@ -86,8 +86,7 @@ def _parse_consumption(
                 for m in point.get("metrics", []):
                     if m.get("metric_name") == "compute_unit_seconds":
                         value = float(m.get("value", 0))
-                if project_id_filter:
-                    daily.append(NeonUsageDay(date=point.get("timeframe_start", ""), compute_seconds=value))
+                daily.append(NeonUsageDay(date=point.get("timeframe_start", ""), compute_seconds=value))
                 total += value
                 project_total += value
         if pid:
