@@ -16,7 +16,13 @@ name: Dev push
 # issues showing as open on the dashboard and — because each PR's "new code"
 # period is computed against that stale baseline — causes SonarCloud to keep
 # attributing unrelated pre-existing findings to whichever PR happens to
-# touch a line near them (see #1030, #1032, #1033, #1034).
+# touch a line near them (see #1030, #1032, #1033, #1034). Deliberately just
+# checkout + scan, no pytest run: this fires on every merge to dev, and a
+# full backend test run for coverage.xml would add ~10 minutes to what was
+# a <1 minute post-merge job. SonarCloud's coverage ingestion is optional —
+# without it this scan still refreshes bugs/vulnerabilities/complexity/the
+# new-code baseline, which is the actual point; Codecov (in ci-dev-pr.yml)
+# already owns real coverage tracking.
 #
 # All jobs are skipped when weftmark-bot[bot] pushes (version bump commits
 # would otherwise re-trigger this workflow infinitely).
@@ -178,36 +184,10 @@ jobs:
     name: SonarCloud full re-scan
     runs-on: ubuntu-latest
     if: github.actor != 'weftmark-bot[bot]'
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: weaving_site
-          POSTGRES_USER: weaving_user
-          POSTGRES_PASSWORD: ci_test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - run: pip install -r backend/requirements-dev.txt
-      - run: sudo apt-get install -y --no-install-recommends fonts-dejavu-core
-      - name: Run backend tests for coverage
-        run: cd backend && python -m pytest tests/ -q
-        env:
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
-          POSTGRES_USER: weaving_user
-          POSTGRES_PASSWORD: ci_test_password
       - name: SonarCloud scan
         uses: SonarSource/sonarqube-scan-action@v8.1.0
         env:
