@@ -683,7 +683,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/before-after-hook",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/before-after-hook/LICENSE"
   },
-  "brace-expansion@5.0.6": {
+  "brace-expansion@5.0.7": {
     "licenses": "MIT",
     "repository": "https://github.com/juliangruber/brace-expansion",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/brace-expansion",
@@ -1646,7 +1646,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements/LICENSE"
   },
-  "weaving-site@0.210.0": {
+  "weaving-site@0.210.2": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",
