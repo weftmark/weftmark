@@ -6,6 +6,7 @@ import { AppIcons } from "@/lib/icons";
 import { usePresentMode } from "@/hooks/usePresentMode";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useStepQueue } from "@/hooks/useStepQueue";
+import { useTrackerSession } from "@/hooks/useTrackerSession";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, displayLength } from "@/lib/units";
@@ -13,7 +14,7 @@ import {
   getProject, getProjectPicks, getProjectMetrics, stepProject, jumpProject, completeProject, abandonProject,
   restartProject, cloneProject, listProjects, deleteProject, startProject,
   renameProject, updateProjectNotes, uploadProjectPhoto, deleteProjectPhoto, projectPhotoUrl,
-  advanceItem, jumpItem,
+  advanceItem, jumpItem, claimTracking, releaseTracking,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow, type ProjectMetrics,
 } from "@/api/projects";
@@ -58,6 +59,7 @@ function CollapsibleSection({
   return (
     <section className="border-t">
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
       >
@@ -601,6 +603,7 @@ function StepControls({
     <div className="flex items-center justify-center gap-2 sm:gap-3">
       {/* ‹‹ back 10 — visible on sm+ */}
       <button
+        type="button"
         onClick={() => onJump(Math.max(1, currentPick - 10))}
         disabled={atStart || disabled || jumpDisabled}
         className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 text-primary/70 text-lg font-medium transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -611,6 +614,7 @@ function StepControls({
       </button>
 
       <button
+        type="button"
         onClick={() => onStep("reverse")}
         disabled={atStart || disabled}
         className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary text-primary text-3xl font-light transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed"
@@ -627,6 +631,7 @@ function StepControls({
       </div>
 
       <button
+        type="button"
         onClick={() => onStep("advance")}
         disabled={pastEnd || disabled}
         className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary text-primary text-3xl font-light transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed"
@@ -637,6 +642,7 @@ function StepControls({
 
       {/* ›› forward 10 — visible on sm+ */}
       <button
+        type="button"
         onClick={() => onJump(Math.min(total + 1, currentPick + 10))}
         disabled={pastEnd || disabled || jumpDisabled}
         className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 text-primary/70 text-lg font-medium transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -853,6 +859,7 @@ function PhotoGrid({
             onClick={(e) => e.stopPropagation()}
           />
           <button
+            type="button"
             onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 text-white/70 hover:text-white text-sm"
           >
@@ -1070,6 +1077,9 @@ export function ProjectDetailPage() {
   const [cloneConflict, setCloneConflict] = useState<ProjectSummary | null>(null);
   const [restartConflict, setRestartConflict] = useState<ProjectSummary | null>(null);
   const [localPick, setLocalPick] = useState(1);
+  // Tracker lock (#1029) — which device currently owns pick-position writes.
+  const trackerSessionId = useTrackerSession(id);
+  const [trackerLocked, setTrackerLocked] = useState(false);
 
   const { isPresent, isSupported: presentModeSupported, toggle: togglePresentMode } = usePresentMode();
   const isOnline = useOnlineStatus();
@@ -1129,6 +1139,33 @@ export function ProjectDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreated, id]);
 
+  // Tracker lock (#1029) — silently claim on mount if free; block writes and show
+  // a banner if another device already holds it. Release is best-effort on unmount
+  // (a crashed tab's lock simply goes stale and self-heals server-side).
+  const isActivelyTracked = project?.status === "active" && !!project?.loom_id;
+  useEffect(() => {
+    if (!id || !trackerSessionId || !isActivelyTracked) return;
+    let cancelled = false;
+    claimTracking(id, trackerSessionId)
+      .then(() => { if (!cancelled) setTrackerLocked(false); })
+      .catch((err) => { if (!cancelled && err instanceof ApiError && err.status === 409) setTrackerLocked(true); });
+    return () => {
+      cancelled = true;
+      releaseTracking(id, trackerSessionId).catch(() => {});
+    };
+  }, [id, trackerSessionId, isActivelyTracked]);
+
+  const handleTakeOverTracking = async () => {
+    if (!id || !trackerSessionId) return;
+    setActionLoading(true);
+    try {
+      await claimTracking(id, trackerSessionId, true);
+      setTrackerLocked(false);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const { data: allProjects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: () => listProjects(),
@@ -1151,7 +1188,7 @@ export function ProjectDetailPage() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["project", id] });
 
   const handleJump = useCallback(async (pick: number) => {
-    if (!id || stepping) return;
+    if (!id || stepping || !trackerSessionId) return;
     // Jump is a deliberate correction, not continuous tracking like step — require
     // connectivity rather than queueing it for later replay against a since-changed
     // current_pick (see #1028).
@@ -1159,7 +1196,7 @@ export function ProjectDetailPage() {
     setStepping(true);
     pendingStepsRef.current += 1;
     try {
-      const updated = await jumpProject(id, pick);
+      const updated = await jumpProject(id, pick, trackerSessionId);
       pendingStepsRef.current -= 1;
       if (pendingStepsRef.current === 0) {
         // Merge only the fields a jump can change — preserves loom/draft metadata
@@ -1176,30 +1213,31 @@ export function ProjectDetailPage() {
           };
         });
       }
-    } catch {
+    } catch (err) {
       pendingStepsRef.current -= 1;
+      if (err instanceof ApiError && err.status === 409) setTrackerLocked(true);
       queryClient.invalidateQueries({ queryKey: ["project", id] });
     } finally {
       setStepping(false);
     }
-  }, [id, stepping, isOnline, queryClient]);
+  }, [id, stepping, isOnline, queryClient, trackerSessionId]);
 
   const drainingRef = useRef(false);
 
   // Drain buffered offline steps when connectivity is restored
   useEffect(() => {
-    if (!isOnline || drainingRef.current || pendingOfflineSteps === 0) return;
+    if (!isOnline || drainingRef.current || pendingOfflineSteps === 0 || !trackerSessionId) return;
     drainingRef.current = true;
     drainAll(async (projectId, direction) => {
-      await stepProject(projectId, direction);
+      await stepProject(projectId, direction, trackerSessionId);
     }).then(() => {
       drainingRef.current = false;
       if (id) queryClient.invalidateQueries({ queryKey: ["project", id] });
     });
-  }, [isOnline, pendingOfflineSteps, drainAll, id, queryClient]);
+  }, [isOnline, pendingOfflineSteps, drainAll, id, queryClient, trackerSessionId]);
 
   const handleStep = useCallback(async (direction: "advance" | "reverse") => {
-    if (!id) return;
+    if (!id || !trackerSessionId) return;
     // Read latest cached value so rapid taps each see the up-to-date pick
     const cached = queryClient.getQueryData<NonNullable<typeof project>>(["project", id]);
     if (!cached) return;
@@ -1221,7 +1259,7 @@ export function ProjectDetailPage() {
 
     pendingStepsRef.current += 1;
     try {
-      const result = await stepProject(id, direction);
+      const result = await stepProject(id, direction, trackerSessionId);
       pendingStepsRef.current -= 1;
       // Only settle once all in-flight steps have resolved. Earlier responses
       // are stale relative to the optimistic state (server serializes via FOR UPDATE,
@@ -1235,12 +1273,13 @@ export function ProjectDetailPage() {
           return { ...old, current_pick: safePick, total_picks: result.total_picks, current_item: result.current_item };
         });
       }
-    } catch {
+    } catch (err) {
       pendingStepsRef.current -= 1;
+      if (err instanceof ApiError && err.status === 409) setTrackerLocked(true);
       // On error, invalidate to let the server state win
       queryClient.invalidateQueries({ queryKey: ["project", id] });
     }
-  }, [id, queryClient, isOnline, enqueueStep]);
+  }, [id, queryClient, isOnline, enqueueStep, trackerSessionId]);
 
   const handleLocalStep = useCallback((direction: "advance" | "reverse") => {
     setLocalPick((prev) => {
@@ -1293,21 +1332,23 @@ export function ProjectDetailPage() {
   };
 
   const handleAdvanceItem = useCallback(async () => {
-    if (!id) return;
+    if (!id || !trackerSessionId) return;
     setActionLoading(true);
     try {
-      const result = await advanceItem(id);
+      const result = await advanceItem(id, trackerSessionId);
       queryClient.setQueryData<typeof project>(["project", id], (old) =>
         old ? { ...old, current_pick: result.current_pick, current_item: result.current_item } : old
       );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setTrackerLocked(true);
     } finally { setActionLoading(false); }
-  }, [id, queryClient]);
+  }, [id, queryClient, trackerSessionId]);
 
   const handleJumpItem = useCallback(async (item: number) => {
-    if (!id) return;
+    if (!id || !trackerSessionId) return;
     setActionLoading(true);
     try {
-      const updated = await jumpItem(id, item);
+      const updated = await jumpItem(id, item, trackerSessionId);
       queryClient.setQueryData<typeof project>(["project", id], (old) => {
         if (!old) return updated;
         return {
@@ -1319,8 +1360,10 @@ export function ProjectDetailPage() {
           status: updated.status,
         };
       });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setTrackerLocked(true);
     } finally { setActionLoading(false); }
-  }, [id, queryClient]);
+  }, [id, queryClient, trackerSessionId]);
 
   const handleRestart = async () => {
     if (!id) return;
@@ -1501,6 +1544,7 @@ export function ProjectDetailPage() {
             </form>
           ) : (
             <button
+              type="button"
               onClick={() => { setNameInput(project.name); setEditingName(true); }}
               className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text truncate"
               title={t("projectDetailPage.clickToRename")}
@@ -1512,6 +1556,7 @@ export function ProjectDetailPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={() => setShowDesignPreview(true)}
             className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
             title={t("projectDetailPage.viewDesignTitle")}
@@ -1527,6 +1572,7 @@ export function ProjectDetailPage() {
           </Link>
           {!isReadOnly && (
             <button
+              type="button"
               onClick={() => setShareModalOpen(true)}
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title={t("projectDetailPage.shareProject")}
@@ -1537,6 +1583,7 @@ export function ProjectDetailPage() {
           )}
           {!isReadOnly && (
             <button
+              type="button"
               onClick={() => setSettingsOpen(true)}
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title={t("projectDetailPage.viewSettings")}
@@ -1550,6 +1597,7 @@ export function ProjectDetailPage() {
           </span>
           {!isReadOnly && project.share_slug && project.share_visibility !== "private" && (
             <button
+              type="button"
               onClick={() => setShareModalOpen(true)}
               className="rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
               title={t("projectDetailPage.projectSharedManage")}
@@ -1560,6 +1608,7 @@ export function ProjectDetailPage() {
           )}
           {presentModeSupported && (
             <button
+              type="button"
               onClick={togglePresentMode}
               className="ml-3 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
@@ -1628,9 +1677,10 @@ export function ProjectDetailPage() {
                 <div className="flex items-center gap-1">
                   {Array.from({ length: project.num_items }, (_, i) => (
                     <button
+                      type="button"
                       key={i}
                       onClick={() => isActiveTracking && handleJumpItem(i + 1)}
-                      disabled={!isActiveTracking || actionLoading}
+                      disabled={!isActiveTracking || actionLoading || trackerLocked}
                       title={t("projectDetailPage.jumpToItem", { n: i + 1 })}
                       className={`h-2.5 rounded-full transition-all ${
                         i + 1 === project.current_item
@@ -1638,7 +1688,7 @@ export function ProjectDetailPage() {
                           : i + 1 < project.current_item
                           ? "w-2.5 bg-primary/40"
                           : "w-2.5 bg-muted-foreground/30"
-                      } ${isActiveTracking && !actionLoading ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
+                      } ${isActiveTracking && !actionLoading && !trackerLocked ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
                     />
                   ))}
                 </div>
@@ -1661,7 +1711,7 @@ export function ProjectDetailPage() {
               </p>
               {isActiveTracking && (
                 <div className="mt-6">
-                  <Button variant="success" onClick={handleAdvanceItem} disabled={actionLoading}>
+                  <Button variant="success" onClick={handleAdvanceItem} disabled={actionLoading || trackerLocked}>
                     {actionLoading ? "…" : t("projectDetailPage.startItem", { n: project.current_item + 1 })}
                   </Button>
                 </div>
@@ -1778,6 +1828,15 @@ export function ProjectDetailPage() {
 
         {/* Step controls — active tracking and planning */}
         <div className="w-full px-4 pb-6">
+          {!isReadOnly && trackerLocked && !isPlanning && (
+            <div className="mb-4 rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+              <p className="font-medium text-copper-on-subtle">{t("projectDetailPage.trackerLockedElsewhere")}</p>
+              <Button type="button" size="sm" onClick={handleTakeOverTracking} disabled={actionLoading}>
+                {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.takeOverTracking")}
+              </Button>
+            </div>
+          )}
+
           {!isReadOnly && (isActiveTracking || isPlanning) && (
             <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8 mb-4">
               {/* Left 1/3 on desktop, below step buttons on mobile */}
@@ -1785,7 +1844,7 @@ export function ProjectDetailPage() {
                 <JumpToPick
                   total={project.total_picks}
                   onJump={isPlanning ? handleLocalJump : handleJump}
-                  disabled={stepping || (!isPlanning && !isOnline)}
+                  disabled={stepping || (!isPlanning && !isOnline) || (!isPlanning && trackerLocked)}
                 />
               </div>
               {/* Center 1/3 on desktop, top on mobile */}
@@ -1795,8 +1854,8 @@ export function ProjectDetailPage() {
                   total={project.total_picks}
                   onStep={isPlanning ? handleLocalStep : handleStep}
                   onJump={isPlanning ? handleLocalJump : handleJump}
-                  stepping={stepping}
-                  jumpDisabled={!isPlanning && !isOnline}
+                  stepping={stepping || (!isPlanning && trackerLocked)}
+                  jumpDisabled={!isPlanning && (!isOnline || trackerLocked)}
                 />
               </div>
               {/* Right 1/3 reserved for future use */}
@@ -1816,6 +1875,7 @@ export function ProjectDetailPage() {
       {/* Details & settings panel — toggle bar always visible; sections scroll when open */}
       <div className="shrink-0 border-t bg-card">
         <button
+          type="button"
           onClick={() => {
             const next = !panelOpen;
             setPanelOpen(next);
@@ -1887,6 +1947,7 @@ export function ProjectDetailPage() {
               />
             ) : (
               <button
+                type="button"
                 onClick={() => { setNotesInput(project.notes ?? ""); setEditingNotes(true); }}
                 className="w-full text-left text-sm"
                 title={t("projectDetailPage.clickToEditNotes")}
@@ -2145,6 +2206,7 @@ export function ProjectDetailPage() {
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <span className="text-sm font-semibold">{t("projectDetailPage.viewSettings")}</span>
               <button
+                type="button"
                 onClick={() => setSettingsOpen(false)}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label="Close settings"
@@ -2166,6 +2228,7 @@ export function ProjectDetailPage() {
                   <div key={label} className={`flex items-center justify-between${disabled ? " opacity-40" : ""}`} title={disabled ? disabledTitle : undefined}>
                     <span className="text-sm">{label}</span>
                     <button
+                      type="button"
                       role="switch"
                       aria-checked={value}
                       disabled={disabled}
@@ -2194,6 +2257,7 @@ export function ProjectDetailPage() {
                       </p>
                     </div>
                     <button
+                      type="button"
                       role="switch"
                       aria-checked={hideTrailingUnused}
                       onClick={() => {
@@ -2215,6 +2279,7 @@ export function ProjectDetailPage() {
                 <div className="inline-flex rounded-md border border-input overflow-hidden text-sm w-full">
                   {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
                     <button
+                      type="button"
                       key={mode}
                       onClick={() => { setColorMode(mode); localStorage.setItem("proj-view:colorMode", mode); }}
                       className={`flex-1 px-2.5 py-1.5 capitalize transition-colors ${

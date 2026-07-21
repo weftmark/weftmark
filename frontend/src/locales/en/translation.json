@@ -733,6 +733,8 @@
     "resumeFromPick": "Resume from pick {{pick}}?",
     "loomHasActive": "This loom has an active project:",
     "resolveToRestart": "Resolve it to restart this one.",
+    "trackerLockedElsewhere": "This project is being tracked from another device.",
+    "takeOverTracking": "Take over",
     "working": "Working…",
     "markCompletedAndRestart": "Mark completed & restart",
     "abandonAndRestart": "Abandon & restart",

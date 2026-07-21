@@ -732,6 +732,8 @@
     "resumeFromPick": "¿Reanudar desde la pasada {{pick}}?",
     "loomHasActive": "Este telar tiene un proyecto activo:",
     "resolveToRestart": "Resuélvelo para reiniciar este.",
+    "trackerLockedElsewhere": "Este proyecto se está siguiendo desde otro dispositivo.",
+    "takeOverTracking": "Tomar el control",
     "working": "Procesando…",
     "markCompletedAndRestart": "Completar y reiniciar",
     "abandonAndRestart": "Abandonar y reiniciar",

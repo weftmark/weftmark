@@ -23,7 +23,7 @@
 | `app/models/draft.py` | 100% | |
 | `app/models/user.py` | 100% | Defaults, soft delete, all fields covered |
 | `app/models/yarn.py` | 100% | |
-| `app/routers/projects.py` | 97% | 9 missing: error branches (treadle/lift validation, loom version), picks endpoint edge case |
+| `app/routers/projects.py` | 97% | 9 missing: error branches (treadle/lift validation, loom version), picks endpoint edge case. `claim_tracking`/`release_tracking`/`_check_tracker_lock` (#1029) fully covered by `TestTrackerLock` (11 tests: claim/idempotent/blocked/force-steal, step/advance-item/jump-item gating, expiry self-heal, release + non-holder no-op) |
 | `app/routers/auth.py` | 81% | `/me`, logout, token validation, invite flow, webhook handlers covered; OIDC callback not tested |
 | `app/routers/health.py` | 78% | `/health` covered; DB-down error branches not tested |
 | `app/routers/admin.py` | 72% | Most admin CRUD covered; Clerk API integration paths missing |

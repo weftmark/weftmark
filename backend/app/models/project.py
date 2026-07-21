@@ -71,6 +71,12 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     drawdown_preview_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     drawdown_svg_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # Tracker lock — which device/tab currently owns pick-position writes (see #1029).
+    # NULL means unclaimed. A claim older than the owner's idle_timeout_minutes is stale
+    # and self-heals on the next write/claim attempt.
+    active_tracker_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    active_tracker_claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     steps: Mapped[list["ProjectStep"]] = relationship(
         "ProjectStep", back_populates="project", order_by="ProjectStep.created_at"
     )

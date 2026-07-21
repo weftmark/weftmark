@@ -3,8 +3,9 @@ import mimetypes
 import re
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
@@ -173,14 +174,30 @@ class SetReedRequest(BaseModel):
 
 class JumpRequest(BaseModel):
     pick: int
+    tracker_session_id: str
 
 
 class JumpItemRequest(BaseModel):
     item: int
+    tracker_session_id: str
 
 
 class StepRequest(BaseModel):
     direction: str  # "advance" | "reverse"
+    tracker_session_id: str
+
+
+class AdvanceItemRequest(BaseModel):
+    tracker_session_id: str
+
+
+class ClaimTrackingRequest(BaseModel):
+    tracker_session_id: str
+    force: bool = False
+
+
+class ReleaseTrackingRequest(BaseModel):
+    tracker_session_id: str
 
 
 class StepResponse(BaseModel):
@@ -344,6 +361,29 @@ async def _check_loom_conflict(
         raise HTTPException(status_code=409, detail="This loom already has an active project")
 
 
+def _check_tracker_lock(project: Project, tracker_session_id: str, current_user: User) -> None:
+    """Raise 409 if a different, still-live tracker session holds the lock.
+
+    Otherwise (re)stamp the claim for the calling token — acts as a heartbeat so an
+    actively-writing device never loses its own lock to idle-timeout. A lock is "live"
+    if claimed within idle_timeout_minutes; past that it's treated as an abandoned/crashed
+    session and silently self-heals to whichever device asks next. See #1029.
+    """
+    if project.active_tracker_session_id is None or project.active_tracker_session_id == tracker_session_id:
+        project.active_tracker_session_id = tracker_session_id
+        project.active_tracker_claimed_at = datetime.now(timezone.utc)
+        return
+    claimed_at = project.active_tracker_claimed_at
+    if claimed_at is not None and claimed_at.tzinfo is None:
+        claimed_at = claimed_at.replace(tzinfo=timezone.utc)
+    idle_timeout = timedelta(minutes=current_user.idle_timeout_minutes)
+    if claimed_at is None or datetime.now(timezone.utc) - claimed_at >= idle_timeout:
+        project.active_tracker_session_id = tracker_session_id
+        project.active_tracker_claimed_at = datetime.now(timezone.utc)
+        return
+    raise HTTPException(status_code=409, detail="This project is being tracked from another device")
+
+
 async def _wif_path_for_project(draft: Draft, project_type: str) -> str:
     """Return the correct WIF path for a project type.
 
@@ -481,8 +521,8 @@ def _to_detail(
 @router.post("", response_model=ProjectDetail, status_code=201)
 async def create_project(
     body: CreateProjectRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     if body.project_type not in ("treadle", "lift"):
         raise HTTPException(status_code=400, detail="project_type must be 'treadle' or 'lift'")
@@ -578,11 +618,11 @@ async def create_project(
 
 @router.get("", response_model=list[ProjectSummary])
 async def list_projects(
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     draft_id: uuid.UUID | None = Query(None),
     loom_id: uuid.UUID | None = Query(None),
     tags: list[str] | None = Query(None),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> list[ProjectSummary]:
     q = select(Project).where(Project.owner_id == current_user.id, Project.deleted_at.is_(None))
     if draft_id is not None:
@@ -599,12 +639,12 @@ async def list_projects(
 @router.get("/{project_id}/drawdown")
 async def get_project_drawdown(
     project_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     start_row: int | None = Query(None, ge=0),
     row_count: int | None = Query(None, ge=1),
     start_col: int | None = Query(None, ge=0),
     col_count: int | None = Query(None, ge=1),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> Response:
     from app.config import get_settings
     from app.services import rendering
@@ -712,10 +752,10 @@ async def get_project_drawdown(
 @router.get("/{project_id}/drawdown/svg")
 async def get_project_drawdown_svg(
     project_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     cell_px: int = Query(20, ge=1, le=30),
     color_replacements: str | None = Query(None),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> Response:
     import json
 
@@ -768,9 +808,9 @@ async def get_project_drawdown_svg(
 @router.get("/{project_id}/drawdown/preview")
 async def get_project_drawdown_preview(
     project_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     color_replacements: str | None = Query(None),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Full draft PNG (threading + tieup + drawdown), optionally with colour replacements applied."""
     import json
@@ -819,8 +859,8 @@ async def get_project_drawdown_preview(
 @router.get("/{project_id}/drawdown_preview")
 async def get_project_drawdown_preview_cached(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     """Return the pre-rendered drawdown thumbnail PNG for a project, or 404 if not yet generated."""
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
@@ -837,8 +877,8 @@ async def get_project_drawdown_preview_cached(
 @router.get("/{project_id}/drawdown_svg")
 async def get_project_drawdown_svg_cached(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     """Return the pre-rendered drawdown SVG for a project, or 404 if not yet generated."""
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
@@ -855,9 +895,9 @@ async def get_project_drawdown_svg_cached(
 @router.get("/{project_id}/drawdown/data")
 async def get_project_drawdown_data(
     project_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     cell_px: int = Query(20, ge=4, le=30),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> Response:
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
@@ -902,8 +942,8 @@ async def get_project_drawdown_data(
 @router.get("/{project_id}", response_model=ProjectDetail)
 async def get_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     stmt = (
         select(Project)
@@ -946,8 +986,8 @@ async def get_project(
 async def rename_project(
     project_id: uuid.UUID,
     body: RenameProjectRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     if body.name is None and body.notes is None and body.hide_unused_shafts_treadles is None and body.tags is None:
         raise HTTPException(status_code=400, detail="At least one field must be provided")
@@ -975,8 +1015,8 @@ async def rename_project(
 async def set_color_replacements(
     project_id: uuid.UUID,
     body: ColorReplacementsRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     import re
 
@@ -1001,8 +1041,8 @@ async def set_color_replacements(
 async def update_warp_setup(
     project_id: uuid.UUID,
     body: WarpSetupRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     fields = body.model_fields_set
@@ -1032,8 +1072,8 @@ async def update_warp_setup(
 async def set_reed(
     project_id: uuid.UUID,
     body: SetReedRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     if body.reed_dents_per_inch is not None and body.reed_dents_per_inch <= 0:
         raise HTTPException(status_code=400, detail="reed_dents_per_inch must be positive")
@@ -1058,8 +1098,8 @@ async def set_reed(
 async def assign_loom(
     project_id: uuid.UUID,
     body: AssignLoomRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
@@ -1107,8 +1147,8 @@ async def assign_loom(
 @router.post("/{project_id}/start", response_model=ProjectDetail)
 async def start_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     """Transition a project from 'created' to 'active'. Idempotent if already active."""
     project = await _get_owned_project(project_id, current_user, db)
@@ -1124,12 +1164,77 @@ async def start_project(
     return _to_detail(project, draft, loom, loom_version=loom_version)  # type: ignore[arg-type]
 
 
-@router.post("/{project_id}/step", response_model=StepResponse)
+@router.post(
+    "/{project_id}/claim-tracking",
+    responses={409: {"description": "This project is being tracked from another device"}},
+)
+async def claim_tracking(
+    project_id: uuid.UUID,
+    body: ClaimTrackingRequest,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectDetail:
+    """Claim the tracker lock for this device (see #1029).
+
+    Silently succeeds if the lock is free, already held by this same tracker_session_id,
+    or has gone stale (older than idle_timeout_minutes). Otherwise 409s unless force=true,
+    which is only ever sent after the user explicitly confirms a "take over" prompt.
+    """
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
+    now = datetime.now(timezone.utc)
+    is_free_or_self = (
+        project.active_tracker_session_id is None or project.active_tracker_session_id == body.tracker_session_id
+    )
+    is_expired = False
+    if not is_free_or_self and project.active_tracker_claimed_at is not None:
+        claimed_at = project.active_tracker_claimed_at
+        if claimed_at.tzinfo is None:
+            claimed_at = claimed_at.replace(tzinfo=timezone.utc)
+        is_expired = now - claimed_at >= timedelta(minutes=current_user.idle_timeout_minutes)
+    if not (is_free_or_self or is_expired or body.force):
+        raise HTTPException(status_code=409, detail="This project is being tracked from another device")
+    project.active_tracker_session_id = body.tracker_session_id
+    project.active_tracker_claimed_at = now
+    await db.commit()
+    await db.refresh(project)
+    draft = await db.get(Draft, project.draft_id)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+
+
+@router.post("/{project_id}/release-tracking")
+async def release_tracking(
+    project_id: uuid.UUID,
+    body: ReleaseTrackingRequest,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ProjectDetail:
+    """Release the tracker lock — a no-op if this device doesn't currently hold it.
+
+    Called best-effort on tracker-screen unmount. Idempotency here matters: a stale
+    unmount firing after another device already took over must not clobber that claim.
+    """
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
+    if project.active_tracker_session_id == body.tracker_session_id:
+        project.active_tracker_session_id = None
+        project.active_tracker_claimed_at = None
+        await db.commit()
+        await db.refresh(project)
+    draft = await db.get(Draft, project.draft_id)
+    loom = await db.get(Loom, project.loom_id) if project.loom_id else None
+    return _to_detail(project, draft, loom)  # type: ignore[arg-type]
+
+
+@router.post(
+    "/{project_id}/step",
+    response_model=StepResponse,
+    responses={409: {"description": "This project is being tracked from another device"}},
+)
 async def step_project(
     project_id: uuid.UUID,
     body: StepRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> StepResponse:
     if body.direction not in ("advance", "reverse"):
         raise HTTPException(status_code=400, detail="direction must be 'advance' or 'reverse'")
@@ -1140,6 +1245,7 @@ async def step_project(
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    _check_tracker_lock(project, body.tracker_session_id, current_user)
     if project.status == "created":
         project.status = "active"
 
@@ -1203,12 +1309,16 @@ async def step_project(
     )
 
 
-@router.post("/{project_id}/jump", response_model=ProjectDetail)
+@router.post(
+    "/{project_id}/jump",
+    response_model=ProjectDetail,
+    responses={409: {"description": "This project is being tracked from another device"}},
+)
 async def jump_project(
     project_id: uuid.UUID,
     body: JumpRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     # FOR UPDATE serializes against concurrent /step and /jump requests on the same
     # project row — matches step_project (see #1028: jump previously overwrote
@@ -1216,6 +1326,7 @@ async def jump_project(
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    _check_tracker_lock(project, body.tracker_session_id, current_user)
     project.current_pick = max(1, min(body.pick, project.total_picks + 1))
     await db.commit()
     await db.refresh(project)
@@ -1224,15 +1335,21 @@ async def jump_project(
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
-@router.post("/{project_id}/advance-item", response_model=StepResponse)
+@router.post(
+    "/{project_id}/advance-item",
+    response_model=StepResponse,
+    responses={409: {"description": "This project is being tracked from another device"}},
+)
 async def advance_item(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    body: AdvanceItemRequest,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> StepResponse:
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    _check_tracker_lock(project, body.tracker_session_id, current_user)
     if project.current_pick <= project.total_picks:
         raise HTTPException(status_code=400, detail="Current item is not finished — advance to the last pick first")
     if project.current_item >= project.num_items:
@@ -1251,16 +1368,21 @@ async def advance_item(
     )
 
 
-@router.post("/{project_id}/jump-item", response_model=ProjectDetail)
+@router.post(
+    "/{project_id}/jump-item",
+    response_model=ProjectDetail,
+    responses={409: {"description": "This project is being tracked from another device"}},
+)
 async def jump_item(
     project_id: uuid.UUID,
     body: JumpItemRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
-    project = await _get_owned_project(project_id, current_user, db)
+    project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
         raise HTTPException(status_code=400, detail="Project is not active")
+    _check_tracker_lock(project, body.tracker_session_id, current_user)
     picks = dict(project.item_picks or {})
     picks[str(project.current_item)] = project.current_pick
     target = max(1, min(body.item, project.num_items))
@@ -1277,9 +1399,9 @@ async def jump_item(
 @router.post("/{project_id}/complete", response_model=ProjectDetail)
 async def complete_project(
     project_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     force: bool = Query(False, description="Complete even if not all picks are logged"),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
@@ -1302,8 +1424,8 @@ async def complete_project(
 @router.post("/{project_id}/abandon", response_model=ProjectDetail)
 async def abandon_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
@@ -1321,8 +1443,8 @@ async def abandon_project(
 @router.post("/{project_id}/restart", response_model=ProjectDetail)
 async def restart_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status != "abandoned":
@@ -1342,8 +1464,8 @@ async def restart_project(
 @router.get("/{project_id}/metrics", response_model=ProjectMetricsResponse)
 async def get_project_metrics(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectMetricsResponse:
     await _get_owned_project(project_id, current_user, db, allow_superuser=True)
 
@@ -1403,8 +1525,8 @@ async def get_project_metrics(
 @router.post("/{project_id}/clone", response_model=ProjectDetail, status_code=201)
 async def clone_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     source = await _get_owned_project(project_id, current_user, db)
     if source.loom_id:
@@ -1438,8 +1560,8 @@ async def clone_project(
 @router.delete("/{project_id}", status_code=204)
 async def delete_project(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     project = await _get_owned_project(project_id, current_user, db)
     project.soft_delete()
@@ -1449,9 +1571,9 @@ async def delete_project(
 @router.post("/{project_id}/photos", response_model=ProjectPhotoSchema, status_code=201)
 async def upload_project_photo(
     project_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> ProjectPhotoSchema:
     project = await _get_owned_project(project_id, current_user, db)
 
@@ -1507,8 +1629,8 @@ async def upload_project_photo(
 async def get_project_photo(
     project_id: uuid.UUID,
     photo_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     photo = await db.scalar(
@@ -1525,8 +1647,8 @@ async def get_project_photo(
 async def delete_project_photo(
     project_id: uuid.UUID,
     photo_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     await _get_owned_project(project_id, current_user, db)
     photo = await db.scalar(
@@ -1542,8 +1664,8 @@ async def delete_project_photo(
 @router.get("/{project_id}/picks", response_model=PicksResponse)
 async def get_picks(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PicksResponse:
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.get(Draft, project.draft_id)
@@ -1657,8 +1779,8 @@ def _compute_epi(draft: Draft) -> float | None:
 @router.get("/{project_id}/warping-plan", response_model=WarpingPlanResponse)
 async def get_warping_plan(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> WarpingPlanResponse:
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.get(Draft, project.draft_id)
@@ -1708,8 +1830,8 @@ async def get_warping_plan(
 async def update_project_share(
     project_id: uuid.UUID,
     body: ShareProjectRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectDetail:
     if body.visibility != "link":
         raise HTTPException(status_code=400, detail="visibility must be 'link'")
@@ -1741,8 +1863,8 @@ async def update_project_share(
 @router.delete("/{project_id}/share", status_code=204)
 async def revoke_project_share(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     project.share_slug = None
@@ -1759,7 +1881,7 @@ async def revoke_project_share(
 @share_router.get("/projects/{slug}", response_model=SharedProjectResponse)
 async def get_shared_project(
     slug: str,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SharedProjectResponse:
     project = await db.scalar(
         select(Project).where(
@@ -1813,7 +1935,7 @@ async def get_shared_project(
 @share_router.get("/projects/{slug}/preview")
 async def get_shared_project_preview(
     slug: str,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     """Return the pre-rendered drawdown preview PNG for a shared project (no auth required)."""
     project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
@@ -1843,11 +1965,11 @@ class PatchYarnColorRequest(BaseModel):
     use_yarn_photo: bool
 
 
-@router.get("/{project_id}/yarn-colors", response_model=list[ProjectYarnColorSchema])
+@router.get("/{project_id}/yarn-colors")
 async def list_project_yarn_colors(
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[ProjectYarnColorSchema]:
     await _get_owned_project(project_id, current_user, db)
     stmt = (
@@ -1860,13 +1982,17 @@ async def list_project_yarn_colors(
     return [_yarn_color_schema(r) for r in rows]
 
 
-@router.put("/{project_id}/yarn-colors/{color_hex}", response_model=ProjectYarnColorSchema, status_code=200)
+@router.put(
+    "/{project_id}/yarn-colors/{color_hex}",
+    status_code=200,
+    responses={404: {"description": "Yarn not found"}},
+)
 async def link_yarn_color(
     project_id: uuid.UUID,
     color_hex: str,
     body: LinkYarnColorRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectYarnColorSchema:
     await _get_owned_project(project_id, current_user, db)
     yarn = await db.scalar(
@@ -1900,13 +2026,16 @@ async def link_yarn_color(
     return _yarn_color_schema(row)
 
 
-@router.patch("/{project_id}/yarn-colors/{color_hex}", response_model=ProjectYarnColorSchema)
+@router.patch(
+    "/{project_id}/yarn-colors/{color_hex}",
+    responses={404: {"description": "Yarn color assignment not found"}},
+)
 async def patch_yarn_color(
     project_id: uuid.UUID,
     color_hex: str,
     body: PatchYarnColorRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ProjectYarnColorSchema:
     await _get_owned_project(project_id, current_user, db)
     row = await db.scalar(
@@ -1922,12 +2051,16 @@ async def patch_yarn_color(
     return _yarn_color_schema(row)
 
 
-@router.delete("/{project_id}/yarn-colors/{color_hex}", status_code=204)
+@router.delete(
+    "/{project_id}/yarn-colors/{color_hex}",
+    status_code=204,
+    responses={404: {"description": "Yarn color assignment not found"}},
+)
 async def unlink_yarn_color(
     project_id: uuid.UUID,
     color_hex: str,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     await _get_owned_project(project_id, current_user, db)
     row = await db.scalar(
@@ -1945,7 +2078,7 @@ async def unlink_yarn_color(
 @share_router.get("/projects/{slug}/svg")
 async def get_shared_project_svg(
     slug: str,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     """Return the pre-rendered drawdown SVG for a shared project (no auth required)."""
     project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
