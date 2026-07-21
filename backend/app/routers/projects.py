@@ -37,6 +37,8 @@ MAX_PHOTO_SIZE = 25 * 1024 * 1024  # 25 MB raw (resized output is much smaller)
 _MEDIA_TYPE_PNG = "image/png"
 _MEDIA_TYPE_SVG = "image/svg+xml; charset=utf-8"
 _DRAFT_NOT_FOUND = "Draft not found"
+_WIF_NOT_FOUND_IN_STORAGE = "WIF file not found in storage"
+_PROJECT_NOT_ACTIVE = "Project is not active"
 _PROJECT_RESIZE_MAX_PX = 2048
 
 
@@ -675,7 +677,7 @@ async def get_project_drawdown(
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
-        raise HTTPException(status_code=404, detail="WIF file not found in storage")
+        raise HTTPException(status_code=404, detail=_WIF_NOT_FOUND_IN_STORAGE)
 
     _settings = get_settings()
     _sr = start_row or 0
@@ -793,7 +795,7 @@ async def get_project_drawdown_svg(
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
-        raise HTTPException(status_code=404, detail="WIF file not found in storage")
+        raise HTTPException(status_code=404, detail=_WIF_NOT_FOUND_IN_STORAGE)
 
     replacements: dict[str, str] = {}
     if color_replacements:
@@ -856,7 +858,7 @@ async def get_project_drawdown_preview(
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
-        raise HTTPException(status_code=404, detail="WIF file not found in storage")
+        raise HTTPException(status_code=404, detail=_WIF_NOT_FOUND_IN_STORAGE)
 
     replacements: dict[str, str] = {}
     if color_replacements:
@@ -937,7 +939,7 @@ async def get_project_drawdown_data(
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
-        raise HTTPException(status_code=404, detail="WIF file not found in storage")
+        raise HTTPException(status_code=404, detail=_WIF_NOT_FOUND_IN_STORAGE)
 
     wif_bytes = await aread_file(wif_path)
     try:
@@ -1149,7 +1151,7 @@ async def set_reed(
     "/{project_id}/assign-loom",
     response_model=ProjectDetail,
     responses={
-        400: {"description": "Project is not active"},
+        400: {"description": _PROJECT_NOT_ACTIVE},
         404: {"description": "Loom not found"},
         409: {"description": "This loom already has an active project"},
         422: {"description": "Loom type does not support project tracking"},
@@ -1163,7 +1165,7 @@ async def assign_loom(
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
-        raise HTTPException(status_code=400, detail="Project is not active")
+        raise HTTPException(status_code=400, detail=_PROJECT_NOT_ACTIVE)
     if project.loom_id is not None:
         raise HTTPException(status_code=400, detail="Project already has a loom assigned")
 
@@ -1321,7 +1323,7 @@ async def step_project(
     # duplicate increment.
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
-        raise HTTPException(status_code=400, detail="Project is not active")
+        raise HTTPException(status_code=400, detail=_PROJECT_NOT_ACTIVE)
     _check_tracker_lock(project, body.tracker_session_id, current_user)
     if project.status == "created":
         project.status = "active"
@@ -1391,7 +1393,7 @@ async def step_project(
     response_model=ProjectDetail,
     responses={
         409: {"description": "This project is being tracked from another device"},
-        400: {"description": "Project is not active"},
+        400: {"description": _PROJECT_NOT_ACTIVE},
         404: {"description": "Project not found"},
     },
 )
@@ -1406,7 +1408,7 @@ async def jump_project(
     # current_pick with no lock, letting a stale request clobber newer progress).
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
-        raise HTTPException(status_code=400, detail="Project is not active")
+        raise HTTPException(status_code=400, detail=_PROJECT_NOT_ACTIVE)
     _check_tracker_lock(project, body.tracker_session_id, current_user)
     project.current_pick = max(1, min(body.pick, project.total_picks + 1))
     await db.commit()
@@ -1421,7 +1423,7 @@ async def jump_project(
     response_model=StepResponse,
     responses={
         409: {"description": "This project is being tracked from another device"},
-        400: {"description": "Project is not active"},
+        400: {"description": _PROJECT_NOT_ACTIVE},
         404: {"description": "Project not found"},
     },
 )
@@ -1433,7 +1435,7 @@ async def advance_item(
 ) -> StepResponse:
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
-        raise HTTPException(status_code=400, detail="Project is not active")
+        raise HTTPException(status_code=400, detail=_PROJECT_NOT_ACTIVE)
     _check_tracker_lock(project, body.tracker_session_id, current_user)
     if project.current_pick <= project.total_picks:
         raise HTTPException(status_code=400, detail="Current item is not finished — advance to the last pick first")
@@ -1458,7 +1460,7 @@ async def advance_item(
     response_model=ProjectDetail,
     responses={
         409: {"description": "This project is being tracked from another device"},
-        400: {"description": "Project is not active"},
+        400: {"description": _PROJECT_NOT_ACTIVE},
         404: {"description": "Project not found"},
     },
 )
@@ -1470,7 +1472,7 @@ async def jump_item(
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     if project.status not in ("created", "active"):
-        raise HTTPException(status_code=400, detail="Project is not active")
+        raise HTTPException(status_code=400, detail=_PROJECT_NOT_ACTIVE)
     _check_tracker_lock(project, body.tracker_session_id, current_user)
     picks = dict(project.item_picks or {})
     picks[str(project.current_item)] = project.current_pick
@@ -1488,7 +1490,7 @@ async def jump_item(
 @router.post(
     "/{project_id}/complete",
     response_model=ProjectDetail,
-    responses={400: {"description": "Project is not active"}, 404: {"description": "Project not found"}},
+    responses={400: {"description": _PROJECT_NOT_ACTIVE}, 404: {"description": "Project not found"}},
 )
 async def complete_project(
     project_id: uuid.UUID,
@@ -1498,7 +1500,7 @@ async def complete_project(
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
-        raise HTTPException(status_code=400, detail="Project is not active")
+        raise HTTPException(status_code=400, detail=_PROJECT_NOT_ACTIVE)
     if not force:
         if project.current_pick <= project.total_picks:
             raise HTTPException(status_code=400, detail="Not all picks are done — advance to the last pick first")
@@ -1517,7 +1519,7 @@ async def complete_project(
 @router.post(
     "/{project_id}/abandon",
     response_model=ProjectDetail,
-    responses={400: {"description": "Project is not active"}, 404: {"description": "Project not found"}},
+    responses={400: {"description": _PROJECT_NOT_ACTIVE}, 404: {"description": "Project not found"}},
 )
 async def abandon_project(
     project_id: uuid.UUID,
@@ -1526,7 +1528,7 @@ async def abandon_project(
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
-        raise HTTPException(status_code=400, detail="Project is not active")
+        raise HTTPException(status_code=400, detail=_PROJECT_NOT_ACTIVE)
     project.status = "abandoned"
     project.abandoned_at = datetime.now(timezone.utc)
     await _close_open_session(project_id, db)

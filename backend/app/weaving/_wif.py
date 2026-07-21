@@ -11,6 +11,9 @@ from configparser import RawConfigParser
 
 from app.weaving import Draft, __version__
 
+_SECTION_COLOR_PALETTE = "COLOR PALETTE"
+_SECTION_COLOR_TABLE = "COLOR TABLE"
+
 
 class WIFReader:
     """Parse a WIF file into a Draft."""
@@ -121,15 +124,15 @@ class WIFReader:
         assert not (liftplan and treadling), "WIF contains both liftplan and treadling"
         assert not (liftplan and num_treadles > 0), "WIF contains liftplan and non-zero treadle count"
 
-        if self.getbool("CONTENTS", "COLOR PALETTE"):
-            rstart, rend = self.config.get("COLOR PALETTE", "Range").split(",")
+        if self.getbool("CONTENTS", _SECTION_COLOR_PALETTE):
+            rstart, rend = self.config.get(_SECTION_COLOR_PALETTE, "Range").split(",")
             palette_range = int(rstart), int(rend)
         else:
             palette_range = 0, 255
 
         wif_palette: dict[int, list[int]] = {}
-        if self.getbool("CONTENTS", "COLOR TABLE"):
-            for color_no, value in self.config.items("COLOR TABLE"):
+        if self.getbool("CONTENTS", _SECTION_COLOR_TABLE):
+            for color_no, value in self.config.items(_SECTION_COLOR_TABLE):
                 channels = [int(ch) for ch in value.split(",")]
                 channels = [int(round(ch * (255.0 / palette_range[1]))) for ch in channels]
                 wif_palette[int(color_no)] = channels
@@ -182,16 +185,16 @@ class WIFWriter:
     def write_palette(self, config: RawConfigParser) -> dict:
         colors = set(thread.color.rgb for thread in self.draft.warp + self.draft.weft)
         wif_palette: dict = {}
-        config.set("CONTENTS", "COLOR TABLE", 1)
-        config.add_section("COLOR TABLE")
+        config.set("CONTENTS", _SECTION_COLOR_TABLE, 1)
+        config.add_section(_SECTION_COLOR_TABLE)
         for ii, color in enumerate(colors, start=1):
-            config.set("COLOR TABLE", str(ii), f"{color[0]},{color[1]},{color[2]}")
+            config.set(_SECTION_COLOR_TABLE, str(ii), f"{color[0]},{color[1]},{color[2]}")
             wif_palette[color] = ii
 
-        config.set("CONTENTS", "COLOR PALETTE", 1)
-        config.add_section("COLOR PALETTE")
-        config.set("COLOR PALETTE", "Form", "RGB")
-        config.set("COLOR PALETTE", "Range", "0,255")
+        config.set("CONTENTS", _SECTION_COLOR_PALETTE, 1)
+        config.add_section(_SECTION_COLOR_PALETTE)
+        config.set(_SECTION_COLOR_PALETTE, "Form", "RGB")
+        config.set(_SECTION_COLOR_PALETTE, "Range", "0,255")
         return wif_palette
 
     def write_threads(self, config: RawConfigParser, wif_palette: dict, dir: str) -> None:

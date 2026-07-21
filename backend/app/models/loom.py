@@ -26,6 +26,9 @@ PROJECT_SUPPORTED_LOOM_TYPES = frozenset({"floor_loom", "table_loom"})
 # These types exist for inventory but do not support project tracking.
 UNSUPPORTED_LOOM_TYPES = frozenset(LOOM_TYPES) - PROJECT_SUPPORTED_LOOM_TYPES
 
+_CASCADE_ALL_DELETE_ORPHAN = "all, delete-orphan"
+_FK_LOOM_VERSIONS_ID = "loom_versions.id"
+
 
 def loom_tracking_flags(loom_type: str) -> tuple[bool, bool]:
     """Return (supports_lift_tracking, supports_treadle_tracking) derived from loom_type."""
@@ -143,7 +146,7 @@ class Loom(Base, TimestampMixin, SoftDeleteMixin, RetireMixin):
         "LoomVersion", back_populates="loom", order_by="LoomVersion.version_number"
     )
     reeds: Mapped[list["LoomReed"]] = relationship(
-        "LoomReed", back_populates="loom", order_by="LoomReed.dents_per_inch", cascade="all, delete-orphan"
+        "LoomReed", back_populates="loom", order_by="LoomReed.dents_per_inch", cascade=_CASCADE_ALL_DELETE_ORPHAN
     )
     owner: Mapped["User"] = relationship("User", foreign_keys=[owner_id])  # type: ignore[name-defined]
 
@@ -180,19 +183,19 @@ class LoomVersion(Base, TimestampMixin):
         "LoomVersionPhoto",
         back_populates="version",
         order_by="LoomVersionPhoto.display_order",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
     receipts: Mapped[list["LoomVersionReceipt"]] = relationship(
         "LoomVersionReceipt",
         back_populates="version",
         order_by="LoomVersionReceipt.created_at",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
     accessories: Mapped[list["LoomVersionAccessory"]] = relationship(
         "LoomVersionAccessory",
         back_populates="version",
         order_by="LoomVersionAccessory.created_at",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE_ORPHAN,
     )
 
 
@@ -201,7 +204,7 @@ class LoomVersionPhoto(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     loom_version_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("loom_versions.id"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey(_FK_LOOM_VERSIONS_ID), nullable=False, index=True
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     path: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -216,7 +219,7 @@ class LoomVersionReceipt(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     loom_version_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("loom_versions.id"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey(_FK_LOOM_VERSIONS_ID), nullable=False, index=True
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     path: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -230,7 +233,7 @@ class LoomVersionAccessory(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     loom_version_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("loom_versions.id"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey(_FK_LOOM_VERSIONS_ID), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
 
