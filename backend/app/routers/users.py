@@ -15,6 +15,7 @@ import logging
 import uuid
 from datetime import date as date_cls
 from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
@@ -190,8 +191,8 @@ async def get_settings(
 @router.patch("/me", response_model=UserSettingsResponse)
 async def update_settings(
     body: UserSettingsUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserSettingsResponse:
     if body.display_name is not None:
         name = body.display_name.strip()

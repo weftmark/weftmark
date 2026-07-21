@@ -15,6 +15,8 @@ from app.services.rate_limiter import rate_limit
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 admin_router = APIRouter(prefix="/api/admin/feedback", tags=["feedback"])
 
+_FEEDBACK_NOT_FOUND = "Feedback not found"
+
 _submit_limit = rate_limit("feedback_submit", max_requests=5, window_seconds=3600)
 
 
@@ -186,7 +188,7 @@ async def get_feedback_status(
 ) -> FeedbackStatusResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row or row.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     return FeedbackStatusResponse(
         dispatch_status=row.dispatch_status,
         github_discussion_url=row.github_discussion_url,
@@ -250,7 +252,7 @@ async def get_feedback_detail(
         )
     ).scalar_one_or_none()
     if not row:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     return _serialize(row, include_user_email=True)
 
 
@@ -262,7 +264,7 @@ async def soft_delete_feedback(
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     row.soft_delete()
     await db.commit()
     await db.refresh(row)
@@ -277,7 +279,7 @@ async def retry_feedback_dispatch(
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     if row.dispatch_status not in ("pending", "failed"):
         raise HTTPException(status_code=400, detail=f"Cannot retry dispatch with status '{row.dispatch_status}'")
     row.dispatch_status = "pending"
@@ -296,7 +298,7 @@ async def recover_feedback(
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     if not row.is_deleted:
         raise HTTPException(status_code=400, detail="Feedback is not deleted")
     row.deleted_at = None

@@ -16,6 +16,8 @@ from app.models.user import User
 
 router = APIRouter(tags=["loom-catalog"])
 
+_LOOM_REFERENCE_NOT_FOUND = "Loom reference not found"
+
 
 # ---------------------------------------------------------------------------
 # Schemas
@@ -272,7 +274,7 @@ async def get_loom_reference(
 ) -> LoomReferenceSchema:
     ref = await db.get(LoomReference, ref_id)
     if ref is None:
-        raise HTTPException(status_code=404, detail="Loom reference not found")
+        raise HTTPException(status_code=404, detail=_LOOM_REFERENCE_NOT_FOUND)
     return LoomReferenceSchema.model_validate(ref)
 
 
@@ -332,7 +334,7 @@ async def admin_update_loom_reference(
 ) -> LoomReferenceSchema:
     ref = await db.get(LoomReference, ref_id)
     if ref is None:
-        raise HTTPException(status_code=404, detail="Loom reference not found")
+        raise HTTPException(status_code=404, detail=_LOOM_REFERENCE_NOT_FOUND)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(ref, field, value)
     await db.commit()
@@ -348,7 +350,7 @@ async def admin_delete_loom_reference(
 ) -> None:
     ref = await db.get(LoomReference, ref_id)
     if ref is None:
-        raise HTTPException(status_code=404, detail="Loom reference not found")
+        raise HTTPException(status_code=404, detail=_LOOM_REFERENCE_NOT_FOUND)
     # Nullify FK on any linked user looms (cascade SET NULL handles DB side,
     # but explicit check lets us warn callers if needed)
     await db.delete(ref)

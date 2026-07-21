@@ -2180,6 +2180,55 @@ class TestAssignLoom:
 
 
 # ---------------------------------------------------------------------------
+# Drawdown rendering endpoints — draft-deleted 404 branch (#1047)
+# ---------------------------------------------------------------------------
+
+
+class TestGetProjectDrawdown:
+    async def test_deleted_draft_returns_404(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        draft.soft_delete()
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown")
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "Draft not found"
+
+
+class TestGetProjectDrawdownSvg:
+    async def test_deleted_draft_returns_404(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        draft.soft_delete()
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/svg")
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "Draft not found"
+
+
+class TestGetProjectDrawdownPreview:
+    async def test_deleted_draft_returns_404(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        draft.soft_delete()
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/preview")
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "Draft not found"
+
+
+class TestGetProjectDrawdownData:
+    async def test_deleted_draft_returns_404(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_draft(db_session, test_user)
+        project = await _insert_active_project(db_session, test_user, draft, None)
+        draft.soft_delete()
+        await db_session.commit()
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown/data")
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "Draft not found"
+
+
+# ---------------------------------------------------------------------------
 # TestGetPicks
 # ---------------------------------------------------------------------------
 

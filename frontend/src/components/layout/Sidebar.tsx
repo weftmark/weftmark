@@ -76,6 +76,7 @@ function NavGroupSection({
   return (
     <>
       <button
+        type="button"
         onClick={onToggle}
         className={`w-full ${navCls(expanded, desktopCollapsed)}`}
         title={desktopCollapsed ? label : undefined}
@@ -132,6 +133,7 @@ function SidebarHeader({ desktopCollapsed, onClose, onDesktopExpand, onDesktopCo
       </Link>
       {/* Mobile close button */}
       <button
+        type="button"
         onClick={onClose}
         className="rounded-md p-1 text-muted-foreground hover:text-subdued lg:hidden"
         aria-label="Close menu"
@@ -141,6 +143,7 @@ function SidebarHeader({ desktopCollapsed, onClose, onDesktopExpand, onDesktopCo
       {/* Desktop sidebar toggle — only on detail pages where rail/expand applies */}
       {(desktopCollapsed || onDesktopCollapse) && (
         <button
+          type="button"
           onClick={desktopCollapsed ? onDesktopExpand : onDesktopCollapse}
           className={`hidden lg:flex rounded-md text-muted-foreground hover:bg-muted hover:text-foreground ${desktopCollapsed ? "p-1" : "p-1.5"}`}
           aria-label={desktopCollapsed ? "Expand navigation" : "Collapse navigation"}
@@ -299,6 +302,7 @@ function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: 
       )}
 
       <button
+        type="button"
         onClick={onFeedbackClick}
         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
         title={desktopCollapsed ? t("nav.sendFeedback") : undefined}
@@ -318,6 +322,7 @@ function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: 
       </Link>
 
       <button
+        type="button"
         onClick={() => signOut()}
         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-subdued transition-colors hover:bg-muted hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
         title={desktopCollapsed ? t("nav.signOut") : undefined}
@@ -347,6 +352,7 @@ function SidebarUserFooter({ user, isImpersonating, impersonatedUser, endImperso
           <div className="flex items-center gap-2">
             <p className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{impersonatedUser.display_name}</p>
             <button
+              type="button"
               onClick={endImpersonation}
               className="shrink-0 rounded px-1.5 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-amber-500/50 hover:bg-amber-500/20 dark:text-amber-400 transition-colors"
             >

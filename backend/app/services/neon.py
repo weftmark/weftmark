@@ -17,6 +17,7 @@ NEON_API_BASE = "https://console.neon.tech/api/v2"
 NEON_CONSUMPTION_URL = f"{NEON_API_BASE}/consumption_history/v2/projects"
 NEON_PROJECTS_URL = f"{NEON_API_BASE}/projects"
 _REQUEST_TIMEOUT = 10.0
+_NEON_TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
 class NeonUsageDay(BaseModel):
@@ -65,6 +66,13 @@ def _auth_headers(api_key: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
 
 
+def _extract_metric_value(point: dict[str, Any], metric_name: str) -> float:
+    for m in point.get("metrics", []):
+        if m.get("metric_name") == metric_name:
+            return float(m.get("value", 0))
+    return 0.0
+
+
 def _parse_consumption(
     data: dict[str, Any], project_id_filter: str | None
 ) -> tuple[list[NeonUsageDay], float, str | None, dict[str, float]]:
@@ -82,10 +90,7 @@ def _parse_consumption(
         for period in project.get("periods", []):
             period_start_out = period_start_out or period.get("period_start")
             for point in period.get("consumption", []):
-                value = 0.0
-                for m in point.get("metrics", []):
-                    if m.get("metric_name") == "compute_unit_seconds":
-                        value = float(m.get("value", 0))
+                value = _extract_metric_value(point, "compute_unit_seconds")
                 daily.append(NeonUsageDay(date=point.get("timeframe_start", ""), compute_seconds=value))
                 total += value
                 project_total += value
@@ -104,8 +109,8 @@ class _NeonHttpError(Exception):
 async def _fetch_consumption(settings: Settings, project_ids: str | None) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     params: dict[str, str] = {
-        "from": (now - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "to": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "from": (now - timedelta(days=30)).strftime(_NEON_TIME_FORMAT),
+        "to": now.strftime(_NEON_TIME_FORMAT),
         "granularity": "daily",
         "org_id": settings.neon_org_id,
         "metrics": "compute_unit_seconds",
@@ -264,8 +269,8 @@ async def test_connection(v: dict) -> tuple[bool, str, list[dict[str, str]] | No
 
     now = datetime.now(timezone.utc)
     params = {
-        "from": (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "to": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "from": (now - timedelta(days=1)).strftime(_NEON_TIME_FORMAT),
+        "to": now.strftime(_NEON_TIME_FORMAT),
         "granularity": "daily",
         "org_id": org_id,
         "metrics": "compute_unit_seconds",
