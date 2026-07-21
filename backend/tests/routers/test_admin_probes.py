@@ -935,34 +935,34 @@ class TestConfigServiceSMTP:
 
 
 # ---------------------------------------------------------------------------
-# _fetch_neon_usage
+# app.services.neon.fetch_project_usage
 # ---------------------------------------------------------------------------
 
 
-class TestFetchNeonUsage:
+class TestFetchProjectUsage:
     async def test_not_configured_when_key_missing(self, monkeypatch):
         from app.config import get_settings
-        from app.routers.admin import _fetch_neon_usage
+        from app.services.neon import fetch_project_usage
 
         s = get_settings()
         monkeypatch.setattr(s, "neon_api_key", "")
         monkeypatch.setattr(s, "neon_org_id", "")
-        result = await _fetch_neon_usage(s)
+        result = await fetch_project_usage(s)
         assert result.configured is False
 
     async def test_not_configured_when_org_id_missing(self, monkeypatch):
         from app.config import get_settings
-        from app.routers.admin import _fetch_neon_usage
+        from app.services.neon import fetch_project_usage
 
         s = get_settings()
         monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
         monkeypatch.setattr(s, "neon_org_id", "")
-        result = await _fetch_neon_usage(s)
+        result = await fetch_project_usage(s)
         assert result.configured is False
 
     async def test_non_200_returns_error(self, monkeypatch):
         from app.config import get_settings
-        from app.routers.admin import _fetch_neon_usage
+        from app.services.neon import fetch_project_usage
 
         s = get_settings()
         monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
@@ -972,12 +972,13 @@ class TestFetchNeonUsage:
         with patch("httpx.AsyncClient") as mock_cls:
             mock_resp = MagicMock()
             mock_resp.status_code = 401
+            mock_resp.text = "unauthorized"
             mock_inst = AsyncMock()
             mock_inst.get = AsyncMock(return_value=mock_resp)
             mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
             mock_inst.__aexit__ = AsyncMock(return_value=None)
             mock_cls.return_value = mock_inst
-            result = await _fetch_neon_usage(s)
+            result = await fetch_project_usage(s)
 
         assert result.configured is True
         assert result.error is not None
@@ -987,7 +988,7 @@ class TestFetchNeonUsage:
         import httpx
 
         from app.config import get_settings
-        from app.routers.admin import _fetch_neon_usage
+        from app.services.neon import fetch_project_usage
 
         s = get_settings()
         monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
@@ -1000,7 +1001,7 @@ class TestFetchNeonUsage:
             mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
             mock_inst.__aexit__ = AsyncMock(return_value=None)
             mock_cls.return_value = mock_inst
-            result = await _fetch_neon_usage(s)
+            result = await fetch_project_usage(s)
 
         assert result.configured is True
         assert result.error is not None
@@ -1008,7 +1009,7 @@ class TestFetchNeonUsage:
 
     async def test_success_aggregates_daily_totals(self, monkeypatch):
         from app.config import get_settings
-        from app.routers.admin import _fetch_neon_usage
+        from app.services.neon import fetch_project_usage
 
         s = get_settings()
         monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
@@ -1051,7 +1052,7 @@ class TestFetchNeonUsage:
             mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
             mock_inst.__aexit__ = AsyncMock(return_value=None)
             mock_cls.return_value = mock_inst
-            result = await _fetch_neon_usage(s)
+            result = await fetch_project_usage(s)
 
         assert result.configured is True
         assert result.error is None
@@ -1061,7 +1062,7 @@ class TestFetchNeonUsage:
 
     async def test_filters_to_configured_project_id(self, monkeypatch):
         from app.config import get_settings
-        from app.routers.admin import _fetch_neon_usage
+        from app.services.neon import fetch_project_usage
 
         s = get_settings()
         monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
@@ -1116,10 +1117,150 @@ class TestFetchNeonUsage:
             mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
             mock_inst.__aexit__ = AsyncMock(return_value=None)
             mock_cls.return_value = mock_inst
-            result = await _fetch_neon_usage(s)
+            result = await fetch_project_usage(s)
 
         assert result.project_id == "proj_keep"
         assert result.total_compute_seconds == 42.0
+
+
+# ---------------------------------------------------------------------------
+# app.services.neon.fetch_account_usage / fetch_org_info / fetch_dashboard
+# ---------------------------------------------------------------------------
+
+
+class TestFetchAccountUsage:
+    async def test_not_configured_when_key_missing(self, monkeypatch):
+        from app.config import get_settings
+        from app.services.neon import fetch_account_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "")
+        monkeypatch.setattr(s, "neon_org_id", "")
+        result = await fetch_account_usage(s)
+        assert result.configured is False
+
+    async def test_success_aggregates_across_all_projects(self, monkeypatch):
+        from app.config import get_settings
+        from app.services.neon import fetch_account_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
+        monkeypatch.setattr(s, "neon_org_id", "org_123")
+        monkeypatch.setattr(s, "neon_project_id", "")
+
+        org_resp = MagicMock()
+        org_resp.status_code = 200
+        org_resp.json = MagicMock(return_value={"name": "Acme Weaving", "plan_id": "launch"})
+
+        limit_resp = MagicMock()
+        limit_resp.status_code = 200
+        limit_resp.json = MagicMock(return_value={"spending_limit_cents": 5000})
+
+        consumption_payload = {
+            "projects": [
+                {
+                    "project_id": "proj_a",
+                    "periods": [
+                        {
+                            "period_start": "2026-07-01T00:00:00Z",
+                            "consumption": [
+                                {
+                                    "timeframe_start": "2026-07-01T00:00:00Z",
+                                    "metrics": [{"metric_name": "compute_unit_seconds", "value": 100}],
+                                }
+                            ],
+                        }
+                    ],
+                },
+                {
+                    "project_id": "proj_b",
+                    "periods": [
+                        {
+                            "period_start": "2026-07-01T00:00:00Z",
+                            "consumption": [
+                                {
+                                    "timeframe_start": "2026-07-01T00:00:00Z",
+                                    "metrics": [{"metric_name": "compute_unit_seconds", "value": 25}],
+                                }
+                            ],
+                        }
+                    ],
+                },
+            ],
+        }
+        consumption_resp = MagicMock()
+        consumption_resp.status_code = 200
+        consumption_resp.json = MagicMock(return_value=consumption_payload)
+
+        projects_resp = MagicMock()
+        projects_resp.status_code = 200
+        projects_resp.json = MagicMock(
+            return_value={"projects": [{"id": "proj_a", "name": "Alpha"}, {"id": "proj_b", "name": "Beta"}]}
+        )
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_inst = AsyncMock()
+            mock_inst.get = AsyncMock(side_effect=[org_resp, limit_resp, consumption_resp, projects_resp])
+            mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
+            mock_inst.__aexit__ = AsyncMock(return_value=None)
+            mock_cls.return_value = mock_inst
+            result = await fetch_account_usage(s)
+
+        assert result.configured is True
+        assert result.error is None
+        assert result.org_name == "Acme Weaving"
+        assert result.plan == "launch"
+        assert result.spending_limit_cents == 5000
+        assert result.total_compute_seconds == 125.0
+        assert [p.project_id for p in result.by_project] == ["proj_a", "proj_b"]
+        assert result.by_project[0].project_name == "Alpha"
+
+    async def test_org_info_failure_still_returns_usage(self, monkeypatch):
+        from app.config import get_settings
+        from app.services.neon import fetch_account_usage
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "napi_xyz")
+        monkeypatch.setattr(s, "neon_org_id", "org_123")
+        monkeypatch.setattr(s, "neon_project_id", "")
+
+        org_resp = MagicMock()
+        org_resp.status_code = 403
+        org_resp.text = "forbidden"
+
+        consumption_resp = MagicMock()
+        consumption_resp.status_code = 200
+        consumption_resp.json = MagicMock(return_value={"projects": []})
+
+        projects_resp = MagicMock()
+        projects_resp.status_code = 200
+        projects_resp.json = MagicMock(return_value={"projects": []})
+
+        with patch("httpx.AsyncClient") as mock_cls:
+            mock_inst = AsyncMock()
+            mock_inst.get = AsyncMock(side_effect=[org_resp, consumption_resp, projects_resp])
+            mock_inst.__aenter__ = AsyncMock(return_value=mock_inst)
+            mock_inst.__aexit__ = AsyncMock(return_value=None)
+            mock_cls.return_value = mock_inst
+            result = await fetch_account_usage(s)
+
+        assert result.configured is True
+        assert result.org_name is None
+        assert result.plan is None
+        assert result.total_compute_seconds == 0.0
+
+
+class TestFetchDashboard:
+    async def test_not_configured_returns_both_unconfigured(self, monkeypatch):
+        from app.config import get_settings
+        from app.services.neon import fetch_dashboard
+
+        s = get_settings()
+        monkeypatch.setattr(s, "neon_api_key", "")
+        monkeypatch.setattr(s, "neon_org_id", "")
+        result = await fetch_dashboard(s)
+        assert result.account.configured is False
+        assert result.project.configured is False
 
 
 # ---------------------------------------------------------------------------

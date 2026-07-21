@@ -27,6 +27,7 @@
 | `app/routers/auth.py` | 81% | `/me`, logout, token validation, invite flow, webhook handlers covered; OIDC callback not tested |
 | `app/routers/health.py` | 78% | `/health` covered; DB-down error branches not tested |
 | `app/routers/admin.py` | 72% | Most admin CRUD covered; Clerk API integration paths missing |
+| `app/services/neon.py` | ~85% | Extracted from `admin.py` (#1041): `fetch_project_usage`/`fetch_account_usage`/`fetch_dashboard`/`test_connection` covered (not-configured, success, timeout, HTTP error, project filter, org-info failure fallback); exact % not yet measured |
 | `app/routers/looms.py` | 97% | 9 missing: photo replace + file-size error branches |
 | `app/routers/drafts.py` | 93% | 14 missing: `file_too_large`, preview happy path, liftplan edge case |
 | `app/routers/yarn.py` | 99% | 3 missing: file-size error branches |

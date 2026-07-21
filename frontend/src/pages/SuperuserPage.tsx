@@ -35,6 +35,7 @@ import {
   saveConfig,
   testConfigService,
   sendBackendSentryTest,
+  getNeonDashboard,
   type ScheduledTask,
   type TaskHistoryItem,
   type ReconcileReport,
@@ -71,7 +72,7 @@ function formatUptime(seconds: number): string {
   return parts.join(", ");
 }
 
-type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials" | "sandbox" | "users";
+type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials" | "neon" | "sandbox" | "users";
 
 // ---------------------------------------------------------------------------
 // EULA tab
@@ -2020,6 +2021,146 @@ function ConfigSection() {
   );
 }
 
+function NeonUsageBars({ daily }: { daily: { date: string; compute_seconds: number }[] }) {
+  if (daily.length === 0) return null;
+  const maxDaily = Math.max(1, ...daily.map((d) => d.compute_seconds));
+  return (
+    <div className="px-4 py-2 bg-background space-y-1">
+      {daily.map((d) => (
+        <div key={d.date} className="flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground w-20 shrink-0">
+            {new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          </span>
+          <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
+            <div
+              className="h-full bg-accent"
+              style={{ width: `${Math.max(2, (d.compute_seconds / maxDaily) * 100)}%` }}
+            />
+          </div>
+          <span className="text-xs font-mono text-muted-foreground w-16 text-right">
+            {(d.compute_seconds / 3600).toFixed(2)}h
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NeonDashboardTab() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "neon-dashboard"],
+    queryFn: getNeonDashboard,
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Neon Dashboard</h1>
+        <p className="text-sm text-muted-foreground">
+          Compute usage and plan info from Neon's Console API. Configure neon_api_key / neon_org_id / neon_project_id
+          under Credentials to enable this.
+        </p>
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+
+      {data && !data.account.configured && (
+        <p className="text-sm text-muted-foreground">
+          Not configured — add neon_api_key and neon_org_id in the Credentials tab.
+        </p>
+      )}
+
+      {data?.account.configured && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Account (last 30 days)
+            </h3>
+            {data.account.error ? (
+              <div className="border rounded-lg px-4 py-2 bg-background text-sm text-destructive">
+                {data.account.error}
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden divide-y">
+                {data.account.org_name && (
+                  <div className="flex items-center justify-between px-4 py-2 bg-background">
+                    <span className="text-sm">Organization</span>
+                    <span className="text-xs font-mono text-muted-foreground">{data.account.org_name}</span>
+                  </div>
+                )}
+                {data.account.plan && (
+                  <div className="flex items-center justify-between px-4 py-2 bg-background">
+                    <span className="text-sm">Plan</span>
+                    <span className="text-xs font-mono text-muted-foreground">{data.account.plan}</span>
+                  </div>
+                )}
+                {data.account.spending_limit_cents != null && (
+                  <div className="flex items-center justify-between px-4 py-2 bg-background">
+                    <span className="text-sm">Monthly spending limit</span>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      ${(data.account.spending_limit_cents / 100).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-4 py-2 bg-background">
+                  <span className="text-sm">Total compute time (all projects)</span>
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {(data.account.total_compute_seconds / 3600).toFixed(1)} hours
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {data.account.by_project.length > 0 && (
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                By project
+              </h3>
+              <div className="border rounded-lg divide-y overflow-hidden">
+                {data.account.by_project.map((p) => (
+                  <div key={p.project_id} className="flex items-center justify-between px-4 py-2 bg-background">
+                    <span className="text-sm font-mono">{p.project_name ?? p.project_id}</span>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {(p.total_compute_seconds / 3600).toFixed(2)}h
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Configured project (last 30 days)
+            </h3>
+            {!data.project.configured ? (
+              <div className="border rounded-lg px-4 py-2 bg-background text-sm text-muted-foreground">
+                neon_project_id isn't set — showing account-wide usage above only.
+              </div>
+            ) : data.project.error ? (
+              <div className="border rounded-lg px-4 py-2 bg-background text-sm text-destructive">
+                {data.project.error}
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 bg-background border-b">
+                  <span className="text-sm">Total compute time</span>
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {(data.project.total_compute_seconds / 3600).toFixed(1)} hours
+                  </span>
+                </div>
+                <NeonUsageBars daily={data.project.daily} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CredentialsTab() {
   const queryClient = useQueryClient();
 
@@ -2440,6 +2581,7 @@ export function SuperuserPage() {
       {activeSection === "schedule" && <ScheduledTasksTab />}
       {activeSection === "exports" && <ExportsTab />}
       {activeSection === "credentials" && <CredentialsTab />}
+      {activeSection === "neon" && <NeonDashboardTab />}
       {activeSection === "sandbox" && <SandboxTab />}
       {activeSection === "users" && <UsersTab />}
     </div>

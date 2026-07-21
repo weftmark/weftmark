@@ -1165,22 +1165,28 @@ class TestAdminServices:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/admin/neon-usage
+# GET /api/admin/neon-dashboard
 # ---------------------------------------------------------------------------
 
 
-class TestNeonUsageEndpoint:
-    async def test_returns_not_configured_by_default(self, admin_client: AsyncClient):
-        resp = await admin_client.get("/api/admin/neon-usage")
+class TestNeonDashboardEndpoint:
+    async def test_returns_not_configured_by_default(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/neon-dashboard")
         assert resp.status_code == 200
-        assert resp.json()["configured"] is False
+        body = resp.json()
+        assert body["account"]["configured"] is False
+        assert body["project"]["configured"] is False
+
+    async def test_admin_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/neon-dashboard")
+        assert resp.status_code == 403
 
     async def test_non_admin_returns_403(self, auth_client: AsyncClient):
-        resp = await auth_client.get("/api/admin/neon-usage")
+        resp = await auth_client.get("/api/admin/neon-dashboard")
         assert resp.status_code == 403
 
     async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
-        resp = await raw_client.get("/api/admin/neon-usage")
+        resp = await raw_client.get("/api/admin/neon-dashboard")
         assert resp.status_code == 401
 
 
