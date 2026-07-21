@@ -47,6 +47,7 @@
     "schedule": "Scheduled Tasks",
     "exports": "Data Exports",
     "credentials": "Credentials",
+    "neon": "Neon Dashboard",
     "sandbox": "Sandbox"
   },
   "loomTypes": {

@@ -85,6 +85,29 @@ export interface NeonUsage {
   error: string | null;
 }
 
+export interface NeonProjectUsage {
+  project_id: string;
+  project_name: string | null;
+  total_compute_seconds: number;
+}
+
+export interface NeonAccountUsage {
+  configured: boolean;
+  org_name: string | null;
+  plan: string | null;
+  spending_limit_cents: number | null;
+  period_start: string | null;
+  total_compute_seconds: number;
+  daily: NeonUsageDay[];
+  by_project: NeonProjectUsage[];
+  error: string | null;
+}
+
+export interface NeonDashboard {
+  account: NeonAccountUsage;
+  project: NeonUsage;
+}
+
 export interface InviteRecord {
   id: string;
   email: string;
@@ -100,7 +123,7 @@ export const getAdminStats = () => api.get<AdminStats>("/api/admin/stats");
 export const getAdminHealth = () => api.get<AdminHealth>("/api/admin/health");
 export const getAdminVersions = () => api.get<AdminVersions>("/api/admin/versions");
 export const getAdminDbInfo = () => api.get<AdminDbInfo>("/api/admin/db-info");
-export const getNeonUsage = () => api.get<NeonUsage>("/api/admin/neon-usage");
+export const getNeonDashboard = () => api.get<NeonDashboard>("/api/admin/neon-dashboard");
 export const patchAdminUser = (userId: string, body: { is_active?: boolean; is_admin?: boolean; is_superuser?: boolean }) =>
   api.patch<AdminUser>(`/api/admin/users/${userId}`, body);
 export const banUser = (userId: string) => api.post<AdminUser>(`/api/admin/users/${userId}/ban`, {});

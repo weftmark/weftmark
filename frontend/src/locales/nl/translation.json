@@ -47,6 +47,7 @@
     "schedule": "Geplande taken",
     "exports": "Gegevensexports",
     "credentials": "Inloggegevens",
+    "neon": "Neon-dashboard",
     "sandbox": "Sandbox"
   },
   "loomTypes": {

@@ -47,6 +47,7 @@
     "schedule": "Tareas programadas",
     "exports": "Exportaciones de datos",
     "credentials": "Credenciales",
+    "neon": "Panel de Neon",
     "sandbox": "Sandbox"
   },
   "loomTypes": {

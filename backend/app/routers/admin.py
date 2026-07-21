@@ -30,6 +30,7 @@ from app.models.server_event import ServerEvent
 from app.models.user import User
 from app.models.user_export import UserExportRequest
 from app.models.yarn import Yarn
+from app.services import neon
 from app.services.audit import write_audit_log
 from app.services.clerk import ban_clerk_user, get_clerk_user, list_clerk_users, set_user_metadata, unban_clerk_user
 from app.services.config_file import MANAGED_FIELDS, SECRET_FIELDS, env_source_fields
@@ -135,20 +136,6 @@ class AdminDbInfoResponse(BaseModel):
     is_at_head: bool
     last_squash_at: str | None
     last_migrated_at: str | None
-
-
-class NeonUsageDay(BaseModel):
-    date: str
-    compute_seconds: float
-
-
-class NeonUsageResponse(BaseModel):
-    configured: bool
-    project_id: str | None = None
-    period_start: str | None = None
-    total_compute_seconds: float = 0.0
-    daily: list[NeonUsageDay] = []
-    error: str | None = None
 
 
 class StorageReportFile(BaseModel):
@@ -1639,76 +1626,9 @@ async def get_db_info(
     )
 
 
-NEON_CONSUMPTION_URL = "https://console.neon.tech/api/v2/consumption_history/v2/projects"
-NEON_PROJECTS_URL = "https://console.neon.tech/api/v2/projects"
-
-
-async def _fetch_neon_usage(settings: Settings) -> NeonUsageResponse:
-    """Query Neon's Consumption Metrics API for the trailing 30 days of compute usage.
-
-    Entirely independent of POSTGRES_DSN — reads only the neon_api_key/neon_org_id
-    settings, which are unrelated to which Postgres the app actually connects to.
-    """
-    if not settings.neon_api_key or not settings.neon_org_id:
-        return NeonUsageResponse(configured=False)
-
-    now = datetime.now(timezone.utc)
-    from_dt = now - timedelta(days=30)
-    params: dict[str, str] = {
-        "from": from_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "to": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "granularity": "daily",
-        "org_id": settings.neon_org_id,
-        "metrics": "compute_unit_seconds",
-    }
-    if settings.neon_project_id:
-        params["project_ids"] = settings.neon_project_id
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get(
-                NEON_CONSUMPTION_URL,
-                params=params,
-                headers={"Authorization": f"Bearer {settings.neon_api_key}", "Accept": "application/json"},
-            )
-        if r.status_code != 200:
-            return NeonUsageResponse(configured=True, error=f"Neon API returned HTTP {r.status_code}")
-        data = r.json()
-    except httpx.TimeoutException:
-        return NeonUsageResponse(configured=True, error="Timed out after 10 s")
-    except Exception as exc:
-        return NeonUsageResponse(configured=True, error=str(exc)[:200])
-
-    daily: list[NeonUsageDay] = []
-    total = 0.0
-    project_id_out: str | None = None
-    period_start_out: str | None = None
-    for project in data.get("projects", []):
-        if settings.neon_project_id and project.get("project_id") != settings.neon_project_id:
-            continue
-        project_id_out = project.get("project_id")
-        for period in project.get("periods", []):
-            period_start_out = period.get("period_start")
-            for point in period.get("consumption", []):
-                value = 0.0
-                for m in point.get("metrics", []):
-                    if m.get("metric_name") == "compute_unit_seconds":
-                        value = float(m.get("value", 0))
-                daily.append(NeonUsageDay(date=point.get("timeframe_start", ""), compute_seconds=value))
-                total += value
-
-    return NeonUsageResponse(
-        configured=True,
-        project_id=project_id_out,
-        period_start=period_start_out,
-        total_compute_seconds=total,
-        daily=daily,
-    )
-
-
-@router.get("/neon-usage", response_model=NeonUsageResponse)
-async def get_neon_usage(_: User = Depends(require_admin)) -> NeonUsageResponse:
-    return await _fetch_neon_usage(get_settings())
+@router.get("/neon-dashboard", response_model=neon.NeonDashboardResponse)
+async def get_neon_dashboard(_: User = Depends(require_superuser)) -> neon.NeonDashboardResponse:
+    return await neon.fetch_dashboard(get_settings())
 
 
 # ---------------------------------------------------------------------------
@@ -3056,39 +2976,11 @@ async def _test_github(v: dict) -> ConfigTestResult:
 
 async def _test_neon(v: dict) -> ConfigTestResult:
     try:
-        api_key = v.get("neon_api_key") or ""
-        org_id = v.get("neon_org_id") or ""
-        if not api_key or not org_id:
-            return ConfigTestResult(ok=False, message="neon_api_key and neon_org_id are both required")
-        now = datetime.now(timezone.utc)
-        params = {
-            "from": (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "granularity": "daily",
-            "org_id": org_id,
-            "metrics": "compute_unit_seconds",
-        }
-        headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(NEON_CONSUMPTION_URL, params=params, headers=headers, timeout=10)
-        if resp.status_code != 200:
-            return ConfigTestResult(ok=False, message=f"Neon API returned {resp.status_code}: {resp.text[:120]}")
-        project_count = len(resp.json().get("projects", []))
-
-        options: list[ConfigTestOption] | None = None
-        try:
-            async with httpx.AsyncClient() as client:
-                proj_resp = await client.get(NEON_PROJECTS_URL, params={"org_id": org_id}, headers=headers, timeout=10)
-            if proj_resp.status_code == 200:
-                options = [
-                    ConfigTestOption(value=p["id"], label=p.get("name") or p["id"])
-                    for p in proj_resp.json().get("projects", [])
-                ]
-        except Exception:
-            pass  # project listing is a nice-to-have — the connection test above already succeeded
-
+        ok, message, options = await neon.test_connection(v)
         return ConfigTestResult(
-            ok=True, message=f"Connected — {project_count} project(s) visible to this org", options=options
+            ok=ok,
+            message=message,
+            options=[ConfigTestOption(value=o["value"], label=o["label"]) for o in options] if options else None,
         )
     except Exception as exc:
         return ConfigTestResult(ok=False, message=str(exc))

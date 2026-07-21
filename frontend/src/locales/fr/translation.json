@@ -47,6 +47,7 @@
     "schedule": "Tâches planifiées",
     "exports": "Exports de données",
     "credentials": "Identifiants",
+    "neon": "Tableau de bord Neon",
     "sandbox": "Sandbox"
   },
   "loomTypes": {
