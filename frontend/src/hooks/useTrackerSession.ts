@@ -3,13 +3,18 @@ import { useMemo } from "react";
 const STORAGE_KEY_PREFIX = "weftmark_tracker_session:";
 
 // crypto.randomUUID() requires a secure context (HTTPS or localhost) and throws
-// otherwise — fall back to a non-cryptographic ID so a device on plain HTTP (e.g.
-// a LAN hostname during local dev) doesn't crash the whole page on render.
+// otherwise — fall back to crypto.getRandomValues(), which (unlike randomUUID)
+// works in insecure contexts too, so a LAN hostname during local dev still gets
+// an unpredictable id instead of crashing the whole page on render.
 function generateTrackerToken(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return `${Date.now().toString(36)}-${Array.from(bytes, (b) => b.toString(36)).join("")}`;
+  }
+  return Date.now().toString(36);
 }
 
 // Per-tab, per-project identity for the tracker lock (#1029). sessionStorage (not

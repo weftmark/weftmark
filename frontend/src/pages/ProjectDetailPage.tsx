@@ -59,6 +59,7 @@ function CollapsibleSection({
   return (
     <section className="border-t">
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
       >
@@ -602,6 +603,7 @@ function StepControls({
     <div className="flex items-center justify-center gap-2 sm:gap-3">
       {/* ‹‹ back 10 — visible on sm+ */}
       <button
+        type="button"
         onClick={() => onJump(Math.max(1, currentPick - 10))}
         disabled={atStart || disabled || jumpDisabled}
         className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 text-primary/70 text-lg font-medium transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -612,6 +614,7 @@ function StepControls({
       </button>
 
       <button
+        type="button"
         onClick={() => onStep("reverse")}
         disabled={atStart || disabled}
         className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary text-primary text-3xl font-light transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed"
@@ -628,6 +631,7 @@ function StepControls({
       </div>
 
       <button
+        type="button"
         onClick={() => onStep("advance")}
         disabled={pastEnd || disabled}
         className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-primary text-primary text-3xl font-light transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed"
@@ -638,6 +642,7 @@ function StepControls({
 
       {/* ›› forward 10 — visible on sm+ */}
       <button
+        type="button"
         onClick={() => onJump(Math.min(total + 1, currentPick + 10))}
         disabled={pastEnd || disabled || jumpDisabled}
         className="hidden sm:flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 text-primary/70 text-lg font-medium transition-colors hover:border-primary hover:bg-primary/10 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -854,6 +859,7 @@ function PhotoGrid({
             onClick={(e) => e.stopPropagation()}
           />
           <button
+            type="button"
             onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 text-white/70 hover:text-white text-sm"
           >
@@ -1538,6 +1544,7 @@ export function ProjectDetailPage() {
             </form>
           ) : (
             <button
+              type="button"
               onClick={() => { setNameInput(project.name); setEditingName(true); }}
               className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text truncate"
               title={t("projectDetailPage.clickToRename")}
@@ -1549,6 +1556,7 @@ export function ProjectDetailPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={() => setShowDesignPreview(true)}
             className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
             title={t("projectDetailPage.viewDesignTitle")}
@@ -1564,6 +1572,7 @@ export function ProjectDetailPage() {
           </Link>
           {!isReadOnly && (
             <button
+              type="button"
               onClick={() => setShareModalOpen(true)}
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title={t("projectDetailPage.shareProject")}
@@ -1574,6 +1583,7 @@ export function ProjectDetailPage() {
           )}
           {!isReadOnly && (
             <button
+              type="button"
               onClick={() => setSettingsOpen(true)}
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title={t("projectDetailPage.viewSettings")}
@@ -1587,6 +1597,7 @@ export function ProjectDetailPage() {
           </span>
           {!isReadOnly && project.share_slug && project.share_visibility !== "private" && (
             <button
+              type="button"
               onClick={() => setShareModalOpen(true)}
               className="rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
               title={t("projectDetailPage.projectSharedManage")}
@@ -1597,6 +1608,7 @@ export function ProjectDetailPage() {
           )}
           {presentModeSupported && (
             <button
+              type="button"
               onClick={togglePresentMode}
               className="ml-3 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
@@ -1665,6 +1677,7 @@ export function ProjectDetailPage() {
                 <div className="flex items-center gap-1">
                   {Array.from({ length: project.num_items }, (_, i) => (
                     <button
+                      type="button"
                       key={i}
                       onClick={() => isActiveTracking && handleJumpItem(i + 1)}
                       disabled={!isActiveTracking || actionLoading || trackerLocked}
@@ -1862,6 +1875,7 @@ export function ProjectDetailPage() {
       {/* Details & settings panel — toggle bar always visible; sections scroll when open */}
       <div className="shrink-0 border-t bg-card">
         <button
+          type="button"
           onClick={() => {
             const next = !panelOpen;
             setPanelOpen(next);
@@ -1933,6 +1947,7 @@ export function ProjectDetailPage() {
               />
             ) : (
               <button
+                type="button"
                 onClick={() => { setNotesInput(project.notes ?? ""); setEditingNotes(true); }}
                 className="w-full text-left text-sm"
                 title={t("projectDetailPage.clickToEditNotes")}
@@ -2191,6 +2206,7 @@ export function ProjectDetailPage() {
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <span className="text-sm font-semibold">{t("projectDetailPage.viewSettings")}</span>
               <button
+                type="button"
                 onClick={() => setSettingsOpen(false)}
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label="Close settings"
@@ -2212,6 +2228,7 @@ export function ProjectDetailPage() {
                   <div key={label} className={`flex items-center justify-between${disabled ? " opacity-40" : ""}`} title={disabled ? disabledTitle : undefined}>
                     <span className="text-sm">{label}</span>
                     <button
+                      type="button"
                       role="switch"
                       aria-checked={value}
                       disabled={disabled}
@@ -2240,6 +2257,7 @@ export function ProjectDetailPage() {
                       </p>
                     </div>
                     <button
+                      type="button"
                       role="switch"
                       aria-checked={hideTrailingUnused}
                       onClick={() => {
@@ -2261,6 +2279,7 @@ export function ProjectDetailPage() {
                 <div className="inline-flex rounded-md border border-input overflow-hidden text-sm w-full">
                   {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
                     <button
+                      type="button"
                       key={mode}
                       onClick={() => { setColorMode(mode); localStorage.setItem("proj-view:colorMode", mode); }}
                       className={`flex-1 px-2.5 py-1.5 capitalize transition-colors ${
