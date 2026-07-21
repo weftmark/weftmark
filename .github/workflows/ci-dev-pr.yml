@@ -13,7 +13,8 @@ on:
     paths:
       - "backend/**"
       - "frontend/**"
-      - ".github/workflows/ci-dev-pr.yml"
+      - "tools/**"
+      - ".github/workflows/**"
 
 concurrency:
   group: dev-pr-${{ github.head_ref }}
