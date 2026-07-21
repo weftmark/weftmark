@@ -552,7 +552,16 @@ async def list_users(
     ]
 
 
-@router.patch("/users/{user_id}", response_model=AdminUserResponse)
+@router.patch(
+    "/users/{user_id}",
+    response_model=AdminUserResponse,
+    responses={
+        400: {"description": "Cannot modify your own account"},
+        403: {"description": "Superuser required to change admin or superuser roles"},
+        404: {"description": "User not found"},
+        422: {"description": "Remove admin rights before deactivating this user"},
+    },
+)
 async def patch_user(
     user_id: uuid.UUID,
     body: AdminUserPatch,
@@ -670,7 +679,15 @@ async def patch_user(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/users/{user_id}/ban", status_code=200)
+@router.post(
+    "/users/{user_id}/ban",
+    status_code=200,
+    responses={
+        400: {"description": "Cannot ban your own account"},
+        404: {"description": "User not found"},
+        422: {"description": "Remove admin rights before banning this user"},
+    },
+)
 async def ban_user(
     user_id: uuid.UUID,
     admin: User = Depends(require_admin),
@@ -722,7 +739,11 @@ async def ban_user(
     )
 
 
-@router.post("/users/{user_id}/unban", status_code=200)
+@router.post(
+    "/users/{user_id}/unban",
+    status_code=200,
+    responses={400: {"description": "User has no Clerk account"}, 404: {"description": "User not found"}},
+)
 async def unban_user(
     user_id: uuid.UUID,
     admin: User = Depends(require_admin),
@@ -779,7 +800,16 @@ class DeleteUserRequest(BaseModel):
     confirm: str
 
 
-@router.post("/users/{user_id}/delete", status_code=202)
+@router.post(
+    "/users/{user_id}/delete",
+    status_code=202,
+    responses={
+        400: {"description": "Cannot delete your own account via admin panel"},
+        404: {"description": "User not found"},
+        409: {"description": "Deletion already in state"},
+        422: {"description": 'confirm must be exactly "DELETE USER"'},
+    },
+)
 async def delete_user(
     user_id: uuid.UUID,
     body: DeleteUserRequest,
@@ -812,7 +842,11 @@ async def delete_user(
     return {"status": "pending", "user_id": str(user_id)}
 
 
-@router.get("/users/{user_id}/storage-report", response_model=UserStorageReportResponse)
+@router.get(
+    "/users/{user_id}/storage-report",
+    response_model=UserStorageReportResponse,
+    responses={404: {"description": "User not found"}},
+)
 async def get_user_storage_report(
     user_id: uuid.UUID,
     verify_s3: bool = False,
@@ -1223,7 +1257,15 @@ class ElevateRequest(BaseModel):
     confirm_delete_content: bool = False
 
 
-@router.post("/users/{user_id}/elevate-to-superuser", status_code=200)
+@router.post(
+    "/users/{user_id}/elevate-to-superuser",
+    status_code=200,
+    responses={
+        400: {"description": "User must be an admin before being elevated to superuser"},
+        404: {"description": "User not found"},
+        409: {"description": "User owns projects, looms, drafts, or yarn; confirm_delete_content required"},
+    },
+)
 async def elevate_to_superuser(
     user_id: uuid.UUID,
     body: ElevateRequest,
@@ -1321,7 +1363,12 @@ async def list_pending_signups(
     return list(result.all())
 
 
-@router.post("/pending-signups/{signup_id}/approve", response_model=None, status_code=201)
+@router.post(
+    "/pending-signups/{signup_id}/approve",
+    response_model=None,
+    status_code=201,
+    responses={404: {"description": "Pending signup not found"}},
+)
 async def approve_pending_signup(
     signup_id: uuid.UUID,
     admin: User = Depends(require_admin),
@@ -1403,7 +1450,9 @@ async def approve_pending_signup(
     return {"status": "created"}
 
 
-@router.post("/pending-signups/{signup_id}/ban", status_code=204)
+@router.post(
+    "/pending-signups/{signup_id}/ban", status_code=204, responses={404: {"description": "Pending signup not found"}}
+)
 async def ban_pending_signup(
     signup_id: uuid.UUID,
     admin: User = Depends(require_admin),
@@ -1424,7 +1473,9 @@ async def ban_pending_signup(
         log.exception("Failed to send account denied email to %s", email)
 
 
-@router.delete("/pending-signups/{signup_id}", status_code=204)
+@router.delete(
+    "/pending-signups/{signup_id}", status_code=204, responses={404: {"description": "Pending signup not found"}}
+)
 async def dismiss_pending_signup(
     signup_id: uuid.UUID,
     admin: User = Depends(require_admin),
@@ -1470,7 +1521,7 @@ class EulaCurrentAdminResponse(BaseModel):
     created_at: datetime
 
 
-@router.get("/eula", response_model=EulaCurrentAdminResponse)
+@router.get("/eula", response_model=EulaCurrentAdminResponse, responses={404: {"description": "No EULA version found"}})
 async def get_eula_admin(
     _: User = Depends(require_superuser),
     db: AsyncSession = Depends(get_db),
@@ -1487,7 +1538,12 @@ async def get_eula_admin(
     )
 
 
-@router.post("/eula", response_model=EulaVersionResponse, status_code=201)
+@router.post(
+    "/eula",
+    response_model=EulaVersionResponse,
+    status_code=201,
+    responses={409: {"description": "EULA version already exists"}},
+)
 async def create_eula_version(
     body: EulaCreateRequest,
     admin: User = Depends(require_superuser),
@@ -1714,7 +1770,12 @@ async def get_reconcile_report(
     return ReconcileReport(clerk_only=clerk_only, db_only=db_only)
 
 
-@router.post("/reconcile/backfill/{clerk_user_id}", response_model=BackfillResponse, status_code=201)
+@router.post(
+    "/reconcile/backfill/{clerk_user_id}",
+    response_model=BackfillResponse,
+    status_code=201,
+    responses={404: {"description": "Clerk user not found"}, 409: {"description": "User already exists in DB"}},
+)
 async def backfill_clerk_user(
     clerk_user_id: str,
     body: BackfillRequest = Body(default_factory=BackfillRequest),
@@ -2421,7 +2482,10 @@ async def list_scheduled_tasks(
     return result
 
 
-@router.patch("/scheduled-tasks/{name}")
+@router.patch(
+    "/scheduled-tasks/{name}",
+    responses={404: {"description": "Scheduled task not found"}, 422: {"description": "Invalid cron expression"}},
+)
 async def patch_scheduled_task(
     name: str,
     body: PatchScheduledTaskBody,
@@ -2523,7 +2587,12 @@ async def list_credentials(
     return [_credential_to_response(r) for r in rows.all()]
 
 
-@router.post("/credentials", response_model=CredentialExpiryResponse, status_code=201)
+@router.post(
+    "/credentials",
+    response_model=CredentialExpiryResponse,
+    status_code=201,
+    responses={422: {"description": "Invalid resource. Must be one of"}},
+)
 async def create_credential(
     body: CreateCredentialBody,
     db: AsyncSession = Depends(get_db),
@@ -2544,7 +2613,11 @@ async def create_credential(
     return _credential_to_response(cred)
 
 
-@router.patch("/credentials/{credential_id}", response_model=CredentialExpiryResponse)
+@router.patch(
+    "/credentials/{credential_id}",
+    response_model=CredentialExpiryResponse,
+    responses={404: {"description": "Credential not found"}, 422: {"description": "Invalid resource. Must be one of"}},
+)
 async def patch_credential(
     credential_id: uuid.UUID,
     body: PatchCredentialBody,
@@ -2570,7 +2643,9 @@ async def patch_credential(
     return _credential_to_response(cred)
 
 
-@router.delete("/credentials/{credential_id}", status_code=204)
+@router.delete(
+    "/credentials/{credential_id}", status_code=204, responses={404: {"description": "Credential not found"}}
+)
 async def delete_credential(
     credential_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -2634,7 +2709,7 @@ async def list_project_slugs(
     ]
 
 
-@router.delete("/project-slugs/{slug}", status_code=204)
+@router.delete("/project-slugs/{slug}", status_code=204, responses={404: {"description": "Slug not found"}})
 async def admin_revoke_project_slug(
     slug: str,
     db: AsyncSession = Depends(get_db),
@@ -2730,7 +2805,7 @@ async def list_exports(
     ]
 
 
-@router.delete("/exports/{export_id}", status_code=204)
+@router.delete("/exports/{export_id}", status_code=204, responses={404: {"description": "Export not found"}})
 async def delete_export(
     export_id: uuid.UUID,
     _: User = Depends(require_superuser),
@@ -2875,7 +2950,7 @@ async def get_config_state(
     )
 
 
-@router.put("/config")
+@router.put("/config", responses={503: {"description": "CONFIG_ENCRYPTION_KEY is not set — cannot write config file"}})
 def save_config(
     body: ConfigSaveRequest,
     _: User = Depends(require_superuser),
@@ -3000,7 +3075,7 @@ _SERVICE_TESTS = {
 }
 
 
-@router.post("/config/test/{service}")
+@router.post("/config/test/{service}", responses={400: {"description": "Unknown service"}})
 async def test_config_service(
     service: str,
     body: ConfigSaveRequest,

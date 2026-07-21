@@ -124,7 +124,12 @@ class UpdateDraftRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=DraftSummary, status_code=201)
+@router.post(
+    "",
+    response_model=DraftSummary,
+    status_code=201,
+    responses={400: {"description": "File must have a .wif extension"}, 413: {"description": "File too large"}},
+)
 async def create_draft(
     name: Annotated[str, Form()],
     wif_file: Annotated[UploadFile, File()],
@@ -237,7 +242,7 @@ async def list_drafts(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}", response_model=DraftDetail)
+@router.get("/{draft_id}", response_model=DraftDetail, responses={404: {"description": "Draft not found"}})
 async def get_draft(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -247,7 +252,11 @@ async def get_draft(
     return DraftDetail(**_draft_detail_data(draft))
 
 
-@router.patch("/{draft_id}", response_model=DraftDetail)
+@router.patch(
+    "/{draft_id}",
+    response_model=DraftDetail,
+    responses={400: {"description": "At least one field must be provided"}, 404: {"description": "Draft not found"}},
+)
 async def update_draft(
     draft_id: uuid.UUID,
     body: UpdateDraftRequest,
@@ -276,7 +285,7 @@ async def update_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}/preview")
+@router.get("/{draft_id}/preview", responses={404: {"description": "Preview not available"}})
 async def get_preview(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -289,7 +298,7 @@ async def get_preview(
     return Response(content=png, media_type=_MEDIA_TYPE_PNG)
 
 
-@router.get("/{draft_id}/drawdown_preview")
+@router.get("/{draft_id}/drawdown_preview", responses={404: {"description": "Drawdown preview not available"}})
 async def get_drawdown_preview(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -302,7 +311,10 @@ async def get_drawdown_preview(
     return Response(content=png, media_type=_MEDIA_TYPE_PNG)
 
 
-@router.get("/{draft_id}/preview/svg")
+@router.get(
+    "/{draft_id}/preview/svg",
+    responses={404: {"description": "No WIF file for this draft"}, 500: {"description": "SVG rendering failed"}},
+)
 async def get_preview_svg(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -325,7 +337,10 @@ async def get_preview_svg(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}/drawdown")
+@router.get(
+    "/{draft_id}/drawdown",
+    responses={404: {"description": "No WIF file for this draft"}, 500: {"description": "Drawdown rendering failed"}},
+)
 async def get_drawdown(
     draft_id: uuid.UUID,
     start_row: int | None = Query(None, ge=0),
@@ -500,7 +515,7 @@ async def get_drawdown(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}/wif")
+@router.get("/{draft_id}/wif", responses={404: {"description": "WIF file not available for this draft"}})
 async def download_wif(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -523,7 +538,7 @@ async def download_wif(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}/wif-modified")
+@router.get("/{draft_id}/wif-modified", responses={404: {"description": "No modified WIF file for this draft"}})
 async def download_wif_modified(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -547,7 +562,14 @@ async def download_wif_modified(
 # ---------------------------------------------------------------------------
 
 
-@router.delete("/{draft_id}", status_code=204)
+@router.delete(
+    "/{draft_id}",
+    status_code=204,
+    responses={
+        404: {"description": "Draft not found"},
+        409: {"description": "Draft is used by one or more active projects; pass force=true to delete anyway"},
+    },
+)
 async def delete_draft(
     draft_id: uuid.UUID,
     force: bool = Query(False),
@@ -582,7 +604,7 @@ async def delete_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{draft_id}/archive", status_code=204)
+@router.post("/{draft_id}/archive", status_code=204, responses={404: {"description": "Draft not found"}})
 async def archive_draft(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -593,7 +615,7 @@ async def archive_draft(
     await db.commit()
 
 
-@router.post("/{draft_id}/unarchive", status_code=204)
+@router.post("/{draft_id}/unarchive", status_code=204, responses={404: {"description": "Draft not found"}})
 async def unarchive_draft(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -609,7 +631,14 @@ async def unarchive_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{draft_id}/generate-liftplan", response_model=DraftDetail)
+@router.post(
+    "/{draft_id}/generate-liftplan",
+    response_model=DraftDetail,
+    responses={
+        400: {"description": "WIF file has no [TREADLING] section — cannot compute lift plan"},
+        404: {"description": "Draft not found"},
+    },
+)
 async def generate_liftplan(
     draft_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -661,7 +690,14 @@ class OverrideMetadataRequest(BaseModel):
     value: int
 
 
-@router.post("/{draft_id}/override-metadata", response_model=DraftDetail)
+@router.post(
+    "/{draft_id}/override-metadata",
+    response_model=DraftDetail,
+    responses={
+        400: {"description": "Unsupported field; must be one of num_treadles or num_shafts"},
+        404: {"description": "Draft not found"},
+    },
+)
 async def override_metadata(
     draft_id: uuid.UUID,
     body: OverrideMetadataRequest,
@@ -730,7 +766,11 @@ class PatchMeasurementsRequest(BaseModel):
     unit: str = "cm"  # "cm" | "in" — applies to warp_length and weaving_width; epi is always ends/inch
 
 
-@router.patch("/{draft_id}/measurements", response_model=DraftDetail)
+@router.patch(
+    "/{draft_id}/measurements",
+    response_model=DraftDetail,
+    responses={400: {"description": "unit must be 'cm' or 'in'"}, 404: {"description": "Draft not found"}},
+)
 async def patch_measurements(
     draft_id: uuid.UUID,
     body: PatchMeasurementsRequest,

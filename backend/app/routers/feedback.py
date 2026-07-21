@@ -180,7 +180,7 @@ class FeedbackStatusResponse(BaseModel):
     github_discussion_state: str | None
 
 
-@router.get("/{feedback_id}/status")
+@router.get("/{feedback_id}/status", responses={404: {"description": "Feedback not found"}})
 async def get_feedback_status(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -238,7 +238,7 @@ async def list_feedback(
     )
 
 
-@admin_router.get("/{feedback_id}")
+@admin_router.get("/{feedback_id}", responses={404: {"description": "Feedback not found"}})
 async def get_feedback_detail(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -256,7 +256,7 @@ async def get_feedback_detail(
     return _serialize(row, include_user_email=True)
 
 
-@admin_router.delete("/{feedback_id}")
+@admin_router.delete("/{feedback_id}", responses={404: {"description": "Feedback not found"}})
 async def soft_delete_feedback(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -271,7 +271,10 @@ async def soft_delete_feedback(
     return _serialize(row)
 
 
-@admin_router.post("/{feedback_id}/retry-dispatch")
+@admin_router.post(
+    "/{feedback_id}/retry-dispatch",
+    responses={400: {"description": "Cannot retry dispatch with status"}, 404: {"description": "Feedback not found"}},
+)
 async def retry_feedback_dispatch(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -290,7 +293,10 @@ async def retry_feedback_dispatch(
     return _serialize(row, include_user_email=True)
 
 
-@admin_router.post("/{feedback_id}/recover")
+@admin_router.post(
+    "/{feedback_id}/recover",
+    responses={400: {"description": "Feedback is not deleted"}, 404: {"description": "Feedback not found"}},
+)
 async def recover_feedback(
     feedback_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),

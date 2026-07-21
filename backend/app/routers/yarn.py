@@ -360,7 +360,7 @@ async def get_yarn_properties(
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=YarnDetail, status_code=201)
+@router.post("", response_model=YarnDetail, status_code=201, responses={404: {"description": "Yarn not found"}})
 async def create_yarn(
     body: CreateYarnRequest,
     current_user: User = Depends(get_effective_user),
@@ -391,7 +391,7 @@ async def list_yarn(
     return [YarnSummary.from_yarn(y) for y in result.all()]
 
 
-@router.get("/{yarn_id}", response_model=YarnDetail)
+@router.get("/{yarn_id}", response_model=YarnDetail, responses={404: {"description": "Yarn not found"}})
 async def get_yarn(
     yarn_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -401,7 +401,7 @@ async def get_yarn(
     return YarnDetail.from_yarn(yarn)
 
 
-@router.patch("/{yarn_id}", response_model=YarnDetail)
+@router.patch("/{yarn_id}", response_model=YarnDetail, responses={404: {"description": "Yarn not found"}})
 async def update_yarn(
     yarn_id: uuid.UUID,
     body: UpdateYarnRequest,
@@ -423,7 +423,7 @@ class PatchColorwayRequest(BaseModel):
     clear_photos: bool = False
 
 
-@router.patch("/{yarn_id}/colorway", response_model=YarnDetail)
+@router.patch("/{yarn_id}/colorway", response_model=YarnDetail, responses={404: {"description": "Yarn not found"}})
 async def patch_yarn_colorway(
     yarn_id: uuid.UUID,
     body: PatchColorwayRequest,
@@ -446,7 +446,7 @@ async def patch_yarn_colorway(
     return YarnDetail.from_yarn(yarn)
 
 
-@router.delete("/{yarn_id}", status_code=204)
+@router.delete("/{yarn_id}", status_code=204, responses={404: {"description": "Yarn not found"}})
 async def delete_yarn(
     yarn_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -462,7 +462,11 @@ async def delete_yarn(
 # ---------------------------------------------------------------------------
 
 
-@router.put("/{yarn_id}/photo", status_code=204)
+@router.put(
+    "/{yarn_id}/photo",
+    status_code=204,
+    responses={400: {"description": "File too large (max 5 MB)"}, 404: {"description": "Yarn not found"}},
+)
 async def upload_yarn_photo(
     yarn_id: uuid.UUID,
     file: UploadFile = File(...),
@@ -484,7 +488,7 @@ async def upload_yarn_photo(
     await db.commit()
 
 
-@router.get("/{yarn_id}/photo")
+@router.get("/{yarn_id}/photo", responses={404: {"description": "No photo"}})
 async def get_yarn_photo(
     yarn_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -498,7 +502,7 @@ async def get_yarn_photo(
     return Response(content=data, media_type=ct)
 
 
-@router.delete("/{yarn_id}/photo", status_code=204)
+@router.delete("/{yarn_id}/photo", status_code=204, responses={404: {"description": "Yarn not found"}})
 async def delete_yarn_photo(
     yarn_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -516,7 +520,12 @@ async def delete_yarn_photo(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{yarn_id}/skeins", response_model=list[SkeinSchema], status_code=201)
+@router.post(
+    "/{yarn_id}/skeins",
+    response_model=list[SkeinSchema],
+    status_code=201,
+    responses={400: {"description": "Quantity must be between 1 and 100"}, 404: {"description": "Yarn not found"}},
+)
 async def add_skeins(
     yarn_id: uuid.UUID,
     body: AddSkeinsRequest,
@@ -545,7 +554,9 @@ async def add_skeins(
     return [SkeinSchema.model_validate(s) for s in new_skeins]
 
 
-@router.patch("/{yarn_id}/skeins/{skein_id}", response_model=SkeinSchema)
+@router.patch(
+    "/{yarn_id}/skeins/{skein_id}", response_model=SkeinSchema, responses={404: {"description": "Skein not found"}}
+)
 async def update_skein(
     yarn_id: uuid.UUID,
     skein_id: uuid.UUID,
@@ -561,7 +572,7 @@ async def update_skein(
     return SkeinSchema.model_validate(skein)
 
 
-@router.delete("/{yarn_id}/skeins/{skein_id}", status_code=204)
+@router.delete("/{yarn_id}/skeins/{skein_id}", status_code=204, responses={404: {"description": "Skein not found"}})
 async def delete_skein(
     yarn_id: uuid.UUID,
     skein_id: uuid.UUID,
@@ -578,7 +589,9 @@ async def delete_skein(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{yarn_id}/clone", response_model=YarnDetail, status_code=201)
+@router.post(
+    "/{yarn_id}/clone", response_model=YarnDetail, status_code=201, responses={404: {"description": "Yarn not found"}}
+)
 async def clone_yarn(
     yarn_id: uuid.UUID,
     body: CloneYarnRequest,
@@ -626,7 +639,9 @@ class YarnProjectRef(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get("/{yarn_id}/projects", response_model=list[YarnProjectRef])
+@router.get(
+    "/{yarn_id}/projects", response_model=list[YarnProjectRef], responses={404: {"description": "Yarn not found"}}
+)
 async def get_yarn_projects(
     yarn_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),

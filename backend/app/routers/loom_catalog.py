@@ -267,7 +267,9 @@ async def search_loom_catalog(
     return [LoomReferenceSummary.model_validate(r) for r in rows.all()]
 
 
-@public_router.get("/{ref_id}", response_model=LoomReferenceSchema)
+@public_router.get(
+    "/{ref_id}", response_model=LoomReferenceSchema, responses={404: {"description": "Loom reference not found"}}
+)
 async def get_loom_reference(
     ref_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -304,7 +306,12 @@ async def admin_list_loom_catalog(
     return [LoomReferenceSchema.model_validate(r) for r in rows.all()]
 
 
-@admin_catalog_router.post("", response_model=LoomReferenceSchema, status_code=201)
+@admin_catalog_router.post(
+    "",
+    response_model=LoomReferenceSchema,
+    status_code=201,
+    responses={409: {"description": "A loom reference with this brand and model already exists"}},
+)
 async def admin_create_loom_reference(
     body: CreateLoomReferenceRequest,
     db: AsyncSession = Depends(get_db),
@@ -325,7 +332,9 @@ async def admin_create_loom_reference(
     return LoomReferenceSchema.model_validate(ref)
 
 
-@admin_catalog_router.patch("/{ref_id}", response_model=LoomReferenceSchema)
+@admin_catalog_router.patch(
+    "/{ref_id}", response_model=LoomReferenceSchema, responses={404: {"description": "Loom reference not found"}}
+)
 async def admin_update_loom_reference(
     ref_id: uuid.UUID,
     body: UpdateLoomReferenceRequest,
@@ -342,7 +351,7 @@ async def admin_update_loom_reference(
     return LoomReferenceSchema.model_validate(ref)
 
 
-@admin_catalog_router.delete("/{ref_id}", status_code=204)
+@admin_catalog_router.delete("/{ref_id}", status_code=204, responses={404: {"description": "Loom reference not found"}})
 async def admin_delete_loom_reference(
     ref_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),

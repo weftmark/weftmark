@@ -150,7 +150,9 @@ class EulaCurrentResponse(BaseModel):
     effective_date: datetime
 
 
-@eula_router.get("/current", response_model=EulaCurrentResponse)
+@eula_router.get(
+    "/current", response_model=EulaCurrentResponse, responses={404: {"description": "No EULA version found"}}
+)
 async def get_current_eula(db: AsyncSession = Depends(get_db)) -> EulaCurrentResponse:
     row = await db.scalar(select(EulaVersion).order_by(EulaVersion.id.desc()).limit(1))
     if not row:
@@ -188,7 +190,9 @@ async def get_settings(
     return _to_response(current_user, version)
 
 
-@router.patch("/me", response_model=UserSettingsResponse)
+@router.patch(
+    "/me", response_model=UserSettingsResponse, responses={422: {"description": "display_name cannot be empty"}}
+)
 async def update_settings(
     body: UserSettingsUpdate,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -276,7 +280,11 @@ async def update_settings(
     return _to_response(current_user, version)
 
 
-@router.post("/me/eula", response_model=UserSettingsResponse)
+@router.post(
+    "/me/eula",
+    response_model=UserSettingsResponse,
+    responses={422: {"description": "Version mismatch — current EULA is"}},
+)
 async def accept_eula(
     body: EulaAcceptRequest,
     current_user: User = Depends(get_current_user),
@@ -297,7 +305,7 @@ async def accept_eula(
     return _to_response(current_user, current_version)
 
 
-@router.delete("/me", status_code=204)
+@router.delete("/me", status_code=204, responses={422: {"description": 'confirm must be exactly "DELETE MY ACCOUNT"'}})
 async def delete_account(
     body: DeleteAccountRequest,
     response: Response,
@@ -406,7 +414,10 @@ async def get_export_status(
     )
 
 
-@router.get("/me/data-export/download/{request_id}")
+@router.get(
+    "/me/data-export/download/{request_id}",
+    responses={404: {"description": "Export not found"}, 410: {"description": "Export has expired"}},
+)
 async def download_data_export(
     request_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
