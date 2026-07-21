@@ -164,7 +164,7 @@ def _head_revision_id() -> str:
     if not numbered:
         return "0000"
     content = numbered[-1].read_text(encoding="utf-8")
-    m = re.search(r'^revision\s*(?::\s*str)?\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+    m = re.search(r'^revision\s*(?::\s*str\s*)?=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
     return m.group(1) if m else numbered[-1].stem.split("_")[0]
 
 

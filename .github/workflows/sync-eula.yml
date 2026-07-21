@@ -32,8 +32,10 @@ jobs:
 
       - name: Run export script
         id: export
+        env:
+          DB_URL: ${{ secrets.POSTGRES_DSN_DIRECT }}
         run: |
-          output=$(python tools/export_eula_migration.py --db-url "${{ secrets.POSTGRES_DSN_DIRECT }}" 2>&1)
+          output=$(python tools/export_eula_migration.py --db-url "$DB_URL" 2>&1)
           echo "$output"
           written=$(echo "$output" | grep '^Written:' | awk '{print $2}')
           if [ -z "$written" ]; then
