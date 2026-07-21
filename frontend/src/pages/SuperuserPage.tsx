@@ -1703,6 +1703,139 @@ interface ConfigFieldRowProps {
   readonly selectOptions?: ConfigTestOption[];
 }
 
+function isConfigFieldFullWidth(field: string, groupFieldCount: number): boolean {
+  return groupFieldCount === 1
+    || field === "smtp_from_email"
+    || field === "ravelry_oauth_redirect_uri"
+    || field === "webhook_base_url"
+    || field === "otel_exporter_otlp_endpoint";
+}
+
+function configFieldPlaceholder(field: string, isSecret: boolean, isSet: boolean, apiUrl: string): string {
+  if (isSecret && isSet) return "Enter new value to replace";
+  if (field === "webhook_base_url" && !isSet) return apiUrl || "http://localhost:8000";
+  return "";
+}
+
+interface ConfigBooleanFieldProps {
+  readonly field: string;
+  readonly isOn: boolean;
+  readonly fromEnv: boolean;
+  readonly isFullWidth: boolean;
+  readonly onToggle: () => void;
+}
+
+function ConfigBooleanField({ field, isOn, fromEnv, isFullWidth, onToggle }: ConfigBooleanFieldProps) {
+  return (
+    <div className={`flex items-center justify-between gap-3 py-1 ${isFullWidth ? "sm:col-span-2" : ""}`}>
+      <div className="flex items-center gap-1.5">
+        <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
+        {fromEnv && (
+          <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">ENV</span>
+        )}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isOn}
+        onClick={onToggle}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isOn ? "bg-accent" : "bg-input"}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
+      </button>
+    </div>
+  );
+}
+
+const CONFIG_INPUT_CLS = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono";
+
+interface ConfigFieldControlProps {
+  readonly field: string;
+  readonly state: ConfigFieldState | undefined;
+  readonly showMasked: boolean;
+  readonly selectOptions?: ConfigTestOption[];
+  readonly inputType: string;
+  readonly inputValue: string;
+  readonly placeholder: string;
+  readonly autoFocus: boolean;
+  readonly setDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  readonly setEditingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
+}
+
+function ConfigFieldControl({
+  field, state, showMasked, selectOptions, inputType, inputValue, placeholder, autoFocus, setDrafts, setEditingFields,
+}: ConfigFieldControlProps) {
+  if (showMasked) {
+    return (
+      <div
+        className={`${CONFIG_INPUT_CLS} text-muted-foreground cursor-text select-none`}
+        onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
+        title="Click to change"
+      >
+        {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
+      </div>
+    );
+  }
+  if (selectOptions?.length) {
+    return (
+      <select className={CONFIG_INPUT_CLS} value={inputValue} onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}>
+        <option value="">— none (no filter) —</option>
+        {selectOptions.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <input
+      type={inputType}
+      className={CONFIG_INPUT_CLS}
+      value={inputValue}
+      placeholder={placeholder}
+      onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
+      autoComplete="off"
+      autoFocus={autoFocus}
+    />
+  );
+}
+
+interface ConfigFieldBadgesProps {
+  readonly field: string;
+  readonly state: ConfigFieldState | undefined;
+  readonly fromEnv: boolean;
+  readonly isSet: boolean;
+  readonly hasDraft: boolean;
+}
+
+function ConfigFieldBadges({ field, state, fromEnv, isSet, hasDraft }: ConfigFieldBadgesProps) {
+  return (
+    <div className="flex items-center gap-1.5 mb-1">
+      <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
+      {fromEnv && (
+        <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">
+          ENV
+        </span>
+      )}
+      {isSet && !fromEnv && !hasDraft && (
+        <span
+          className={`text-[10px] border rounded px-1 leading-4 ${
+            state?.pending_restart
+              ? "text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+              : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+          }`}
+        >
+          {state?.pending_restart ? "Set — pending restart" : "Set"}
+        </span>
+      )}
+      {field === "webhook_base_url" && !isSet && !hasDraft && (
+        <span className="text-[10px] border rounded px-1 text-muted-foreground border-border leading-4">
+          Default
+        </span>
+      )}
+    </div>
+  );
+}
+
 function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, drafts, setDrafts, editingFields, setEditingFields, apiUrl, selectOptions }: ConfigFieldRowProps) {
   if ((field === "cf_access_client_id" || field === "cf_access_client_secret") && !isZeroTrustEnabled) return null;
 
@@ -1711,34 +1844,20 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
   const fromEnv = state?.source === "env";
   const hasDraft = field in drafts;
   const isSet = isSecret ? (state?.secret_set ?? false) : !!(state?.value);
-  const isFullWidth = groupFieldCount === 1
-    || field === "smtp_from_email"
-    || field === "ravelry_oauth_redirect_uri"
-    || field === "webhook_base_url"
-    || field === "otel_exporter_otlp_endpoint";
+  const isFullWidth = isConfigFieldFullWidth(field, groupFieldCount);
 
   if (isBoolean) {
     const isOn = hasDraft
       ? drafts[field] === "true"
       : (state?.value === "True" || state?.value === "true");
     return (
-      <div className={`flex items-center justify-between gap-3 py-1 ${isFullWidth ? "sm:col-span-2" : ""}`}>
-        <div className="flex items-center gap-1.5">
-          <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
-          {fromEnv && (
-            <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">ENV</span>
-          )}
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={isOn}
-          onClick={() => setDrafts((prev) => ({ ...prev, [field]: isOn ? "false" : "true" }))}
-          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isOn ? "bg-accent" : "bg-input"}`}
-        >
-          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
-        </button>
-      </div>
+      <ConfigBooleanField
+        field={field}
+        isOn={isOn}
+        fromEnv={fromEnv}
+        isFullWidth={isFullWidth}
+        onToggle={() => setDrafts((prev) => ({ ...prev, [field]: isOn ? "false" : "true" }))}
+      />
     );
   }
 
@@ -1747,72 +1866,23 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
   const showMasked = isPrefixMasked && isSet && !hasDraft && !isEditing;
   const inputType = isPrefixMasked ? "text" : isSecret ? "password" : "text";
   const inputValue = isSecret ? (hasDraft ? drafts[field] : "") : (hasDraft ? drafts[field] : (state?.value ?? ""));
-  let placeholder = "";
-  if (isSecret && isSet) placeholder = "Enter new value to replace";
-  else if (field === "webhook_base_url" && !isSet) placeholder = apiUrl || "http://localhost:8000";
-
-  const inputCls = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono";
-  let fieldControl: React.ReactNode;
-  if (showMasked) {
-    fieldControl = (
-      <div
-        className={`${inputCls} text-muted-foreground cursor-text select-none`}
-        onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
-        title="Click to change"
-      >
-        {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
-      </div>
-    );
-  } else if (selectOptions?.length) {
-    fieldControl = (
-      <select className={inputCls} value={inputValue} onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}>
-        <option value="">— none (no filter) —</option>
-        {selectOptions.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    );
-  } else {
-    fieldControl = (
-      <input
-        type={inputType}
-        className={inputCls}
-        value={inputValue}
-        placeholder={placeholder}
-        onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
-        autoComplete="off"
-        autoFocus={isPrefixMasked && isEditing && !hasDraft}
-      />
-    );
-  }
+  const placeholder = configFieldPlaceholder(field, isSecret, isSet, apiUrl);
 
   return (
     <div className={isFullWidth ? "sm:col-span-2" : ""}>
-      <div className="flex items-center gap-1.5 mb-1">
-        <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
-        {fromEnv && (
-          <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">
-            ENV
-          </span>
-        )}
-        {isSet && !fromEnv && !hasDraft && (
-          <span
-            className={`text-[10px] border rounded px-1 leading-4 ${
-              state?.pending_restart
-                ? "text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
-                : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
-            }`}
-          >
-            {state?.pending_restart ? "Set — pending restart" : "Set"}
-          </span>
-        )}
-        {field === "webhook_base_url" && !isSet && !hasDraft && (
-          <span className="text-[10px] border rounded px-1 text-muted-foreground border-border leading-4">
-            Default
-          </span>
-        )}
-      </div>
-      {fieldControl}
+      <ConfigFieldBadges field={field} state={state} fromEnv={fromEnv} isSet={isSet} hasDraft={hasDraft} />
+      <ConfigFieldControl
+        field={field}
+        state={state}
+        showMasked={showMasked}
+        selectOptions={selectOptions}
+        inputType={inputType}
+        inputValue={inputValue}
+        placeholder={placeholder}
+        autoFocus={isPrefixMasked && isEditing && !hasDraft}
+        setDrafts={setDrafts}
+        setEditingFields={setEditingFields}
+      />
       {fromEnv && hasDraft && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
           ENV var active — file value won't take effect until removed from .env
