@@ -1717,6 +1717,21 @@ function configFieldPlaceholder(field: string, isSecret: boolean, isSet: boolean
   return "";
 }
 
+function configBooleanFieldIsOn(field: string, hasDraft: boolean, drafts: Record<string, string>, state: ConfigFieldState | undefined): boolean {
+  if (hasDraft) return drafts[field] === "true";
+  return state?.value === "True" || state?.value === "true";
+}
+
+function configFieldInputType(isPrefixMasked: boolean, isSecret: boolean): string {
+  if (isPrefixMasked) return "text";
+  return isSecret ? "password" : "text";
+}
+
+function configFieldInputValue(field: string, isSecret: boolean, hasDraft: boolean, drafts: Record<string, string>, state: ConfigFieldState | undefined): string {
+  if (isSecret) return hasDraft ? drafts[field] : "";
+  return hasDraft ? drafts[field] : (state?.value ?? "");
+}
+
 interface ConfigBooleanFieldProps {
   readonly field: string;
   readonly isOn: boolean;
@@ -1847,9 +1862,7 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
   const isFullWidth = isConfigFieldFullWidth(field, groupFieldCount);
 
   if (isBoolean) {
-    const isOn = hasDraft
-      ? drafts[field] === "true"
-      : (state?.value === "True" || state?.value === "true");
+    const isOn = configBooleanFieldIsOn(field, hasDraft, drafts, state);
     return (
       <ConfigBooleanField
         field={field}
@@ -1864,8 +1877,8 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
   const isPrefixMasked = PREFIX_MASKED_FIELDS.has(field);
   const isEditing = editingFields.has(field);
   const showMasked = isPrefixMasked && isSet && !hasDraft && !isEditing;
-  const inputType = isPrefixMasked ? "text" : isSecret ? "password" : "text";
-  const inputValue = isSecret ? (hasDraft ? drafts[field] : "") : (hasDraft ? drafts[field] : (state?.value ?? ""));
+  const inputType = configFieldInputType(isPrefixMasked, isSecret);
+  const inputValue = configFieldInputValue(field, isSecret, hasDraft, drafts, state);
   const placeholder = configFieldPlaceholder(field, isSecret, isSet, apiUrl);
 
   return (

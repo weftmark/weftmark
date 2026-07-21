@@ -15,6 +15,8 @@ from app.models.user import User
 
 router = APIRouter(prefix="/api/collections", tags=["collections"])
 
+_COLLECTION_NOT_FOUND = "Collection not found"
+
 
 # ---------------------------------------------------------------------------
 # Schemas
@@ -102,7 +104,7 @@ async def _get_owned_collection(collection_id: uuid.UUID, user: User, db: AsyncS
         )
     )
     if c is None:
-        raise HTTPException(status_code=404, detail="Collection not found")
+        raise HTTPException(status_code=404, detail=_COLLECTION_NOT_FOUND)
     return c
 
 
@@ -179,7 +181,7 @@ async def get_collection(
         )
     )
     if c is None:
-        raise HTTPException(status_code=404, detail="Collection not found")
+        raise HTTPException(status_code=404, detail=_COLLECTION_NOT_FOUND)
 
     draft_ids = {link.draft_id: link.added_at for link in c.draft_links}
     project_ids = {link.project_id: link.added_at for link in c.project_links}
@@ -235,7 +237,7 @@ async def update_collection(
         )
     )
     if c is None:
-        raise HTTPException(status_code=404, detail="Collection not found")
+        raise HTTPException(status_code=404, detail=_COLLECTION_NOT_FOUND)
     if body.name is not None:
         c.name = body.name
     if body.description is not None:

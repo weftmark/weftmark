@@ -14,6 +14,7 @@ from app.services.clerk_auth import jwks_url_from_publishable_key, verify_sessio
 log = logging.getLogger(__name__)
 
 _LAST_ACTIVE_THROTTLE = timedelta(minutes=5)
+_BEARER_PREFIX = "Bearer "
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -30,11 +31,11 @@ async def get_current_user(
     path = request.url.path
 
     auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    if not auth_header.startswith(_BEARER_PREFIX):
         log.info("auth_failure reason=no_token method=%s path=%s", method, path)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    token = auth_header.removeprefix("Bearer ").strip()
+    token = auth_header.removeprefix(_BEARER_PREFIX).strip()
 
     if not settings.clerk_publishable_key:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Auth not configured")
@@ -83,7 +84,7 @@ async def get_optional_user(
 ) -> User | None:
     """Like get_current_user but returns None instead of raising for unauthenticated requests."""
     auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
+    if not auth_header.startswith(_BEARER_PREFIX):
         return None
     try:
         return await get_current_user(request, db)

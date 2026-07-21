@@ -33,6 +33,10 @@ from app.tasks.tiles import prerender_project_tiles
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}  # fast pre-filter only
 MAX_PROJECT_PHOTOS = 10
 MAX_PHOTO_SIZE = 25 * 1024 * 1024  # 25 MB raw (resized output is much smaller)
+
+_MEDIA_TYPE_PNG = "image/png"
+_MEDIA_TYPE_SVG = "image/svg+xml; charset=utf-8"
+_DRAFT_NOT_FOUND = "Draft not found"
 _PROJECT_RESIZE_MAX_PX = 2048
 
 
@@ -535,7 +539,7 @@ async def create_project(
         )
     )
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     # Validate project type is supported by the WIF
     if body.project_type == "treadle" and not draft.has_treadling:
@@ -654,7 +658,7 @@ async def get_project_drawdown(
 
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
@@ -686,7 +690,7 @@ async def get_project_drawdown(
         actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
         return Response(
             content=cached_png,
-            media_type="image/png",
+            media_type=_MEDIA_TYPE_PNG,
             headers={
                 "X-Pixels-Per-Row": str(expected_scale),
                 "X-Total-Rows": str(weft_count),
@@ -736,7 +740,7 @@ async def get_project_drawdown(
     )
     return Response(
         content=png,
-        media_type="image/png",
+        media_type=_MEDIA_TYPE_PNG,
         headers={
             "X-Pixels-Per-Row": str(actual_scale),
             "X-Total-Rows": str(total_rows),
@@ -765,7 +769,7 @@ async def get_project_drawdown_svg(
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
@@ -796,7 +800,7 @@ async def get_project_drawdown_svg(
 
     return Response(
         content=svg,
-        media_type="image/svg+xml; charset=utf-8",
+        media_type=_MEDIA_TYPE_SVG,
         headers={
             "X-Pixels-Per-Row": str(cell_px),
             "X-Total-Rows": str(len(wif_draft.weft)),
@@ -821,7 +825,7 @@ async def get_project_drawdown_preview(
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
@@ -851,7 +855,7 @@ async def get_project_drawdown_preview(
 
     return Response(
         content=png_bytes,
-        media_type="image/png",
+        media_type=_MEDIA_TYPE_PNG,
         headers={"Cache-Control": "private, max-age=60"},
     )
 
@@ -869,7 +873,7 @@ async def get_project_drawdown_preview_cached(
     data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
     return Response(
         content=data,
-        media_type="image/png",
+        media_type=_MEDIA_TYPE_PNG,
         headers={"Cache-Control": "private, max-age=86400"},
     )
 
@@ -887,7 +891,7 @@ async def get_project_drawdown_svg_cached(
     svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
     return Response(
         content=svg_text,
-        media_type="image/svg+xml; charset=utf-8",
+        media_type=_MEDIA_TYPE_SVG,
         headers={"Cache-Control": "private, max-age=86400"},
     )
 
@@ -905,7 +909,7 @@ async def get_project_drawdown_data(
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     wif_path = await _wif_path_for_project(draft, project.project_type)
     if not wif_path or not await afile_exists(wif_path):
@@ -1670,7 +1674,7 @@ async def get_picks(
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     wif_bytes = await storage.aread_file(await _wif_path_for_project(draft, project.project_type))
     try:
@@ -1785,7 +1789,7 @@ async def get_warping_plan(
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     threading_entries = warp_color_runs = tieup_data = tieup_num_shafts = tieup_num_treadles = None
     wif_path = await _wif_path_for_project(draft, project.project_type)
@@ -1839,7 +1843,7 @@ async def update_project_share(
     project = await _get_owned_project(project_id, current_user, db, with_for_update=True)
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     if project.share_slug is None:
         project.share_slug = await _generate_unique_slug(project.name, db)
@@ -1898,7 +1902,7 @@ async def get_shared_project(
 
     draft = await db.get(Draft, project.draft_id)
     if draft is None:
-        raise HTTPException(status_code=404, detail="Draft not found")
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
     from app.models.user import User as UserModel
 
@@ -1947,7 +1951,7 @@ async def get_shared_project_preview(
     if not project.drawdown_preview_path:
         raise HTTPException(status_code=404, detail="Preview not yet generated")
     data = await storage.aread_project_drawdown_preview(project.drawdown_preview_path)
-    return Response(content=data, media_type="image/png", headers={"Cache-Control": "public, max-age=300"})
+    return Response(content=data, media_type=_MEDIA_TYPE_PNG, headers={"Cache-Control": "public, max-age=300"})
 
 
 # ---------------------------------------------------------------------------
@@ -2092,6 +2096,6 @@ async def get_shared_project_svg(
     svg_text = await storage.aread_project_drawdown_svg(project.drawdown_svg_path)
     return Response(
         content=svg_text,
-        media_type="image/svg+xml; charset=utf-8",
+        media_type=_MEDIA_TYPE_SVG,
         headers={"Cache-Control": "public, max-age=300"},
     )
