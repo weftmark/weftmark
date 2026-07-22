@@ -50,7 +50,7 @@ def _make_engine():
 
 async def test_seed_aborts_when_not_dev(tmp_path):
     settings = _make_settings(app_env="prod")
-    with patch("app.cli.get_settings", return_value=settings):
+    with patch("app.cli.get_settings", return_value=settings), patch("app.cli._BACKEND_DIR", tmp_path):
         with pytest.raises(SystemExit) as exc_info:
             await cmd_seed(str(tmp_path / "seed.json"), 5)
     assert exc_info.value.code == 1
@@ -63,7 +63,7 @@ async def test_seed_aborts_when_not_dev(tmp_path):
 
 async def test_seed_aborts_when_seed_disabled(tmp_path):
     settings = _make_settings(seed_enabled=False)
-    with patch("app.cli.get_settings", return_value=settings):
+    with patch("app.cli.get_settings", return_value=settings), patch("app.cli._BACKEND_DIR", tmp_path):
         with pytest.raises(SystemExit) as exc_info:
             await cmd_seed(str(tmp_path / "seed.json"), 5)
     assert exc_info.value.code == 1
@@ -76,7 +76,7 @@ async def test_seed_aborts_when_seed_disabled(tmp_path):
 
 async def test_seed_aborts_when_no_clerk_key(tmp_path):
     settings = _make_settings(clerk_secret_key="")
-    with patch("app.cli.get_settings", return_value=settings):
+    with patch("app.cli.get_settings", return_value=settings), patch("app.cli._BACKEND_DIR", tmp_path):
         with pytest.raises(SystemExit) as exc_info:
             await cmd_seed(str(tmp_path / "seed.json"), 5)
     assert exc_info.value.code == 1
@@ -92,6 +92,7 @@ async def test_seed_aborts_when_clerk_unreachable(tmp_path):
     with (
         patch("app.cli.get_settings", return_value=settings),
         patch("app.cli._clerk_list_users", AsyncMock(side_effect=Exception("connection refused"))),
+        patch("app.cli._BACKEND_DIR", tmp_path),
     ):
         with pytest.raises(SystemExit) as exc_info:
             await cmd_seed(str(tmp_path / "seed.json"), 5)
@@ -113,6 +114,7 @@ async def test_seed_proceeds_when_clerk_has_users(tmp_path):
         patch("app.cli._clerk_list_users", AsyncMock(return_value=[{"id": "user_abc"}])),
         patch("app.cli.create_async_engine", return_value=_make_engine()),
         patch("app.cli.async_sessionmaker", return_value=factory),
+        patch("app.cli._BACKEND_DIR", tmp_path),
     ):
         # Should exit on missing config, not on Clerk having users
         with pytest.raises(SystemExit) as exc_info:
@@ -138,6 +140,7 @@ async def test_seed_aborts_when_db_unreachable(tmp_path):
         patch("app.cli._clerk_list_users", AsyncMock(return_value=[])),
         patch("app.cli.create_async_engine", return_value=_make_engine()),
         patch("app.cli.async_sessionmaker", return_value=factory),
+        patch("app.cli._BACKEND_DIR", tmp_path),
     ):
         with pytest.raises(SystemExit) as exc_info:
             await cmd_seed(str(tmp_path / "seed.json"), 5)
@@ -145,8 +148,31 @@ async def test_seed_aborts_when_db_unreachable(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Precheck: seed config missing
+# Precheck: seed config path must resolve within the backend directory
 # ---------------------------------------------------------------------------
+
+
+async def test_seed_aborts_when_config_outside_backend_dir(tmp_path):
+    """A --config path resolving outside the allowed base dir is rejected before it's read."""
+    settings = _make_settings()
+    factory, _ = _make_session_factory()
+    outside_dir = tmp_path / "outside"
+    outside_dir.mkdir()
+    allowed_dir = tmp_path / "backend"
+    allowed_dir.mkdir()
+    escaping_config = outside_dir / "seed.json"
+    escaping_config.write_text(json.dumps({"users": [{"email": "a@b.com", "username": "a"}]}))
+
+    with (
+        patch("app.cli.get_settings", return_value=settings),
+        patch("app.cli._clerk_list_users", AsyncMock(return_value=[])),
+        patch("app.cli.create_async_engine", return_value=_make_engine()),
+        patch("app.cli.async_sessionmaker", return_value=factory),
+        patch("app.cli._BACKEND_DIR", allowed_dir),
+    ):
+        with pytest.raises(SystemExit) as exc_info:
+            await cmd_seed(str(escaping_config), 5)
+    assert exc_info.value.code == 1
 
 
 async def test_seed_aborts_when_config_missing(tmp_path):
@@ -158,6 +184,7 @@ async def test_seed_aborts_when_config_missing(tmp_path):
         patch("app.cli._clerk_list_users", AsyncMock(return_value=[])),
         patch("app.cli.create_async_engine", return_value=_make_engine()),
         patch("app.cli.async_sessionmaker", return_value=factory),
+        patch("app.cli._BACKEND_DIR", tmp_path),
     ):
         with pytest.raises(SystemExit) as exc_info:
             await cmd_seed(str(tmp_path / "nonexistent.json"), 5)
@@ -180,6 +207,7 @@ async def test_seed_aborts_when_no_users_in_config(tmp_path):
         patch("app.cli._clerk_list_users", AsyncMock(return_value=[])),
         patch("app.cli.create_async_engine", return_value=_make_engine()),
         patch("app.cli.async_sessionmaker", return_value=factory),
+        patch("app.cli._BACKEND_DIR", tmp_path),
     ):
         with pytest.raises(SystemExit) as exc_info:
             await cmd_seed(str(config), 5)
@@ -215,6 +243,7 @@ async def test_seed_deletes_clerk_users_before_alembic(tmp_path):
         patch("app.cli._preregister_user", AsyncMock(return_value=pre_user)),
         patch("app.cli._clerk_create_user", AsyncMock(return_value={"id": "user_new"})),
         patch("app.cli._poll_for_clerk_attach", AsyncMock(return_value=attached_user)),
+        patch("app.cli._BACKEND_DIR", tmp_path),
     ):
         await cmd_seed(str(config), 5)
 
@@ -238,6 +267,7 @@ async def test_seed_aborts_when_clerk_delete_fails(tmp_path):
         patch("app.cli._clerk_delete_all_users", AsyncMock(side_effect=Exception("clerk error"))),
         patch("app.cli.create_async_engine", return_value=_make_engine()),
         patch("app.cli.async_sessionmaker", return_value=factory),
+        patch("app.cli._BACKEND_DIR", tmp_path),
     ):
         with pytest.raises(SystemExit) as exc_info:
             await cmd_seed(str(config), 5)

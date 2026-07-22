@@ -256,9 +256,13 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
     _ok("DB reachable")
 
     # ── Load config ────────────────────────────────────────────────────────
-    config_file = Path(config_path)
+    config_file = Path(config_path).resolve()
+    if not config_file.is_relative_to(_BACKEND_DIR):
+        _err(f"--config must resolve to a path under {_BACKEND_DIR}, got: {config_file}")
+        await engine.dispose()
+        sys.exit(1)
     if not config_file.exists():
-        _err(f"Seed config not found: {config_file.resolve()}")
+        _err(f"Seed config not found: {config_file}")
         await engine.dispose()
         sys.exit(1)
     try:
