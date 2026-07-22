@@ -430,7 +430,7 @@ def _ext(content_type: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=LoomDetail, status_code=201, responses={404: {"description": "Loom not found"}})
+@router.post("", status_code=201, responses={404: {"description": "Loom not found"}})
 async def create_loom(
     body: CreateLoomRequest,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -474,7 +474,7 @@ async def create_loom(
     return LoomDetail.from_loom(loom)
 
 
-@router.get("", response_model=list[LoomSummary])
+@router.get("")
 async def list_looms(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -498,7 +498,7 @@ async def list_looms(
     return [LoomSummary.from_loom(loom) for loom in result.all()]
 
 
-@router.get("/{loom_id}", response_model=LoomDetail, responses={404: {"description": "Loom not found"}})
+@router.get("/{loom_id}", responses={404: {"description": "Loom not found"}})
 async def get_loom(
     loom_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -508,7 +508,7 @@ async def get_loom(
     return LoomDetail.from_loom(loom)
 
 
-@router.patch("/{loom_id}", response_model=LoomDetail, responses={404: {"description": "Loom not found"}})
+@router.patch("/{loom_id}", responses={404: {"description": "Loom not found"}})
 async def update_loom(
     loom_id: uuid.UUID,
     body: UpdateLoomRequest,
@@ -658,7 +658,6 @@ async def get_loom_photo(
 
 @router.post(
     "/{loom_id}/versions",
-    response_model=LoomVersionSchema,
     status_code=201,
     responses={404: {"description": "Loom not found"}},
 )
@@ -697,7 +696,6 @@ async def add_version(
 
 @router.post(
     "/{loom_id}/versions/{version_id}/photos",
-    response_model=LoomVersionPhotoSchema,
     status_code=201,
     responses={400: {"description": "Invalid or corrupt image file"}, 404: {"description": "Version not found"}},
 )
@@ -783,7 +781,6 @@ async def delete_version_photo(
 
 @router.post(
     "/{loom_id}/versions/{version_id}/receipts",
-    response_model=LoomVersionReceiptSchema,
     status_code=201,
     responses={400: {"description": "File too large (max 5 MB)"}, 404: {"description": "Version not found"}},
 )
@@ -869,7 +866,6 @@ async def delete_version_receipt(
 
 @router.patch(
     "/{loom_id}/versions/{version_id}",
-    response_model=LoomVersionSchema,
     responses={404: {"description": "Version not found"}},
 )
 async def update_version(
@@ -894,7 +890,6 @@ async def update_version(
 
 @router.post(
     "/{loom_id}/versions/{version_id}/clone",
-    response_model=LoomVersionSchema,
     status_code=201,
     responses={404: {"description": "Version not found"}},
 )
@@ -945,7 +940,6 @@ async def clone_version(
 
 @router.post(
     "/{loom_id}/versions/{version_id}/accessories",
-    response_model=LoomVersionAccessorySchema,
     status_code=201,
     responses={404: {"description": "Version not found"}},
 )
@@ -991,7 +985,6 @@ async def delete_accessory(
 
 @router.post(
     "/{loom_id}/reeds",
-    response_model=LoomReedSchema,
     status_code=201,
     responses={400: {"description": "dents_per_inch must be positive"}, 404: {"description": "Loom not found"}},
 )
@@ -1043,7 +1036,6 @@ class LinkReferenceRequest(BaseModel):
 
 @router.post(
     "/{loom_id}/versions/{version_id}/link-reference",
-    response_model=LoomDetail,
     responses={404: {"description": "Loom reference not found"}},
 )
 async def link_version_reference(

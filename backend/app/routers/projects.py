@@ -526,7 +526,6 @@ def _to_detail(
 
 @router.post(
     "",
-    response_model=ProjectDetail,
     status_code=201,
     responses={
         400: {"description": "project_type must be 'treadle' or 'lift'"},
@@ -632,7 +631,7 @@ async def create_project(
     return _to_detail(project, draft, loom)
 
 
-@router.get("", response_model=list[ProjectSummary])
+@router.get("")
 async def list_projects(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -971,7 +970,6 @@ async def get_project_drawdown_data(
 
 @router.get(
     "/{project_id}",
-    response_model=ProjectDetail,
     responses={404: {"description": "Project not found"}},
 )
 async def get_project(
@@ -1018,7 +1016,6 @@ async def get_project(
 
 @router.patch(
     "/{project_id}",
-    response_model=ProjectDetail,
     responses={400: {"description": "At least one field must be provided"}, 404: {"description": "Project not found"}},
 )
 async def rename_project(
@@ -1051,7 +1048,6 @@ async def rename_project(
 
 @router.patch(
     "/{project_id}/color-replacements",
-    response_model=ProjectDetail,
     responses={
         404: {"description": "Project not found"},
         422: {"description": "color_replacements keys and values must be 6-digit hex colors"},
@@ -1084,7 +1080,6 @@ async def set_color_replacements(
 
 @router.patch(
     "/{project_id}/warp-setup",
-    response_model=ProjectDetail,
     responses={400: {"description": "At least one field must be provided"}, 404: {"description": "Project not found"}},
 )
 async def update_warp_setup(
@@ -1119,7 +1114,6 @@ async def update_warp_setup(
 
 @router.patch(
     "/{project_id}/reed",
-    response_model=ProjectDetail,
     responses={400: {"description": "reed_dents_per_inch must be positive"}, 404: {"description": "Project not found"}},
 )
 async def set_reed(
@@ -1149,7 +1143,6 @@ async def set_reed(
 
 @router.post(
     "/{project_id}/assign-loom",
-    response_model=ProjectDetail,
     responses={
         400: {"description": _PROJECT_NOT_ACTIVE},
         404: {"description": "Loom not found"},
@@ -1208,7 +1201,6 @@ async def assign_loom(
 
 @router.post(
     "/{project_id}/start",
-    response_model=ProjectDetail,
     responses={
         400: {"description": "Only projects in 'created' or 'active' status can be started"},
         404: {"description": "Project not found"},
@@ -1302,7 +1294,6 @@ async def release_tracking(
 
 @router.post(
     "/{project_id}/step",
-    response_model=StepResponse,
     responses={
         409: {"description": "This project is being tracked from another device"},
         400: {"description": "direction must be 'advance' or 'reverse'"},
@@ -1390,7 +1381,6 @@ async def step_project(
 
 @router.post(
     "/{project_id}/jump",
-    response_model=ProjectDetail,
     responses={
         409: {"description": "This project is being tracked from another device"},
         400: {"description": _PROJECT_NOT_ACTIVE},
@@ -1420,7 +1410,6 @@ async def jump_project(
 
 @router.post(
     "/{project_id}/advance-item",
-    response_model=StepResponse,
     responses={
         409: {"description": "This project is being tracked from another device"},
         400: {"description": _PROJECT_NOT_ACTIVE},
@@ -1457,7 +1446,6 @@ async def advance_item(
 
 @router.post(
     "/{project_id}/jump-item",
-    response_model=ProjectDetail,
     responses={
         409: {"description": "This project is being tracked from another device"},
         400: {"description": _PROJECT_NOT_ACTIVE},
@@ -1489,7 +1477,6 @@ async def jump_item(
 
 @router.post(
     "/{project_id}/complete",
-    response_model=ProjectDetail,
     responses={400: {"description": _PROJECT_NOT_ACTIVE}, 404: {"description": "Project not found"}},
 )
 async def complete_project(
@@ -1518,7 +1505,6 @@ async def complete_project(
 
 @router.post(
     "/{project_id}/abandon",
-    response_model=ProjectDetail,
     responses={400: {"description": _PROJECT_NOT_ACTIVE}, 404: {"description": "Project not found"}},
 )
 async def abandon_project(
@@ -1541,7 +1527,6 @@ async def abandon_project(
 
 @router.post(
     "/{project_id}/restart",
-    response_model=ProjectDetail,
     responses={
         400: {"description": "Only abandoned projects can be restarted"},
         404: {"description": "Project not found"},
@@ -1570,7 +1555,6 @@ async def restart_project(
 
 @router.get(
     "/{project_id}/metrics",
-    response_model=ProjectMetricsResponse,
     responses={404: {"description": "Project not found"}},
 )
 async def get_project_metrics(
@@ -1635,7 +1619,6 @@ async def get_project_metrics(
 
 @router.post(
     "/{project_id}/clone",
-    response_model=ProjectDetail,
     status_code=201,
     responses={
         404: {"description": "Project not found"},
@@ -1693,7 +1676,6 @@ async def delete_project(
 
 @router.post(
     "/{project_id}/photos",
-    response_model=ProjectPhotoSchema,
     status_code=201,
     responses={
         400: {"description": "Only JPEG, PNG, WebP, and HEIC images are allowed"},
@@ -1801,7 +1783,6 @@ async def delete_project_photo(
 
 @router.get(
     "/{project_id}/picks",
-    response_model=PicksResponse,
     responses={400: {"description": "Invalid pick data"}, 404: {"description": "Draft not found"}},
 )
 async def get_picks(
@@ -1924,7 +1905,6 @@ def _compute_epi(draft: Draft) -> float | None:
 
 @router.get(
     "/{project_id}/warping-plan",
-    response_model=WarpingPlanResponse,
     responses={404: {"description": "Draft not found"}},
 )
 async def get_warping_plan(
@@ -1982,7 +1962,6 @@ async def get_warping_plan(
 
 @router.patch(
     "/{project_id}/share",
-    response_model=ProjectDetail,
     responses={
         400: {"description": "visibility must be 'link'"},
         404: {"description": "Draft not found"},
@@ -2050,7 +2029,6 @@ async def revoke_project_share(
 
 @share_router.get(
     "/projects/{slug}",
-    response_model=SharedProjectResponse,
     responses={404: {"description": "Shared project not found"}, 410: {"description": "This share link has expired"}},
 )
 async def get_shared_project(

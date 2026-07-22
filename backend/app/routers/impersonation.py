@@ -45,7 +45,6 @@ class ImpersonationStartResponse(BaseModel):
 
 @router.post(
     "/start",
-    response_model=ImpersonationStartResponse,
     responses={403: {"description": "Cannot impersonate a superuser"}, 404: {"description": "User not found"}},
 )
 async def impersonation_start(

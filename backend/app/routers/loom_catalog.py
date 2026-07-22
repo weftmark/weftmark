@@ -208,7 +208,7 @@ class UpdateLoomReferenceRequest(BaseModel):
 public_router = APIRouter(prefix="/api/loom-catalog", tags=["loom-catalog"])
 
 
-@public_router.get("", response_model=list[LoomReferenceSummary])
+@public_router.get("")
 async def list_loom_catalog(
     db: Annotated[AsyncSession, Depends(get_db)],
     q: str | None = Query(None, description="Search brand, model, or series"),
@@ -244,7 +244,7 @@ async def list_loom_catalog(
     return [LoomReferenceSummary.model_validate(r) for r in results]
 
 
-@public_router.get("/search", response_model=list[LoomReferenceSummary])
+@public_router.get("/search")
 async def search_loom_catalog(
     db: Annotated[AsyncSession, Depends(get_db)],
     q: str = Query(..., min_length=1),
@@ -268,9 +268,7 @@ async def search_loom_catalog(
     return [LoomReferenceSummary.model_validate(r) for r in rows.all()]
 
 
-@public_router.get(
-    "/{ref_id}", response_model=LoomReferenceSchema, responses={404: {"description": "Loom reference not found"}}
-)
+@public_router.get("/{ref_id}", responses={404: {"description": "Loom reference not found"}})
 async def get_loom_reference(
     ref_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -288,7 +286,7 @@ async def get_loom_reference(
 admin_catalog_router = APIRouter(prefix="/api/admin/loom-catalog", tags=["admin"])
 
 
-@admin_catalog_router.get("", response_model=list[LoomReferenceSchema])
+@admin_catalog_router.get("")
 async def admin_list_loom_catalog(
     db: Annotated[AsyncSession, Depends(get_db)],
     _admin: Annotated[User, Depends(require_admin)],
@@ -309,7 +307,6 @@ async def admin_list_loom_catalog(
 
 @admin_catalog_router.post(
     "",
-    response_model=LoomReferenceSchema,
     status_code=201,
     responses={409: {"description": "A loom reference with this brand and model already exists"}},
 )
@@ -333,9 +330,7 @@ async def admin_create_loom_reference(
     return LoomReferenceSchema.model_validate(ref)
 
 
-@admin_catalog_router.patch(
-    "/{ref_id}", response_model=LoomReferenceSchema, responses={404: {"description": "Loom reference not found"}}
-)
+@admin_catalog_router.patch("/{ref_id}", responses={404: {"description": "Loom reference not found"}})
 async def admin_update_loom_reference(
     ref_id: uuid.UUID,
     body: UpdateLoomReferenceRequest,

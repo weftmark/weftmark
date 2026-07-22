@@ -126,7 +126,6 @@ class UpdateDraftRequest(BaseModel):
 
 @router.post(
     "",
-    response_model=DraftSummary,
     status_code=201,
     responses={400: {"description": "File must have a .wif extension"}, 413: {"description": "File too large"}},
 )
@@ -219,7 +218,7 @@ async def create_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.get("", response_model=list[DraftSummary])
+@router.get("")
 async def list_drafts(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -242,7 +241,7 @@ async def list_drafts(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}", response_model=DraftDetail, responses={404: {"description": "Draft not found"}})
+@router.get("/{draft_id}", responses={404: {"description": "Draft not found"}})
 async def get_draft(
     draft_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -254,7 +253,6 @@ async def get_draft(
 
 @router.patch(
     "/{draft_id}",
-    response_model=DraftDetail,
     responses={400: {"description": "At least one field must be provided"}, 404: {"description": "Draft not found"}},
 )
 async def update_draft(
@@ -633,7 +631,6 @@ async def unarchive_draft(
 
 @router.post(
     "/{draft_id}/generate-liftplan",
-    response_model=DraftDetail,
     responses={
         400: {"description": "WIF file has no [TREADLING] section — cannot compute lift plan"},
         404: {"description": "Draft not found"},
@@ -692,7 +689,6 @@ class OverrideMetadataRequest(BaseModel):
 
 @router.post(
     "/{draft_id}/override-metadata",
-    response_model=DraftDetail,
     responses={
         400: {"description": "Unsupported field; must be one of num_treadles or num_shafts"},
         404: {"description": "Draft not found"},
@@ -768,7 +764,6 @@ class PatchMeasurementsRequest(BaseModel):
 
 @router.patch(
     "/{draft_id}/measurements",
-    response_model=DraftDetail,
     responses={400: {"description": "unit must be 'cm' or 'in'"}, 404: {"description": "Draft not found"}},
 )
 async def patch_measurements(
