@@ -27,11 +27,11 @@ function SortControl({ value, onChange }: { value: SortKey; onChange: (v: SortKe
   return (
     <div className="flex items-center gap-1 text-xs text-muted-foreground">
       <span>{t("collectionDetail.sort.label")}</span>
-      <button type="button"
+      <button
         className={`px-1.5 py-0.5 rounded transition-colors ${value === "added" ? "bg-accent/20 text-accent font-medium" : "hover:text-foreground"}`}
         onClick={() => onChange("added")}
       >{t("collectionDetail.sort.dateAdded")}</button>
-      <button type="button"
+      <button
         className={`px-1.5 py-0.5 rounded transition-colors ${value === "name" ? "bg-accent/20 text-accent font-medium" : "hover:text-foreground"}`}
         onClick={() => onChange("name")}
       >{t("collectionDetail.sort.name")}</button>
@@ -45,11 +45,11 @@ function RemoveButton({ label, onConfirm }: { label: string; onConfirm: () => vo
   if (confirming) {
     return (
       <div className="flex gap-1 shrink-0">
-        <button type="button"
+        <button
           className="rounded px-2 py-0.5 text-xs bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
           onClick={() => { setConfirming(false); onConfirm(); }}
         >{t("collectionDetail.remove.confirm")}</button>
-        <button type="button"
+        <button
           className="rounded px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setConfirming(false)}
         >{t("collectionDetail.remove.cancel")}</button>
@@ -57,7 +57,7 @@ function RemoveButton({ label, onConfirm }: { label: string; onConfirm: () => vo
     );
   }
   return (
-    <button type="button"
+    <button
       className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
       title={`Remove ${label}`}
       onClick={() => setConfirming(true)}
@@ -95,7 +95,7 @@ function AddDraftModal({
       <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <h2 className="text-base font-semibold">{t("collectionDetail.drafts.modal.title")}</h2>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <AppIcons.close className="h-4 w-4" />
           </button>
         </div>
@@ -113,7 +113,7 @@ function AddDraftModal({
             <p className="text-sm text-muted-foreground text-center py-4">{t("collectionDetail.drafts.modal.empty")}</p>
           )}
           {filtered.map((d) => (
-            <button type="button"
+            <button
               key={d.id}
               className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
               onClick={() => addMutation.mutate(d.id)}
@@ -157,7 +157,7 @@ function AddProjectModal({
       <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <h2 className="text-base font-semibold">{t("collectionDetail.projects.modal.title")}</h2>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <AppIcons.close className="h-4 w-4" />
           </button>
         </div>
@@ -175,7 +175,7 @@ function AddProjectModal({
             <p className="text-sm text-muted-foreground text-center py-4">{t("collectionDetail.projects.modal.empty")}</p>
           )}
           {filtered.map((p) => (
-            <button type="button"
+            <button
               key={p.id}
               className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
               onClick={() => addMutation.mutate(p.id)}

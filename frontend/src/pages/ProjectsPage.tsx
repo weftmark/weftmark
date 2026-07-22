@@ -159,7 +159,7 @@ function ProjectCard({ project, onAssign }: {
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setShowPreview(false); }}
           >
-            <button type="button"
+            <button
               onClick={() => setShowPreview(false)}
               className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"
             >
@@ -260,7 +260,7 @@ export function ProjectsPage() {
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {allTags.map((tag) => (
-            <button type="button"
+            <button
               key={tag}
               onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
               className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
@@ -273,7 +273,7 @@ export function ProjectsPage() {
             </button>
           ))}
           {activeTagFilter && (
-            <button type="button"
+            <button
               onClick={() => setActiveTagFilter(null)}
               className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             >

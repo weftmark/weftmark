@@ -301,7 +301,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
               {step === "colorway" && t("addFromRavelryModal.stepColorway", { yarn: selectedYarn?.name })}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">✕</button>
         </div>
 
         <div className={`px-5 py-4 space-y-3 ${step !== "colorway" ? "max-h-[60vh] overflow-y-auto" : ""}`}>
@@ -330,7 +330,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                     <ul className="space-y-1">
                       {inventoryBrands.map((brand) => (
                         <li key={`inv-${brand}`}>
-                          <button type="button"
+                          <button
                             className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-card-foreground"
                             onClick={() => pickInventoryBrand(brand)}
                           >
@@ -340,7 +340,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                       ))}
                       {popularFill.map((c) => (
                         <li key={`pop-${c.id}`}>
-                          <button type="button"
+                          <button
                             className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-muted-foreground"
                             onClick={() => pickCompany(c)}
                           >
@@ -362,7 +362,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                   <ul className="space-y-1">
                     {companies.map((c) => (
                       <li key={c.id}>
-                        <button type="button"
+                        <button
                           className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-card-foreground"
                           onClick={() => pickCompany(c)}
                         >
@@ -400,7 +400,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                     <ul className="space-y-1">
                       {inventoryYarnLines.map((name) => (
                         <li key={`inv-${name}`}>
-                          <button type="button"
+                          <button
                             className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-card-foreground"
                             onClick={() => pickInventoryYarnLine(name)}
                           >
@@ -410,7 +410,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                       ))}
                       {popularYarnsFill.map((y) => (
                         <li key={`pop-${y.id}`}>
-                          <button type="button"
+                          <button
                             className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent/10 transition-colors"
                             onClick={() => pickYarn(y)}
                           >
@@ -438,7 +438,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                   <ul className="space-y-1">
                     {sortedYarns.map((y) => (
                       <li key={y.id}>
-                        <button type="button"
+                        <button
                           className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent/10 transition-colors"
                           onClick={() => pickYarn(y)}
                         >
@@ -485,7 +485,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                   <p className="mb-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("addFromRavelryModal.fromInventoryLabel")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {inventoryColorways.map((name) => (
-                      <button type="button"
+                      <button
                         key={name}
                         className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
                           colorName === name
@@ -516,14 +516,14 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                     onChange={(e) => setColorwayFilter(e.target.value)}
                   />
                   {colorwayFilter && (
-                    <button type="button" className={clearBtnCls} onClick={() => setColorwayFilter("")}>✕</button>
+                    <button className={clearBtnCls} onClick={() => setColorwayFilter("")}>✕</button>
                   )}
                 </div>
               )}
               {!colorwaysLoading && filteredColorways.length > 0 && (
                 <div className="grid grid-cols-3 gap-1.5 max-h-44 overflow-y-auto">
                   {filteredColorways.map((cw) => (
-                    <button type="button"
+                    <button
                       key={cw.id}
                       className={`text-left rounded-md border p-1.5 text-xs transition-colors ${
                         selectedColorway?.id === cw.id

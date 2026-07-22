@@ -67,7 +67,7 @@ export function DraftsPage() {
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-5">
           {allTags.map((tag) => (
-            <button type="button"
+            <button
               key={tag}
               onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
               className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
@@ -80,7 +80,7 @@ export function DraftsPage() {
             </button>
           ))}
           {activeTagFilter && (
-            <button type="button"
+            <button
               onClick={() => setActiveTagFilter(null)}
               className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
