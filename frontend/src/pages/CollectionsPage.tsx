@@ -50,7 +50,7 @@ function NewCollectionModal({ onClose, onSuccess }: { readonly onClose: () => vo
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold">{t("collections.modal.title")}</h2>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -125,7 +125,7 @@ function CollectionCard({ collection }: { readonly collection: CollectionSummary
             <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">{collection.description}</p>
           )}
         </div>
-        <AppIcons.collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
+        <AppIcons.Collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
       </div>
       {collection.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">

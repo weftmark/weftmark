@@ -555,7 +555,7 @@ export function WarpingPlanPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <AppIcons.spinner className="h-6 w-6 animate-spin text-muted-foreground" />
+        <AppIcons.Spinner className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -584,7 +584,7 @@ export function WarpingPlanPage() {
             to={`/projects/${id}/track`}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <AppIcons.chevronRight className="h-4 w-4 rotate-180" />
+            <AppIcons.ChevronRight className="h-4 w-4 rotate-180" />
             {t("warpingPlanPage.backToTracker")}
           </Link>
           <span className="text-border">|</span>
@@ -602,11 +602,11 @@ export function WarpingPlanPage() {
                 document.title = prev;
               }}
             >
-              <AppIcons.saveAsPdf className="h-4 w-4 mr-1.5" />
+              <AppIcons.SaveAsPdf className="h-4 w-4 mr-1.5" />
               {t("warpingPlanPage.saveAsPdf")}
             </Button>
             <Button size="sm" onClick={() => window.print()}>
-              <AppIcons.print className="h-4 w-4 mr-1.5" />
+              <AppIcons.Print className="h-4 w-4 mr-1.5" />
               {t("warpingPlanPage.print")}
             </Button>
           </div>

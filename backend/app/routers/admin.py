@@ -440,7 +440,7 @@ async def _probe_clerk() -> ServiceCheckResult:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/users", response_model=list[AdminUserResponse])
+@router.get("/users")
 async def list_users(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -554,7 +554,6 @@ async def list_users(
 
 @router.patch(
     "/users/{user_id}",
-    response_model=AdminUserResponse,
     responses={
         400: {"description": "Cannot modify your own account"},
         403: {"description": "Superuser required to change admin or superuser roles"},
@@ -844,7 +843,6 @@ async def delete_user(
 
 @router.get(
     "/users/{user_id}/storage-report",
-    response_model=UserStorageReportResponse,
     responses={404: {"description": "User not found"}},
 )
 async def get_user_storage_report(
@@ -880,7 +878,7 @@ async def get_user_storage_report(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/stats", response_model=AdminStatsResponse)
+@router.get("/stats")
 async def get_stats(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -941,7 +939,7 @@ async def get_stats(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/health", response_model=AdminHealthResponse)
+@router.get("/health")
 async def get_health(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1069,7 +1067,7 @@ async def _probe_config() -> ServiceCheckResult:
     return _make_result("Configuration", checks)
 
 
-@router.get("/services", response_model=list[ServiceCheckResult])
+@router.get("/services")
 async def check_services(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1114,7 +1112,7 @@ class WebhookProbeResponse(BaseModel):
     message: str = ""
 
 
-@router.post("/test-webhook", response_model=WebhookProbeResponse, status_code=200)
+@router.post("/test-webhook", status_code=200)
 async def test_webhook(
     _: Annotated[User, Depends(require_superuser)],
 ) -> WebhookProbeResponse:
@@ -1129,7 +1127,7 @@ async def test_webhook(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/audit-log", response_model=AuditLogPage)
+@router.get("/audit-log")
 async def list_audit_log(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1199,7 +1197,7 @@ class ServerEventPage(BaseModel):
     pages: int
 
 
-@router.get("/server-events", response_model=ServerEventPage)
+@router.get("/server-events")
 async def list_server_events(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1521,7 +1519,7 @@ class EulaCurrentAdminResponse(BaseModel):
     created_at: datetime
 
 
-@router.get("/eula", response_model=EulaCurrentAdminResponse, responses={404: {"description": "No EULA version found"}})
+@router.get("/eula", responses={404: {"description": "No EULA version found"}})
 async def get_eula_admin(
     _: Annotated[User, Depends(require_superuser)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1540,7 +1538,6 @@ async def get_eula_admin(
 
 @router.post(
     "/eula",
-    response_model=EulaVersionResponse,
     status_code=201,
     responses={409: {"description": "EULA version already exists"}},
 )
@@ -1625,7 +1622,7 @@ async def _worker_version() -> str | None:
         return None
 
 
-@router.get("/versions", response_model=AdminVersionsResponse)
+@router.get("/versions")
 async def get_versions(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1649,7 +1646,7 @@ async def get_versions(
     )
 
 
-@router.get("/db-info", response_model=AdminDbInfoResponse)
+@router.get("/db-info")
 async def get_db_info(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1687,7 +1684,7 @@ async def get_db_info(
     )
 
 
-@router.get("/neon-dashboard", response_model=neon.NeonDashboardResponse)
+@router.get("/neon-dashboard")
 async def get_neon_dashboard(
     _: Annotated[User, Depends(require_superuser)],
 ) -> neon.NeonDashboardResponse:
@@ -1727,7 +1724,7 @@ class BackfillResponse(BaseModel):
     email: str
 
 
-@router.get("/reconcile", response_model=ReconcileReport)
+@router.get("/reconcile")
 async def get_reconcile_report(
     _: Annotated[User, Depends(require_superuser)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -1774,7 +1771,6 @@ async def get_reconcile_report(
 
 @router.post(
     "/reconcile/backfill/{clerk_user_id}",
-    response_model=BackfillResponse,
     status_code=201,
     responses={404: {"description": "Clerk user not found"}, 409: {"description": "User already exists in DB"}},
 )
@@ -1872,7 +1868,7 @@ class S3CleanupResponse(BaseModel):
     deleted: int
 
 
-@router.post("/s3-audit/scan", response_model=S3ScanResponse, status_code=202)
+@router.post("/s3-audit/scan", status_code=202)
 async def start_s3_audit_scan(
     _: Annotated[User, Depends(require_superuser)],
 ) -> S3ScanResponse:
@@ -1885,7 +1881,7 @@ async def start_s3_audit_scan(
     return S3ScanResponse(task_id=task.id)
 
 
-@router.get("/s3-audit/task/{task_id}", response_model=S3AuditTaskStatus)
+@router.get("/s3-audit/task/{task_id}")
 async def get_s3_audit_task(
     task_id: str,
     _: Annotated[User, Depends(require_superuser)],
@@ -1905,7 +1901,7 @@ async def get_s3_audit_task(
     return S3AuditTaskStatus(status="pending")
 
 
-@router.post("/s3-audit/cleanup", response_model=S3CleanupResponse)
+@router.post("/s3-audit/cleanup")
 async def cleanup_s3_orphans(
     body: S3CleanupRequest,
     admin: Annotated[User, Depends(require_superuser)],
@@ -1971,7 +1967,7 @@ class CveScanSummary(BaseModel):
     scanned_at: str | None = None
 
 
-@router.post("/cve-scan/start", response_model=CveScanStartResponse, status_code=202)
+@router.post("/cve-scan/start", status_code=202)
 async def start_cve_scan(
     body: CveScanStartRequest,
     _: Annotated[User, Depends(require_superuser)],
@@ -1985,7 +1981,7 @@ async def start_cve_scan(
     return CveScanStartResponse(task_id=task.id)
 
 
-@router.get("/cve-scan/task/{task_id}", response_model=CveScanTaskStatus)
+@router.get("/cve-scan/task/{task_id}")
 async def get_cve_scan_task(
     task_id: str,
     _: Annotated[User, Depends(require_superuser)],
@@ -2005,7 +2001,7 @@ async def get_cve_scan_task(
     return CveScanTaskStatus(status="pending")
 
 
-@router.get("/cve-scan/summary", response_model=CveScanSummary)
+@router.get("/cve-scan/summary")
 async def get_cve_scan_summary(
     _: Annotated[User, Depends(require_superuser)],
 ) -> CveScanSummary:
@@ -2039,7 +2035,7 @@ class S3AuditSummary(BaseModel):
     not_applicable: bool = False
 
 
-@router.get("/s3-audit/summary", response_model=S3AuditSummary)
+@router.get("/s3-audit/summary")
 async def get_s3_audit_summary(
     _: Annotated[User, Depends(require_superuser)],
 ) -> S3AuditSummary:
@@ -2102,7 +2098,7 @@ class WorkerStatus(BaseModel):
     checked_at: str
 
 
-@router.get("/worker-status", response_model=WorkerStatus)
+@router.get("/worker-status")
 async def get_worker_status(
     _: Annotated[User, Depends(require_superuser)],
 ) -> WorkerStatus:
@@ -2224,7 +2220,7 @@ class TaskHistoryResponse(BaseModel):
     pages: int
 
 
-@router.get("/task-history", response_model=TaskHistoryResponse)
+@router.get("/task-history")
 async def get_task_history(
     _: Annotated[User, Depends(require_superuser)],
     page: int = 1,
@@ -2305,7 +2301,7 @@ class SoftDeleteQueueResponse(BaseModel):
     in_retention_window: SoftDeleteBucket
 
 
-@router.get("/soft-delete-queue", response_model=SoftDeleteQueueResponse)
+@router.get("/soft-delete-queue")
 async def get_soft_delete_queue(
     _: Annotated[User, Depends(require_superuser)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -2360,7 +2356,7 @@ class DeletionQueueUser(BaseModel):
     deletion_initiated_at: datetime | None
 
 
-@router.get("/deletion-queue", response_model=list[DeletionQueueUser])
+@router.get("/deletion-queue")
 async def get_deletion_queue(
     _: Annotated[User, Depends(require_superuser)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -2582,7 +2578,7 @@ def _credential_to_response(cred: CredentialExpiry) -> CredentialExpiryResponse:
     )
 
 
-@router.get("/credentials", response_model=list[CredentialExpiryResponse])
+@router.get("/credentials")
 async def list_credentials(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(require_admin)],
@@ -2593,7 +2589,6 @@ async def list_credentials(
 
 @router.post(
     "/credentials",
-    response_model=CredentialExpiryResponse,
     status_code=201,
     responses={422: {"description": "Invalid resource. Must be one of"}},
 )
@@ -2619,7 +2614,6 @@ async def create_credential(
 
 @router.patch(
     "/credentials/{credential_id}",
-    response_model=CredentialExpiryResponse,
     responses={404: {"description": "Credential not found"}, 422: {"description": "Invalid resource. Must be one of"}},
 )
 async def patch_credential(
@@ -2678,7 +2672,7 @@ class AdminSlugRecord(BaseModel):
     created_at: datetime
 
 
-@router.get("/project-slugs", response_model=list[AdminSlugRecord])
+@router.get("/project-slugs")
 async def list_project_slugs(
     db: Annotated[AsyncSession, Depends(get_db)],
     _: Annotated[User, Depends(require_admin)],
@@ -2737,7 +2731,7 @@ class AdminProjectStepRecord(BaseModel):
     created_at: datetime
 
 
-@router.get("/project-steps", response_model=list[AdminProjectStepRecord])
+@router.get("/project-steps")
 async def admin_list_project_steps(
     project_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -2781,7 +2775,7 @@ class AdminExportRecord(BaseModel):
     error: str | None
 
 
-@router.get("/exports", response_model=list[AdminExportRecord])
+@router.get("/exports")
 async def list_exports(
     _: Annotated[User, Depends(require_superuser)],
     db: Annotated[AsyncSession, Depends(get_db)],

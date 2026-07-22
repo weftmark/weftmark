@@ -150,9 +150,7 @@ class EulaCurrentResponse(BaseModel):
     effective_date: datetime
 
 
-@eula_router.get(
-    "/current", response_model=EulaCurrentResponse, responses={404: {"description": "No EULA version found"}}
-)
+@eula_router.get("/current", responses={404: {"description": "No EULA version found"}})
 async def get_current_eula(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> EulaCurrentResponse:
@@ -183,7 +181,7 @@ class ActivityHeatmapResponse(BaseModel):
     years_with_activity: list[int]
 
 
-@router.get("/me", response_model=UserSettingsResponse)
+@router.get("/me")
 async def get_settings(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -192,9 +190,7 @@ async def get_settings(
     return _to_response(current_user, version)
 
 
-@router.patch(
-    "/me", response_model=UserSettingsResponse, responses={422: {"description": "display_name cannot be empty"}}
-)
+@router.patch("/me", responses={422: {"description": "display_name cannot be empty"}})
 async def update_settings(
     body: UserSettingsUpdate,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -284,7 +280,6 @@ async def update_settings(
 
 @router.post(
     "/me/eula",
-    response_model=UserSettingsResponse,
     responses={422: {"description": "Version mismatch — current EULA is"}},
 )
 async def accept_eula(
@@ -393,7 +388,7 @@ async def request_data_export(
     )
 
 
-@router.get("/me/data-export/status", response_model=ExportStatusResponse)
+@router.get("/me/data-export/status")
 async def get_export_status(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -452,7 +447,7 @@ class OnboardingStatusResponse(BaseModel):
     has_project: bool
 
 
-@router.get("/me/onboarding-status", response_model=OnboardingStatusResponse)
+@router.get("/me/onboarding-status")
 async def get_onboarding_status(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -471,7 +466,7 @@ async def get_onboarding_status(
     )
 
 
-@router.get("/me/activity-heatmap", response_model=ActivityHeatmapResponse)
+@router.get("/me/activity-heatmap")
 async def get_activity_heatmap(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

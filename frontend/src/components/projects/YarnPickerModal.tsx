@@ -56,7 +56,7 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
             <h2 className="text-base font-semibold">{t("yarnPicker.title")}</h2>
           </div>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
 
@@ -127,7 +127,7 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
 
                 {/* Current badge */}
                 {isCurrent && (
-                  <AppIcons.check className="h-4 w-4 flex-shrink-0 text-accent" />
+                  <AppIcons.Check className="h-4 w-4 flex-shrink-0 text-accent" />
                 )}
               </button>
             );

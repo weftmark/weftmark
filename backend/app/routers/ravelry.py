@@ -137,7 +137,7 @@ async def oauth_callback(
     return RedirectResponse(url=f"{frontend_url}/settings/connections?ravelry=connected")
 
 
-@router.get("/status", response_model=RavelryStatus)
+@router.get("/status")
 async def status(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -181,7 +181,6 @@ async def yarn_detail(
 
 @router.get(
     "/popular/companies",
-    response_model=list[RavelryCompany],
     responses={502: {"description": "Ravelry request failed"}},
 )
 async def popular_companies(
@@ -197,9 +196,7 @@ async def popular_companies(
     return [RavelryCompany(**r) for r in results]
 
 
-@router.get(
-    "/popular/yarns", response_model=list[RavelryYarnResult], responses={502: {"description": "Ravelry request failed"}}
-)
+@router.get("/popular/yarns", responses={502: {"description": "Ravelry request failed"}})
 async def popular_yarns(
     _current_user: Annotated[User, Depends(get_current_user)],
     company_id: int = Query(...),
@@ -215,9 +212,7 @@ async def popular_yarns(
     return [RavelryYarnResult(**r) for r in results]
 
 
-@router.get(
-    "/search/companies", response_model=list[RavelryCompany], responses={502: {"description": "Ravelry search failed"}}
-)
+@router.get("/search/companies", responses={502: {"description": "Ravelry search failed"}})
 async def search_companies(
     _current_user: Annotated[User, Depends(get_current_user)],
     q: str = Query(..., min_length=1),
@@ -231,9 +226,7 @@ async def search_companies(
     return [RavelryCompany(**r) for r in results]
 
 
-@router.get(
-    "/search/yarns", response_model=list[RavelryYarnResult], responses={502: {"description": "Ravelry search failed"}}
-)
+@router.get("/search/yarns", responses={502: {"description": "Ravelry search failed"}})
 async def search_yarns(
     _current_user: Annotated[User, Depends(get_current_user)],
     q: str = Query(..., min_length=1),
@@ -325,7 +318,6 @@ async def push_yarn_to_stash(
 
 @router.post(
     "/sync",
-    response_model=SyncResult,
     responses={404: {"description": "Not connected to Ravelry"}, 502: {"description": "Ravelry stash sync failed"}},
 )
 async def sync_stash(

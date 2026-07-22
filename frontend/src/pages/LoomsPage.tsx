@@ -38,10 +38,10 @@ function LoomCard({ loom, projectCounts, retired }: { readonly loom: Loom; reado
         <div className="flex items-start gap-3">
           <div className="shrink-0 mt-0.5">
             {loom.supports_lift_tracking
-              ? <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+              ? <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
               : loom.supports_treadle_tracking
-                ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                : <AppIcons.equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+                ? <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                : <AppIcons.Equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
           </div>
           <div>
             <p className="font-medium">{loom.manufacturer} {loom.model_name}</p>
@@ -179,7 +179,7 @@ export function LoomsPage() {
             onClick={() => setRetiredOpen((v) => !v)}
             className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
           >
-            <AppIcons.chevronDown
+            <AppIcons.ChevronDown
               className={`h-4 w-4 transition-transform duration-200 ${retiredOpen ? "rotate-180" : ""}`}
             />
             {t("loomsPage.retired", { count: retiredLooms.length })}

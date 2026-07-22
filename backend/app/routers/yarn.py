@@ -345,7 +345,7 @@ async def refresh_yarn_properties_loop() -> None:
             _props_log.warning("yarn_properties_cache_refresh_failed — serving stale cache")
 
 
-@router.get("/properties", response_model=list[YarnAttributeGroupSchema])
+@router.get("/properties")
 async def get_yarn_properties(
     current_user: Annotated[User, Depends(get_effective_user)],
 ) -> list[YarnAttributeGroupSchema]:
@@ -360,7 +360,7 @@ async def get_yarn_properties(
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=YarnDetail, status_code=201, responses={404: {"description": "Yarn not found"}})
+@router.post("", status_code=201, responses={404: {"description": "Yarn not found"}})
 async def create_yarn(
     body: CreateYarnRequest,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -376,7 +376,7 @@ async def create_yarn(
     return YarnDetail.from_yarn(yarn)
 
 
-@router.get("", response_model=list[YarnSummary])
+@router.get("")
 async def list_yarn(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -391,7 +391,7 @@ async def list_yarn(
     return [YarnSummary.from_yarn(y) for y in result.all()]
 
 
-@router.get("/{yarn_id}", response_model=YarnDetail, responses={404: {"description": "Yarn not found"}})
+@router.get("/{yarn_id}", responses={404: {"description": "Yarn not found"}})
 async def get_yarn(
     yarn_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -401,7 +401,7 @@ async def get_yarn(
     return YarnDetail.from_yarn(yarn)
 
 
-@router.patch("/{yarn_id}", response_model=YarnDetail, responses={404: {"description": "Yarn not found"}})
+@router.patch("/{yarn_id}", responses={404: {"description": "Yarn not found"}})
 async def update_yarn(
     yarn_id: uuid.UUID,
     body: UpdateYarnRequest,
@@ -423,7 +423,7 @@ class PatchColorwayRequest(BaseModel):
     clear_photos: bool = False
 
 
-@router.patch("/{yarn_id}/colorway", response_model=YarnDetail, responses={404: {"description": "Yarn not found"}})
+@router.patch("/{yarn_id}/colorway", responses={404: {"description": "Yarn not found"}})
 async def patch_yarn_colorway(
     yarn_id: uuid.UUID,
     body: PatchColorwayRequest,
@@ -522,7 +522,6 @@ async def delete_yarn_photo(
 
 @router.post(
     "/{yarn_id}/skeins",
-    response_model=list[SkeinSchema],
     status_code=201,
     responses={400: {"description": "Quantity must be between 1 and 100"}, 404: {"description": "Yarn not found"}},
 )
@@ -554,9 +553,7 @@ async def add_skeins(
     return [SkeinSchema.model_validate(s) for s in new_skeins]
 
 
-@router.patch(
-    "/{yarn_id}/skeins/{skein_id}", response_model=SkeinSchema, responses={404: {"description": "Skein not found"}}
-)
+@router.patch("/{yarn_id}/skeins/{skein_id}", responses={404: {"description": "Skein not found"}})
 async def update_skein(
     yarn_id: uuid.UUID,
     skein_id: uuid.UUID,
@@ -589,9 +586,7 @@ async def delete_skein(
 # ---------------------------------------------------------------------------
 
 
-@router.post(
-    "/{yarn_id}/clone", response_model=YarnDetail, status_code=201, responses={404: {"description": "Yarn not found"}}
-)
+@router.post("/{yarn_id}/clone", status_code=201, responses={404: {"description": "Yarn not found"}})
 async def clone_yarn(
     yarn_id: uuid.UUID,
     body: CloneYarnRequest,
@@ -639,9 +634,7 @@ class YarnProjectRef(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get(
-    "/{yarn_id}/projects", response_model=list[YarnProjectRef], responses={404: {"description": "Yarn not found"}}
-)
+@router.get("/{yarn_id}/projects", responses={404: {"description": "Yarn not found"}})
 async def get_yarn_projects(
     yarn_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],

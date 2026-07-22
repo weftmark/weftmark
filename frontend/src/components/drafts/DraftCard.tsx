@@ -52,10 +52,10 @@ export function DraftCard({ draft, projectCounts, archived }: Props) {
             <span className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">Archived</span>
           )}
           {draft.has_liftplan && (
-            <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+            <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
           )}
           {draft.has_treadling && (
-            <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+            <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
           )}
           {draft.lint_errors.length > 0 && (
             <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">

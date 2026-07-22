@@ -127,7 +127,7 @@ def _summary(c: Collection) -> CollectionSummary:
 # ---------------------------------------------------------------------------
 
 
-@router.post("", status_code=201, response_model=CollectionSummary)
+@router.post("", status_code=201)
 async def create_collection(
     body: CreateCollectionRequest,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -149,7 +149,7 @@ async def create_collection(
     )
 
 
-@router.get("", response_model=list[CollectionSummary])
+@router.get("")
 async def list_collections(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -163,9 +163,7 @@ async def list_collections(
     return [_summary(c) for c in result.all()]
 
 
-@router.get(
-    "/{collection_id}", response_model=CollectionDetail, responses={404: {"description": "Collection not found"}}
-)
+@router.get("/{collection_id}", responses={404: {"description": "Collection not found"}})
 async def get_collection(
     collection_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
@@ -227,9 +225,7 @@ async def get_collection(
     )
 
 
-@router.patch(
-    "/{collection_id}", response_model=CollectionSummary, responses={404: {"description": "Collection not found"}}
-)
+@router.patch("/{collection_id}", responses={404: {"description": "Collection not found"}})
 async def update_collection(
     collection_id: uuid.UUID,
     body: UpdateCollectionRequest,

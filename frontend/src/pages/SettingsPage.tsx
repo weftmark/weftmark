@@ -522,7 +522,7 @@ export function SettingsPage() {
                   </Button>
                   {exportStatus?.status === "pending" && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <AppIcons.spinner className="h-4 w-4 animate-spin" />
+                      <AppIcons.Spinner className="h-4 w-4 animate-spin" />
                       {t("settings.account.archivePending")}
                     </div>
                   )}
@@ -808,7 +808,7 @@ function FeedbackHistorySection() {
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${DISPATCH_BADGE[s.dispatch_status] ?? ""}`}>
                       {s.dispatch_status}
                     </span>
-                    <AppIcons.chevronDown
+                    <AppIcons.ChevronDown
                       className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded === s.id ? "rotate-180" : ""}`}
                     />
                   </div>
@@ -829,7 +829,7 @@ function FeedbackHistorySection() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
                       >
-                        <AppIcons.externalLink className="h-3.5 w-3.5" />
+                        <AppIcons.ExternalLink className="h-3.5 w-3.5" />
                         {t("settings.feedbackHistory.viewDiscussion")}
                       </a>
                       {s.github_discussion_state === "OPEN" && (

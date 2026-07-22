@@ -77,10 +77,10 @@ function ProjectCard({ project, onAssign }: {
         <div className="flex gap-3">
           <div className="shrink-0 mt-0.5">
             {isPlanning
-              ? <AppIcons.planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+              ? <AppIcons.Planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
               : project.project_type === "treadle"
-                ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+                ? <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                : <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
@@ -143,7 +143,7 @@ function ProjectCard({ project, onAssign }: {
             to={`/projects/${project.id}/track`}
             className="flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
           >
-            <AppIcons.projectActive className="h-3.5 w-3.5" />
+            <AppIcons.ProjectActive className="h-3.5 w-3.5" />
             {t("projectsPage.continueWeaving")}
           </Link>
         </div>
@@ -277,7 +277,7 @@ export function ProjectsPage() {
               onClick={() => setActiveTagFilter(null)}
               className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
-              <AppIcons.close className="h-3 w-3" /> {t("projectsPage.clearFilter")}
+              <AppIcons.Close className="h-3 w-3" /> {t("projectsPage.clearFilter")}
             </button>
           )}
         </div>

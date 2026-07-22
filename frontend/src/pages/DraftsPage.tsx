@@ -84,7 +84,7 @@ export function DraftsPage() {
               onClick={() => setActiveTagFilter(null)}
               className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
-              <AppIcons.close className="h-3 w-3" /> {t("draftsPage.clearFilter")}
+              <AppIcons.Close className="h-3 w-3" /> {t("draftsPage.clearFilter")}
             </button>
           )}
         </div>
@@ -121,7 +121,7 @@ export function DraftsPage() {
             onClick={() => setArchivedOpen((v) => !v)}
             className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
           >
-            <AppIcons.chevronDown
+            <AppIcons.ChevronDown
               className={`h-4 w-4 transition-transform duration-200 ${archivedOpen ? "rotate-180" : ""}`}
             />
             {t("draftsPage.archived", { count: archivedDrafts.length })}

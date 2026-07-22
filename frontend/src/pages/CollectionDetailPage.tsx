@@ -62,7 +62,7 @@ function RemoveButton({ label, onConfirm }: { readonly label: string; readonly o
       title={`Remove ${label}`}
       onClick={() => setConfirming(true)}
     >
-      <AppIcons.close className="h-3.5 w-3.5" />
+      <AppIcons.Close className="h-3.5 w-3.5" />
     </button>
   );
 }
@@ -96,7 +96,7 @@ function AddDraftModal({
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <h2 className="text-base font-semibold">{t("collectionDetail.drafts.modal.title")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
         <div className="px-4 py-3">
@@ -158,7 +158,7 @@ function AddProjectModal({
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <h2 className="text-base font-semibold">{t("collectionDetail.projects.modal.title")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
         <div className="px-4 py-3">
@@ -307,7 +307,7 @@ export function CollectionDetailPage() {
           </div>
           <div className="flex gap-2 shrink-0">
             <Button size="sm" variant="outline" onClick={() => { setEditName(collection.name); setEditDesc(collection.description ?? ""); setEditing(true); }}>
-              <AppIcons.edit className="h-3.5 w-3.5" />
+              <AppIcons.Edit className="h-3.5 w-3.5" />
             </Button>
             {!confirmDelete ? (
               <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>{t("collectionDetail.delete.button")}</Button>

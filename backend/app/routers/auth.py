@@ -327,7 +327,7 @@ class UserResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me")
 async def me(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

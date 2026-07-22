@@ -45,14 +45,14 @@ export function AppLayout({ children }: Props) {
             className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Open navigation"
           >
-            <AppIcons.mobileMenu className="h-5 w-5" />
+            <AppIcons.MobileMenu className="h-5 w-5" />
           </button>
           <button type="button"
             onClick={() => setFeedbackOpen(true)}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Send feedback"
           >
-            <AppIcons.feedback className="h-5 w-5" />
+            <AppIcons.Feedback className="h-5 w-5" />
           </button>
         </div>
 

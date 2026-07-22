@@ -362,8 +362,8 @@ export function DashboardPage() {
                   >
                     <div className="shrink-0">
                       {a.project_type === "treadle"
-                        ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                        : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+                        ? <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                        : <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{a.name}</p>
@@ -389,7 +389,7 @@ export function DashboardPage() {
                         to={`/projects/${a.id}/track`}
                         className="flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
                       >
-                        <AppIcons.projectActive className="h-3.5 w-3.5" />
+                        <AppIcons.ProjectActive className="h-3.5 w-3.5" />
                         {t("dashboard.projects.continueWeaving")}
                       </Link>
                     </div>
@@ -408,7 +408,7 @@ export function DashboardPage() {
                 to={`/projects/${a.id}`}
                 className="flex items-center gap-4 rounded-lg border px-4 py-3 hover:border-ring transition-colors"
               >
-                <AppIcons.planning className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                <AppIcons.Planning className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{a.name}</p>
                   <p className="text-xs text-muted-foreground">{t("dashboard.projects.picksPlanned", { count: a.total_picks })}</p>
@@ -435,14 +435,14 @@ export function DashboardPage() {
 
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-lg border p-4 flex items-center gap-3">
-            <AppIcons.projectActive className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+            <AppIcons.ProjectActive className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div>
               <p className="text-2xl font-bold tabular-nums">{activeProjects.length + planningProjects.length}</p>
               <p className="text-xs text-muted-foreground">{t("dashboard.projects.activeStat")}</p>
             </div>
           </div>
           <div className="rounded-lg border p-4 flex items-center gap-3">
-            <AppIcons.projectCompleted className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+            <AppIcons.ProjectCompleted className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div>
               <p className="text-2xl font-bold tabular-nums">{completedCount}</p>
               <p className="text-xs text-muted-foreground">{t("dashboard.projects.completedStat")}</p>
@@ -477,7 +477,7 @@ export function DashboardPage() {
                 className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
               >
                 <div className="shrink-0 mt-0.5">
-                  <AppIcons.draft className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                  <AppIcons.Draft className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{draft.name}</p>
@@ -515,7 +515,7 @@ export function DashboardPage() {
             {collections.slice(0, 3).map((c) => (
               <Link key={c.id} to={`/collections/${c.id}`} className="rounded-lg border p-4 hover:border-ring transition-colors">
                 <div className="flex items-start gap-2">
-                  <AppIcons.collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
+                  <AppIcons.Collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{c.name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -564,10 +564,10 @@ export function DashboardPage() {
               >
                 <div className="shrink-0 mt-0.5">
                   {loom.supports_lift_tracking
-                    ? <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                    ? <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
                     : loom.supports_treadle_tracking
-                      ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                      : <AppIcons.equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+                      ? <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                      : <AppIcons.Equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{loom.model_name}</p>

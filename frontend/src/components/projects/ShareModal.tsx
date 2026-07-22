@@ -85,7 +85,7 @@ export function ShareModal({
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-md w-full">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="font-semibold text-sm flex items-center gap-2">
-            <AppIcons.share className="h-4 w-4" />
+            <AppIcons.Share className="h-4 w-4" />
             Share project
           </h2>
           <button type="button"
@@ -93,7 +93,7 @@ export function ShareModal({
             className="text-muted-foreground hover:text-foreground"
             aria-label="Close"
           >
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
 
@@ -112,7 +112,7 @@ export function ShareModal({
                     "Copied!"
                   ) : (
                     <>
-                      <AppIcons.copyLink className="h-3.5 w-3.5 mr-1" />
+                      <AppIcons.CopyLink className="h-3.5 w-3.5 mr-1" />
                       Copy
                     </>
                   )}
@@ -129,7 +129,7 @@ export function ShareModal({
                   rel="noopener noreferrer"
                   className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors"
                 >
-                  View <AppIcons.externalLink className="h-3 w-3" />
+                  View <AppIcons.ExternalLink className="h-3 w-3" />
                 </a>
               </div>
               <div className="pt-1 border-t border-border">
