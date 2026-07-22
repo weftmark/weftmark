@@ -42,7 +42,11 @@ class ImpersonationStartResponse(BaseModel):
     target: UserSummary
 
 
-@router.post("/start", response_model=ImpersonationStartResponse)
+@router.post(
+    "/start",
+    response_model=ImpersonationStartResponse,
+    responses={403: {"description": "Cannot impersonate a superuser"}, 404: {"description": "User not found"}},
+)
 async def impersonation_start(
     body: ImpersonationStartRequest,
     superuser: User = Depends(require_superuser),
@@ -70,7 +74,7 @@ async def impersonation_start(
     )
 
 
-@router.post("/end")
+@router.post("/end", responses={404: {"description": "User not found"}})
 async def impersonation_end(
     body: ImpersonationEndRequest,
     superuser: User = Depends(require_superuser),

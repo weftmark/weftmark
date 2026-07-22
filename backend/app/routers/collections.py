@@ -162,7 +162,9 @@ async def list_collections(
     return [_summary(c) for c in result.all()]
 
 
-@router.get("/{collection_id}", response_model=CollectionDetail)
+@router.get(
+    "/{collection_id}", response_model=CollectionDetail, responses={404: {"description": "Collection not found"}}
+)
 async def get_collection(
     collection_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -224,7 +226,9 @@ async def get_collection(
     )
 
 
-@router.patch("/{collection_id}", response_model=CollectionSummary)
+@router.patch(
+    "/{collection_id}", response_model=CollectionSummary, responses={404: {"description": "Collection not found"}}
+)
 async def update_collection(
     collection_id: uuid.UUID,
     body: UpdateCollectionRequest,
@@ -254,7 +258,7 @@ async def update_collection(
     return _summary(c)  # type: ignore[arg-type]
 
 
-@router.delete("/{collection_id}", status_code=204)
+@router.delete("/{collection_id}", status_code=204, responses={404: {"description": "Collection not found"}})
 async def delete_collection(
     collection_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -270,7 +274,11 @@ async def delete_collection(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{collection_id}/drafts", status_code=204)
+@router.post(
+    "/{collection_id}/drafts",
+    status_code=204,
+    responses={404: {"description": "Draft not found"}, 409: {"description": "Draft already in collection"}},
+)
 async def add_draft(
     collection_id: uuid.UUID,
     body: AddDraftRequest,
@@ -295,7 +303,9 @@ async def add_draft(
     await db.commit()
 
 
-@router.delete("/{collection_id}/drafts/{draft_id}", status_code=204)
+@router.delete(
+    "/{collection_id}/drafts/{draft_id}", status_code=204, responses={404: {"description": "Draft not in collection"}}
+)
 async def remove_draft(
     collection_id: uuid.UUID,
     draft_id: uuid.UUID,
@@ -321,7 +331,11 @@ async def remove_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{collection_id}/projects", status_code=204)
+@router.post(
+    "/{collection_id}/projects",
+    status_code=204,
+    responses={404: {"description": "Project not found"}, 409: {"description": "Project already in collection"}},
+)
 async def add_project(
     collection_id: uuid.UUID,
     body: AddProjectRequest,
@@ -350,7 +364,11 @@ async def add_project(
     await db.commit()
 
 
-@router.delete("/{collection_id}/projects/{project_id}", status_code=204)
+@router.delete(
+    "/{collection_id}/projects/{project_id}",
+    status_code=204,
+    responses={404: {"description": "Project not in collection"}},
+)
 async def remove_project(
     collection_id: uuid.UUID,
     project_id: uuid.UUID,

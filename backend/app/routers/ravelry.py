@@ -80,7 +80,7 @@ class BulkStashPushResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.get("/authorize")
+@router.get("/authorize", responses={503: {"description": "Ravelry integration is not configured on this server"}})
 async def authorize(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -151,7 +151,7 @@ async def status(
     )
 
 
-@router.delete("/connection", status_code=204)
+@router.delete("/connection", status_code=204, responses={404: {"description": "Not connected to Ravelry"}})
 async def disconnect(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -164,7 +164,7 @@ async def disconnect(
     await db.commit()
 
 
-@router.get("/yarn-detail/{ravelry_yarn_id}")
+@router.get("/yarn-detail/{ravelry_yarn_id}", responses={502: {"description": "Ravelry yarn detail fetch failed"}})
 async def yarn_detail(
     ravelry_yarn_id: int,
     _current_user: User = Depends(get_current_user),
@@ -178,7 +178,11 @@ async def yarn_detail(
     return data
 
 
-@router.get("/popular/companies", response_model=list[RavelryCompany])
+@router.get(
+    "/popular/companies",
+    response_model=list[RavelryCompany],
+    responses={502: {"description": "Ravelry request failed"}},
+)
 async def popular_companies(
     limit: int = Query(10, ge=1, le=20),
     _current_user: User = Depends(get_current_user),
@@ -192,7 +196,9 @@ async def popular_companies(
     return [RavelryCompany(**r) for r in results]
 
 
-@router.get("/popular/yarns", response_model=list[RavelryYarnResult])
+@router.get(
+    "/popular/yarns", response_model=list[RavelryYarnResult], responses={502: {"description": "Ravelry request failed"}}
+)
 async def popular_yarns(
     company_id: int = Query(...),
     company_name: str = Query(...),
@@ -208,7 +214,9 @@ async def popular_yarns(
     return [RavelryYarnResult(**r) for r in results]
 
 
-@router.get("/search/companies", response_model=list[RavelryCompany])
+@router.get(
+    "/search/companies", response_model=list[RavelryCompany], responses={502: {"description": "Ravelry search failed"}}
+)
 async def search_companies(
     q: str = Query(..., min_length=1),
     _current_user: User = Depends(get_current_user),
@@ -222,7 +230,9 @@ async def search_companies(
     return [RavelryCompany(**r) for r in results]
 
 
-@router.get("/search/yarns", response_model=list[RavelryYarnResult])
+@router.get(
+    "/search/yarns", response_model=list[RavelryYarnResult], responses={502: {"description": "Ravelry search failed"}}
+)
 async def search_yarns(
     q: str = Query(..., min_length=1),
     company_id: int | None = Query(None),
@@ -237,7 +247,10 @@ async def search_yarns(
     return [RavelryYarnResult(**r) for r in results]
 
 
-@router.post("/import-yarn")
+@router.post(
+    "/import-yarn",
+    responses={404: {"description": "Yarn not found or not importable"}, 502: {"description": "Ravelry import failed"}},
+)
 async def import_yarn(
     payload: ImportYarnPayload,
     current_user: User = Depends(get_current_user),
@@ -260,7 +273,13 @@ async def import_yarn(
     return {"id": str(yarn.id)}
 
 
-@router.post("/stash-push/bulk")
+@router.post(
+    "/stash-push/bulk",
+    responses={
+        404: {"description": "Not connected to Ravelry"},
+        502: {"description": "Ravelry bulk stash push failed"},
+    },
+)
 async def push_bulk_to_stash(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -277,7 +296,14 @@ async def push_bulk_to_stash(
     return BulkStashPushResult(**result)
 
 
-@router.post("/stash-push/{yarn_id}")
+@router.post(
+    "/stash-push/{yarn_id}",
+    responses={
+        404: {"description": "Yarn not found"},
+        422: {"description": "Yarn cannot be pushed to Ravelry stash"},
+        502: {"description": "Ravelry stash push failed"},
+    },
+)
 async def push_yarn_to_stash(
     yarn_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
@@ -296,7 +322,11 @@ async def push_yarn_to_stash(
     return StashPushResult(ravelry_stash_id=stash_id)
 
 
-@router.post("/sync", response_model=SyncResult)
+@router.post(
+    "/sync",
+    response_model=SyncResult,
+    responses={404: {"description": "Not connected to Ravelry"}, 502: {"description": "Ravelry stash sync failed"}},
+)
 async def sync_stash(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

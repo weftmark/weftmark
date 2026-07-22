@@ -430,7 +430,7 @@ def _ext(content_type: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=LoomDetail, status_code=201)
+@router.post("", response_model=LoomDetail, status_code=201, responses={404: {"description": "Loom not found"}})
 async def create_loom(
     body: CreateLoomRequest,
     current_user: User = Depends(get_effective_user),
@@ -498,7 +498,7 @@ async def list_looms(
     return [LoomSummary.from_loom(loom) for loom in result.all()]
 
 
-@router.get("/{loom_id}", response_model=LoomDetail)
+@router.get("/{loom_id}", response_model=LoomDetail, responses={404: {"description": "Loom not found"}})
 async def get_loom(
     loom_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -508,7 +508,7 @@ async def get_loom(
     return LoomDetail.from_loom(loom)
 
 
-@router.patch("/{loom_id}", response_model=LoomDetail)
+@router.patch("/{loom_id}", response_model=LoomDetail, responses={404: {"description": "Loom not found"}})
 async def update_loom(
     loom_id: uuid.UUID,
     body: UpdateLoomRequest,
@@ -527,7 +527,14 @@ async def update_loom(
     return LoomDetail.from_loom(loom)
 
 
-@router.delete("/{loom_id}", status_code=204)
+@router.delete(
+    "/{loom_id}",
+    status_code=204,
+    responses={
+        404: {"description": "Loom not found"},
+        409: {"description": "Loom is used by one or more active projects; pass force=true to delete anyway"},
+    },
+)
 async def delete_loom(
     loom_id: uuid.UUID,
     force: bool = Query(False),
@@ -563,7 +570,7 @@ async def delete_loom(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/retire", status_code=204)
+@router.post("/{loom_id}/retire", status_code=204, responses={404: {"description": "Loom not found"}})
 async def retire_loom(
     loom_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -574,7 +581,7 @@ async def retire_loom(
     await db.commit()
 
 
-@router.post("/{loom_id}/unretire", status_code=204)
+@router.post("/{loom_id}/unretire", status_code=204, responses={404: {"description": "Loom not found"}})
 async def unretire_loom(
     loom_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -590,7 +597,11 @@ async def unretire_loom(
 # ---------------------------------------------------------------------------
 
 
-@router.put("/{loom_id}/photo", status_code=204)
+@router.put(
+    "/{loom_id}/photo",
+    status_code=204,
+    responses={400: {"description": "Invalid or corrupt image file"}, 404: {"description": "Loom not found"}},
+)
 async def upload_loom_photo(
     loom_id: uuid.UUID,
     file: UploadFile = File(...),
@@ -613,7 +624,7 @@ async def upload_loom_photo(
     await db.commit()
 
 
-@router.delete("/{loom_id}/photo", status_code=204)
+@router.delete("/{loom_id}/photo", status_code=204, responses={404: {"description": "Loom not found"}})
 async def delete_loom_photo(
     loom_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -626,7 +637,7 @@ async def delete_loom_photo(
         await db.commit()
 
 
-@router.get("/{loom_id}/photo")
+@router.get("/{loom_id}/photo", responses={404: {"description": "No photo"}})
 async def get_loom_photo(
     loom_id: uuid.UUID,
     current_user: User = Depends(get_effective_user),
@@ -645,7 +656,12 @@ async def get_loom_photo(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions", response_model=LoomVersionSchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions",
+    response_model=LoomVersionSchema,
+    status_code=201,
+    responses={404: {"description": "Loom not found"}},
+)
 async def add_version(
     loom_id: uuid.UUID,
     body: AddVersionRequest,
@@ -679,7 +695,12 @@ async def add_version(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions/{version_id}/photos", response_model=LoomVersionPhotoSchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions/{version_id}/photos",
+    response_model=LoomVersionPhotoSchema,
+    status_code=201,
+    responses={400: {"description": "Invalid or corrupt image file"}, 404: {"description": "Version not found"}},
+)
 async def upload_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -717,7 +738,7 @@ async def upload_version_photo(
     return LoomVersionPhotoSchema.model_validate(photo)
 
 
-@router.get("/{loom_id}/versions/{version_id}/photos/{photo_id}")
+@router.get("/{loom_id}/versions/{version_id}/photos/{photo_id}", responses={404: {"description": "Photo not found"}})
 async def get_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -734,7 +755,11 @@ async def get_version_photo(
     return Response(content=data, media_type=ct)
 
 
-@router.delete("/{loom_id}/versions/{version_id}/photos/{photo_id}", status_code=204)
+@router.delete(
+    "/{loom_id}/versions/{version_id}/photos/{photo_id}",
+    status_code=204,
+    responses={404: {"description": "Photo not found"}},
+)
 async def delete_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -756,7 +781,12 @@ async def delete_version_photo(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions/{version_id}/receipts", response_model=LoomVersionReceiptSchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions/{version_id}/receipts",
+    response_model=LoomVersionReceiptSchema,
+    status_code=201,
+    responses={400: {"description": "File too large (max 5 MB)"}, 404: {"description": "Version not found"}},
+)
 async def upload_version_receipt(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -786,7 +816,9 @@ async def upload_version_receipt(
     return LoomVersionReceiptSchema.model_validate(receipt)
 
 
-@router.get("/{loom_id}/versions/{version_id}/receipts/{receipt_id}")
+@router.get(
+    "/{loom_id}/versions/{version_id}/receipts/{receipt_id}", responses={404: {"description": "Receipt not found"}}
+)
 async def get_version_receipt(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -809,7 +841,11 @@ async def get_version_receipt(
     )
 
 
-@router.delete("/{loom_id}/versions/{version_id}/receipts/{receipt_id}", status_code=204)
+@router.delete(
+    "/{loom_id}/versions/{version_id}/receipts/{receipt_id}",
+    status_code=204,
+    responses={404: {"description": "Receipt not found"}},
+)
 async def delete_version_receipt(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -831,7 +867,11 @@ async def delete_version_receipt(
 # ---------------------------------------------------------------------------
 
 
-@router.patch("/{loom_id}/versions/{version_id}", response_model=LoomVersionSchema)
+@router.patch(
+    "/{loom_id}/versions/{version_id}",
+    response_model=LoomVersionSchema,
+    responses={404: {"description": "Version not found"}},
+)
 async def update_version(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -852,7 +892,12 @@ async def update_version(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions/{version_id}/clone", response_model=LoomVersionSchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions/{version_id}/clone",
+    response_model=LoomVersionSchema,
+    status_code=201,
+    responses={404: {"description": "Version not found"}},
+)
 async def clone_version(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -898,7 +943,12 @@ async def clone_version(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions/{version_id}/accessories", response_model=LoomVersionAccessorySchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions/{version_id}/accessories",
+    response_model=LoomVersionAccessorySchema,
+    status_code=201,
+    responses={404: {"description": "Version not found"}},
+)
 async def add_accessory(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -914,7 +964,11 @@ async def add_accessory(
     return LoomVersionAccessorySchema.model_validate(acc)
 
 
-@router.delete("/{loom_id}/versions/{version_id}/accessories/{accessory_id}", status_code=204)
+@router.delete(
+    "/{loom_id}/versions/{version_id}/accessories/{accessory_id}",
+    status_code=204,
+    responses={404: {"description": "Accessory not found"}},
+)
 async def delete_accessory(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
@@ -935,7 +989,12 @@ async def delete_accessory(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/reeds", response_model=LoomReedSchema, status_code=201)
+@router.post(
+    "/{loom_id}/reeds",
+    response_model=LoomReedSchema,
+    status_code=201,
+    responses={400: {"description": "dents_per_inch must be positive"}, 404: {"description": "Loom not found"}},
+)
 async def add_reed(
     loom_id: uuid.UUID,
     body: AddReedRequest,
@@ -958,7 +1017,7 @@ async def add_reed(
     return LoomReedSchema.model_validate(reed)
 
 
-@router.delete("/{loom_id}/reeds/{reed_id}", status_code=204)
+@router.delete("/{loom_id}/reeds/{reed_id}", status_code=204, responses={404: {"description": "Reed not found"}})
 async def delete_reed(
     loom_id: uuid.UUID,
     reed_id: uuid.UUID,
@@ -982,7 +1041,11 @@ class LinkReferenceRequest(BaseModel):
     loom_reference_id: uuid.UUID | None
 
 
-@router.post("/{loom_id}/versions/{version_id}/link-reference", response_model=LoomDetail)
+@router.post(
+    "/{loom_id}/versions/{version_id}/link-reference",
+    response_model=LoomDetail,
+    responses={404: {"description": "Loom reference not found"}},
+)
 async def link_version_reference(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,

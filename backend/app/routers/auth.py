@@ -385,7 +385,16 @@ class InviteResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.post("/invite", response_model=InviteResponse, status_code=201)
+@router.post(
+    "/invite",
+    response_model=InviteResponse,
+    status_code=201,
+    responses={
+        403: {"description": "Only superusers can invite admins"},
+        409: {"description": "A user with this email already exists"},
+        422: {"description": "role must be one of"},
+    },
+)
 async def create_invite(
     body: InviteRequest,
     admin: User = Depends(require_admin),
@@ -468,7 +477,11 @@ async def list_invites(
     return list(result.all())
 
 
-@router.delete("/invite/{invite_id}", status_code=204)
+@router.delete(
+    "/invite/{invite_id}",
+    status_code=204,
+    responses={400: {"description": "Invite already accepted"}, 404: {"description": "Invite not found"}},
+)
 async def revoke_invite(
     invite_id: uuid.UUID,
     admin: User = Depends(require_admin),

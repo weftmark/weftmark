@@ -13,7 +13,14 @@ from app.routers.auth import _handle_clerk_webhook
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 
-@router.post("/clerk", status_code=200)
+@router.post(
+    "/clerk",
+    status_code=200,
+    responses={
+        400: {"description": "Invalid webhook signature"},
+        500: {"description": "Webhook not configured"},
+    },
+)
 async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     """Receive and process Clerk user lifecycle events."""
     return await _handle_clerk_webhook(request, db)
