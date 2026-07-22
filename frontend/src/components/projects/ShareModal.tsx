@@ -25,9 +25,9 @@ export function ShareModal({
   onUpdated,
   onClose,
 }: {
-  project: ProjectDetail;
-  onUpdated: (updated: ProjectDetail) => void;
-  onClose: () => void;
+  readonly project: ProjectDetail;
+  readonly onUpdated: (updated: ProjectDetail) => void;
+  readonly onClose: () => void;
 }) {
   const [expiryDays, setExpiryDays] = useState<string>("30");
   const [copied, setCopied] = useState(false);
@@ -45,9 +45,9 @@ export function ShareModal({
 
   const shareMutation = useMutation({
     mutationFn: () => {
-      const days = parseInt(expiryDays, 10);
+      const days = Number.parseInt(expiryDays, 10);
       const expires =
-        !isNaN(days) && days > 0
+        !Number.isNaN(days) && days > 0
           ? new Date(Date.now() + days * 86_400_000).toISOString()
           : null;
       return updateProjectShare(project.id, "link", expires);

@@ -153,7 +153,9 @@ class EulaCurrentResponse(BaseModel):
 @eula_router.get(
     "/current", response_model=EulaCurrentResponse, responses={404: {"description": "No EULA version found"}}
 )
-async def get_current_eula(db: AsyncSession = Depends(get_db)) -> EulaCurrentResponse:
+async def get_current_eula(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> EulaCurrentResponse:
     row = await db.scalar(select(EulaVersion).order_by(EulaVersion.id.desc()).limit(1))
     if not row:
         raise HTTPException(status_code=404, detail="No EULA version found")
@@ -183,8 +185,8 @@ class ActivityHeatmapResponse(BaseModel):
 
 @router.get("/me", response_model=UserSettingsResponse)
 async def get_settings(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserSettingsResponse:
     version = await get_current_eula_version(db)
     return _to_response(current_user, version)
@@ -287,8 +289,8 @@ async def update_settings(
 )
 async def accept_eula(
     body: EulaAcceptRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserSettingsResponse:
     current_version = await get_current_eula_version(db)
     if body.version != current_version:
@@ -309,8 +311,8 @@ async def accept_eula(
 async def delete_account(
     body: DeleteAccountRequest,
     response: Response,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     if body.confirm != "DELETE MY ACCOUNT":
         raise HTTPException(
@@ -345,8 +347,8 @@ _EXPORT_COOLDOWN_HOURS = 24
 
 @router.post("/me/data-export", status_code=202)
 async def request_data_export(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ExportStatusResponse:
     """Queue a data export task. De-duplicated: one request per 24 h."""
     from datetime import timedelta
@@ -393,8 +395,8 @@ async def request_data_export(
 
 @router.get("/me/data-export/status", response_model=ExportStatusResponse)
 async def get_export_status(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ExportStatusResponse:
     """Return the most recent export request for the current user."""
     req = await db.scalar(
@@ -420,8 +422,8 @@ async def get_export_status(
 )
 async def download_data_export(
     request_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> StreamingResponse:
     """Stream the export archive. Auth-gated; returns 404 after expiry."""
     req = await db.get(UserExportRequest, request_id)
@@ -452,8 +454,8 @@ class OnboardingStatusResponse(BaseModel):
 
 @router.get("/me/onboarding-status", response_model=OnboardingStatusResponse)
 async def get_onboarding_status(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> OnboardingStatusResponse:
     current_version = await get_current_eula_version(db)
     has_loom = await db.scalar(select(func.count()).select_from(Loom).where(Loom.owner_id == current_user.id)) or 0
@@ -471,9 +473,9 @@ async def get_onboarding_status(
 
 @router.get("/me/activity-heatmap", response_model=ActivityHeatmapResponse)
 async def get_activity_heatmap(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     year: int | None = Query(default=None),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ) -> ActivityHeatmapResponse:
     from collections import defaultdict
 

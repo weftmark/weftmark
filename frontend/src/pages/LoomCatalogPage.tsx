@@ -6,12 +6,12 @@ import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { PublicFooter } from "@/components/PublicFooter";
 import { listLoomCatalog, type LoomReferenceSummary } from "@/api/looms";
 
-function ShaftBadge({ options }: { options: number[] | null }) {
+function ShaftBadge({ options }: { readonly options: number[] | null }) {
   if (!options || options.length === 0) return <span className="text-stone-400">—</span>;
   return <span>{options.map((n) => Math.round(n)).join(" / ")}</span>;
 }
 
-function WidthBadge({ loom }: { loom: LoomReferenceSummary }) {
+function WidthBadge({ loom }: { readonly loom: LoomReferenceSummary }) {
   const cm = loom.weaving_width_options_cm ?? [];
   const inches = loom.weaving_width_options_inches ?? [];
   if (inches.length === 0 && cm.length === 0) {
@@ -27,7 +27,7 @@ function WidthBadge({ loom }: { loom: LoomReferenceSummary }) {
   return <span>{parts.join(" / ")}</span>;
 }
 
-function LoomCard({ loom }: { loom: LoomReferenceSummary }) {
+function LoomCard({ loom }: { readonly loom: LoomReferenceSummary }) {
   const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-stone-200 bg-white p-5 space-y-3 hover:border-amber-300 transition-colors">

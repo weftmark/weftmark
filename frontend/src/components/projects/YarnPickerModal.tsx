@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 
 interface Props {
-  colorHex: string;
-  currentYarnId: string | null;
-  onSelect: (yarnId: string, yarn: YarnSummary) => void;
-  onUnlink: () => void;
-  onClose: () => void;
-  isSaving: boolean;
+  readonly colorHex: string;
+  readonly currentYarnId: string | null;
+  readonly onSelect: (yarnId: string, yarn: YarnSummary) => void;
+  readonly onUnlink: () => void;
+  readonly onClose: () => void;
+  readonly isSaving: boolean;
 }
 
 export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, onClose, isSaving }: Props) {

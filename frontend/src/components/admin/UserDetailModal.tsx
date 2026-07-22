@@ -23,8 +23,8 @@ export type UserDetailTarget =
   | { kind: "pending"; signup: PendingSignup };
 
 interface Props {
-  target: UserDetailTarget;
-  onClose: () => void;
+  readonly target: UserDetailTarget;
+  readonly onClose: () => void;
 }
 
 type Confirm =
@@ -32,7 +32,7 @@ type Confirm =
   | "dismiss-signup" | "ban-signup"
   | null;
 
-function InfoRow({ label, children }: { label: string; children: ReactNode }) {
+function InfoRow({ label, children }: { readonly label: string; readonly children: ReactNode }) {
   return (
     <div className="flex gap-4 text-sm">
       <span className="w-28 shrink-0 text-muted-foreground">{label}</span>
@@ -41,7 +41,7 @@ function InfoRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Pill({ label, cls }: { label: string; cls: string }) {
+function Pill({ label, cls }: { readonly label: string; readonly cls: string }) {
   return (
     <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>
       {label}
@@ -57,12 +57,12 @@ function ConfirmInline({
   onCancel,
   busy,
 }: {
-  message: string;
-  destructive?: boolean;
-  confirmLabel: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  busy: boolean;
+  readonly message: string;
+  readonly destructive?: boolean;
+  readonly confirmLabel: string;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
+  readonly busy: boolean;
 }) {
   return (
     <div className="flex w-full items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">

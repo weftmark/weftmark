@@ -41,9 +41,9 @@ function ConfirmInline({
   onConfirm,
   onCancel,
 }: {
-  label: string;
-  onConfirm: () => void;
-  onCancel: () => void;
+  readonly label: string;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -69,7 +69,7 @@ function ConfirmInline({
 // Profile photo
 // ---------------------------------------------------------------------------
 
-function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+function ProfilePhoto({ loom, onChanged }: { readonly loom: LoomDetail; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
   const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
@@ -191,7 +191,7 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
 // Version photos
 // ---------------------------------------------------------------------------
 
-function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+function VersionPhotos({ loom, version, onChanged }: { readonly loom: LoomDetail; readonly version: LoomVersion; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -316,7 +316,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
 // Version receipts
 // ---------------------------------------------------------------------------
 
-function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+function VersionReceipts({ loom, version, onChanged }: { readonly loom: LoomDetail; readonly version: LoomVersion; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState("");
@@ -402,7 +402,7 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
 // Accessories
 // ---------------------------------------------------------------------------
 
-function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+function VersionAccessories({ loom, version, onChanged }: { readonly loom: LoomDetail; readonly version: LoomVersion; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -483,7 +483,7 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
 // Reed inventory
 // ---------------------------------------------------------------------------
 
-function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+function ReedsPanel({ loom, onChanged }: { readonly loom: LoomDetail; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const [dentsInput, setDentsInput] = useState("");
   const [widthInput, setWidthInput] = useState("");
@@ -494,8 +494,8 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const dents = parseFloat(dentsInput);
-    if (!dentsInput || isNaN(dents) || dents <= 0) {
+    const dents = Number.parseFloat(dentsInput);
+    if (!dentsInput || Number.isNaN(dents) || dents <= 0) {
       setError(t("loomDetailPage.dentsRequired"));
       return;
     }
@@ -504,7 +504,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
     try {
       await addReed(loom.id, {
         dents_per_inch: dents,
-        ...(widthInput ? { width_cm: parseFloat(widthInput) } : {}),
+        ...(widthInput ? { width_cm: Number.parseFloat(widthInput) } : {}),
         ...(labelInput.trim() ? { label: labelInput.trim() } : {}),
       });
       setDentsInput("");
@@ -530,7 +530,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
   };
 
   const duplicate = dentsInput
-    ? loom.reeds.some((r) => r.dents_per_inch === parseFloat(dentsInput))
+    ? loom.reeds.some((r) => r.dents_per_inch === Number.parseFloat(dentsInput))
     : false;
 
   return (
@@ -610,7 +610,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
       </form>
       {duplicate && (
         <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-          {t("loomDetailPage.duplicateReed", { dpi: parseFloat(dentsInput) })}
+          {t("loomDetailPage.duplicateReed", { dpi: Number.parseFloat(dentsInput) })}
         </p>
       )}
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
@@ -626,11 +626,11 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
 function VersionCard({
   loom, version, isCurrent, onChanged, onClone,
 }: {
-  loom: LoomDetail;
-  version: LoomVersion;
-  isCurrent: boolean;
-  onChanged: () => void;
-  onClone: (v: LoomVersion) => void;
+  readonly loom: LoomDetail;
+  readonly version: LoomVersion;
+  readonly isCurrent: boolean;
+  readonly onChanged: () => void;
+  readonly onClone: (v: LoomVersion) => void;
 }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
@@ -656,7 +656,7 @@ function VersionCard({
     (version.warp_waste_allowance ? version.warp_waste_unit : displayUnit) as LengthUnit
   );
   const [editWaste, setEditWaste] = useState(
-    version.warp_waste_allowance ? parseFloat(version.warp_waste_allowance).toFixed(1) : ""
+    version.warp_waste_allowance ? Number.parseFloat(version.warp_waste_allowance).toFixed(1) : ""
   );
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -667,7 +667,7 @@ function VersionCard({
     setSaving(true);
     setEditError(null);
     try {
-      const waste = editWaste.trim() ? parseFloat(editWaste) : undefined;
+      const waste = editWaste.trim() ? Number.parseFloat(editWaste) : undefined;
       await updateVersion(loom.id, version.id, {
         name: editName.trim() || undefined,
         description: editDesc.trim() || undefined,
@@ -685,7 +685,7 @@ function VersionCard({
   const handleEditCancel = () => {
     setEditName(version.name ?? "");
     setEditDesc(version.description ?? "");
-    setEditWaste(version.warp_waste_allowance ? parseFloat(version.warp_waste_allowance).toFixed(1) : "");
+    setEditWaste(version.warp_waste_allowance ? Number.parseFloat(version.warp_waste_allowance).toFixed(1) : "");
     setEditWasteUnit((version.warp_waste_allowance ? version.warp_waste_unit : displayUnit) as LengthUnit);
     setEditError(null);
     setEditing(false);
@@ -693,8 +693,8 @@ function VersionCard({
 
   function handleWasteUnitChange(newUnit: LengthUnit) {
     if (editWaste) {
-      const val = parseFloat(editWaste);
-      if (!isNaN(val)) setEditWaste(convertLength(val, editWasteUnit, newUnit).toFixed(1));
+      const val = Number.parseFloat(editWaste);
+      if (!Number.isNaN(val)) setEditWaste(convertLength(val, editWasteUnit, newUnit).toFixed(1));
     }
     setEditWasteUnit(newUnit);
   }

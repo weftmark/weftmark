@@ -1,5 +1,5 @@
 interface Props {
-  bodyHtml: string;
+  readonly bodyHtml: string;
 }
 
 export function EulaContent({ bodyHtml }: Props) {

@@ -498,7 +498,7 @@ function StorageAuditTab() {
   );
 }
 
-function CveFindingsTable({ title, findings }: { title: string; findings: CveFinding[] }) {
+function CveFindingsTable({ title, findings }: { readonly title: string; readonly findings: CveFinding[] }) {
   if (findings.length === 0) return null;
   return (
     <div className="space-y-2">
@@ -626,7 +626,7 @@ function CveScanTab() {
   );
 }
 
-function WorkerCard({ worker, apiVersion }: { worker: WorkerInfo; apiVersion: string }) {
+function WorkerCard({ worker, apiVersion }: { readonly worker: WorkerInfo; readonly apiVersion: string }) {
   const isOnline = worker.status === "online";
   const hasActive = worker.active_tasks.length > 0;
   const hasReserved = worker.reserved_tasks.length > 0;
@@ -826,7 +826,7 @@ function shortName(name: string): string {
   return parts.length >= 2 ? parts.slice(-2).join(".") : name;
 }
 
-function TaskHistoryRow({ item, onRevoke }: { item: TaskHistoryItem; onRevoke: (id: string) => void }) {
+function TaskHistoryRow({ item, onRevoke }: { readonly item: TaskHistoryItem; readonly onRevoke: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const cancellable = item.state === "queued" || item.state === "running";
   return (
@@ -960,7 +960,7 @@ const DELETION_STATE_STYLE: Record<string, string> = {
   complete: "border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300",
 };
 
-function DeletionStateBadge({ state }: { state: string }) {
+function DeletionStateBadge({ state }: { readonly state: string }) {
   return (
     <span className={`text-xs px-2 py-0.5 rounded border font-medium ${DELETION_STATE_STYLE[state] ?? "border-border text-muted-foreground"}`}>
       {state}
@@ -1296,7 +1296,7 @@ const CRON_PRESETS = [
   { label: "Custom", value: "custom" },
 ];
 
-function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: () => void }) {
+function ScheduledTaskCard({ task, onSaved }: { readonly task: ScheduledTask; readonly onSaved: () => void }) {
   const [enabled, setEnabled] = useState(task.enabled);
   const [preset, setPreset] = useState<string>(() => {
     const match = CRON_PRESETS.find((p) => p.value === task.cron && p.value !== "custom");
@@ -1435,7 +1435,7 @@ function ScheduledTasksTab() {
 // Data Exports tab
 // ---------------------------------------------------------------------------
 
-function ExportStatusBadge({ status }: { status: AdminExportRecord["status"] }) {
+function ExportStatusBadge({ status }: { readonly status: AdminExportRecord["status"] }) {
   const cls =
     status === "complete"
       ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
@@ -1447,7 +1447,7 @@ function ExportStatusBadge({ status }: { status: AdminExportRecord["status"] }) 
   );
 }
 
-function ExportRow({ record, onDeleted }: { record: AdminExportRecord; onDeleted: () => void }) {
+function ExportRow({ record, onDeleted }: { readonly record: AdminExportRecord; readonly onDeleted: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const mutation = useMutation({
     mutationFn: () => deleteExport(record.id),
@@ -2094,7 +2094,7 @@ function ConfigSection() {
   );
 }
 
-function NeonUsageBars({ daily }: { daily: { date: string; compute_seconds: number }[] }) {
+function NeonUsageBars({ daily }: { readonly daily: { date: string; compute_seconds: number }[] }) {
   if (daily.length === 0) return null;
   const maxDaily = Math.max(1, ...daily.map((d) => d.compute_seconds));
   return (

@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 
 interface Props {
-  frontendVersion: string;
-  backendVersion: string;
-  workerVersion?: string;
+  readonly frontendVersion: string;
+  readonly backendVersion: string;
+  readonly workerVersion?: string;
 }
 
 export function VersionErrorPage({ frontendVersion, backendVersion, workerVersion }: Props) {

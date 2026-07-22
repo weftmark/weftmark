@@ -19,9 +19,9 @@ const TABS: { id: ReportTab; key: string }[] = [
 
 function approximateColorName(hex: string): string {
   if (!hex || hex.length < 7) return "";
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
+  const g = Number.parseInt(hex.slice(3, 5), 16) / 255;
+  const b = Number.parseInt(hex.slice(5, 7), 16) / 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const delta = max - min;
@@ -89,16 +89,16 @@ interface WarpSetup {
 
 function computeWarpSetup(project: ProjectDetail): WarpSetup {
   const displayUnit = (project.length_unit as LengthUnit) || "cm";
-  const itemLengthCm = project.finished_length_per_item != null ? parseFloat(project.finished_length_per_item) : null;
-  const wasteBetweenCm = project.waste_between_items != null ? parseFloat(project.waste_between_items) : null;
+  const itemLengthCm = project.finished_length_per_item != null ? Number.parseFloat(project.finished_length_per_item) : null;
+  const wasteBetweenCm = project.waste_between_items != null ? Number.parseFloat(project.waste_between_items) : null;
   const numItems = project.num_items || 1;
 
   let warpWasteCm: number | null = null;
   if (project.warp_waste_allowance != null) {
-    warpWasteCm = parseFloat(project.warp_waste_allowance);
+    warpWasteCm = Number.parseFloat(project.warp_waste_allowance);
   } else if (project.loom_warp_waste_allowance != null && project.loom_warp_waste_unit) {
     warpWasteCm = convertLength(
-      parseFloat(project.loom_warp_waste_allowance),
+      Number.parseFloat(project.loom_warp_waste_allowance),
       project.loom_warp_waste_unit as LengthUnit,
       "cm",
     );
@@ -130,9 +130,9 @@ function MissingParamsBanner({
   projectId,
   loomId,
 }: {
-  setup: WarpSetup;
-  projectId: string;
-  loomId: string | null;
+  readonly setup: WarpSetup;
+  readonly projectId: string;
+  readonly loomId: string | null;
 }) {
   const { t } = useTranslation();
   const items: React.ReactNode[] = [];
@@ -230,7 +230,7 @@ function MissingParamsBanner({
   );
 }
 
-function Swatch({ hex }: { hex: string | null }) {
+function Swatch({ hex }: { readonly hex: string | null }) {
   if (!hex) return <span className="inline-block h-4 w-4 rounded border border-border bg-muted" />;
   return (
     <span
@@ -241,7 +241,7 @@ function Swatch({ hex }: { hex: string | null }) {
   );
 }
 
-function SummarySection({ plan }: { plan: WarpingPlan }) {
+function SummarySection({ plan }: { readonly plan: WarpingPlan }) {
   const { t } = useTranslation();
   const warpLengthM = plan.warp_length_cm != null ? (plan.warp_length_cm / 100).toFixed(2) : null;
   return (
@@ -288,7 +288,7 @@ function SummarySection({ plan }: { plan: WarpingPlan }) {
   );
 }
 
-function WarpColorSummary({ rows }: { rows: ColorStat[] }) {
+function WarpColorSummary({ rows }: { readonly rows: ColorStat[] }) {
   const { t } = useTranslation();
   if (rows.length === 0) return null;
   return (
@@ -324,8 +324,8 @@ function WindingSection({
   plan,
   project,
 }: {
-  plan: WarpingPlan;
-  project?: ProjectDetail;
+  readonly plan: WarpingPlan;
+  readonly project?: ProjectDetail;
 }) {
   const { t } = useTranslation();
   const setup = project ? computeWarpSetup(project) : null;
@@ -459,7 +459,7 @@ function WindingSection({
   );
 }
 
-function TieUpSection({ plan }: { plan: WarpingPlan }) {
+function TieUpSection({ plan }: { readonly plan: WarpingPlan }) {
   const { t } = useTranslation();
   if (!plan.has_tieup || !plan.tieup || !plan.tieup_num_shafts || !plan.tieup_num_treadles) {
     return (
@@ -487,7 +487,7 @@ function TieUpSection({ plan }: { plan: WarpingPlan }) {
   );
 }
 
-function ThreadingSection({ plan }: { plan: WarpingPlan }) {
+function ThreadingSection({ plan }: { readonly plan: WarpingPlan }) {
   const { t } = useTranslation();
   if (!plan.has_threading || !plan.threading || plan.threading.length === 0) {
     return (

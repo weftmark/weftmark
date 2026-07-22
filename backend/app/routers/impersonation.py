@@ -1,6 +1,7 @@
 """Impersonation session endpoints — audit trail only; state is managed client-side."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -49,8 +50,8 @@ class ImpersonationStartResponse(BaseModel):
 )
 async def impersonation_start(
     body: ImpersonationStartRequest,
-    superuser: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    superuser: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ImpersonationStartResponse:
     """Validate the impersonation target and write the audit log entry."""
     target = await _get_target_user(db, body.target_user_id)
@@ -77,8 +78,8 @@ async def impersonation_start(
 @router.post("/end", responses={404: {"description": "User not found"}})
 async def impersonation_end(
     body: ImpersonationEndRequest,
-    superuser: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    superuser: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Write the impersonation-ended audit log entry."""
     target = await _get_target_user(db, body.target_user_id)

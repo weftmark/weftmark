@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 
 interface Props {
-  yarn: YarnDetail;
-  onSuccess: (newId: string) => void;
-  onClose: () => void;
+  readonly yarn: YarnDetail;
+  readonly onSuccess: (newId: string) => void;
+  readonly onClose: () => void;
 }
 
 export function CloneYarnModal({ yarn, onSuccess, onClose }: Props) {

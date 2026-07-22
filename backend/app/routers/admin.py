@@ -6,7 +6,7 @@ import platform
 import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 import psutil
@@ -442,8 +442,8 @@ async def _probe_clerk() -> ServiceCheckResult:
 
 @router.get("/users", response_model=list[AdminUserResponse])
 async def list_users(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[AdminUserResponse]:
     from sqlalchemy import or_
 
@@ -565,8 +565,8 @@ async def list_users(
 async def patch_user(
     user_id: uuid.UUID,
     body: AdminUserPatch,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
@@ -690,8 +690,8 @@ async def patch_user(
 )
 async def ban_user(
     user_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
@@ -746,8 +746,8 @@ async def ban_user(
 )
 async def unban_user(
     user_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
@@ -813,8 +813,8 @@ class DeleteUserRequest(BaseModel):
 async def delete_user(
     user_id: uuid.UUID,
     body: DeleteUserRequest,
-    requesting_user: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    requesting_user: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     if body.confirm != "DELETE USER":
         raise HTTPException(status_code=422, detail='confirm must be exactly "DELETE USER"')
@@ -849,9 +849,9 @@ async def delete_user(
 )
 async def get_user_storage_report(
     user_id: uuid.UUID,
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     verify_s3: bool = False,
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
 ) -> UserStorageReportResponse:
     from app.services.storage_quota import get_user_files_report
 
@@ -882,8 +882,8 @@ async def get_user_storage_report(
 
 @router.get("/stats", response_model=AdminStatsResponse)
 async def get_stats(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminStatsResponse:
     now = datetime.now(timezone.utc)
 
@@ -943,8 +943,8 @@ async def get_stats(
 
 @router.get("/health", response_model=AdminHealthResponse)
 async def get_health(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminHealthResponse:
     from app.main import start_time
 
@@ -1071,8 +1071,8 @@ async def _probe_config() -> ServiceCheckResult:
 
 @router.get("/services", response_model=list[ServiceCheckResult])
 async def check_services(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[ServiceCheckResult]:
     db_result, s3_result, clerk_result, smtp_result, config_result = await asyncio.gather(
         _probe_postgres(db),
@@ -1116,7 +1116,7 @@ class WebhookProbeResponse(BaseModel):
 
 @router.post("/test-webhook", response_model=WebhookProbeResponse, status_code=200)
 async def test_webhook(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> WebhookProbeResponse:
     from app.services.clerk_webhook_probe import run_webhook_probe
 
@@ -1131,8 +1131,8 @@ async def test_webhook(
 
 @router.get("/audit-log", response_model=AuditLogPage)
 async def list_audit_log(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     page: int = 1,
     page_size: int = 50,
     event_type: str | None = None,
@@ -1201,8 +1201,8 @@ class ServerEventPage(BaseModel):
 
 @router.get("/server-events", response_model=ServerEventPage)
 async def list_server_events(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     page: int = 1,
     page_size: int = 50,
     event_type: str | None = None,
@@ -1230,7 +1230,7 @@ async def list_server_events(
 
 @router.post("/test-email", status_code=200)
 async def send_test_email_endpoint(
-    admin: User = Depends(require_admin),
+    admin: Annotated[User, Depends(require_admin)],
 ) -> dict:
     await send_test_email(admin.email)
     return {"status": "sent", "to": admin.email}
@@ -1269,8 +1269,8 @@ class ElevateRequest(BaseModel):
 async def elevate_to_superuser(
     user_id: uuid.UUID,
     body: ElevateRequest,
-    admin: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
@@ -1356,8 +1356,8 @@ class PendingSignupResponse(BaseModel):
 
 @router.get("/pending-signups", response_model=list[PendingSignupResponse])
 async def list_pending_signups(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[PendingSignup]:
     result = await db.scalars(select(PendingSignup).order_by(PendingSignup.created_at.desc()))
     return list(result.all())
@@ -1371,8 +1371,8 @@ async def list_pending_signups(
 )
 async def approve_pending_signup(
     signup_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
@@ -1455,8 +1455,8 @@ async def approve_pending_signup(
 )
 async def ban_pending_signup(
     signup_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
@@ -1478,8 +1478,8 @@ async def ban_pending_signup(
 )
 async def dismiss_pending_signup(
     signup_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
@@ -1523,8 +1523,8 @@ class EulaCurrentAdminResponse(BaseModel):
 
 @router.get("/eula", response_model=EulaCurrentAdminResponse, responses={404: {"description": "No EULA version found"}})
 async def get_eula_admin(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> EulaCurrentAdminResponse:
     row = await db.scalar(select(EulaVersion).order_by(EulaVersion.id.desc()).limit(1))
     if not row:
@@ -1546,8 +1546,8 @@ async def get_eula_admin(
 )
 async def create_eula_version(
     body: EulaCreateRequest,
-    admin: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> EulaVersionResponse:
     existing = await db.scalar(select(EulaVersion).where(EulaVersion.version == body.version))
     if existing:
@@ -1627,8 +1627,8 @@ async def _worker_version() -> str | None:
 
 @router.get("/versions", response_model=AdminVersionsResponse)
 async def get_versions(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminVersionsResponse:
     settings = get_settings()
 
@@ -1651,8 +1651,8 @@ async def get_versions(
 
 @router.get("/db-info", response_model=AdminDbInfoResponse)
 async def get_db_info(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminDbInfoResponse:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
@@ -1688,7 +1688,9 @@ async def get_db_info(
 
 
 @router.get("/neon-dashboard", response_model=neon.NeonDashboardResponse)
-async def get_neon_dashboard(_: User = Depends(require_superuser)) -> neon.NeonDashboardResponse:
+async def get_neon_dashboard(
+    _: Annotated[User, Depends(require_superuser)],
+) -> neon.NeonDashboardResponse:
     return await neon.fetch_dashboard(get_settings())
 
 
@@ -1727,8 +1729,8 @@ class BackfillResponse(BaseModel):
 
 @router.get("/reconcile", response_model=ReconcileReport)
 async def get_reconcile_report(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ReconcileReport:
     clerk_users = await list_clerk_users()
     clerk_ids = {u["id"] for u in clerk_users}
@@ -1778,9 +1780,9 @@ async def get_reconcile_report(
 )
 async def backfill_clerk_user(
     clerk_user_id: str,
+    admin: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     body: BackfillRequest = Body(default_factory=BackfillRequest),
-    admin: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
 ) -> BackfillResponse:
     existing = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id, User.deleted_at.is_(None)))
     if existing:
@@ -1872,7 +1874,7 @@ class S3CleanupResponse(BaseModel):
 
 @router.post("/s3-audit/scan", response_model=S3ScanResponse, status_code=202)
 async def start_s3_audit_scan(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> S3ScanResponse:
     from app.services.task_history import record_queued
     from app.tasks.s3_audit import run_s3_orphan_scan
@@ -1886,7 +1888,7 @@ async def start_s3_audit_scan(
 @router.get("/s3-audit/task/{task_id}", response_model=S3AuditTaskStatus)
 async def get_s3_audit_task(
     task_id: str,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> S3AuditTaskStatus:
     from celery.result import AsyncResult
 
@@ -1906,7 +1908,7 @@ async def get_s3_audit_task(
 @router.post("/s3-audit/cleanup", response_model=S3CleanupResponse)
 async def cleanup_s3_orphans(
     body: S3CleanupRequest,
-    admin: User = Depends(require_superuser),
+    admin: Annotated[User, Depends(require_superuser)],
 ) -> S3CleanupResponse:
     from app.services import storage
 
@@ -1972,7 +1974,7 @@ class CveScanSummary(BaseModel):
 @router.post("/cve-scan/start", response_model=CveScanStartResponse, status_code=202)
 async def start_cve_scan(
     body: CveScanStartRequest,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> CveScanStartResponse:
     from app.services.task_history import record_queued
     from app.tasks.cve_scan import run_cve_scan
@@ -1986,7 +1988,7 @@ async def start_cve_scan(
 @router.get("/cve-scan/task/{task_id}", response_model=CveScanTaskStatus)
 async def get_cve_scan_task(
     task_id: str,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> CveScanTaskStatus:
     from celery.result import AsyncResult
 
@@ -2005,7 +2007,7 @@ async def get_cve_scan_task(
 
 @router.get("/cve-scan/summary", response_model=CveScanSummary)
 async def get_cve_scan_summary(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> CveScanSummary:
     import json as _json
 
@@ -2039,7 +2041,7 @@ class S3AuditSummary(BaseModel):
 
 @router.get("/s3-audit/summary", response_model=S3AuditSummary)
 async def get_s3_audit_summary(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> S3AuditSummary:
     import json as _json
 
@@ -2101,7 +2103,9 @@ class WorkerStatus(BaseModel):
 
 
 @router.get("/worker-status", response_model=WorkerStatus)
-async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatus:
+async def get_worker_status(
+    _: Annotated[User, Depends(require_superuser)],
+) -> WorkerStatus:
     from app.celery_app import celery_app
 
     checked_at = datetime.now(timezone.utc).isoformat()
@@ -2184,7 +2188,7 @@ class DebugSleepRequest(BaseModel):
 @router.post("/debug-sleep", status_code=202)
 async def start_debug_sleep(
     body: DebugSleepRequest,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> dict:
     from app.services.task_history import record_queued
     from app.tasks.debug import debug_sleep
@@ -2222,9 +2226,9 @@ class TaskHistoryResponse(BaseModel):
 
 @router.get("/task-history", response_model=TaskHistoryResponse)
 async def get_task_history(
+    _: Annotated[User, Depends(require_superuser)],
     page: int = 1,
     page_size: int = 25,
-    _: User = Depends(require_superuser),
 ) -> TaskHistoryResponse:
     from app.services.task_history import _iso, get_history
 
@@ -2264,7 +2268,7 @@ async def get_task_history(
 @router.post("/tasks/{task_id}/revoke")
 async def revoke_task(
     task_id: str,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> dict:
     from app.celery_app import celery_app
     from app.services.task_history import record_completed
@@ -2276,7 +2280,7 @@ async def revoke_task(
 
 @router.post("/purge-soft-deleted")
 async def run_purge_soft_deleted(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> dict:
     from app.services.task_history import record_queued
     from app.tasks.purge import purge_soft_deleted_records
@@ -2303,8 +2307,8 @@ class SoftDeleteQueueResponse(BaseModel):
 
 @router.get("/soft-delete-queue", response_model=SoftDeleteQueueResponse)
 async def get_soft_delete_queue(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SoftDeleteQueueResponse:
     settings = get_settings()
     retention_days = settings.soft_delete_retention_days
@@ -2358,8 +2362,8 @@ class DeletionQueueUser(BaseModel):
 
 @router.get("/deletion-queue", response_model=list[DeletionQueueUser])
 async def get_deletion_queue(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[DeletionQueueUser]:
     rows = await db.scalars(
         select(User).where(User.deletion_state.is_not(None)).order_by(User.deletion_initiated_at.desc())
@@ -2453,8 +2457,8 @@ def _task_to_response(task) -> ScheduledTaskResponse:
 
 @router.get("/scheduled-tasks")
 async def list_scheduled_tasks(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_superuser)],
 ) -> list[ScheduledTaskResponse]:
     from app.models.scheduled_task import ScheduledTask
     from app.tasks.scheduler import REGISTRY
@@ -2489,8 +2493,8 @@ async def list_scheduled_tasks(
 async def patch_scheduled_task(
     name: str,
     body: PatchScheduledTaskBody,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_superuser)],
 ) -> ScheduledTaskResponse:
     from app.models.scheduled_task import ScheduledTask
     from app.tasks.scheduler import REGISTRY
@@ -2580,8 +2584,8 @@ def _credential_to_response(cred: CredentialExpiry) -> CredentialExpiryResponse:
 
 @router.get("/credentials", response_model=list[CredentialExpiryResponse])
 async def list_credentials(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
 ) -> list[CredentialExpiryResponse]:
     rows = await db.scalars(select(CredentialExpiry).order_by(CredentialExpiry.expires_on.asc().nulls_last()))
     return [_credential_to_response(r) for r in rows.all()]
@@ -2595,8 +2599,8 @@ async def list_credentials(
 )
 async def create_credential(
     body: CreateCredentialBody,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_superuser)],
 ) -> CredentialExpiryResponse:
     if body.resource not in RESOURCE_CHOICES:
         raise HTTPException(status_code=422, detail=f"Invalid resource. Must be one of: {sorted(RESOURCE_CHOICES)}")
@@ -2621,8 +2625,8 @@ async def create_credential(
 async def patch_credential(
     credential_id: uuid.UUID,
     body: PatchCredentialBody,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_superuser)],
 ) -> CredentialExpiryResponse:
     cred = await db.scalar(select(CredentialExpiry).where(CredentialExpiry.id == credential_id))
     if cred is None:
@@ -2648,8 +2652,8 @@ async def patch_credential(
 )
 async def delete_credential(
     credential_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_superuser)],
 ) -> None:
     cred = await db.scalar(select(CredentialExpiry).where(CredentialExpiry.id == credential_id))
     if cred is None:
@@ -2676,8 +2680,8 @@ class AdminSlugRecord(BaseModel):
 
 @router.get("/project-slugs", response_model=list[AdminSlugRecord])
 async def list_project_slugs(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
 ) -> list[AdminSlugRecord]:
     rows = await db.scalars(
         select(Project).where(
@@ -2712,8 +2716,8 @@ async def list_project_slugs(
 @router.delete("/project-slugs/{slug}", status_code=204, responses={404: {"description": "Slug not found"}})
 async def admin_revoke_project_slug(
     slug: str,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
 ) -> None:
     project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
     if project is None:
@@ -2736,9 +2740,9 @@ class AdminProjectStepRecord(BaseModel):
 @router.get("/project-steps", response_model=list[AdminProjectStepRecord])
 async def admin_list_project_steps(
     project_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
     limit: int = 200,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
 ) -> list[AdminProjectStepRecord]:
     rows = await db.scalars(
         select(ProjectStep)
@@ -2779,8 +2783,8 @@ class AdminExportRecord(BaseModel):
 
 @router.get("/exports", response_model=list[AdminExportRecord])
 async def list_exports(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[AdminExportRecord]:
     rows = await db.execute(
         select(UserExportRequest, User)
@@ -2808,8 +2812,8 @@ async def list_exports(
 @router.delete("/exports/{export_id}", status_code=204, responses={404: {"description": "Export not found"}})
 async def delete_export(
     export_id: uuid.UUID,
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     req = await db.get(UserExportRequest, export_id)
     if req is None:
@@ -2940,7 +2944,7 @@ def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
 
 @router.get("/config")
 async def get_config_state(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> ConfigStateResponse:
     settings = get_settings()
     return ConfigStateResponse(
@@ -2953,7 +2957,7 @@ async def get_config_state(
 @router.put("/config", responses={503: {"description": "CONFIG_ENCRYPTION_KEY is not set — cannot write config file"}})
 def save_config(
     body: ConfigSaveRequest,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> ConfigStateResponse:
     """Save integration config values to the encrypted config file.
 
@@ -3079,7 +3083,7 @@ _SERVICE_TESTS = {
 async def test_config_service(
     service: str,
     body: ConfigSaveRequest,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> ConfigTestResult:
     """Test a service connection using the provided (unsaved) values."""
     handler = _SERVICE_TESTS.get(service)

@@ -21,8 +21,8 @@ export function displayLength(
   displayUnit: LengthUnit,
 ): string | null {
   if (value == null || value === "") return null;
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return null;
+  const num = typeof value === "string" ? Number.parseFloat(value) : value;
+  if (Number.isNaN(num)) return null;
   const converted = convertLength(num, storedUnit as LengthUnit, displayUnit);
   return formatLength(converted, displayUnit);
 }

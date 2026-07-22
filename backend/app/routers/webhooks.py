@@ -4,6 +4,8 @@ POST /webhooks/clerk  — Clerk user lifecycle events (user.created, user.update
                         user.deleted, session.created, session.ended, webhook.test)
 """
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +23,9 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
         500: {"description": "Webhook not configured"},
     },
 )
-async def clerk_webhook(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
+async def clerk_webhook(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
     """Receive and process Clerk user lifecycle events."""
     return await _handle_clerk_webhook(request, db)

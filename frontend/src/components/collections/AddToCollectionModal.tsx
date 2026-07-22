@@ -5,11 +5,11 @@ import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  itemId: string;
-  itemType: "draft" | "project";
-  onAdd: (collectionId: string, itemId: string) => Promise<void>;
-  onRemove: (collectionId: string, itemId: string) => Promise<void>;
-  onClose: () => void;
+  readonly itemId: string;
+  readonly itemType: "draft" | "project";
+  readonly onAdd: (collectionId: string, itemId: string) => Promise<void>;
+  readonly onRemove: (collectionId: string, itemId: string) => Promise<void>;
+  readonly onClose: () => void;
 }
 
 export function AddToCollectionModal({ itemId, itemType, onAdd, onRemove, onClose }: Props) {

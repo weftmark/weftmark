@@ -34,7 +34,7 @@ function markSubmitted(loomId: string): void {
 // ---------- component ----------
 
 interface Props {
-  loom: LoomDetail;
+  readonly loom: LoomDetail;
 }
 
 export function CatalogRequestButton({ loom }: Props) {

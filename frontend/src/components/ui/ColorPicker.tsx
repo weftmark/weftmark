@@ -17,7 +17,7 @@ declare global {
 function hexToRgb(hex: string): [number, number, number] | null {
   const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
   if (!m) return null;
-  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+  return [Number.parseInt(m[1], 16), Number.parseInt(m[2], 16), Number.parseInt(m[3], 16)];
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
@@ -134,10 +134,10 @@ const PICKER_HEIGHT = 360;
 const PICKER_WIDTH = 240;
 
 interface ColorPickerProps {
-  value: string;
-  onChange: (hex: string) => void;
-  size?: "sm" | "md";
-  className?: string;
+  readonly value: string;
+  readonly onChange: (hex: string) => void;
+  readonly size?: "sm" | "md";
+  readonly className?: string;
 }
 
 export function ColorPicker({ value, onChange, size = "md", className }: ColorPickerProps) {
@@ -225,7 +225,7 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
     next[index] = raw;
     setRgbInput(next);
     const nums = next.map(Number);
-    if (next.every((v) => v !== "" && !isNaN(Number(v))) && nums.every((v) => v >= 0 && v <= 255)) {
+    if (next.every((v) => v !== "" && !Number.isNaN(Number(v))) && nums.every((v) => v >= 0 && v <= 255)) {
       const hex = rgbToHex(nums[0], nums[1], nums[2]);
       setHexInput(hex);
       const hsl = hexToHsl(hex);
@@ -240,7 +240,7 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
     setHslInput(next);
     const [h, s, l] = next.map(Number);
     if (
-      next.every((v) => v !== "" && !isNaN(Number(v))) &&
+      next.every((v) => v !== "" && !Number.isNaN(Number(v))) &&
       h >= 0 && h <= 360 &&
       s >= 0 && s <= 100 &&
       l >= 0 && l <= 100

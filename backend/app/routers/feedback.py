@@ -1,6 +1,7 @@
 """In-app feedback submission and admin review endpoints."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
@@ -109,9 +110,9 @@ def _serialize(row: UserFeedback, include_user_email: bool = False) -> FeedbackR
 @router.post("", status_code=201)
 async def submit_feedback(
     body: SubmitFeedbackRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _rl: None = Depends(_submit_limit),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    _rl: Annotated[None, Depends(_submit_limit)],
 ) -> FeedbackResponse:
     from app.config import get_settings
 
@@ -156,8 +157,8 @@ def _enqueue_dispatch(feedback_id: str) -> None:
 
 @router.get("/mine")
 async def list_my_feedback(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> list[FeedbackResponse]:
     q = (
         select(UserFeedback)
@@ -183,8 +184,8 @@ class FeedbackStatusResponse(BaseModel):
 @router.get("/{feedback_id}/status", responses={404: {"description": "Feedback not found"}})
 async def get_feedback_status(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> FeedbackStatusResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row or row.user_id != current_user.id:
@@ -203,13 +204,13 @@ async def get_feedback_status(
 
 @admin_router.get("")
 async def list_feedback(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=100),
     submission_type: str | None = None,
     dispatch_status: str | None = None,
     include_deleted: bool = False,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
 ) -> FeedbackPage:
     from sqlalchemy.orm import selectinload
 
@@ -241,8 +242,8 @@ async def list_feedback(
 @admin_router.get("/{feedback_id}", responses={404: {"description": "Feedback not found"}})
 async def get_feedback_detail(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> FeedbackResponse:
     from sqlalchemy.orm import selectinload
 
@@ -259,8 +260,8 @@ async def get_feedback_detail(
 @admin_router.delete("/{feedback_id}", responses={404: {"description": "Feedback not found"}})
 async def soft_delete_feedback(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:
@@ -277,8 +278,8 @@ async def soft_delete_feedback(
 )
 async def retry_feedback_dispatch(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:
@@ -299,8 +300,8 @@ async def retry_feedback_dispatch(
 )
 async def recover_feedback(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:

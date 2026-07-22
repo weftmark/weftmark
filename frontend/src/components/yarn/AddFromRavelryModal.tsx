@@ -19,8 +19,8 @@ import { ColorPicker } from "@/components/ui/ColorPicker";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 type Step = "company" | "yarn" | "colorway";

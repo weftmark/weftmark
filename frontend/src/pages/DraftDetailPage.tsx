@@ -349,8 +349,8 @@ export function DraftDetailPage() {
                       className="flex items-center gap-1.5 flex-wrap"
                       onSubmit={(e) => {
                         e.preventDefault();
-                        const v = parseFloat(warpLengthInput);
-                        if (!isNaN(v) && v > 0) {
+                        const v = Number.parseFloat(warpLengthInput);
+                        if (!Number.isNaN(v) && v > 0) {
                           warpLengthMutation.mutate({ length: v, unit: warpLengthUnit });
                         }
                       }}
@@ -412,7 +412,7 @@ export function DraftDetailPage() {
                             className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                             onClick={() => {
                               const v = convertLength(draft.warp_length_cm!, "cm", displayUnit);
-                              setWarpLengthInput(parseFloat(v.toFixed(1)).toString());
+                              setWarpLengthInput(Number.parseFloat(v.toFixed(1)).toString());
                               setWarpLengthUnit(displayUnit);
                               setEditingWarpLength(true);
                             }}
@@ -467,8 +467,8 @@ export function DraftDetailPage() {
                         type="button"
                         className="text-xs text-accent underline underline-offset-2"
                         onClick={() => {
-                          const v = parseFloat(weavingWidthInput);
-                          if (!isNaN(v) && v > 0) weavingWidthMutation.mutate({ width: v, unit: weavingWidthUnit });
+                          const v = Number.parseFloat(weavingWidthInput);
+                          if (!Number.isNaN(v) && v > 0) weavingWidthMutation.mutate({ width: v, unit: weavingWidthUnit });
                         }}
                       >{t("common.save")}</button>
                       <button
@@ -529,8 +529,8 @@ export function DraftDetailPage() {
                         type="button"
                         className="text-xs text-accent underline underline-offset-2"
                         onClick={() => {
-                          const v = parseFloat(epiInput);
-                          if (!isNaN(v) && v > 0) epiMutation.mutate({ epi: v });
+                          const v = Number.parseFloat(epiInput);
+                          if (!Number.isNaN(v) && v > 0) epiMutation.mutate({ epi: v });
                         }}
                       >{t("common.save")}</button>
                       <button

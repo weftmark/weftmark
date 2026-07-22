@@ -1,7 +1,7 @@
 interface Props {
-  tags: string[];
-  max?: number;
-  className?: string;
+  readonly tags: string[];
+  readonly max?: number;
+  readonly className?: string;
 }
 
 function tagColor(tag: string): { background: string; color: string } {

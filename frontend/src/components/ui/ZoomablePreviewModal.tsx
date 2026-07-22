@@ -4,13 +4,13 @@ import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  src: string;
-  title: string;
-  onClose: () => void;
+  readonly src: string;
+  readonly title: string;
+  readonly onClose: () => void;
   /** When false, renders `gate` content instead of loading the image. */
-  gateConfirmed?: boolean;
+  readonly gateConfirmed?: boolean;
   /** Content shown when gateConfirmed is false (e.g. large-draft warning). */
-  gate?: React.ReactNode;
+  readonly gate?: React.ReactNode;
 }
 
 const ZOOM_STEP = 0.25;

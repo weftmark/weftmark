@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 
-export function CopyEmail({ email }: { email: string }) {
+export function CopyEmail({ email }: { readonly email: string }) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy(e: React.MouseEvent) {
