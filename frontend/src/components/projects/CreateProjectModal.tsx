@@ -9,18 +9,18 @@ import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, convertLength, formatLength } from "@/lib/units";
 
 interface Props {
-  onSuccess: (id: string) => void;
-  onClose: () => void;
-  defaultDraftId?: string;
+  readonly onSuccess: (id: string) => void;
+  readonly onClose: () => void;
+  readonly defaultDraftId?: string;
 }
 
 const CM_PER_IN = 2.54;
 
 function convertLen(value: string, toUnit: "cm" | "in"): string {
-  const v = parseFloat(value);
-  if (!value || isNaN(v)) return value;
+  const v = Number.parseFloat(value);
+  if (!value || Number.isNaN(v)) return value;
   const result = toUnit === "in" ? v / CM_PER_IN : v * CM_PER_IN;
-  return parseFloat(result.toFixed(2)).toString();
+  return Number.parseFloat(result.toFixed(2)).toString();
 }
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
@@ -70,7 +70,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
     setPrevDraftId(selectedDraft?.id);
     if (selectedDraft?.warp_length_cm != null) {
       const val = convertLength(selectedDraft.warp_length_cm, "cm", lengthUnit);
-      setFinishedLength(parseFloat(val.toFixed(1)).toString());
+      setFinishedLength(Number.parseFloat(val.toFixed(1)).toString());
     } else {
       setFinishedLength("");
     }
@@ -133,8 +133,8 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
     selectedDraft.num_shafts !== selectedDraft.effective_num_shafts;
 
   const draftHasWarpLength = selectedDraft?.warp_length_cm != null;
-  const finishedLengthCm = finishedLength !== "" && !isNaN(parseFloat(finishedLength))
-    ? convertLength(parseFloat(finishedLength), lengthUnit, "cm")
+  const finishedLengthCm = finishedLength !== "" && !Number.isNaN(Number.parseFloat(finishedLength))
+    ? convertLength(Number.parseFloat(finishedLength), lengthUnit, "cm")
     : null;
   const warpLengthDefaultLabel = warpLengthDefaultCm != null
     ? formatLength(convertLength(warpLengthDefaultCm, "cm", lengthUnit), lengthUnit)
@@ -166,10 +166,10 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
     project_type: effectiveType as ProjectType,
     loom_id: loomId || undefined,
     loom_version_id: loomVersionId || undefined,
-    finished_length_per_item: finishedLength ? parseFloat(finishedLength) : undefined,
-    num_items: parseInt(numItems, 10) || 1,
-    waste_between_items: wasteBetween ? parseFloat(wasteBetween) : undefined,
-    warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
+    finished_length_per_item: finishedLength ? Number.parseFloat(finishedLength) : undefined,
+    num_items: Number.parseInt(numItems, 10) || 1,
+    waste_between_items: wasteBetween ? Number.parseFloat(wasteBetween) : undefined,
+    warp_waste_allowance: warpWaste ? Number.parseFloat(warpWaste) : undefined,
     length_unit: lengthUnit,
     tags: tags.length ? tags : undefined,
   });
@@ -401,7 +401,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
             {draftHasWarpLength && (
               <div className="grid grid-cols-2 gap-3 mt-3">
-                {parseInt(numItems, 10) > 1 && (
+                {Number.parseInt(numItems, 10) > 1 && (
                   <div>
                     <label className="mb-1 block text-sm font-medium">Waste between items</label>
                     <div className="flex gap-1">
@@ -410,7 +410,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
                     </div>
                   </div>
                 )}
-                <div className={parseInt(numItems, 10) <= 1 ? "col-span-2" : ""}>
+                <div className={Number.parseInt(numItems, 10) <= 1 ? "col-span-2" : ""}>
                   <label className="mb-1 block text-sm font-medium">Loom warp waste</label>
                   <div className="flex gap-1">
                     <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={warpWaste || loomWasteInCurrentUnit(selectedVersion?.warp_waste_allowance ?? loomDetail?.versions.at(-1)?.warp_waste_allowance, selectedVersion?.warp_waste_unit ?? loomDetail?.versions.at(-1)?.warp_waste_unit ?? "cm")} onChange={(e) => setWarpWaste(e.target.value)} placeholder="30" />

@@ -17,8 +17,8 @@ const WEIGHT_LABELS: Record<string, string> = {
 };
 
 interface Props {
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 export function AddYarnModal({ onSuccess, onClose }: Props) {
@@ -96,14 +96,14 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
         fiber_content: fiberContent.trim() || undefined,
         color_name: colorName.trim() || undefined,
         color_hex: hasColor ? colorHex : undefined,
-        unit_yardage: unitYardage ? parseFloat(unitYardage) : undefined,
+        unit_yardage: unitYardage ? Number.parseFloat(unitYardage) : undefined,
         unit_weight_oz: oz,
         unit_weight_g: g,
-        yards_per_pound: yardsPerPound ? parseFloat(yardsPerPound) : undefined,
-        sett_min: settMin ? parseInt(settMin, 10) : undefined,
-        sett_max: settMax ? parseInt(settMax, 10) : undefined,
+        yards_per_pound: yardsPerPound ? Number.parseFloat(yardsPerPound) : undefined,
+        sett_min: settMin ? Number.parseInt(settMin, 10) : undefined,
+        sett_max: settMax ? Number.parseInt(settMax, 10) : undefined,
         purchase_source: purchaseSource.trim() || undefined,
-        purchase_price: purchasePrice ? parseFloat(purchasePrice) : undefined,
+        purchase_price: purchasePrice ? Number.parseFloat(purchasePrice) : undefined,
         purchase_date: purchaseDate || undefined,
         notes: notes.trim() || undefined,
         machine_washable: machineWashable,

@@ -13,8 +13,8 @@ import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit } from "@/lib/units";
 
 interface Props {
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 const today = () =>
@@ -179,7 +179,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
       if (ref.treadle_count?.length) {
         setNumTreadles(String(ref.treadle_count[0]));
       } else if (showsTreadles(lt)) {
-        const s = parseInt(first, 10);
+        const s = Number.parseInt(first, 10);
         setNumTreadles(String(s + 2));
       }
     }
@@ -211,23 +211,23 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
   const handleShaftOptionChange = (val: string) => {
     setNumShafts(val);
     if (!treadlesManuallySet && treadleOptions && shaftOptions) {
-      const idx = shaftOptions.indexOf(parseInt(val, 10));
+      const idx = shaftOptions.indexOf(Number.parseInt(val, 10));
       if (idx !== -1 && treadleOptions[idx] != null) {
         setNumTreadles(String(treadleOptions[idx]));
         return;
       }
     }
     if (!treadlesManuallySet && showsTreadles(loomType)) {
-      const s = parseInt(val, 10);
-      if (!isNaN(s)) setNumTreadles(String(s + 2));
+      const s = Number.parseInt(val, 10);
+      if (!Number.isNaN(s)) setNumTreadles(String(s + 2));
     }
   };
 
   const handleShaftsManual = (val: string) => {
     setNumShafts(val);
     if (loomType === "floor_loom" && !treadlesManuallySet) {
-      const s = parseInt(val, 10);
-      if (!isNaN(s)) setNumTreadles(String(s + 2));
+      const s = Number.parseInt(val, 10);
+      if (!Number.isNaN(s)) setNumTreadles(String(s + 2));
     }
   };
 
@@ -236,8 +236,8 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
     setAcknowledged(false);
     setTreadlesManuallySet(false);
     if (newType === "floor_loom") {
-      const s = parseInt(numShafts, 10);
-      if (!isNaN(s)) setNumTreadles(String(s + 2));
+      const s = Number.parseInt(numShafts, 10);
+      if (!Number.isNaN(s)) setNumTreadles(String(s + 2));
     }
   };
 
@@ -255,16 +255,16 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
         notes: notes || undefined,
         effective_date: effectiveDate,
         num_shafts:
-          showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
+          showsShafts(loomType) && numShafts ? Number.parseInt(numShafts, 10) : undefined,
         num_treadles:
           showsTreadles(loomType) && numTreadles !== ""
-            ? parseInt(numTreadles, 10)
+            ? Number.parseInt(numTreadles, 10)
             : undefined,
         num_heddles:
-          showsHeddles(loomType) && numHeddles ? parseInt(numHeddles, 10) : undefined,
-        weaving_width: weavingWidth ? parseFloat(weavingWidth) : undefined,
+          showsHeddles(loomType) && numHeddles ? Number.parseInt(numHeddles, 10) : undefined,
+        weaving_width: weavingWidth ? Number.parseFloat(weavingWidth) : undefined,
         weaving_width_unit: weavingWidthUnit,
-        warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
+        warp_waste_allowance: warpWaste ? Number.parseFloat(warpWaste) : undefined,
         warp_waste_unit: warpWasteUnit,
       };
       await createLoom(payload);

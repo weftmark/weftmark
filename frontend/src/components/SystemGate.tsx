@@ -3,7 +3,7 @@ import { UninitializedPage } from "@/pages/UninitializedPage";
 
 type Status = "loading" | "initialized" | "uninitialized" | "unreachable";
 
-export function SystemGate({ children }: { children: React.ReactNode }) {
+export function SystemGate({ children }: { readonly children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
 
   useEffect(() => {

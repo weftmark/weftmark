@@ -3,10 +3,10 @@ import { cloneVersion, type LoomVersion, type CloneVersionPayload } from "@/api/
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  loomId: string;
-  source: LoomVersion;
-  onSuccess: (v: LoomVersion) => void;
-  onClose: () => void;
+  readonly loomId: string;
+  readonly source: LoomVersion;
+  readonly onSuccess: (v: LoomVersion) => void;
+  readonly onClose: () => void;
 }
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);

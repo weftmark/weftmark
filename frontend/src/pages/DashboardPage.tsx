@@ -67,12 +67,12 @@ function HeatmapGrid({
   onCellEnter,
   onCellLeave,
 }: {
-  weeks: Date[][];
-  rangeEnd: Date;
-  dayByDate: Map<string, ActivityDay>;
-  dowLabels: string[];
-  onCellEnter: (e: React.MouseEvent, dateStr: string) => void;
-  onCellLeave: () => void;
+  readonly weeks: Date[][];
+  readonly rangeEnd: Date;
+  readonly dayByDate: Map<string, ActivityDay>;
+  readonly dowLabels: string[];
+  readonly onCellEnter: (e: React.MouseEvent, dateStr: string) => void;
+  readonly onCellLeave: () => void;
 }) {
   const monthLabels: { label: string; col: number }[] = [];
   weeks.forEach((week, wi) => {

@@ -16,7 +16,7 @@ interface LoomProjectCounts {
   abandoned: number;
 }
 
-function LoomCard({ loom, projectCounts, retired }: { loom: Loom; projectCounts?: LoomProjectCounts; retired?: boolean }) {
+function LoomCard({ loom, projectCounts, retired }: { readonly loom: Loom; readonly projectCounts?: LoomProjectCounts; readonly retired?: boolean }) {
   const { t } = useTranslation();
   const v = loom.current_version;
   return (

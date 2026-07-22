@@ -9,10 +9,10 @@ function tagColor(tag: string): { background: string; color: string } {
 }
 
 interface Props {
-  tags: string[];
-  onChange: (tags: string[]) => void;
-  placeholder?: string;
-  disabled?: boolean;
+  readonly tags: string[];
+  readonly onChange: (tags: string[]) => void;
+  readonly placeholder?: string;
+  readonly disabled?: boolean;
 }
 
 export function TagInput({ tags, onChange, placeholder = "Add a tag…", disabled = false }: Props) {

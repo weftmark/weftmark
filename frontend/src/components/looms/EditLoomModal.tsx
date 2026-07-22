@@ -5,9 +5,9 @@ import {
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  loom: LoomDetail;
-  onSuccess: (updated: LoomDetail) => void;
-  onClose: () => void;
+  readonly loom: LoomDetail;
+  readonly onSuccess: (updated: LoomDetail) => void;
+  readonly onClose: () => void;
 }
 
 const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby_floor_loom", "tapestry_loom", "rug_loom", "frame_loom", "other"];
@@ -37,7 +37,7 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
         model_name: modelName,
         serial_number: serialNumber || undefined,
         purchase_date: purchaseDate || undefined,
-        purchase_price: purchasePrice ? parseFloat(String(purchasePrice)) : undefined,
+        purchase_price: purchasePrice ? Number.parseFloat(String(purchasePrice)) : undefined,
         vendor: vendor || undefined,
         notes: notes || undefined,
       };

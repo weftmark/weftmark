@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { getAuthToken } from "@/api/client";
 
 interface Props extends React.ImgHTMLAttributes<HTMLImageElement> {
-  src: string;
-  loadingContent?: React.ReactNode;
+  readonly src: string;
+  readonly loadingContent?: React.ReactNode;
 }
 
 export function AuthedImage({ src, loadingContent, ...props }: Props) {

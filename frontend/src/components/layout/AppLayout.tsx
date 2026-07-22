@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 const DETAIL_PATTERN = /^\/projects\/[^/]+/;
 
 interface Props {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 export function AppLayout({ children }: Props) {

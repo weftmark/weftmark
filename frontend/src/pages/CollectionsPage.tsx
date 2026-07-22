@@ -7,7 +7,7 @@ import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { SkeletonCardGrid } from "@/components/ui/skeleton";
 
-function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function NewCollectionModal({ onClose, onSuccess }: { readonly onClose: () => void; readonly onSuccess: () => void }) {
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -111,7 +111,7 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   );
 }
 
-function CollectionCard({ collection }: { collection: CollectionSummary }) {
+function CollectionCard({ collection }: { readonly collection: CollectionSummary }) {
   const { t } = useTranslation();
   return (
     <Link

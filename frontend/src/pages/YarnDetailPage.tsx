@@ -7,7 +7,7 @@ import { formatColorwayLabel, getRavelryStatus, getRavelryYarnDetail, pushYarnTo
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 
-function DevJsonModal({ data, onClose }: { data: unknown; onClose: () => void }) {
+function DevJsonModal({ data, onClose }: { readonly data: unknown; readonly onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
@@ -52,9 +52,9 @@ function EditColorwayModal({
   onClose,
   onSaved,
 }: {
-  yarn: { id: string; color_name: string | null; ravelry_yarn_id: number | null };
-  onClose: () => void;
-  onSaved: () => void;
+  readonly yarn: { id: string; color_name: string | null; ravelry_yarn_id: number | null };
+  readonly onClose: () => void;
+  readonly onSaved: () => void;
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"rename" | "link">("rename");
@@ -230,7 +230,7 @@ function EditColorwayModal({
 // Color picker section
 // ---------------------------------------------------------------------------
 
-function ColorSection({ yarn, onSaved }: { yarn: { id: string; color_hex: string | null; ravelry_stash_id: number | null }; onSaved: () => void }) {
+function ColorSection({ yarn, onSaved }: { readonly yarn: { id: string; color_hex: string | null; ravelry_stash_id: number | null }; readonly onSaved: () => void }) {
   const { t } = useTranslation();
   const [colorHex, setColorHex] = useState(yarn.color_hex ?? "#888888");
   const [saving, setSaving] = useState(false);
@@ -273,9 +273,9 @@ function ColorSection({ yarn, onSaved }: { yarn: { id: string; color_hex: string
 // ---------------------------------------------------------------------------
 
 function RavelrySection({ ry, companyUrl, permalink }: {
-  ry: RavelryYarnApiDetail;
-  companyUrl: string | null;
-  permalink: string | null;
+  readonly ry: RavelryYarnApiDetail;
+  readonly companyUrl: string | null;
+  readonly permalink: string | null;
 }) {
   const { t } = useTranslation();
 

@@ -854,7 +854,7 @@ function FeedbackHistorySection() {
   );
 }
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Section({ title, description, children }: { readonly title: string; readonly description?: string; readonly children: ReactNode }) {
   return (
     <div className="space-y-5">
       <div className="border-b pb-2 space-y-0.5">
@@ -866,7 +866,7 @@ function Section({ title, description, children }: { title: string; description?
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children }: { readonly label: string; readonly children: ReactNode }) {
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium">{label}</label>

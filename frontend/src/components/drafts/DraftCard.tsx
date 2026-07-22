@@ -13,9 +13,9 @@ interface ProjectCounts {
 }
 
 interface Props {
-  draft: Draft;
-  projectCounts?: ProjectCounts;
-  archived?: boolean;
+  readonly draft: Draft;
+  readonly projectCounts?: ProjectCounts;
+  readonly archived?: boolean;
 }
 
 export function DraftCard({ draft, projectCounts, archived }: Props) {

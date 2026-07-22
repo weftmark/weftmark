@@ -99,10 +99,10 @@ function deriveTreadles(
 // ---------- component ----------
 
 interface Props {
-  loom: LoomDetail;
-  version: LoomVersion;
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly loom: LoomDetail;
+  readonly version: LoomVersion;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props) {
@@ -202,7 +202,7 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
 
     // Auto-match width to target version (convert units if needed)
     if (wOpts.length > 0 && version.weaving_width) {
-      const curVal = parseFloat(version.weaving_width);
+      const curVal = Number.parseFloat(version.weaving_width);
       const curUnit = version.weaving_width_unit as "cm" | "in";
       const targetUnit = wOpts[0].unit;
       const converted =
@@ -211,7 +211,7 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
           : curUnit === "cm"
             ? curVal / 2.54
             : curVal * 2.54;
-      setSelectedWidthIdx(closestIdx(wOpts.map((o) => parseFloat(o.value)), converted));
+      setSelectedWidthIdx(closestIdx(wOpts.map((o) => Number.parseFloat(o.value)), converted));
     } else {
       setSelectedWidthIdx(0);
     }
@@ -277,12 +277,12 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
               {
                 label: "Weaving width",
                 oldVal: cv.weaving_width
-                  ? `${parseFloat(cv.weaving_width)} ${cv.weaving_width_unit}`
+                  ? `${Number.parseFloat(cv.weaving_width)} ${cv.weaving_width_unit}`
                   : "—",
                 newVal: selectedWidthOpt.label,
                 changed:
                   !cv.weaving_width ||
-                  parseFloat(cv.weaving_width) !== parseFloat(selectedWidthOpt.value) ||
+                  Number.parseFloat(cv.weaving_width) !== Number.parseFloat(selectedWidthOpt.value) ||
                   cv.weaving_width_unit !== selectedWidthOpt.unit,
               },
             ]
@@ -313,7 +313,7 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
           versionPayload.num_treadles = derivedTreadles;
         }
         if (selectedWidthOpt != null) {
-          versionPayload.weaving_width = parseFloat(selectedWidthOpt.value);
+          versionPayload.weaving_width = Number.parseFloat(selectedWidthOpt.value);
           versionPayload.weaving_width_unit = selectedWidthOpt.unit;
         }
         if (Object.keys(versionPayload).length > 0) {

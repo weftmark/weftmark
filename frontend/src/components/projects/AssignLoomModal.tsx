@@ -5,15 +5,15 @@ import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
 
 interface Props {
-  projectId: string;
-  activeProjects: ProjectSummary[];
-  projectType?: string;
-  draftNumTreadles?: number | null;
-  draftNumShafts?: number | null;
-  draftEffectiveNumTreadles?: number | null;
-  draftEffectiveNumShafts?: number | null;
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly projectId: string;
+  readonly activeProjects: ProjectSummary[];
+  readonly projectType?: string;
+  readonly draftNumTreadles?: number | null;
+  readonly draftNumShafts?: number | null;
+  readonly draftEffectiveNumTreadles?: number | null;
+  readonly draftEffectiveNumShafts?: number | null;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";

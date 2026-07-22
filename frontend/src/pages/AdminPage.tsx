@@ -159,7 +159,7 @@ const STATUS_PILL: Record<UserRow["status"], string> = {
   deleting: "bg-copper-subtle text-copper-on-subtle",
 };
 
-function StatusPill({ status }: { status: UserRow["status"] }) {
+function StatusPill({ status }: { readonly status: UserRow["status"] }) {
   return (
     <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_PILL[status]}`}>
       {status}
@@ -170,7 +170,7 @@ function StatusPill({ status }: { status: UserRow["status"] }) {
 function SortTh({
   label, k, sort, dir, onSort,
 }: {
-  label: string; k: SortKey; sort: SortKey; dir: "asc" | "desc"; onSort: (k: SortKey) => void;
+  readonly label: string; readonly k: SortKey; readonly sort: SortKey; readonly dir: "asc" | "desc"; readonly onSort: (k: SortKey) => void;
 }) {
   const active = sort === k;
   return (
@@ -601,11 +601,11 @@ function PendingSignupRow({
   onBan,
   isWorking,
 }: {
-  signup: PendingSignup;
-  onApprove: () => void;
-  onDismiss: () => void;
-  onBan: () => void;
-  isWorking: boolean;
+  readonly signup: PendingSignup;
+  readonly onApprove: () => void;
+  readonly onDismiss: () => void;
+  readonly onBan: () => void;
+  readonly isWorking: boolean;
 }) {
   const [confirming, setConfirming] = useState<"dismiss" | "ban" | null>(null);
 
@@ -653,7 +653,7 @@ function PendingSignupRow({
   );
 }
 
-function InviteRow({ invite, onRevoke }: { invite: InviteRecord; onRevoke?: () => void }) {
+function InviteRow({ invite, onRevoke }: { readonly invite: InviteRecord; readonly onRevoke?: () => void }) {
   const isPending = !invite.accepted_at && !invite.revoked_at && new Date(invite.expires_at) > new Date();
   const status = invite.accepted_at
     ? "accepted"
@@ -722,7 +722,7 @@ function StatsTab() {
   );
 }
 
-function StatTable({ title, rows }: { title: string; rows: { label: string; value: number | string }[] }) {
+function StatTable({ title, rows }: { readonly title: string; readonly rows: { label: string; value: number | string }[] }) {
   return (
     <div>
       <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{title}</h2>
@@ -745,7 +745,7 @@ function StatTable({ title, rows }: { title: string; rows: { label: string; valu
 const MAX_HEALTH_POINTS = 60;
 const POLL_INTERVAL_MS = 3000;
 
-function Sparkline({ values, max, color }: { values: number[]; max: number; color: string }) {
+function Sparkline({ values, max, color }: { readonly values: number[]; readonly max: number; readonly color: string }) {
   const W = 300;
   const H = 48;
   if (values.length < 2) {
@@ -853,7 +853,7 @@ function HealthTab() {
 
 declare const __APP_VERSION__: string;
 
-function InfoTable({ rows }: { rows: { label: string; value: string }[] }) {
+function InfoTable({ rows }: { readonly rows: { label: string; value: string }[] }) {
   return (
     <div className="border rounded-lg divide-y overflow-hidden">
       {rows.map(({ label, value }) => (
@@ -963,11 +963,11 @@ function HealthChart({
   max,
   color,
 }: {
-  label: string;
-  current: string;
-  values: number[];
-  max: number;
-  color: string;
+  readonly label: string;
+  readonly current: string;
+  readonly values: number[];
+  readonly max: number;
+  readonly color: string;
 }) {
   return (
     <div className="border rounded-lg p-4 space-y-2">
@@ -986,7 +986,7 @@ function HealthChart({
 // Services tab
 // ---------------------------------------------------------------------------
 
-function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean }) {
+function StatusDot({ status, small }: { readonly status: "ok" | "error"; readonly small?: boolean }) {
   return (
     <span
       className={`inline-block rounded-full shrink-0 ${small ? "w-2 h-2" : "w-2.5 h-2.5"} ${
@@ -996,7 +996,7 @@ function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean 
   );
 }
 
-function CombinedServiceRow({ service, detail }: { service: ReadinessService; detail?: ServiceCheck }) {
+function CombinedServiceRow({ service, detail }: { readonly service: ReadinessService; readonly detail?: ServiceCheck }) {
   const [open, setOpen] = useState(false);
   const [webhookResult, setWebhookResult] = useState<WebhookProbeResult | null>(null);
   const [webhookTesting, setWebhookTesting] = useState(false);
@@ -1867,7 +1867,7 @@ function AuditLogTab() {
   );
 }
 
-function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
+function AuditLogRow({ entry }: { readonly entry: AuditLogEntry }) {
   const [expanded, setExpanded] = useState(false);
   const hasDetails = entry.details && Object.keys(entry.details).length > 0;
 
@@ -1925,12 +1925,12 @@ const SHEDDING_OPTIONS = [
 ];
 
 function parseIntArray(s: string): number[] | undefined {
-  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !isNaN(n));
+  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !Number.isNaN(n));
   return parts.length > 0 ? parts : undefined;
 }
 
 function parseFloatArray(s: string): number[] | undefined {
-  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !isNaN(n));
+  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !Number.isNaN(n));
   return parts.length > 0 ? parts : undefined;
 }
 
@@ -2002,13 +2002,13 @@ function LoomRefFormModal({
   saving,
   error,
 }: {
-  title: string;
-  form: LoomRefForm;
-  onChange: (f: LoomRefForm) => void;
-  onSave: () => void;
-  onCancel: () => void;
-  saving: boolean;
-  error: string | null;
+  readonly title: string;
+  readonly form: LoomRefForm;
+  readonly onChange: (f: LoomRefForm) => void;
+  readonly onSave: () => void;
+  readonly onCancel: () => void;
+  readonly saving: boolean;
+  readonly error: string | null;
 }) {
   const inputCls = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
   const labelCls = "mb-1 block text-sm font-medium";

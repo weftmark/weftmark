@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { TagInput } from "@/components/ui/TagInput";
 
 interface Props {
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 export function UploadWifModal({ onSuccess, onClose }: Props) {

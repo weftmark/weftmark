@@ -13,7 +13,7 @@ import {
 } from "@/api/feedback";
 
 interface Props {
-  onClose: () => void;
+  readonly onClose: () => void;
 }
 
 const TYPE_PLACEHOLDERS: Record<SubmissionType, string> = {
@@ -258,7 +258,7 @@ export function FeedbackModal({ onClose }: Props) {
   );
 }
 
-function SuccessView({ record, onClose }: { record: FeedbackRecord; onClose: () => void }) {
+function SuccessView({ record, onClose }: { readonly record: FeedbackRecord; readonly onClose: () => void }) {
   const { user } = useAuth();
 
   const [pollDispatchStatus, setPollDispatchStatus] = useState<string>(record.dispatch_status);

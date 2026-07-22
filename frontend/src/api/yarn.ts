@@ -4,14 +4,14 @@ export function weightBothUnits(
   value: string,
   unit: "oz" | "g",
 ): { oz: number | undefined; g: number | undefined } {
-  const v = parseFloat(value);
-  if (!value || isNaN(v)) return { oz: undefined, g: undefined };
-  if (unit === "oz") return { oz: v, g: parseFloat((v * OZ_TO_G).toFixed(1)) };
-  return { oz: parseFloat((v / OZ_TO_G).toFixed(2)), g: v };
+  const v = Number.parseFloat(value);
+  if (!value || Number.isNaN(v)) return { oz: undefined, g: undefined };
+  if (unit === "oz") return { oz: v, g: Number.parseFloat((v * OZ_TO_G).toFixed(1)) };
+  return { oz: Number.parseFloat((v / OZ_TO_G).toFixed(2)), g: v };
 }
 
 export function displayWeight(oz: string | null, g: string | null): string | null {
-  if (oz) return `${oz} oz (${Math.round(parseFloat(oz) * OZ_TO_G)} g)`;
+  if (oz) return `${oz} oz (${Math.round(Number.parseFloat(oz) * OZ_TO_G)} g)`;
   if (g) return `${g} g`;
   return null;
 }

@@ -81,7 +81,7 @@ function useAuthedSvg(url: string | null): { svg: string | null; loading: boolea
 // Zoom percentage input — lets the user type a zoom value directly.
 // ---------------------------------------------------------------------------
 
-function ZoomInput({ zoom, onCommit }: { zoom: number; onCommit: (z: number) => void }) {
+function ZoomInput({ zoom, onCommit }: { readonly zoom: number; readonly onCommit: (z: number) => void }) {
   const [editing, setEditing] = useState(false);
   const [raw, setRaw] = useState("");
 
@@ -93,8 +93,8 @@ function ZoomInput({ zoom, onCommit }: { zoom: number; onCommit: (z: number) => 
 
   function commit(input: string) {
     setEditing(false);
-    const n = parseInt(input, 10);
-    if (!isNaN(n)) {
+    const n = Number.parseInt(input, 10);
+    if (!Number.isNaN(n)) {
       onCommit(Math.max(0.05, Math.min(8, n / 100)));
     }
   }
@@ -124,9 +124,9 @@ function ZoomInput({ zoom, onCommit }: { zoom: number; onCommit: (z: number) => 
 // ---------------------------------------------------------------------------
 
 function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
-  svgUrl: string;
-  title?: string;
-  onClose: () => void;
+  readonly svgUrl: string;
+  readonly title?: string;
+  readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [zoom, setZoom] = useState(1);
@@ -223,12 +223,12 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
       const w = svgEl.getAttribute("width");
       const h = svgEl.getAttribute("height");
       if (w && h) {
-        svgSizeRef.current = { w: parseFloat(w), h: parseFloat(h) };
+        svgSizeRef.current = { w: Number.parseFloat(w), h: Number.parseFloat(h) };
       } else {
         const vb = svgEl.getAttribute("viewBox");
         if (vb) {
           const parts = vb.trim().split(/\s+/);
-          if (parts.length >= 4) svgSizeRef.current = { w: parseFloat(parts[2]), h: parseFloat(parts[3]) };
+          if (parts.length >= 4) svgSizeRef.current = { w: Number.parseFloat(parts[2]), h: Number.parseFloat(parts[3]) };
         }
       }
     }
@@ -361,9 +361,9 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
 // ---------------------------------------------------------------------------
 
 function TieUpModal({ projectId, draftName, onClose }: {
-  projectId: string;
-  draftName: string;
-  onClose: () => void;
+  readonly projectId: string;
+  readonly draftName: string;
+  readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
   const { data: plan, isLoading } = useQuery({
@@ -455,16 +455,16 @@ function ColorPaletteSection({
   locked,
   yarnColors,
 }: {
-  projectId: string;
-  wifColors: { index: number; hex: string }[];
-  warpStats: { hex: string; count: number; percentage: number }[] | null;
-  weftStats: { hex: string; count: number; percentage: number }[] | null;
-  colorReplacements: Record<string, string> | null;
-  warpLengthCm: number | null;
-  onSave: (replacements: Record<string, string>, yarnLinks: Record<string, string | null>) => void;
-  isSaving: boolean;
-  locked?: boolean;
-  yarnColors: ProjectYarnColor[];
+  readonly projectId: string;
+  readonly wifColors: { index: number; hex: string }[];
+  readonly warpStats: { hex: string; count: number; percentage: number }[] | null;
+  readonly weftStats: { hex: string; count: number; percentage: number }[] | null;
+  readonly colorReplacements: Record<string, string> | null;
+  readonly warpLengthCm: number | null;
+  readonly onSave: (replacements: Record<string, string>, yarnLinks: Record<string, string | null>) => void;
+  readonly isSaving: boolean;
+  readonly locked?: boolean;
+  readonly yarnColors: ProjectYarnColor[];
 }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
@@ -786,9 +786,9 @@ function WarpSetupSection({
   displayUnit,
   onUpdated,
 }: {
-  project: ProjectDetail;
-  displayUnit: LengthUnit;
-  onUpdated: (p: ProjectDetail) => void;
+  readonly project: ProjectDetail;
+  readonly displayUnit: LengthUnit;
+  readonly onUpdated: (p: ProjectDetail) => void;
 }) {
   // Per-field unit defaults: prefer the original source unit over the user's global preference.
   // Length / item + waste-between: use the draft WIF warp_length_unit if available.
@@ -805,12 +805,12 @@ function WarpSetupSection({
   // Ground-truth loom waste in cm; changes only when backend data refreshes.
   const loomWasteDefaultCm = useMemo((): number | null => {
     if (project.warp_waste_allowance) {
-      const n = parseFloat(project.warp_waste_allowance);
-      if (!isNaN(n)) return convertLength(n, (project.length_unit as LengthUnit) ?? "cm", "cm");
+      const n = Number.parseFloat(project.warp_waste_allowance);
+      if (!Number.isNaN(n)) return convertLength(n, (project.length_unit as LengthUnit) ?? "cm", "cm");
     }
     if (project.loom_warp_waste_allowance) {
-      const n = parseFloat(project.loom_warp_waste_allowance);
-      if (!isNaN(n)) return convertLength(n, (project.loom_warp_waste_unit as LengthUnit) ?? "cm", "cm");
+      const n = Number.parseFloat(project.loom_warp_waste_allowance);
+      if (!Number.isNaN(n)) return convertLength(n, (project.loom_warp_waste_unit as LengthUnit) ?? "cm", "cm");
     }
     return null;
   }, [project.warp_waste_allowance, project.loom_warp_waste_allowance, project.loom_warp_waste_unit, project.length_unit]);
@@ -818,8 +818,8 @@ function WarpSetupSection({
   // Helpers to convert a stored project value (in project.length_unit) to a target unit via cm.
   function fromStored(raw: string | null, target: LengthUnit): string {
     if (!raw) return "";
-    const n = parseFloat(raw);
-    if (isNaN(n)) return "";
+    const n = Number.parseFloat(raw);
+    if (Number.isNaN(n)) return "";
     const cm = convertLength(n, (project.length_unit as LengthUnit) ?? "cm", "cm");
     return convertLength(cm, "cm", target).toFixed(1);
   }
@@ -859,17 +859,17 @@ function WarpSetupSection({
 
   // Unit-change handlers auto-convert current field values to the new unit.
   function handleItemUnitChange(newUnit: LengthUnit) {
-    const conv = (v: string) => { const n = parseFloat(v); return isNaN(n) ? v : convertLength(n, itemUnit, newUnit).toFixed(1); };
+    const conv = (v: string) => { const n = Number.parseFloat(v); return Number.isNaN(n) ? v : convertLength(n, itemUnit, newUnit).toFixed(1); };
     if (lengthPerItem) setLengthPerItem(conv(lengthPerItem));
     if (wasteBetween) setWasteBetween(conv(wasteBetween));
     setItemUnit(newUnit);
   }
   function handleWasteUnitChange(newUnit: LengthUnit) {
-    if (loomWaste) { const n = parseFloat(loomWaste); if (!isNaN(n)) setLoomWaste(convertLength(n, wasteUnit, newUnit).toFixed(1)); }
+    if (loomWaste) { const n = Number.parseFloat(loomWaste); if (!Number.isNaN(n)) setLoomWaste(convertLength(n, wasteUnit, newUnit).toFixed(1)); }
     setWasteUnit(newUnit);
   }
 
-  const numItems = Math.max(1, parseInt(items, 10) || 1);
+  const numItems = Math.max(1, Number.parseInt(items, 10) || 1);
 
   // "Origin" values for dirty detection — computed in current field units so a unit change alone isn't dirty.
   const origLength = (() => {
@@ -888,7 +888,7 @@ function WarpSetupSection({
 
   const mutation = useMutation({
     mutationFn: () => {
-      const toCm = (v: string, u: LengthUnit) => convertLength(parseFloat(v), u, "cm");
+      const toCm = (v: string, u: LengthUnit) => convertLength(Number.parseFloat(v), u, "cm");
       return updateProjectWarpSetup(project.id, {
         num_items: numItems,
         finished_length_per_item: lengthPerItem ? toCm(lengthPerItem, itemUnit) : null,
@@ -988,8 +988,8 @@ function ReedSelector({
   project,
   onUpdated,
 }: {
-  project: ProjectDetail;
-  onUpdated: (p: ProjectDetail) => void;
+  readonly project: ProjectDetail;
+  readonly onUpdated: (p: ProjectDetail) => void;
 }) {
   const { t } = useTranslation();
   const locked = project.status !== "created";
@@ -1036,18 +1036,18 @@ function ReedSelector({
 
   function handleSelect(val: string) {
     setSelectValue(val);
-    if (val !== "custom" && val !== "") mutation.mutate(parseFloat(val));
+    if (val !== "custom" && val !== "") mutation.mutate(Number.parseFloat(val));
     else if (val === "") mutation.mutate(null);
   }
 
   function handleCustomSave() {
-    const n = parseFloat(customInput);
-    if (!isNaN(n) && n > 0) mutation.mutate(n);
+    const n = Number.parseFloat(customInput);
+    if (!Number.isNaN(n) && n > 0) mutation.mutate(n);
   }
 
   const effectiveDents = isCustom
-    ? parseFloat(customInput)
-    : selectValue !== "" ? parseFloat(selectValue) : null;
+    ? Number.parseFloat(customInput)
+    : selectValue !== "" ? Number.parseFloat(selectValue) : null;
   const effectiveDentsInt = effectiveDents != null ? Math.round(effectiveDents) : null;
 
   const isCleanMultiple =
@@ -1223,9 +1223,9 @@ function NotesSection({
   initialNotes,
   onUpdated,
 }: {
-  projectId: string;
-  initialNotes: string | null;
-  onUpdated: (updated: ProjectDetail) => void;
+  readonly projectId: string;
+  readonly initialNotes: string | null;
+  readonly onUpdated: (updated: ProjectDetail) => void;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);

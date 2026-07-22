@@ -8,7 +8,7 @@ const DEMO_WEFT = "#b45309";
 const DEMO_PICK = 7;
 const DEMO_TOTAL = 18;
 
-function DemoBox({ n, active, style }: { n: number; active: boolean; style: TrackerStyle }) {
+function DemoBox({ n, active, style }: { readonly n: number; readonly active: boolean; readonly style: TrackerStyle }) {
   const base = "rounded flex items-center justify-center font-bold text-[11px] border-2";
   if (style === "high_contrast") {
     return (
@@ -24,7 +24,7 @@ function DemoBox({ n, active, style }: { n: number; active: boolean; style: Trac
   );
 }
 
-function DemoPickCard({ compact, style }: { compact?: boolean; style: TrackerStyle }) {
+function DemoPickCard({ compact, style }: { readonly compact?: boolean; readonly style: TrackerStyle }) {
   const height = compact ? "h-10" : "h-16";
   const border = style === "high_contrast"
     ? compact ? "border border-foreground/30" : "border-2 border-foreground/50"
@@ -43,7 +43,7 @@ function DemoPickCard({ compact, style }: { compact?: boolean; style: TrackerSty
   );
 }
 
-export function TrackerStylePreview({ style }: { style: TrackerStyle }) {
+export function TrackerStylePreview({ style }: { readonly style: TrackerStyle }) {
   const isCompact = style === "compact";
   const isHighContrast = style === "high_contrast";
 
@@ -104,11 +104,11 @@ function LiveBox({
   colorMode,
   style,
 }: {
-  n: number;
-  active: boolean;
-  unused: boolean;
-  colorMode: ColorMode;
-  style: TrackerStyle;
+  readonly n: number;
+  readonly active: boolean;
+  readonly unused: boolean;
+  readonly colorMode: ColorMode;
+  readonly style: TrackerStyle;
 }) {
   const base = "rounded-md border-2 flex flex-col items-center justify-center font-bold overflow-hidden";
   const fontSize = "text-sm";
@@ -161,11 +161,11 @@ function LivePickCard({
   showWeftColor,
   shaftCount,
 }: {
-  compact?: boolean;
-  style: TrackerStyle;
-  colorMode: ColorMode;
-  showWeftColor: boolean;
-  shaftCount: number;
+  readonly compact?: boolean;
+  readonly style: TrackerStyle;
+  readonly colorMode: ColorMode;
+  readonly showWeftColor: boolean;
+  readonly shaftCount: number;
 }) {
   const height = compact ? "h-14" : "h-24";
   const border = style === "high_contrast"
@@ -208,13 +208,13 @@ export function TrackerLivePreview({
   showPickCards,
   hideUnusedShafts,
 }: {
-  style: TrackerStyle;
-  colorMode: string;
-  showProgress: boolean;
-  showDrawdown: boolean;
-  showWeftColor: boolean;
-  showPickCards: boolean;
-  hideUnusedShafts: boolean;
+  readonly style: TrackerStyle;
+  readonly colorMode: string;
+  readonly showProgress: boolean;
+  readonly showDrawdown: boolean;
+  readonly showWeftColor: boolean;
+  readonly showPickCards: boolean;
+  readonly hideUnusedShafts: boolean;
 }) {
   const isHighContrast = style === "high_contrast";
   const cm = (colorMode as ColorMode) ?? "strip";

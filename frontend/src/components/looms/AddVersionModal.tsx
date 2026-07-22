@@ -5,10 +5,10 @@ import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit } from "@/lib/units";
 
 interface Props {
-  loomId: string;
-  loomType: LoomType;
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly loomId: string;
+  readonly loomType: LoomType;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -40,10 +40,10 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
         name: versionName || undefined,
         effective_date: effectiveDate,
         description: description || undefined,
-        num_shafts: showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
-        num_treadles: showsTreadles(loomType) && numTreadles !== "" ? parseInt(numTreadles, 10) : undefined,
-        num_heddles: showsHeddles(loomType) && numHeddles ? parseInt(numHeddles, 10) : undefined,
-        warp_waste_allowance: showsWarpWaste(loomType) && warpWaste ? parseFloat(warpWaste) : undefined,
+        num_shafts: showsShafts(loomType) && numShafts ? Number.parseInt(numShafts, 10) : undefined,
+        num_treadles: showsTreadles(loomType) && numTreadles !== "" ? Number.parseInt(numTreadles, 10) : undefined,
+        num_heddles: showsHeddles(loomType) && numHeddles ? Number.parseInt(numHeddles, 10) : undefined,
+        warp_waste_allowance: showsWarpWaste(loomType) && warpWaste ? Number.parseFloat(warpWaste) : undefined,
         warp_waste_unit: warpWasteUnit,
         weaving_width_unit: "cm",
       };

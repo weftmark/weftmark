@@ -32,9 +32,9 @@ import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBa
 // ---------------------------------------------------------------------------
 
 function contrastColor(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
+  const g = Number.parseInt(hex.slice(3, 5), 16) / 255;
+  const b = Number.parseInt(hex.slice(5, 7), 16) / 255;
   const lin = (c: number) => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
   return L > 0.179 ? "#000000" : "#ffffff";
@@ -51,9 +51,9 @@ function CollapsibleSection({
   children,
   defaultOpen = false,
 }: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
+  readonly title: string;
+  readonly children: React.ReactNode;
+  readonly defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -84,7 +84,7 @@ function fmtDuration(ms: number): string {
   return `${totalSec}s`;
 }
 
-function SessionMetricsPanel({ metrics }: { metrics: ProjectMetrics }) {
+function SessionMetricsPanel({ metrics }: { readonly metrics: ProjectMetrics }) {
   const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
 
@@ -138,11 +138,11 @@ function DesignPreviewModal({
   draftName,
   onClose,
 }: {
-  projectId: string;
-  hasDrawdownPreview: boolean;
-  colorReplacements: Record<string, string> | null;
-  draftName: string;
-  onClose: () => void;
+  readonly projectId: string;
+  readonly hasDrawdownPreview: boolean;
+  readonly colorReplacements: Record<string, string> | null;
+  readonly draftName: string;
+  readonly onClose: () => void;
 }) {
   const src = hasDrawdownPreview
     ? projectDrawdownPreviewUrl(projectId)
@@ -170,12 +170,12 @@ function PickDisplay({
   showWeftColor,
   compact = false,
 }: {
-  pick: PickRow;
-  totalCount: number;
-  projectType: string;
-  colorMode: ColorMode;
-  showWeftColor: boolean;
-  compact?: boolean;
+  readonly pick: PickRow;
+  readonly totalCount: number;
+  readonly projectType: string;
+  readonly colorMode: ColorMode;
+  readonly showWeftColor: boolean;
+  readonly compact?: boolean;
 }) {
   const { t } = useTranslation();
   const count = Math.max(totalCount, 1);
@@ -299,11 +299,11 @@ function WeavingPatternView({
   picks,
   maxActive,
 }: {
-  projectId: string;
-  currentPickIndex: number;
-  totalPicks: number;
-  picks: PickRow[];
-  maxActive: number;
+  readonly projectId: string;
+  readonly currentPickIndex: number;
+  readonly totalPicks: number;
+  readonly picks: PickRow[];
+  readonly maxActive: number;
 }) {
   const { t } = useTranslation();
   const containerH = useAdaptivePatternHeight();
@@ -328,7 +328,7 @@ function WeavingPatternView({
         try {
           const saved = localStorage.getItem(lsColKey);
           if (saved !== null && scrollRef.current) {
-            scrollRef.current.scrollLeft = parseInt(saved, 10) || 0;
+            scrollRef.current.scrollLeft = Number.parseInt(saved, 10) || 0;
           }
         } catch { /* localStorage unavailable */ }
       } catch (err) {
@@ -494,9 +494,9 @@ function AbandonedDrawdownView({
   currentPick,
   totalPicks,
 }: {
-  draftId: string;
-  currentPick: number;
-  totalPicks: number;
+  readonly draftId: string;
+  readonly currentPick: number;
+  readonly totalPicks: number;
 }) {
   const { t } = useTranslation();
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -587,12 +587,12 @@ function StepControls({
   stepping,
   jumpDisabled = false,
 }: {
-  currentPick: number;
-  total: number;
-  onStep: (dir: "advance" | "reverse") => void;
-  onJump: (pick: number) => void;
-  stepping: boolean;
-  jumpDisabled?: boolean;
+  readonly currentPick: number;
+  readonly total: number;
+  readonly onStep: (dir: "advance" | "reverse") => void;
+  readonly onJump: (pick: number) => void;
+  readonly stepping: boolean;
+  readonly jumpDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const atStart = currentPick <= 1;
@@ -664,17 +664,17 @@ function JumpToPick({
   onJump,
   disabled,
 }: {
-  total: number;
-  onJump: (pick: number) => void;
-  disabled: boolean;
+  readonly total: number;
+  readonly onJump: (pick: number) => void;
+  readonly disabled: boolean;
 }) {
   const { t } = useTranslation();
   const [value, setValue] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const n = parseInt(value, 10);
-    if (!isNaN(n)) {
+    const n = Number.parseInt(value, 10);
+    if (!Number.isNaN(n)) {
       onJump(Math.max(1, Math.min(n, total + 1)));
       setValue("");
     }
@@ -712,7 +712,7 @@ function JumpToPick({
 // Progress bar
 // ---------------------------------------------------------------------------
 
-function ProgressBar({ current, total }: { current: number; total: number }) {
+function ProgressBar({ current, total }: { readonly current: number; readonly total: number }) {
   const { t } = useTranslation();
   const pct = total > 0 ? Math.round((Math.min(current - 1, total) / total) * 100) : 0;
   return (
@@ -739,11 +739,11 @@ function PhotoGrid({
   onDeleted,
   readOnly = false,
 }: {
-  projectId: string;
-  photos: ProjectPhoto[];
-  onUploaded: (p: ProjectPhoto) => void;
-  onDeleted: (id: string) => void;
-  readOnly?: boolean;
+  readonly projectId: string;
+  readonly photos: ProjectPhoto[];
+  readonly onUploaded: (p: ProjectPhoto) => void;
+  readonly onDeleted: (id: string) => void;
+  readonly readOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -887,9 +887,9 @@ function CompletedSummary({
   siblings,
   onPhotosChange,
 }: {
-  project: import("@/api/projects").ProjectDetail;
-  siblings: ProjectSummary[];
-  onPhotosChange: (photos: ProjectPhoto[]) => void;
+  readonly project: import("@/api/projects").ProjectDetail;
+  readonly siblings: ProjectSummary[];
+  readonly onPhotosChange: (photos: ProjectPhoto[]) => void;
 }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();

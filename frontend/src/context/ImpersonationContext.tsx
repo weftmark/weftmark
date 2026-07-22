@@ -21,7 +21,7 @@ function applyTheme(theme: string) {
   }
 }
 
-export function ImpersonationProvider({ children }: { children: ReactNode }) {
+export function ImpersonationProvider({ children }: { readonly children: ReactNode }) {
   const [impersonatedUser, setImpersonatedUser] = useState<User | null>(null);
   const startedAtRef = useRef<Date | null>(null);
   const realThemeRef = useRef<string>("system");

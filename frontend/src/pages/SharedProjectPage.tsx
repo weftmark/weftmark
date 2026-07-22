@@ -17,7 +17,7 @@ import { PublicFooter } from "@/components/PublicFooter";
 // Status badge
 // ---------------------------------------------------------------------------
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { readonly status: string }) {
   const colors: Record<string, string> = {
     created: "bg-blue-100 text-blue-700",
     active: "bg-green-100 text-green-800",
@@ -36,7 +36,7 @@ function StatusBadge({ status }: { status: string }) {
 // Progress bar
 // ---------------------------------------------------------------------------
 
-function ProgressBar({ current, total }: { current: number; total: number }) {
+function ProgressBar({ current, total }: { readonly current: number; readonly total: number }) {
   const { t } = useTranslation();
   const done = Math.max(0, current - 1);
   const pct = Math.min(100, Math.round((done / Math.max(total, 1)) * 100));
@@ -67,11 +67,11 @@ function DrawdownWithHaze({
   totalPicks,
   isActive,
 }: {
-  previewUrl: string;
-  svgUrl: string;
-  currentPick: number;
-  totalPicks: number;
-  isActive: boolean;
+  readonly previewUrl: string;
+  readonly svgUrl: string;
+  readonly currentPick: number;
+  readonly totalPicks: number;
+  readonly isActive: boolean;
 }) {
   const { t } = useTranslation();
   const [showHaze, setShowHaze] = useState(true);
@@ -149,10 +149,10 @@ function ColorPaletteTable({
   weftStats,
   colorReplacements,
 }: {
-  wifColors: WifColor[];
-  warpStats: ColorStat[] | null;
-  weftStats: ColorStat[] | null;
-  colorReplacements: Record<string, string> | null;
+  readonly wifColors: WifColor[];
+  readonly warpStats: ColorStat[] | null;
+  readonly weftStats: ColorStat[] | null;
+  readonly colorReplacements: Record<string, string> | null;
 }) {
   const { t } = useTranslation();
   const bothPresent = warpStats !== null && weftStats !== null;
@@ -217,7 +217,7 @@ function ColorPaletteTable({
 // Info row
 // ---------------------------------------------------------------------------
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+function InfoRow({ label, value }: { readonly label: string; readonly value: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-4 py-2 border-b border-stone-100 last:border-0">
       <span className="text-sm text-stone-500 shrink-0">{label}</span>

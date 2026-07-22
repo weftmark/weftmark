@@ -20,7 +20,7 @@ const TASKS: Task[] = [
   { key: "has_project",   label: "Create a project",       href: "/projects" },
 ];
 
-export function OnboardingChecklist({ collapsed }: { collapsed?: boolean }) {
+export function OnboardingChecklist({ collapsed }: { readonly collapsed?: boolean }) {
   const { user, refetch: refetchUser } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);

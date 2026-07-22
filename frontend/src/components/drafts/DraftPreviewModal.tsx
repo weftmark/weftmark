@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { ZoomablePreviewModal } from "@/components/ui/ZoomablePreviewModal";
 
 interface Props {
-  draftId: string;
-  draftName: string;
-  warpThreads?: number;
-  weftThreads?: number;
-  onClose: () => void;
+  readonly draftId: string;
+  readonly draftName: string;
+  readonly warpThreads?: number;
+  readonly weftThreads?: number;
+  readonly onClose: () => void;
 }
 
 // Drafts above this thread-area threshold get a load-confirmation gate.

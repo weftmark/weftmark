@@ -112,7 +112,7 @@ function applyFilters(yarns: YarnSummary[], f: YarnFilters): YarnSummary[] {
 
 // ─── shared photo cell ────────────────────────────────────────────────────────
 
-function YarnPhoto({ yarn, className }: { yarn: YarnSummary; className: string }) {
+function YarnPhoto({ yarn, className }: { readonly yarn: YarnSummary; readonly className: string }) {
   const ravelryUrl =
     yarn.ravelry_colorway_thumbnail_url ??
     yarn.ravelry_colorway_photo_url ??
@@ -140,7 +140,7 @@ function isStashPushEligible(yarn: YarnSummary) {
   return yarn.ravelry_yarn_id !== null && yarn.ravelry_stash_id === null && !yarn.out_of_stash && !yarn.archived;
 }
 
-function YarnCard({ yarn, connected }: { yarn: YarnSummary; connected: boolean }) {
+function YarnCard({ yarn, connected }: { readonly yarn: YarnSummary; readonly connected: boolean }) {
   const { t } = useTranslation();
   const skeinLabel =
     yarn.skein_count === 0
@@ -214,7 +214,7 @@ function YarnCard({ yarn, connected }: { yarn: YarnSummary; connected: boolean }
 
 // ─── grid view ────────────────────────────────────────────────────────────────
 
-function YarnGridTile({ yarn, connected }: { yarn: YarnSummary; connected: boolean }) {
+function YarnGridTile({ yarn, connected }: { readonly yarn: YarnSummary; readonly connected: boolean }) {
   const { t } = useTranslation();
   const skeinLabel =
     yarn.skein_count === 0
@@ -260,11 +260,11 @@ function YarnGridTile({ yarn, connected }: { yarn: YarnSummary; connected: boole
 function SortHeader({
   label, currentSort, ascKey, descKey, onSort,
 }: {
-  label: string;
-  currentSort: SortKey;
-  ascKey: SortKey;
-  descKey?: SortKey;
-  onSort: (key: SortKey) => void;
+  readonly label: string;
+  readonly currentSort: SortKey;
+  readonly ascKey: SortKey;
+  readonly descKey?: SortKey;
+  readonly onSort: (key: SortKey) => void;
 }) {
   const isActive = currentSort === ascKey || currentSort === descKey;
   const isAsc = currentSort === ascKey;
@@ -284,9 +284,9 @@ function SortHeader({
 function YarnTable({
   yarns, sort, onSort,
 }: {
-  yarns: YarnSummary[];
-  sort: SortKey;
-  onSort: (key: SortKey) => void;
+  readonly yarns: YarnSummary[];
+  readonly sort: SortKey;
+  readonly onSort: (key: SortKey) => void;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -384,9 +384,9 @@ function YarnTable({
 function FilterPopover({
   allYarns, filters, onChange,
 }: {
-  allYarns: YarnSummary[];
-  filters: YarnFilters;
-  onChange: (f: YarnFilters) => void;
+  readonly allYarns: YarnSummary[];
+  readonly filters: YarnFilters;
+  readonly onChange: (f: YarnFilters) => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);

@@ -22,7 +22,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 
 type SortKey = "name" | "added";
 
-function SortControl({ value, onChange }: { value: SortKey; onChange: (v: SortKey) => void }) {
+function SortControl({ value, onChange }: { readonly value: SortKey; readonly onChange: (v: SortKey) => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -39,7 +39,7 @@ function SortControl({ value, onChange }: { value: SortKey; onChange: (v: SortKe
   );
 }
 
-function RemoveButton({ label, onConfirm }: { label: string; onConfirm: () => void }) {
+function RemoveButton({ label, onConfirm }: { readonly label: string; readonly onConfirm: () => void }) {
   const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   if (confirming) {
@@ -73,10 +73,10 @@ function AddDraftModal({
   onClose,
   onAdded,
 }: {
-  collectionId: string;
-  existingDraftIds: Set<string>;
-  onClose: () => void;
-  onAdded: () => void;
+  readonly collectionId: string;
+  readonly existingDraftIds: Set<string>;
+  readonly onClose: () => void;
+  readonly onAdded: () => void;
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -135,10 +135,10 @@ function AddProjectModal({
   onClose,
   onAdded,
 }: {
-  collectionId: string;
-  existingProjectIds: Set<string>;
-  onClose: () => void;
-  onAdded: () => void;
+  readonly collectionId: string;
+  readonly existingProjectIds: Set<string>;
+  readonly onClose: () => void;
+  readonly onAdded: () => void;
 }) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");

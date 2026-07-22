@@ -42,8 +42,8 @@ function groupByYear(
 }
 
 function ProjectCard({ project, onAssign }: {
-  project: ProjectSummary;
-  onAssign?: (id: string) => void;
+  readonly project: ProjectSummary;
+  readonly onAssign?: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState(false);
@@ -185,10 +185,10 @@ function YearGroup({
   defaultExpanded,
   onAssign,
 }: {
-  year: number;
-  items: ProjectSummary[];
-  defaultExpanded: boolean;
-  onAssign?: (id: string) => void;
+  readonly year: number;
+  readonly items: ProjectSummary[];
+  readonly defaultExpanded: boolean;
+  readonly onAssign?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(defaultExpanded);
   return (
