@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -129,8 +130,8 @@ def _summary(c: Collection) -> CollectionSummary:
 @router.post("", status_code=201, response_model=CollectionSummary)
 async def create_collection(
     body: CreateCollectionRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CollectionSummary:
     c = Collection(owner_id=current_user.id, name=body.name, description=body.description, tags=body.tags)
     db.add(c)
@@ -150,8 +151,8 @@ async def create_collection(
 
 @router.get("", response_model=list[CollectionSummary])
 async def list_collections(
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[CollectionSummary]:
     result = await db.scalars(
         select(Collection)
@@ -167,8 +168,8 @@ async def list_collections(
 )
 async def get_collection(
     collection_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CollectionDetail:
     c = await db.scalar(
         select(Collection)
@@ -232,8 +233,8 @@ async def get_collection(
 async def update_collection(
     collection_id: uuid.UUID,
     body: UpdateCollectionRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CollectionSummary:
     c = await db.scalar(
         select(Collection).where(
@@ -261,8 +262,8 @@ async def update_collection(
 @router.delete("/{collection_id}", status_code=204, responses={404: {"description": "Collection not found"}})
 async def delete_collection(
     collection_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
     c.soft_delete()
@@ -282,8 +283,8 @@ async def delete_collection(
 async def add_draft(
     collection_id: uuid.UUID,
     body: AddDraftRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
 
@@ -309,8 +310,8 @@ async def add_draft(
 async def remove_draft(
     collection_id: uuid.UUID,
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     await _get_owned_collection(collection_id, current_user, db)
 
@@ -339,8 +340,8 @@ async def remove_draft(
 async def add_project(
     collection_id: uuid.UUID,
     body: AddProjectRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
 
@@ -372,8 +373,8 @@ async def add_project(
 async def remove_project(
     collection_id: uuid.UUID,
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     await _get_owned_collection(collection_id, current_user, db)
 

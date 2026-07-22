@@ -133,11 +133,11 @@ class UpdateDraftRequest(BaseModel):
 async def create_draft(
     name: Annotated[str, Form()],
     wif_file: Annotated[UploadFile, File()],
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _rl: Annotated[None, Depends(_upload_rate_limit)],
     description: Annotated[str | None, Form()] = None,
     tags: Annotated[str | None, Form()] = None,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
-    _rl: None = Depends(_upload_rate_limit),
 ) -> DraftSummary:
     if not wif_file.filename or not wif_file.filename.lower().endswith(".wif"):
         raise HTTPException(status_code=400, detail="File must have a .wif extension")
@@ -221,10 +221,10 @@ async def create_draft(
 
 @router.get("", response_model=list[DraftSummary])
 async def list_drafts(
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     include_archived: bool = Query(False),
     tags: list[str] | None = Query(None),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> list[DraftSummary]:
     q = select(Draft).where(Draft.owner_id == current_user.id, Draft.deleted_at.is_(None))
     if not include_archived:
@@ -245,8 +245,8 @@ async def list_drafts(
 @router.get("/{draft_id}", response_model=DraftDetail, responses={404: {"description": "Draft not found"}})
 async def get_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     return DraftDetail(**_draft_detail_data(draft))
@@ -260,8 +260,8 @@ async def get_draft(
 async def update_draft(
     draft_id: uuid.UUID,
     body: UpdateDraftRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     if body.name is None and body.description is None and body.tags is None:
         raise HTTPException(status_code=400, detail="At least one field must be provided")
@@ -288,8 +288,8 @@ async def update_draft(
 @router.get("/{draft_id}/preview", responses={404: {"description": "Preview not available"}})
 async def get_preview(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not await storage.afile_exists(draft.preview_path):
@@ -301,8 +301,8 @@ async def get_preview(
 @router.get("/{draft_id}/drawdown_preview", responses={404: {"description": "Drawdown preview not available"}})
 async def get_drawdown_preview(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.drawdown_preview_path or not await storage.afile_exists(draft.drawdown_preview_path):
@@ -317,8 +317,8 @@ async def get_drawdown_preview(
 )
 async def get_preview_svg(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_path:
@@ -343,11 +343,11 @@ async def get_preview_svg(
 )
 async def get_drawdown(
     draft_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     start_row: int | None = Query(None, ge=0),
     row_count: int | None = Query(None, ge=1),
     hide_unused_shafts_treadles: bool = Query(False),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
 
@@ -518,8 +518,8 @@ async def get_drawdown(
 @router.get("/{draft_id}/wif", responses={404: {"description": "WIF file not available for this draft"}})
 async def download_wif(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_path or not await storage.afile_exists(draft.wif_path):
@@ -541,8 +541,8 @@ async def download_wif(
 @router.get("/{draft_id}/wif-modified", responses={404: {"description": "No modified WIF file for this draft"}})
 async def download_wif_modified(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_modified_path or not await storage.afile_exists(draft.wif_modified_path):
@@ -572,9 +572,9 @@ async def download_wif_modified(
 )
 async def delete_draft(
     draft_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     force: bool = Query(False),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> None:
     from app.models.project import Project
 
@@ -607,8 +607,8 @@ async def delete_draft(
 @router.post("/{draft_id}/archive", status_code=204, responses={404: {"description": "Draft not found"}})
 async def archive_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     draft = await _get_owned_draft(draft_id, current_user, db)
     draft.retire()
@@ -618,8 +618,8 @@ async def archive_draft(
 @router.post("/{draft_id}/unarchive", status_code=204, responses={404: {"description": "Draft not found"}})
 async def unarchive_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     draft = await _get_owned_draft(draft_id, current_user, db)
     draft.unretire()
@@ -641,8 +641,8 @@ async def unarchive_draft(
 )
 async def generate_liftplan(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     draft = await _get_owned_draft(draft_id, current_user, db)
 
@@ -701,8 +701,8 @@ class OverrideMetadataRequest(BaseModel):
 async def override_metadata(
     draft_id: uuid.UUID,
     body: OverrideMetadataRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     if body.field not in _OVERRIDE_FIELDS:
         raise HTTPException(
@@ -774,8 +774,8 @@ class PatchMeasurementsRequest(BaseModel):
 async def patch_measurements(
     draft_id: uuid.UUID,
     body: PatchMeasurementsRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     if body.unit not in ("cm", "in"):
         raise HTTPException(status_code=400, detail="unit must be 'cm' or 'in'")

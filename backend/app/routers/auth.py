@@ -27,6 +27,7 @@ import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -328,8 +329,8 @@ class UserResponse(BaseModel):
 
 @router.get("/me", response_model=UserResponse)
 async def me(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserResponse:
     from app.routers.users import get_current_eula_version
     from app.services.storage_quota import MAX_USER_STORAGE_BYTES, get_user_storage_used
@@ -397,9 +398,9 @@ class InviteResponse(BaseModel):
 )
 async def create_invite(
     body: InviteRequest,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-    _rl: None = Depends(_invite_rate_limit),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _rl: Annotated[None, Depends(_invite_rate_limit)],
 ) -> Invite:
     from app.models.invite import INVITE_ROLES
 
@@ -470,8 +471,8 @@ async def create_invite(
 
 @router.get("/invites", response_model=list[InviteResponse])
 async def list_invites(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[Invite]:
     result = await db.scalars(select(Invite).order_by(Invite.created_at.desc()).limit(50))
     return list(result.all())
@@ -484,8 +485,8 @@ async def list_invites(
 )
 async def revoke_invite(
     invite_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     from datetime import datetime as _dt
 
