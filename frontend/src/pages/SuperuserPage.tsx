@@ -56,21 +56,11 @@ import { EulaContent } from "@/components/EulaContent";
 import { CveBanner } from "@/components/admin/CveBanner";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
+import { formatUptime } from "@/lib/utils";
 import { listAdminUsers } from "@/api/admin";
 import type { AdminUser } from "@/api/admin";
 
 declare const __FRONTEND_DEPS__: Record<string, string>;
-
-function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d} day${d !== 1 ? "s" : ""}`);
-  if (h > 0) parts.push(`${h} hour${h !== 1 ? "s" : ""}`);
-  parts.push(`${m} minute${m !== 1 ? "s" : ""}`);
-  return parts.join(", ");
-}
 
 type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials" | "neon" | "sandbox" | "users";
 

@@ -5,6 +5,7 @@ import { UserDetailModal, type UserDetailTarget } from "@/components/admin/UserD
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { formatUptime } from "@/lib/utils";
 import {
   listAdminUsers,
   getAdminStats,
@@ -60,17 +61,6 @@ import {
 } from "@/api/looms";
 
 type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "slugs" | "feedback" | "looms";
-
-function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d} day${d !== 1 ? "s" : ""}`);
-  if (h > 0) parts.push(`${h} hour${h !== 1 ? "s" : ""}`);
-  parts.push(`${m} minute${m !== 1 ? "s" : ""}`);
-  return parts.join(", ");
-}
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
