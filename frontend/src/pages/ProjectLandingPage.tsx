@@ -307,21 +307,21 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
           <span className="text-sm font-medium truncate flex-1">{title}</span>
           <button type="button" className={btnCls} onClick={() => handleZoomChange(Math.max(0.05, +(zoomRef.current - 0.25).toFixed(2)))} title="Zoom out">
-            <AppIcons.zoomOut className="h-4 w-4" />
+            <AppIcons.ZoomOut className="h-4 w-4" />
           </button>
           <ZoomInput zoom={zoom} onCommit={handleZoomChange} />
           <button type="button" className={btnCls} onClick={() => handleZoomChange(Math.min(8, +(zoomRef.current + 0.25).toFixed(2)))} title="Zoom in">
-            <AppIcons.zoomIn className="h-4 w-4" />
+            <AppIcons.ZoomIn className="h-4 w-4" />
           </button>
           <button type="button" className={btnCls} onClick={handleReset} title="Zoom to fit (0)">
-            <AppIcons.zoomFit className="h-4 w-4" />
+            <AppIcons.ZoomFit className="h-4 w-4" />
           </button>
           <button type="button"
             className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors ml-1"
             onClick={onClose}
             title="Close"
           >
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
 
@@ -387,13 +387,13 @@ function TieUpModal({ projectId, draftName, onClose }: {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="font-semibold text-sm">{t("projectLandingPage.tieUpTitle", { name: draftName })}</h2>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
         <div className="flex-1 overflow-auto p-5">
           {isLoading && (
             <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-              <AppIcons.spinner className="h-4 w-4 animate-spin mr-2" /> {t("common.loading")}
+              <AppIcons.Spinner className="h-4 w-4 animate-spin mr-2" /> {t("common.loading")}
             </div>
           )}
           {plan && !plan.has_tieup && (
@@ -430,7 +430,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
               window.open(`/projects/${projectId}/warping-plan`, "_blank");
             }}
           >
-            <AppIcons.print className="h-4 w-4 mr-1.5" />
+            <AppIcons.Print className="h-4 w-4 mr-1.5" />
             {t("projectLandingPage.printSavePdf")}
           </Button>
         </div>
@@ -674,7 +674,7 @@ function ColorPaletteSection({
                           onClick={() => setYarnPickerHex(c.hex)}
                           title={displayName ?? t("projectLandingPage.linkYarn")}
                         >
-                          <AppIcons.yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          <AppIcons.Yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                           {isUnlinkPending && serverLinked ? (
                             <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>
                           ) : displayName ? (
@@ -705,7 +705,7 @@ function ColorPaletteSection({
               className="rounded p-0.5 text-muted-foreground hover:text-foreground"
               onClick={() => setPreviewOpen(false)}
             >
-              <AppIcons.close className="h-4 w-4" />
+              <AppIcons.Close className="h-4 w-4" />
             </button>
           </div>
           <div className="p-3">
@@ -1161,7 +1161,7 @@ function ReedSelector({
           </span>
         )}
 
-        {mutation.isPending && <AppIcons.spinner className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        {mutation.isPending && <AppIcons.Spinner className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
       </div>
 
       {/* Non-clean multiple: amber warning + Bresenham pattern */}
@@ -1419,7 +1419,7 @@ export function ProjectLandingPage() {
           className="mt-0.5 flex-shrink-0"
           onClick={() => navigate("/projects")}
         >
-          <AppIcons.chevronRight className="h-4 w-4 rotate-180" />
+          <AppIcons.ChevronRight className="h-4 w-4 rotate-180" />
         </Button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -1437,7 +1437,7 @@ export function ProjectLandingPage() {
                 className="rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
                 title={t("projectLandingPage.projectSharedManage")}
               >
-                <AppIcons.share className="h-3 w-3" />
+                <AppIcons.Share className="h-3 w-3" />
                 {t("projectLandingPage.shared")}
               </button>
             )}
@@ -1488,7 +1488,7 @@ export function ProjectLandingPage() {
           onClick={() => setShowAddToCollection(true)}
           title={t("projectLandingPage.addToCollection")}
         >
-          <AppIcons.collections className="h-4 w-4" />
+          <AppIcons.Collections className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
@@ -1497,7 +1497,7 @@ export function ProjectLandingPage() {
           onClick={() => setShareModalOpen(true)}
           title={t("projectLandingPage.shareProject")}
         >
-          <AppIcons.share className="h-4 w-4" />
+          <AppIcons.Share className="h-4 w-4" />
         </Button>
       </div>
 
@@ -1748,7 +1748,7 @@ export function ProjectLandingPage() {
               to={`/projects/${project.id}/track`}
               className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
             >
-              <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
+              <AppIcons.ProjectActive className="h-4 w-4 mr-1.5" />
               {project.status === "created" ? t("projectLandingPage.startWeaving") : t("projectLandingPage.track")}
             </Link>
           )}

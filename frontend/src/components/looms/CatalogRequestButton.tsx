@@ -116,7 +116,7 @@ export function CatalogRequestButton({ loom }: Props) {
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                 aria-label="Close"
               >
-                <AppIcons.close className="h-4 w-4" />
+                <AppIcons.Close className="h-4 w-4" />
               </button>
             </div>
 

@@ -77,7 +77,7 @@ export function OnboardingChecklist({ collapsed }: { readonly collapsed?: boolea
         className="flex items-center justify-center w-full rounded-lg p-2 text-muted-foreground hover:bg-accent/50 hover:text-foreground relative"
         title="Getting started"
       >
-        <AppIcons.onboarding className="h-4 w-4" strokeWidth={1.75} />
+        <AppIcons.Onboarding className="h-4 w-4" strokeWidth={1.75} />
         {!allDone && (
           <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
         )}
@@ -92,12 +92,12 @@ export function OnboardingChecklist({ collapsed }: { readonly collapsed?: boolea
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
       >
-        <AppIcons.onboarding className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+        <AppIcons.Onboarding className="h-3.5 w-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         <span className="flex-1 text-xs font-medium text-foreground">Getting started</span>
         <span className="text-xs text-muted-foreground tabular-nums">
           {doneCount}/{TASKS.length}
         </span>
-        <AppIcons.chevronDown
+        <AppIcons.ChevronDown
           className={`h-3 w-3 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
@@ -110,7 +110,7 @@ export function OnboardingChecklist({ collapsed }: { readonly collapsed?: boolea
             return (
               <div key={task.key} className="flex items-center gap-2">
                 {done ? (
-                  <AppIcons.projectCompleted className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
+                  <AppIcons.ProjectCompleted className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
                 ) : (
                   <span className="h-3.5 w-3.5 shrink-0 rounded-sm border border-border" />
                 )}
@@ -122,7 +122,7 @@ export function OnboardingChecklist({ collapsed }: { readonly collapsed?: boolea
                     className="text-xs text-foreground hover:text-primary hover:underline"
                   >
                     {task.label}
-                    <AppIcons.chevronRight className="inline h-3 w-3 ml-0.5 text-muted-foreground" />
+                    <AppIcons.ChevronRight className="inline h-3 w-3 ml-0.5 text-muted-foreground" />
                   </Link>
                 )}
               </div>

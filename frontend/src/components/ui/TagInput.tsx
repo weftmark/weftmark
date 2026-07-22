@@ -60,7 +60,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag…", disable
               className="hover:text-foreground leading-none"
               aria-label={`Remove tag ${tag}`}
             >
-              <AppIcons.close className="h-2.5 w-2.5" />
+              <AppIcons.Close className="h-2.5 w-2.5" />
             </button>
           )}
         </span>

@@ -39,11 +39,11 @@ interface NavGroupSectionProps {
 
 type NavGroup = "settings" | "admin" | "superuser";
 
-const SettingsIcon = AppIcons.settings;
-const AdminIcon = AppIcons.admin;
-const SuperuserIcon = AppIcons.superuser;
-const ExpandIcon = AppIcons.chevronDoubleRight;
-const CollapseIcon = AppIcons.chevronDoubleLeft;
+const SettingsIcon = AppIcons.Settings;
+const AdminIcon = AppIcons.Admin;
+const SuperuserIcon = AppIcons.Superuser;
+const ExpandIcon = AppIcons.ChevronDoubleRight;
+const CollapseIcon = AppIcons.ChevronDoubleLeft;
 
 function isActive(pathname: string, href: string, exact = false): boolean {
   if (exact) return pathname === href;
@@ -138,7 +138,7 @@ function SidebarHeader({ desktopCollapsed, onClose, onDesktopExpand, onDesktopCo
         className="rounded-md p-1 text-muted-foreground hover:text-subdued lg:hidden"
         aria-label="Close menu"
       >
-        <AppIcons.close className="h-4 w-4" />
+        <AppIcons.Close className="h-4 w-4" />
       </button>
       {/* Desktop sidebar toggle — only on detail pages where rail/expand applies */}
       {(desktopCollapsed || onDesktopCollapse) && (
@@ -173,12 +173,12 @@ function SidebarMainNav({ isSuperuser, desktopCollapsed, onClose }: SidebarMainN
   if (isSuperuser) return <div className="flex-1" />;
 
   const NAV_ITEMS: NavItem[] = [
-    { label: t("nav.dashboard"), href: "/home", icon: AppIcons.dashboard, exact: true },
-    { label: t("nav.projects"), href: "/projects", icon: AppIcons.projects },
-    { label: t("nav.drafts"), href: "/drafts", icon: AppIcons.drafts },
-    { label: t("nav.collections"), href: "/collections", icon: AppIcons.collections },
-    { label: t("nav.equipment"), href: "/looms", icon: AppIcons.equipment },
-    { label: t("nav.yarn"), href: "/yarn", icon: AppIcons.yarn },
+    { label: t("nav.dashboard"), href: "/home", icon: AppIcons.Dashboard, exact: true },
+    { label: t("nav.projects"), href: "/projects", icon: AppIcons.Projects },
+    { label: t("nav.drafts"), href: "/drafts", icon: AppIcons.Drafts },
+    { label: t("nav.collections"), href: "/collections", icon: AppIcons.Collections },
+    { label: t("nav.equipment"), href: "/looms", icon: AppIcons.Equipment },
+    { label: t("nav.yarn"), href: "/yarn", icon: AppIcons.Yarn },
   ];
 
   return (
@@ -307,7 +307,7 @@ function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: 
         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
         title={desktopCollapsed ? t("nav.sendFeedback") : undefined}
       >
-        <AppIcons.feedback className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+        <AppIcons.Feedback className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.sendFeedback")}</span>
       </button>
 
@@ -317,7 +317,7 @@ function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: 
         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
         title={desktopCollapsed ? t("nav.supportWeftmark") : undefined}
       >
-        <AppIcons.support className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+        <AppIcons.Support className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.supportWeftmark")}</span>
       </Link>
 
@@ -327,7 +327,7 @@ function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: 
         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-subdued transition-colors hover:bg-muted hover:text-foreground ${desktopCollapsed ? "lg:justify-center lg:px-2" : ""}`}
         title={desktopCollapsed ? t("nav.signOut") : undefined}
       >
-        <AppIcons.logout className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
+        <AppIcons.Logout className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         <span className={desktopCollapsed ? "lg:hidden" : ""}>{t("nav.signOut")}</span>
       </button>
     </div>

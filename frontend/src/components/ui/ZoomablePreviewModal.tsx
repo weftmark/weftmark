@@ -97,7 +97,7 @@ export function ZoomablePreviewModal({ src, title, onClose, gateConfirmed = true
                 disabled={zoom <= ZOOM_MIN}
                 title="Zoom out"
               >
-                <AppIcons.zoomOut className="h-4 w-4" />
+                <AppIcons.ZoomOut className="h-4 w-4" />
               </Button>
 
               <span className="w-12 text-center text-sm tabular-nums select-none">
@@ -110,7 +110,7 @@ export function ZoomablePreviewModal({ src, title, onClose, gateConfirmed = true
                 disabled={zoom >= ZOOM_MAX}
                 title="Zoom in"
               >
-                <AppIcons.zoomIn className="h-4 w-4" />
+                <AppIcons.ZoomIn className="h-4 w-4" />
               </Button>
 
               <Button
@@ -118,7 +118,7 @@ export function ZoomablePreviewModal({ src, title, onClose, gateConfirmed = true
                 onClick={() => setZoom(computeFitZoom())}
                 title="Zoom to fit (0)"
               >
-                <AppIcons.zoomFit className="h-4 w-4" />
+                <AppIcons.ZoomFit className="h-4 w-4" />
               </Button>
 
               <Button
@@ -127,13 +127,13 @@ export function ZoomablePreviewModal({ src, title, onClose, gateConfirmed = true
                 disabled={zoom === ZOOM_DEFAULT}
                 title="Reset zoom (100%)"
               >
-                <AppIcons.zoomReset className="h-4 w-4" />
+                <AppIcons.ZoomReset className="h-4 w-4" />
               </Button>
             </div>
           )}
 
           <Button variant="ghost" size="icon" className="h-8 w-8 ml-1" onClick={onClose} title="Close">
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </Button>
         </div>
 

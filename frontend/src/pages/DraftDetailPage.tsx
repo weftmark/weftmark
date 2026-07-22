@@ -204,7 +204,7 @@ export function DraftDetailPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <Link to="/drafts" className="text-muted-foreground hover:text-foreground">{t("draftDetailPage.breadcrumb")}</Link>
-            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-medium text-foreground">{draft.name}</span>
           </div>
           {!editingTags && (
@@ -243,7 +243,7 @@ export function DraftDetailPage() {
         </div>
         {!isReadOnly && (
           <Button size="sm" variant="outline" onClick={() => setShowAddToCollection(true)}>
-            <AppIcons.collections className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+            <AppIcons.Collections className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
             {t("draftDetailPage.addToCollection")}
           </Button>
         )}

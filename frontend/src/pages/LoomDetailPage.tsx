@@ -796,7 +796,7 @@ function VersionCard({
                     className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     title={t("loomDetailPage.editConfig")}
                   >
-                    <AppIcons.edit className="h-4 w-4" />
+                    <AppIcons.Edit className="h-4 w-4" />
                   </button>
                 )}
               </div>
@@ -971,7 +971,7 @@ export function LoomDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <Link to="/looms" className="text-muted-foreground hover:text-foreground">{t("loomDetailPage.breadcrumb")}</Link>
-          <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="font-medium text-foreground">{loom.manufacturer} {loom.model_name}</span>
           <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>

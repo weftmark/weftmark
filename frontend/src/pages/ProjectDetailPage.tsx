@@ -198,9 +198,9 @@ function PickDisplay({
       {!compact && (
         <div className="shrink-0 flex items-center text-primary/50">
           {projectType === "lift" ? (
-            <AppIcons.lift className="h-8 w-8" strokeWidth={1.5} />
+            <AppIcons.Lift className="h-8 w-8" strokeWidth={1.5} />
           ) : (
-            <AppIcons.treadle className="h-8 w-8" strokeWidth={1.5} />
+            <AppIcons.Treadle className="h-8 w-8" strokeWidth={1.5} />
           )}
         </div>
       )}
@@ -1496,15 +1496,15 @@ export function ProjectDetailPage() {
             {project.loom_id && (
               <>
                 <Link to="/looms" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.equipment")}</Link>
-                <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
               </>
             )}
             <Link to="/drafts" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.drafts")}</Link>
-            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <Link to="/projects" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.projects")}</Link>
-            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <Link to={`/projects/${project.id}`} className="text-muted-foreground hover:text-foreground truncate max-w-[12rem]">{project.name}</Link>
-            <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           {isReadOnly ? (
             <span className="font-semibold truncate">{project.name}</span>
@@ -1578,7 +1578,7 @@ export function ProjectDetailPage() {
               title={t("projectDetailPage.shareProject")}
               aria-label={t("projectDetailPage.shareProject")}
             >
-              <AppIcons.share className="h-4 w-4" />
+              <AppIcons.Share className="h-4 w-4" />
             </button>
           )}
           {!isReadOnly && (
@@ -1589,7 +1589,7 @@ export function ProjectDetailPage() {
               title={t("projectDetailPage.viewSettings")}
               aria-label={t("projectDetailPage.viewSettings")}
             >
-              <AppIcons.settings className="h-4 w-4" />
+              <AppIcons.Settings className="h-4 w-4" />
             </button>
           )}
           <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
@@ -1602,7 +1602,7 @@ export function ProjectDetailPage() {
               className="rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
               title={t("projectDetailPage.projectSharedManage")}
             >
-              <AppIcons.share className="h-3 w-3" />
+              <AppIcons.Share className="h-3 w-3" />
               {t("projectDetailPage.shared")}
             </button>
           )}
@@ -1615,8 +1615,8 @@ export function ProjectDetailPage() {
               aria-label={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
             >
               {isPresent
-                ? <AppIcons.exitPresentMode className="h-4 w-4" />
-                : <AppIcons.presentMode className="h-4 w-4" />}
+                ? <AppIcons.ExitPresentMode className="h-4 w-4" />
+                : <AppIcons.PresentMode className="h-4 w-4" />}
             </button>
           )}
         </div>
@@ -1885,7 +1885,7 @@ export function ProjectDetailPage() {
           aria-expanded={panelOpen}
         >
           {t("projectDetailPage.detailsSettings")}
-          <AppIcons.chevronDown
+          <AppIcons.ChevronDown
             className={`h-4 w-4 transition-transform duration-200 ${panelOpen ? "" : "-rotate-90"}`}
           />
         </button>
@@ -2211,7 +2211,7 @@ export function ProjectDetailPage() {
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label="Close settings"
               >
-                <AppIcons.close className="h-4 w-4" />
+                <AppIcons.Close className="h-4 w-4" />
               </button>
             </div>
 
