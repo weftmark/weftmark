@@ -576,7 +576,7 @@ function InvitesTab() {
               </div>
               {past.length > INVITE_HISTORY_PAGE_SIZE && (
                 <div className="flex items-center justify-between pt-1">
-                  <button
+                  <button type="button"
                     className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
                     disabled={historyPage === 0}
                     onClick={() => setHistoryPage((p) => p - 1)}
@@ -586,7 +586,7 @@ function InvitesTab() {
                   <span className="text-xs text-muted-foreground">
                     {historyPage + 1} / {Math.ceil(past.length / INVITE_HISTORY_PAGE_SIZE)}
                   </span>
-                  <button
+                  <button type="button"
                     className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
                     disabled={(historyPage + 1) * INVITE_HISTORY_PAGE_SIZE >= past.length}
                     onClick={() => setHistoryPage((p) => p + 1)}
@@ -1049,7 +1049,7 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
 
   return (
     <div className="bg-background">
-      <button
+      <button type="button"
         className={`w-full flex items-center gap-3 px-4 py-3 text-left ${hasDetail ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
         onClick={hasDetail ? () => setOpen((o) => !o) : undefined}
       >
@@ -1327,7 +1327,7 @@ function ServerEventsPanel() {
 
       {data && data.pages > 1 && (
         <div className="flex items-center gap-2 justify-center text-xs">
-          <button
+          <button type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
             className="px-2 py-1 border rounded disabled:opacity-40"
@@ -1335,7 +1335,7 @@ function ServerEventsPanel() {
             ←
           </button>
           <span className="text-muted-foreground">Page {data.page} of {data.pages}</span>
-          <button
+          <button type="button"
             disabled={page >= data.pages}
             onClick={() => setPage((p) => p + 1)}
             className="px-2 py-1 border rounded disabled:opacity-40"
@@ -1671,7 +1671,7 @@ function FeedbackTab() {
               <h3 className="font-semibold">
                 {SUBMISSION_TYPE_LABELS[detail.submission_type as SubmissionType] ?? detail.submission_type}
               </h3>
-              <button onClick={() => setDetail(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+              <button type="button" onClick={() => setDetail(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
                 <span className="text-xs">✕</span>
               </button>
             </div>
@@ -1856,7 +1856,7 @@ function AuditLogTab() {
 
       {data && data.pages > 1 && (
         <div className="flex items-center gap-2 justify-center text-sm">
-          <button
+          <button type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
             className="px-2 py-1 border rounded disabled:opacity-40"
@@ -1864,7 +1864,7 @@ function AuditLogTab() {
             ←
           </button>
           <span className="text-muted-foreground">Page {data.page} of {data.pages}</span>
-          <button
+          <button type="button"
             disabled={page >= data.pages}
             onClick={() => setPage((p) => p + 1)}
             className="px-2 py-1 border rounded disabled:opacity-40"
@@ -2241,10 +2241,10 @@ function LoomDatabaseTab() {
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">{ref.origin_country ?? "—"}</td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                    <button className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(ref)}>
+                    <button type="button" className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(ref)}>
                       Edit
                     </button>
-                    <button className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(ref)}>
+                    <button type="button" className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(ref)}>
                       Delete
                     </button>
                   </td>

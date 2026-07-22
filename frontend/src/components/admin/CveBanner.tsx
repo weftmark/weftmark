@@ -25,13 +25,13 @@ export function CveBanner() {
         )}
       </span>
       <div className="flex items-center gap-2 shrink-0">
-        <button
+        <button type="button"
           className="text-xs text-amber-700 dark:text-amber-300 underline hover:no-underline"
           onClick={() => navigate("/superuser/cve")}
         >
           View report
         </button>
-        <button
+        <button type="button"
           className="text-xs text-muted-foreground hover:text-foreground"
           onClick={() => setDismissed(true)}
         >

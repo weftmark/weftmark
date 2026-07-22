@@ -110,7 +110,7 @@ export function PendingPage() {
             <p className="mt-3 text-xs text-stone-500">{t("pendingPage.noAction")}</p>
           </>
         )}
-        <button
+        <button type="button"
           onClick={() => signOut()}
           className="mt-6 text-sm text-stone-500 underline underline-offset-2 hover:text-stone-700"
         >

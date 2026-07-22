@@ -40,14 +40,14 @@ export function AppLayout({ children }: Props) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar — hidden on lg+ where sidebar is always visible */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
-          <button
+          <button type="button"
             onClick={() => setSidebarOpen(true)}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Open navigation"
           >
             <AppIcons.mobileMenu className="h-5 w-5" />
           </button>
-          <button
+          <button type="button"
             onClick={() => setFeedbackOpen(true)}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Send feedback"

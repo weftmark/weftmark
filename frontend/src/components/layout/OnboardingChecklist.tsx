@@ -72,7 +72,7 @@ export function OnboardingChecklist({ collapsed }: { collapsed?: boolean }) {
   if (collapsed) {
     // Rail mode: just a small clickable icon with a dot if incomplete
     return (
-      <button
+      <button type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex items-center justify-center w-full rounded-lg p-2 text-muted-foreground hover:bg-accent/50 hover:text-foreground relative"
         title="Getting started"
@@ -88,7 +88,7 @@ export function OnboardingChecklist({ collapsed }: { collapsed?: boolean }) {
   return (
     <div className="mx-3 mb-1 rounded-lg border border-border bg-card text-sm overflow-hidden">
       {/* Header row — always visible */}
-      <button
+      <button type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/50 transition-colors"
       >
@@ -130,7 +130,7 @@ export function OnboardingChecklist({ collapsed }: { collapsed?: boolean }) {
           })}
 
           <div className="flex gap-2 pt-1.5 border-t border-border">
-            <button
+            <button type="button"
               onClick={handleSkip}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -138,7 +138,7 @@ export function OnboardingChecklist({ collapsed }: { collapsed?: boolean }) {
             </button>
             <span className="text-muted-foreground/40">·</span>
             {allDone ? (
-              <button
+              <button type="button"
                 onClick={handleDismiss}
                 disabled={dismissMutation.isPending}
                 className="text-xs font-medium text-primary hover:underline disabled:opacity-50"
@@ -146,7 +146,7 @@ export function OnboardingChecklist({ collapsed }: { collapsed?: boolean }) {
                 {dismissMutation.isPending ? "Saving…" : "Complete ✓"}
               </button>
             ) : (
-              <button
+              <button type="button"
                 onClick={handleDismiss}
                 disabled={dismissMutation.isPending}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"

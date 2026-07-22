@@ -306,17 +306,17 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
           <span className="text-sm font-medium truncate flex-1">{title}</span>
-          <button className={btnCls} onClick={() => handleZoomChange(Math.max(0.05, +(zoomRef.current - 0.25).toFixed(2)))} title="Zoom out">
+          <button type="button" className={btnCls} onClick={() => handleZoomChange(Math.max(0.05, +(zoomRef.current - 0.25).toFixed(2)))} title="Zoom out">
             <AppIcons.zoomOut className="h-4 w-4" />
           </button>
           <ZoomInput zoom={zoom} onCommit={handleZoomChange} />
-          <button className={btnCls} onClick={() => handleZoomChange(Math.min(8, +(zoomRef.current + 0.25).toFixed(2)))} title="Zoom in">
+          <button type="button" className={btnCls} onClick={() => handleZoomChange(Math.min(8, +(zoomRef.current + 0.25).toFixed(2)))} title="Zoom in">
             <AppIcons.zoomIn className="h-4 w-4" />
           </button>
-          <button className={btnCls} onClick={handleReset} title="Zoom to fit (0)">
+          <button type="button" className={btnCls} onClick={handleReset} title="Zoom to fit (0)">
             <AppIcons.zoomFit className="h-4 w-4" />
           </button>
-          <button
+          <button type="button"
             className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors ml-1"
             onClick={onClose}
             title="Close"
@@ -386,7 +386,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-lg w-full max-h-[80vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="font-semibold text-sm">{t("projectLandingPage.tieUpTitle", { name: draftName })}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
             <AppIcons.close className="h-4 w-4" />
           </button>
         </div>
@@ -611,7 +611,7 @@ function ColorPaletteSection({
                             style={{ background: colorOffer.suggestedHex }}
                           />
                           <span className="font-mono text-muted-foreground">{colorOffer.suggestedHex}</span>
-                          <button
+                          <button type="button"
                             className="ml-1 rounded px-1.5 py-0.5 bg-accent text-primary-foreground text-[10px] font-medium hover:opacity-90"
                             onClick={() => {
                               setReplacement(c.hex, colorOffer.suggestedHex);
@@ -620,7 +620,7 @@ function ColorPaletteSection({
                           >
                             {t("projectLandingPage.updateColor")}
                           </button>
-                          <button
+                          <button type="button"
                             className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
                             onClick={() => setColorOffer(null)}
                           >
@@ -646,7 +646,7 @@ function ColorPaletteSection({
                       <div className="flex items-center gap-2">
                         <ColorPicker value={displayHex} onChange={(hex) => setReplacement(c.hex, hex)} size="sm" />
                         {pending[c.hex] && (
-                          <button
+                          <button type="button"
                             className="text-xs text-muted-foreground hover:text-foreground"
                             onClick={() => setReplacement(c.hex, c.hex)}
                             title="Reset to original"
@@ -667,7 +667,7 @@ function ColorPaletteSection({
                       : (serverLinked?.yarn_name ?? null);
                     return (
                       <td className="px-3 py-2">
-                        <button
+                        <button type="button"
                           className={`flex items-center gap-1.5 text-xs rounded px-2 py-1 border transition-colors ${
                             hasPending ? "border-accent/60 bg-accent/10 hover:bg-accent/20" : "border-border hover:bg-muted"
                           }`}
@@ -701,7 +701,7 @@ function ColorPaletteSection({
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/20">
             <span className="text-sm font-medium">Preview with color replacements</span>
-            <button
+            <button type="button"
               className="rounded p-0.5 text-muted-foreground hover:text-foreground"
               onClick={() => setPreviewOpen(false)}
             >
@@ -1176,7 +1176,7 @@ function ReedSelector({
           {idealDent != null && idealDent !== effectiveDentsInt && (
             <p className="text-xs text-amber-700 dark:text-amber-400 pt-0.5">
               {t("projectLandingPage.useCleanSett", { dent: idealDent })}{" "}
-              <button
+              <button type="button"
                 className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200"
                 onClick={() => handleSelect(String(idealDent))}
               >
@@ -1191,7 +1191,7 @@ function ReedSelector({
       {epiInt != null && bestMatch != null && effectiveDentsInt !== bestMatch && !dentPattern && (
         <p className="text-xs text-muted-foreground">
           {t("projectLandingPage.recommendedReed", { epi: epiInt, dents: bestMatch })}{" "}
-          <button
+          <button type="button"
             className="underline underline-offset-2 hover:text-foreground"
             onClick={() => handleSelect(String(bestMatch))}
           >
@@ -1244,7 +1244,7 @@ function NotesSection({
       <section className="space-y-1">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.notes")}</h3>
-          <button
+          <button type="button"
             className="text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setEditing(true)}
           >
@@ -1432,7 +1432,7 @@ export function ProjectLandingPage() {
               {PROJECT_TYPE_LABELS[project.project_type]}
             </span>
             {project.share_slug && project.share_visibility !== "private" && (
-              <button
+              <button type="button"
                 onClick={() => setShareModalOpen(true)}
                 className="rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
                 title={t("projectLandingPage.projectSharedManage")}
@@ -1504,7 +1504,7 @@ export function ProjectLandingPage() {
       {/* Preview + specs */}
       <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
         <div className="flex flex-col gap-1.5 flex-shrink-0">
-          <button
+          <button type="button"
             className="rounded-lg overflow-hidden border border-border bg-muted/20 hover:border-ring transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             onClick={() => setDrawdownOpen(true)}
             title={t("projectLandingPage.clickForDrawdown")}
@@ -1516,7 +1516,7 @@ export function ProjectLandingPage() {
             />
           </button>
           {project.project_type === "treadle" && (
-            <button
+            <button type="button"
               className="text-xs text-center text-muted-foreground hover:text-foreground py-0.5 border border-border/50 rounded hover:border-border transition-colors"
               onClick={() => setTieupOpen(true)}
               title={t("projectLandingPage.viewTieUp")}

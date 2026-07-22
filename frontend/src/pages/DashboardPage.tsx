@@ -230,7 +230,7 @@ function ActivityHeatmap() {
         ) : (
           <div className="flex gap-1">
             {RANGE_OPTIONS.map(({ label, days }) => (
-              <button
+              <button type="button"
                 key={label}
                 onClick={() => { setMode("range"); setSelectedDays(days); setTooltip(null); }}
                 className={`px-2 py-0.5 text-xs rounded border transition-colors ${

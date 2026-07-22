@@ -55,7 +55,7 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
             />
             <h2 className="text-base font-semibold">{t("yarnPicker.title")}</h2>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <AppIcons.close className="h-4 w-4" />
           </button>
         </div>
@@ -83,7 +83,7 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
           {filtered.map((yarn) => {
             const isCurrent = yarn.id === currentYarnId;
             return (
-              <button
+              <button type="button"
                 key={yarn.id}
                 className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-left transition-colors ${
                   isCurrent

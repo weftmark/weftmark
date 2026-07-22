@@ -225,7 +225,7 @@ export function LoomCatalogPage() {
             </select>
 
             {hasFilters && (
-              <button
+              <button type="button"
                 onClick={() => {
                   setSearch("");
                   setLoomType("");

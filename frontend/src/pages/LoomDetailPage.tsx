@@ -49,13 +49,13 @@ function ConfirmInline({
   return (
     <span className="flex items-center gap-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <button
+      <button type="button"
         onClick={onConfirm}
         className="text-destructive hover:underline text-xs font-medium"
       >
         {t("loomDetailPage.confirm")}
       </button>
-      <button
+      <button type="button"
         onClick={onCancel}
         className="text-muted-foreground hover:underline text-xs"
       >
@@ -171,11 +171,11 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
               {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
             </p>
             <div className="mt-1.5 flex gap-2">
-              <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
+              <button type="button" onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
                 {t("loomDetailPage.resizeUpload")}
               </button>
               <span className="text-muted-foreground">·</span>
-              <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
+              <button type="button" onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
                 {t("common.cancel")}
               </button>
             </div>
@@ -265,7 +265,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
           <div key={p.id} className="flex flex-col items-center gap-1">
             <AuthedImage src={versionPhotoUrl(loom.id, version.id, p.id)} alt={p.filename} className="h-20 w-20 rounded object-cover border" />
             {confirmId !== p.id ? (
-              <button
+              <button type="button"
                 onClick={() => setConfirmId(p.id)}
                 className="text-xs text-destructive hover:underline"
               >
@@ -273,9 +273,9 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
               </button>
             ) : (
               <span className="flex gap-1 text-xs">
-                <button onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">{t("loomDetailPage.confirm")}</button>
+                <button type="button" onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">{t("loomDetailPage.confirm")}</button>
                 <span className="text-muted-foreground">·</span>
-                <button onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">{t("common.cancel")}</button>
+                <button type="button" onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">{t("common.cancel")}</button>
               </span>
             )}
           </div>
@@ -283,7 +283,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
         {!atLimit && (
           <div>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
-            <button
+            <button type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading || !!pendingFile}
               className="h-20 w-20 rounded border border-dashed flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors disabled:opacity-50"
@@ -297,11 +297,11 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
             {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
           </p>
           <div className="mt-1.5 flex gap-2">
-            <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
+            <button type="button" onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
               {t("loomDetailPage.resizeUpload")}
             </button>
             <span className="text-muted-foreground">·</span>
-            <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
+            <button type="button" onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
               {t("common.cancel")}
             </button>
           </div>
@@ -366,7 +366,7 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
               >{r.description || r.filename}</button>
               <span className="ml-auto shrink-0">
                 {confirmId !== r.id ? (
-                  <button onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">
+                  <button type="button" onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">
                     {t("loomDetailPage.remove")}
                   </button>
                 ) : (
@@ -447,7 +447,7 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
               <span className="flex-1">{acc.name}</span>
               <span className="shrink-0">
                 {confirmId !== acc.id ? (
-                  <button onClick={() => setConfirmId(acc.id)} className="text-xs text-destructive hover:underline">
+                  <button type="button" onClick={() => setConfirmId(acc.id)} className="text-xs text-destructive hover:underline">
                     {t("loomDetailPage.remove")}
                   </button>
                 ) : (
@@ -549,7 +549,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
               )}
               <span className="ml-auto shrink-0">
                 {confirmId !== reed.id ? (
-                  <button
+                  <button type="button"
                     onClick={() => setConfirmId(reed.id)}
                     className="text-xs text-destructive hover:underline"
                   >
@@ -823,13 +823,13 @@ function VersionCard({
                         ? `${version.loom_reference_brand} ${version.loom_reference_model_name}`
                         : t("loomDetailPage.linkedToCatalog")}
                     </span>
-                    <button
+                    <button type="button"
                       onClick={() => setShowLinkCatalog(true)}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {t("loomDetailPage.change")}
                     </button>
-                    <button
+                    <button type="button"
                       onClick={handleUnlink}
                       disabled={unlinking}
                       className="text-xs text-muted-foreground hover:text-destructive transition-colors"
@@ -842,7 +842,7 @@ function VersionCard({
                     <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
                       {t("loomDetailPage.notInCatalog")}
                     </span>
-                    <button
+                    <button type="button"
                       onClick={() => setShowLinkCatalog(true)}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >

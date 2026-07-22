@@ -269,7 +269,7 @@ function SortHeader({
   const isActive = currentSort === ascKey || currentSort === descKey;
   const isAsc = currentSort === ascKey;
   return (
-    <button
+    <button type="button"
       onClick={() => onSort(isActive && descKey && isAsc ? descKey : ascKey)}
       className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
     >
@@ -448,7 +448,7 @@ function FilterPopover({
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold">{t("yarnPage.filterLabel")}</span>
             {activeCount > 0 && (
-              <button
+              <button type="button"
                 className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => onChange(DEFAULT_FILTERS)}
               >
@@ -678,7 +678,7 @@ export function YarnPage() {
               { key: "table" as ViewMode, Icon: Table2, label: "viewTable" },
             ]
           ).map(({ key, Icon, label }) => (
-            <button
+            <button type="button"
               key={key}
               onClick={() => setPrefs({ view: key })}
               title={t(`yarnPage.${label}`)}
@@ -743,7 +743,7 @@ export function YarnPage() {
             <Button size="sm" onClick={() => navigate("/settings/connections")}>
               {t("yarnPage.stashBannerConnect")}
             </Button>
-            <button
+            <button type="button"
               className="text-muted-foreground hover:text-foreground text-lg leading-none"
               onClick={dismissBanner}
               aria-label={t("common.dismiss")}
@@ -784,7 +784,7 @@ export function YarnPage() {
       {!isLoading && rawYarns.length > 0 && displayYarns.length === 0 && (
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-sm text-muted-foreground">{t("yarnPage.filterEmptyState")}</p>
-          <button
+          <button type="button"
             className="mt-2 text-xs text-muted-foreground hover:text-foreground underline"
             onClick={() => setPrefs({ filters: DEFAULT_FILTERS })}
           >
