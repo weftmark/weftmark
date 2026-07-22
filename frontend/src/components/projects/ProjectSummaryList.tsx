@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
+import { groupByYear } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -57,19 +58,6 @@ function YearGroup({ year, items, defaultOpen }: { readonly year: number; readon
       )}
     </div>
   );
-}
-
-function groupByYear(items: ProjectSummary[], getDate: (p: ProjectSummary) => string | null) {
-  const map = new Map<number, ProjectSummary[]>();
-  for (const item of items) {
-    const d = getDate(item);
-    const year = d ? new Date(d).getFullYear() : new Date().getFullYear();
-    if (!map.has(year)) map.set(year, []);
-    map.get(year)!.push(item);
-  }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => b - a)
-    .map(([year, items]) => ({ year, items }));
 }
 
 export function ProjectSummaryList({ projects }: { readonly projects: ProjectSummary[] }) {

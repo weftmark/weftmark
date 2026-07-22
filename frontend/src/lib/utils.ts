@@ -15,3 +15,16 @@ export function formatUptime(seconds: number): string {
   parts.push(`${m} minute${m !== 1 ? "s" : ""}`);
   return parts.join(", ");
 }
+
+export function groupByYear<T>(items: T[], getDate: (item: T) => string | null): Array<{ year: number; items: T[] }> {
+  const map = new Map<number, T[]>();
+  for (const item of items) {
+    const d = getDate(item);
+    const year = d ? new Date(d).getFullYear() : new Date().getFullYear();
+    if (!map.has(year)) map.set(year, []);
+    map.get(year)!.push(item);
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => b - a)
+    .map(([year, items]) => ({ year, items }));
+}
