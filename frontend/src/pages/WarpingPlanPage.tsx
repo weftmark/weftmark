@@ -614,7 +614,7 @@ export function WarpingPlanPage() {
         {/* Tab row */}
         <div className="flex px-4 gap-0">
           {TABS.map((tab_) => (
-            <button
+            <button type="button"
               key={tab_.id}
               onClick={() => setTab(tab_.id)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${

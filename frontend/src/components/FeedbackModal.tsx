@@ -120,7 +120,7 @@ export function FeedbackModal({ onClose }: Props) {
             <AppIcons.feedback className="h-4 w-4 text-muted-foreground" />
             Send Feedback
           </h2>
-          <button
+          <button type="button"
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Close"

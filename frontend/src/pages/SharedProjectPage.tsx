@@ -123,7 +123,7 @@ function DrawdownWithHaze({
       {isActive && (
         <div className="flex items-center gap-2.5 px-1">
           <span className="text-xs text-stone-500 select-none">{t("sharedProjectPage.showProgress")}</span>
-          <button
+          <button type="button"
             role="switch"
             aria-checked={showHaze}
             onClick={() => setShowHaze((v) => !v)}

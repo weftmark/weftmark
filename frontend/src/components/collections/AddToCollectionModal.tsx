@@ -66,7 +66,7 @@ export function AddToCollectionModal({ itemId, itemType, onAdd, onRemove, onClos
       <div className="w-full max-w-sm rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[70vh]">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
           <h2 className="text-base font-semibold">Add to collection</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <AppIcons.close className="h-4 w-4" />
           </button>
         </div>
@@ -79,7 +79,7 @@ export function AddToCollectionModal({ itemId, itemType, onAdd, onRemove, onClos
             const isMember = !!membershipMap[c.id];
             const isPending = pending === c.id;
             return (
-              <button
+              <button type="button"
                 key={c.id}
                 className="w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm hover:bg-muted transition-colors text-left"
                 onClick={() => toggle(c.id)}

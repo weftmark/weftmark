@@ -178,7 +178,7 @@ export function SettingsPage() {
                 <Field label={t("settings.appearance.theme")}>
                   <div className="flex gap-2">
                     {(["light", "dark", "system"] as const).map((t) => (
-                      <button
+                      <button type="button"
                         key={t}
                         onClick={() => {
                           setTheme(t);
@@ -206,7 +206,7 @@ export function SettingsPage() {
                       };
                       const selected = activityTheme === s;
                       return (
-                        <button
+                        <button type="button"
                           key={s}
                           onClick={() => { setActivityTheme(s); save({ activity_theme: s }); }}
                           className={`rounded-lg border-2 p-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
@@ -240,7 +240,7 @@ export function SettingsPage() {
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("settings.appearance.colorMode")}</p>
                     <div className="inline-flex rounded-md border border-input overflow-hidden text-sm">
                       {(["theme", "strip", "filled"] as const).map((mode) => (
-                        <button
+                        <button type="button"
                           key={mode}
                           onClick={() => { setTrackerColorMode(mode); save({ tracker_color_mode: mode }); }}
                           className={`px-3 py-1.5 capitalize transition-colors ${
@@ -265,7 +265,7 @@ export function SettingsPage() {
                     ] as { label: string; value: boolean; setter: (v: boolean) => void; key: "tracker_show_progress" | "tracker_show_drawdown" | "tracker_show_weft_color" | "tracker_show_pick_cards"; disabled?: boolean; disabledTitle?: string }[]).map(({ label, value, setter, key, disabled, disabledTitle }) => (
                       <div key={key} className={`flex items-center justify-between ${disabled ? "opacity-40" : ""}`} title={disabledTitle}>
                         <span className="text-sm">{label}</span>
-                        <button
+                        <button type="button"
                           role="switch"
                           aria-checked={value}
                           disabled={disabled}
@@ -294,7 +294,7 @@ export function SettingsPage() {
 
                 <Field label={t("settings.appearance.hideUnusedShaftsTreadles")}>
                   <div className="flex items-center gap-3">
-                    <button
+                    <button type="button"
                       role="switch"
                       aria-checked={hideUnusedShaftsTreadles}
                       onClick={() => {
@@ -323,7 +323,7 @@ export function SettingsPage() {
               <Section title={t("settings.sections.diagnostics")} description={t("settings.sections.diagnosticsDesc")}>
                 <Field label={t("settings.diagnostics.showVersionNumbers")}>
                   <div className="flex items-center gap-3">
-                    <button
+                    <button type="button"
                       role="switch"
                       aria-checked={showVersionNumbers}
                       onClick={() => {
@@ -376,7 +376,7 @@ export function SettingsPage() {
                 <Field label={t("settings.preferences.measurementSystem")}>
                   <div className="flex gap-2">
                     {(["metric", "imperial"] as const).map((m) => (
-                      <button
+                      <button type="button"
                         key={m}
                         onClick={() => {
                           setMeasurementSystem(m);
@@ -425,7 +425,7 @@ export function SettingsPage() {
                     {t("settings.privacy.optOutHelp")}
                   </p>
                   <div className="flex items-center gap-3 mt-2">
-                    <button
+                    <button type="button"
                       role="switch"
                       aria-checked={!dataConsent}
                       onClick={() => handleConsentToggle(!dataConsent)}
@@ -788,7 +788,7 @@ function FeedbackHistorySection() {
         <div className="divide-y divide-border rounded-lg border">
           {submissions.map((s: FeedbackRecord) => (
             <div key={s.id} className="px-4 py-3 space-y-1">
-              <button
+              <button type="button"
                 className="w-full text-left space-y-1"
                 onClick={() => setExpanded(expanded === s.id ? null : s.id)}
               >

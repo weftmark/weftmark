@@ -88,7 +88,7 @@ export function ShareModal({
             <AppIcons.share className="h-4 w-4" />
             Share project
           </h2>
-          <button
+          <button type="button"
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
             aria-label="Close"

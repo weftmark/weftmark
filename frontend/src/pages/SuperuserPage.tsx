@@ -857,7 +857,7 @@ function TaskHistoryRow({ item, onRevoke }: { item: TaskHistoryItem; onRevoke: (
         <td className="px-3 py-2 text-muted-foreground">{item.error ? (expanded ? "▲" : "▼ error") : "—"}</td>
         <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
           {cancellable && (
-            <button
+            <button type="button"
               className="text-xs text-destructive hover:underline"
               onClick={() => onRevoke(item.task_id)}
             >
@@ -899,7 +899,7 @@ function TaskHistoryTable() {
         <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Task History {data ? `(${data.total})` : ""}
         </h3>
-        <button
+        <button type="button"
           className="text-xs text-muted-foreground hover:text-foreground"
           onClick={() => refetch()}
         >
@@ -940,7 +940,7 @@ function TaskHistoryTable() {
 
           {data.pages > 1 && (
             <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-              <button
+              <button type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
                 className="px-2 py-1 border rounded disabled:opacity-40 hover:bg-muted/40"
@@ -948,7 +948,7 @@ function TaskHistoryTable() {
                 ← Prev
               </button>
               <span>Page {data.page} of {data.pages}</span>
-              <button
+              <button type="button"
                 disabled={page >= data.pages}
                 onClick={() => setPage((p) => p + 1)}
                 className="px-2 py-1 border rounded disabled:opacity-40 hover:bg-muted/40"
@@ -1343,7 +1343,7 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
         <div className="flex items-center gap-2 shrink-0">
           <label className="flex items-center gap-2 cursor-pointer">
             <span className="text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"}</span>
-            <button
+            <button type="button"
               role="switch"
               aria-checked={enabled}
               onClick={() => setEnabled((v) => !v)}
@@ -2080,7 +2080,7 @@ function ConfigSection() {
                 )}
                 <div className="flex-1" />
                 {isDirty && (
-                  <button
+                  <button type="button"
                     className="text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => clearGroupDrafts(groupKey)}
                   >
@@ -2373,8 +2373,8 @@ function CredentialsTab() {
                       <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <button className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(c)}>Edit</button>
-                      <button className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(c)}>Delete</button>
+                      <button type="button" className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(c)}>Edit</button>
+                      <button type="button" className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(c)}>Delete</button>
                     </td>
                   </tr>
                 );

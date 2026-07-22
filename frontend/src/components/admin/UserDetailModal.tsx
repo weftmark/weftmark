@@ -187,7 +187,7 @@ export function UserDetailModal({ target, onClose }: Props) {
               </div>
               <p className="text-sm text-muted-foreground overflow-hidden"><CopyEmail email={s.email} /></p>
             </div>
-            <button
+            <button type="button"
               onClick={onClose}
               className="text-xl leading-none text-muted-foreground hover:text-foreground"
             >
@@ -271,7 +271,7 @@ export function UserDetailModal({ target, onClose }: Props) {
             <h2 className="text-base font-semibold">{u.display_name}</h2>
             <p className="text-sm text-muted-foreground overflow-hidden"><CopyEmail email={u.email} /></p>
           </div>
-          <button
+          <button type="button"
             onClick={onClose}
             className="text-xl leading-none text-muted-foreground hover:text-foreground"
           >

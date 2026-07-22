@@ -27,7 +27,7 @@ export function DraftCard({ draft, projectCounts, archived }: Props) {
   ].filter(Boolean) as string[];
 
   return (
-    <button
+    <button type="button"
       data-testid="draft-card"
       className="text-left w-full rounded-lg border bg-background shadow-sm hover:border-ring transition-colors overflow-hidden"
       onClick={() => navigate(`/drafts/${draft.id}`)}
