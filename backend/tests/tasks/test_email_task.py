@@ -330,6 +330,7 @@ class TestRetryOnFailure:
             raise ConnectionError("SMTP timeout")
 
         with patch("app.tasks.email_task._do_smtp", _fail):
+            queued_at = _queued_at(10)
             with pytest.raises(Exception, match="retry sentinel"):
                 send_email.run.__func__(
                     task,
@@ -337,7 +338,7 @@ class TestRetryOnFailure:
                     subject="s",
                     txt="t",
                     html=_BASE_HTML,
-                    queued_at=_queued_at(10),
+                    queued_at=queued_at,
                 )
         task.retry.assert_called_once()
 
@@ -357,14 +358,15 @@ class TestRetryOnFailure:
             raise ConnectionError("timeout")
 
         with patch("app.tasks.email_task._do_smtp", _fail):
-            with pytest.raises(Exception):
+            queued_at = _queued_at(10)
+            with pytest.raises(Exception, match="retry sentinel"):
                 send_email.run.__func__(
                     task,
                     to=["r@t.com"],
                     subject="s",
                     txt="t",
                     html=_BASE_HTML,
-                    queued_at=_queued_at(10),
+                    queued_at=queued_at,
                 )
         # retries=2 → countdown = min(60 * 2**2, 1800) = min(240, 1800) = 240
         assert countdowns[0] == 240
@@ -385,13 +387,14 @@ class TestRetryOnFailure:
             raise ConnectionError("timeout")
 
         with patch("app.tasks.email_task._do_smtp", _fail):
-            with pytest.raises(Exception):
+            queued_at = _queued_at(10)
+            with pytest.raises(Exception, match="retry sentinel"):
                 send_email.run.__func__(
                     task,
                     to=["r@t.com"],
                     subject="s",
                     txt="t",
                     html=_BASE_HTML,
-                    queued_at=_queued_at(10),
+                    queued_at=queued_at,
                 )
         assert countdowns[0] == 1800

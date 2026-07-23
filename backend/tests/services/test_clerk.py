@@ -218,7 +218,7 @@ class TestBanClerkUser:
         response.raise_for_status.side_effect = Exception("403 Forbidden")
         ctx, client = _mock_client("post", response)
         with patch("httpx.AsyncClient", return_value=ctx):
-            with pytest.raises(Exception):
+            with pytest.raises(Exception, match="403 Forbidden"):
                 await ban_clerk_user("user_abc")
 
 

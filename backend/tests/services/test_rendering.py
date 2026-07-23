@@ -11,6 +11,7 @@ A full PyWeaving-compatible WIF requires: [WIF] with Date, [CONTENTS],
 """
 
 import sys
+from configparser import MissingSectionHeaderError
 from pathlib import Path
 
 import pytest
@@ -206,7 +207,7 @@ class TestLoadDraft:
         assert draft.rising_shed is True
 
     def test_invalid_wif_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(MissingSectionHeaderError):
             load_draft(b"this is not a wif file at all")
 
     @pytest.mark.skipif(
@@ -217,7 +218,7 @@ class TestLoadDraft:
         bytes raise UnicodeDecodeError.  Callers must normalise encoding first
         (wif_parser handles this; rendering does not)."""
         latin1_wif = MINIMAL_WIF.decode().replace("TestSuite", "Caf\xe9Loom").encode("latin-1")
-        with pytest.raises(Exception):
+        with pytest.raises(UnicodeDecodeError):
             load_draft(latin1_wif)
 
 

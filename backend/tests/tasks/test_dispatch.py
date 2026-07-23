@@ -195,8 +195,9 @@ class TestDispatchFailure:
                 new=AsyncMock(side_effect=RuntimeError("API error")),
             ),
         ):
+            feedback_id = str(row.id)
             with pytest.raises(RuntimeError):
-                await _dispatch(task, str(row.id))
+                await _dispatch(task, feedback_id)
 
         await db_session.refresh(row)
         assert row.dispatch_status == "failed"
@@ -215,8 +216,9 @@ class TestDispatchFailure:
                 new=AsyncMock(side_effect=RuntimeError("API error")),
             ),
         ):
+            feedback_id = str(row.id)
             with pytest.raises(RuntimeError):
-                await _dispatch(task, str(row.id))
+                await _dispatch(task, feedback_id)
 
         await db_session.refresh(row)
         assert row.dispatch_error is not None
@@ -235,8 +237,9 @@ class TestDispatchFailure:
                 new=AsyncMock(side_effect=RuntimeError("API error")),
             ),
         ):
+            feedback_id = str(row.id)
             with pytest.raises(RuntimeError):
-                await _dispatch(task, str(row.id))
+                await _dispatch(task, feedback_id)
 
         task.retry.assert_called_once()
 
