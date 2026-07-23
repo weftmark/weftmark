@@ -206,8 +206,8 @@ async def get_feedback_status(
 async def list_feedback(
     db: Annotated[AsyncSession, Depends(get_db)],
     _admin: Annotated[User, Depends(require_admin)],
-    page: int = Query(1, ge=1),
-    page_size: int = Query(25, ge=1, le=100),
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     submission_type: str | None = None,
     dispatch_status: str | None = None,
     include_deleted: bool = False,

@@ -380,7 +380,7 @@ async def create_yarn(
 async def list_yarn(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    include_archived: bool = Query(False),
+    include_archived: Annotated[bool, Query()] = False,
 ) -> list[YarnSummary]:
     filters = [Yarn.owner_id == current_user.id, Yarn.deleted_at.is_(None)]
     if not include_archived:
@@ -471,7 +471,7 @@ async def upload_yarn_photo(
     yarn_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()],
 ) -> None:
     _validate_image(file)
     yarn = await _get_owned_yarn(yarn_id, current_user, db)

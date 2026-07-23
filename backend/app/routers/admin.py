@@ -1778,7 +1778,7 @@ async def backfill_clerk_user(
     clerk_user_id: str,
     admin: Annotated[User, Depends(require_superuser)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    body: BackfillRequest = Body(default_factory=BackfillRequest),
+    body: Annotated[BackfillRequest, Body(default_factory=BackfillRequest)],
 ) -> BackfillResponse:
     existing = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id, User.deleted_at.is_(None)))
     if existing:

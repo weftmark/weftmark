@@ -478,7 +478,7 @@ async def create_loom(
 async def list_looms(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    include_retired: bool = Query(False),
+    include_retired: Annotated[bool, Query()] = False,
 ) -> list[LoomSummary]:
     q = (
         select(Loom)
@@ -539,7 +539,7 @@ async def delete_loom(
     loom_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    force: bool = Query(False),
+    force: Annotated[bool, Query()] = False,
 ) -> None:
     from app.models.project import Project
 
@@ -606,7 +606,7 @@ async def upload_loom_photo(
     loom_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()],
 ) -> None:
     _validate_image(file)
     loom = await _get_owned_loom(loom_id, current_user, db)
@@ -704,7 +704,7 @@ async def upload_version_photo(
     version_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()],
 ) -> LoomVersionPhotoSchema:
     _validate_image(file)
     _, version = await _get_owned_version(loom_id, version_id, current_user, db)
@@ -789,7 +789,7 @@ async def upload_version_receipt(
     version_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()],
     description: str | None = None,
 ) -> LoomVersionReceiptSchema:
     _validate_receipt(file)
