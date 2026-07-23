@@ -6,6 +6,7 @@ import { getYarn, updateYarn, patchYarnColorway, getYarnProjects, type YarnProje
 import { formatColorwayLabel, getRavelryStatus, getRavelryYarnDetail, pushYarnToStash, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { ColorwayGrid } from "@/components/yarn/ColorwayGrid";
 
 function DevJsonModal({ data, onClose }: { readonly data: unknown; readonly onClose: () => void }) {
   return (
@@ -21,7 +22,7 @@ function DevJsonModal({ data, onClose }: { readonly data: unknown; readonly onCl
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-xs font-mono font-semibold text-accent">DEV — raw data</span>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
         </div>
         <pre className="p-4 text-xs font-mono text-card-foreground whitespace-pre-wrap break-all">
           {JSON.stringify(data, null, 2)}
@@ -137,7 +138,7 @@ function EditColorwayModal({
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 id="edit-colorway-title" className="text-sm font-semibold">{t("yarnDetailPage.editColorwayTitle")}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
         </div>
 
         {yarn.ravelry_yarn_id && (
@@ -145,6 +146,7 @@ function EditColorwayModal({
             {(["rename", "link"] as const).map((t_) => (
               <button
                 key={t_}
+                type="button"
                 onClick={() => handleTabChange(t_)}
                 className={`flex-1 px-4 py-2.5 text-xs font-medium transition-colors ${
                   tab === t_
@@ -171,7 +173,7 @@ function EditColorwayModal({
                     onChange={(e) => setColorwayFilter(e.target.value)}
                   />
                   {colorwayFilter && (
-                    <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs" onClick={() => setColorwayFilter("")}>✕</button>
+                    <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs" onClick={() => setColorwayFilter("")}>✕</button>
                   )}
                 </div>
               )}
@@ -179,24 +181,7 @@ function EditColorwayModal({
                 <p className="text-xs text-muted-foreground">{t("yarnDetailPage.noColorways")}</p>
               )}
               {filteredColorways.length > 0 && (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {filteredColorways.map((cw) => (
-                    <button
-                      key={cw.id}
-                      className={`text-left rounded-md border p-1.5 text-xs transition-colors ${
-                        selectedColorway?.id === cw.id
-                          ? "border-ring bg-accent/10 text-accent"
-                          : "border-border hover:border-ring text-card-foreground"
-                      }`}
-                      onClick={() => pickColorway(cw)}
-                    >
-                      {cw.photos?.[0]?.square_url && (
-                        <img src={cw.photos[0].square_url} alt={cw.name} className="h-10 w-full rounded object-cover mb-1" />
-                      )}
-                      <span className="truncate block leading-tight">{formatColorwayLabel(cw)}</span>
-                    </button>
-                  ))}
-                </div>
+                <ColorwayGrid colorways={filteredColorways} selectedColorway={selectedColorway} onPick={pickColorway} />
               )}
             </>
           )}
@@ -512,6 +497,7 @@ export function YarnDetailPage() {
           {/* Tags row */}
           <div className="flex flex-wrap gap-1.5 pt-0.5 items-center">
             <button
+              type="button"
               onClick={() => setShowEditColorway(true)}
               title={t("yarnDetailPage.editColorway")}
               className="flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs hover:bg-accent/20 hover:text-foreground transition-colors"
@@ -548,6 +534,7 @@ export function YarnDetailPage() {
             )}
             {ravelryStatus?.connected && yarn.ravelry_yarn_id !== null && yarn.ravelry_stash_id === null && !yarn.out_of_stash && !yarn.archived && (
               <button
+                type="button"
                 onClick={() => pushMutation.mutate()}
                 disabled={pushMutation.isPending}
                 className="rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs hover:bg-muted/80 disabled:opacity-50 transition-colors"
@@ -589,6 +576,7 @@ export function YarnDetailPage() {
           {isDevEnv && (
             <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-4">
               <button
+                type="button"
                 onClick={() => setShowDebug(true)}
                 className="text-xs font-mono text-accent hover:text-accent/80"
               >
@@ -596,6 +584,7 @@ export function YarnDetailPage() {
               </button>
               {yarn.ravelry_yarn_id && (
                 <button
+                  type="button"
                   onClick={async () => {
                     setRavelryLoading(true);
                     try {
