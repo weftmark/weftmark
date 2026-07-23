@@ -18,6 +18,7 @@ import {
   LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { type DeleteConflict } from "@/api/drafts";
+import { DeleteConflictPanel } from "@/components/DeleteConflictPanel";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
 import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
@@ -1094,34 +1095,20 @@ export function LoomDetailPage() {
 
                   {/* 409 conflict */}
                   {deleteConflict && (
-                    <div className="space-y-2">
-                      <p className="text-sm text-destructive font-medium">
-                        {t("loomDetailPage.usedByConflict", { count: deleteConflict.projects.length })}
-                      </p>
-                      <ul className="text-xs text-muted-foreground space-y-0.5 pl-3">
-                        {deleteConflict.projects.map((p) => <li key={p.id}>· {p.name}</li>)}
-                      </ul>
-                      <p className="text-xs text-muted-foreground">
-                        {t("loomDetailPage.conflictUnlinkNote")}
-                      </p>
-                      {!confirmForceDelete ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-destructive/50 text-destructive hover:bg-destructive/10"
-                          onClick={() => setConfirmForceDelete(true)}
-                        >
-                          {t("loomDetailPage.forceDelete", { count: deleteConflict.projects.length })}
-                        </Button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => handleDelete(true)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            {deleting ? t("loomDetailPage.deleting") : t("loomDetailPage.confirmForceDelete")}
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>{t("common.cancel")}</Button>
-                        </div>
-                      )}
-                    </div>
+                    <DeleteConflictPanel
+                      conflict={deleteConflict}
+                      usedByMessage={t("loomDetailPage.usedByConflict", { count: deleteConflict.projects.length })}
+                      conflictNote={t("loomDetailPage.conflictUnlinkNote")}
+                      confirmForceDelete={confirmForceDelete}
+                      onRequestForceDelete={() => setConfirmForceDelete(true)}
+                      forceDeleteLabel={t("loomDetailPage.forceDelete", { count: deleteConflict.projects.length })}
+                      triggerButtonClassName="border-destructive/50 text-destructive hover:bg-destructive/10"
+                      onConfirmForceDelete={() => handleDelete(true)}
+                      confirmForceDeleteLabel={t("loomDetailPage.confirmForceDelete")}
+                      busy={deleting}
+                      busyLabel={t("loomDetailPage.deleting")}
+                      onCancel={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}
+                    />
                   )}
                 </div>
               </div>
