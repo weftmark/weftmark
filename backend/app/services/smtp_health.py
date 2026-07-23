@@ -32,7 +32,7 @@ _in_backoff: bool = False
 async def _tcp_probe(host: str, port: int) -> tuple[bool, str]:
     """Open a bare TCP connection to host:port and immediately close it."""
     try:
-        reader, writer = await asyncio.wait_for(
+        _, writer = await asyncio.wait_for(
             asyncio.open_connection(host, port),
             timeout=TCP_TIMEOUT_S,
         )
