@@ -707,7 +707,7 @@ async def upload_version_photo(
     file: UploadFile = File(...),
 ) -> LoomVersionPhotoSchema:
     _validate_image(file)
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     if len(version.photos) >= MAX_VERSION_PHOTOS:
         raise HTTPException(status_code=400, detail=f"Maximum {MAX_VERSION_PHOTOS} photos per configuration")
     data = await file.read()
@@ -744,7 +744,7 @@ async def get_version_photo(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
     photo = next((p for p in version.photos if p.id == photo_id), None)
     if photo is None or not storage.file_exists(photo.path):
         raise HTTPException(status_code=404, detail="Photo not found")
@@ -765,7 +765,7 @@ async def delete_version_photo(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     photo = next((p for p in version.photos if p.id == photo_id), None)
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
@@ -793,7 +793,7 @@ async def upload_version_receipt(
     description: str | None = None,
 ) -> LoomVersionReceiptSchema:
     _validate_receipt(file)
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, _ = await _get_owned_version(loom_id, version_id, current_user, db)
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail=_FILE_TOO_LARGE)
@@ -823,7 +823,7 @@ async def get_version_receipt(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
     receipt = next((r for r in version.receipts if r.id == receipt_id), None)
     if receipt is None or not storage.file_exists(receipt.path):
         raise HTTPException(status_code=404, detail="Receipt not found")
@@ -850,7 +850,7 @@ async def delete_version_receipt(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     receipt = next((r for r in version.receipts if r.id == receipt_id), None)
     if receipt is None:
         raise HTTPException(status_code=404, detail="Receipt not found")
@@ -875,7 +875,7 @@ async def update_version(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomVersionSchema:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(version, field, value)
     await db.commit()
@@ -950,7 +950,7 @@ async def add_accessory(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomVersionAccessorySchema:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, _ = await _get_owned_version(loom_id, version_id, current_user, db)
     acc = LoomVersionAccessory(loom_version_id=version_id, name=body.name.strip())
     db.add(acc)
     await db.commit()
@@ -970,7 +970,7 @@ async def delete_accessory(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     acc = next((a for a in version.accessories if a.id == accessory_id), None)
     if acc is None:
         raise HTTPException(status_code=404, detail="Accessory not found")

@@ -561,7 +561,7 @@ async def update_skein(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SkeinSchema:
-    yarn, skein = await _get_owned_skein(yarn_id, skein_id, current_user, db)
+    _, skein = await _get_owned_skein(yarn_id, skein_id, current_user, db)
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(skein, field, value)
     await db.commit()
@@ -576,7 +576,7 @@ async def delete_skein(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    yarn, skein = await _get_owned_skein(yarn_id, skein_id, current_user, db)
+    _, skein = await _get_owned_skein(yarn_id, skein_id, current_user, db)
     await db.delete(skein)
     await db.commit()
 

@@ -358,7 +358,7 @@ class SVGRenderer:
         doc.append(_SVG.g(*grp))
 
     def paint_fill_marker(self, doc, box) -> None:
-        startx, starty, endx, endy = box
+        startx, starty, _, _ = box
         doc.append(
             _SVG.rect(
                 x=startx + 2,
