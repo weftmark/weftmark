@@ -33,6 +33,89 @@ const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — must match backend MAX_FILE
 const MAX_VERSION_PHOTOS = 5;            // must match backend MAX_VERSION_PHOTOS
 
 // ---------------------------------------------------------------------------
+// Shared photo-upload-with-resize workflow
+// ---------------------------------------------------------------------------
+
+function useResizableUpload(upload: (file: File) => Promise<void>, maxBytes: number = PHOTO_MAX_BYTES) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const clearInput = () => { if (fileRef.current) fileRef.current.value = ""; };
+
+  const doUpload = async (file: File) => {
+    setError(null);
+    setUploading(true);
+    try {
+      await upload(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      setPendingFile(null);
+      clearInput();
+    }
+  };
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > maxBytes) {
+      setPendingFile(file);
+    } else {
+      doUpload(file);
+    }
+  };
+
+  const handleResize = async () => {
+    if (!pendingFile) return;
+    setUploading(true);
+    try {
+      const resized = await resizeImageToFile(pendingFile, maxBytes);
+      await doUpload(resized);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Resize failed");
+      setPendingFile(null);
+      clearInput();
+      setUploading(false);
+    }
+  };
+
+  const cancelPending = () => { setPendingFile(null); clearInput(); };
+
+  return { fileRef, uploading, error, pendingFile, handleFileSelected, handleResize, cancelPending };
+}
+
+function OversizedFilePrompt({
+  pendingFile,
+  onResize,
+  onCancel,
+}: {
+  readonly pendingFile: File;
+  readonly onResize: () => void;
+  readonly onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
+      <p className="font-medium text-copper-on-subtle">
+        {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
+      </p>
+      <div className="mt-1.5 flex gap-2">
+        <button type="button" onClick={onResize} className="font-medium text-copper-on-subtle hover:underline">
+          {t("loomDetailPage.resizeUpload")}
+        </button>
+        <span className="text-muted-foreground">·</span>
+        <button type="button" onClick={onCancel} className="text-copper-on-subtle hover:underline">
+          {t("common.cancel")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Reusable inline confirm
 // ---------------------------------------------------------------------------
 
@@ -50,12 +133,14 @@ function ConfirmInline({
     <span className="flex items-center gap-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <button
+        type="button"
         onClick={onConfirm}
         className="text-destructive hover:underline text-xs font-medium"
       >
         {t("loomDetailPage.confirm")}
       </button>
       <button
+        type="button"
         onClick={onCancel}
         className="text-muted-foreground hover:underline text-xs"
       >
@@ -73,63 +158,26 @@ function ProfilePhoto({ loom, onChanged }: { readonly loom: LoomDetail; readonly
   const { t } = useTranslation();
   const { user } = useAuthContext();
   const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-
-  const clearInput = () => { if (fileRef.current) fileRef.current.value = ""; };
-
-  const doUpload = async (file: File) => {
-    setError(null);
-    setUploading(true);
-    try {
+  const [deleting, setDeleting] = useState(false);
+  const { fileRef, uploading, error, pendingFile, handleFileSelected, handleResize, cancelPending } =
+    useResizableUpload(async (file) => {
       await uploadLoomPhoto(loom.id, file);
       onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-      setPendingFile(null);
-      clearInput();
-    }
-  };
-
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > PHOTO_MAX_BYTES) {
-      setPendingFile(file);
-    } else {
-      doUpload(file);
-    }
-  };
-
-  const handleResize = async () => {
-    if (!pendingFile) return;
-    setUploading(true);
-    try {
-      const resized = await resizeImageToFile(pendingFile, PHOTO_MAX_BYTES);
-      await doUpload(resized);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Resize failed");
-      setPendingFile(null);
-      clearInput();
-      setUploading(false);
-    }
-  };
+    });
 
   const handleDelete = async () => {
-    setUploading(true);
+    setDeleting(true);
     try {
       await deleteLoomPhoto(loom.id);
       onChanged();
     } finally {
-      setUploading(false);
+      setDeleting(false);
       setConfirmRemove(false);
     }
   };
+
+  const busy = uploading || deleting;
 
   return (
     <div className="flex items-start gap-4">
@@ -148,11 +196,11 @@ function ProfilePhoto({ loom, onChanged }: { readonly loom: LoomDetail; readonly
         {!isReadOnly && (
           <>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
-            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !!pendingFile}>
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy || !!pendingFile}>
               {uploading ? t("loomDetailPage.uploading") : loom.has_photo ? t("loomDetailPage.replacePhoto") : t("loomDetailPage.uploadPhoto")}
             </Button>
             {loom.has_photo && !confirmRemove && (
-              <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={uploading || !!pendingFile}>
+              <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={busy || !!pendingFile}>
                 {t("loomDetailPage.removePhoto")}
               </Button>
             )}
@@ -165,22 +213,7 @@ function ProfilePhoto({ loom, onChanged }: { readonly loom: LoomDetail; readonly
             )}
           </>
         )}
-        {pendingFile && (
-          <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
-            <p className="font-medium text-copper-on-subtle">
-              {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
-            </p>
-            <div className="mt-1.5 flex gap-2">
-              <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
-                {t("loomDetailPage.resizeUpload")}
-              </button>
-              <span className="text-muted-foreground">·</span>
-              <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
-                {t("common.cancel")}
-              </button>
-            </div>
-          </div>
-        )}
+        {pendingFile && <OversizedFilePrompt pendingFile={pendingFile} onResize={handleResize} onCancel={cancelPending} />}
         {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
     </div>
@@ -193,53 +226,14 @@ function ProfilePhoto({ loom, onChanged }: { readonly loom: LoomDetail; readonly
 
 function VersionPhotos({ loom, version, onChanged }: { readonly loom: LoomDetail; readonly version: LoomVersion; readonly onChanged: () => void }) {
   const { t } = useTranslation();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-
-  const atLimit = version.photos.length >= MAX_VERSION_PHOTOS;
-  const clearInput = () => { if (fileRef.current) fileRef.current.value = ""; };
-
-  const doUpload = async (file: File) => {
-    setError(null);
-    setUploading(true);
-    try {
+  const { fileRef, uploading, error, pendingFile, handleFileSelected, handleResize, cancelPending } =
+    useResizableUpload(async (file) => {
       await uploadVersionPhoto(loom.id, version.id, file);
       onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-      setPendingFile(null);
-      clearInput();
-    }
-  };
+    });
 
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > PHOTO_MAX_BYTES) {
-      setPendingFile(file);
-    } else {
-      doUpload(file);
-    }
-  };
-
-  const handleResize = async () => {
-    if (!pendingFile) return;
-    setUploading(true);
-    try {
-      const resized = await resizeImageToFile(pendingFile, PHOTO_MAX_BYTES);
-      await doUpload(resized);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Resize failed");
-      setPendingFile(null);
-      clearInput();
-      setUploading(false);
-    }
-  };
+  const atLimit = version.photos.length >= MAX_VERSION_PHOTOS;
 
   const handleDelete = async (photo: LoomVersionPhoto) => {
     try {
@@ -266,6 +260,7 @@ function VersionPhotos({ loom, version, onChanged }: { readonly loom: LoomDetail
             <AuthedImage src={versionPhotoUrl(loom.id, version.id, p.id)} alt={p.filename} className="h-20 w-20 rounded object-cover border" />
             {confirmId !== p.id ? (
               <button
+                type="button"
                 onClick={() => setConfirmId(p.id)}
                 className="text-xs text-destructive hover:underline"
               >
@@ -273,9 +268,9 @@ function VersionPhotos({ loom, version, onChanged }: { readonly loom: LoomDetail
               </button>
             ) : (
               <span className="flex gap-1 text-xs">
-                <button onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">{t("loomDetailPage.confirm")}</button>
+                <button type="button" onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">{t("loomDetailPage.confirm")}</button>
                 <span className="text-muted-foreground">·</span>
-                <button onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">{t("common.cancel")}</button>
+                <button type="button" onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">{t("common.cancel")}</button>
               </span>
             )}
           </div>
@@ -284,6 +279,7 @@ function VersionPhotos({ loom, version, onChanged }: { readonly loom: LoomDetail
           <div>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading || !!pendingFile}
               className="h-20 w-20 rounded border border-dashed flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors disabled:opacity-50"
@@ -292,19 +288,8 @@ function VersionPhotos({ loom, version, onChanged }: { readonly loom: LoomDetail
         )}
       </div>
       {pendingFile && (
-        <div className="mt-2 rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
-          <p className="font-medium text-copper-on-subtle">
-            {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
-          </p>
-          <div className="mt-1.5 flex gap-2">
-            <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
-              {t("loomDetailPage.resizeUpload")}
-            </button>
-            <span className="text-muted-foreground">·</span>
-            <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
-              {t("common.cancel")}
-            </button>
-          </div>
+        <div className="mt-2">
+          <OversizedFilePrompt pendingFile={pendingFile} onResize={handleResize} onCancel={cancelPending} />
         </div>
       )}
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
@@ -366,7 +351,7 @@ function VersionReceipts({ loom, version, onChanged }: { readonly loom: LoomDeta
               >{r.description || r.filename}</button>
               <span className="ml-auto shrink-0">
                 {confirmId !== r.id ? (
-                  <button onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">
+                  <button type="button" onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">
                     {t("loomDetailPage.remove")}
                   </button>
                 ) : (
@@ -447,7 +432,7 @@ function VersionAccessories({ loom, version, onChanged }: { readonly loom: LoomD
               <span className="flex-1">{acc.name}</span>
               <span className="shrink-0">
                 {confirmId !== acc.id ? (
-                  <button onClick={() => setConfirmId(acc.id)} className="text-xs text-destructive hover:underline">
+                  <button type="button" onClick={() => setConfirmId(acc.id)} className="text-xs text-destructive hover:underline">
                     {t("loomDetailPage.remove")}
                   </button>
                 ) : (
@@ -550,6 +535,7 @@ function ReedsPanel({ loom, onChanged }: { readonly loom: LoomDetail; readonly o
               <span className="ml-auto shrink-0">
                 {confirmId !== reed.id ? (
                   <button
+                    type="button"
                     onClick={() => setConfirmId(reed.id)}
                     className="text-xs text-destructive hover:underline"
                   >
@@ -824,12 +810,14 @@ function VersionCard({
                         : t("loomDetailPage.linkedToCatalog")}
                     </span>
                     <button
+                      type="button"
                       onClick={() => setShowLinkCatalog(true)}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {t("loomDetailPage.change")}
                     </button>
                     <button
+                      type="button"
                       onClick={handleUnlink}
                       disabled={unlinking}
                       className="text-xs text-muted-foreground hover:text-destructive transition-colors"
@@ -843,6 +831,7 @@ function VersionCard({
                       {t("loomDetailPage.notInCatalog")}
                     </span>
                     <button
+                      type="button"
                       onClick={() => setShowLinkCatalog(true)}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
