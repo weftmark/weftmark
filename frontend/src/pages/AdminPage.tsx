@@ -567,6 +567,7 @@ function InvitesTab() {
               {past.length > INVITE_HISTORY_PAGE_SIZE && (
                 <div className="flex items-center justify-between pt-1">
                   <button
+                    type="button"
                     className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
                     disabled={historyPage === 0}
                     onClick={() => setHistoryPage((p) => p - 1)}
@@ -577,6 +578,7 @@ function InvitesTab() {
                     {historyPage + 1} / {Math.ceil(past.length / INVITE_HISTORY_PAGE_SIZE)}
                   </span>
                   <button
+                    type="button"
                     className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
                     disabled={(historyPage + 1) * INVITE_HISTORY_PAGE_SIZE >= past.length}
                     onClick={() => setHistoryPage((p) => p + 1)}
@@ -1040,6 +1042,7 @@ function CombinedServiceRow({ service, detail }: { readonly service: ReadinessSe
   return (
     <div className="bg-background">
       <button
+        type="button"
         className={`w-full flex items-center gap-3 px-4 py-3 text-left ${hasDetail ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
         onClick={hasDetail ? () => setOpen((o) => !o) : undefined}
       >
@@ -1242,6 +1245,37 @@ function formatElapsed(ms: number | null) {
   return `${m}m ${rem}s`;
 }
 
+function Pager({ page, dataPage, pages, onPrev, onNext, size = "text-xs" }: {
+  readonly page: number;
+  readonly dataPage: number;
+  readonly pages: number;
+  readonly onPrev: () => void;
+  readonly onNext: () => void;
+  readonly size?: "text-xs" | "text-sm";
+}) {
+  return (
+    <div className={`flex items-center gap-2 justify-center ${size}`}>
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={onPrev}
+        className="px-2 py-1 border rounded disabled:opacity-40"
+      >
+        ←
+      </button>
+      <span className="text-muted-foreground">Page {dataPage} of {pages}</span>
+      <button
+        type="button"
+        disabled={page >= pages}
+        onClick={onNext}
+        className="px-2 py-1 border rounded disabled:opacity-40"
+      >
+        →
+      </button>
+    </div>
+  );
+}
+
 function ServerEventsPanel() {
   const [page, setPage] = useState(1);
   const [eventType, setEventType] = useState("");
@@ -1316,23 +1350,7 @@ function ServerEventsPanel() {
       )}
 
       {data && data.pages > 1 && (
-        <div className="flex items-center gap-2 justify-center text-xs">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-2 py-1 border rounded disabled:opacity-40"
-          >
-            ←
-          </button>
-          <span className="text-muted-foreground">Page {data.page} of {data.pages}</span>
-          <button
-            disabled={page >= data.pages}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-2 py-1 border rounded disabled:opacity-40"
-          >
-            →
-          </button>
-        </div>
+        <Pager page={page} dataPage={data.page} pages={data.pages} onPrev={() => setPage((p) => p - 1)} onNext={() => setPage((p) => p + 1)} size="text-xs" />
       )}
     </div>
   );
@@ -1661,7 +1679,7 @@ function FeedbackTab() {
               <h3 className="font-semibold">
                 {SUBMISSION_TYPE_LABELS[detail.submission_type as SubmissionType] ?? detail.submission_type}
               </h3>
-              <button onClick={() => setDetail(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+              <button type="button" onClick={() => setDetail(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
                 <span className="text-xs">✕</span>
               </button>
             </div>
@@ -1845,23 +1863,7 @@ function AuditLogTab() {
       )}
 
       {data && data.pages > 1 && (
-        <div className="flex items-center gap-2 justify-center text-sm">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-2 py-1 border rounded disabled:opacity-40"
-          >
-            ←
-          </button>
-          <span className="text-muted-foreground">Page {data.page} of {data.pages}</span>
-          <button
-            disabled={page >= data.pages}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-2 py-1 border rounded disabled:opacity-40"
-          >
-            →
-          </button>
-        </div>
+        <Pager page={page} dataPage={data.page} pages={data.pages} onPrev={() => setPage((p) => p - 1)} onNext={() => setPage((p) => p + 1)} size="text-sm" />
       )}
     </div>
   );
@@ -2231,10 +2233,10 @@ function LoomDatabaseTab() {
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">{ref.origin_country ?? "—"}</td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                    <button className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(ref)}>
+                    <button type="button" className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(ref)}>
                       Edit
                     </button>
-                    <button className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(ref)}>
+                    <button type="button" className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(ref)}>
                       Delete
                     </button>
                   </td>
