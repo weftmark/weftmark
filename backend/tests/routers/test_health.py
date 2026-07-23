@@ -12,7 +12,7 @@ from app.version import VERSION
 
 
 @pytest.fixture(autouse=True)
-def reset_health_state():
+def reset_health_state(monkeypatch):
     """Restore module-level caches and task between tests."""
     original_detailed = health_module._detailed_cache
     original_readiness = health_module._readiness_cache
@@ -27,15 +27,15 @@ def reset_health_state():
     # Cancel any task created during the test before restoring
     if health_module._detailed_task is not None and health_module._detailed_task is not original_task:
         health_module._detailed_task.cancel()
-    health_module._detailed_cache = original_detailed
-    health_module._readiness_cache = original_readiness
-    health_module._detailed_task = original_task
-    health_module._open_health_event_id = original_open_event
-    health_module._last_alert_status = original_last_alert
-    health_module._superuser_email_cache = original_email_cache
-    health_module._consecutive_failures = original_failures
-    health_module._last_postgres_result = original_pg_result
-    health_module._last_postgres_probe_at = original_pg_probe_at
+    monkeypatch.setattr(health_module, "_detailed_cache", original_detailed)
+    monkeypatch.setattr(health_module, "_readiness_cache", original_readiness)
+    monkeypatch.setattr(health_module, "_detailed_task", original_task)
+    monkeypatch.setattr(health_module, "_open_health_event_id", original_open_event)
+    monkeypatch.setattr(health_module, "_last_alert_status", original_last_alert)
+    monkeypatch.setattr(health_module, "_superuser_email_cache", original_email_cache)
+    monkeypatch.setattr(health_module, "_consecutive_failures", original_failures)
+    monkeypatch.setattr(health_module, "_last_postgres_result", original_pg_result)
+    monkeypatch.setattr(health_module, "_last_postgres_probe_at", original_pg_probe_at)
 
 
 class TestHealth:
@@ -59,37 +59,45 @@ class TestHealth:
 
 
 class TestHealthReady:
-    async def test_returns_503_when_cache_empty(self, client: AsyncClient):
-        health_module._readiness_cache = None
+    async def test_returns_503_when_cache_empty(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(health_module, "_readiness_cache", None)
         resp = await client.get("/api/health/ready")
         assert resp.status_code == 503
         assert resp.json()["status"] == "starting"
 
-    async def test_returns_200_when_ok(self, client: AsyncClient):
-        health_module._readiness_cache = ReadinessResponse(status="ok", services=[])
+    async def test_returns_200_when_ok(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(health_module, "_readiness_cache", ReadinessResponse(status="ok", services=[]))
         resp = await client.get("/api/health/ready")
         assert resp.status_code == 200
 
-    async def test_returns_503_when_error(self, client: AsyncClient):
-        health_module._readiness_cache = ReadinessResponse(
-            status="error",
-            services=[ReadinessService(name="postgres", ok=False, critical=True)],
+    async def test_returns_503_when_error(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(
+            health_module,
+            "_readiness_cache",
+            ReadinessResponse(
+                status="error",
+                services=[ReadinessService(name="postgres", ok=False, critical=True)],
+            ),
         )
         resp = await client.get("/api/health/ready")
         assert resp.status_code == 503
 
-    async def test_returns_200_when_degraded(self, client: AsyncClient):
-        health_module._readiness_cache = ReadinessResponse(
-            status="degraded",
-            services=[ReadinessService(name="SMTP", ok=False, critical=False)],
+    async def test_returns_200_when_degraded(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(
+            health_module,
+            "_readiness_cache",
+            ReadinessResponse(
+                status="degraded",
+                services=[ReadinessService(name="SMTP", ok=False, critical=False)],
+            ),
         )
         resp = await client.get("/api/health/ready")
         assert resp.status_code == 200
 
 
 class TestHealthDetailed:
-    async def test_returns_200_with_starting_when_cache_empty(self, client: AsyncClient):
-        health_module._detailed_cache = None
+    async def test_returns_200_with_starting_when_cache_empty(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(health_module, "_detailed_cache", None)
         resp = await client.get("/api/health/detailed")
         assert resp.status_code == 200
         body = resp.json()
@@ -97,48 +105,64 @@ class TestHealthDetailed:
         assert "next_check_at" in body
         assert body["next_check_at"] is not None
 
-    async def test_returns_200_when_cache_populated(self, client: AsyncClient):
-        health_module._detailed_cache = ReadinessResponse(
-            status="ok",
-            services=[ReadinessService(name="PostgreSQL", ok=True, critical=True)],
-            checked_at="2026-01-01T00:00:00+00:00",
+    async def test_returns_200_when_cache_populated(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(
+            health_module,
+            "_detailed_cache",
+            ReadinessResponse(
+                status="ok",
+                services=[ReadinessService(name="PostgreSQL", ok=True, critical=True)],
+                checked_at="2026-01-01T00:00:00+00:00",
+            ),
         )
         resp = await client.get("/api/health/detailed")
         assert resp.status_code == 200
 
-    async def test_returns_cached_status(self, client: AsyncClient):
-        health_module._detailed_cache = ReadinessResponse(
-            status="degraded",
-            services=[ReadinessService(name="Clerk Webhook", ok=False, critical=False, message="timeout")],
-            checked_at="2026-01-01T00:00:00+00:00",
+    async def test_returns_cached_status(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(
+            health_module,
+            "_detailed_cache",
+            ReadinessResponse(
+                status="degraded",
+                services=[ReadinessService(name="Clerk Webhook", ok=False, critical=False, message="timeout")],
+                checked_at="2026-01-01T00:00:00+00:00",
+            ),
         )
         body = (await client.get("/api/health/detailed")).json()
         assert body["status"] == "degraded"
         assert body["checked_at"] == "2026-01-01T00:00:00+00:00"
 
-    async def test_response_includes_services(self, client: AsyncClient):
-        health_module._detailed_cache = ReadinessResponse(
-            status="ok",
-            services=[
-                ReadinessService(name="PostgreSQL", ok=True, critical=True),
-                ReadinessService(name="Clerk Webhook", ok=True, critical=False),
-            ],
-            checked_at="2026-01-01T00:00:00+00:00",
+    async def test_response_includes_services(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(
+            health_module,
+            "_detailed_cache",
+            ReadinessResponse(
+                status="ok",
+                services=[
+                    ReadinessService(name="PostgreSQL", ok=True, critical=True),
+                    ReadinessService(name="Clerk Webhook", ok=True, critical=False),
+                ],
+                checked_at="2026-01-01T00:00:00+00:00",
+            ),
         )
         body = (await client.get("/api/health/detailed")).json()
         names = [s["name"] for s in body["services"]]
         assert "PostgreSQL" in names
         assert "Clerk Webhook" in names
 
-    async def test_detailed_returns_200_even_when_degraded(self, client: AsyncClient):
-        health_module._detailed_cache = ReadinessResponse(status="degraded", services=[])
+    async def test_detailed_returns_200_even_when_degraded(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(health_module, "_detailed_cache", ReadinessResponse(status="degraded", services=[]))
         resp = await client.get("/api/health/detailed")
         assert resp.status_code == 200
 
-    async def test_detailed_returns_200_even_when_error(self, client: AsyncClient):
-        health_module._detailed_cache = ReadinessResponse(
-            status="error",
-            services=[ReadinessService(name="PostgreSQL", ok=False, critical=True)],
+    async def test_detailed_returns_200_even_when_error(self, client: AsyncClient, monkeypatch):
+        monkeypatch.setattr(
+            health_module,
+            "_detailed_cache",
+            ReadinessResponse(
+                status="error",
+                services=[ReadinessService(name="PostgreSQL", ok=False, critical=True)],
+            ),
         )
         resp = await client.get("/api/health/detailed")
         assert resp.status_code == 200
@@ -150,17 +174,17 @@ class TestDetailedRefreshLifecycle:
             pass
 
         monkeypatch.setattr(health_module, "_detailed_refresh_loop", idle)
-        health_module._detailed_task = None
+        monkeypatch.setattr(health_module, "_detailed_task", None)
         health_module.start_detailed_refresh()
         assert health_module._detailed_task is not None
 
-    async def test_stop_cancels_task(self):
-        health_module._detailed_task = asyncio.create_task(asyncio.sleep(100))
+    async def test_stop_cancels_task(self, monkeypatch):
+        monkeypatch.setattr(health_module, "_detailed_task", asyncio.create_task(asyncio.sleep(100)))
         health_module.stop_detailed_refresh()
         assert health_module._detailed_task is None
 
-    async def test_stop_noop_when_no_task(self):
-        health_module._detailed_task = None
+    async def test_stop_noop_when_no_task(self, monkeypatch):
+        monkeypatch.setattr(health_module, "_detailed_task", None)
         health_module.stop_detailed_refresh()
         assert health_module._detailed_task is None
 
@@ -256,14 +280,14 @@ class TestBuildReadinessFromResults:
 
 
 class TestSetReadiness:
-    def test_sets_cache(self):
-        health_module._readiness_cache = None
+    def test_sets_cache(self, monkeypatch):
+        monkeypatch.setattr(health_module, "_readiness_cache", None)
         r = ReadinessResponse(status="ok", services=[])
         set_readiness(r)
         assert health_module._readiness_cache is r
 
-    def test_overwrites_existing(self):
-        health_module._readiness_cache = ReadinessResponse(status="error", services=[])
+    def test_overwrites_existing(self, monkeypatch):
+        monkeypatch.setattr(health_module, "_readiness_cache", ReadinessResponse(status="error", services=[]))
         r = ReadinessResponse(status="ok", services=[])
         set_readiness(r)
         assert health_module._readiness_cache.status == "ok"
@@ -331,10 +355,10 @@ class TestGetWorkerVersion:
 
 
 class TestRefreshSuperuserEmailCache:
-    async def test_populates_cache(self, db_session, superuser_user):
+    async def test_populates_cache(self, db_session, superuser_user, monkeypatch):
         from app.routers.health import _refresh_superuser_email_cache
 
-        health_module._superuser_email_cache = []
+        monkeypatch.setattr(health_module, "_superuser_email_cache", [])
 
         ctx = MagicMock()
         ctx.__aenter__ = AsyncMock(return_value=db_session)
@@ -369,10 +393,10 @@ class TestDispatchHealthAlert:
 
         mock_email.assert_not_called()
 
-    async def test_no_op_when_email_cache_empty(self):
+    async def test_no_op_when_email_cache_empty(self, monkeypatch):
         from app.routers.health import _dispatch_health_alert
 
-        health_module._superuser_email_cache = []
+        monkeypatch.setattr(health_module, "_superuser_email_cache", [])
         result = ReadinessResponse(status="error", services=[])
 
         with patch("app.routers.health.get_settings") as mock_settings:
@@ -382,10 +406,10 @@ class TestDispatchHealthAlert:
             mock_settings.return_value.frontend_url = "http://localhost"
             await _dispatch_health_alert(result, is_recovery=False)
 
-    async def test_swallows_email_exception(self):
+    async def test_swallows_email_exception(self, monkeypatch):
         from app.routers.health import _dispatch_health_alert
 
-        health_module._superuser_email_cache = ["admin@test.com"]
+        monkeypatch.setattr(health_module, "_superuser_email_cache", ["admin@test.com"])
         result = ReadinessResponse(status="error", services=[])
 
         with patch("app.routers.health.get_settings") as mock_settings:
@@ -400,10 +424,10 @@ class TestDispatchHealthAlert:
             ):
                 await _dispatch_health_alert(result, is_recovery=False)  # must not raise
 
-    async def test_calls_recovery_email_when_is_recovery(self):
+    async def test_calls_recovery_email_when_is_recovery(self, monkeypatch):
         from app.routers.health import _dispatch_health_alert
 
-        health_module._superuser_email_cache = ["admin@test.com"]
+        monkeypatch.setattr(health_module, "_superuser_email_cache", ["admin@test.com"])
         result = ReadinessResponse(status="ok", services=[])
 
         with patch("app.routers.health.get_settings") as mock_settings:
@@ -523,12 +547,12 @@ class TestRunDetailedProbes:
         assert result.status == "error"
         assert result.services[0].ok is False
 
-    async def test_skips_postgres_probe_when_recently_checked(self):
+    async def test_skips_postgres_probe_when_recently_checked(self, monkeypatch):
         from app.routers.health import _run_detailed_probes
 
         cached_result = MagicMock(service="PostgreSQL", status="ok", message="Cached", checks=[])
-        health_module._last_postgres_result = cached_result
-        health_module._last_postgres_probe_at = datetime.now(timezone.utc)
+        monkeypatch.setattr(health_module, "_last_postgres_result", cached_result)
+        monkeypatch.setattr(health_module, "_last_postgres_probe_at", datetime.now(timezone.utc))
 
         other_result = MagicMock(service="S3", status="ok", message="ok", checks=[])
 
@@ -557,12 +581,18 @@ class TestRunDetailedProbes:
         assert pg_service.ok is True
         assert pg_service.message == "Cached"
 
-    async def test_probes_postgres_when_interval_elapsed(self):
+    async def test_probes_postgres_when_interval_elapsed(self, monkeypatch):
         from app.routers.health import POSTGRES_PROBE_INTERVAL_S, _run_detailed_probes
 
-        health_module._last_postgres_result = MagicMock(service="PostgreSQL", status="ok", message="Stale", checks=[])
-        health_module._last_postgres_probe_at = datetime.now(timezone.utc) - timedelta(
-            seconds=POSTGRES_PROBE_INTERVAL_S + 1
+        monkeypatch.setattr(
+            health_module,
+            "_last_postgres_result",
+            MagicMock(service="PostgreSQL", status="ok", message="Stale", checks=[]),
+        )
+        monkeypatch.setattr(
+            health_module,
+            "_last_postgres_probe_at",
+            datetime.now(timezone.utc) - timedelta(seconds=POSTGRES_PROBE_INTERVAL_S + 1),
         )
 
         fresh_result = MagicMock(service="PostgreSQL", status="ok", message="Fresh", checks=[])
@@ -608,10 +638,10 @@ class TestRecordHealthTransitionDBPaths:
         ctx.__aexit__ = AsyncMock(return_value=False)
         return ctx
 
-    async def test_opens_event_when_going_to_error(self):
+    async def test_opens_event_when_going_to_error(self, monkeypatch):
         from app.routers.health import _record_health_transition
 
-        health_module._open_health_event_id = None
+        monkeypatch.setattr(health_module, "_open_health_event_id", None)
         result = ReadinessResponse(
             status="error",
             services=[ReadinessService(name="PG", ok=False, critical=True)],
@@ -633,10 +663,10 @@ class TestRecordHealthTransitionDBPaths:
         mock_write.assert_called_once()
         assert health_module._open_health_event_id == mock_evt.id
 
-    async def test_opens_event_when_going_to_degraded(self):
+    async def test_opens_event_when_going_to_degraded(self, monkeypatch):
         from app.routers.health import _record_health_transition
 
-        health_module._open_health_event_id = None
+        monkeypatch.setattr(health_module, "_open_health_event_id", None)
         result = ReadinessResponse(
             status="degraded",
             services=[ReadinessService(name="S3", ok=False, critical=False)],
@@ -655,11 +685,11 @@ class TestRecordHealthTransitionDBPaths:
 
         assert health_module._open_health_event_id == mock_evt.id
 
-    async def test_closes_event_on_recovery(self):
+    async def test_closes_event_on_recovery(self, monkeypatch):
         from app.routers.health import _record_health_transition
 
         event_id = uuid.uuid4()
-        health_module._open_health_event_id = event_id
+        monkeypatch.setattr(health_module, "_open_health_event_id", event_id)
         result = ReadinessResponse(status="ok", services=[])
 
         mock_evt = MagicMock()
@@ -676,10 +706,10 @@ class TestRecordHealthTransitionDBPaths:
         mock_close.assert_called_once()
         assert health_module._open_health_event_id is None
 
-    async def test_recovery_clears_id_even_when_event_not_found(self):
+    async def test_recovery_clears_id_even_when_event_not_found(self, monkeypatch):
         from app.routers.health import _record_health_transition
 
-        health_module._open_health_event_id = uuid.uuid4()
+        monkeypatch.setattr(health_module, "_open_health_event_id", uuid.uuid4())
         result = ReadinessResponse(status="ok", services=[])
 
         mock_db = AsyncMock()
@@ -693,10 +723,10 @@ class TestRecordHealthTransitionDBPaths:
         mock_close.assert_not_called()
         assert health_module._open_health_event_id is None
 
-    async def test_already_closed_event_not_closed_again(self):
+    async def test_already_closed_event_not_closed_again(self, monkeypatch):
         from app.routers.health import _record_health_transition
 
-        health_module._open_health_event_id = uuid.uuid4()
+        monkeypatch.setattr(health_module, "_open_health_event_id", uuid.uuid4())
         result = ReadinessResponse(status="ok", services=[])
 
         mock_evt = MagicMock()
@@ -719,10 +749,10 @@ class TestRecordHealthTransitionDBPaths:
 
 
 class TestStartStopDetailedRefresh:
-    def test_start_creates_background_task(self):
+    def test_start_creates_background_task(self, monkeypatch):
         from app.routers.health import start_detailed_refresh
 
-        health_module._detailed_task = None
+        monkeypatch.setattr(health_module, "_detailed_task", None)
         mock_task = MagicMock()
         with patch("app.routers.health.asyncio") as mock_asyncio:
             mock_asyncio.create_task.return_value = mock_task
@@ -731,42 +761,42 @@ class TestStartStopDetailedRefresh:
         mock_asyncio.create_task.assert_called_once()
         assert health_module._detailed_task is mock_task
 
-    def test_start_sets_initial_status(self):
+    def test_start_sets_initial_status(self, monkeypatch):
         from app.routers.health import start_detailed_refresh
 
-        health_module._last_alert_status = None
+        monkeypatch.setattr(health_module, "_last_alert_status", None)
         with patch("app.routers.health.asyncio") as mock_asyncio:
             mock_asyncio.create_task.return_value = MagicMock()
             start_detailed_refresh(initial_status="ok")
 
         assert health_module._last_alert_status == "ok"
 
-    def test_start_without_initial_status_leaves_it_unchanged(self):
+    def test_start_without_initial_status_leaves_it_unchanged(self, monkeypatch):
         from app.routers.health import start_detailed_refresh
 
-        health_module._last_alert_status = "degraded"
+        monkeypatch.setattr(health_module, "_last_alert_status", "degraded")
         with patch("app.routers.health.asyncio") as mock_asyncio:
             mock_asyncio.create_task.return_value = MagicMock()
             start_detailed_refresh()
 
         assert health_module._last_alert_status == "degraded"
 
-    def test_stop_cancels_task_and_clears_reference(self):
+    def test_stop_cancels_task_and_clears_reference(self, monkeypatch):
         from app.routers.health import stop_detailed_refresh
 
         mock_task = MagicMock()
         mock_task.cancel = MagicMock()
-        health_module._detailed_task = mock_task
+        monkeypatch.setattr(health_module, "_detailed_task", mock_task)
 
         stop_detailed_refresh()
 
         mock_task.cancel.assert_called_once()
         assert health_module._detailed_task is None
 
-    def test_stop_noop_when_no_task(self):
+    def test_stop_noop_when_no_task(self, monkeypatch):
         from app.routers.health import stop_detailed_refresh
 
-        health_module._detailed_task = None
+        monkeypatch.setattr(health_module, "_detailed_task", None)
         stop_detailed_refresh()  # must not raise
 
 
@@ -788,15 +818,15 @@ class TestDetailedRefreshLoop:
 
         return fake_sleep
 
-    async def test_ok_result_resets_failure_counter_and_updates_cache(self):
+    async def test_ok_result_resets_failure_counter_and_updates_cache(self, monkeypatch):
         from app.routers.health import _detailed_refresh_loop
 
         result = ReadinessResponse(
             status="ok",
             services=[ReadinessService(name="PostgreSQL", ok=True, critical=True)],
         )
-        health_module._consecutive_failures = 5
-        health_module._last_alert_status = None
+        monkeypatch.setattr(health_module, "_consecutive_failures", 5)
+        monkeypatch.setattr(health_module, "_last_alert_status", None)
 
         with patch("app.routers.health.asyncio.sleep", side_effect=self._make_fake_sleep()):
             with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
@@ -809,14 +839,14 @@ class TestDetailedRefreshLoop:
         assert health_module._detailed_cache is result
         assert health_module._last_alert_status == "ok"
 
-    async def test_first_non_ok_increments_counter_but_does_not_surface(self):
+    async def test_first_non_ok_increments_counter_but_does_not_surface(self, monkeypatch):
         from app.routers.health import _detailed_refresh_loop
 
         result = ReadinessResponse(
             status="error",
             services=[ReadinessService(name="PostgreSQL", ok=False, critical=True)],
         )
-        health_module._consecutive_failures = 0
+        monkeypatch.setattr(health_module, "_consecutive_failures", 0)
 
         # On first non-ok the loop does an extra sleep(_FAILURE_RETRY_GAP_S) then `continue`,
         # so the end-of-loop sleep is never reached — CancelledError comes from call 2.
@@ -830,7 +860,7 @@ class TestDetailedRefreshLoop:
         assert health_module._consecutive_failures == 1
         mock_record.assert_not_called()  # not surfaced yet
 
-    async def test_confirmed_failure_surfaces_and_updates_cache(self):
+    async def test_confirmed_failure_surfaces_and_updates_cache(self, monkeypatch):
         from app.routers.health import _detailed_refresh_loop
 
         result = ReadinessResponse(
@@ -838,8 +868,8 @@ class TestDetailedRefreshLoop:
             services=[ReadinessService(name="PostgreSQL", ok=False, critical=True)],
         )
         # Already at the threshold — next non-ok gets surfaced
-        health_module._consecutive_failures = 3
-        health_module._last_alert_status = None
+        monkeypatch.setattr(health_module, "_consecutive_failures", 3)
+        monkeypatch.setattr(health_module, "_last_alert_status", None)
 
         with patch("app.routers.health.asyncio.sleep", side_effect=self._make_fake_sleep()):
             with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
@@ -851,15 +881,15 @@ class TestDetailedRefreshLoop:
         mock_record.assert_called_once()
         assert health_module._detailed_cache is result
 
-    async def test_status_change_triggers_alert_task(self):
+    async def test_status_change_triggers_alert_task(self, monkeypatch):
         from app.routers.health import _detailed_refresh_loop
 
         result = ReadinessResponse(
             status="error",
             services=[ReadinessService(name="PostgreSQL", ok=False, critical=True)],
         )
-        health_module._consecutive_failures = 3
-        health_module._last_alert_status = "ok"  # transition from ok → error
+        monkeypatch.setattr(health_module, "_consecutive_failures", 3)
+        monkeypatch.setattr(health_module, "_last_alert_status", "ok")  # transition from ok → error
 
         with patch("app.routers.health.asyncio.sleep", side_effect=self._make_fake_sleep()):
             with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
@@ -872,12 +902,12 @@ class TestDetailedRefreshLoop:
         mock_fire_and_forget.assert_called_once()
         assert health_module._last_alert_status == "error"
 
-    async def test_recovery_triggers_alert_task(self):
+    async def test_recovery_triggers_alert_task(self, monkeypatch):
         from app.routers.health import _detailed_refresh_loop
 
         result = ReadinessResponse(status="ok", services=[])
-        health_module._consecutive_failures = 0
-        health_module._last_alert_status = "error"  # transition from error → ok
+        monkeypatch.setattr(health_module, "_consecutive_failures", 0)
+        monkeypatch.setattr(health_module, "_last_alert_status", "error")  # transition from error → ok
 
         with patch("app.routers.health.asyncio.sleep", side_effect=self._make_fake_sleep()):
             with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
