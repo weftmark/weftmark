@@ -470,7 +470,7 @@ async def get_onboarding_status(
 async def get_activity_heatmap(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    year: int | None = Query(default=None),
+    year: Annotated[int | None, Query()] = None,
 ) -> ActivityHeatmapResponse:
     from collections import defaultdict
 

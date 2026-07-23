@@ -222,8 +222,8 @@ async def create_draft(
 async def list_drafts(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    include_archived: bool = Query(False),
-    tags: list[str] | None = Query(None),
+    include_archived: Annotated[bool, Query()] = False,
+    tags: Annotated[list[str] | None, Query()] = None,
 ) -> list[DraftSummary]:
     q = select(Draft).where(Draft.owner_id == current_user.id, Draft.deleted_at.is_(None))
     if not include_archived:
@@ -343,9 +343,9 @@ async def get_drawdown(
     draft_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    start_row: int | None = Query(None, ge=0),
-    row_count: int | None = Query(None, ge=1),
-    hide_unused_shafts_treadles: bool = Query(False),
+    start_row: Annotated[int | None, Query(ge=0)] = None,
+    row_count: Annotated[int | None, Query(ge=1)] = None,
+    hide_unused_shafts_treadles: Annotated[bool, Query()] = False,
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
 
@@ -572,7 +572,7 @@ async def delete_draft(
     draft_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    force: bool = Query(False),
+    force: Annotated[bool, Query()] = False,
 ) -> None:
     from app.models.project import Project
 

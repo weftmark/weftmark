@@ -211,11 +211,11 @@ public_router = APIRouter(prefix="/api/loom-catalog", tags=["loom-catalog"])
 @public_router.get("")
 async def list_loom_catalog(
     db: Annotated[AsyncSession, Depends(get_db)],
-    q: str | None = Query(None, description="Search brand, model, or series"),
-    category: str | None = Query(None),
-    min_shafts: int | None = Query(None),
-    foldable: bool | None = Query(None),
-    origin_country: str | None = Query(None),
+    q: Annotated[str | None, Query(description="Search brand, model, or series")] = None,
+    category: Annotated[str | None, Query()] = None,
+    min_shafts: Annotated[int | None, Query()] = None,
+    foldable: Annotated[bool | None, Query()] = None,
+    origin_country: Annotated[str | None, Query()] = None,
 ) -> list[LoomReferenceSummary]:
     stmt = select(LoomReference).order_by(LoomReference.brand, LoomReference.model_name)
 
@@ -247,8 +247,8 @@ async def list_loom_catalog(
 @public_router.get("/search")
 async def search_loom_catalog(
     db: Annotated[AsyncSession, Depends(get_db)],
-    q: str = Query(..., min_length=1),
-    limit: int = Query(20, le=50),
+    q: Annotated[str, Query(min_length=1)],
+    limit: Annotated[int, Query(le=50)] = 20,
 ) -> list[LoomReferenceSummary]:
     """Typeahead search — returns summaries matching brand or model name."""
     ql = q.lower()
@@ -290,7 +290,7 @@ admin_catalog_router = APIRouter(prefix="/api/admin/loom-catalog", tags=["admin"
 async def admin_list_loom_catalog(
     db: Annotated[AsyncSession, Depends(get_db)],
     _admin: Annotated[User, Depends(require_admin)],
-    q: str | None = Query(None),
+    q: Annotated[str | None, Query()] = None,
 ) -> list[LoomReferenceSchema]:
     stmt = select(LoomReference).order_by(LoomReference.brand, LoomReference.model_name)
     if q:

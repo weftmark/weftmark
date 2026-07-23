@@ -635,9 +635,9 @@ async def create_project(
 async def list_projects(
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    draft_id: uuid.UUID | None = Query(None),
-    loom_id: uuid.UUID | None = Query(None),
-    tags: list[str] | None = Query(None),
+    draft_id: Annotated[uuid.UUID | None, Query()] = None,
+    loom_id: Annotated[uuid.UUID | None, Query()] = None,
+    tags: Annotated[list[str] | None, Query()] = None,
 ) -> list[ProjectSummary]:
     q = select(Project).where(Project.owner_id == current_user.id, Project.deleted_at.is_(None))
     if draft_id is not None:
@@ -659,10 +659,10 @@ async def get_project_drawdown(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    start_row: int | None = Query(None, ge=0),
-    row_count: int | None = Query(None, ge=1),
-    start_col: int | None = Query(None, ge=0),
-    col_count: int | None = Query(None, ge=1),
+    start_row: Annotated[int | None, Query(ge=0)] = None,
+    row_count: Annotated[int | None, Query(ge=1)] = None,
+    start_col: Annotated[int | None, Query(ge=0)] = None,
+    col_count: Annotated[int | None, Query(ge=1)] = None,
 ) -> Response:
     from app.config import get_settings
     from app.services import rendering
@@ -779,8 +779,8 @@ async def get_project_drawdown_svg(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    cell_px: int = Query(20, ge=1, le=30),
-    color_replacements: str | None = Query(None),
+    cell_px: Annotated[int, Query(ge=1, le=30)] = 20,
+    color_replacements: Annotated[str | None, Query()] = None,
 ) -> Response:
     import json
 
@@ -842,7 +842,7 @@ async def get_project_drawdown_preview(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    color_replacements: str | None = Query(None),
+    color_replacements: Annotated[str | None, Query()] = None,
 ) -> Response:
     """Full draft PNG (threading + tieup + drawdown), optionally with colour replacements applied."""
     import json
@@ -926,7 +926,7 @@ async def get_project_drawdown_data(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    cell_px: int = Query(20, ge=4, le=30),
+    cell_px: Annotated[int, Query(ge=4, le=30)] = 20,
 ) -> Response:
     from app.services import rendering
     from app.services.storage import afile_exists, aread_file
@@ -1483,7 +1483,7 @@ async def complete_project(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    force: bool = Query(False, description="Complete even if not all picks are logged"),
+    force: Annotated[bool, Query(description="Complete even if not all picks are logged")] = False,
 ) -> ProjectDetail:
     project = await _get_owned_project(project_id, current_user, db)
     if project.status not in ("created", "active"):
@@ -1686,7 +1686,7 @@ async def upload_project_photo(
     project_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_effective_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    file: UploadFile = File(...),
+    file: Annotated[UploadFile, File()],
 ) -> ProjectPhotoSchema:
     project = await _get_owned_project(project_id, current_user, db)
 

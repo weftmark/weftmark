@@ -97,10 +97,10 @@ async def authorize(
 @router.get("/callback")
 async def oauth_callback(
     db: Annotated[AsyncSession, Depends(get_db)],
-    state: str = Query(...),
-    code: str | None = Query(None),
-    error: str | None = Query(None),
-    error_description: str | None = Query(None),
+    state: Annotated[str, Query()],
+    code: Annotated[str | None, Query()] = None,
+    error: Annotated[str | None, Query()] = None,
+    error_description: Annotated[str | None, Query()] = None,
 ) -> RedirectResponse:
     """Ravelry redirects here after the user approves or denies access.
 
@@ -185,7 +185,7 @@ async def yarn_detail(
 )
 async def popular_companies(
     _current_user: Annotated[User, Depends(get_current_user)],
-    limit: int = Query(10, ge=1, le=20),
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
 ) -> list[RavelryCompany]:
     """Return popular yarn companies (uses dev read-only key, sort=best)."""
     try:
@@ -199,9 +199,9 @@ async def popular_companies(
 @router.get("/popular/yarns", responses={502: {"description": "Ravelry request failed"}})
 async def popular_yarns(
     _current_user: Annotated[User, Depends(get_current_user)],
-    company_id: int = Query(...),
-    company_name: str = Query(...),
-    limit: int = Query(8, ge=1, le=20),
+    company_id: Annotated[int, Query()],
+    company_name: Annotated[str, Query()],
+    limit: Annotated[int, Query(ge=1, le=20)] = 8,
 ) -> list[RavelryYarnResult]:
     """Return popular yarns for a company (uses dev read-only key, seeded by company name)."""
     try:
@@ -215,7 +215,7 @@ async def popular_yarns(
 @router.get("/search/companies", responses={502: {"description": "Ravelry search failed"}})
 async def search_companies(
     _current_user: Annotated[User, Depends(get_current_user)],
-    q: str = Query(..., min_length=1),
+    q: Annotated[str, Query(min_length=1)],
 ) -> list[RavelryCompany]:
     """Search Ravelry yarn companies by name (uses dev read-only key)."""
     try:
@@ -229,8 +229,8 @@ async def search_companies(
 @router.get("/search/yarns", responses={502: {"description": "Ravelry search failed"}})
 async def search_yarns(
     _current_user: Annotated[User, Depends(get_current_user)],
-    q: str = Query(..., min_length=1),
-    company_id: int | None = Query(None),
+    q: Annotated[str, Query(min_length=1)],
+    company_id: Annotated[int | None, Query()] = None,
 ) -> list[RavelryYarnResult]:
     """Search Ravelry yarns, optionally filtered by company (uses dev read-only key)."""
     try:
