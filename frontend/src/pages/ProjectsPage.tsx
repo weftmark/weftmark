@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { TagChips } from "@/components/ui/TagChips";
 import { Link } from "react-router-dom";
 import { SkeletonCardGrid } from "@/components/ui/skeleton";
+import { TagFilterBar } from "@/components/TagFilterBar";
 
 const STATUS_COLORS: Record<string, string> = {
   created: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -145,6 +146,7 @@ function ProjectCard({ project, onAssign }: {
             onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setShowPreview(false); }}
           >
             <button
+              type="button"
               onClick={() => setShowPreview(false)}
               className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"
             >
@@ -242,31 +244,14 @@ export function ProjectsPage() {
         <Button size="sm" onClick={() => setShowCreate(true)}>{t("projectsPage.newButton")}</Button>
       </div>
 
-      {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
-              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
-                activeTagFilter === tag
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-accent/20"
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-          {activeTagFilter && (
-            <button
-              onClick={() => setActiveTagFilter(null)}
-              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-            >
-              <AppIcons.Close className="h-3 w-3" /> {t("projectsPage.clearFilter")}
-            </button>
-          )}
-        </div>
-      )}
+      <TagFilterBar
+        tags={allTags}
+        activeTag={activeTagFilter}
+        onToggle={(tag) => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+        onClear={() => setActiveTagFilter(null)}
+        clearLabel={t("projectsPage.clearFilter")}
+        clearIcon={<AppIcons.Close className="h-3 w-3" />}
+      />
 
       {isLoading && <SkeletonCardGrid count={4} cardClassName="h-[160px]" gridClassName="grid gap-3 sm:grid-cols-2" />}
       {error && <p className="text-sm text-destructive">{t("projectsPage.loadError")}</p>}
