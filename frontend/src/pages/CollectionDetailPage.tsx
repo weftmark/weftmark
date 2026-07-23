@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -28,10 +28,12 @@ function SortControl({ value, onChange }: { readonly value: SortKey; readonly on
     <div className="flex items-center gap-1 text-xs text-muted-foreground">
       <span>{t("collectionDetail.sort.label")}</span>
       <button
+        type="button"
         className={`px-1.5 py-0.5 rounded transition-colors ${value === "added" ? "bg-accent/20 text-accent font-medium" : "hover:text-foreground"}`}
         onClick={() => onChange("added")}
       >{t("collectionDetail.sort.dateAdded")}</button>
       <button
+        type="button"
         className={`px-1.5 py-0.5 rounded transition-colors ${value === "name" ? "bg-accent/20 text-accent font-medium" : "hover:text-foreground"}`}
         onClick={() => onChange("name")}
       >{t("collectionDetail.sort.name")}</button>
@@ -46,10 +48,12 @@ function RemoveButton({ label, onConfirm }: { readonly label: string; readonly o
     return (
       <div className="flex gap-1 shrink-0">
         <button
+          type="button"
           className="rounded px-2 py-0.5 text-xs bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
           onClick={() => { setConfirming(false); onConfirm(); }}
         >{t("collectionDetail.remove.confirm")}</button>
         <button
+          type="button"
           className="rounded px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setConfirming(false)}
         >{t("collectionDetail.remove.cancel")}</button>
@@ -58,12 +62,54 @@ function RemoveButton({ label, onConfirm }: { readonly label: string; readonly o
   }
   return (
     <button
+      type="button"
       className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
       title={`Remove ${label}`}
       onClick={() => setConfirming(true)}
     >
       <AppIcons.Close className="h-3.5 w-3.5" />
     </button>
+  );
+}
+
+function PickerModal({
+  title,
+  searchPlaceholder,
+  query,
+  onQueryChange,
+  onClose,
+  children,
+}: {
+  readonly title: string;
+  readonly searchPlaceholder: string;
+  readonly query: string;
+  readonly onQueryChange: (v: string) => void;
+  readonly onClose: () => void;
+  readonly children: ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[80vh]">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
+          <h2 className="text-base font-semibold">{title}</h2>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <AppIcons.Close className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="px-4 py-3">
+          <input
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder={searchPlaceholder}
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -91,41 +137,29 @@ function AddDraftModal({
     .filter((d) => !query || d.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[80vh]">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
-          <h2 className="text-base font-semibold">{t("collectionDetail.drafts.modal.title")}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <AppIcons.Close className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="px-4 py-3">
-          <input
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder={t("collectionDetail.drafts.modal.searchPlaceholder")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoFocus
-          />
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
-          {filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">{t("collectionDetail.drafts.modal.empty")}</p>
-          )}
-          {filtered.map((d) => (
-            <button
-              key={d.id}
-              className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
-              onClick={() => addMutation.mutate(d.id)}
-              disabled={addMutation.isPending}
-            >
-              <span className="flex-1 truncate">{d.name}</span>
-              {d.num_shafts && <span className="text-xs text-muted-foreground shrink-0">{d.num_shafts}S</span>}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+    <PickerModal
+      title={t("collectionDetail.drafts.modal.title")}
+      searchPlaceholder={t("collectionDetail.drafts.modal.searchPlaceholder")}
+      query={query}
+      onQueryChange={setQuery}
+      onClose={onClose}
+    >
+      {filtered.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">{t("collectionDetail.drafts.modal.empty")}</p>
+      )}
+      {filtered.map((d) => (
+        <button
+          key={d.id}
+          type="button"
+          className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
+          onClick={() => addMutation.mutate(d.id)}
+          disabled={addMutation.isPending}
+        >
+          <span className="flex-1 truncate">{d.name}</span>
+          {d.num_shafts && <span className="text-xs text-muted-foreground shrink-0">{d.num_shafts}S</span>}
+        </button>
+      ))}
+    </PickerModal>
   );
 }
 
@@ -153,44 +187,32 @@ function AddProjectModal({
     .filter((p) => !query || p.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[80vh]">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border">
-          <h2 className="text-base font-semibold">{t("collectionDetail.projects.modal.title")}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <AppIcons.Close className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="px-4 py-3">
-          <input
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder={t("collectionDetail.projects.modal.searchPlaceholder")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoFocus
-          />
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
-          {filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">{t("collectionDetail.projects.modal.empty")}</p>
-          )}
-          {filtered.map((p) => (
-            <button
-              key={p.id}
-              className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
-              onClick={() => addMutation.mutate(p.id)}
-              disabled={addMutation.isPending}
-            >
-              <span className="flex-1 truncate">{p.name}</span>
-              <span className={`text-xs shrink-0 rounded px-1.5 py-0.5 ${
-                p.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                : "bg-muted text-muted-foreground"
-              }`}>{p.status}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+    <PickerModal
+      title={t("collectionDetail.projects.modal.title")}
+      searchPlaceholder={t("collectionDetail.projects.modal.searchPlaceholder")}
+      query={query}
+      onQueryChange={setQuery}
+      onClose={onClose}
+    >
+      {filtered.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">{t("collectionDetail.projects.modal.empty")}</p>
+      )}
+      {filtered.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2"
+          onClick={() => addMutation.mutate(p.id)}
+          disabled={addMutation.isPending}
+        >
+          <span className="flex-1 truncate">{p.name}</span>
+          <span className={`text-xs shrink-0 rounded px-1.5 py-0.5 ${
+            p.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+            : "bg-muted text-muted-foreground"
+          }`}>{p.status}</span>
+        </button>
+      ))}
+    </PickerModal>
   );
 }
 
