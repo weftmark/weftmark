@@ -12,6 +12,7 @@ import { listProjects } from "@/api/projects";
 import { ProjectSummaryList } from "@/components/projects/ProjectSummaryList";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { DraftPreviewModal } from "@/components/drafts/DraftPreviewModal";
+import { DeleteConflictPanel } from "@/components/DeleteConflictPanel";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { useAuthContext } from "@/context/AuthContext";
@@ -940,41 +941,19 @@ export function DraftDetailPage() {
 
                 {/* 409 conflict */}
                 {deleteConflict && (
-                  <div className="space-y-2">
-                    <p className="text-sm text-destructive font-medium">
-                      {t("draftDetailPage.usedByConflict", { count: deleteConflict.projects.length })}
-                    </p>
-                    <ul className="text-xs text-muted-foreground space-y-0.5 pl-3">
-                      {deleteConflict.projects.map((p) => <li key={p.id}>· {p.name}</li>)}
-                    </ul>
-                    <p className="text-xs text-muted-foreground">
-                      {t("draftDetailPage.conflictNote")}
-                    </p>
-                    {!confirmForceDelete ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setConfirmForceDelete(true)}
-                      >
-                        {t("draftDetailPage.forceDelete", { count: deleteConflict.projects.length })}
-                      </Button>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteMutation.mutate(true)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          {t("draftDetailPage.confirmForceDelete")}
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>
-                          {t("common.cancel")}
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                  <DeleteConflictPanel
+                    conflict={deleteConflict}
+                    usedByMessage={t("draftDetailPage.usedByConflict", { count: deleteConflict.projects.length })}
+                    conflictNote={t("draftDetailPage.conflictNote")}
+                    confirmForceDelete={confirmForceDelete}
+                    onRequestForceDelete={() => setConfirmForceDelete(true)}
+                    forceDeleteLabel={t("draftDetailPage.forceDelete", { count: deleteConflict.projects.length })}
+                    triggerButtonClassName="text-destructive hover:text-destructive"
+                    onConfirmForceDelete={() => deleteMutation.mutate(true)}
+                    confirmForceDeleteLabel={t("draftDetailPage.confirmForceDelete")}
+                    busy={deleteMutation.isPending}
+                    onCancel={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}
+                  />
                 )}
               </div>
             </div>
