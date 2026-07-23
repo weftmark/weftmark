@@ -26,7 +26,7 @@ class TestJwksUrlFromPublishableKey:
         assert url == "https://clerk.prod.example.com/.well-known/jwks.json"
 
     def test_raises_on_malformed_key(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             jwks_url_from_publishable_key("not_a_valid_key")
 
     def test_raises_on_too_few_parts(self):

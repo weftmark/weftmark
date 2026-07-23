@@ -99,14 +99,14 @@ class TestCircuitBreaker:
         assert ok is False
         assert "cached" in msg
 
-    async def test_backoff_retries_after_window(self):
+    async def test_backoff_retries_after_window(self, monkeypatch):
         # First call — fail, enter backoff
         with patch("asyncio.open_connection", side_effect=OSError("refused")):
             await smtp_health.check("smtp.example.com", 587)
 
         # Wind the clock past BACKOFF_SECONDS
         past = datetime.now(timezone.utc) - timedelta(seconds=smtp_health.BACKOFF_SECONDS + 1)
-        smtp_health._last_checked_at = past
+        monkeypatch.setattr(smtp_health, "_last_checked_at", past)
 
         # Second call — should attempt a fresh probe (and succeed this time)
         mock_reader = MagicMock()
@@ -119,7 +119,7 @@ class TestCircuitBreaker:
         assert ok is True
         assert "cached" not in msg
 
-    async def test_success_resets_backoff(self):
+    async def test_success_resets_backoff(self, monkeypatch):
         # Enter backoff
         with patch("asyncio.open_connection", side_effect=OSError("refused")):
             await smtp_health.check("smtp.example.com", 587)
@@ -127,7 +127,11 @@ class TestCircuitBreaker:
         assert smtp_health._in_backoff is True
 
         # Expire backoff window and probe successfully
-        smtp_health._last_checked_at = datetime.now(timezone.utc) - timedelta(seconds=smtp_health.BACKOFF_SECONDS + 1)
+        monkeypatch.setattr(
+            smtp_health,
+            "_last_checked_at",
+            datetime.now(timezone.utc) - timedelta(seconds=smtp_health.BACKOFF_SECONDS + 1),
+        )
         mock_reader = MagicMock()
         mock_writer = MagicMock()
         mock_writer.wait_closed = AsyncMock()

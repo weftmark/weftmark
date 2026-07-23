@@ -174,8 +174,8 @@ _SESSION_CREATED_DATA = {
 
 class TestLoginsCounter:
     @pytest.mark.asyncio
-    async def test_user_login_increments_counter(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_user_login_increments_counter(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         await auth_router._handle_session_created(_SESSION_CREATED_DATA)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
@@ -184,8 +184,8 @@ class TestLoginsCounter:
         assert points[0].attributes == {"role": "user"}
 
     @pytest.mark.asyncio
-    async def test_admin_login_uses_admin_role_attribute(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_admin_login_uses_admin_role_attribute(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         data = {**_SESSION_CREATED_DATA, "user": {"id": "user_test123", "public_metadata": {"is_admin": True}}}
         await auth_router._handle_session_created(data)
 
@@ -194,8 +194,8 @@ class TestLoginsCounter:
         assert points[0].attributes == {"role": "admin"}
 
     @pytest.mark.asyncio
-    async def test_missing_public_metadata_defaults_to_user(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_missing_public_metadata_defaults_to_user(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         data = {**_SESSION_CREATED_DATA, "user": {"id": "user_test123"}}
         await auth_router._handle_session_created(data)
 
@@ -203,8 +203,8 @@ class TestLoginsCounter:
         assert points[0].attributes == {"role": "user"}
 
     @pytest.mark.asyncio
-    async def test_multiple_logins_accumulate_by_role(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_multiple_logins_accumulate_by_role(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         admin_data = {**_SESSION_CREATED_DATA, "user": {"id": "u1", "public_metadata": {"is_admin": True}}}
         await auth_router._handle_session_created(_SESSION_CREATED_DATA)
         await auth_router._handle_session_created(_SESSION_CREATED_DATA)
@@ -222,16 +222,16 @@ _GEO_COUNTRY_ONLY = {"country_iso": "DE", "subdivision": "", "city": ""}
 
 class TestLoginsGeoAttributes:
     @pytest.mark.asyncio
-    async def test_no_request_emits_no_geo(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_no_request_emits_no_geo(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         await auth_router._handle_session_created(_SESSION_CREATED_DATA)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         assert points[0].attributes == {"role": "user"}
 
     @pytest.mark.asyncio
-    async def test_mmdb_provides_full_geo(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_mmdb_provides_full_geo(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "US"})
 
         with patch("app.services.geo.get_geo", return_value=_GEO_FULL):
@@ -244,8 +244,8 @@ class TestLoginsGeoAttributes:
         assert attrs["city"] == "Denver"
 
     @pytest.mark.asyncio
-    async def test_mmdb_absent_falls_back_to_cf_ipcountry(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_mmdb_absent_falls_back_to_cf_ipcountry(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "GB"})
 
         with patch("app.services.geo.get_geo", return_value={}):
@@ -258,8 +258,8 @@ class TestLoginsGeoAttributes:
         assert "city" not in attrs
 
     @pytest.mark.asyncio
-    async def test_no_ip_no_mmdb_uses_cf_ipcountry(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_no_ip_no_mmdb_uses_cf_ipcountry(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         req = _mock_request({"CF-IPCountry": "FR"})
 
         await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
@@ -268,8 +268,8 @@ class TestLoginsGeoAttributes:
         assert points[0].attributes == {"role": "user", "country": "FR"}
 
     @pytest.mark.asyncio
-    async def test_empty_cf_ipcountry_omits_country_attribute(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_empty_cf_ipcountry_omits_country_attribute(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         req = _mock_request({"CF-IPCountry": ""})
 
         await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
@@ -278,8 +278,8 @@ class TestLoginsGeoAttributes:
         assert "country" not in points[0].attributes
 
     @pytest.mark.asyncio
-    async def test_mmdb_country_iso_takes_precedence_over_cf_header(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_mmdb_country_iso_takes_precedence_over_cf_header(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         # CF says CA, MMDB says US — MMDB wins
         req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "CA"})
 
@@ -290,8 +290,8 @@ class TestLoginsGeoAttributes:
         assert points[0].attributes["country"] == "US"
 
     @pytest.mark.asyncio
-    async def test_mmdb_empty_subdivision_and_city_omitted(self, patched_metrics):
-        auth_router.logins_total = bm.logins_total
+    async def test_mmdb_empty_subdivision_and_city_omitted(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "DE"})
 
         with patch("app.services.geo.get_geo", return_value=_GEO_COUNTRY_ONLY):
@@ -317,8 +317,8 @@ _SESSION_ENDED_DATA = {
 
 class TestSessionsEndedCounter:
     @pytest.mark.asyncio
-    async def test_user_session_ended_increments_counter(self, patched_metrics):
-        auth_router.sessions_ended_total = bm.sessions_ended_total
+    async def test_user_session_ended_increments_counter(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "sessions_ended_total", bm.sessions_ended_total)
         await auth_router._handle_session_ended(_SESSION_ENDED_DATA)
 
         points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
@@ -327,8 +327,8 @@ class TestSessionsEndedCounter:
         assert points[0].attributes == {"role": "user"}
 
     @pytest.mark.asyncio
-    async def test_admin_session_ended_uses_admin_role_attribute(self, patched_metrics):
-        auth_router.sessions_ended_total = bm.sessions_ended_total
+    async def test_admin_session_ended_uses_admin_role_attribute(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "sessions_ended_total", bm.sessions_ended_total)
         data = {**_SESSION_ENDED_DATA, "user": {"id": "user_test123", "public_metadata": {"is_admin": True}}}
         await auth_router._handle_session_ended(data)
 
@@ -337,8 +337,8 @@ class TestSessionsEndedCounter:
         assert points[0].attributes == {"role": "admin"}
 
     @pytest.mark.asyncio
-    async def test_missing_public_metadata_defaults_to_user(self, patched_metrics):
-        auth_router.sessions_ended_total = bm.sessions_ended_total
+    async def test_missing_public_metadata_defaults_to_user(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "sessions_ended_total", bm.sessions_ended_total)
         data = {**_SESSION_ENDED_DATA, "user": {"id": "user_test123"}}
         await auth_router._handle_session_ended(data)
 
@@ -346,8 +346,8 @@ class TestSessionsEndedCounter:
         assert points[0].attributes == {"role": "user"}
 
     @pytest.mark.asyncio
-    async def test_multiple_sessions_ended_accumulate_by_role(self, patched_metrics):
-        auth_router.sessions_ended_total = bm.sessions_ended_total
+    async def test_multiple_sessions_ended_accumulate_by_role(self, patched_metrics, monkeypatch):
+        monkeypatch.setattr(auth_router, "sessions_ended_total", bm.sessions_ended_total)
         admin_data = {**_SESSION_ENDED_DATA, "user": {"id": "u1", "public_metadata": {"is_admin": True}}}
         await auth_router._handle_session_ended(_SESSION_ENDED_DATA)
         await auth_router._handle_session_ended(_SESSION_ENDED_DATA)

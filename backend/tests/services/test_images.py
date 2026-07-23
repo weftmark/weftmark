@@ -41,8 +41,9 @@ class TestValidateImageFormat:
             validate_image_format(b"this is not an image")
 
     def test_unsupported_format_raises(self):
+        gif_bytes = _make_gif_bytes()
         with pytest.raises(ValueError, match="Unsupported image format: GIF"):
-            validate_image_format(_make_gif_bytes())
+            validate_image_format(gif_bytes)
 
     def test_empty_bytes_raise(self):
         with pytest.raises(ValueError, match="Could not decode image"):
