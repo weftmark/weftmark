@@ -869,7 +869,7 @@ class TestSendAdminDigest:
         assert result["sent"] == 1
         call_kwargs = mock_send.call_args.kwargs
         # storage_delta_str should be set (non-None) since prior baseline exists
-        assert call_kwargs["storage_delta_str"] is not None
+        assert call_kwargs["data"].storage_delta_str is not None
 
 
 # ---------------------------------------------------------------------------
@@ -1257,7 +1257,7 @@ class TestSendAdminDigestRedisBranches:
 
         assert result["sent"] == 1
         call_kwargs = mock_send.call_args.kwargs
-        assert call_kwargs["cve_finding_count"] == 3
+        assert call_kwargs["data"].cve_finding_count == 3
 
     @pytest.mark.asyncio
     async def test_s3_data_from_redis_used(self, db_session):
@@ -1297,7 +1297,7 @@ class TestSendAdminDigestRedisBranches:
 
         assert result["sent"] == 1
         call_kwargs = mock_send.call_args.kwargs
-        assert call_kwargs["s3_orphaned_count"] == 5
+        assert call_kwargs["data"].s3_orphaned_count == 5
 
 
 # ---------------------------------------------------------------------------
