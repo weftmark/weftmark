@@ -14,8 +14,12 @@ Covers:
 
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING
 
 from app.celery_app import celery_app
+
+if TYPE_CHECKING:
+    from app.services.email import AdminDigestData
 
 log = logging.getLogger(__name__)
 
@@ -300,7 +304,7 @@ def daily_health_check(self) -> dict:
     result = asyncio.run(_run())
     probe_rows = [(s.name, s.ok, s.detail) for s in result.services]
     failed = [s.name for s in result.services if not s.ok]
-    sev = "error" if result.status == "error" else ("warn" if result.status == "degraded" else "info")
+    sev = {"error": "error", "degraded": "warn"}.get(result.status, "info")
 
     _record_health_event_and_alert(
         event_type="health.check",
@@ -696,51 +700,9 @@ def send_admin_digest(self) -> dict:
     storage_str = _fmt_bytes(total_storage_bytes)
     storage_delta_str = _fmt_delta(storage_delta_bytes) if storage_delta_bytes is not None else None
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        pool.submit(
-            asyncio.run,
-            _send_admin_digest_email(
-                admin_emails=admin_emails,
-                week_start=week_start,
-                week_end=week_end,
-                new_users=new_users,
-                pending_signups=pending_signups,
-                new_drafts=new_drafts,
-                new_projects=new_projects,
-                new_looms=new_looms,
-                storage_str=storage_str,
-                storage_delta_str=storage_delta_str,
-                cve_finding_count=cve_finding_count,
-                cve_scanned_at=cve_scanned_at,
-                s3_orphaned_count=s3_orphaned_count,
-                s3_scanned_at=s3_scanned_at,
-            ),
-        ).result()
+    from app.services.email import AdminDigestData
 
-    log.info("send_admin_digest sent=%d", len(admin_emails))
-    return {"sent": len(admin_emails)}
-
-
-async def _send_admin_digest_email(
-    admin_emails: list[str],
-    week_start: str,
-    week_end: str,
-    new_users: int,
-    pending_signups: int,
-    new_drafts: int,
-    new_projects: int,
-    new_looms: int,
-    storage_str: str,
-    storage_delta_str: str | None,
-    cve_finding_count: int | None,
-    cve_scanned_at: str | None,
-    s3_orphaned_count: int | None,
-    s3_scanned_at: str | None,
-) -> None:
-    from app.services.email import send_admin_digest_email as _send
-
-    await _send(
-        admin_emails=admin_emails,
+    digest_data = AdminDigestData(
         week_start=week_start,
         week_end=week_end,
         new_users=new_users,
@@ -755,6 +717,20 @@ async def _send_admin_digest_email(
         s3_orphaned_count=s3_orphaned_count,
         s3_scanned_at=s3_scanned_at,
     )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        pool.submit(
+            asyncio.run,
+            _send_admin_digest_email(admin_emails=admin_emails, data=digest_data),
+        ).result()
+
+    log.info("send_admin_digest sent=%d", len(admin_emails))
+    return {"sent": len(admin_emails)}
+
+
+async def _send_admin_digest_email(admin_emails: list[str], data: "AdminDigestData") -> None:
+    from app.services.email import send_admin_digest_email as _send
+
+    await _send(admin_emails=admin_emails, data=data)
 
 
 @celery_app.task(

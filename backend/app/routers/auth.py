@@ -96,9 +96,9 @@ async def _handle_clerk_webhook(request: Request, db: AsyncSession) -> dict:
         elif event_type == "user.deleted":
             await _handle_user_deleted(db, data)
         elif event_type == "session.created":
-            await _handle_session_created(data, request)
+            _handle_session_created(data, request)
         elif event_type == "session.ended":
-            await _handle_session_ended(data)
+            _handle_session_ended(data)
         else:
             log.info("webhook_ignored event_type=%s", event_type)
     except Exception:
@@ -226,7 +226,7 @@ async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
     )
 
 
-async def _handle_session_created(data: dict, request: Request | None = None) -> None:
+def _handle_session_created(data: dict, request: Request | None = None) -> None:
     from app.services.geo import anonymize_ip, get_geo
 
     user_data = data.get("user", {})
@@ -260,7 +260,7 @@ async def _handle_session_created(data: dict, request: Request | None = None) ->
     logins_total.add(1, attrs)
 
 
-async def _handle_session_ended(data: dict) -> None:
+def _handle_session_ended(data: dict) -> None:
     user_data = data.get("user", {})
     public_metadata = user_data.get("public_metadata", {})
     is_admin = bool(public_metadata.get("is_admin", False))

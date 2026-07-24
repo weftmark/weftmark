@@ -32,6 +32,10 @@ router = APIRouter(prefix="/api/looms", tags=["looms"])
 
 _FILE_TOO_LARGE = "File too large (max 5 MB)"
 _DEFAULT_CONTENT_TYPE = "application/octet-stream"
+_MIME_JPEG = "image/jpeg"
+_MIME_PNG = "image/png"
+_MIME_WEBP = "image/webp"
+_MIME_PDF = "application/pdf"
 
 
 def _content_disposition(disposition: str, filename: str) -> str:
@@ -53,19 +57,19 @@ LoomType = Literal[
     "other",
 ]
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+ALLOWED_IMAGE_TYPES = {_MIME_JPEG, _MIME_PNG, _MIME_WEBP, "image/gif"}
+ALLOWED_RECEIPT_TYPES = {_MIME_JPEG, _MIME_PNG, _MIME_WEBP, _MIME_PDF}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 MAX_VERSION_PHOTOS = 5
 
 
 _EXTENSION_CONTENT_TYPES = {
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-    ".webp": "image/webp",
+    ".jpg": _MIME_JPEG,
+    ".jpeg": _MIME_JPEG,
+    ".png": _MIME_PNG,
+    ".webp": _MIME_WEBP,
     ".gif": "image/gif",
-    ".pdf": "application/pdf",
+    ".pdf": _MIME_PDF,
 }
 
 
@@ -830,7 +834,7 @@ async def get_version_receipt(
     data = storage.read_file(receipt.path)
     ct = _safe_content_type(receipt.path, ALLOWED_RECEIPT_TYPES)
     # PDFs open inline in browser; images too
-    disposition = "inline" if ct in ("application/pdf", *ALLOWED_IMAGE_TYPES) else "attachment"
+    disposition = "inline" if ct in (_MIME_PDF, *ALLOWED_IMAGE_TYPES) else "attachment"
     return Response(
         content=data,
         media_type=ct,

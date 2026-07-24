@@ -1308,49 +1308,51 @@ class TestSendAdminDigestRedisBranches:
 class TestSendAdminDigestEmail:
     @pytest.mark.asyncio
     async def test_calls_email_service(self):
+        from app.services.email import AdminDigestData
         from app.tasks.maintenance import _send_admin_digest_email
 
+        data = AdminDigestData(
+            week_start="2026-01-01",
+            week_end="2026-01-07",
+            new_users=5,
+            pending_signups=2,
+            new_drafts=10,
+            new_projects=3,
+            new_looms=1,
+            storage_str="1.5 GB",
+            storage_delta_str="+100 MB",
+            cve_finding_count=0,
+            cve_scanned_at=None,
+            s3_orphaned_count=None,
+            s3_scanned_at=None,
+        )
         with patch("app.services.email.send_admin_digest_email", new=AsyncMock()) as mock_send:
-            await _send_admin_digest_email(
-                admin_emails=["admin@test.com"],
-                week_start="2026-01-01",
-                week_end="2026-01-07",
-                new_users=5,
-                pending_signups=2,
-                new_drafts=10,
-                new_projects=3,
-                new_looms=1,
-                storage_str="1.5 GB",
-                storage_delta_str="+100 MB",
-                cve_finding_count=0,
-                cve_scanned_at=None,
-                s3_orphaned_count=None,
-                s3_scanned_at=None,
-            )
+            await _send_admin_digest_email(admin_emails=["admin@test.com"], data=data)
 
         mock_send.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_passes_admin_emails_through(self):
+        from app.services.email import AdminDigestData
         from app.tasks.maintenance import _send_admin_digest_email
 
+        data = AdminDigestData(
+            week_start="2026-01-01",
+            week_end="2026-01-07",
+            new_users=0,
+            pending_signups=0,
+            new_drafts=0,
+            new_projects=0,
+            new_looms=0,
+            storage_str="0 B",
+            storage_delta_str=None,
+            cve_finding_count=None,
+            cve_scanned_at=None,
+            s3_orphaned_count=None,
+            s3_scanned_at=None,
+        )
         with patch("app.services.email.send_admin_digest_email", new=AsyncMock()) as mock_send:
-            await _send_admin_digest_email(
-                admin_emails=["a@test.com", "b@test.com"],
-                week_start="2026-01-01",
-                week_end="2026-01-07",
-                new_users=0,
-                pending_signups=0,
-                new_drafts=0,
-                new_projects=0,
-                new_looms=0,
-                storage_str="0 B",
-                storage_delta_str=None,
-                cve_finding_count=None,
-                cve_scanned_at=None,
-                s3_orphaned_count=None,
-                s3_scanned_at=None,
-            )
+            await _send_admin_digest_email(admin_emails=["a@test.com", "b@test.com"], data=data)
 
         call_kwargs = mock_send.call_args.kwargs
         assert call_kwargs["admin_emails"] == ["a@test.com", "b@test.com"]

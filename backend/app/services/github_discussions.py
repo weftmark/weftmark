@@ -118,8 +118,6 @@ def _type_label(submission_type: str) -> str:
 
 
 def build_discussion_body(
-    submission_type: str,
-    subject: str | None,
     body: str,
     diagnostics: dict | None,
     is_anonymous: bool,

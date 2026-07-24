@@ -183,7 +183,7 @@ class WIFWriter:
                 config.set("NOTES", str(ii), line)
 
     def write_palette(self, config: RawConfigParser) -> dict:
-        colors = set(thread.color.rgb for thread in self.draft.warp + self.draft.weft)
+        colors = {thread.color.rgb for thread in self.draft.warp + self.draft.weft}
         wif_palette: dict = {}
         config.set("CONTENTS", _SECTION_COLOR_TABLE, 1)
         config.add_section(_SECTION_COLOR_TABLE)

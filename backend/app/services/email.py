@@ -1,9 +1,27 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import get_settings
 
 _TEMPLATES = Path(__file__).parent.parent / "templates" / "email"
+
+
+@dataclass
+class AdminDigestData:
+    week_start: str
+    week_end: str
+    new_users: int
+    pending_signups: int
+    new_drafts: int
+    new_projects: int
+    new_looms: int
+    storage_str: str
+    storage_delta_str: str | None
+    cve_finding_count: int | None
+    cve_scanned_at: str | None
+    s3_orphaned_count: int | None
+    s3_scanned_at: str | None
 
 
 def _render(name: str, **kwargs) -> tuple[str, str]:
@@ -426,53 +444,38 @@ async def send_feedback_admin_alert(
     await _send(admin_emails, f"[{settings.app_name}] New {type_label} submitted", txt, html)
 
 
-async def send_admin_digest_email(
-    admin_emails: list[str],
-    week_start: str,
-    week_end: str,
-    new_users: int,
-    pending_signups: int,
-    new_drafts: int,
-    new_projects: int,
-    new_looms: int,
-    storage_str: str,
-    storage_delta_str: str | None,
-    cve_finding_count: int | None,
-    cve_scanned_at: str | None,
-    s3_orphaned_count: int | None,
-    s3_scanned_at: str | None,
-) -> None:
+async def send_admin_digest_email(admin_emails: list[str], data: AdminDigestData) -> None:
     settings = get_settings()
     if not settings.smtp_user or not admin_emails:
         return
     admin_url = f"{settings.frontend_url}/admin"
 
-    delta_txt = storage_delta_str if storage_delta_str is not None else "—"
+    delta_txt = data.storage_delta_str if data.storage_delta_str is not None else "—"
     delta_html = (
-        storage_delta_str
-        if storage_delta_str is not None
+        data.storage_delta_str
+        if data.storage_delta_str is not None
         else '<em style="color:#6b7280;">First run — no prior baseline</em>'
     )
 
     txt, html = _render(
         "admin_digest",
-        week_start=week_start,
-        week_end=week_end,
-        new_users=new_users,
-        pending_signups=pending_signups,
-        new_drafts=new_drafts,
-        new_projects=new_projects,
-        new_looms=new_looms,
-        storage_str=storage_str,
+        week_start=data.week_start,
+        week_end=data.week_end,
+        new_users=data.new_users,
+        pending_signups=data.pending_signups,
+        new_drafts=data.new_drafts,
+        new_projects=data.new_projects,
+        new_looms=data.new_looms,
+        storage_str=data.storage_str,
         delta_txt=delta_txt,
         delta_html=delta_html,
-        cve_txt=_digest_cve_txt(cve_finding_count, cve_scanned_at),
-        cve_html=_digest_cve_html(cve_finding_count, cve_scanned_at),
-        s3_txt=_digest_s3_txt(s3_orphaned_count, s3_scanned_at),
-        s3_html=_digest_s3_html(s3_orphaned_count, s3_scanned_at),
+        cve_txt=_digest_cve_txt(data.cve_finding_count, data.cve_scanned_at),
+        cve_html=_digest_cve_html(data.cve_finding_count, data.cve_scanned_at),
+        s3_txt=_digest_s3_txt(data.s3_orphaned_count, data.s3_scanned_at),
+        s3_html=_digest_s3_html(data.s3_orphaned_count, data.s3_scanned_at),
         admin_url=admin_url,
     )
-    subject = f"{settings.app_name} — Weekly Admin Digest ({week_start} – {week_end})"
+    subject = f"{settings.app_name} — Weekly Admin Digest ({data.week_start} – {data.week_end})"
     await _send(admin_emails, subject, txt, html)
 
 

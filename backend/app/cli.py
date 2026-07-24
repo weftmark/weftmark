@@ -193,19 +193,19 @@ async def _poll_for_clerk_attach(
     timeout: int,
 ) -> User:
     """Poll until the webhook attaches a clerk_user_id to the pre-created User."""
-    loop = asyncio.get_event_loop()
-    deadline = loop.time() + timeout
-    while True:
-        async with session_factory() as session:
-            user = await session.get(User, user_id)
-            if user and user.clerk_user_id is not None:
-                return user  # type: ignore[no-any-return]
-        if loop.time() >= deadline:
-            raise TimeoutError(
-                f"user_id={user_id} never received a clerk_user_id after {timeout}s — "
-                "is the webhook configured and reachable?"
-            )
-        await asyncio.sleep(1)
+    try:
+        async with asyncio.timeout(timeout):
+            while True:
+                async with session_factory() as session:
+                    user = await session.get(User, user_id)
+                    if user and user.clerk_user_id is not None:
+                        return user  # type: ignore[no-any-return]
+                await asyncio.sleep(1)
+    except TimeoutError:
+        raise TimeoutError(
+            f"user_id={user_id} never received a clerk_user_id after {timeout}s — "
+            "is the webhook configured and reachable?"
+        ) from None
 
 
 # ---------------------------------------------------------------------------
