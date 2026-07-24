@@ -142,12 +142,10 @@ function isStashPushEligible(yarn: YarnSummary) {
 
 function YarnCard({ yarn, connected }: { readonly yarn: YarnSummary; readonly connected: boolean }) {
   const { t } = useTranslation();
-  const skeinLabel =
-    yarn.skein_count === 0
-      ? t("yarnPage.noSkeins")
-      : yarn.available_count === yarn.skein_count
-        ? t("yarnPage.allAvailable", { count: yarn.skein_count })
-        : t("yarnPage.someAvailable", { available: yarn.available_count, total: yarn.skein_count });
+  let skeinLabel: string;
+  if (yarn.skein_count === 0) skeinLabel = t("yarnPage.noSkeins");
+  else if (yarn.available_count === yarn.skein_count) skeinLabel = t("yarnPage.allAvailable", { count: yarn.skein_count });
+  else skeinLabel = t("yarnPage.someAvailable", { available: yarn.available_count, total: yarn.skein_count });
 
   return (
     <Link
@@ -268,15 +266,15 @@ function SortHeader({
 }) {
   const isActive = currentSort === ascKey || currentSort === descKey;
   const isAsc = currentSort === ascKey;
+  let sortIcon = <ArrowUpDown className="h-3 w-3 opacity-40" />;
+  if (isActive) sortIcon = isAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />;
   return (
     <button type="button"
       onClick={() => onSort(isActive && descKey && isAsc ? descKey : ascKey)}
       className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
     >
       {label}
-      {isActive
-        ? (isAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)
-        : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+      {sortIcon}
     </button>
   );
 }

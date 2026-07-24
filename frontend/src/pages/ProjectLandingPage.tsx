@@ -1,5 +1,5 @@
 import DOMPurify from "dompurify";
-import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useMemo, type ReactNode } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -668,6 +668,18 @@ function ColorPaletteSection({
                     const displayName = hasPending
                       ? (pendingEntry?.yarn.name ?? null)
                       : (serverLinked?.yarn_name ?? null);
+                    let linkLabel: ReactNode;
+                    if (isUnlinkPending && serverLinked) {
+                      linkLabel = <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>;
+                    } else if (displayName) {
+                      linkLabel = (
+                        <span className={`truncate max-w-[100px] ${hasPending ? "text-accent" : "text-card-foreground"}`}>
+                          {displayName}
+                        </span>
+                      );
+                    } else {
+                      linkLabel = <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>;
+                    }
                     return (
                       <td className="px-3 py-2">
                         <button type="button"
@@ -678,15 +690,7 @@ function ColorPaletteSection({
                           title={displayName ?? t("projectLandingPage.linkYarn")}
                         >
                           <AppIcons.Yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          {isUnlinkPending && serverLinked ? (
-                            <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>
-                          ) : displayName ? (
-                            <span className={`truncate max-w-[100px] ${hasPending ? "text-accent" : "text-card-foreground"}`}>
-                              {displayName}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>
-                          )}
+                          {linkLabel}
                           {hasPending && <span className="text-[10px] text-accent">•</span>}
                         </button>
                       </td>
@@ -1048,9 +1052,9 @@ function ReedSelector({
     if (!Number.isNaN(n) && n > 0) mutation.mutate(n);
   }
 
-  const effectiveDents = isCustom
-    ? Number.parseFloat(customInput)
-    : selectValue !== "" ? Number.parseFloat(selectValue) : null;
+  let effectiveDents: number | null = null;
+  if (isCustom) effectiveDents = Number.parseFloat(customInput);
+  else if (selectValue !== "") effectiveDents = Number.parseFloat(selectValue);
   const effectiveDentsInt = effectiveDents != null ? Math.round(effectiveDents) : null;
 
   const isCleanMultiple =
@@ -1411,6 +1415,23 @@ export function ProjectLandingPage() {
   const m = project.draft_wif_measurements;
   const warpLengthCm = project.draft_warp_length_cm;
 
+  let settOrSpacing: ReactNode = null;
+  if (project.draft_epi_override != null) {
+    settOrSpacing = (
+      <>
+        <dt className="text-muted-foreground">{t("projectLandingPage.sett")}</dt>
+        <dd>{project.draft_epi_override} {t("projectLandingPage.epiUnit")}</dd>
+      </>
+    );
+  } else if (m?.warp_spacing != null) {
+    settOrSpacing = (
+      <>
+        <dt className="text-muted-foreground">{t("projectLandingPage.warpSpacing")}</dt>
+        <dd>{displayLength(m.warp_spacing, "cm", displayUnit)}</dd>
+      </>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto">
     <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
@@ -1559,17 +1580,7 @@ export function ProjectLandingPage() {
               <dd>{displayLength(project.draft_weaving_width_override_cm, "cm", displayUnit)}</dd>
             </>
           )}
-          {project.draft_epi_override != null ? (
-            <>
-              <dt className="text-muted-foreground">{t("projectLandingPage.sett")}</dt>
-              <dd>{project.draft_epi_override} {t("projectLandingPage.epiUnit")}</dd>
-            </>
-          ) : m?.warp_spacing != null ? (
-            <>
-              <dt className="text-muted-foreground">{t("projectLandingPage.warpSpacing")}</dt>
-              <dd>{displayLength(m.warp_spacing, "cm", displayUnit)}</dd>
-            </>
-          ) : null}
+          {settOrSpacing}
           {warpLengthCm != null && (
             <>
               <dt className="text-muted-foreground">{t("projectLandingPage.warpLength")}</dt>

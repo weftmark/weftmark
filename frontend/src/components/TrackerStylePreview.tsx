@@ -24,11 +24,14 @@ function DemoBox({ n, active, style }: { readonly n: number; readonly active: bo
   );
 }
 
+function demoCardBorder(style: TrackerStyle, compact: boolean | undefined): string {
+  if (style === "high_contrast") return compact ? "border border-foreground/30" : "border-2 border-foreground/50";
+  return compact ? "border border-primary/20" : "border-2 border-primary/30";
+}
+
 function DemoPickCard({ compact, style }: { readonly compact?: boolean; readonly style: TrackerStyle }) {
   const height = compact ? "h-10" : "h-16";
-  const border = style === "high_contrast"
-    ? compact ? "border border-foreground/30" : "border-2 border-foreground/50"
-    : compact ? "border border-primary/20" : "border-2 border-primary/30";
+  const border = demoCardBorder(style, compact);
   const bg = style === "high_contrast" ? "bg-muted/60" : "bg-primary/5 dark:bg-primary/10";
 
   return (
@@ -70,10 +73,12 @@ export function TrackerStylePreview({ style }: { readonly style: TrackerStyle })
             {Array.from({ length: 4 }, (_, row) =>
               Array.from({ length: 4 }, (__, col) => {
                 const lit = (row + col) % 2 === 0;
+                let dotColor = "bg-muted-foreground/15";
+                if (lit) dotColor = isHighContrast ? "bg-foreground/70" : "bg-primary/60";
                 return (
                   <div
                     key={`${row}-${col}`}
-                    className={`h-2 rounded-sm ${lit ? (isHighContrast ? "bg-foreground/70" : "bg-primary/60") : "bg-muted-foreground/15"}`}
+                    className={`h-2 rounded-sm ${dotColor}`}
                   />
                 );
               })
@@ -154,6 +159,11 @@ function LiveBox({
   );
 }
 
+function liveCardBorder(style: TrackerStyle, compact: boolean | undefined): string {
+  if (style === "high_contrast") return compact ? "border border-foreground/30" : "border-2 border-foreground/40";
+  return compact ? "border border-primary/20" : "border-2 border-primary/30";
+}
+
 function LivePickCard({
   compact,
   style,
@@ -168,9 +178,7 @@ function LivePickCard({
   readonly shaftCount: number;
 }) {
   const height = compact ? "h-14" : "h-24";
-  const border = style === "high_contrast"
-    ? compact ? "border border-foreground/30" : "border-2 border-foreground/40"
-    : compact ? "border border-primary/20" : "border-2 border-primary/30";
+  const border = liveCardBorder(style, compact);
   const bg = style === "high_contrast" ? "bg-muted/60" : "bg-primary/5 dark:bg-primary/10";
 
   return (
@@ -283,16 +291,13 @@ export function TrackerLivePreview({
                   const shaftNum = col + 1;
                   const isUnused = shaftNum > LIVE_SHAFTS_USED;
                   const lit = !isUnused && (row + col) % 2 === 0;
+                  let cellColor = "bg-muted-foreground/15";
+                  if (isUnused) cellColor = "bg-muted-foreground/8 border border-dashed border-border/30";
+                  else if (lit) cellColor = isHighContrast ? "bg-foreground/80" : "bg-primary/70";
                   return (
                     <div
                       key={`${row}-${col}`}
-                      className={`h-3 rounded-sm ${
-                        isUnused
-                          ? "bg-muted-foreground/8 border border-dashed border-border/30"
-                          : lit
-                            ? (isHighContrast ? "bg-foreground/80" : "bg-primary/70")
-                            : "bg-muted-foreground/15"
-                      }`}
+                      className={`h-3 rounded-sm ${cellColor}`}
                     />
                   );
                 })

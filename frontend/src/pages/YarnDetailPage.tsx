@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -451,6 +451,30 @@ export function YarnDetailPage() {
     heroPhoto?.medium_url ?? heroPhoto?.small_url ?? heroPhoto?.square_url ??
     yarn.ravelry_photo_url;
 
+  let heroContent: ReactNode;
+  if (heroPhotoUrl) {
+    heroContent = (
+      <img
+        src={heroPhotoUrl}
+        alt={`${yarn.brand} ${yarn.name}`}
+        className="h-36 w-36 rounded-xl object-cover border border-border shrink-0"
+      />
+    );
+  } else if (yarn.color_hex) {
+    heroContent = (
+      <div
+        className="h-36 w-36 rounded-xl border border-border shrink-0"
+        style={{ backgroundColor: yarn.color_hex }}
+      />
+    );
+  } else {
+    heroContent = (
+      <div className="h-36 w-36 rounded-xl border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground shrink-0">
+        {t("yarnDetailPage.noPhoto")}
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-2xl mx-auto w-full space-y-6">
 
@@ -473,22 +497,7 @@ export function YarnDetailPage() {
 
       {/* Hero: photo + title block */}
       <div className="flex gap-5 items-start">
-        {heroPhotoUrl ? (
-          <img
-            src={heroPhotoUrl}
-            alt={`${yarn.brand} ${yarn.name}`}
-            className="h-36 w-36 rounded-xl object-cover border border-border shrink-0"
-          />
-        ) : yarn.color_hex ? (
-          <div
-            className="h-36 w-36 rounded-xl border border-border shrink-0"
-            style={{ backgroundColor: yarn.color_hex }}
-          />
-        ) : (
-          <div className="h-36 w-36 rounded-xl border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground shrink-0">
-            {t("yarnDetailPage.noPhoto")}
-          </div>
-        )}
+        {heroContent}
 
         <div className="flex-1 min-w-0 space-y-1.5 pt-1">
           <h1 className="text-xl font-semibold text-card-foreground leading-tight">{yarn.brand}</h1>

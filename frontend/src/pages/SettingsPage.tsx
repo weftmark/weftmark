@@ -778,13 +778,13 @@ function FeedbackHistorySection() {
     queryFn: listMyFeedback,
   });
 
-  return (
-    <Section title={t("settings.sections.feedbackHistory")} description={t("settings.feedbackHistory.description")}>
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
-      ) : submissions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("settings.feedbackHistory.noSubmissions")}</p>
-      ) : (
+  let feedbackHistoryContent: ReactNode;
+  if (isLoading) {
+    feedbackHistoryContent = <p className="text-sm text-muted-foreground">{t("common.loading")}</p>;
+  } else if (submissions.length === 0) {
+    feedbackHistoryContent = <p className="text-sm text-muted-foreground">{t("settings.feedbackHistory.noSubmissions")}</p>;
+  } else {
+    feedbackHistoryContent = (
         <div className="divide-y divide-border rounded-lg border">
           {submissions.map((s: FeedbackRecord) => (
             <div key={s.id} className="px-4 py-3 space-y-1">
@@ -849,7 +849,12 @@ function FeedbackHistorySection() {
             </div>
           ))}
         </div>
-      )}
+    );
+  }
+
+  return (
+    <Section title={t("settings.sections.feedbackHistory")} description={t("settings.feedbackHistory.description")}>
+      {feedbackHistoryContent}
     </Section>
   );
 }

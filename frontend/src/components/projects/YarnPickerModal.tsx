@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { listYarn, yarnPhotoUrl, type YarnSummary } from "@/api/yarn";
@@ -82,6 +82,33 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
           )}
           {filtered.map((yarn) => {
             const isCurrent = yarn.id === currentYarnId;
+
+            let swatch: ReactNode;
+            if (yarn.has_photo) {
+              swatch = (
+                <AuthedImage
+                  src={yarnPhotoUrl(yarn.id)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              );
+            } else if (yarn.ravelry_colorway_thumbnail_url) {
+              swatch = (
+                <img
+                  src={yarn.ravelry_colorway_thumbnail_url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              );
+            } else {
+              swatch = (
+                <span
+                  className="block h-full w-full"
+                  style={{ background: yarn.color_hex ?? "#e5e7eb" }}
+                />
+              );
+            }
+
             return (
               <button type="button"
                 key={yarn.id}
@@ -95,24 +122,7 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
               >
                 {/* Yarn photo / color swatch */}
                 <div className="h-8 w-8 rounded border border-border flex-shrink-0 overflow-hidden">
-                  {yarn.has_photo ? (
-                    <AuthedImage
-                      src={yarnPhotoUrl(yarn.id)}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : yarn.ravelry_colorway_thumbnail_url ? (
-                    <img
-                      src={yarn.ravelry_colorway_thumbnail_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span
-                      className="block h-full w-full"
-                      style={{ background: yarn.color_hex ?? "#e5e7eb" }}
-                    />
-                  )}
+                  {swatch}
                 </div>
 
                 {/* Name + color */}

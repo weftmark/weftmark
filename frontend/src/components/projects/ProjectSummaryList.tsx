@@ -18,11 +18,9 @@ function ProjectRow({ project }: { readonly project: ProjectSummary }) {
   const isPlanning = project.status === "active" && !project.loom_id;
   const badgeKey = isPlanning ? "plan" : project.status;
   const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
-  const endDate = project.status === "completed"
-    ? project.completed_at
-    : project.status === "abandoned"
-      ? project.abandoned_at
-      : null;
+  let endDate: string | null = null;
+  if (project.status === "completed") endDate = project.completed_at;
+  else if (project.status === "abandoned") endDate = project.abandoned_at;
 
   return (
     <Link

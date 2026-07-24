@@ -129,16 +129,16 @@ export function FeedbackModal({ onClose }: Props) {
           </button>
         </div>
 
-        {submitted ? (
-          <SuccessView record={submitted} onClose={onClose} />
-        ) : !user ? (
+        {submitted && <SuccessView record={submitted} onClose={onClose} />}
+        {!submitted && !user && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Please sign in to submit feedback.</p>
             <div className="flex justify-end">
               <Button type="button" variant="outline" onClick={onClose}>Close</Button>
             </div>
           </div>
-        ) : (
+        )}
+        {!submitted && user && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Type selector */}
             <div>
@@ -303,12 +303,13 @@ function SuccessView({ record, onClose }: { readonly record: FeedbackRecord; rea
         Thank you — your {typeLabel} was received.
       </p>
 
-      {pollDispatchStatus === "pending" && !timedOut ? (
+      {pollDispatchStatus === "pending" && !timedOut && (
         <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
           <AppIcons.Spinner className="h-4 w-4 animate-spin shrink-0" />
           <span>Creating your GitHub Discussion thread…</span>
         </div>
-      ) : pollDispatchStatus === "sent" && pollDiscussionUrl ? (
+      )}
+      {!(pollDispatchStatus === "pending" && !timedOut) && pollDispatchStatus === "sent" && pollDiscussionUrl && (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
             A discussion thread has been created. You can follow progress and attach screenshots there:
@@ -323,7 +324,8 @@ function SuccessView({ record, onClose }: { readonly record: FeedbackRecord; rea
             View on GitHub
           </a>
         </div>
-      ) : (
+      )}
+      {!(pollDispatchStatus === "pending" && !timedOut) && !(pollDispatchStatus === "sent" && pollDiscussionUrl) && (
         <p className="text-sm text-muted-foreground">
           Your submission is stored and will be reviewed by the team.
           {(pollDispatchStatus === "skipped" || timedOut) &&
