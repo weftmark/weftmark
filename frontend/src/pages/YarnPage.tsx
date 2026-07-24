@@ -550,8 +550,8 @@ export function YarnPage() {
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem(BANNER_KEY) === "1"
   );
-  const [prefs, setPrefsState] = useState<YarnPrefs>(loadPrefs);
-  const { view, sort, filters } = prefs;
+  const [prefsState, setPrefsState] = useState<YarnPrefs>(loadPrefs);
+  const { view, sort, filters } = prefsState;
 
   function setPrefs(update: Partial<YarnPrefs>) {
     setPrefsState((prev) => {

@@ -300,8 +300,8 @@ function RavelrySection({ ry, companyUrl, permalink }: {
       {/* Multi-fiber breakdown */}
       {fibers.length > 1 && (
         <ul className="space-y-1">
-          {fibers.map((f, i) => (
-            <li key={i} className="text-sm text-muted-foreground flex gap-2">
+          {fibers.map((f) => (
+            <li key={f.fiber_category.name} className="text-sm text-muted-foreground flex gap-2">
               <span className="text-card-foreground font-medium w-12 text-right shrink-0">
                 {f.percentage != null ? `${f.percentage}%` : "—"}
               </span>
@@ -314,8 +314,8 @@ function RavelrySection({ ry, companyUrl, permalink }: {
       {/* Attribute bullets */}
       {attributes.length > 0 && (
         <ul className="space-y-1 text-sm text-muted-foreground list-none">
-          {attributes.map((attr, i) => (
-            <li key={i} className="flex items-start gap-2">
+          {attributes.map((attr) => (
+            <li key={attr} className="flex items-start gap-2">
               <span className="text-accent mt-0.5">•</span>
               <span>{attr}</span>
             </li>

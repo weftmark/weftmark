@@ -60,7 +60,7 @@ function LoomCard({ loom }: { readonly loom: LoomReferenceSummary }) {
         {loom.shedding_mechanism && (
           <>
             <span className="text-stone-500">{t("loomCatalogPage.shedding")}</span>
-            <span>{loom.shedding_mechanism.replace(/_/g, " ")}</span>
+            <span>{loom.shedding_mechanism.replaceAll("_", " ")}</span>
           </>
         )}
         {loom.foldable !== null && (

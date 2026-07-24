@@ -66,7 +66,10 @@ function useAuthedSvg(url: string | null): { svg: string | null; loading: boolea
       const token = await getAuthToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(fetchUrl, { headers, credentials: "include" });
-      if (!res.ok || cancelled) { if (!cancelled) dispatch({ type: "error" }); return; }
+      if (!res.ok || cancelled) {
+        if (!cancelled) { dispatch({ type: "error" }); }
+        return;
+      }
       const text = await res.text();
       if (!cancelled) dispatch({ type: "done", svg: text });
     }

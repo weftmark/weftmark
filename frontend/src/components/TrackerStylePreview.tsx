@@ -2,7 +2,7 @@ export type TrackerStyle = "default" | "compact" | "high_contrast";
 
 // ── Static style-picker preview (small, used in the card selector) ──────────
 
-const DEMO_ACTIVE = [1, 3];
+const DEMO_ACTIVE = new Set([1, 3]);
 const DEMO_SHAFTS = 4;
 const DEMO_WEFT = "#b45309";
 const DEMO_PICK = 7;
@@ -35,7 +35,7 @@ function DemoPickCard({ compact, style }: { readonly compact?: boolean; readonly
     <div className={`rounded-lg ${bg} ${border} ${height} px-2 py-1.5 flex items-stretch gap-2`}>
       <div className="flex-1 grid gap-0.5" style={{ gridTemplateColumns: `repeat(${DEMO_SHAFTS}, 1fr)` }}>
         {Array.from({ length: DEMO_SHAFTS }, (_, i) => i + 1).map((n) => (
-          <DemoBox key={n} n={n} active={DEMO_ACTIVE.includes(n)} style={style} />
+          <DemoBox key={n} n={n} active={DEMO_ACTIVE.has(n)} style={style} />
         ))}
       </div>
       {!compact && <div className="w-4 shrink-0 rounded" style={{ backgroundColor: DEMO_WEFT }} />}
@@ -89,7 +89,7 @@ export function TrackerStylePreview({ style }: { readonly style: TrackerStyle })
 
 const LIVE_SHAFTS_ALL = 8;   // total shafts on the loom
 const LIVE_SHAFTS_USED = 4;  // shafts actually used by the design (trailing 4 are "unused")
-const LIVE_ACTIVE = [1, 3];
+const LIVE_ACTIVE = new Set([1, 3]);
 const LIVE_WEFT = "#b45309";
 const LIVE_PICK = 12;
 const LIVE_TOTAL = 32;
@@ -180,7 +180,7 @@ function LivePickCard({
           <LiveBox
             key={n}
             n={n}
-            active={!compact && LIVE_ACTIVE.includes(n)}
+            active={!compact && LIVE_ACTIVE.has(n)}
             unused={n > LIVE_SHAFTS_USED}
             colorMode={compact ? "theme" : colorMode}
             style={style}

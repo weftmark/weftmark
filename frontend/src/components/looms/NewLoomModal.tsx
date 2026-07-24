@@ -406,8 +406,8 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                       type="checkbox"
                       checked={acknowledged}
                       onChange={(e) => setAcknowledged(e.target.checked)}
-                    />
-                    I understand this loom cannot be used for project tracking
+                    />{/*
+                    */}I understand this loom cannot be used for project tracking
                   </label>
                 </div>
               )}
@@ -548,8 +548,8 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                       type="checkbox"
                       checked={acknowledged}
                       onChange={(e) => setAcknowledged(e.target.checked)}
-                    />
-                    I understand this loom cannot be used for project tracking
+                    />{/*
+                    */}I understand this loom cannot be used for project tracking
                   </label>
                 </div>
               )}
