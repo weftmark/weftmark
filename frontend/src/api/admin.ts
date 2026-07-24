@@ -235,7 +235,7 @@ export const getAuditLog = (params: { page?: number; page_size?: number; event_t
   if (params.event_type) qs.set("event_type", params.event_type);
   if (params.q) qs.set("q", params.q);
   const query = qs.toString();
-  return api.get<AuditLogPage>(`/api/admin/audit-log${query ? `?${query}` : ""}`);
+  return api.get<AuditLogPage>(`/api/admin/audit-log${query ? "?" + query : ""}`);
 };
 
 export interface ReconcileClerkOnlyUser {
@@ -472,7 +472,7 @@ export const getServerEvents = (params: { page?: number; page_size?: number; eve
   if (params.page_size) qs.set("page_size", String(params.page_size));
   if (params.event_type) qs.set("event_type", params.event_type);
   const query = qs.toString();
-  return api.get<ServerEventPage>(`/api/admin/server-events${query ? `?${query}` : ""}`);
+  return api.get<ServerEventPage>(`/api/admin/server-events${query ? "?" + query : ""}`);
 };
 
 export type CredentialResource = "smtp" | "s3" | "clerk" | "postgres" | "app";

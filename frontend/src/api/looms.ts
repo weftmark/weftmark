@@ -210,14 +210,6 @@ export function updateLoom(id: string, payload: UpdateLoomPayload): Promise<Loom
   });
 }
 
-export function updateLoomVersion(loomId: string, versionId: string, payload: UpdateVersionPayload): Promise<LoomVersion> {
-  return req(`/api/looms/${loomId}/versions/${versionId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-}
-
 export function addLoomVersion(id: string, payload: AddVersionPayload): Promise<LoomVersion> {
   return req(`/api/looms/${id}/versions`, {
     method: "POST",

@@ -126,13 +126,13 @@ export function SettingsPage() {
     }
   }
 
-  function handleConsentToggle(value: boolean) {
-    if (!value && dataConsent) {
+  function handleConsentToggle() {
+    if (dataConsent) {
       // Turning off — warn about sharing impact
       setShowConsentWarning(true);
     } else {
-      setDataConsent(value);
-      save({ ai_training_consent: value });
+      setDataConsent(true);
+      save({ ai_training_consent: true });
     }
   }
 
@@ -428,7 +428,7 @@ export function SettingsPage() {
                     <button type="button"
                       role="switch"
                       aria-checked={!dataConsent}
-                      onClick={() => handleConsentToggle(!dataConsent)}
+                      onClick={handleConsentToggle}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                         !dataConsent ? "bg-primary" : "bg-input"
                       }`}

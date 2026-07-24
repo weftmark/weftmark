@@ -26,7 +26,6 @@ interface Props {
 }
 
 interface NavGroupSectionProps {
-  readonly group: NavGroup;
   readonly icon: LucideIcon;
   readonly label: string;
   readonly expanded: boolean;
@@ -262,7 +261,6 @@ function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: 
   return (
     <div className={`shrink-0 border-t border-border px-3 py-3 space-y-0.5 ${desktopCollapsed ? "lg:px-2" : ""}`}>
       <NavGroupSection
-        group="settings"
         icon={SettingsIcon}
         label={t("nav.settings")}
         expanded={expandedGroup === "settings"}
@@ -275,7 +273,6 @@ function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: 
 
       {user?.is_admin && (
         <NavGroupSection
-          group="admin"
           icon={AdminIcon}
           label={t("nav.admin")}
           expanded={expandedGroup === "admin"}
@@ -289,7 +286,6 @@ function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: 
 
       {user?.is_superuser && (
         <NavGroupSection
-          group="superuser"
           icon={SuperuserIcon}
           label={t("nav.superuser")}
           expanded={expandedGroup === "superuser"}

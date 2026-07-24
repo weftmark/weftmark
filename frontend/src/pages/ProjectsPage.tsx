@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { listProjects, projectDrawdownPreviewUrl, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
@@ -11,7 +11,6 @@ import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { Button } from "@/components/ui/button";
 import { TagChips } from "@/components/ui/TagChips";
-import { Link } from "react-router-dom";
 import { SkeletonCardGrid } from "@/components/ui/skeleton";
 import { TagFilterBar } from "@/components/TagFilterBar";
 

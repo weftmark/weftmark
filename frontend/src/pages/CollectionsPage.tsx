@@ -22,6 +22,10 @@ function NewCollectionModal({ onClose, onSuccess }: { readonly onClose: () => vo
     setTagInput("");
   }
 
+  function removeTag(tag: string) {
+    setTags((prev) => prev.filter((x) => x !== tag));
+  }
+
   function handleTagKey(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
@@ -85,7 +89,7 @@ function NewCollectionModal({ onClose, onSuccess }: { readonly onClose: () => vo
               {tags.map((tag) => (
                 <span key={tag} className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs">
                   {tag}
-                  <button type="button" onClick={() => setTags((prev) => prev.filter((x) => x !== tag))} className="text-muted-foreground hover:text-foreground">×</button>
+                  <button type="button" onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-foreground">×</button>
                 </span>
               ))}
             </div>

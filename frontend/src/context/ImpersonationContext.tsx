@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { setImpersonationTarget } from "@/api/client";
 import { startImpersonationSession, endImpersonationSession } from "@/api/impersonation";
 import type { User } from "@/context/AuthContext";
@@ -50,15 +50,18 @@ export function ImpersonationProvider({ children }: { readonly children: ReactNo
     }
   }, [impersonatedUser]);
 
+  const value = useMemo<ImpersonationState>(
+    () => ({
+      isImpersonating: impersonatedUser !== null,
+      impersonatedUser,
+      startImpersonation,
+      endImpersonation,
+    }),
+    [impersonatedUser, startImpersonation, endImpersonation],
+  );
+
   return (
-    <ImpersonationContext.Provider
-      value={{
-        isImpersonating: impersonatedUser !== null,
-        impersonatedUser,
-        startImpersonation,
-        endImpersonation,
-      }}
-    >
+    <ImpersonationContext.Provider value={value}>
       {children}
     </ImpersonationContext.Provider>
   );

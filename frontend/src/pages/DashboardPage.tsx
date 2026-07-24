@@ -85,10 +85,10 @@ function HeatmapGrid({
     <div className="overflow-x-auto pb-1">
       <div className="inline-flex flex-col gap-[3px]" style={{ minWidth: "max-content" }}>
         <div className="flex gap-[3px]" style={{ paddingLeft: "22px" }}>
-          {weeks.map((_, wi) => {
+          {weeks.map((week, wi) => {
             const label = monthLabels.find((m) => m.col === wi);
             return (
-              <div key={wi} className="w-[10px] text-[9px] text-muted-foreground leading-none overflow-visible whitespace-nowrap">
+              <div key={toDateStr(week[0])} className="w-[10px] text-[9px] text-muted-foreground leading-none overflow-visible whitespace-nowrap">
                 {label ? label.label : ""}
               </div>
             );
@@ -99,14 +99,15 @@ function HeatmapGrid({
             <span className="w-[18px] text-[9px] text-muted-foreground text-right shrink-0 leading-none">
               {dow % 2 === 1 ? dowLabels[dow] : ""}
             </span>
-            {weeks.map((week, wi) => {
+            {weeks.map((week) => {
+              const weekKey = toDateStr(week[0]);
               const day = week[dow];
-              if (!day || day > rangeEnd) return <div key={wi} className="w-[10px] h-[10px] rounded-[2px] opacity-0" />;
+              if (!day || day > rangeEnd) return <div key={weekKey} className="w-[10px] h-[10px] rounded-[2px] opacity-0" />;
               const dateStr = toDateStr(day);
               const count = dayByDate.get(dateStr)?.count ?? 0;
               return (
                 <div
-                  key={wi}
+                  key={weekKey}
                   className={`w-[10px] h-[10px] rounded-[2px] ${intensityClass(count)} ${count > 0 ? "cursor-pointer" : "cursor-default"}`}
                   onMouseEnter={(e) => onCellEnter(e, dateStr)}
                   onMouseLeave={onCellLeave}
