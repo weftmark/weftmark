@@ -745,6 +745,16 @@ function StatTable({ title, rows }: { readonly title: string; readonly rows: { l
 // ---------------------------------------------------------------------------
 
 const MAX_HEALTH_POINTS = 60;
+
+function appendHealthPoint(prev: AdminHealth[], d: AdminHealth): AdminHealth[] {
+  return [...prev.slice(-(MAX_HEALTH_POINTS - 1)), d];
+}
+
+function pollHealthOnce(setHistory: React.Dispatch<React.SetStateAction<AdminHealth[]>>) {
+  getAdminHealth()
+    .then((d) => setHistory((prev) => appendHealthPoint(prev, d)))
+    .catch(() => {});
+}
 const POLL_INTERVAL_MS = 3000;
 
 function Sparkline({ values, max, color }: { readonly values: number[]; readonly max: number; readonly color: string }) {
@@ -782,11 +792,7 @@ function HealthTab() {
   const latest = history[history.length - 1] ?? null;
 
   useEffect(() => {
-    const fetch = () => {
-      getAdminHealth()
-        .then((d) => setHistory((prev) => [...prev.slice(-(MAX_HEALTH_POINTS - 1)), d]))
-        .catch(() => {});
-    };
+    const fetch = () => pollHealthOnce(setHistory);
     fetch();
     pollingRef.current = setInterval(fetch, POLL_INTERVAL_MS);
     return () => {
@@ -1312,7 +1318,7 @@ function ServerEventsPanel() {
       {isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
       {isError && <p className="text-xs text-destructive">Failed to load server events.</p>}
 
-      {data && data.items.length === 0 && (
+      {data?.items.length === 0 && (
         <p className="text-xs text-muted-foreground">No events recorded yet.</p>
       )}
 
@@ -1451,6 +1457,12 @@ function SlugsTab() {
   );
 }
 
+function formatDwell(ms: number | null) {
+  if (ms == null) return "—";
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
 function StepLogSection() {
   const [projectId, setProjectId] = useState("");
   const [submittedId, setSubmittedId] = useState<string | null>(null);
@@ -1467,12 +1479,6 @@ function StepLogSection() {
     if (trimmed) setSubmittedId(trimmed);
   }
 
-  function formatDwell(ms: number | null) {
-    if (ms == null) return "—";
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  }
-
   return (
     <div className="space-y-3 mt-8">
       <h2 className="text-base font-semibold">Project step log</h2>
@@ -1487,7 +1493,7 @@ function StepLogSection() {
       </form>
       {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
       {isError && <div className="text-sm text-destructive">Failed to load steps.</div>}
-      {steps && steps.length === 0 && (
+      {steps?.length === 0 && (
         <div className="text-sm text-muted-foreground">No steps recorded for this project.</div>
       )}
       {steps && steps.length > 0 && (
@@ -1598,14 +1604,14 @@ function FeedbackTab() {
             ))}
           </select>
           <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground">
-            <input type="checkbox" checked={includeDeleted} onChange={(e) => setIncludeDeleted(e.target.checked)} />
-            Show deleted
+            <input type="checkbox" checked={includeDeleted} onChange={(e) => setIncludeDeleted(e.target.checked)} />{/*
+            */}Show deleted
           </label>
         </div>
       </div>
 
       {isLoading && <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>}
-      {data && data.items.length === 0 && (
+      {data?.items.length === 0 && (
         <div className="text-sm text-muted-foreground py-8 text-center">No submissions found.</div>
       )}
       {data && data.items.length > 0 && (
@@ -1691,7 +1697,7 @@ function FeedbackTab() {
               <div className="text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">Diagnostics</p>
                 {Object.entries(detail.diagnostics).map(([k, v]) =>
-                  v ? <p key={k}><span className="font-mono">{k}:</span> {String(v)}</p> : null
+                  v ? <p key={k}><span className="font-mono">{k}:</span> {typeof v === "object" ? JSON.stringify(v) : String(v)}</p> : null
                 )}
               </div>
             )}
@@ -1837,7 +1843,7 @@ function AuditLogTab() {
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {isError && <p className="text-sm text-destructive">Failed to load audit log.</p>}
 
-      {data && data.items.length === 0 && (
+      {data?.items.length === 0 && (
         <p className="text-sm text-muted-foreground">No events found.</p>
       )}
 
@@ -2049,7 +2055,7 @@ function LoomRefFormModal({
             <label className={labelCls}>Shedding mechanism</label>
             <select className={inputCls} value={form.shedding_mechanism} onChange={(e) => onChange({ ...form, shedding_mechanism: e.target.value })}>
               <option value="">—</option>
-              {SHEDDING_OPTIONS.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}
+              {SHEDDING_OPTIONS.map((o) => <option key={o} value={o}>{o.replaceAll("_", " ")}</option>)}
             </select>
           </div>
           <div>

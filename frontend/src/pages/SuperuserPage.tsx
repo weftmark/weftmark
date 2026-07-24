@@ -51,14 +51,14 @@ import {
   type ConfigTestResult,
   type ConfigTestOption,
   type ConfigFieldState,
+  listAdminUsers,
+  type AdminUser,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 import { CveBanner } from "@/components/admin/CveBanner";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
 import { formatUptime } from "@/lib/utils";
-import { listAdminUsers } from "@/api/admin";
-import type { AdminUser } from "@/api/admin";
 
 declare const __FRONTEND_DEPS__: Record<string, string>;
 
@@ -275,8 +275,8 @@ function EulaTab() {
             {lintResult.issues.length === 0 ? (
               <p className="text-xs text-green-600 font-medium">✓ No issues found</p>
             ) : (
-              lintResult.issues.map((issue, i) => (
-                <p key={i} className={`text-xs ${issue.level === "error" ? "text-destructive" : "text-yellow-600"}`}>
+              lintResult.issues.map((issue) => (
+                <p key={`${issue.level}-${issue.message}`} className={`text-xs ${issue.level === "error" ? "text-destructive" : "text-yellow-600"}`}>
                   {issue.level === "error" ? "✗" : "⚠"} {issue.message}
                 </p>
               ))
@@ -899,7 +899,7 @@ function TaskHistoryTable() {
 
       {isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
 
-      {data && data.items.length === 0 && (
+      {data?.items.length === 0 && (
         <p className="text-xs text-muted-foreground">No task history yet. Dispatch a task to see it here.</p>
       )}
 
@@ -1035,7 +1035,7 @@ function MaintenanceTab() {
     queryFn: getSoftDeleteQueue,
   });
 
-  const nothingEligible = queue != null && queue.ready_to_purge.total === 0;
+  const nothingEligible = queue?.ready_to_purge.total === 0;
 
   function triggerPurge() {
     setPurging(true);
@@ -1201,8 +1201,8 @@ function ReconcileTab() {
           {/* In Clerk, not in DB */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium">
-              In Clerk, not in DB
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              In Clerk, not in DB{/*
+              */}<span className="ml-2 text-xs font-normal text-muted-foreground">
                 ({report.clerk_only.length} {report.clerk_only.length === 1 ? "user" : "users"})
               </span>
             </h3>
@@ -1252,8 +1252,8 @@ function ReconcileTab() {
           {/* In DB, not in Clerk */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium">
-              In DB, not in Clerk
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              In DB, not in Clerk{/*
+              */}<span className="ml-2 text-xs font-normal text-muted-foreground">
                 ({report.db_only.length} {report.db_only.length === 1 ? "user" : "users"})
               </span>
             </h3>
@@ -1416,7 +1416,7 @@ function ScheduledTasksTab() {
         <h1 className="text-lg font-semibold">Scheduled Tasks</h1>
         <p className="text-sm text-muted-foreground">Configure recurring background tasks. Schedules are stored in Postgres and survive restarts; the scheduler tick runs every 60 seconds via Celery Beat.</p>
       </div>
-      {data && data.length === 0 && (
+      {data?.length === 0 && (
         <p className="text-sm text-muted-foreground">No scheduled tasks configured.</p>
       )}
       {data?.map((task) => (
@@ -1537,7 +1537,7 @@ function ExportsTab() {
       {isLoading && <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>}
       {error && <p className="text-sm text-destructive">Failed to load exports.</p>}
 
-      {!isLoading && data && data.length === 0 && (
+      {!isLoading && data?.length === 0 && (
         <p className="text-sm text-muted-foreground py-8 text-center">No export requests found.</p>
       )}
 

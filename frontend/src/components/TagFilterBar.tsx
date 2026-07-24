@@ -14,7 +14,7 @@ export function TagFilterBar({ tags, activeTag, onToggle, onClear, clearLabel, c
   if (tags.length === 0) return null;
 
   return (
-    <div className={`flex flex-wrap gap-1.5${className ? ` ${className}` : ""}`}>
+    <div className={`flex flex-wrap gap-1.5${className ? " " + className : ""}`}>
       {tags.map((tag) => (
         <button
           key={tag}

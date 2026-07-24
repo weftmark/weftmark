@@ -15,7 +15,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     document.body.appendChild(ta);
     ta.select();
     const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
+    ta.remove();
     return ok;
   }
 }

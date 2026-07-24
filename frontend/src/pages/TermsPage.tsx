@@ -52,8 +52,8 @@ export function TermsPage() {
               {t("termsPage.error")}{" "}
               <a href="mailto:admin@weftmark.com" className="underline">
                 admin@weftmark.com
-              </a>
-              .
+              </a>{/*
+              */}.
             </p>
           )}
 

@@ -254,16 +254,16 @@ export function DraftDetailPage() {
         {draft.lint_errors.length > 0 && (
           <div className="rounded-md bg-destructive/10 p-4 space-y-1">
             <p className="text-sm font-medium text-destructive">{t("draftDetailPage.lintErrors")}</p>
-            {draft.lint_errors.map((e, i) => (
-              <p key={i} className="text-sm text-destructive">{e}</p>
+            {draft.lint_errors.map((e) => (
+              <p key={e} className="text-sm text-destructive">{e}</p>
             ))}
           </div>
         )}
         {draft.lint_warnings.length > 0 && (
           <div className="rounded-md bg-muted p-4 space-y-1">
             <p className="text-sm font-medium">{t("draftDetailPage.lintWarnings")}</p>
-            {draft.lint_warnings.map((w, i) => (
-              <p key={i} className="text-sm text-muted-foreground">{w}</p>
+            {draft.lint_warnings.map((w) => (
+              <p key={w} className="text-sm text-muted-foreground">{w}</p>
             ))}
           </div>
         )}

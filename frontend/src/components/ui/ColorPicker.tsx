@@ -15,7 +15,7 @@ declare global {
 // ---------------------------------------------------------------------------
 
 function hexToRgb(hex: string): [number, number, number] | null {
-  const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
   if (!m) return null;
   return [Number.parseInt(m[1], 16), Number.parseInt(m[2], 16), Number.parseInt(m[3], 16)];
 }
@@ -50,12 +50,12 @@ function hslToHex(h: number, s: number, l: number): string {
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = ll - c / 2;
   let rv = 0, gv = 0, bv = 0;
-  if (h < 60) { rv = c; gv = x; bv = 0; }
-  else if (h < 120) { rv = x; gv = c; bv = 0; }
-  else if (h < 180) { rv = 0; gv = c; bv = x; }
-  else if (h < 240) { rv = 0; gv = x; bv = c; }
-  else if (h < 300) { rv = x; gv = 0; bv = c; }
-  else { rv = c; gv = 0; bv = x; }
+  if (h < 60) { rv = c; gv = x; }
+  else if (h < 120) { rv = x; gv = c; }
+  else if (h < 180) { gv = c; bv = x; }
+  else if (h < 240) { gv = x; bv = c; }
+  else if (h < 300) { rv = x; bv = c; }
+  else { rv = c; bv = x; }
   return rgbToHex(Math.round((rv + m) * 255), Math.round((gv + m) * 255), Math.round((bv + m) * 255));
 }
 
