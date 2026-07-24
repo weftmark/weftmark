@@ -69,78 +69,78 @@ class TestBuildDiscussionTitle:
 
 class TestBuildDiscussionBody:
     def test_minimal_body_included(self):
-        result = build_discussion_body("feedback", None, "Hello world", None, False)
+        result = build_discussion_body("Hello world", None, False)
         assert "Hello world" in result
 
     def test_no_diagnostics_skips_section(self):
-        result = build_discussion_body("feedback", None, "Hello", None, False)
+        result = build_discussion_body("Hello", None, False)
         assert "Diagnostics" not in result
 
     def test_with_environment_diagnostic(self):
         diag = {"environment": "production"}
-        result = build_discussion_body("feedback", None, "Hello", diag, False)
+        result = build_discussion_body("Hello", diag, False)
         assert "Diagnostics" in result
         assert "production" in result
 
     def test_with_app_version_diagnostic(self):
         diag = {"app_version": "1.2.3"}
-        result = build_discussion_body("feedback", None, "Hello", diag, False)
+        result = build_discussion_body("Hello", diag, False)
         assert "1.2.3" in result
 
     def test_non_anonymous_includes_page_url(self):
         diag = {"page_url": "/projects/abc", "environment": "prod"}
-        result = build_discussion_body("feedback", None, "Hello", diag, False)
+        result = build_discussion_body("Hello", diag, False)
         assert "/projects/abc" in result
 
     def test_non_anonymous_includes_project_id(self):
         diag = {"project_id": "proj-123", "environment": "prod"}
-        result = build_discussion_body("feedback", None, "Hello", diag, False)
+        result = build_discussion_body("Hello", diag, False)
         assert "proj-123" in result
 
     def test_non_anonymous_includes_draft_id(self):
         diag = {"draft_id": "draft-456", "environment": "prod"}
-        result = build_discussion_body("feedback", None, "Hello", diag, False)
+        result = build_discussion_body("Hello", diag, False)
         assert "draft-456" in result
 
     def test_anonymous_omits_page_url(self):
         diag = {"page_url": "/projects/secret-uuid", "environment": "prod"}
-        result = build_discussion_body("feedback", None, "Hello", diag, True)
+        result = build_discussion_body("Hello", diag, True)
         assert "/projects/secret-uuid" not in result
 
     def test_anonymous_omits_project_id(self):
         diag = {"project_id": "proj-secret", "environment": "prod"}
-        result = build_discussion_body("feedback", None, "Hello", diag, True)
+        result = build_discussion_body("Hello", diag, True)
         assert "proj-secret" not in result
 
     def test_anonymous_omits_draft_id(self):
         diag = {"draft_id": "draft-secret", "environment": "prod"}
-        result = build_discussion_body("feedback", None, "Hello", diag, True)
+        result = build_discussion_body("Hello", diag, True)
         assert "draft-secret" not in result
 
     def test_anonymous_includes_user_agent(self):
         diag = {"user_agent": "Mozilla/5.0", "environment": "prod"}
-        result = build_discussion_body("feedback", None, "Hello", diag, True)
+        result = build_discussion_body("Hello", diag, True)
         assert "Mozilla/5.0" in result
 
     def test_anonymous_appends_anonymously_note(self):
-        result = build_discussion_body("feedback", None, "Hello", None, True)
+        result = build_discussion_body("Hello", None, True)
         assert "anonymously" in result
 
     def test_non_anonymous_no_anonymously_note(self):
-        result = build_discussion_body("feedback", None, "Hello", None, False)
+        result = build_discussion_body("Hello", None, False)
         assert "anonymously" not in result
 
     def test_note_always_appended(self):
-        result = build_discussion_body("feedback", None, "Hello", None, False)
+        result = build_discussion_body("Hello", None, False)
         assert "hobby project" in result
 
     def test_empty_diagnostics_dict_skips_section(self):
-        result = build_discussion_body("feedback", None, "Hello", {}, False)
+        result = build_discussion_body("Hello", {}, False)
         assert "Diagnostics" not in result
 
     def test_diagnostics_with_only_falsy_values_skips_section(self):
         diag = {"environment": "", "app_version": None}
-        result = build_discussion_body("feedback", None, "Hello", diag, False)
+        result = build_discussion_body("Hello", diag, False)
         assert "Diagnostics" not in result
 
 

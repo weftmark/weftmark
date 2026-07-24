@@ -589,7 +589,7 @@ async def patch_user(
     if body.is_superuser is not None:
         user.is_superuser = body.is_superuser
 
-    changed = {k: v for k, v in body.model_dump(exclude_none=True).items()}
+    changed = body.model_dump(exclude_none=True)
     await write_audit_log(db, event_type="user.role_changed", actor=admin, target=user, details=changed)
     await db.commit()
     role_changes_total.add(1, {"new_role": "admin" if user.is_admin else "user"})
@@ -1056,7 +1056,7 @@ def _probe_webhook_info() -> ServiceCheckResult:
     return _make_result("Clerk Webhook", checks, meta=meta)
 
 
-async def _probe_config() -> ServiceCheckResult:
+def _probe_config() -> ServiceCheckResult:
     """Check for non-fatal configuration issues surfaced via /health/ready."""
     settings = get_settings()
     checks: list[ServicePermCheck] = []
@@ -1072,14 +1072,13 @@ async def check_services(
     _: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[ServiceCheckResult]:
-    db_result, s3_result, clerk_result, smtp_result, config_result = await asyncio.gather(
+    db_result, s3_result, clerk_result, smtp_result = await asyncio.gather(
         _probe_postgres(db),
         _probe_s3(),
         _probe_clerk(),
         _probe_smtp(),
-        _probe_config(),
     )
-    return [db_result, s3_result, clerk_result, smtp_result, _probe_webhook_info(), config_result]
+    return [db_result, s3_result, clerk_result, smtp_result, _probe_webhook_info(), _probe_config()]
 
 
 # ---------------------------------------------------------------------------

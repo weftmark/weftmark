@@ -198,14 +198,16 @@ async def run_startup_probes() -> ReadinessResponse:
 
     try:
         async with AsyncSessionLocal() as db:
-            results = await asyncio.gather(
-                _probe_postgres(db),
-                _probe_s3(),
-                _probe_clerk(),
-                _probe_smtp(),
+            results = [
+                *await asyncio.gather(
+                    _probe_postgres(db),
+                    _probe_s3(),
+                    _probe_clerk(),
+                    _probe_smtp(),
+                    return_exceptions=True,
+                ),
                 _probe_config(),
-                return_exceptions=True,
-            )
+            ]
     except Exception as exc:
         return ReadinessResponse(
             status="error",
@@ -244,13 +246,14 @@ async def _run_detailed_probes() -> ReadinessResponse:
 
     try:
         async with AsyncSessionLocal() as db:
-            probes = [_probe_s3(), _probe_clerk(), _probe_smtp(), _probe_config()]
+            probes = [_probe_s3(), _probe_clerk(), _probe_smtp()]
             if due_for_postgres:
                 probes.append(_probe_postgres(db))
             probe_results, webhook_result = await asyncio.gather(
                 asyncio.gather(*probes, return_exceptions=True),
                 run_webhook_probe(),
             )
+            config_result = _probe_config()
     except Exception as exc:
         return ReadinessResponse(
             status="error",
@@ -268,7 +271,7 @@ async def _run_detailed_probes() -> ReadinessResponse:
         other_results = probe_results
         postgres_result = _last_postgres_result
 
-    combined_results = [postgres_result, *other_results]
+    combined_results = [postgres_result, config_result, *other_results]
     return _build_readiness_from_results(combined_results, webhook_result, checked_at=now.isoformat())  # type: ignore[arg-type]
 
 
@@ -422,10 +425,8 @@ async def _detailed_refresh_loop() -> None:
                 is_recovery = False
 
                 if new_status in ("degraded", "error"):
-                    if prev_status == "ok":
-                        should_alert = True
-                    elif prev_status != new_status:
-                        # degraded ↔ error transition
+                    if prev_status != new_status:
+                        # ok → bad, or a degraded ↔ error transition
                         should_alert = True
                     elif _last_alert_at and (now - _last_alert_at).total_seconds() >= _HEALTH_ALERT_COOLDOWN_S:
                         # Same bad state for >1 h — re-alert

@@ -526,9 +526,7 @@ class TestRunDetailedProbes:
                 with patch("app.routers.admin._probe_s3", new_callable=AsyncMock, return_value=ok_result):
                     with patch("app.routers.admin._probe_clerk", new_callable=AsyncMock, return_value=ok_result):
                         with patch("app.routers.admin._probe_smtp", new_callable=AsyncMock, return_value=ok_result):
-                            with patch(
-                                "app.routers.admin._probe_config", new_callable=AsyncMock, return_value=ok_result
-                            ):
+                            with patch("app.routers.admin._probe_config", return_value=ok_result):
                                 with patch(
                                     "app.services.clerk_webhook_probe.run_webhook_probe",
                                     new_callable=AsyncMock,
@@ -566,9 +564,7 @@ class TestRunDetailedProbes:
                 with patch("app.routers.admin._probe_s3", new_callable=AsyncMock, return_value=other_result):
                     with patch("app.routers.admin._probe_clerk", new_callable=AsyncMock, return_value=other_result):
                         with patch("app.routers.admin._probe_smtp", new_callable=AsyncMock, return_value=other_result):
-                            with patch(
-                                "app.routers.admin._probe_config", new_callable=AsyncMock, return_value=other_result
-                            ):
+                            with patch("app.routers.admin._probe_config", return_value=other_result):
                                 with patch(
                                     "app.services.clerk_webhook_probe.run_webhook_probe",
                                     new_callable=AsyncMock,
@@ -610,9 +606,7 @@ class TestRunDetailedProbes:
                 with patch("app.routers.admin._probe_s3", new_callable=AsyncMock, return_value=other_result):
                     with patch("app.routers.admin._probe_clerk", new_callable=AsyncMock, return_value=other_result):
                         with patch("app.routers.admin._probe_smtp", new_callable=AsyncMock, return_value=other_result):
-                            with patch(
-                                "app.routers.admin._probe_config", new_callable=AsyncMock, return_value=other_result
-                            ):
+                            with patch("app.routers.admin._probe_config", return_value=other_result):
                                 with patch(
                                     "app.services.clerk_webhook_probe.run_webhook_probe",
                                     new_callable=AsyncMock,

@@ -176,7 +176,7 @@ class TestLoginsCounter:
     @pytest.mark.asyncio
     async def test_user_login_increments_counter(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
-        await auth_router._handle_session_created(_SESSION_CREATED_DATA)
+        auth_router._handle_session_created(_SESSION_CREATED_DATA)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         assert len(points) == 1
@@ -187,7 +187,7 @@ class TestLoginsCounter:
     async def test_admin_login_uses_admin_role_attribute(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         data = {**_SESSION_CREATED_DATA, "user": {"id": "user_test123", "public_metadata": {"is_admin": True}}}
-        await auth_router._handle_session_created(data)
+        auth_router._handle_session_created(data)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         assert len(points) == 1
@@ -197,7 +197,7 @@ class TestLoginsCounter:
     async def test_missing_public_metadata_defaults_to_user(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         data = {**_SESSION_CREATED_DATA, "user": {"id": "user_test123"}}
-        await auth_router._handle_session_created(data)
+        auth_router._handle_session_created(data)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         assert points[0].attributes == {"role": "user"}
@@ -206,9 +206,9 @@ class TestLoginsCounter:
     async def test_multiple_logins_accumulate_by_role(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         admin_data = {**_SESSION_CREATED_DATA, "user": {"id": "u1", "public_metadata": {"is_admin": True}}}
-        await auth_router._handle_session_created(_SESSION_CREATED_DATA)
-        await auth_router._handle_session_created(_SESSION_CREATED_DATA)
-        await auth_router._handle_session_created(admin_data)
+        auth_router._handle_session_created(_SESSION_CREATED_DATA)
+        auth_router._handle_session_created(_SESSION_CREATED_DATA)
+        auth_router._handle_session_created(admin_data)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         by_role = {p.attributes["role"]: p.value for p in points}
@@ -224,7 +224,7 @@ class TestLoginsGeoAttributes:
     @pytest.mark.asyncio
     async def test_no_request_emits_no_geo(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
-        await auth_router._handle_session_created(_SESSION_CREATED_DATA)
+        auth_router._handle_session_created(_SESSION_CREATED_DATA)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         assert points[0].attributes == {"role": "user"}
@@ -235,7 +235,7 @@ class TestLoginsGeoAttributes:
         req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "US"})
 
         with patch("app.services.geo.get_geo", return_value=_GEO_FULL):
-            await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+            auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         attrs = points[0].attributes
@@ -249,7 +249,7 @@ class TestLoginsGeoAttributes:
         req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "GB"})
 
         with patch("app.services.geo.get_geo", return_value={}):
-            await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+            auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         attrs = points[0].attributes
@@ -262,7 +262,7 @@ class TestLoginsGeoAttributes:
         monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         req = _mock_request({"CF-IPCountry": "FR"})
 
-        await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+        auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         assert points[0].attributes == {"role": "user", "country": "FR"}
@@ -272,7 +272,7 @@ class TestLoginsGeoAttributes:
         monkeypatch.setattr(auth_router, "logins_total", bm.logins_total)
         req = _mock_request({"CF-IPCountry": ""})
 
-        await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+        auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         assert "country" not in points[0].attributes
@@ -284,7 +284,7 @@ class TestLoginsGeoAttributes:
         req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "CA"})
 
         with patch("app.services.geo.get_geo", return_value=_GEO_FULL):
-            await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+            auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         assert points[0].attributes["country"] == "US"
@@ -295,7 +295,7 @@ class TestLoginsGeoAttributes:
         req = _mock_request({"CF-Connecting-IP": "203.0.113.42", "CF-IPCountry": "DE"})
 
         with patch("app.services.geo.get_geo", return_value=_GEO_COUNTRY_ONLY):
-            await auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
+            auth_router._handle_session_created(_SESSION_CREATED_DATA, req)
 
         points = _get_data_points(patched_metrics, "weftmark.user.logins")
         attrs = points[0].attributes
@@ -319,7 +319,7 @@ class TestSessionsEndedCounter:
     @pytest.mark.asyncio
     async def test_user_session_ended_increments_counter(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "sessions_ended_total", bm.sessions_ended_total)
-        await auth_router._handle_session_ended(_SESSION_ENDED_DATA)
+        auth_router._handle_session_ended(_SESSION_ENDED_DATA)
 
         points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
         assert len(points) == 1
@@ -330,7 +330,7 @@ class TestSessionsEndedCounter:
     async def test_admin_session_ended_uses_admin_role_attribute(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "sessions_ended_total", bm.sessions_ended_total)
         data = {**_SESSION_ENDED_DATA, "user": {"id": "user_test123", "public_metadata": {"is_admin": True}}}
-        await auth_router._handle_session_ended(data)
+        auth_router._handle_session_ended(data)
 
         points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
         assert len(points) == 1
@@ -340,7 +340,7 @@ class TestSessionsEndedCounter:
     async def test_missing_public_metadata_defaults_to_user(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "sessions_ended_total", bm.sessions_ended_total)
         data = {**_SESSION_ENDED_DATA, "user": {"id": "user_test123"}}
-        await auth_router._handle_session_ended(data)
+        auth_router._handle_session_ended(data)
 
         points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
         assert points[0].attributes == {"role": "user"}
@@ -349,9 +349,9 @@ class TestSessionsEndedCounter:
     async def test_multiple_sessions_ended_accumulate_by_role(self, patched_metrics, monkeypatch):
         monkeypatch.setattr(auth_router, "sessions_ended_total", bm.sessions_ended_total)
         admin_data = {**_SESSION_ENDED_DATA, "user": {"id": "u1", "public_metadata": {"is_admin": True}}}
-        await auth_router._handle_session_ended(_SESSION_ENDED_DATA)
-        await auth_router._handle_session_ended(_SESSION_ENDED_DATA)
-        await auth_router._handle_session_ended(admin_data)
+        auth_router._handle_session_ended(_SESSION_ENDED_DATA)
+        auth_router._handle_session_ended(_SESSION_ENDED_DATA)
+        auth_router._handle_session_ended(admin_data)
 
         points = _get_data_points(patched_metrics, "weftmark.user.sessions_ended")
         by_role = {p.attributes["role"]: p.value for p in points}

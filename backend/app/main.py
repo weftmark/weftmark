@@ -144,7 +144,7 @@ async def _write_startup_server_event(readiness, boot_started_at: datetime) -> N
             await close_open_events(db, event_types=[ET_STARTUP])
             now = datetime.now(timezone.utc)
             elapsed_ms = int((now - boot_started_at).total_seconds() * 1000)
-            sev = SEV_INFO if readiness.status == "ok" else (SEV_ERROR if readiness.status == "error" else SEV_WARN)
+            sev = {"ok": SEV_INFO, "error": SEV_ERROR}.get(readiness.status, SEV_WARN)
             failed = [s.name for s in readiness.services if not s.ok]
             evt = ServerEvent(
                 event_type=ET_STARTUP,
