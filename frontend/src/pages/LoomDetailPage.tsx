@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
@@ -179,6 +179,8 @@ function ProfilePhoto({ loom, onChanged }: { readonly loom: LoomDetail; readonly
   };
 
   const busy = uploading || deleting;
+  let uploadLabel = loom.has_photo ? t("loomDetailPage.replacePhoto") : t("loomDetailPage.uploadPhoto");
+  if (uploading) uploadLabel = t("loomDetailPage.uploading");
 
   return (
     <div className="flex items-start gap-4">
@@ -198,7 +200,7 @@ function ProfilePhoto({ loom, onChanged }: { readonly loom: LoomDetail; readonly
           <>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
             <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy || !!pendingFile}>
-              {uploading ? t("loomDetailPage.uploading") : loom.has_photo ? t("loomDetailPage.replacePhoto") : t("loomDetailPage.uploadPhoto")}
+              {uploadLabel}
             </Button>
             {loom.has_photo && !confirmRemove && (
               <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={busy || !!pendingFile}>
@@ -954,6 +956,24 @@ export function LoomDetailPage() {
   const currentVersionId = loom.current_version?.id;
   const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
 
+  let deleteLoomControls: ReactNode = null;
+  if (!confirmDelete && !deleteConflict) {
+    deleteLoomControls = (
+      <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
+        {t("loomDetailPage.deleteLoomButton")}
+      </Button>
+    );
+  } else if (confirmDelete) {
+    deleteLoomControls = (
+      <div className="flex shrink-0 items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t("common.cancel")}</Button>
+        <Button size="sm" onClick={() => handleDelete(false)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          {deleting ? t("loomDetailPage.deleting") : t("loomDetailPage.confirmDelete")}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto w-full">
       {isReadOnly && <SuperuserInspectionBanner />}
@@ -1079,18 +1099,7 @@ export function LoomDetailPage() {
                       <p className="text-sm font-medium">{t("loomDetailPage.deleteLoom")}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">{t("loomDetailPage.deleteNote")}</p>
                     </div>
-                    {!confirmDelete && !deleteConflict ? (
-                      <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
-                        {t("loomDetailPage.deleteLoomButton")}
-                      </Button>
-                    ) : confirmDelete ? (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t("common.cancel")}</Button>
-                        <Button size="sm" onClick={() => handleDelete(false)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          {deleting ? t("loomDetailPage.deleting") : t("loomDetailPage.confirmDelete")}
-                        </Button>
-                      </div>
-                    ) : null}
+                    {deleteLoomControls}
                   </div>
 
                   {/* 409 conflict */}

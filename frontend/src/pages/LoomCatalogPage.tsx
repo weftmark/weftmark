@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -144,6 +144,32 @@ export function LoomCatalogPage() {
   const selectClass =
     "rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
 
+  let listContent: ReactNode;
+  if (isLoading) {
+    listContent = <div className="text-center py-16 text-stone-400">{t("loomCatalogPage.loading")}</div>;
+  } else if (looms.length === 0) {
+    listContent = (
+      <div className="text-center py-16 text-stone-400">
+        {hasFilters ? t("loomCatalogPage.noFilters") : t("loomCatalogPage.empty")}
+      </div>
+    );
+  } else {
+    listContent = (
+      <div className="space-y-8">
+        {Object.entries(grouped).map(([brand, entries]) => (
+          <section key={brand}>
+            <h2 className="text-lg font-semibold text-stone-700 mb-3">{brand}</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {entries.map((loom) => (
+                <LoomCard key={loom.id} loom={loom} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-stone-50 text-stone-900">
       <header className="border-b border-stone-200 bg-stone-50 px-6 py-4">
@@ -239,26 +265,7 @@ export function LoomCatalogPage() {
             )}
           </div>
 
-          {isLoading ? (
-            <div className="text-center py-16 text-stone-400">{t("loomCatalogPage.loading")}</div>
-          ) : looms.length === 0 ? (
-            <div className="text-center py-16 text-stone-400">
-              {hasFilters ? t("loomCatalogPage.noFilters") : t("loomCatalogPage.empty")}
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {Object.entries(grouped).map(([brand, entries]) => (
-                <section key={brand}>
-                  <h2 className="text-lg font-semibold text-stone-700 mb-3">{brand}</h2>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {entries.map((loom) => (
-                      <LoomCard key={loom.id} loom={loom} />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )}
+          {listContent}
         </div>
       </main>
 

@@ -173,12 +173,14 @@ function SortTh({
   readonly label: string; readonly k: SortKey; readonly sort: SortKey; readonly dir: "asc" | "desc"; readonly onSort: (k: SortKey) => void;
 }) {
   const active = sort === k;
+  let arrow = "";
+  if (active) arrow = dir === "asc" ? " ↑" : " ↓";
   return (
     <th
       className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none hover:text-foreground whitespace-nowrap"
       onClick={() => onSort(k)}
     >
-      {label}{active ? (dir === "asc" ? " ↑" : " ↓") : ""}
+      {label}{arrow}
     </th>
   );
 }
@@ -280,6 +282,8 @@ function UsersTab() {
   if (usersLoading || pendingLoading)
     return <p className="text-sm text-muted-foreground">Loading…</p>;
 
+  const userWord = `user${rows.length !== 1 ? "s" : ""}`;
+
   return (
     <div className="space-y-6">
       <div className="space-y-1 pb-2 border-b">
@@ -322,7 +326,7 @@ function UsersTab() {
 
       <p className="text-xs text-muted-foreground">
         {sorted.length === rows.length
-          ? `${rows.length} user${rows.length !== 1 ? "s" : ""}`
+          ? `${rows.length} ${userWord}`
           : `${sorted.length} of ${rows.length} users`}
       </p>
 
@@ -611,6 +615,43 @@ function PendingSignupRow({
 }) {
   const [confirming, setConfirming] = useState<"dismiss" | "ban" | null>(null);
 
+  let actions: React.ReactNode;
+  if (confirming === "dismiss") {
+    actions = (
+      <>
+        <span className="text-xs text-muted-foreground font-medium">Dismiss?</span>
+        <Button size="sm" variant="outline" disabled={isWorking} onClick={() => { setConfirming(null); onDismiss(); }}>
+          Confirm
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
+      </>
+    );
+  } else if (confirming === "ban") {
+    actions = (
+      <>
+        <span className="text-xs text-destructive font-medium">Ban?</span>
+        <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => { setConfirming(null); onBan(); }}>
+          Confirm
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
+      </>
+    );
+  } else {
+    actions = (
+      <>
+        <Button size="sm" disabled={isWorking} onClick={onApprove} className="bg-green-600 hover:bg-green-700 text-white">
+          Approve
+        </Button>
+        <Button size="sm" variant="outline" disabled={isWorking} onClick={() => setConfirming("dismiss")}>
+          Dismiss
+        </Button>
+        <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => setConfirming("ban")}>
+          Ban
+        </Button>
+      </>
+    );
+  }
+
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
       <div className="min-w-0">
@@ -621,35 +662,7 @@ function PendingSignupRow({
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {confirming === "dismiss" ? (
-          <>
-            <span className="text-xs text-muted-foreground font-medium">Dismiss?</span>
-            <Button size="sm" variant="outline" disabled={isWorking} onClick={() => { setConfirming(null); onDismiss(); }}>
-              Confirm
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
-          </>
-        ) : confirming === "ban" ? (
-          <>
-            <span className="text-xs text-destructive font-medium">Ban?</span>
-            <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => { setConfirming(null); onBan(); }}>
-              Confirm
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
-          </>
-        ) : (
-          <>
-            <Button size="sm" disabled={isWorking} onClick={onApprove} className="bg-green-600 hover:bg-green-700 text-white">
-              Approve
-            </Button>
-            <Button size="sm" variant="outline" disabled={isWorking} onClick={() => setConfirming("dismiss")}>
-              Dismiss
-            </Button>
-            <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => setConfirming("ban")}>
-              Ban
-            </Button>
-          </>
-        )}
+        {actions}
       </div>
     </div>
   );
@@ -657,13 +670,11 @@ function PendingSignupRow({
 
 function InviteRow({ invite, onRevoke }: { readonly invite: InviteRecord; readonly onRevoke?: () => void }) {
   const isPending = !invite.accepted_at && !invite.revoked_at && new Date(invite.expires_at) > new Date();
-  const status = invite.accepted_at
-    ? "accepted"
-    : invite.revoked_at
-    ? "revoked"
-    : new Date(invite.expires_at) <= new Date()
-    ? "expired"
-    : "pending";
+  let status: "accepted" | "revoked" | "expired" | "pending";
+  if (invite.accepted_at) status = "accepted";
+  else if (invite.revoked_at) status = "revoked";
+  else if (new Date(invite.expires_at) <= new Date()) status = "expired";
+  else status = "pending";
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
@@ -1203,7 +1214,7 @@ function ServicesTab() {
           </span>
         </div>
         <Button size="sm" variant="outline" disabled={diagFetching} onClick={() => runDiag()}>
-          {diagFetching ? "Running…" : diagTime ? `Re-run · ${diagTime}` : "Running…"}
+          {diagFetching || !diagTime ? "Running…" : `Re-run · ${diagTime}`}
         </Button>
       </div>
 
@@ -1404,6 +1415,7 @@ function SlugsTab() {
           <tbody>
             {slugs.map((row: AdminSlugRecord) => {
               const expired = row.share_expires_at ? new Date(row.share_expires_at) <= new Date() : false;
+              const expiryClass = expired ? "text-destructive" : "";
               return (
                 <tr key={row.slug} className="border-b border-border last:border-0 hover:bg-muted/20">
                   <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">
@@ -1422,7 +1434,7 @@ function SlugsTab() {
                   <td className="px-3 py-2.5 text-xs capitalize">{row.project_status}</td>
                   <td className="px-3 py-2.5 text-xs">
                     {row.share_expires_at ? (
-                      <span className={expired ? "text-destructive" : ""}>
+                      <span className={expiryClass}>
                         {new Date(row.share_expires_at).toLocaleDateString()}
                         {expired && " (expired)"}
                       </span>
@@ -1578,6 +1590,9 @@ function FeedbackTab() {
     },
   });
 
+  const recoverLabel = recoverMutation.isPending ? "Recovering…" : "Recover";
+  const deleteLabel = deleteMutation.isPending ? "Deleting…" : "Delete";
+
   const STATUS_COLORS: Record<string, string> = {
     sent: "text-green-600 dark:text-green-400",
     failed: "text-destructive",
@@ -1696,9 +1711,11 @@ function FeedbackTab() {
             {detail.diagnostics && Object.keys(detail.diagnostics).length > 0 && (
               <div className="text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">Diagnostics</p>
-                {Object.entries(detail.diagnostics).map(([k, v]) =>
-                  v ? <p key={k}><span className="font-mono">{k}:</span> {typeof v === "object" ? JSON.stringify(v) : String(v)}</p> : null
-                )}
+                {Object.entries(detail.diagnostics).map(([k, v]) => {
+                  if (!v) return null;
+                  const display = typeof v === "object" ? JSON.stringify(v) : String(v);
+                  return <p key={k}><span className="font-mono">{k}:</span> {display}</p>;
+                })}
               </div>
             )}
 
@@ -1734,7 +1751,7 @@ function FeedbackTab() {
                   disabled={recoverMutation.isPending}
                   onClick={() => recoverMutation.mutate(detail.id)}
                 >
-                  {recoverMutation.isPending ? "Recovering…" : "Recover"}
+                  {recoverLabel}
                 </Button>
               ) : (
                 <Button
@@ -1746,7 +1763,7 @@ function FeedbackTab() {
                     if (confirm("Soft-delete this submission?")) deleteMutation.mutate(detail.id);
                   }}
                 >
-                  {deleteMutation.isPending ? "Deleting…" : "Delete"}
+                  {deleteLabel}
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={() => setDetail(null)}>Close</Button>
@@ -1878,6 +1895,8 @@ function AuditLogTab() {
 function AuditLogRow({ entry }: { readonly entry: AuditLogEntry }) {
   const [expanded, setExpanded] = useState(false);
   const hasDetails = entry.details && Object.keys(entry.details).length > 0;
+  let toggleLabel = "—";
+  if (hasDetails) toggleLabel = expanded ? "▲ hide" : "▼ show";
 
   return (
     <>
@@ -1896,7 +1915,7 @@ function AuditLogRow({ entry }: { readonly entry: AuditLogEntry }) {
         <td className="px-3 py-2 text-muted-foreground">{entry.actor_email ? <CopyEmail email={entry.actor_email} /> : <span className="italic">system</span>}</td>
         <td className="px-3 py-2 text-muted-foreground">{entry.target_email ? <CopyEmail email={entry.target_email} /> : "—"}</td>
         <td className="px-3 py-2 text-muted-foreground text-xs">
-          {hasDetails ? (expanded ? "▲ hide" : "▼ show") : "—"}
+          {toggleLabel}
         </td>
       </tr>
       {expanded && hasDetails && (
@@ -1946,6 +1965,11 @@ function formatArray(arr: number[] | null | undefined): string {
   return arr ? arr.join(", ") : "";
 }
 
+function formatFoldable(foldable: boolean | null): string {
+  if (foldable === null) return "—";
+  return foldable ? "Yes" : "No";
+}
+
 interface LoomRefForm {
   brand: string;
   model_name: string;
@@ -1970,6 +1994,9 @@ function emptyForm(): LoomRefForm {
 }
 
 function formFromRef(ref: LoomReferenceDetail): LoomRefForm {
+  let foldable: "" | "true" | "false" = "";
+  if (ref.foldable !== null) foldable = ref.foldable ? "true" : "false";
+
   return {
     brand: ref.brand,
     model_name: ref.model_name,
@@ -1980,7 +2007,7 @@ function formFromRef(ref: LoomReferenceDetail): LoomRefForm {
     treadle_count: formatArray(ref.treadle_count),
     weaving_width_options_inches: formatArray(ref.weaving_width_options_inches),
     weaving_width_options_cm: formatArray(ref.weaving_width_options_cm),
-    foldable: ref.foldable === null ? "" : ref.foldable ? "true" : "false",
+    foldable,
     origin_country: ref.origin_country ?? "",
   };
 }
@@ -2179,32 +2206,18 @@ function LoomDatabaseTab() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1 pb-2 border-b flex-1 mr-4">
-          <h1 className="text-lg font-semibold">Loom Database</h1>
-          <p className="text-sm text-muted-foreground">Admin-maintained catalog of commercially available looms, used for typeahead in loom creation.</p>
-        </div>
-        <Button size="sm" onClick={openAdd}>Add loom</Button>
-      </div>
-
-      <input
-        type="search"
-        placeholder="Search brand or model…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-      />
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : refs.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">
-          {debouncedSearch ? "No looms match that search." : "No looms in the catalog yet."}
-        </p>
-      ) : (
-        <div className="rounded-md border border-border overflow-x-auto">
+  let tableSection: React.ReactNode;
+  if (isLoading) {
+    tableSection = <p className="text-sm text-muted-foreground">Loading…</p>;
+  } else if (refs.length === 0) {
+    tableSection = (
+      <p className="text-sm text-muted-foreground py-4 text-center">
+        {debouncedSearch ? "No looms match that search." : "No looms in the catalog yet."}
+      </p>
+    );
+  } else {
+    tableSection = (
+      <div className="rounded-md border border-border overflow-x-auto">
           <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-muted/50">
               <tr>
@@ -2235,7 +2248,7 @@ function LoomDatabaseTab() {
                     {ref.weaving_width_options_inches ? ref.weaving_width_options_inches.join(", ") : "—"}
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                    {ref.foldable === null ? "—" : ref.foldable ? "Yes" : "No"}
+                    {formatFoldable(ref.foldable)}
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">{ref.origin_country ?? "—"}</td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
@@ -2251,7 +2264,28 @@ function LoomDatabaseTab() {
             </tbody>
           </table>
         </div>
-      )}
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1 pb-2 border-b flex-1 mr-4">
+          <h1 className="text-lg font-semibold">Loom Database</h1>
+          <p className="text-sm text-muted-foreground">Admin-maintained catalog of commercially available looms, used for typeahead in loom creation.</p>
+        </div>
+        <Button size="sm" onClick={openAdd}>Add loom</Button>
+      </div>
+
+      <input
+        type="search"
+        placeholder="Search brand or model…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+
+      {tableSection}
 
       {refs.length > 0 && (
         <p className="text-xs text-muted-foreground">{refs.length} {refs.length === 1 ? "entry" : "entries"}</p>

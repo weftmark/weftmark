@@ -127,7 +127,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
   const treadleOptions = selectedRef?.treadle_count ?? null;
   const widthOptions = selectedRef ? buildWidthOptions(selectedRef) : [];
 
-  const mode = selectedRef ? "catalog" : manualMode ? "manual" : "searching";
+  let mode: "catalog" | "manual" | "searching" = "searching";
+  if (selectedRef) mode = "catalog";
+  else if (manualMode) mode = "manual";
   const showForm = mode === "catalog" || mode === "manual";
   const isUnsupported = !SUPPORTED_LOOM_TYPES.has(loomType);
 

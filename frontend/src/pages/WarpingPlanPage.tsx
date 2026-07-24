@@ -52,11 +52,11 @@ function approximateColorName(hex: string): string {
     return "Tan";
   }
 
-  const prefix =
-    l < 0.18 ? "Very Dark " :
-    l < 0.32 ? "Dark " :
-    l > 0.78 ? "Pale " :
-    l > 0.63 ? "Light " : "";
+  let prefix = "";
+  if (l < 0.18) prefix = "Very Dark ";
+  else if (l < 0.32) prefix = "Dark ";
+  else if (l > 0.78) prefix = "Pale ";
+  else if (l > 0.63) prefix = "Light ";
 
   let name: string;
   if (h < 12 || h >= 348) name = "Red";

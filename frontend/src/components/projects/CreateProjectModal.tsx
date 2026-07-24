@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createProject, completeProject, abandonProject, listProjects, ApiError, PROJECT_TYPE_LABELS, type ProjectType, type ProjectSummary } from "@/api/projects";
 import { listDrafts } from "@/api/drafts";
@@ -218,6 +218,43 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
   const canSubmit = name.trim() && draftId && !!effectiveType && !loading;
 
+  let projectTypeSection: ReactNode = null;
+  if (filteredTypes.length === 0) {
+    projectTypeSection = (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-sm">
+        {selectedLoom && availableTypes.length > 0 ? (
+          <>
+            <p className="font-medium text-destructive">Loom and draft are incompatible</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              This WIF supports {availableTypes.map(t => PROJECT_TYPE_LABELS[t]).join(" and ")}, but the selected loom does not.
+              {availableTypes.includes("lift") && !selectedLoom.supports_lift_tracking && " The loom does not support lift tracking."}
+              {availableTypes.includes("treadle") && !selectedLoom.supports_treadle_tracking && " The loom does not support treadle tracking."}
+              {" "}Try a different loom or go to the draft page to generate a lift plan.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-medium text-destructive">No project types available</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              This WIF has no treadling or lift plan data. Go to the draft page to generate a lift plan if the file has tieup and treadling sections.
+            </p>
+          </>
+        )}
+      </div>
+    );
+  } else if (filteredTypes.length === 1) {
+    projectTypeSection = <p className="text-sm py-2">{PROJECT_TYPE_LABELS[filteredTypes[0]]}</p>;
+  } else {
+    projectTypeSection = (
+      <select className={f} value={effectiveType} onChange={(e) => setProjectType(e.target.value as ProjectType)} required>
+        <option value="">Select type…</option>
+        {filteredTypes.map((t) => (
+          <option key={t} value={t}>{PROJECT_TYPE_LABELS[t]}</option>
+        ))}
+      </select>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-lg border bg-background shadow-lg flex flex-col max-h-[90vh]">
@@ -315,37 +352,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
           {selectedDraft && (
             <div>
               <label className="mb-1 block text-sm font-medium">Project type <span className="text-destructive">*</span></label>
-              {filteredTypes.length === 0 ? (
-                <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-sm">
-                  {selectedLoom && availableTypes.length > 0 ? (
-                    <>
-                      <p className="font-medium text-destructive">Loom and draft are incompatible</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        This WIF supports {availableTypes.map(t => PROJECT_TYPE_LABELS[t]).join(" and ")}, but the selected loom does not.
-                        {availableTypes.includes("lift") && !selectedLoom.supports_lift_tracking && " The loom does not support lift tracking."}
-                        {availableTypes.includes("treadle") && !selectedLoom.supports_treadle_tracking && " The loom does not support treadle tracking."}
-                        {" "}Try a different loom or go to the draft page to generate a lift plan.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-medium text-destructive">No project types available</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        This WIF has no treadling or lift plan data. Go to the draft page to generate a lift plan if the file has tieup and treadling sections.
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : filteredTypes.length === 1 ? (
-                <p className="text-sm py-2">{PROJECT_TYPE_LABELS[filteredTypes[0]]}</p>
-              ) : (
-                <select className={f} value={effectiveType} onChange={(e) => setProjectType(e.target.value as ProjectType)} required>
-                  <option value="">Select type…</option>
-                  {filteredTypes.map((t) => (
-                    <option key={t} value={t}>{PROJECT_TYPE_LABELS[t]}</option>
-                  ))}
-                </select>
-              )}
+              {projectTypeSection}
             </div>
           )}
 

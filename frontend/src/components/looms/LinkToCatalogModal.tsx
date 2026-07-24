@@ -205,12 +205,8 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
       const curVal = Number.parseFloat(version.weaving_width);
       const curUnit = version.weaving_width_unit as "cm" | "in";
       const targetUnit = wOpts[0].unit;
-      const converted =
-        curUnit === targetUnit
-          ? curVal
-          : curUnit === "cm"
-            ? curVal / 2.54
-            : curVal * 2.54;
+      let converted = curVal;
+      if (curUnit !== targetUnit) converted = curUnit === "cm" ? curVal / 2.54 : curVal * 2.54;
       setSelectedWidthIdx(closestIdx(wOpts.map((o) => Number.parseFloat(o.value)), converted));
     } else {
       setSelectedWidthIdx(0);

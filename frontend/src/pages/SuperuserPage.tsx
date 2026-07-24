@@ -403,6 +403,52 @@ function StorageAuditTab() {
 
   const allSelected = !!result && selected.size === result.orphaned_files.length && result.orphaned_files.length > 0;
 
+  let orphanedSection: React.ReactNode = null;
+  if (result) {
+    orphanedSection = result.orphaned_files.length === 0 ? (
+      <p className="text-sm text-muted-foreground">No orphaned files found.</p>
+    ) : (
+      <div className="rounded-md border overflow-auto max-h-96">
+        <table className="w-full text-xs">
+          <thead className="bg-muted sticky top-0">
+            <tr>
+              <th className="p-2 text-left w-8">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="cursor-pointer"
+                />
+              </th>
+              <th className="p-2 text-left font-medium">Key</th>
+              <th className="p-2 text-right font-medium">Size</th>
+              <th className="p-2 text-right font-medium">Last Modified</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.orphaned_files.map((f) => (
+              <tr key={f.key} className="border-t hover:bg-muted/50">
+                <td className="p-2">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(f.key)}
+                    onChange={() => toggleSelect(f.key)}
+                    className="cursor-pointer"
+                  />
+                </td>
+                <td className="p-2 font-mono break-all">{f.key}</td>
+                <td className="p-2 text-right whitespace-nowrap">{formatBytes(f.size)}</td>
+                <td className="p-2 text-right whitespace-nowrap text-muted-foreground">
+                  {new Date(f.last_modified).toLocaleDateString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-1 pb-2 border-b">
@@ -448,48 +494,7 @@ function StorageAuditTab() {
                 <span><span className="font-medium text-amber-600 dark:text-amber-400">{result.orphaned_count}</span> orphaned</span>
               </div>
 
-              {result.orphaned_files.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No orphaned files found.</p>
-              ) : (
-                <div className="rounded-md border overflow-auto max-h-96">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted sticky top-0">
-                      <tr>
-                        <th className="p-2 text-left w-8">
-                          <input
-                            type="checkbox"
-                            checked={allSelected}
-                            onChange={toggleAll}
-                            className="cursor-pointer"
-                          />
-                        </th>
-                        <th className="p-2 text-left font-medium">Key</th>
-                        <th className="p-2 text-right font-medium">Size</th>
-                        <th className="p-2 text-right font-medium">Last Modified</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.orphaned_files.map((f) => (
-                        <tr key={f.key} className="border-t hover:bg-muted/50">
-                          <td className="p-2">
-                            <input
-                              type="checkbox"
-                              checked={selected.has(f.key)}
-                              onChange={() => toggleSelect(f.key)}
-                              className="cursor-pointer"
-                            />
-                          </td>
-                          <td className="p-2 font-mono break-all">{f.key}</td>
-                          <td className="p-2 text-right whitespace-nowrap">{formatBytes(f.size)}</td>
-                          <td className="p-2 text-right whitespace-nowrap text-muted-foreground">
-                            {new Date(f.last_modified).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {orphanedSection}
             </>
           )}
         </div>
@@ -631,6 +636,11 @@ function WorkerCard({ worker, apiVersion }: { readonly worker: WorkerInfo; reado
   const hasActive = worker.active_tasks.length > 0;
   const hasReserved = worker.reserved_tasks.length > 0;
   const versionMismatch = isOnline && worker.version != null && worker.version !== apiVersion;
+  let concurrencyClass = "border-border text-muted-foreground";
+  if (worker.concurrency !== null) {
+    if (worker.active_tasks.length >= worker.concurrency) concurrencyClass = "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+    else if (worker.active_tasks.length > 0) concurrencyClass = "border-blue-500/30 text-blue-600 dark:text-blue-400";
+  }
 
   return (
     <div className={`border rounded-lg overflow-hidden ${versionMismatch ? "border-amber-500/50" : ""}`}>
@@ -647,13 +657,7 @@ function WorkerCard({ worker, apiVersion }: { readonly worker: WorkerInfo; reado
           </span>
         )}
         {isOnline && worker.concurrency !== null && (
-          <span className={`text-xs px-2 py-0.5 rounded border tabular-nums ${
-            worker.active_tasks.length >= worker.concurrency
-              ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-              : worker.active_tasks.length > 0
-              ? "border-blue-500/30 text-blue-600 dark:text-blue-400"
-              : "border-border text-muted-foreground"
-          }`}>
+          <span className={`text-xs px-2 py-0.5 rounded border tabular-nums ${concurrencyClass}`}>
             {worker.active_tasks.length}/{worker.concurrency} slots
           </span>
         )}
@@ -829,6 +833,8 @@ function shortName(name: string): string {
 function TaskHistoryRow({ item, onRevoke }: { readonly item: TaskHistoryItem; readonly onRevoke: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const cancellable = item.state === "queued" || item.state === "running";
+  let errorToggle = "—";
+  if (item.error) errorToggle = expanded ? "▲" : "▼ error";
   return (
     <>
       <tr
@@ -844,7 +850,7 @@ function TaskHistoryRow({ item, onRevoke }: { readonly item: TaskHistoryItem; re
         <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.wait_seconds)}</td>
         <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.run_seconds)}</td>
         <td className="px-3 py-2 tabular-nums text-right whitespace-nowrap">{fmtTime(item.completed_at)}</td>
-        <td className="px-3 py-2 text-muted-foreground">{item.error ? (expanded ? "▲" : "▼ error") : "—"}</td>
+        <td className="px-3 py-2 text-muted-foreground">{errorToggle}</td>
         <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
           {cancellable && (
             <button type="button"
@@ -1183,6 +1189,10 @@ function ReconcileTab() {
     }
   }
 
+  let reconcileLabel = "Run reconciliation";
+  if (loading) reconcileLabel = "Running…";
+  else if (ran) reconcileLabel = "Re-run reconciliation";
+
   return (
     <div className="space-y-6">
       <div className="space-y-1 pb-2 border-b">
@@ -1191,7 +1201,7 @@ function ReconcileTab() {
       </div>
 
       <Button onClick={runReconcile} disabled={loading} size="sm">
-        {loading ? "Running…" : ran ? "Re-run reconciliation" : "Run reconciliation"}
+        {reconcileLabel}
       </Button>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -1435,13 +1445,14 @@ function ScheduledTasksTab() {
 // Data Exports tab
 // ---------------------------------------------------------------------------
 
+const EXPORT_STATUS_CLASS: Record<string, string> = {
+  complete: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  failed: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+};
+const EXPORT_STATUS_DEFAULT_CLASS = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+
 function ExportStatusBadge({ status }: { readonly status: AdminExportRecord["status"] }) {
-  const cls =
-    status === "complete"
-      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-      : status === "failed"
-        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+  const cls = EXPORT_STATUS_CLASS[status] ?? EXPORT_STATUS_DEFAULT_CLASS;
   return (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{status}</span>
   );
@@ -1576,6 +1587,20 @@ function credentialStatus(daysRemaining: number | null): { label: string; cls: s
   if (daysRemaining <= 7) return { label: "Critical", cls: "bg-destructive/10 text-destructive" };
   if (daysRemaining <= 30) return { label: "Warning", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" };
   return { label: "OK", cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" };
+}
+
+function ExpiresCell({ expiresOn, daysRemaining }: { readonly expiresOn: string | null; readonly daysRemaining: number | null }) {
+  if (!expiresOn) return <span className="text-muted-foreground">Never</span>;
+  let daysLabel = "";
+  if (daysRemaining !== null) daysLabel = daysRemaining < 0 ? `${Math.abs(daysRemaining)}d ago` : `${daysRemaining}d`;
+  return (
+    <>
+      {new Date(expiresOn).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+      {daysRemaining !== null && (
+        <span className="ml-1.5 text-xs text-muted-foreground">({daysLabel})</span>
+      )}
+    </>
+  );
 }
 
 const GROUP_CONFIG: Record<string, { label: string; fields: string[]; testService: string | null }> = {
@@ -2119,6 +2144,36 @@ function NeonUsageBars({ daily }: { readonly daily: { date: string; compute_seco
   );
 }
 
+function ProjectUsageSection({ project }: {
+  readonly project: { configured: boolean; error: string | null; total_compute_seconds: number; daily: { date: string; compute_seconds: number }[] };
+}) {
+  if (!project.configured) {
+    return (
+      <div className="border rounded-lg px-4 py-2 bg-background text-sm text-muted-foreground">
+        neon_project_id isn't set — showing account-wide usage above only.
+      </div>
+    );
+  }
+  if (project.error) {
+    return (
+      <div className="border rounded-lg px-4 py-2 bg-background text-sm text-destructive">
+        {project.error}
+      </div>
+    );
+  }
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 bg-background border-b">
+        <span className="text-sm">Total compute time</span>
+        <span className="text-xs font-mono text-muted-foreground">
+          {(project.total_compute_seconds / 3600).toFixed(1)} hours
+        </span>
+      </div>
+      <NeonUsageBars daily={project.daily} />
+    </div>
+  );
+}
+
 function NeonDashboardTab() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "neon-dashboard"],
@@ -2208,25 +2263,7 @@ function NeonDashboardTab() {
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
               Configured project (last 30 days)
             </h3>
-            {!data.project.configured ? (
-              <div className="border rounded-lg px-4 py-2 bg-background text-sm text-muted-foreground">
-                neon_project_id isn't set — showing account-wide usage above only.
-              </div>
-            ) : data.project.error ? (
-              <div className="border rounded-lg px-4 py-2 bg-background text-sm text-destructive">
-                {data.project.error}
-              </div>
-            ) : (
-              <div className="border rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 bg-background border-b">
-                  <span className="text-sm">Total compute time</span>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {(data.project.total_compute_seconds / 3600).toFixed(1)} hours
-                  </span>
-                </div>
-                <NeonUsageBars daily={data.project.daily} />
-              </div>
-            )}
+            <ProjectUsageSection project={data.project} />
           </div>
         </div>
       )}
@@ -2314,6 +2351,50 @@ function CredentialsTab() {
     return a.days_remaining - b.days_remaining;
   });
 
+  let tableSection: React.ReactNode;
+  if (isLoading) {
+    tableSection = <p className="text-sm text-muted-foreground">Loading…</p>;
+  } else if (sorted.length === 0) {
+    tableSection = <p className="text-sm text-muted-foreground">No credentials tracked yet.</p>;
+  } else {
+    tableSection = (
+      <div className="rounded-md border border-border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Service</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Expires</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {sorted.map((c) => {
+              const { label, cls } = credentialStatus(c.days_remaining);
+              return (
+                <tr key={c.id} className="hover:bg-muted/50">
+                  <td className="px-3 py-2.5 font-medium">{c.name}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{RESOURCE_LABELS[c.resource]}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">
+                    <ExpiresCell expiresOn={c.expires_on} daysRemaining={c.days_remaining} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <button type="button" className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(c)}>Edit</button>
+                    <button type="button" className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(c)}>Delete</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -2324,55 +2405,7 @@ function CredentialsTab() {
         <Button size="sm" onClick={openAdd}>Add credential</Button>
       </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No credentials tracked yet.</p>
-      ) : (
-        <div className="rounded-md border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Service</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Expires</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {sorted.map((c) => {
-                const { label, cls } = credentialStatus(c.days_remaining);
-                return (
-                  <tr key={c.id} className="hover:bg-muted/50">
-                    <td className="px-3 py-2.5 font-medium">{c.name}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{RESOURCE_LABELS[c.resource]}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {c.expires_on
-                        ? <>
-                            {new Date(c.expires_on).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
-                            {c.days_remaining !== null && (
-                              <span className="ml-1.5 text-xs text-muted-foreground">
-                                ({c.days_remaining < 0 ? `${Math.abs(c.days_remaining)}d ago` : `${c.days_remaining}d`})
-                              </span>
-                            )}
-                          </>
-                        : <span className="text-muted-foreground">Never</span>}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      <button type="button" className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(c)}>Edit</button>
-                      <button type="button" className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(c)}>Delete</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {tableSection}
 
       <ConfigSection />
 

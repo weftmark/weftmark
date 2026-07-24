@@ -263,6 +263,55 @@ export function UserDetailModal({ target, onClose }: Props) {
 
   const u = target.user;
 
+  const deactivateBtnClass = u.is_active
+    ? "border-amber-400 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+    : "bg-green-600 hover:bg-green-700";
+
+  let elevateControls: ReactNode = null;
+  if (confirming === "elevate") {
+    elevateControls = (
+      <ConfirmInline
+        message={`Make ${u.display_name} a superuser?`}
+        confirmLabel="Make superuser"
+        onConfirm={() => handleElevate(false)}
+        onCancel={() => setConfirming(null)}
+        busy={busy}
+      />
+    );
+  } else if (confirming === "elevate-force" && elevateContent) {
+    elevateControls = (
+      <ConfirmInline
+        message={`This user has ${[
+          elevateContent.projects && `${elevateContent.projects} projects`,
+          elevateContent.looms && `${elevateContent.looms} looms`,
+          elevateContent.drafts && `${elevateContent.drafts} drafts`,
+          elevateContent.yarn && `${elevateContent.yarn} yarn`,
+        ]
+          .filter(Boolean)
+          .join(", ")} — all content will be permanently deleted.`}
+        destructive
+        confirmLabel="Delete content & elevate"
+        onConfirm={() => handleElevate(true)}
+        onCancel={() => {
+          setConfirming(null);
+          setElevateContent(null);
+        }}
+        busy={busy}
+      />
+    );
+  } else {
+    elevateControls = (
+      <Button
+        size="sm"
+        variant="default"
+        disabled={busy || u.clerk_banned}
+        onClick={() => setConfirming("elevate")}
+      >
+        Make superuser
+      </Button>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-lg border bg-background shadow-lg flex flex-col max-h-[90vh]">
@@ -313,7 +362,9 @@ export function UserDetailModal({ target, onClose }: Props) {
                   const used = u.counts.storage_bytes;
                   const quota = u.counts.storage_quota_bytes;
                   const pct = Math.min(Math.round((used / quota) * 100), 100);
-                  const barColor = pct >= 90 ? "bg-red-500" : pct >= 75 ? "bg-amber-500" : "bg-primary";
+                  let barColor = "bg-primary";
+                  if (pct >= 90) barColor = "bg-red-500";
+                  else if (pct >= 75) barColor = "bg-amber-500";
                   return (
                     <>
                       <div className="flex justify-between mb-1">
@@ -384,45 +435,7 @@ export function UserDetailModal({ target, onClose }: Props) {
                   )}
 
                   {/* Elevate to superuser */}
-                  {u.is_admin && (
-                    confirming === "elevate" ? (
-                      <ConfirmInline
-                        message={`Make ${u.display_name} a superuser?`}
-                        confirmLabel="Make superuser"
-                        onConfirm={() => handleElevate(false)}
-                        onCancel={() => setConfirming(null)}
-                        busy={busy}
-                      />
-                    ) : confirming === "elevate-force" && elevateContent ? (
-                      <ConfirmInline
-                        message={`This user has ${[
-                          elevateContent.projects && `${elevateContent.projects} projects`,
-                          elevateContent.looms && `${elevateContent.looms} looms`,
-                          elevateContent.drafts && `${elevateContent.drafts} drafts`,
-                          elevateContent.yarn && `${elevateContent.yarn} yarn`,
-                        ]
-                          .filter(Boolean)
-                          .join(", ")} — all content will be permanently deleted.`}
-                        destructive
-                        confirmLabel="Delete content & elevate"
-                        onConfirm={() => handleElevate(true)}
-                        onCancel={() => {
-                          setConfirming(null);
-                          setElevateContent(null);
-                        }}
-                        busy={busy}
-                      />
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        disabled={busy || u.clerk_banned}
-                        onClick={() => setConfirming("elevate")}
-                      >
-                        Make superuser
-                      </Button>
-                    )
-                  )}
+                  {u.is_admin && elevateControls}
                 </div>
               )}
 
@@ -447,11 +460,7 @@ export function UserDetailModal({ target, onClose }: Props) {
                       <Button
                         size="sm"
                         variant={u.is_active ? "outline" : "default"}
-                        className={
-                          u.is_active
-                            ? "border-amber-400 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
-                            : "bg-green-600 hover:bg-green-700"
-                        }
+                        className={deactivateBtnClass}
                         disabled={busy || (u.is_active && u.is_admin)}
                         title={
                           u.is_active && u.is_admin

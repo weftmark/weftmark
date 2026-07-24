@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -36,11 +36,14 @@ function ProjectCard({ project, onAssign }: {
   const badgeKey = isPlanning ? "plan" : project.status;
   const badgeLabel = isPlanning ? t("projectsPage.planBadge") : PROJECT_STATUS_LABELS[project.status];
 
-  const endDate = project.status === "completed"
-    ? project.completed_at
-    : project.status === "abandoned"
-      ? project.abandoned_at
-      : null;
+  let endDate: string | null = null;
+  if (project.status === "completed") endDate = project.completed_at;
+  else if (project.status === "abandoned") endDate = project.abandoned_at;
+
+  let typeIcon: ReactNode;
+  if (isPlanning) typeIcon = <AppIcons.Planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+  else if (project.project_type === "treadle") typeIcon = <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+  else typeIcon = <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
 
   const pct = project.total_picks > 0
     ? Math.round((Math.min(project.current_pick - 1, project.total_picks) / project.total_picks) * 100)
@@ -61,11 +64,7 @@ function ProjectCard({ project, onAssign }: {
       <Link to={`/projects/${project.id}`} className="block p-4">
         <div className="flex gap-3">
           <div className="shrink-0 mt-0.5">
-            {isPlanning
-              ? <AppIcons.Planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-              : project.project_type === "treadle"
-                ? <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                : <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+            {typeIcon}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
