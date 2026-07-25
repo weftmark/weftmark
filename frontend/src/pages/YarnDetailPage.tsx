@@ -11,15 +11,14 @@ import { ColorwayGrid } from "@/components/yarn/ColorwayGrid";
 function DevJsonModal({ data, onClose }: { readonly data: unknown; readonly onClose: () => void }) {
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
-      <div
-        className="relative bg-card border border-border rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto m-4"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
-      >
+      <div className="relative bg-card border border-border rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto m-4">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-xs font-mono font-semibold text-accent">DEV — raw data</span>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
@@ -124,17 +123,18 @@ function EditColorwayModal({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-colorway-title"
         className="w-full max-w-sm rounded-xl border border-border bg-card shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 id="edit-colorway-title" className="text-sm font-semibold">{t("yarnDetailPage.editColorwayTitle")}</h2>

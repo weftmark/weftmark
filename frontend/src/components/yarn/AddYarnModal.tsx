@@ -157,8 +157,13 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
                   {brandSuggestions.map((b) => (
                     <li
                       key={b}
+                      role="button"
+                      tabIndex={0}
                       className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
                       onMouseDown={() => { setBrand(b); setBrandOpen(false); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setBrand(b); setBrandOpen(false); }
+                      }}
                     >
                       {b}
                     </li>
@@ -185,8 +190,13 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
                   {nameSuggestions.map((n) => (
                     <li
                       key={n}
+                      role="button"
+                      tabIndex={0}
                       className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
                       onMouseDown={() => { setName(n); setNameOpen(false); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setName(n); setNameOpen(false); }
+                      }}
                     >
                       {n}
                     </li>

@@ -452,8 +452,18 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
                     {suggestions.map((name) => (
                       <li
                         key={name}
+                        role="button"
+                        tabIndex={0}
                         className="flex items-center gap-2 px-2 py-1 text-xs text-card-foreground cursor-pointer hover:bg-muted"
                         onMouseDown={(e) => {
+                          e.preventDefault();
+                          setNameInput(name);
+                          setNameError(false);
+                          const hex = resolveColorName(name);
+                          if (hex) { syncAllInputs(hex); onChange(hex); }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter" && e.key !== " ") return;
                           e.preventDefault();
                           setNameInput(name);
                           setNameError(false);
