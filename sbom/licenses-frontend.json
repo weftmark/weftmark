@@ -139,7 +139,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/parser/LICENSE"
   },
-  "@babel/runtime@7.29.2": {
+  "@babel/runtime@7.29.7": {
     "licenses": "MIT",
     "repository": "https://github.com/babel/babel",
     "publisher": "The Babel Team",
@@ -197,7 +197,28 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@codecov/vite-plugin",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@codecov/vite-plugin/LICENSE"
   },
-  "@eslint-community/eslint-utils@4.9.1": {
+  "@emnapi/core@1.11.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/toyobayashi/emnapi",
+    "publisher": "toyobayashi",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/core",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/core/LICENSE"
+  },
+  "@emnapi/runtime@1.11.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/toyobayashi/emnapi",
+    "publisher": "toyobayashi",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/runtime",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/runtime/LICENSE"
+  },
+  "@emnapi/wasi-threads@1.2.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/toyobayashi/emnapi",
+    "publisher": "toyobayashi",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/wasi-threads",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@emnapi/wasi-threads/LICENSE"
+  },
+  "@eslint-community/eslint-utils@4.10.1": {
     "licenses": "MIT",
     "repository": "https://github.com/eslint-community/eslint-utils",
     "publisher": "Toru Nagashima",
@@ -218,7 +239,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@eslint/config-array",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@eslint/config-array/LICENSE"
   },
-  "@eslint/config-helpers@0.6.0": {
+  "@eslint/config-helpers@0.7.0": {
     "licenses": "Apache-2.0",
     "repository": "https://github.com/eslint/rewrite",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@eslint/config-helpers",
@@ -320,6 +341,13 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@jridgewell/trace-mapping",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@jridgewell/trace-mapping/LICENSE"
   },
+  "@napi-rs/wasm-runtime@1.1.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/napi-rs/napi-rs",
+    "publisher": "LongYinan",
+    "url": "https://github.com/Brooooooklyn",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@napi-rs/wasm-runtime"
+  },
   "@octokit/auth-token@6.0.0": {
     "licenses": "MIT",
     "repository": "https://github.com/octokit/auth-token.js",
@@ -382,7 +410,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@octokit/request-error",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@octokit/request-error/LICENSE"
   },
-  "@octokit/request@10.0.9": {
+  "@octokit/request@10.0.11": {
     "licenses": "MIT",
     "repository": "https://github.com/octokit/request.js",
     "publisher": "Gregor Martynus",
@@ -423,14 +451,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/pluginutils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@rolldown/pluginutils/LICENSE"
   },
-  "@sentry/browser-utils@10.66.0": {
+  "@sentry/browser-utils@10.68.0": {
     "licenses": "MIT",
     "repository": "https://github.com/getsentry/sentry-javascript",
     "publisher": "Sentry",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/browser-utils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/browser-utils/LICENSE"
   },
-  "@sentry/browser@10.66.0": {
+  "@sentry/browser@10.68.0": {
     "licenses": "MIT",
     "repository": "https://github.com/getsentry/sentry-javascript",
     "publisher": "Sentry",
@@ -443,35 +471,35 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/conventions",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/conventions/LICENSE"
   },
-  "@sentry/core@10.66.0": {
+  "@sentry/core@10.68.0": {
     "licenses": "MIT",
     "repository": "https://github.com/getsentry/sentry-javascript",
     "publisher": "Sentry",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/core",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/core/LICENSE"
   },
-  "@sentry/feedback@10.66.0": {
+  "@sentry/feedback@10.68.0": {
     "licenses": "MIT",
     "repository": "https://github.com/getsentry/sentry-javascript",
     "publisher": "Sentry",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/feedback",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/feedback/LICENSE"
   },
-  "@sentry/react@10.66.0": {
+  "@sentry/react@10.68.0": {
     "licenses": "MIT",
     "repository": "https://github.com/getsentry/sentry-javascript",
     "publisher": "Sentry",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/react",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/react/LICENSE"
   },
-  "@sentry/replay-canvas@10.66.0": {
+  "@sentry/replay-canvas@10.68.0": {
     "licenses": "MIT",
     "repository": "https://github.com/getsentry/sentry-javascript",
     "publisher": "Sentry",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/replay-canvas",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/replay-canvas/LICENSE"
   },
-  "@sentry/replay@10.66.0": {
+  "@sentry/replay@10.68.0": {
     "licenses": "MIT",
     "repository": "https://github.com/getsentry/sentry-javascript",
     "publisher": "Sentry",
@@ -508,19 +536,26 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/vite/LICENSE"
   },
-  "@tanstack/query-core@5.101.2": {
+  "@tanstack/query-core@5.101.4": {
     "licenses": "MIT",
     "repository": "https://github.com/TanStack/query",
     "publisher": "tannerlinsley",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/query-core",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/query-core/LICENSE"
   },
-  "@tanstack/react-query@5.101.2": {
+  "@tanstack/react-query@5.101.4": {
     "licenses": "MIT",
     "repository": "https://github.com/TanStack/query",
     "publisher": "tannerlinsley",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/react-query",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/react-query/LICENSE"
+  },
+  "@tybys/wasm-util@0.10.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/toyobayashi/wasm-util",
+    "publisher": "toyobayashi",
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tybys/wasm-util",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tybys/wasm-util/README.md"
   },
   "@types/dompurify@3.2.0": {
     "licenses": "MIT",
@@ -533,7 +568,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/esrecurse",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/esrecurse/LICENSE"
   },
-  "@types/estree@1.0.8": {
+  "@types/estree@1.0.9": {
     "licenses": "MIT",
     "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/estree",
@@ -569,67 +604,67 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/trusted-types",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/trusted-types/LICENSE"
   },
-  "@typescript-eslint/eslint-plugin@8.64.0": {
+  "@typescript-eslint/eslint-plugin@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/eslint-plugin",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/eslint-plugin/LICENSE"
   },
-  "@typescript-eslint/parser@8.64.0": {
+  "@typescript-eslint/parser@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/parser/LICENSE"
   },
-  "@typescript-eslint/project-service@8.64.0": {
+  "@typescript-eslint/project-service@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/project-service",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/project-service/LICENSE"
   },
-  "@typescript-eslint/scope-manager@8.64.0": {
+  "@typescript-eslint/scope-manager@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/scope-manager",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/scope-manager/LICENSE"
   },
-  "@typescript-eslint/tsconfig-utils@8.64.0": {
+  "@typescript-eslint/tsconfig-utils@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/tsconfig-utils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/tsconfig-utils/LICENSE"
   },
-  "@typescript-eslint/type-utils@8.64.0": {
+  "@typescript-eslint/type-utils@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/type-utils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/type-utils/LICENSE"
   },
-  "@typescript-eslint/types@8.64.0": {
+  "@typescript-eslint/types@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/types",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/types/LICENSE"
   },
-  "@typescript-eslint/typescript-estree@8.64.0": {
+  "@typescript-eslint/typescript-estree@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/typescript-estree",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/typescript-estree/LICENSE"
   },
-  "@typescript-eslint/utils@8.64.0": {
+  "@typescript-eslint/utils@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/utils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/utils/LICENSE"
   },
-  "@typescript-eslint/visitor-keys@8.64.0": {
+  "@typescript-eslint/visitor-keys@8.65.0": {
     "licenses": "MIT",
     "repository": "https://github.com/typescript-eslint/typescript-eslint",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys/LICENSE"
   },
-  "@vitejs/plugin-react@6.0.3": {
+  "@vitejs/plugin-react@6.0.4": {
     "licenses": "MIT",
     "repository": "https://github.com/vitejs/vite-plugin-react",
     "publisher": "Evan You",
@@ -642,7 +677,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/acorn-jsx",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/acorn-jsx/LICENSE"
   },
-  "acorn@8.16.0": {
+  "acorn@8.17.0": {
     "licenses": "MIT",
     "repository": "https://github.com/acornjs/acorn",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/acorn",
@@ -670,7 +705,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/balanced-match",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/balanced-match/LICENSE.md"
   },
-  "baseline-browser-mapping@2.10.43": {
+  "baseline-browser-mapping@2.11.1": {
     "licenses": "Apache-2.0",
     "repository": "https://github.com/web-platform-dx/baseline-browser-mapping",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/baseline-browser-mapping",
@@ -683,13 +718,13 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/before-after-hook",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/before-after-hook/LICENSE"
   },
-  "brace-expansion@5.0.7": {
+  "brace-expansion@5.0.8": {
     "licenses": "MIT",
     "repository": "https://github.com/juliangruber/brace-expansion",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/brace-expansion",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/brace-expansion/LICENSE"
   },
-  "browserslist@4.28.6": {
+  "browserslist@4.28.7": {
     "licenses": "MIT",
     "repository": "https://github.com/browserslist/browserslist",
     "publisher": "Andrey Sitnik",
@@ -783,16 +818,16 @@
     "repository": "https://github.com/frenic/csstype",
     "publisher": "Fredrik Nicol",
     "email": "fredrik.nicol@gmail.com",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared/node_modules/csstype",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@clerk/shared/node_modules/csstype/LICENSE"
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/csstype",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/csstype/LICENSE"
   },
   "csstype@3.2.3": {
     "licenses": "MIT",
     "repository": "https://github.com/frenic/csstype",
     "publisher": "Fredrik Nicol",
     "email": "fredrik.nicol@gmail.com",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/csstype",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/csstype/LICENSE"
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react/node_modules/csstype",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@types/react/node_modules/csstype/LICENSE"
   },
   "debug@4.4.3": {
     "licenses": "MIT",
@@ -837,14 +872,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/dompurify",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/dompurify/LICENSE"
   },
-  "electron-to-chromium@1.5.393": {
+  "electron-to-chromium@1.5.396": {
     "licenses": "ISC",
     "repository": "https://github.com/Kilian/electron-to-chromium",
     "publisher": "Kilian Valkhof",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/electron-to-chromium",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/electron-to-chromium/LICENSE"
   },
-  "enhanced-resolve@5.24.2": {
+  "enhanced-resolve@5.24.3": {
     "licenses": "MIT",
     "repository": "https://github.com/webpack/enhanced-resolve",
     "publisher": "Tobias Koppers @sokra",
@@ -897,7 +932,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys/node_modules/eslint-visitor-keys",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/visitor-keys/node_modules/eslint-visitor-keys/LICENSE"
   },
-  "eslint@10.7.0": {
+  "eslint@10.8.0": {
     "licenses": "MIT",
     "repository": "https://github.com/eslint/eslint",
     "publisher": "Nicholas C. Zakas",
@@ -939,14 +974,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/esutils",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/esutils/LICENSE.BSD"
   },
-  "fast-content-type-parse@3.0.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/fastify/fast-content-type-parse",
-    "publisher": "Aras Abbasi",
-    "email": "aras.abbasi@gmail.com",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/fast-content-type-parse",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/fast-content-type-parse/LICENSE"
-  },
   "fast-deep-equal@3.1.3": {
     "licenses": "MIT",
     "repository": "https://github.com/epoberezkin/fast-deep-equal",
@@ -977,8 +1004,8 @@
     "repository": "https://github.com/thecodrr/fdir",
     "publisher": "thecodrr",
     "email": "thecodrr@protonmail.com",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/tinyglobby/node_modules/fdir",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/tinyglobby/node_modules/fdir/LICENSE"
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/fdir",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/fdir/LICENSE"
   },
   "file-entry-cache@8.0.0": {
     "licenses": "MIT",
@@ -1005,7 +1032,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/flat-cache",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/flat-cache/LICENSE"
   },
-  "flatted@3.4.2": {
+  "flatted@3.4.3": {
     "licenses": "ISC",
     "repository": "https://github.com/WebReflection/flatted",
     "publisher": "Andrea Giammarchi",
@@ -1064,13 +1091,13 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/hermes-parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/hermes-parser/LICENSE"
   },
-  "html-parse-stringify@3.0.1": {
+  "html-parse-stringify@4.0.1": {
     "licenses": "MIT",
-    "repository": "https://github.com/henrikjoreteg/html-parse-stringify",
+    "repository": "https://github.com/i18next/html-parse-stringify",
     "publisher": "Henrik Joreteg",
     "email": "henrik@joreteg.com",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/html-parse-stringify",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/html-parse-stringify/README.md"
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/html-parse-stringify/LICENSE"
   },
   "i18next@26.3.6": {
     "licenses": "MIT",
@@ -1088,7 +1115,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/eslint/node_modules/ignore",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/eslint/node_modules/ignore/LICENSE-MIT"
   },
-  "ignore@7.0.5": {
+  "ignore@7.0.6": {
     "licenses": "MIT",
     "repository": "https://github.com/kaelzhang/node-ignore",
     "publisher": "kael",
@@ -1182,7 +1209,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/json-stable-stringify-without-jsonify",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/json-stable-stringify-without-jsonify/LICENSE"
   },
-  "json-with-bigint@3.5.8": {
+  "json-with-bigint@3.5.10": {
     "licenses": "MIT",
     "repository": "https://github.com/Ivan-Korolenko/json-with-bigint",
     "publisher": "Ivan Korolenko",
@@ -1250,7 +1277,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lru-cache",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lru-cache/LICENSE"
   },
-  "lucide-react@1.25.0": {
+  "lucide-react@1.26.0": {
     "licenses": "ISC",
     "repository": "https://github.com/lucide-icons/lucide",
     "publisher": "Eric Fennis",
@@ -1362,7 +1389,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/picomatch",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/picomatch/LICENSE"
   },
-  "postcss@8.5.19": {
+  "postcss@8.5.23": {
     "licenses": "MIT",
     "repository": "https://github.com/postcss/postcss",
     "publisher": "Andrey Sitnik",
@@ -1394,13 +1421,13 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-colorful",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-colorful/LICENSE"
   },
-  "react-dom@19.2.7": {
+  "react-dom@19.2.8": {
     "licenses": "MIT",
-    "repository": "https://github.com/facebook/react",
+    "repository": "https://github.com/react/react",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom/LICENSE"
   },
-  "react-i18next@17.0.10": {
+  "react-i18next@17.0.11": {
     "licenses": "MIT",
     "repository": "https://github.com/i18next/react-i18next",
     "publisher": "Jan Mühlemann",
@@ -1425,9 +1452,9 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-router",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-router/LICENSE.md"
   },
-  "react@19.2.7": {
+  "react@19.2.8": {
     "licenses": "MIT",
-    "repository": "https://github.com/facebook/react",
+    "repository": "https://github.com/react/react",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react/LICENSE"
   },
@@ -1447,22 +1474,15 @@
     "licenses": "ISC",
     "repository": "https://github.com/npm/node-semver",
     "publisher": "GitHub Inc.",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/semver",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/semver/LICENSE"
-  },
-  "semver@7.8.1": {
-    "licenses": "ISC",
-    "repository": "https://github.com/npm/node-semver",
-    "publisher": "GitHub Inc.",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@codecov/bundler-plugin-core/node_modules/semver",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@codecov/bundler-plugin-core/node_modules/semver/LICENSE"
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/helper-compilation-targets/node_modules/semver",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/helper-compilation-targets/node_modules/semver/LICENSE"
   },
   "semver@7.8.5": {
     "licenses": "ISC",
     "repository": "https://github.com/npm/node-semver",
     "publisher": "GitHub Inc.",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/typescript-estree/node_modules/semver",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@typescript-eslint/typescript-estree/node_modules/semver/LICENSE"
+    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/semver",
+    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/semver/LICENSE"
   },
   "set-cookie-parser@2.7.2": {
     "licenses": "MIT",
@@ -1639,14 +1659,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "void-elements@3.1.0": {
-    "licenses": "MIT",
-    "repository": "https://github.com/pugjs/void-elements",
-    "publisher": "hemanth.hm",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/void-elements/LICENSE"
-  },
-  "weaving-site@0.210.2": {
+  "weaving-site@0.212.25": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",
@@ -1704,14 +1717,6 @@
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/zod-validation-error/LICENSE"
   },
   "zod@3.25.76": {
-    "licenses": "MIT",
-    "repository": "https://github.com/colinhacks/zod",
-    "publisher": "Colin McDonnell",
-    "email": "zod@colinhacks.com",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@codecov/bundler-plugin-core/node_modules/zod",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@codecov/bundler-plugin-core/node_modules/zod/LICENSE"
-  },
-  "zod@4.3.6": {
     "licenses": "MIT",
     "repository": "https://github.com/colinhacks/zod",
     "publisher": "Colin McDonnell",
