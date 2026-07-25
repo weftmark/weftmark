@@ -913,6 +913,54 @@ class TestDetailedRefreshLoop:
 
         mock_fire_and_forget.assert_called_once()
 
+    async def test_same_bad_status_no_realert_before_cooldown(self, monkeypatch):
+        """Status stays 'error' and the last alert was recent — must not re-alert."""
+        from app.routers.health import _detailed_refresh_loop
+
+        result = ReadinessResponse(
+            status="error",
+            services=[ReadinessService(name="PostgreSQL", ok=False, critical=True)],
+        )
+        monkeypatch.setattr(health_module, "_consecutive_failures", 3)
+        monkeypatch.setattr(health_module, "_last_alert_status", "error")
+        monkeypatch.setattr(health_module, "_last_alert_at", datetime.now(timezone.utc) - timedelta(seconds=60))
+
+        with patch("app.routers.health.asyncio.sleep", side_effect=self._make_fake_sleep()):
+            with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
+                with patch("app.routers.health._refresh_superuser_email_cache", new_callable=AsyncMock):
+                    with patch("app.routers.health._record_health_transition", new_callable=AsyncMock):
+                        with patch("app.routers.health.fire_and_forget") as mock_fire_and_forget:
+                            with pytest.raises(asyncio.CancelledError):
+                                await _detailed_refresh_loop()
+
+        mock_fire_and_forget.assert_not_called()
+        assert health_module._last_alert_status == "error"
+
+    async def test_same_bad_status_realerts_after_cooldown(self, monkeypatch):
+        """Status stays 'error' but the last alert was over an hour ago — must re-alert."""
+        from app.routers.health import _detailed_refresh_loop
+
+        result = ReadinessResponse(
+            status="error",
+            services=[ReadinessService(name="PostgreSQL", ok=False, critical=True)],
+        )
+        monkeypatch.setattr(health_module, "_consecutive_failures", 3)
+        monkeypatch.setattr(health_module, "_last_alert_status", "error")
+        stale_alert_at = datetime.now(timezone.utc) - timedelta(seconds=health_module._HEALTH_ALERT_COOLDOWN_S + 60)
+        monkeypatch.setattr(health_module, "_last_alert_at", stale_alert_at)
+
+        with patch("app.routers.health.asyncio.sleep", side_effect=self._make_fake_sleep()):
+            with patch("app.routers.health._run_detailed_probes", new_callable=AsyncMock, return_value=result):
+                with patch("app.routers.health._refresh_superuser_email_cache", new_callable=AsyncMock):
+                    with patch("app.routers.health._record_health_transition", new_callable=AsyncMock):
+                        with patch("app.routers.health.fire_and_forget") as mock_fire_and_forget:
+                            with pytest.raises(asyncio.CancelledError):
+                                await _detailed_refresh_loop()
+
+        mock_fire_and_forget.assert_called_once()
+        assert health_module._last_alert_status == "error"
+        assert health_module._last_alert_at > stale_alert_at
+
     async def test_loop_catches_probe_exception_and_continues(self):
         from app.routers.health import _detailed_refresh_loop
 

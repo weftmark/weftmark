@@ -166,6 +166,29 @@ class ImageRenderer:
                     fill=self.numbering,
                 )
 
+    def _paint_tieup_cell(self, draw: ImageDraw.ImageDraw, treadle, shaft, box: tuple) -> None:
+        draw.rectangle(box, outline=self.foreground)
+        if shaft in treadle.shafts:
+            self.paint_fill_marker(draw, box)
+
+    def _paint_tieup_shaft_number(
+        self, draw: ImageDraw.ImageDraw, endx: int, starty: int, pps: int, shaft_no: int
+    ) -> None:
+        if shaft_no != 0 and shaft_no % 4 == 0:
+            lx = endx
+            draw.line((lx, starty, lx + 2 * pps, starty), fill=self.numbering)
+            draw.text((lx + 2, starty + 2), str(shaft_no), font=self.font, fill=self.numbering)
+
+    def _paint_tieup_treadle_number(self, draw: ImageDraw.ImageDraw, treadle_no: int, offsetx: int, pps: int) -> None:
+        if treadle_no != 0 and treadle_no % 4 == 0:
+            tick_x = treadle_no * pps + offsetx
+            tick_ys, tick_ye = 3 * pps, 5 * pps - 1
+            draw.line((tick_x, tick_ys, tick_x, tick_ye), fill=self.numbering)
+            # textbbox replaces removed textsize (Pillow ≥10)
+            bbox = draw.textbbox((0, 0), str(treadle_no), font=self.font)
+            textw = bbox[2] - bbox[0]
+            draw.text((tick_x - textw - 2, tick_ys + 2), str(treadle_no), font=self.font, fill=self.numbering)
+
     def paint_tieup(self, draw: ImageDraw.ImageDraw) -> None:
         pps = self.pixels_per_square
         offsetx = (1 + len(self.draft.warp)) * pps
@@ -181,25 +204,12 @@ class ImageRenderer:
             for jj, shaft in enumerate(self.draft.shafts):
                 starty = (num_shafts - jj - 1) * pps + offsety
                 endy = starty + pps
-                draw.rectangle((startx, starty, endx, endy), outline=self.foreground)
-                if shaft in treadle.shafts:
-                    self.paint_fill_marker(draw, (startx, starty, endx, endy))
+                self._paint_tieup_cell(draw, treadle, shaft, (startx, starty, endx, endy))
 
                 if treadle_no == num_treadles:
-                    shaft_no = jj + 1
-                    if shaft_no != 0 and shaft_no % 4 == 0:
-                        lx = endx
-                        draw.line((lx, starty, lx + 2 * pps, starty), fill=self.numbering)
-                        draw.text((lx + 2, starty + 2), str(shaft_no), font=self.font, fill=self.numbering)
+                    self._paint_tieup_shaft_number(draw, endx, starty, pps, jj + 1)
 
-            if treadle_no != 0 and treadle_no % 4 == 0:
-                tick_x = treadle_no * pps + offsetx
-                tick_ys, tick_ye = 3 * pps, 5 * pps - 1
-                draw.line((tick_x, tick_ys, tick_x, tick_ye), fill=self.numbering)
-                # textbbox replaces removed textsize (Pillow ≥10)
-                bbox = draw.textbbox((0, 0), str(treadle_no), font=self.font)
-                textw = bbox[2] - bbox[0]
-                draw.text((tick_x - textw - 2, tick_ys + 2), str(treadle_no), font=self.font, fill=self.numbering)
+            self._paint_tieup_treadle_number(draw, treadle_no, offsetx, pps)
 
     def paint_treadling(self, draw: ImageDraw.ImageDraw) -> None:
         pps = self.pixels_per_square
@@ -442,13 +452,55 @@ class SVGRenderer:
                 )
         doc.append(_SVG.g(*grp))
 
+    def _paint_tieup_cell(
+        self, grp: list, treadle, shaft, startx: int, starty: int, endx: int, endy: int, s: int
+    ) -> None:
+        grp.append(
+            _SVG.rect(
+                x=startx,
+                y=starty,
+                width=s,
+                height=s,
+                style=f"stroke:{self.foreground}; fill:{self.background}",
+            )
+        )
+        if shaft in treadle.shafts:
+            self.paint_fill_marker(grp, (startx, starty, endx, endy))
+
+    def _paint_tieup_shaft_number(self, grp: list, endx: int, starty: int, s: int, shaft_no: int) -> None:
+        if shaft_no != 0 and shaft_no % 4 == 0:
+            lx = endx
+            grp.append(_SVG.line(x1=lx, y1=starty, x2=lx + 2 * s, y2=starty, style=f"stroke:{self.numbering}"))
+            grp.append(
+                _SVG.text(
+                    str(shaft_no),
+                    x=lx + 3,
+                    y=starty + 2 + self.font_size,
+                    style=f"font-family:{self.font_family}; font-size:{self.font_size}; fill:{self.numbering}",
+                )
+            )
+
+    def _paint_tieup_treadle_number(self, grp: list, treadle_no: int, offsetx: int, s: int) -> None:
+        if treadle_no != 0 and treadle_no % 4 == 0:
+            tx = treadle_no * s + offsetx
+            grp.append(_SVG.line(x1=tx, y1=3 * s, x2=tx, y2=5 * s - 1, style=f"stroke:{self.numbering}"))
+            grp.append(
+                _SVG.text(
+                    str(treadle_no),
+                    x=tx - 3,
+                    y=3 * s + self.font_size,
+                    text_anchor="end",
+                    style=f"font-family:{self.font_family}; font-size:{self.font_size}; fill:{self.numbering}",
+                )
+            )
+
     def paint_tieup(self, doc) -> None:
         s = self.scale
         offsetx = (1 + len(self.draft.warp)) * s
         offsety = 5 * s
         num_treadles = len(self.draft.treadles)
         num_shafts = len(self.draft.shafts)
-        grp = []
+        grp: list = []
         for ii, treadle in enumerate(self.draft.treadles):
             startx = ii * s + offsetx
             endx = startx + s
@@ -456,46 +508,10 @@ class SVGRenderer:
             for jj, shaft in enumerate(self.draft.shafts):
                 starty = (num_shafts - jj - 1) * s + offsety
                 endy = starty + s
-                grp.append(
-                    _SVG.rect(
-                        x=startx,
-                        y=starty,
-                        width=s,
-                        height=s,
-                        style=f"stroke:{self.foreground}; fill:{self.background}",
-                    )
-                )
-                if shaft in treadle.shafts:
-                    self.paint_fill_marker(grp, (startx, starty, endx, endy))
+                self._paint_tieup_cell(grp, treadle, shaft, startx, starty, endx, endy, s)
                 if treadle_no == num_treadles:
-                    shaft_no = jj + 1
-                    if shaft_no != 0 and shaft_no % 4 == 0:
-                        lx = endx
-                        grp.append(
-                            _SVG.line(x1=lx, y1=starty, x2=lx + 2 * s, y2=starty, style=f"stroke:{self.numbering}")
-                        )
-                        grp.append(
-                            _SVG.text(
-                                str(shaft_no),
-                                x=lx + 3,
-                                y=starty + 2 + self.font_size,
-                                style=(
-                                    f"font-family:{self.font_family}; font-size:{self.font_size}; fill:{self.numbering}"
-                                ),
-                            )
-                        )
-            if treadle_no != 0 and treadle_no % 4 == 0:
-                tx = treadle_no * s + offsetx
-                grp.append(_SVG.line(x1=tx, y1=3 * s, x2=tx, y2=5 * s - 1, style=f"stroke:{self.numbering}"))
-                grp.append(
-                    _SVG.text(
-                        str(treadle_no),
-                        x=tx - 3,
-                        y=3 * s + self.font_size,
-                        text_anchor="end",
-                        style=f"font-family:{self.font_family}; font-size:{self.font_size}; fill:{self.numbering}",
-                    )
-                )
+                    self._paint_tieup_shaft_number(grp, endx, starty, s, jj + 1)
+            self._paint_tieup_treadle_number(grp, treadle_no, offsetx, s)
         doc.append(_SVG.g(*grp))
 
     def paint_treadling(self, doc) -> None:

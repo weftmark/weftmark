@@ -361,6 +361,22 @@ def render_drawdown_only(
     return out.getvalue(), weft_count, scale
 
 
+def _fill_row_with_weft_color(pixels, w: int, y0: int, scale: int, weft_rgb: tuple) -> None:
+    for dy in range(scale):
+        for x in range(w):
+            pixels[x, y0 + dy] = weft_rgb  # type: ignore[index]
+
+
+def _paint_warp_up_threads(pixels, draft: Draft, warp_rgbs: list, connected: set, y0: int, scale: int) -> None:
+    warp_up = (x for x, wt in enumerate(draft.warp) if (wt.shaft not in connected) ^ draft.rising_shed)
+    for x in warp_up:
+        rgb = warp_rgbs[x]
+        x0 = x * scale
+        for dy in range(scale):
+            for dx in range(scale):
+                pixels[x0 + dx, y0 + dy] = rgb  # type: ignore[index]
+
+
 def render_drawdown_png(draft: Draft, scale: int = 1) -> bytes:
     """Render just the drawdown grid as a PNG, without cropping from a full draft image.
 
@@ -388,20 +404,8 @@ def render_drawdown_png(draft: Draft, scale: int = 1) -> bytes:
 
         weft_rgb = weft_thread.color.rgb if weft_thread.color else (255, 255, 255)
 
-        # Fill entire row with weft color.
-        for dy in range(scale):
-            for x in range(w):
-                pixels[x, y0 + dy] = weft_rgb  # type: ignore[index]
-
-        # Paint warp-up threads on top.
-        connected = weft_thread.connected_shafts
-        warp_up = (x for x, wt in enumerate(draft.warp) if (wt.shaft not in connected) ^ draft.rising_shed)
-        for x in warp_up:
-            rgb = warp_rgbs[x]
-            x0 = x * scale
-            for dy in range(scale):
-                for dx in range(scale):
-                    pixels[x0 + dx, y0 + dy] = rgb  # type: ignore[index]
+        _fill_row_with_weft_color(pixels, w, y0, scale, weft_rgb)
+        _paint_warp_up_threads(pixels, draft, warp_rgbs, weft_thread.connected_shafts, y0, scale)
 
     out = io.BytesIO()
     img.save(out, format="PNG")
