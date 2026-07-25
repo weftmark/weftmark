@@ -192,7 +192,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "20"
-      - run: cd frontend && npm ci && npm audit --audit-level=high
+      - run: cd frontend && npm ci && node scripts/npm-audit-check.mjs
 
   docker-build-backend:
     name: Docker build — backend
