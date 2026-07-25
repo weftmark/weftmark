@@ -99,6 +99,13 @@ def _read_json(path: Path) -> dict | list:
         return json.load(f)  # type: ignore[no-any-return]
 
 
+def _coerce_array(value: object) -> list | None:
+    if not isinstance(value, list):
+        return None
+    numeric = [v for v in value if isinstance(v, (int, float))]
+    return numeric or None
+
+
 def _coerce_entry(raw: dict) -> dict:
     row: dict = {}
     for json_key, value in raw.items():
@@ -108,21 +115,69 @@ def _coerce_entry(raw: dict) -> dict:
         if col not in _DB_COLUMNS:
             continue
         if col in _ARRAY_FIELDS:
-            if not isinstance(value, list):
-                value = None
-            else:
-                value = [v for v in value if isinstance(v, (int, float))]
-                if not value:
-                    value = None
+            value = _coerce_array(value)
         elif isinstance(value, (dict, list)):
             value = None
         row[col] = value
     return row
 
 
+def _extract_entries(data: dict | list) -> list[dict]:
+    if isinstance(data, dict) and "looms" in data:
+        return data["looms"]  # type: ignore[no-any-return]
+    if isinstance(data, list):
+        return data
+    raise ValueError("Unexpected JSON structure — expected a list or {looms: [...]}")
+
+
+async def _upsert_row(session, raw: dict) -> str:
+    """Coerce and upsert a single loom-reference row. Returns 'inserted', 'updated', or 'skipped'."""
+    from sqlalchemy import text
+
+    row = _coerce_entry(raw)
+    brand = row.get("brand", "").strip()
+    model = row.get("model_name", "").strip()
+    if not brand or not model:
+        log.warning("Skipping entry with missing brand/model: %s", raw.get("_model"))
+        return "skipped"
+
+    existing = await session.scalar(
+        text(
+            "SELECT id FROM loom_references WHERE lower(brand) = lower(:brand) AND lower(model_name) = lower(:model)"
+        ).bindparams(brand=brand, model=model)
+    )
+
+    params = {k: json.dumps(v) if isinstance(v, list) else v for k, v in row.items()}
+
+    if existing:
+        set_clauses = ", ".join(
+            f"{col} = cast(:{col} as jsonb)" if col in _ARRAY_FIELDS else f"{col} = :{col}"
+            for col in row
+            if col not in ("brand", "model_name")
+        )
+        if set_clauses:
+            await session.execute(
+                text(  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text  # noqa: E501
+                    f"UPDATE loom_references SET {set_clauses}, updated_at = now() "  # nosec B608
+                    f"WHERE lower(brand) = lower(:brand) AND lower(model_name) = lower(:model)"
+                ),
+                {**params, "brand": brand, "model": model},
+            )
+        return "updated"
+
+    row["id"] = str(uuid.uuid4())
+    params["id"] = row["id"]
+    cols = ", ".join(row.keys())
+    vals = ", ".join(f"cast(:{k} as jsonb)" if k in _ARRAY_FIELDS else f":{k}" for k in row.keys())
+    await session.execute(
+        text(f"INSERT INTO loom_references ({cols}) VALUES ({vals})"),  # nosec B608  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+        params,
+    )
+    return "inserted"
+
+
 async def seed() -> dict:
     """Upsert loom_references from loom-data-master.json. Returns insert/update/skip counts."""
-    from sqlalchemy import text
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from app.config import get_settings
@@ -133,63 +188,16 @@ async def seed() -> dict:
 
     json_path = locate_json()
     data = await asyncio.to_thread(_read_json, json_path)
+    entries = _extract_entries(data)
 
-    if isinstance(data, dict) and "looms" in data:
-        entries = data["looms"]
-    elif isinstance(data, list):
-        entries = data
-    else:
-        raise ValueError("Unexpected JSON structure — expected a list or {looms: [...]}")
-
-    inserted = updated = skipped = 0
+    counts = {"inserted": 0, "updated": 0, "skipped": 0}
 
     async with session_factory() as session:
         async with session.begin():
             for raw in entries:
-                row = _coerce_entry(raw)
-                brand = row.get("brand", "").strip()
-                model = row.get("model_name", "").strip()
-                if not brand or not model:
-                    log.warning("Skipping entry with missing brand/model: %s", raw.get("_model"))
-                    skipped += 1
-                    continue
-
-                existing = await session.scalar(
-                    text(
-                        "SELECT id FROM loom_references "
-                        "WHERE lower(brand) = lower(:brand) AND lower(model_name) = lower(:model)"
-                    ).bindparams(brand=brand, model=model)
-                )
-
-                params = {k: json.dumps(v) if isinstance(v, list) else v for k, v in row.items()}
-
-                if existing:
-                    set_clauses = ", ".join(
-                        f"{col} = cast(:{col} as jsonb)" if col in _ARRAY_FIELDS else f"{col} = :{col}"
-                        for col in row
-                        if col not in ("brand", "model_name")
-                    )
-                    if set_clauses:
-                        await session.execute(
-                            text(  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text  # noqa: E501
-                                f"UPDATE loom_references SET {set_clauses}, updated_at = now() "  # nosec B608
-                                f"WHERE lower(brand) = lower(:brand) AND lower(model_name) = lower(:model)"
-                            ),
-                            {**params, "brand": brand, "model": model},
-                        )
-                    updated += 1
-                else:
-                    row["id"] = str(uuid.uuid4())
-                    params["id"] = row["id"]
-                    cols = ", ".join(row.keys())
-                    vals = ", ".join(f"cast(:{k} as jsonb)" if k in _ARRAY_FIELDS else f":{k}" for k in row.keys())
-                    await session.execute(
-                        text(f"INSERT INTO loom_references ({cols}) VALUES ({vals})"),  # nosec B608  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-                        params,
-                    )
-                    inserted += 1
+                outcome = await _upsert_row(session, raw)
+                counts[outcome] += 1
 
     await engine.dispose()
-    result = {"inserted": inserted, "updated": updated, "skipped": skipped}
-    log.info("loom_seed inserted=%d updated=%d skipped=%d", inserted, updated, skipped)
-    return result
+    log.info("loom_seed inserted=%d updated=%d skipped=%d", counts["inserted"], counts["updated"], counts["skipped"])
+    return counts
