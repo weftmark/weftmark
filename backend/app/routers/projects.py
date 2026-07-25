@@ -524,6 +524,47 @@ def _to_detail(
 # ---------------------------------------------------------------------------
 
 
+def _validate_project_type_supported(body: CreateProjectRequest, draft: Draft) -> None:
+    if body.project_type == "treadle" and not draft.has_treadling:
+        raise HTTPException(status_code=400, detail="WIF file has no [TREADLING] section")
+    if body.project_type == "lift" and not draft.has_liftplan:
+        raise HTTPException(status_code=400, detail="WIF file has no [LIFTPLAN] section")
+
+
+async def _resolve_project_loom(body: CreateProjectRequest, current_user: User, db: AsyncSession) -> Loom | None:
+    if not body.loom_id:
+        return None
+
+    loom = await db.scalar(
+        select(Loom).where(
+            Loom.id == body.loom_id,
+            Loom.owner_id == current_user.id,
+            Loom.deleted_at.is_(None),
+        )
+    )
+    if loom is None:
+        raise HTTPException(status_code=404, detail="Loom not found")
+
+    if loom.loom_type not in PROJECT_SUPPORTED_LOOM_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Loom type '{loom.loom_type}' does not support project tracking",
+        )
+
+    if body.loom_version_id:
+        version_ok = await db.scalar(
+            select(LoomVersion).where(
+                LoomVersion.id == body.loom_version_id,
+                LoomVersion.loom_id == body.loom_id,
+            )
+        )
+        if version_ok is None:
+            raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
+
+    await _check_loom_conflict(body.loom_id, None, current_user.id, db)
+    return loom
+
+
 @router.post(
     "",
     status_code=201,
@@ -552,11 +593,7 @@ async def create_project(
     if draft is None:
         raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
 
-    # Validate project type is supported by the WIF
-    if body.project_type == "treadle" and not draft.has_treadling:
-        raise HTTPException(status_code=400, detail="WIF file has no [TREADLING] section")
-    if body.project_type == "lift" and not draft.has_liftplan:
-        raise HTTPException(status_code=400, detail="WIF file has no [LIFTPLAN] section")
+    _validate_project_type_supported(body, draft)
 
     # Parse pick count from WIF
     wif_bytes = await storage.aread_file(await _wif_path_for_project(draft, body.project_type))
@@ -568,35 +605,7 @@ async def create_project(
     if body.loom_version_id and not body.loom_id:
         raise HTTPException(status_code=400, detail="loom_version_id requires loom_id")
 
-    loom: Loom | None = None
-    if body.loom_id:
-        loom = await db.scalar(
-            select(Loom).where(
-                Loom.id == body.loom_id,
-                Loom.owner_id == current_user.id,
-                Loom.deleted_at.is_(None),
-            )
-        )
-        if loom is None:
-            raise HTTPException(status_code=404, detail="Loom not found")
-
-        if loom.loom_type not in PROJECT_SUPPORTED_LOOM_TYPES:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Loom type '{loom.loom_type}' does not support project tracking",
-            )
-
-        if body.loom_version_id:
-            version_ok = await db.scalar(
-                select(LoomVersion).where(
-                    LoomVersion.id == body.loom_version_id,
-                    LoomVersion.loom_id == body.loom_id,
-                )
-            )
-            if version_ok is None:
-                raise HTTPException(status_code=400, detail="loom_version_id does not belong to the specified loom")
-
-        await _check_loom_conflict(body.loom_id, None, current_user.id, db)
+    loom = await _resolve_project_loom(body, current_user, db)
 
     project = Project(
         owner_id=current_user.id,
@@ -651,6 +660,65 @@ async def list_projects(
     return [ProjectSummary.model_validate(p) for p in projects]
 
 
+async def _get_cached_project_tile(
+    project_id: uuid.UUID,
+    start_col: int | None,
+    warp_count: int,
+    weft_count: int,
+    sr: int,
+    rc: int | None,
+    tile_row_count: int,
+    expected_scale: int,
+) -> Response | None:
+    from app.services.storage import aproject_tile_exists, aread_project_tile
+
+    if not (
+        start_col is None
+        and warp_count > 0
+        and sr % tile_row_count == 0
+        and rc == tile_row_count
+        and await aproject_tile_exists(project_id, expected_scale, sr)
+    ):
+        return None
+
+    cached_png = await aread_project_tile(project_id, expected_scale, sr)
+    actual_rc = min(tile_row_count, weft_count - sr) if weft_count > 0 else tile_row_count
+    return Response(
+        content=cached_png,
+        media_type=_MEDIA_TYPE_PNG,
+        headers={
+            "X-Pixels-Per-Row": str(expected_scale),
+            "X-Total-Rows": str(weft_count),
+            "X-Total-Cols": str(warp_count),
+            "X-Start-Row": str(sr),
+            "X-Row-Count": str(actual_rc),
+            "Cache-Control": "public, max-age=31536000, immutable",
+        },
+    )
+
+
+async def _maybe_queue_project_tile_prerender(
+    settings,
+    project_id: uuid.UUID,
+    start_col: int | None,
+    sr: int,
+    rc: int | None,
+    tile_row_count: int,
+    expected_scale: int,
+) -> None:
+    from app.services.storage import aproject_tile_exists
+
+    if not (start_col is None and sr % tile_row_count == 0 and rc == tile_row_count):
+        return
+    if await aproject_tile_exists(project_id, expected_scale, 0):
+        return
+
+    from app.services.task_history import record_queued
+
+    tile_task = prerender_project_tiles.apply_async(args=[str(project_id)])
+    record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_project_tiles", "preview")
+
+
 @router.get(
     "/{project_id}/drawdown",
     responses={404: {"description": "Draft not found"}, 500: {"description": "Drawdown rendering failed"}},
@@ -666,7 +734,7 @@ async def get_project_drawdown(
 ) -> Response:
     from app.config import get_settings
     from app.services import rendering
-    from app.services.storage import afile_exists, aproject_tile_exists, aread_file, aread_project_tile
+    from app.services.storage import afile_exists, aread_file
 
     project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
 
@@ -693,27 +761,11 @@ async def get_project_drawdown(
     # Check pre-rendered project tile cache on standard row-boundary alignment.
     # Only for full-width requests (start_col=None) — column-sliced requests must
     # go through render_drawdown_tile so they return the correct pixel slice.
-    if (
-        start_col is None
-        and warp_count > 0
-        and _sr % tile_row_count == 0
-        and _rc == tile_row_count
-        and await aproject_tile_exists(project_id, expected_scale, _sr)
-    ):
-        cached_png = await aread_project_tile(project_id, expected_scale, _sr)
-        actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
-        return Response(
-            content=cached_png,
-            media_type=_MEDIA_TYPE_PNG,
-            headers={
-                "X-Pixels-Per-Row": str(expected_scale),
-                "X-Total-Rows": str(weft_count),
-                "X-Total-Cols": str(warp_count),
-                "X-Start-Row": str(_sr),
-                "X-Row-Count": str(actual_rc),
-                "Cache-Control": "public, max-age=31536000, immutable",
-            },
-        )
+    cached = await _get_cached_project_tile(
+        project_id, start_col, warp_count, weft_count, _sr, _rc, tile_row_count, expected_scale
+    )
+    if cached is not None:
+        return cached
 
     wif_bytes = await aread_file(wif_path)
     _sc = start_col
@@ -742,12 +794,7 @@ async def get_project_drawdown(
 
     # Trigger background tile pre-render on standard boundary miss only when t0 is absent.
     # Only applies to full-width (non-column-sliced) requests.
-    if _sc is None and _sr % tile_row_count == 0 and _rc == tile_row_count:
-        if not await aproject_tile_exists(project_id, expected_scale, 0):
-            from app.services.task_history import record_queued
-
-            tile_task = prerender_project_tiles.apply_async(args=[str(project_id)])
-            record_queued(_settings, tile_task.id, "app.tasks.tiles.prerender_project_tiles", "preview")
+    await _maybe_queue_project_tile_prerender(_settings, project_id, _sc, _sr, _rc, tile_row_count, expected_scale)
 
     extra_headers = (
         {"X-Start-Col": str(actual_start_col), "X-Col-Count": str(actual_col_count)} if _sc is not None else {}
@@ -1292,6 +1339,51 @@ async def release_tracking(
     return _to_detail(project, draft, loom)  # type: ignore[arg-type]
 
 
+def _apply_step_direction(project: Project, direction: str) -> None:
+    if direction == "advance":
+        if project.current_pick > project.total_picks:
+            raise HTTPException(status_code=400, detail="Already at last pick")
+        project.current_pick += 1
+    else:
+        if project.current_pick <= 1:
+            raise HTTPException(status_code=400, detail="Already at first pick")
+        project.current_pick -= 1
+
+
+async def _compute_dwell_and_manage_session(
+    db: AsyncSession,
+    project_id: uuid.UUID,
+    idle_timeout_ms: int,
+    now: datetime,
+    last_step: ProjectStep | None,
+) -> int | None:
+    dwell_ms: int | None = None
+    gap_ms: int | None = None
+    if last_step is not None:
+        last_dt = last_step.created_at
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        gap_ms = int((now - last_dt).total_seconds() * 1_000)
+        dwell_ms = min(gap_ms, idle_timeout_ms)
+
+    open_session = await db.scalar(
+        select(WeaveSession).where(WeaveSession.project_id == project_id, WeaveSession.ended_at.is_(None))
+    )
+
+    is_gap_too_long = gap_ms is not None and gap_ms >= idle_timeout_ms
+    if is_gap_too_long and open_session is not None:
+        close_dt = last_step.created_at  # type: ignore[union-attr]
+        if close_dt.tzinfo is None:
+            close_dt = close_dt.replace(tzinfo=timezone.utc)
+        open_session.ended_at = close_dt
+        open_session = None
+
+    if open_session is None:
+        db.add(WeaveSession(project_id=project_id, started_at=now))
+
+    return dwell_ms
+
+
 @router.post(
     "/{project_id}/step",
     responses={
@@ -1321,14 +1413,7 @@ async def step_project(
 
     from_pick = project.current_pick
 
-    if body.direction == "advance":
-        if project.current_pick > project.total_picks:
-            raise HTTPException(status_code=400, detail="Already at last pick")
-        project.current_pick += 1
-    else:
-        if project.current_pick <= 1:
-            raise HTTPException(status_code=400, detail="Already at first pick")
-        project.current_pick -= 1
+    _apply_step_direction(project, body.direction)
 
     # Compute dwell and manage session gap-on-arrival
     now = datetime.now(timezone.utc)
@@ -1338,29 +1423,7 @@ async def step_project(
         select(ProjectStep).where(ProjectStep.project_id == project_id).order_by(ProjectStep.created_at.desc()).limit(1)
     )
 
-    dwell_ms: int | None = None
-    gap_ms: int | None = None
-    if last_step is not None:
-        last_dt = last_step.created_at
-        if last_dt.tzinfo is None:
-            last_dt = last_dt.replace(tzinfo=timezone.utc)
-        gap_ms = int((now - last_dt).total_seconds() * 1_000)
-        dwell_ms = min(gap_ms, idle_timeout_ms)
-
-    open_session = await db.scalar(
-        select(WeaveSession).where(WeaveSession.project_id == project_id, WeaveSession.ended_at.is_(None))
-    )
-
-    is_gap_too_long = gap_ms is not None and gap_ms >= idle_timeout_ms
-    if is_gap_too_long and open_session is not None:
-        close_dt = last_step.created_at  # type: ignore[union-attr]
-        if close_dt.tzinfo is None:
-            close_dt = close_dt.replace(tzinfo=timezone.utc)
-        open_session.ended_at = close_dt
-        open_session = None
-
-    if open_session is None:
-        db.add(WeaveSession(project_id=project_id, started_at=now))
+    dwell_ms = await _compute_dwell_and_manage_session(db, project_id, idle_timeout_ms, now, last_step)
 
     step = ProjectStep(
         project_id=project.id,

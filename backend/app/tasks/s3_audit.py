@@ -28,15 +28,66 @@ def run_s3_orphan_scan(self: Task) -> dict:
     return asyncio.run(_do_scan())
 
 
-async def _do_scan() -> dict:
+async def _collect_db_storage_paths(db) -> set[str]:
     from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    from app.config import get_settings
     from app.models.draft import Draft
     from app.models.loom import Loom, LoomVersionPhoto, LoomVersionReceipt
     from app.models.project import ProjectPhoto
     from app.models.yarn import Yarn
+
+    db_paths: set[str] = set()
+
+    drafts = await db.scalars(select(Draft))
+    for d in drafts.all():
+        for p in [d.wif_path, d.preview_path, d.drawdown_preview_path, d.wif_modified_path]:
+            if p:
+                db_paths.add(p)
+
+    yarns = await db.scalars(select(Yarn))
+    for y in yarns.all():
+        if y.photo_path:
+            db_paths.add(y.photo_path)
+
+    looms = await db.scalars(select(Loom))
+    for lm in looms.all():
+        if lm.photo_path:
+            db_paths.add(lm.photo_path)
+
+    vps = await db.scalars(select(LoomVersionPhoto))
+    for vp in vps.all():
+        if vp.path:
+            db_paths.add(vp.path)
+
+    vrs = await db.scalars(select(LoomVersionReceipt))
+    for vr in vrs.all():
+        if vr.path:
+            db_paths.add(vr.path)
+
+    pps = await db.scalars(select(ProjectPhoto))
+    for pp in pps.all():
+        if pp.file_path:
+            db_paths.add(pp.file_path)
+
+    return db_paths
+
+
+def _list_s3_files(s3, settings) -> dict[str, dict]:
+    s3_files: dict[str, dict] = {}
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=settings.s3_bucket_name, **settings.s3_owner_kwargs):
+        for obj in page.get("Contents", []):
+            s3_files[obj["Key"]] = {
+                "size": obj["Size"],
+                "last_modified": obj["LastModified"].isoformat(),
+            }
+    return s3_files
+
+
+async def _do_scan() -> dict:
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.config import get_settings
 
     settings = get_settings()
 
@@ -60,51 +111,14 @@ async def _do_scan() -> dict:
         region_name=settings.s3_region or "auto",
     )
 
-    s3_files: dict[str, dict] = {}
-    paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=settings.s3_bucket_name, **settings.s3_owner_kwargs):
-        for obj in page.get("Contents", []):
-            s3_files[obj["Key"]] = {
-                "size": obj["Size"],
-                "last_modified": obj["LastModified"].isoformat(),
-            }
+    s3_files = _list_s3_files(s3, settings)
 
     engine = create_async_engine(settings.database_url, echo=False)
     async_session = async_sessionmaker(engine, expire_on_commit=False)
 
-    db_paths: set[str] = set()
     try:
         async with async_session() as db:
-            drafts = await db.scalars(select(Draft))
-            for d in drafts.all():
-                for p in [d.wif_path, d.preview_path, d.drawdown_preview_path, d.wif_modified_path]:
-                    if p:
-                        db_paths.add(p)
-
-            yarns = await db.scalars(select(Yarn))
-            for y in yarns.all():
-                if y.photo_path:
-                    db_paths.add(y.photo_path)
-
-            looms = await db.scalars(select(Loom))
-            for lm in looms.all():
-                if lm.photo_path:
-                    db_paths.add(lm.photo_path)
-
-            vps = await db.scalars(select(LoomVersionPhoto))
-            for vp in vps.all():
-                if vp.path:
-                    db_paths.add(vp.path)
-
-            vrs = await db.scalars(select(LoomVersionReceipt))
-            for vr in vrs.all():
-                if vr.path:
-                    db_paths.add(vr.path)
-
-            pps = await db.scalars(select(ProjectPhoto))
-            for pp in pps.all():
-                if pp.file_path:
-                    db_paths.add(pp.file_path)
+            db_paths = await _collect_db_storage_paths(db)
     finally:
         await engine.dispose()
 

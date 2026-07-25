@@ -190,6 +190,25 @@ async def get_settings(
     return _to_response(current_user, version)
 
 
+def _validate_choice(value: object, valid: set, field_name: str) -> None:
+    if value not in valid:
+        raise HTTPException(status_code=422, detail=f"{field_name} must be one of {sorted(valid)}")
+
+
+async def _apply_ai_training_consent(current_user: User, db: AsyncSession, consent: bool) -> None:
+    current_user.ai_training_consent = consent
+    if consent:
+        return
+    shared = await db.scalars(
+        select(Draft).where(
+            Draft.owner_id == current_user.id,
+            Draft.is_shared.is_(True),
+        )
+    )
+    for draft in shared.all():
+        draft.is_shared = False
+
+
 @router.patch("/me", responses={422: {"description": "display_name cannot be empty"}})
 async def update_settings(
     body: UserSettingsUpdate,
@@ -203,32 +222,19 @@ async def update_settings(
         current_user.display_name = name
 
     if body.theme is not None:
-        if body.theme not in _VALID_THEMES:
-            raise HTTPException(status_code=422, detail=f"theme must be one of {sorted(_VALID_THEMES)}")
+        _validate_choice(body.theme, _VALID_THEMES, "theme")
         current_user.theme = body.theme
 
     if body.activity_theme is not None:
-        if body.activity_theme not in _VALID_ACTIVITY_THEMES:
-            raise HTTPException(
-                status_code=422,
-                detail=f"activity_theme must be one of {sorted(_VALID_ACTIVITY_THEMES)}",
-            )
+        _validate_choice(body.activity_theme, _VALID_ACTIVITY_THEMES, "activity_theme")
         current_user.activity_theme = body.activity_theme
 
     if body.idle_timeout_minutes is not None:
-        if body.idle_timeout_minutes not in _VALID_IDLE_TIMEOUTS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"idle_timeout_minutes must be one of {sorted(_VALID_IDLE_TIMEOUTS)}",
-            )
+        _validate_choice(body.idle_timeout_minutes, _VALID_IDLE_TIMEOUTS, "idle_timeout_minutes")
         current_user.idle_timeout_minutes = body.idle_timeout_minutes
 
     if body.measurement_system is not None:
-        if body.measurement_system not in _VALID_MEASUREMENT_SYSTEMS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"measurement_system must be one of {sorted(_VALID_MEASUREMENT_SYSTEMS)}",
-            )
+        _validate_choice(body.measurement_system, _VALID_MEASUREMENT_SYSTEMS, "measurement_system")
         current_user.measurement_system = body.measurement_system
 
     if body.show_version_numbers is not None:
@@ -238,11 +244,7 @@ async def update_settings(
         current_user.hide_unused_shafts_treadles = body.hide_unused_shafts_treadles
 
     if body.tracker_color_mode is not None:
-        if body.tracker_color_mode not in _VALID_COLOR_MODES:
-            raise HTTPException(
-                status_code=422,
-                detail=f"tracker_color_mode must be one of {sorted(_VALID_COLOR_MODES)}",
-            )
+        _validate_choice(body.tracker_color_mode, _VALID_COLOR_MODES, "tracker_color_mode")
         current_user.tracker_color_mode = body.tracker_color_mode
 
     if body.tracker_show_weft_color is not None:
@@ -261,16 +263,7 @@ async def update_settings(
         current_user.onboarding_dismissed = body.onboarding_dismissed
 
     if body.ai_training_consent is not None:
-        current_user.ai_training_consent = body.ai_training_consent
-        if not body.ai_training_consent:
-            shared = await db.scalars(
-                select(Draft).where(
-                    Draft.owner_id == current_user.id,
-                    Draft.is_shared.is_(True),
-                )
-            )
-            for draft in shared.all():
-                draft.is_shared = False
+        await _apply_ai_training_consent(current_user, db, body.ai_training_consent)
 
     await db.commit()
     await db.refresh(current_user)

@@ -43,76 +43,73 @@ class LintResult:
         return not any("Cannot parse" in e for e in self.errors)
 
 
-def lint(wif_bytes: bytes) -> LintResult:
-    result = LintResult()
-
-    # Decode — WIF files are typically ASCII or Latin-1
+def _decode(wif_bytes: bytes) -> str:
     try:
-        text = wif_bytes.decode("utf-8")
+        return wif_bytes.decode("utf-8")
     except UnicodeDecodeError:
-        text = wif_bytes.decode("latin-1")
+        return wif_bytes.decode("latin-1")
 
-    config = RawConfigParser()
-    config.optionxform = str  # preserve key case
-    try:
-        config.read_string(text)
-    except Exception as exc:
-        result.errors.append(f"Cannot parse file: {exc}")
-        return result
 
-    sections = {s.upper() for s in config.sections()}
-
-    # --- Required sections ---
-    if "WIF" not in sections:
-        result.errors.append("Missing [WIF] section — file may not be a valid WIF file")
-
+def _read_shaft_treadle_counts(config: RawConfigParser, sections: set[str], result: LintResult) -> None:
     if "WEAVING" not in sections:
         result.errors.append("Missing [WEAVING] section — shaft and treadle count unavailable")
-    else:
-        try:
-            result.num_shafts = config.getint("WEAVING", "Shafts")
-        except Exception:
-            result.warnings.append("Could not read shaft count from [WEAVING]")
-        try:
-            result.num_treadles = config.getint("WEAVING", "Treadles")
-        except Exception:
-            result.warnings.append("Could not read treadle count from [WEAVING]")
+        return
+    try:
+        result.num_shafts = config.getint("WEAVING", "Shafts")
+    except Exception:
+        result.warnings.append("Could not read shaft count from [WEAVING]")
+    try:
+        result.num_treadles = config.getint("WEAVING", "Treadles")
+    except Exception:
+        result.warnings.append("Could not read treadle count from [WEAVING]")
 
-    # --- Source software (for compatibility tracking) ---
-    if "WIF" in sections:
-        result.source_software = _get(config, "WIF", "Source Program")
-        result.source_version = _get(config, "WIF", "Source Version")
 
-    # --- Feature detection ---
+def _read_source_software(config: RawConfigParser, sections: set[str], result: LintResult) -> None:
+    if "WIF" not in sections:
+        return
+    result.source_software = _get(config, "WIF", "Source Program")
+    result.source_version = _get(config, "WIF", "Source Version")
+
+
+def _detect_feature_flags(sections: set[str], result: LintResult) -> None:
     result.has_threading = "THREADING" in sections
     result.has_tieup = "TIEUP" in sections
     result.has_treadling = "TREADLING" in sections
     result.has_liftplan = "LIFTPLAN" in sections
     result.has_color_palette = "COLOR PALETTE" in sections or "COLOR TABLE" in sections
 
-    # --- Effective counts from actual pick data ---
+
+def _compute_effective_counts(config: RawConfigParser, result: LintResult) -> None:
     if result.has_treadling:
         result.effective_num_treadles = _max_index_used(config, "TREADLING")
     if result.has_liftplan:
         result.effective_num_shafts = _max_index_used(config, "LIFTPLAN")
 
-    # Warn if declared metadata doesn't match actual usage
-    if result.num_treadles is not None and result.effective_num_treadles is not None:
-        if result.effective_num_treadles != result.num_treadles:
-            result.warnings.append(
-                f"[WEAVING] declares Treadles={result.num_treadles} but the highest treadle used "
-                f"in [TREADLING] is {result.effective_num_treadles}. "
-                f"Loom compatibility is based on the actual usage ({result.effective_num_treadles})."
-            )
-    if result.num_shafts is not None and result.effective_num_shafts is not None:
-        if result.effective_num_shafts != result.num_shafts:
-            result.warnings.append(
-                f"[WEAVING] declares Shafts={result.num_shafts} but the highest shaft used "
-                f"in [LIFTPLAN] is {result.effective_num_shafts}. "
-                f"Loom compatibility is based on the actual usage ({result.effective_num_shafts})."
-            )
 
-    # Warp/weft thread counts
+def _warn_metadata_mismatches(result: LintResult) -> None:
+    if (
+        result.num_treadles is not None
+        and result.effective_num_treadles is not None
+        and result.effective_num_treadles != result.num_treadles
+    ):
+        result.warnings.append(
+            f"[WEAVING] declares Treadles={result.num_treadles} but the highest treadle used "
+            f"in [TREADLING] is {result.effective_num_treadles}. "
+            f"Loom compatibility is based on the actual usage ({result.effective_num_treadles})."
+        )
+    if (
+        result.num_shafts is not None
+        and result.effective_num_shafts is not None
+        and result.effective_num_shafts != result.num_shafts
+    ):
+        result.warnings.append(
+            f"[WEAVING] declares Shafts={result.num_shafts} but the highest shaft used "
+            f"in [LIFTPLAN] is {result.effective_num_shafts}. "
+            f"Loom compatibility is based on the actual usage ({result.effective_num_shafts})."
+        )
+
+
+def _read_thread_counts(config: RawConfigParser, sections: set[str], result: LintResult) -> None:
     if "WARP" in sections:
         try:
             result.warp_threads = config.getint("WARP", "Threads")
@@ -124,7 +121,8 @@ def lint(wif_bytes: bytes) -> LintResult:
         except Exception:
             pass
 
-    # --- Warnings for missing optional sections ---
+
+def _warn_missing_optional_sections(result: LintResult) -> None:
     if not result.has_threading:
         result.warnings.append("No [THREADING] section — threading diagram unavailable")
     if not result.has_tieup and not result.has_liftplan:
@@ -136,6 +134,32 @@ def lint(wif_bytes: bytes) -> LintResult:
     if result.has_treadling and result.has_liftplan:
         result.warnings.append("File contains both [TREADLING] and [LIFTPLAN] — only one will be used per project type")
 
+
+def lint(wif_bytes: bytes) -> LintResult:
+    result = LintResult()
+    text = _decode(wif_bytes)
+
+    config = RawConfigParser()
+    config.optionxform = str  # preserve key case
+    try:
+        config.read_string(text)
+    except Exception as exc:
+        result.errors.append(f"Cannot parse file: {exc}")
+        return result
+
+    sections = {s.upper() for s in config.sections()}
+
+    if "WIF" not in sections:
+        result.errors.append("Missing [WIF] section — file may not be a valid WIF file")
+
+    _read_shaft_treadle_counts(config, sections, result)
+    _read_source_software(config, sections, result)
+    _detect_feature_flags(sections, result)
+    _compute_effective_counts(config, result)
+    _warn_metadata_mismatches(result)
+    _read_thread_counts(config, sections, result)
+    _warn_missing_optional_sections(result)
+
     return result
 
 
@@ -144,6 +168,21 @@ def _get(config: RawConfigParser, section: str, key: str) -> str | None:
         return config.get(section, key).strip() or None
     except Exception:
         return None
+
+
+def _max_index_in_value(val: str) -> int | None:
+    max_val: int | None = None
+    for token in val.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            n = int(token)
+        except ValueError:
+            continue
+        if max_val is None or n > max_val:
+            max_val = n
+    return max_val
 
 
 def _max_index_used(config: RawConfigParser, section: str) -> int | None:
@@ -159,13 +198,7 @@ def _max_index_used(config: RawConfigParser, section: str) -> int | None:
         return None
     max_val: int | None = None
     for _key, val in items:
-        for token in val.split(","):
-            token = token.strip()
-            if token:
-                try:
-                    n = int(token)
-                    if max_val is None or n > max_val:
-                        max_val = n
-                except ValueError:
-                    continue
+        val_max = _max_index_in_value(val)
+        if val_max is not None and (max_val is None or val_max > max_val):
+            max_val = val_max
     return max_val

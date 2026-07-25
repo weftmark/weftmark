@@ -117,18 +117,7 @@ def _type_label(submission_type: str) -> str:
     )
 
 
-def build_discussion_body(
-    body: str,
-    diagnostics: dict | None,
-    is_anonymous: bool,
-) -> str:
-    """Build the markdown body for the GitHub Discussion."""
-    lines: list[str] = []
-
-    lines.append(body)
-    lines.append("")
-
-    diag = diagnostics or {}
+def _diagnostics_lines(diag: dict, is_anonymous: bool) -> list[str]:
     # When anonymous, omit page_url (which often contains a project/draft UUID)
     # and project_id/draft_id. Environment, version, and user agent are safe.
     public_diag_keys = (
@@ -136,25 +125,35 @@ def build_discussion_body(
         if is_anonymous
         else ("environment", "app_version", "page_url", "project_id", "draft_id", "user_agent")
     )
-    has_diag = any(diag.get(k) for k in public_diag_keys)
-    if has_diag:
-        lines.append("---")
-        lines.append("")
-        lines.append("**Diagnostics**")
-        lines.append("")
-        if diag.get("environment"):
-            lines.append(f"- **Environment:** {diag['environment']}")
-        if diag.get("app_version"):
-            lines.append(f"- **App version:** {diag['app_version']}")
-        if not is_anonymous and diag.get("page_url"):
-            lines.append(f"- **Page:** `{diag['page_url']}`")
-        if not is_anonymous and diag.get("project_id"):
-            lines.append(f"- **Project ID:** `{diag['project_id']}`")
-        if not is_anonymous and diag.get("draft_id"):
-            lines.append(f"- **Draft ID:** `{diag['draft_id']}`")
-        if diag.get("user_agent"):
-            lines.append(f"- **User agent:** `{diag['user_agent']}`")
-        lines.append("")
+    if not any(diag.get(k) for k in public_diag_keys):
+        return []
+
+    lines = ["---", "", "**Diagnostics**", ""]
+    if diag.get("environment"):
+        lines.append(f"- **Environment:** {diag['environment']}")
+    if diag.get("app_version"):
+        lines.append(f"- **App version:** {diag['app_version']}")
+    if not is_anonymous and diag.get("page_url"):
+        lines.append(f"- **Page:** `{diag['page_url']}`")
+    if not is_anonymous and diag.get("project_id"):
+        lines.append(f"- **Project ID:** `{diag['project_id']}`")
+    if not is_anonymous and diag.get("draft_id"):
+        lines.append(f"- **Draft ID:** `{diag['draft_id']}`")
+    if diag.get("user_agent"):
+        lines.append(f"- **User agent:** `{diag['user_agent']}`")
+    lines.append("")
+    return lines
+
+
+def build_discussion_body(
+    body: str,
+    diagnostics: dict | None,
+    is_anonymous: bool,
+) -> str:
+    """Build the markdown body for the GitHub Discussion."""
+    lines: list[str] = [body, ""]
+
+    lines.extend(_diagnostics_lines(diagnostics or {}, is_anonymous))
 
     if is_anonymous:
         lines.append("*Submitted anonymously.*")
