@@ -1713,7 +1713,10 @@ function FeedbackTab() {
                 <p className="font-medium text-foreground">Diagnostics</p>
                 {Object.entries(detail.diagnostics).map(([k, v]) => {
                   if (!v) return null;
-                  const display = typeof v === "object" ? JSON.stringify(v) : String(v);
+                  const display =
+                    typeof v === "string" || typeof v === "number" || typeof v === "boolean"
+                      ? String(v)
+                      : JSON.stringify(v);
                   return <p key={k}><span className="font-mono">{k}:</span> {display}</p>;
                 })}
               </div>

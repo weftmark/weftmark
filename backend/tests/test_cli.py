@@ -1,5 +1,6 @@
 """Tests for the CLI seed command (app.cli)."""
 
+import asyncio
 import json
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -300,7 +301,7 @@ async def test_poll_for_clerk_attach_returns_user_when_attached():
     session.get = AsyncMock(return_value=mock_user)
     factory = MagicMock(return_value=session)
 
-    result = await _poll_for_clerk_attach(factory, user_id, timeout=5)
+    result = await _poll_for_clerk_attach(factory, user_id)
 
     assert result is mock_user
 
@@ -322,7 +323,8 @@ async def test_poll_for_clerk_attach_raises_timeout_when_never_attached():
     factory = MagicMock(return_value=session)
 
     with pytest.raises(TimeoutError):
-        await _poll_for_clerk_attach(factory, user_id, timeout=0)
+        async with asyncio.timeout(0):
+            await _poll_for_clerk_attach(factory, user_id)
 
 
 # ---------------------------------------------------------------------------
