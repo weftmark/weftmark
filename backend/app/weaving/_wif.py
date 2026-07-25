@@ -65,42 +65,47 @@ class WIFReader:
                 shaft = next(iter(shafts))
             draft.add_warp_thread(color=color, shaft=shaft)
 
-    def put_weft(self, draft: Draft, wif_palette: dict) -> None:
-        weft_thread_count = self.config.getint("WEFT", "Threads")
-        weft_units = self.config.get("WEFT", "Units").lower()
-        assert weft_units in self.allowed_units, f"Weft Units of {weft_units!r} is not understood"
-
-        has_weft_colors = self.getbool("CONTENTS", "WEFT COLORS")
+    def _read_weft_color_source(self) -> tuple[dict[int, int] | None, int | None]:
         weft_color_map: dict[int, int] | None = None
-        if has_weft_colors:
+        if self.getbool("CONTENTS", "WEFT COLORS"):
             weft_color_map = {}
             for thread_no, value in self.config.items("WEFT COLORS"):
                 weft_color_map[int(thread_no)] = int(value)
 
         weft_color = None
         if not weft_color_map:
-            has_weft_colors = False
+            weft_color_map = None
             weft_color = self.config.getint("WEFT", "Color")
 
-        has_liftplan = self.getbool("CONTENTS", "LIFTPLAN")
-        liftplan_map: dict[int, list[int]] = {}
-        if has_liftplan:
-            for thread_no, value in self.config.items("LIFTPLAN"):
-                liftplan_map[int(thread_no)] = [int(sn) for sn in value.split(",")]
+        return weft_color_map, weft_color
 
-        has_treadling = self.getbool("CONTENTS", "TREADLING")
-        treadling_map: dict[int, list[int]] = {}
-        if has_treadling:
-            for thread_no, value in self.config.items("TREADLING"):
-                try:
-                    treadling_map[int(thread_no)] = [int(tn) for tn in value.split(",")]
-                except ValueError:
-                    pass
+    def _read_indexed_thread_map(self, section: str, tolerant: bool = False) -> tuple[bool, dict[int, list[int]]]:
+        has_section = self.getbool("CONTENTS", section)
+        result: dict[int, list[int]] = {}
+        if has_section:
+            for thread_no, value in self.config.items(section):
+                if tolerant:
+                    try:
+                        result[int(thread_no)] = [int(tn) for tn in value.split(",")]
+                    except ValueError:
+                        pass
+                else:
+                    result[int(thread_no)] = [int(sn) for sn in value.split(",")]
+        return has_section, result
+
+    def put_weft(self, draft: Draft, wif_palette: dict) -> None:
+        weft_thread_count = self.config.getint("WEFT", "Threads")
+        weft_units = self.config.get("WEFT", "Units").lower()
+        assert weft_units in self.allowed_units, f"Weft Units of {weft_units!r} is not understood"
+
+        weft_color_map, weft_color = self._read_weft_color_source()
+        has_liftplan, liftplan_map = self._read_indexed_thread_map("LIFTPLAN")
+        has_treadling, treadling_map = self._read_indexed_thread_map("TREADLING", tolerant=True)
 
         for thread_no in range(1, weft_thread_count + 1):
             if not ((has_liftplan and thread_no in liftplan_map) or (has_treadling and thread_no in treadling_map)):
                 continue
-            color = wif_palette.get(weft_color_map[thread_no] if has_weft_colors else weft_color, [0, 0, 0])
+            color = wif_palette.get(weft_color_map[thread_no] if weft_color_map is not None else weft_color, [0, 0, 0])
             shafts = {draft.shafts[sn - 1] for sn in liftplan_map[thread_no]} if has_liftplan else set()
             treadles = {draft.treadles[tn - 1] for tn in treadling_map[thread_no]} if has_treadling else set()
             draft.add_weft_thread(color=color, shafts=shafts, treadles=treadles)
