@@ -259,6 +259,40 @@ async def search_yarns(query: str, company_id: int | None) -> list[dict]:
     return results
 
 
+def _pick_best_photo_urls(photo_candidates: list[dict]) -> tuple[str | None, str | None]:
+    """Pick the lowest-sort_order photo and return its (photo_url, thumbnail_url).
+
+    photo_url prefers medium > small > square; thumbnail_url prefers square > thumbnail > small.
+    Returns (None, None) if photo_candidates is empty.
+    """
+    if not photo_candidates:
+        return None, None
+    sorted_photos = sorted(photo_candidates, key=lambda p: p.get("sort_order") or 999)
+    first = sorted_photos[0]
+    photo_url = first.get("medium_url") or first.get("small_url") or first.get("square_url")
+    thumbnail_url = first.get("square_url") or first.get("thumbnail_url") or first.get("small_url")
+    return photo_url, thumbnail_url
+
+
+def _yarn_fields_from_ravelry_detail(yarn_data: dict) -> dict:
+    company = yarn_data.get("yarn_company") or {}
+    weight_info = yarn_data.get("yarn_weight") or {}
+    unit_yardage_raw = yarn_data.get("yardage")
+
+    return {
+        "brand": company.get("name") or "Unknown",
+        "name": yarn_data.get("name") or "Unknown",
+        "weight_category": _map_weight(weight_info.get("name")),
+        "fiber_content": yarn_data.get("fiber_content"),
+        "permalink": yarn_data.get("permalink") or None,
+        "discontinued": bool(yarn_data.get("discontinued") or False),
+        "machine_washable": yarn_data.get("machine_washable"),
+        "yarn_company_url": company.get("url") or None,
+        "unit_yardage": Decimal(str(unit_yardage_raw)) if unit_yardage_raw else None,
+        "yarn_attribute_ids": [a["id"] for a in (yarn_data.get("yarn_attributes") or []) if "id" in a],
+    }
+
+
 async def import_yarn_from_ravelry(
     user_id: uuid.UUID,
     ravelry_yarn_id: int,
@@ -269,48 +303,27 @@ async def import_yarn_from_ravelry(
     """Create a Yarn record from a Ravelry yarn using the dev read-only key."""
     raw = await _basic_auth_get(f"/yarns/{ravelry_yarn_id}.json")
     yarn_data = raw.get("yarn") or {}
-    company = yarn_data.get("yarn_company") or {}
-    weight_info = yarn_data.get("yarn_weight") or {}
-
-    brand = company.get("name") or "Unknown"
-    name = yarn_data.get("name") or "Unknown"
-    weight_category = _map_weight(weight_info.get("name"))
-    fiber_content = yarn_data.get("fiber_content")
-    permalink = yarn_data.get("permalink") or None
-    discontinued = bool(yarn_data.get("discontinued") or False)
-    machine_washable = yarn_data.get("machine_washable")
-    yarn_company_url = company.get("url") or None
-    unit_yardage_raw = yarn_data.get("yardage")
-    unit_yardage = Decimal(str(unit_yardage_raw)) if unit_yardage_raw else None
-    yarn_attribute_ids = [a["id"] for a in (yarn_data.get("yarn_attributes") or []) if "id" in a]
-
-    photos = yarn_data.get("photos") or []
-    photo_url = None
-    thumbnail_url = None
-    if photos:
-        sorted_photos = sorted(photos, key=lambda p: p.get("sort_order") or 999)
-        first = sorted_photos[0]
-        photo_url = first.get("medium_url") or first.get("small_url") or first.get("square_url")
-        thumbnail_url = first.get("square_url") or first.get("thumbnail_url") or first.get("small_url")
+    f = _yarn_fields_from_ravelry_detail(yarn_data)
+    photo_url, thumbnail_url = _pick_best_photo_urls(yarn_data.get("photos") or [])
 
     yarn = Yarn(
         owner_id=user_id,
-        brand=brand,
-        name=name,
+        brand=f["brand"],
+        name=f["name"],
         color_name=color_name or None,
         color_hex=color_hex or None,
-        weight_category=weight_category,
-        fiber_content=fiber_content,
-        unit_yardage=unit_yardage,
+        weight_category=f["weight_category"],
+        fiber_content=f["fiber_content"],
+        unit_yardage=f["unit_yardage"],
         ravelry_yarn_id=ravelry_yarn_id,
         ravelry_photo_url=photo_url,
         ravelry_thumbnail_url=thumbnail_url,
-        ravelry_permalink=permalink,
-        ravelry_discontinued=discontinued,
-        ravelry_machine_washable=machine_washable,
-        ravelry_yarn_company_url=yarn_company_url,
-        machine_washable=machine_washable,
-        yarn_attribute_ids=yarn_attribute_ids,
+        ravelry_permalink=f["permalink"],
+        ravelry_discontinued=f["discontinued"],
+        ravelry_machine_washable=f["machine_washable"],
+        ravelry_yarn_company_url=f["yarn_company_url"],
+        machine_washable=f["machine_washable"],
+        yarn_attribute_ids=f["yarn_attribute_ids"],
     )
     db.add(yarn)
     await db.commit()
@@ -381,6 +394,156 @@ def _color_family_to_hex(color_family_name: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+def _extract_stash_entry_fields(entry: dict) -> dict:
+    yarn_data = entry.get("yarn") or {}
+    company = yarn_data.get("yarn_company") or {}
+    weight_info = yarn_data.get("yarn_weight") or {}
+
+    yarn_photos: list[dict] = yarn_data.get("photos") or []
+    stash_photos: list[dict] = entry.get("photos") or []
+    photo_candidates = yarn_photos if yarn_photos else stash_photos
+    photo_url, thumbnail_url = _pick_best_photo_urls(photo_candidates)
+
+    color_family = entry.get("color_family_name") or (
+        (yarn_data.get("personal_attributes") or {}).get("color_family_name")
+    )
+    unit_yardage_raw = yarn_data.get("yardage")
+
+    return {
+        "brand": company.get("name") or "Unknown",
+        "name": yarn_data.get("name") or entry.get("name") or "Unknown",
+        "color_name": entry.get("colorway_name"),
+        "weight_category": _map_weight(weight_info.get("name")),
+        "fiber_content": yarn_data.get("fiber_content"),
+        "ravelry_yarn_id": yarn_data.get("id") or None,
+        "permalink": yarn_data.get("permalink") or None,
+        "discontinued": bool(yarn_data.get("discontinued") or False),
+        "machine_washable": yarn_data.get("machine_washable"),
+        "yarn_company_url": company.get("url") or None,
+        "yarn_attribute_ids": [a["id"] for a in (yarn_data.get("yarn_attributes") or []) if "id" in a],
+        "photo_url": photo_url,
+        "thumbnail_url": thumbnail_url,
+        "color_hex_guess": _color_family_to_hex(color_family),
+        "unit_yardage": Decimal(str(unit_yardage_raw)) if unit_yardage_raw else None,
+    }
+
+
+def _apply_stash_fields_to_existing(existing: Yarn, f: dict) -> None:
+    existing.brand = f["brand"]
+    existing.name = f["name"]
+    existing.color_name = f["color_name"]
+    existing.weight_category = f["weight_category"]
+    existing.fiber_content = f["fiber_content"]
+    existing.unit_yardage = f["unit_yardage"]
+    if f["ravelry_yarn_id"]:
+        existing.ravelry_yarn_id = f["ravelry_yarn_id"]
+    if f["photo_url"]:
+        existing.ravelry_photo_url = f["photo_url"]
+    if f["thumbnail_url"]:
+        existing.ravelry_thumbnail_url = f["thumbnail_url"]
+    if f["permalink"]:
+        existing.ravelry_permalink = f["permalink"]
+    existing.ravelry_discontinued = f["discontinued"]
+    if f["machine_washable"] is not None:
+        existing.ravelry_machine_washable = f["machine_washable"]
+        existing.machine_washable = f["machine_washable"]
+    if f["yarn_attribute_ids"]:
+        existing.yarn_attribute_ids = f["yarn_attribute_ids"]
+    if f["yarn_company_url"]:
+        existing.ravelry_yarn_company_url = f["yarn_company_url"]
+    if existing.color_hex is None and f["color_hex_guess"]:
+        existing.color_hex = f["color_hex_guess"]
+    if existing.out_of_stash:
+        existing.out_of_stash = False
+
+
+def _build_new_stash_yarn(user_id: uuid.UUID, stash_id: int, f: dict) -> Yarn:
+    return Yarn(
+        owner_id=user_id,
+        brand=f["brand"],
+        name=f["name"],
+        color_name=f["color_name"],
+        color_hex=f["color_hex_guess"],
+        weight_category=f["weight_category"],
+        fiber_content=f["fiber_content"],
+        unit_yardage=f["unit_yardage"],
+        ravelry_stash_id=stash_id,
+        ravelry_yarn_id=f["ravelry_yarn_id"],
+        ravelry_photo_url=f["photo_url"],
+        ravelry_thumbnail_url=f["thumbnail_url"],
+        ravelry_permalink=f["permalink"],
+        ravelry_discontinued=f["discontinued"],
+        ravelry_machine_washable=f["machine_washable"],
+        ravelry_yarn_company_url=f["yarn_company_url"],
+        machine_washable=f["machine_washable"],
+        yarn_attribute_ids=f["yarn_attribute_ids"],
+    )
+
+
+async def _upsert_stash_yarn(db: AsyncSession, user_id: uuid.UUID, stash_id: int, fields: dict) -> None:
+    existing: Yarn | None = await db.scalar(
+        select(Yarn).where(
+            Yarn.owner_id == user_id,
+            Yarn.ravelry_stash_id == stash_id,
+            Yarn.deleted_at.is_(None),
+        )
+    )
+    if existing:
+        _apply_stash_fields_to_existing(existing, fields)
+    else:
+        existing = _build_new_stash_yarn(user_id, stash_id, fields)
+        db.add(existing)
+        await db.flush()
+
+
+async def _archive_yarns_no_longer_in_stash(db: AsyncSession, user_id: uuid.UUID, synced_ids: set[int]) -> None:
+    """Yarns removed from Ravelry stash — never hard-delete, just flag."""
+    all_ravelry_yarns = await db.scalars(
+        select(Yarn).where(
+            Yarn.owner_id == user_id,
+            Yarn.ravelry_stash_id.is_not(None),
+            Yarn.deleted_at.is_(None),
+            Yarn.out_of_stash.is_(False),
+        )
+    )
+    for yarn in all_ravelry_yarns.all():
+        if yarn.ravelry_stash_id not in synced_ids:
+            yarn.out_of_stash = True
+
+
+async def _backfill_yarn_photo(yarn: Yarn, sem: asyncio.Semaphore) -> None:
+    async with sem:
+        try:
+            raw = await _basic_auth_get(f"/yarns/{yarn.ravelry_yarn_id}.json")
+            yarn_node = raw.get("yarn") or {}
+            photos = yarn_node.get("photos") or []
+            if photos:
+                yarn.ravelry_photo_url, yarn.ravelry_thumbnail_url = _pick_best_photo_urls(photos)
+        except Exception:
+            pass
+
+
+async def _backfill_missing_photos(db: AsyncSession, user_id: uuid.UUID) -> None:
+    """Backfill photos for yarns missing one. stash/list embeds an empty photos
+    array, so we fetch yarn detail separately, concurrently, best-effort."""
+    yarns_needing_backfill = (
+        await db.scalars(
+            select(Yarn).where(
+                Yarn.owner_id == user_id,
+                Yarn.ravelry_yarn_id.is_not(None),
+                Yarn.ravelry_photo_url.is_(None),
+                Yarn.deleted_at.is_(None),
+            )
+        )
+    ).all()
+
+    if not yarns_needing_backfill:
+        return
+
+    sem = asyncio.Semaphore(4)
+    await asyncio.gather(*[_backfill_yarn_photo(y, sem) for y in yarns_needing_backfill])
+
+
 async def sync_stash(user_id: uuid.UUID, db: AsyncSession) -> dict:
     """Sync user's Ravelry stash into local Yarn records.
 
@@ -414,163 +577,23 @@ async def sync_stash(user_id: uuid.UUID, db: AsyncSession) -> dict:
 
     stash_entries: list[dict] = raw.get("stash", [])
     synced_ids: set[int] = set()
-    upsert_count = 0
 
     for entry in stash_entries:
         stash_id: int = entry["id"]
         synced_ids.add(stash_id)
+        fields = _extract_stash_entry_fields(entry)
+        await _upsert_stash_yarn(db, user_id, stash_id, fields)
 
-        yarn_data = entry.get("yarn") or {}
-        company = yarn_data.get("yarn_company") or {}
-        weight_info = yarn_data.get("yarn_weight") or {}
-
-        brand = company.get("name") or "Unknown"
-        name = yarn_data.get("name") or entry.get("name") or "Unknown"
-        color_name = entry.get("colorway_name")
-        weight_category = _map_weight(weight_info.get("name"))
-        fiber_content = yarn_data.get("fiber_content")
-        ravelry_yarn_id: int | None = yarn_data.get("id") or None
-        permalink: str | None = yarn_data.get("permalink") or None
-        discontinued: bool = bool(yarn_data.get("discontinued") or False)
-        machine_washable: bool | None = yarn_data.get("machine_washable")
-        yarn_company_url: str | None = company.get("url") or None
-        yarn_attribute_ids: list[int] = [a["id"] for a in (yarn_data.get("yarn_attributes") or []) if "id" in a]
-
-        yarn_photos: list[dict] = yarn_data.get("photos") or []
-        stash_photos: list[dict] = entry.get("photos") or []
-        photo_candidates = yarn_photos if yarn_photos else stash_photos
-        photo_url: str | None = None
-        thumbnail_url: str | None = None
-        if photo_candidates:
-            sorted_photos = sorted(photo_candidates, key=lambda p: p.get("sort_order") or 999)
-            first = sorted_photos[0]
-            photo_url = first.get("medium_url") or first.get("small_url") or first.get("square_url")
-            thumbnail_url = first.get("square_url") or first.get("thumbnail_url") or first.get("small_url")
-
-        color_family = entry.get("color_family_name") or (
-            (yarn_data.get("personal_attributes") or {}).get("color_family_name")
-        )
-        color_hex_guess = _color_family_to_hex(color_family)
-        unit_yardage_raw = yarn_data.get("yardage")
-        unit_yardage = Decimal(str(unit_yardage_raw)) if unit_yardage_raw else None
-
-        existing: Yarn | None = await db.scalar(
-            select(Yarn).where(
-                Yarn.owner_id == user_id,
-                Yarn.ravelry_stash_id == stash_id,
-                Yarn.deleted_at.is_(None),
-            )
-        )
-
-        if existing:
-            existing.brand = brand
-            existing.name = name
-            existing.color_name = color_name
-            existing.weight_category = weight_category
-            existing.fiber_content = fiber_content
-            existing.unit_yardage = unit_yardage
-            if ravelry_yarn_id:
-                existing.ravelry_yarn_id = ravelry_yarn_id
-            if photo_url:
-                existing.ravelry_photo_url = photo_url
-            if thumbnail_url:
-                existing.ravelry_thumbnail_url = thumbnail_url
-            if permalink:
-                existing.ravelry_permalink = permalink
-            existing.ravelry_discontinued = discontinued
-            if machine_washable is not None:
-                existing.ravelry_machine_washable = machine_washable
-                existing.machine_washable = machine_washable
-            if yarn_attribute_ids:
-                existing.yarn_attribute_ids = yarn_attribute_ids
-            if yarn_company_url:
-                existing.ravelry_yarn_company_url = yarn_company_url
-            if existing.color_hex is None and color_hex_guess:
-                existing.color_hex = color_hex_guess
-            if existing.out_of_stash:
-                existing.out_of_stash = False
-        else:
-            existing = Yarn(
-                owner_id=user_id,
-                brand=brand,
-                name=name,
-                color_name=color_name,
-                color_hex=color_hex_guess,
-                weight_category=weight_category,
-                fiber_content=fiber_content,
-                unit_yardage=unit_yardage,
-                ravelry_stash_id=stash_id,
-                ravelry_yarn_id=ravelry_yarn_id,
-                ravelry_photo_url=photo_url,
-                ravelry_thumbnail_url=thumbnail_url,
-                ravelry_permalink=permalink,
-                ravelry_discontinued=discontinued,
-                ravelry_machine_washable=machine_washable,
-                ravelry_yarn_company_url=yarn_company_url,
-                machine_washable=machine_washable,
-                yarn_attribute_ids=yarn_attribute_ids,
-            )
-            db.add(existing)
-            await db.flush()
-
-        upsert_count += 1
-
-    # Archive yarns removed from Ravelry stash — never hard-delete
-    all_ravelry_yarns = await db.scalars(
-        select(Yarn).where(
-            Yarn.owner_id == user_id,
-            Yarn.ravelry_stash_id.is_not(None),
-            Yarn.deleted_at.is_(None),
-            Yarn.out_of_stash.is_(False),
-        )
-    )
-    for yarn in all_ravelry_yarns.all():
-        if yarn.ravelry_stash_id not in synced_ids:
-            yarn.out_of_stash = True
-
-    # Backfill photos for yarns missing generic photo or colorway photo.
-    # stash/list embeds an empty photos array, so we fetch yarn detail separately.
-    yarns_needing_backfill = (
-        await db.scalars(
-            select(Yarn).where(
-                Yarn.owner_id == user_id,
-                Yarn.ravelry_yarn_id.is_not(None),
-                Yarn.ravelry_photo_url.is_(None),
-                Yarn.deleted_at.is_(None),
-            )
-        )
-    ).all()
-
-    if yarns_needing_backfill:
-        sem = asyncio.Semaphore(4)
-
-        async def _fill_photo(yarn: Yarn) -> None:
-            async with sem:
-                try:
-                    raw = await _basic_auth_get(f"/yarns/{yarn.ravelry_yarn_id}.json")
-                    yarn_node = raw.get("yarn") or {}
-                    photos = yarn_node.get("photos") or []
-                    if photos:
-                        sorted_photos = sorted(photos, key=lambda p: p.get("sort_order") or 999)
-                        first = sorted_photos[0]
-                        yarn.ravelry_photo_url = (
-                            first.get("medium_url") or first.get("small_url") or first.get("square_url")
-                        )
-                        yarn.ravelry_thumbnail_url = (
-                            first.get("square_url") or first.get("thumbnail_url") or first.get("small_url")
-                        )
-                except Exception:
-                    pass
-
-        await asyncio.gather(*[_fill_photo(y) for y in yarns_needing_backfill])
+    await _archive_yarns_no_longer_in_stash(db, user_id, synced_ids)
+    await _backfill_missing_photos(db, user_id)
 
     now = datetime.now(timezone.utc)
     cred.stash_etag = new_etag
     cred.stash_last_synced_at = now
     await db.commit()
 
-    logger.info("Ravelry stash synced for user %s: %d entries", user_id, upsert_count)
-    return {"synced": upsert_count, "unchanged": False, "last_synced_at": now}
+    logger.info("Ravelry stash synced for user %s: %d entries", user_id, len(stash_entries))
+    return {"synced": len(stash_entries), "unchanged": False, "last_synced_at": now}
 
 
 # ---------------------------------------------------------------------------
