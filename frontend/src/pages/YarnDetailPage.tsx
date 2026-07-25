@@ -282,7 +282,7 @@ function RavelrySection({ ry, companyUrl, permalink }: {
   const fibers = ry.fiber_contents?.filter(f => f.fiber_category?.name) ?? [];
 
   const ratingStr = ry.rating_average && ry.rating_count
-    ? t("yarnDetailPage.rating", { avg: parseFloat(ry.rating_average).toFixed(2), count: ry.rating_count.toLocaleString() })
+    ? t("yarnDetailPage.rating", { avg: Number.parseFloat(ry.rating_average).toFixed(2), count: ry.rating_count.toLocaleString() })
     : null;
 
   const attributes: string[] = [

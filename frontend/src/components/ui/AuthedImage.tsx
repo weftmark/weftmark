@@ -3,6 +3,7 @@ import { getAuthToken } from "@/api/client";
 
 interface Props extends React.ImgHTMLAttributes<HTMLImageElement> {
   readonly src: string;
+  readonly alt: string;
   readonly loadingContent?: React.ReactNode;
 }
 

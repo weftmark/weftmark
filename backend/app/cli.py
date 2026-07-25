@@ -190,22 +190,17 @@ async def _preregister_user(
 async def _poll_for_clerk_attach(
     session_factory: async_sessionmaker,
     user_id: uuid.UUID,
-    timeout: int,
 ) -> User:
-    """Poll until the webhook attaches a clerk_user_id to the pre-created User."""
-    try:
-        async with asyncio.timeout(timeout):
-            while True:
-                async with session_factory() as session:
-                    user = await session.get(User, user_id)
-                    if user and user.clerk_user_id is not None:
-                        return user  # type: ignore[no-any-return]
-                await asyncio.sleep(1)
-    except TimeoutError:
-        raise TimeoutError(
-            f"user_id={user_id} never received a clerk_user_id after {timeout}s — "
-            "is the webhook configured and reachable?"
-        ) from None
+    """Poll until the webhook attaches a clerk_user_id to the pre-created User.
+
+    Callers must bound this with an `asyncio.timeout(...)` context manager.
+    """
+    while True:
+        async with session_factory() as session:
+            user = await session.get(User, user_id)
+            if user and user.clerk_user_id is not None:
+                return user  # type: ignore[no-any-return]
+        await asyncio.sleep(1)
 
 
 # ---------------------------------------------------------------------------
@@ -341,10 +336,14 @@ async def _seed_users(
 
         # 3. Poll until the webhook attaches the Clerk ID to the pre-created User.
         try:
-            db_user = await _poll_for_clerk_attach(session_factory, pre_user.id, poll_timeout)
+            async with asyncio.timeout(poll_timeout):
+                db_user = await _poll_for_clerk_attach(session_factory, pre_user.id)
             _ok(f"{email} confirmed in DB (clerk_user_id={db_user.clerk_user_id})")
-        except TimeoutError as exc:
-            _err(str(exc))
+        except TimeoutError:
+            _err(
+                f"user_id={pre_user.id} never received a clerk_user_id after {poll_timeout}s — "
+                "is the webhook configured and reachable?"
+            )
             await engine.dispose()
             sys.exit(1)
 

@@ -41,12 +41,12 @@ async function getAppVersion(): Promise<string | null> {
 }
 
 function extractProjectId(pathname: string): string | null {
-  const m = pathname.match(/^\/projects\/([0-9a-f-]{36})/i);
+  const m = /^\/projects\/([0-9a-f-]{36})/i.exec(pathname);
   return m ? m[1] : null;
 }
 
 function extractDraftId(pathname: string): string | null {
-  const m = pathname.match(/^\/drafts\/([0-9a-f-]{36})/i);
+  const m = /^\/drafts\/([0-9a-f-]{36})/i.exec(pathname);
   return m ? m[1] : null;
 }
 

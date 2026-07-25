@@ -1,5 +1,6 @@
 """Tests for the CLI seed command (app.cli)."""
 
+import asyncio
 import json
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -260,6 +261,42 @@ async def test_seed_deletes_clerk_users_before_alembic(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Users: poll-for-attach timeout aborts
+# ---------------------------------------------------------------------------
+
+
+async def test_seed_aborts_when_poll_for_clerk_attach_times_out(tmp_path):
+    """If the webhook never attaches a clerk_user_id, cmd_seed exits 1."""
+    settings = _make_settings()
+    factory, _session = _make_session_factory()
+    config = tmp_path / "seed.json"
+    config.write_text(json.dumps({"users": [{"email": "a@b.com", "username": "a", "role": "user"}]}))
+
+    engine = _make_engine()
+    pre_user = MagicMock()
+    pre_user.id = uuid.uuid4()
+
+    with (
+        patch("app.cli.get_settings", return_value=settings),
+        patch("app.cli._clerk_list_users", AsyncMock(return_value=[])),
+        patch("app.cli._clerk_delete_all_users", AsyncMock(return_value=0)),
+        patch("app.cli.create_async_engine", return_value=engine),
+        patch("app.cli.async_sessionmaker", return_value=factory),
+        patch("app.cli._alembic_reset"),
+        patch("app.cli._clear_storage"),
+        patch("app.cli._preregister_user", AsyncMock(return_value=pre_user)),
+        patch("app.cli._clerk_create_user", AsyncMock(return_value={"id": "user_new"})),
+        patch("app.cli._poll_for_clerk_attach", AsyncMock(side_effect=TimeoutError)),
+        patch("app.cli._BACKEND_DIR", tmp_path),
+    ):
+        with pytest.raises(SystemExit) as exc_info:
+            await cmd_seed(str(config), 5)
+
+    assert exc_info.value.code == 1
+    engine.dispose.assert_awaited()
+
+
+# ---------------------------------------------------------------------------
 # Reset: Clerk deletion failure aborts
 # ---------------------------------------------------------------------------
 
@@ -300,7 +337,7 @@ async def test_poll_for_clerk_attach_returns_user_when_attached():
     session.get = AsyncMock(return_value=mock_user)
     factory = MagicMock(return_value=session)
 
-    result = await _poll_for_clerk_attach(factory, user_id, timeout=5)
+    result = await _poll_for_clerk_attach(factory, user_id)
 
     assert result is mock_user
 
@@ -322,7 +359,8 @@ async def test_poll_for_clerk_attach_raises_timeout_when_never_attached():
     factory = MagicMock(return_value=session)
 
     with pytest.raises(TimeoutError):
-        await _poll_for_clerk_attach(factory, user_id, timeout=0)
+        async with asyncio.timeout(0):
+            await _poll_for_clerk_attach(factory, user_id)
 
 
 # ---------------------------------------------------------------------------
