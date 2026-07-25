@@ -376,47 +376,37 @@ def _clerk_conn_meta(settings: "Settings") -> dict[str, str]:
     }
 
 
-async def _probe_clerk() -> ServiceCheckResult:
-    settings = get_settings()
-    checks: list[ServicePermCheck] = []
-    meta = _clerk_conn_meta(settings)
-
-    # Config: secret key
-    sk = settings.clerk_secret_key
+def _check_clerk_secret_key(sk: str | None) -> ServicePermCheck:
     sk_ok = bool(sk and sk.startswith("sk_"))
     if sk_ok:
+        assert sk is not None
         sk_pfx = "sk_live_" if sk.startswith("sk_live_") else "sk_test_"
         sk_peek = sk[len(sk_pfx) : len(sk_pfx) + 6]
         sk_msg = f"Set ({sk_pfx}{sk_peek}…)"
     else:
         sk_msg = _MISSING_OR_UNEXPECTED_FORMAT
-    checks.append(ServicePermCheck(name="secret_key", status="ok" if sk_ok else "error", message=sk_msg))
+    return ServicePermCheck(name="secret_key", status="ok" if sk_ok else "error", message=sk_msg)
 
-    # Config: publishable key
+
+def _check_clerk_publishable_key(settings: Settings) -> ServicePermCheck:
     pk_ok = bool(settings.clerk_publishable_key and settings.clerk_publishable_key.startswith("pk_"))
-    checks.append(
-        ServicePermCheck(
-            name="publishable_key",
-            status="ok" if pk_ok else "error",
-            message="Set (pk_…)" if pk_ok else _MISSING_OR_UNEXPECTED_FORMAT,
-        )
+    return ServicePermCheck(
+        name="publishable_key",
+        status="ok" if pk_ok else "error",
+        message="Set (pk_…)" if pk_ok else _MISSING_OR_UNEXPECTED_FORMAT,
     )
 
-    # Config: webhook secret
+
+def _check_clerk_webhook_secret(settings: Settings) -> ServicePermCheck:
     wh_ok = bool(settings.clerk_webhook_secret and settings.clerk_webhook_secret.startswith("whsec_"))
-    checks.append(
-        ServicePermCheck(
-            name="webhook_secret",
-            status="ok" if wh_ok else "error",
-            message="Set (whsec_…)" if wh_ok else _MISSING_OR_UNEXPECTED_FORMAT,
-        )
+    return ServicePermCheck(
+        name="webhook_secret",
+        status="ok" if wh_ok else "error",
+        message="Set (whsec_…)" if wh_ok else _MISSING_OR_UNEXPECTED_FORMAT,
     )
 
-    # API connectivity + auth
-    if not settings.clerk_secret_key:
-        checks.append(ServicePermCheck(name="api_auth", status="error", message="Skipped — secret key missing"))
-        return _make_result("Clerk", checks, meta=meta)
 
+async def _check_clerk_api_auth(settings: Settings) -> ServicePermCheck:
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.get(
@@ -424,14 +414,29 @@ async def _probe_clerk() -> ServiceCheckResult:
                 headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
             )
         if r.status_code == 200:
-            checks.append(ServicePermCheck(name="api_auth", status="ok", message="GET /v1/users → 200"))
-        else:
-            checks.append(ServicePermCheck(name="api_auth", status="error", message=f"HTTP {r.status_code}"))
+            return ServicePermCheck(name="api_auth", status="ok", message="GET /v1/users → 200")
+        return ServicePermCheck(name="api_auth", status="error", message=f"HTTP {r.status_code}")
     except httpx.TimeoutException:
-        checks.append(ServicePermCheck(name="api_auth", status="error", message="Timed out after 3 s"))
+        return ServicePermCheck(name="api_auth", status="error", message="Timed out after 3 s")
     except Exception as exc:
-        checks.append(ServicePermCheck(name="api_auth", status="error", message=str(exc)[:120]))
+        return ServicePermCheck(name="api_auth", status="error", message=str(exc)[:120])
 
+
+async def _probe_clerk() -> ServiceCheckResult:
+    settings = get_settings()
+    meta = _clerk_conn_meta(settings)
+
+    checks: list[ServicePermCheck] = [
+        _check_clerk_secret_key(settings.clerk_secret_key),
+        _check_clerk_publishable_key(settings),
+        _check_clerk_webhook_secret(settings),
+    ]
+
+    if not settings.clerk_secret_key:
+        checks.append(ServicePermCheck(name="api_auth", status="error", message="Skipped — secret key missing"))
+        return _make_result("Clerk", checks, meta=meta)
+
+    checks.append(await _check_clerk_api_auth(settings))
     return _make_result("Clerk", checks, meta=meta)
 
 
@@ -552,36 +557,15 @@ async def list_users(
     ]
 
 
-@router.patch(
-    "/users/{user_id}",
-    responses={
-        400: {"description": "Cannot modify your own account"},
-        403: {"description": "Superuser required to change admin or superuser roles"},
-        404: {"description": "User not found"},
-        422: {"description": "Remove admin rights before deactivating this user"},
-    },
-)
-async def patch_user(
-    user_id: uuid.UUID,
-    body: AdminUserPatch,
-    admin: Annotated[User, Depends(require_admin)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> AdminUserResponse:
-    user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
-    if user is None:
-        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
-    if user.id == admin.id:
-        raise HTTPException(status_code=400, detail="Cannot modify your own account")
-
+def _validate_user_role_change(body: AdminUserPatch, admin: User, user: User) -> None:
     if body.is_admin is not None or body.is_superuser is not None:
         if not admin.is_superuser:
             raise HTTPException(status_code=403, detail="Superuser required to change admin or superuser roles")
         if body.is_admin is False and user.is_superuser:
             raise HTTPException(status_code=400, detail="Cannot remove admin from a superuser")
 
-    if body.is_active is False and user.is_admin:
-        raise HTTPException(status_code=422, detail="Remove admin rights before deactivating this user")
 
+def _apply_user_role_patch(user: User, body: AdminUserPatch) -> None:
     if body.is_active is not None:
         user.is_active = body.is_active
     if body.is_admin is not None:
@@ -589,16 +573,8 @@ async def patch_user(
     if body.is_superuser is not None:
         user.is_superuser = body.is_superuser
 
-    changed = body.model_dump(exclude_none=True)
-    await write_audit_log(db, event_type="user.role_changed", actor=admin, target=user, details=changed)
-    await db.commit()
-    role_changes_total.add(1, {"new_role": "admin" if user.is_admin else "user"})
-    await db.refresh(user)
 
-    if (body.is_admin is not None or body.is_superuser is not None) and user.clerk_user_id:
-        await set_user_metadata(user.clerk_user_id, {"is_admin": user.is_admin, "is_superuser": user.is_superuser})
-
-    # Re-fetch counts for the patched user
+async def _fetch_admin_user_counts(db: AsyncSession, user: User) -> AdminUserCounts:
     drafts = (
         await db.scalar(
             select(func.count()).select_from(Draft).where(Draft.owner_id == user.id, Draft.deleted_at.is_(None))
@@ -644,6 +620,54 @@ async def patch_user(
         )
         or 0
     )
+    return AdminUserCounts(
+        drafts=drafts,
+        projects_active=proj_active,
+        projects_completed=proj_completed,
+        looms=looms,
+        storage_bytes=int(project_storage) + int(loom_storage),
+        storage_quota_bytes=MAX_USER_STORAGE_BYTES,
+    )
+
+
+@router.patch(
+    "/users/{user_id}",
+    responses={
+        400: {"description": "Cannot modify your own account"},
+        403: {"description": "Superuser required to change admin or superuser roles"},
+        404: {"description": "User not found"},
+        422: {"description": "Remove admin rights before deactivating this user"},
+    },
+)
+async def patch_user(
+    user_id: uuid.UUID,
+    body: AdminUserPatch,
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AdminUserResponse:
+    user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    if user is None:
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot modify your own account")
+
+    _validate_user_role_change(body, admin, user)
+
+    if body.is_active is False and user.is_admin:
+        raise HTTPException(status_code=422, detail="Remove admin rights before deactivating this user")
+
+    _apply_user_role_patch(user, body)
+
+    changed = body.model_dump(exclude_none=True)
+    await write_audit_log(db, event_type="user.role_changed", actor=admin, target=user, details=changed)
+    await db.commit()
+    role_changes_total.add(1, {"new_role": "admin" if user.is_admin else "user"})
+    await db.refresh(user)
+
+    if (body.is_admin is not None or body.is_superuser is not None) and user.clerk_user_id:
+        await set_user_metadata(user.clerk_user_id, {"is_admin": user.is_admin, "is_superuser": user.is_superuser})
+
+    counts = await _fetch_admin_user_counts(db, user)
 
     return AdminUserResponse(
         id=user.id,
@@ -662,14 +686,7 @@ async def patch_user(
         clerk_errored=user.clerk_errored,
         eula_accepted_version=user.eula_accepted_version,
         eula_accepted_at=user.eula_accepted_at,
-        counts=AdminUserCounts(
-            drafts=drafts,
-            projects_active=proj_active,
-            projects_completed=proj_completed,
-            looms=looms,
-            storage_bytes=int(project_storage) + int(loom_storage),
-            storage_quota_bytes=MAX_USER_STORAGE_BYTES,
-        ),
+        counts=counts,
     )
 
 
@@ -2097,28 +2114,24 @@ class WorkerStatus(BaseModel):
     checked_at: str
 
 
-@router.get("/worker-status")
-async def get_worker_status(
-    _: Annotated[User, Depends(require_superuser)],
-) -> WorkerStatus:
+def _inspect_workers() -> tuple[dict, dict, dict]:
     from app.celery_app import celery_app
 
-    checked_at = datetime.now(timezone.utc).isoformat()
+    try:
+        inspector = celery_app.control.inspect(timeout=1.5)
+        return (
+            inspector.active() or {},
+            inspector.reserved() or {},
+            inspector.stats() or {},
+        )
+    except Exception as exc:
+        log.warning("worker_inspect_error: %s", exc)
+        return {}, {}, {}
 
-    def _inspect() -> tuple[dict, dict, dict]:
-        try:
-            inspector = celery_app.control.inspect(timeout=1.5)
-            return (
-                inspector.active() or {},
-                inspector.reserved() or {},
-                inspector.stats() or {},
-            )
-        except Exception as exc:
-            log.warning("worker_inspect_error: %s", exc)
-            return {}, {}, {}
 
-    active, reserved, stats = await asyncio.get_event_loop().run_in_executor(None, _inspect)
-
+def _fetch_worker_versions_and_queues(
+    active: dict, reserved: dict, stats: dict
+) -> tuple[list[QueueInfo], dict[str, str]]:
     queues: list[QueueInfo] = []
     node_versions: dict[str, str] = {}
     try:
@@ -2137,41 +2150,53 @@ async def get_worker_status(
         client.close()
     except Exception as exc:
         log.warning("worker_status_redis_error: %s", exc)
+    return queues, node_versions
+
+
+def _worker_task_summary(t: dict, include_time: bool = True) -> WorkerActiveTask:
+    return WorkerActiveTask(
+        id=t.get("id", ""),
+        name=t.get("name", ""),
+        args_repr=str(t.get("args", []))[:120],
+        time_start=t.get("time_start") if include_time else None,
+    )
+
+
+def _build_worker_info(
+    name: str, stats: dict, active: dict, reserved: dict, node_versions: dict[str, str]
+) -> WorkerInfo:
+    ws = stats.get(name, {})
+    pool = ws.get("pool", {})
+    total_dict = ws.get("total") or {}
+    rusage = ws.get("rusage") or {}
+    maxrss_kb = rusage.get("maxrss")
+    return WorkerInfo(
+        name=name,
+        status="online",
+        version=node_versions.get(name),
+        concurrency=pool.get("max-concurrency"),
+        completed_tasks=sum(total_dict.values()) if total_dict else None,
+        uptime=ws.get("uptime"),
+        memory_mb=round(maxrss_kb / 1024, 1) if maxrss_kb else None,
+        active_tasks=[_worker_task_summary(t) for t in (active.get(name) or [])],
+        reserved_tasks=[_worker_task_summary(t, include_time=False) for t in (reserved.get(name) or [])],
+    )
+
+
+@router.get("/worker-status")
+async def get_worker_status(
+    _: Annotated[User, Depends(require_superuser)],
+) -> WorkerStatus:
+    checked_at = datetime.now(timezone.utc).isoformat()
+
+    active, reserved, stats = await asyncio.get_event_loop().run_in_executor(None, _inspect_workers)
+    queues, node_versions = _fetch_worker_versions_and_queues(active, reserved, stats)
 
     all_names = set(active) | set(reserved) | set(stats)
-    workers: list[WorkerInfo] = []
-
     if not all_names:
-        workers.append(WorkerInfo(name="(no workers responding)", status="offline"))
+        workers = [WorkerInfo(name="(no workers responding)", status="offline")]
     else:
-        for name in sorted(all_names):
-            ws = stats.get(name, {})
-            pool = ws.get("pool", {})
-            total_dict = ws.get("total") or {}
-
-            def _task(t: dict, include_time: bool = True) -> WorkerActiveTask:
-                return WorkerActiveTask(
-                    id=t.get("id", ""),
-                    name=t.get("name", ""),
-                    args_repr=str(t.get("args", []))[:120],
-                    time_start=t.get("time_start") if include_time else None,
-                )
-
-            rusage = ws.get("rusage") or {}
-            maxrss_kb = rusage.get("maxrss")
-            workers.append(
-                WorkerInfo(
-                    name=name,
-                    status="online",
-                    version=node_versions.get(name),
-                    concurrency=pool.get("max-concurrency"),
-                    completed_tasks=sum(total_dict.values()) if total_dict else None,
-                    uptime=ws.get("uptime"),
-                    memory_mb=round(maxrss_kb / 1024, 1) if maxrss_kb else None,
-                    active_tasks=[_task(t) for t in (active.get(name) or [])],
-                    reserved_tasks=[_task(t, include_time=False) for t in (reserved.get(name) or [])],
-                )
-            )
+        workers = [_build_worker_info(name, stats, active, reserved, node_versions) for name in sorted(all_names)]
 
     return WorkerStatus(workers=workers, queues=queues, api_version=VERSION, checked_at=checked_at)
 

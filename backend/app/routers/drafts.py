@@ -335,116 +335,126 @@ async def get_preview_svg(
 # ---------------------------------------------------------------------------
 
 
-@router.get(
-    "/{draft_id}/drawdown",
-    responses={404: {"description": "No WIF file for this draft"}, 500: {"description": "Drawdown rendering failed"}},
-)
-async def get_drawdown(
+async def _record_drawdown_render_limit_exceeded(
+    db: AsyncSession, draft_id: uuid.UUID, draft: Draft, current_user: User, mode: str
+) -> None:
+    await write_audit_log(
+        db,
+        event_type="render.limit_exceeded",
+        actor=current_user,
+        details={
+            "draft_id": str(draft_id),
+            "warp_threads": draft.warp_threads,
+            "weft_threads": draft.weft_threads,
+            "render_max_width": settings.render_max_width,
+            "render_max_height": settings.render_max_height,
+            "mode": mode,
+        },
+    )
+    await db.commit()
+
+
+async def _get_tiled_drawdown(
     draft_id: uuid.UUID,
-    current_user: Annotated[User, Depends(get_effective_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    start_row: Annotated[int | None, Query(ge=0)] = None,
-    row_count: Annotated[int | None, Query(ge=1)] = None,
-    hide_unused_shafts_treadles: Annotated[bool, Query()] = False,
+    draft: Draft,
+    current_user: User,
+    db: AsyncSession,
+    start_row: int | None,
+    row_count: int | None,
+    hide_unused_shafts_treadles: bool,
+    effective_shafts: int | None,
+    effective_treadles: int | None,
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
+    if not draft.wif_path:
+        raise HTTPException(status_code=404, detail=_NO_WIF_FILE)
+    if not await storage.afile_exists(draft.wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not found in storage")
 
-    effective_shafts = draft.effective_num_shafts if hide_unused_shafts_treadles else None
-    effective_treadles = draft.effective_num_treadles if hide_unused_shafts_treadles else None
+    _sr = start_row or 0
+    _rc = row_count
 
-    # Tiled request: check pre-rendered tile cache first, then render on-demand
-    if start_row is not None or row_count is not None:
-        if not draft.wif_path:
-            raise HTTPException(status_code=404, detail=_NO_WIF_FILE)
-        if not await storage.afile_exists(draft.wif_path):
-            raise HTTPException(status_code=404, detail="WIF file not found in storage")
+    # Check pre-rendered tile cache when request aligns with standard boundaries
+    tile_row_count = settings.tile_row_count
+    warp_count = draft.warp_threads or 0
+    weft_count = draft.weft_threads or 0
+    if warp_count > 0:
+        expected_scale = min(settings.render_max_width // warp_count, rendering.DRAWDOWN_SCALE)
+    else:
+        expected_scale = rendering.DRAWDOWN_SCALE
 
-        _sr = start_row or 0
-        _rc = row_count
-
-        # Check pre-rendered tile cache when request aligns with standard boundaries
-        tile_row_count = settings.tile_row_count
-        warp_count = draft.warp_threads or 0
-        weft_count = draft.weft_threads or 0
-        if warp_count > 0:
-            expected_scale = min(settings.render_max_width // warp_count, rendering.DRAWDOWN_SCALE)
-        else:
-            expected_scale = rendering.DRAWDOWN_SCALE
-
-        if (
-            not hide_unused_shafts_treadles
-            and warp_count > 0
-            and _sr % tile_row_count == 0
-            and _rc == tile_row_count
-            and await storage.adrawdown_tile_exists(draft_id, expected_scale, _sr)
-        ):
-            cached_png = await storage.aread_drawdown_tile(draft_id, expected_scale, _sr)
-            actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
-            return Response(
-                content=cached_png,
-                media_type=_MEDIA_TYPE_PNG,
-                headers={
-                    "X-Pixels-Per-Row": str(expected_scale),
-                    "X-Total-Rows": str(weft_count),
-                    "X-Start-Row": str(_sr),
-                    "X-Row-Count": str(actual_rc),
-                    "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
-                },
-            )
-
-        wif_bytes = await storage.aread_file(draft.wif_path)
-        try:
-            png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(  # type: ignore[misc]
-                lambda: rendering.render_drawdown_tile(
-                    rendering.load_draft(wif_bytes),
-                    start_row=_sr,
-                    row_count=_rc,
-                    effective_shafts=effective_shafts,
-                    effective_treadles=effective_treadles,
-                )
-            )
-        except HTTPException as exc:
-            if exc.status_code == 413:
-                await write_audit_log(
-                    db,
-                    event_type="render.limit_exceeded",
-                    actor=current_user,
-                    details={
-                        "draft_id": str(draft_id),
-                        "warp_threads": draft.warp_threads,
-                        "weft_threads": draft.weft_threads,
-                        "render_max_width": settings.render_max_width,
-                        "render_max_height": settings.render_max_height,
-                        "mode": "tile",
-                    },
-                )
-                await db.commit()
-            raise
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
-
-        # Trigger background tile pre-render on standard cache miss, but only if
-        # t0 doesn't exist yet — avoids double-fire when eager prerender already ran.
-        if _sr % tile_row_count == 0 and _rc == tile_row_count:
-            if not await storage.adrawdown_tile_exists(draft_id, expected_scale, 0):
-                from app.services.task_history import record_queued
-
-                tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
-                record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
-
+    if (
+        not hide_unused_shafts_treadles
+        and warp_count > 0
+        and _sr % tile_row_count == 0
+        and _rc == tile_row_count
+        and await storage.adrawdown_tile_exists(draft_id, expected_scale, _sr)
+    ):
+        cached_png = await storage.aread_drawdown_tile(draft_id, expected_scale, _sr)
+        actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
         return Response(
-            content=png,
+            content=cached_png,
             media_type=_MEDIA_TYPE_PNG,
             headers={
-                "X-Pixels-Per-Row": str(actual_scale),
-                "X-Total-Rows": str(total_rows),
-                "X-Start-Row": str(actual_start),
-                "X-Row-Count": str(actual_row_count),
-                "Cache-Control": "no-store",
+                "X-Pixels-Per-Row": str(expected_scale),
+                "X-Total-Rows": str(weft_count),
+                "X-Start-Row": str(_sr),
+                "X-Row-Count": str(actual_rc),
+                "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
             },
         )
 
-    # Non-tiled: serve pre-generated cached preview if available
+    wif_bytes = await storage.aread_file(draft.wif_path)
+    try:
+        png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(  # type: ignore[misc]
+            lambda: rendering.render_drawdown_tile(
+                rendering.load_draft(wif_bytes),
+                start_row=_sr,
+                row_count=_rc,
+                effective_shafts=effective_shafts,
+                effective_treadles=effective_treadles,
+            )
+        )
+    except HTTPException as exc:
+        if exc.status_code == 413:
+            await _record_drawdown_render_limit_exceeded(db, draft_id, draft, current_user, "tile")
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
+
+    # Trigger background tile pre-render on standard cache miss, but only if
+    # t0 doesn't exist yet — avoids double-fire when eager prerender already ran.
+    if (
+        _sr % tile_row_count == 0
+        and _rc == tile_row_count
+        and not await storage.adrawdown_tile_exists(draft_id, expected_scale, 0)
+    ):
+        from app.services.task_history import record_queued
+
+        tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
+        record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+
+    return Response(
+        content=png,
+        media_type=_MEDIA_TYPE_PNG,
+        headers={
+            "X-Pixels-Per-Row": str(actual_scale),
+            "X-Total-Rows": str(total_rows),
+            "X-Start-Row": str(actual_start),
+            "X-Row-Count": str(actual_row_count),
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+async def _get_full_drawdown(
+    draft_id: uuid.UUID,
+    draft: Draft,
+    current_user: User,
+    db: AsyncSession,
+    effective_shafts: int | None,
+    effective_treadles: int | None,
+) -> Response:
+    # Serve pre-generated cached preview if available
     if draft.drawdown_preview_path and await storage.afile_exists(draft.drawdown_preview_path):
         png = await storage.aread_drawdown_preview(draft.drawdown_preview_path)
         scale = draft.drawdown_preview_scale or rendering.DRAWDOWN_SCALE
@@ -478,20 +488,7 @@ async def get_drawdown(
         )
     except HTTPException as exc:
         if exc.status_code == 413:
-            await write_audit_log(
-                db,
-                event_type="render.limit_exceeded",
-                actor=current_user,
-                details={
-                    "draft_id": str(draft_id),
-                    "warp_threads": draft.warp_threads,
-                    "weft_threads": draft.weft_threads,
-                    "render_max_width": settings.render_max_width,
-                    "render_max_height": settings.render_max_height,
-                    "mode": "full",
-                },
-            )
-            await db.commit()
+            await _record_drawdown_render_limit_exceeded(db, draft_id, draft, current_user, "full")
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
@@ -506,6 +503,39 @@ async def get_drawdown(
             "ETag": f'"{draft_id}"',
         },
     )
+
+
+@router.get(
+    "/{draft_id}/drawdown",
+    responses={404: {"description": "No WIF file for this draft"}, 500: {"description": "Drawdown rendering failed"}},
+)
+async def get_drawdown(
+    draft_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    start_row: Annotated[int | None, Query(ge=0)] = None,
+    row_count: Annotated[int | None, Query(ge=1)] = None,
+    hide_unused_shafts_treadles: Annotated[bool, Query()] = False,
+) -> Response:
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
+
+    effective_shafts = draft.effective_num_shafts if hide_unused_shafts_treadles else None
+    effective_treadles = draft.effective_num_treadles if hide_unused_shafts_treadles else None
+
+    if start_row is not None or row_count is not None:
+        return await _get_tiled_drawdown(
+            draft_id,
+            draft,
+            current_user,
+            db,
+            start_row,
+            row_count,
+            hide_unused_shafts_treadles,
+            effective_shafts,
+            effective_treadles,
+        )
+
+    return await _get_full_drawdown(draft_id, draft, current_user, db, effective_shafts, effective_treadles)
 
 
 # ---------------------------------------------------------------------------

@@ -109,6 +109,50 @@ async def _handle_clerk_webhook(request: Request, db: AsyncSession) -> dict:
     return {"status": "ok"}
 
 
+async def _create_pending_signup(db: AsyncSession, clerk_user_id: str, email: str, display_name: str) -> None:
+    # No pre-created record — treat as an unsolicited signup (pending review).
+    log.warning(
+        "Clerk user.created for %s (%s) — no pre-created User found; creating PendingSignup",
+        clerk_user_id,
+        email,
+    )
+    existing = await db.scalar(select(PendingSignup).where(PendingSignup.clerk_user_id == clerk_user_id))
+    if existing is not None:
+        return
+
+    db.add(PendingSignup(clerk_user_id=clerk_user_id, email=email, display_name=display_name))
+    await db.commit()
+    signups_total.add(1, {"signup_type": "pending"})
+    await set_user_metadata(clerk_user_id, {"status": "pending_signup", "is_admin": False})
+    admin_emails = list(await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None))))
+    try:
+        await send_signup_received_email(email, display_name)
+    except Exception:
+        log.exception("Failed to send signup received email to %s", email)
+    if admin_emails:
+        try:
+            await send_pending_signup_notification(admin_emails, display_name, email)
+        except Exception:
+            log.exception("Failed to send pending signup notification to admins")
+
+
+async def _attach_clerk_user(db: AsyncSession, user: User, clerk_user_id: str, display_name: str, email: str) -> None:
+    # Attach the Clerk ID and update the display name from Clerk's data.
+    user.clerk_user_id = clerk_user_id
+    user.display_name = display_name
+    await db.commit()
+    signups_total.add(1, {"signup_type": "invited"})
+
+    # Consume the associated invite (audit trail; may already be consumed by seed CLI).
+    await _consume_invite(db, email)
+
+    await set_user_metadata(
+        clerk_user_id,
+        {"status": "active", "is_admin": user.is_admin, "is_superuser": user.is_superuser},
+    )
+    log.info("Attached Clerk user %s to pre-created User for %s", clerk_user_id, email)
+
+
 async def _handle_user_created(db: AsyncSession, data: dict) -> None:
     clerk_user_id: str = data["id"]
     email_addresses: list[dict] = data.get("email_addresses", [])
@@ -130,46 +174,10 @@ async def _handle_user_created(db: AsyncSession, data: dict) -> None:
     )
 
     if user is None:
-        # No pre-created record — treat as an unsolicited signup (pending review).
-        log.warning(
-            "Clerk user.created for %s (%s) — no pre-created User found; creating PendingSignup",
-            clerk_user_id,
-            email,
-        )
-        existing = await db.scalar(select(PendingSignup).where(PendingSignup.clerk_user_id == clerk_user_id))
-        if existing is None:
-            db.add(PendingSignup(clerk_user_id=clerk_user_id, email=email, display_name=display_name))
-            await db.commit()
-            signups_total.add(1, {"signup_type": "pending"})
-            await set_user_metadata(clerk_user_id, {"status": "pending_signup", "is_admin": False})
-            admin_emails = list(
-                await db.scalars(select(User.email).where(User.is_admin.is_(True), User.deleted_at.is_(None)))
-            )
-            try:
-                await send_signup_received_email(email, display_name)
-            except Exception:
-                log.exception("Failed to send signup received email to %s", email)
-            if admin_emails:
-                try:
-                    await send_pending_signup_notification(admin_emails, display_name, email)
-                except Exception:
-                    log.exception("Failed to send pending signup notification to admins")
+        await _create_pending_signup(db, clerk_user_id, email, display_name)
         return
 
-    # Attach the Clerk ID and update the display name from Clerk's data.
-    user.clerk_user_id = clerk_user_id
-    user.display_name = display_name
-    await db.commit()
-    signups_total.add(1, {"signup_type": "invited"})
-
-    # Consume the associated invite (audit trail; may already be consumed by seed CLI).
-    await _consume_invite(db, email)
-
-    await set_user_metadata(
-        clerk_user_id,
-        {"status": "active", "is_admin": user.is_admin, "is_superuser": user.is_superuser},
-    )
-    log.info("Attached Clerk user %s to pre-created User for %s", clerk_user_id, email)
+    await _attach_clerk_user(db, user, clerk_user_id, display_name, email)
 
 
 async def _handle_user_updated(db: AsyncSession, data: dict) -> None:
@@ -226,9 +234,34 @@ async def _handle_user_deleted(db: AsyncSession, data: dict) -> None:
     )
 
 
-def _handle_session_created(data: dict, request: Request | None = None) -> None:
+def _geo_attrs_for_request(request: Request) -> dict:
     from app.services.geo import anonymize_ip, get_geo
 
+    cf_ip = request.headers.get("CF-Connecting-IP", "")
+    cf_country = request.headers.get("CF-IPCountry", "")
+
+    geo = get_geo(anonymize_ip(cf_ip)) if cf_ip else {}
+
+    attrs: dict = {}
+    if geo:
+        if geo.get("country_iso"):
+            attrs["country"] = geo["country_iso"]
+        if geo.get("subdivision"):
+            attrs["subdivision"] = geo["subdivision"]
+        if geo.get("city"):
+            attrs["city"] = geo["city"]
+        if cf_country and geo.get("country_iso") and geo["country_iso"] != cf_country:
+            log.debug(
+                "geo_country_mismatch mmdb=%s cf=%s",
+                geo["country_iso"],
+                cf_country,
+            )
+    elif cf_country:
+        attrs["country"] = cf_country
+    return attrs
+
+
+def _handle_session_created(data: dict, request: Request | None = None) -> None:
     user_data = data.get("user", {})
     public_metadata = user_data.get("public_metadata", {})
     is_admin = bool(public_metadata.get("is_admin", False))
@@ -236,26 +269,7 @@ def _handle_session_created(data: dict, request: Request | None = None) -> None:
     attrs: dict = {"role": "admin" if is_admin else "user"}
 
     if request is not None:
-        cf_ip = request.headers.get("CF-Connecting-IP", "")
-        cf_country = request.headers.get("CF-IPCountry", "")
-
-        geo = get_geo(anonymize_ip(cf_ip)) if cf_ip else {}
-
-        if geo:
-            if geo.get("country_iso"):
-                attrs["country"] = geo["country_iso"]
-            if geo.get("subdivision"):
-                attrs["subdivision"] = geo["subdivision"]
-            if geo.get("city"):
-                attrs["city"] = geo["city"]
-            if cf_country and geo.get("country_iso") and geo["country_iso"] != cf_country:
-                log.debug(
-                    "geo_country_mismatch mmdb=%s cf=%s",
-                    geo["country_iso"],
-                    cf_country,
-                )
-        elif cf_country:
-            attrs["country"] = cf_country
+        attrs.update(_geo_attrs_for_request(request))
 
     logins_total.add(1, attrs)
 

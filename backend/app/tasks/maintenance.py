@@ -571,6 +571,97 @@ def _fmt_delta(b: int) -> str:
     return f"{sign}{_fmt_bytes(abs(b))}"
 
 
+def _collect_admin_digest_stats(db, cutoff: datetime) -> dict:
+    from sqlalchemy import func, select
+
+    from app.models.draft import Draft
+    from app.models.loom import Loom, LoomVersionPhoto
+    from app.models.pending_signup import PendingSignup
+    from app.models.project import Project, ProjectPhoto
+    from app.models.user import User
+
+    new_users = (
+        db.scalar(select(func.count()).select_from(User).where(User.deleted_at.is_(None), User.created_at >= cutoff))
+        or 0
+    )
+    pending_signups = db.scalar(select(func.count()).select_from(PendingSignup)) or 0
+    new_drafts = (
+        db.scalar(select(func.count()).select_from(Draft).where(Draft.deleted_at.is_(None), Draft.created_at >= cutoff))
+        or 0
+    )
+    new_projects = (
+        db.scalar(
+            select(func.count()).select_from(Project).where(Project.deleted_at.is_(None), Project.created_at >= cutoff)
+        )
+        or 0
+    )
+    new_looms = (
+        db.scalar(select(func.count()).select_from(Loom).where(Loom.deleted_at.is_(None), Loom.created_at >= cutoff))
+        or 0
+    )
+    project_storage = db.scalar(select(func.coalesce(func.sum(ProjectPhoto.file_size_bytes), 0))) or 0
+    loom_storage = db.scalar(select(func.coalesce(func.sum(LoomVersionPhoto.file_size_bytes), 0))) or 0
+
+    return {
+        "new_users": new_users,
+        "pending_signups": pending_signups,
+        "new_drafts": new_drafts,
+        "new_projects": new_projects,
+        "new_looms": new_looms,
+        "total_storage_bytes": int(project_storage) + int(loom_storage),
+    }
+
+
+def _read_and_update_digest_state(settings, now: datetime, total_storage_bytes: int) -> dict:
+    import json
+
+    result: dict = {
+        "cve_finding_count": None,
+        "cve_scanned_at": None,
+        "s3_orphaned_count": None,
+        "s3_scanned_at": None,
+        "storage_delta_bytes": None,
+    }
+
+    try:
+        import redis as _redis
+
+        from app.tasks.cve_scan import CVE_SUMMARY_KEY
+        from app.tasks.s3_audit import S3_AUDIT_SUMMARY_KEY
+
+        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
+
+        raw_cve = client.get(CVE_SUMMARY_KEY)
+        if raw_cve:
+            data = json.loads(raw_cve)
+            result["cve_finding_count"] = data.get("finding_count")
+            result["cve_scanned_at"] = data.get("scanned_at")
+
+        raw_s3 = client.get(S3_AUDIT_SUMMARY_KEY)
+        if raw_s3:
+            data = json.loads(raw_s3)
+            if not data.get("not_applicable"):
+                result["s3_orphaned_count"] = data.get("orphaned_count")
+                result["s3_scanned_at"] = data.get("scanned_at")
+
+        raw_last = client.get(DIGEST_STATE_KEY)
+        if raw_last:
+            prev = json.loads(raw_last)
+            prev_bytes = prev.get("storage_bytes")
+            if prev_bytes is not None:
+                result["storage_delta_bytes"] = total_storage_bytes - int(prev_bytes)
+
+        client.set(
+            DIGEST_STATE_KEY,
+            json.dumps({"sent_at": now.isoformat(), "storage_bytes": total_storage_bytes}),
+        )
+        client.close()
+    except Exception:
+        log.warning("send_admin_digest: Redis state read/write failed", exc_info=True)
+
+    return result
+
+
 @celery_app.task(
     bind=True,
     max_retries=0,
@@ -579,16 +670,11 @@ def _fmt_delta(b: int) -> str:
 def send_admin_digest(self) -> dict:
     import asyncio
     import concurrent.futures
-    import json
 
-    from sqlalchemy import create_engine, func, select
+    from sqlalchemy import create_engine, select
     from sqlalchemy.orm import Session
 
     from app.config import get_settings
-    from app.models.draft import Draft
-    from app.models.loom import Loom, LoomVersionPhoto
-    from app.models.pending_signup import PendingSignup
-    from app.models.project import Project, ProjectPhoto
     from app.models.user import User
 
     settings = get_settings()
@@ -613,91 +699,16 @@ def send_admin_digest(self) -> dict:
             if not admin_emails:
                 return {"sent": 0}
 
-            new_users = (
-                db.scalar(
-                    select(func.count()).select_from(User).where(User.deleted_at.is_(None), User.created_at >= cutoff)
-                )
-                or 0
-            )
-
-            pending_signups = db.scalar(select(func.count()).select_from(PendingSignup)) or 0
-
-            new_drafts = (
-                db.scalar(
-                    select(func.count())
-                    .select_from(Draft)
-                    .where(Draft.deleted_at.is_(None), Draft.created_at >= cutoff)
-                )
-                or 0
-            )
-
-            new_projects = (
-                db.scalar(
-                    select(func.count())
-                    .select_from(Project)
-                    .where(Project.deleted_at.is_(None), Project.created_at >= cutoff)
-                )
-                or 0
-            )
-
-            new_looms = (
-                db.scalar(
-                    select(func.count()).select_from(Loom).where(Loom.deleted_at.is_(None), Loom.created_at >= cutoff)
-                )
-                or 0
-            )
-
-            project_storage = db.scalar(select(func.coalesce(func.sum(ProjectPhoto.file_size_bytes), 0))) or 0
-            loom_storage = db.scalar(select(func.coalesce(func.sum(LoomVersionPhoto.file_size_bytes), 0))) or 0
-            total_storage_bytes = int(project_storage) + int(loom_storage)
+            stats = _collect_admin_digest_stats(db, cutoff)
     finally:
         engine.dispose()
 
-    cve_finding_count: int | None = None
-    cve_scanned_at: str | None = None
-    s3_orphaned_count: int | None = None
-    s3_scanned_at: str | None = None
-    storage_delta_bytes: int | None = None
-
-    try:
-        import redis as _redis
-
-        from app.tasks.cve_scan import CVE_SUMMARY_KEY
-        from app.tasks.s3_audit import S3_AUDIT_SUMMARY_KEY
-
-        client = _redis.from_url(settings.redis_url, socket_connect_timeout=2)
-
-        raw_cve = client.get(CVE_SUMMARY_KEY)
-        if raw_cve:
-            data = json.loads(raw_cve)
-            cve_finding_count = data.get("finding_count")
-            cve_scanned_at = data.get("scanned_at")
-
-        raw_s3 = client.get(S3_AUDIT_SUMMARY_KEY)
-        if raw_s3:
-            data = json.loads(raw_s3)
-            if not data.get("not_applicable"):
-                s3_orphaned_count = data.get("orphaned_count")
-                s3_scanned_at = data.get("scanned_at")
-
-        raw_last = client.get(DIGEST_STATE_KEY)
-        if raw_last:
-            prev = json.loads(raw_last)
-            prev_bytes = prev.get("storage_bytes")
-            if prev_bytes is not None:
-                storage_delta_bytes = total_storage_bytes - int(prev_bytes)
-
-        client.set(
-            DIGEST_STATE_KEY,
-            json.dumps({"sent_at": now.isoformat(), "storage_bytes": total_storage_bytes}),
-        )
-        client.close()
-    except Exception:
-        log.warning("send_admin_digest: Redis state read/write failed", exc_info=True)
+    digest_state = _read_and_update_digest_state(settings, now, stats["total_storage_bytes"])
 
     week_start = (now - timedelta(days=7)).strftime("%b %d, %Y")
     week_end = now.strftime("%b %d, %Y")
-    storage_str = _fmt_bytes(total_storage_bytes)
+    storage_str = _fmt_bytes(stats["total_storage_bytes"])
+    storage_delta_bytes = digest_state["storage_delta_bytes"]
     storage_delta_str = _fmt_delta(storage_delta_bytes) if storage_delta_bytes is not None else None
 
     from app.services.email import AdminDigestData
@@ -705,17 +716,17 @@ def send_admin_digest(self) -> dict:
     digest_data = AdminDigestData(
         week_start=week_start,
         week_end=week_end,
-        new_users=new_users,
-        pending_signups=pending_signups,
-        new_drafts=new_drafts,
-        new_projects=new_projects,
-        new_looms=new_looms,
+        new_users=stats["new_users"],
+        pending_signups=stats["pending_signups"],
+        new_drafts=stats["new_drafts"],
+        new_projects=stats["new_projects"],
+        new_looms=stats["new_looms"],
         storage_str=storage_str,
         storage_delta_str=storage_delta_str,
-        cve_finding_count=cve_finding_count,
-        cve_scanned_at=cve_scanned_at,
-        s3_orphaned_count=s3_orphaned_count,
-        s3_scanned_at=s3_scanned_at,
+        cve_finding_count=digest_state["cve_finding_count"],
+        cve_scanned_at=digest_state["cve_scanned_at"],
+        s3_orphaned_count=digest_state["s3_orphaned_count"],
+        s3_scanned_at=digest_state["s3_scanned_at"],
     )
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(
