@@ -246,7 +246,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
     projectTypeSection = <p className="text-sm py-2">{PROJECT_TYPE_LABELS[filteredTypes[0]]}</p>;
   } else {
     projectTypeSection = (
-      <select className={f} value={effectiveType} onChange={(e) => setProjectType(e.target.value as ProjectType)} required>
+      <select id="project-type" className={f} value={effectiveType} onChange={(e) => setProjectType(e.target.value as ProjectType)} required>
         <option value="">Select type…</option>
         {filteredTypes.map((t) => (
           <option key={t} value={t}>{PROJECT_TYPE_LABELS[t]}</option>
@@ -264,21 +264,21 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
         <form onSubmit={handleSubmit} className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
           <div>
-            <label className="mb-1 block text-sm font-medium">Project name <span className="text-destructive">*</span></label>
-            <input className={f} value={name} onChange={(e) => setName(e.target.value)} placeholder="Spring towels — warp 1" required />
+            <label htmlFor="project-name" className="mb-1 block text-sm font-medium">Project name <span className="text-destructive">*</span></label>
+            <input id="project-name" className={f} value={name} onChange={(e) => setName(e.target.value)} placeholder="Spring towels — warp 1" required />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Tags <span className="text-muted-foreground font-normal">(optional)</span></label>
-            <TagInput tags={tags} onChange={setTags} placeholder="cotton, twill…" />
+            <label htmlFor="project-tags" className="mb-1 block text-sm font-medium">Tags <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <TagInput id="project-tags" tags={tags} onChange={setTags} placeholder="cotton, twill…" />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Draft <span className="text-destructive">*</span></label>
+            <label htmlFor="project-draft" className="mb-1 block text-sm font-medium">Draft <span className="text-destructive">*</span></label>
             {defaultDraftId ? (
               <p className="py-2 text-sm">{selectedDraft?.name ?? "—"}</p>
             ) : (
-              <select className={f} value={draftId} onChange={(e) => { setDraftId(e.target.value); setProjectType(""); }} required>
+              <select id="project-draft" className={f} value={draftId} onChange={(e) => { setDraftId(e.target.value); setProjectType(""); }} required>
                 <option value="">Select a draft…</option>
                 {drafts.map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
@@ -288,8 +288,8 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Loom <span className="text-muted-foreground font-normal">(optional)</span></label>
-            <select className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
+            <label htmlFor="project-loom" className="mb-1 block text-sm font-medium">Loom <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <select id="project-loom" className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
               <option value="">No loom selected</option>
               {looms.filter((l) => SUPPORTED_LOOM_TYPES.has(l.loom_type)).map((l) => (
                 <option key={l.id} value={l.id}>{l.manufacturer} {l.model_name}</option>
@@ -311,8 +311,8 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
           {selectedLoom && loomVersions.length > 1 && (
             <div>
-              <label className="mb-1 block text-sm font-medium">Loom configuration</label>
-              <select className={f} value={loomVersionId} onChange={(e) => {
+              <label htmlFor="project-loom-version" className="mb-1 block text-sm font-medium">Loom configuration</label>
+              <select id="project-loom-version" className={f} value={loomVersionId} onChange={(e) => {
                 setLoomVersionId(e.target.value);
                 const v = loomVersions.find((v) => v.id === e.target.value);
                 if (v?.warp_waste_allowance) setWarpWaste(loomWasteInCurrentUnit(v.warp_waste_allowance, v.warp_waste_unit));
@@ -351,7 +351,7 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
           {selectedDraft && (
             <div>
-              <label className="mb-1 block text-sm font-medium">Project type <span className="text-destructive">*</span></label>
+              <label htmlFor="project-type" className="mb-1 block text-sm font-medium">Project type <span className="text-destructive">*</span></label>
               {projectTypeSection}
             </div>
           )}
@@ -371,9 +371,10 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
 
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
-                <label className="mb-1 block text-sm font-medium">Finished length / item</label>
+                <label htmlFor="project-finished-length" className="mb-1 block text-sm font-medium">Finished length / item</label>
                 <div className="flex gap-2">
                   <input
+                    id="project-finished-length"
                     type="number"
                     min={0}
                     step="0.1"
@@ -401,8 +402,8 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Number of items</label>
-                <input type="number" min={1} step="1" className={f} value={numItems} onChange={(e) => setNumItems(e.target.value)} />
+                <label htmlFor="project-num-items" className="mb-1 block text-sm font-medium">Number of items</label>
+                <input id="project-num-items" type="number" min={1} step="1" className={f} value={numItems} onChange={(e) => setNumItems(e.target.value)} />
               </div>
             </div>
 
@@ -410,17 +411,17 @@ export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props
               <div className="grid grid-cols-2 gap-3 mt-3">
                 {Number.parseInt(numItems, 10) > 1 && (
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Waste between items</label>
+                    <label htmlFor="project-waste-between" className="mb-1 block text-sm font-medium">Waste between items</label>
                     <div className="flex gap-1">
-                      <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={wasteBetween} onChange={(e) => setWasteBetween(e.target.value)} placeholder="5" />
+                      <input id="project-waste-between" type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={wasteBetween} onChange={(e) => setWasteBetween(e.target.value)} placeholder="5" />
                       <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
                     </div>
                   </div>
                 )}
                 <div className={Number.parseInt(numItems, 10) <= 1 ? "col-span-2" : ""}>
-                  <label className="mb-1 block text-sm font-medium">Loom warp waste</label>
+                  <label htmlFor="project-loom-warp-waste" className="mb-1 block text-sm font-medium">Loom warp waste</label>
                   <div className="flex gap-1">
-                    <input type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={warpWaste || loomWasteInCurrentUnit(selectedVersion?.warp_waste_allowance ?? loomDetail?.versions.at(-1)?.warp_waste_allowance, selectedVersion?.warp_waste_unit ?? loomDetail?.versions.at(-1)?.warp_waste_unit ?? "cm")} onChange={(e) => setWarpWaste(e.target.value)} placeholder="30" />
+                    <input id="project-loom-warp-waste" type="number" min={0} step="0.1" className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring" value={warpWaste || loomWasteInCurrentUnit(selectedVersion?.warp_waste_allowance ?? loomDetail?.versions.at(-1)?.warp_waste_allowance, selectedVersion?.warp_waste_unit ?? loomDetail?.versions.at(-1)?.warp_waste_unit ?? "cm")} onChange={(e) => setWarpWaste(e.target.value)} placeholder="30" />
                     <span className="flex items-center rounded-md border border-input bg-muted px-2 text-sm text-muted-foreground">{lengthUnit}</span>
                   </div>
                 </div>
