@@ -63,8 +63,9 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Configuration name (optional)</label>
+            <label htmlFor="version-name" className="mb-1 block text-sm font-medium">Configuration name (optional)</label>
             <input
+              id="version-name"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={versionName}
               onChange={(e) => setVersionName(e.target.value)}
@@ -73,8 +74,9 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Effective date</label>
+            <label htmlFor="version-effective-date" className="mb-1 block text-sm font-medium">Effective date</label>
             <input
+              id="version-effective-date"
               type="date"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={effectiveDate}
@@ -84,8 +86,9 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Description (optional)</label>
+            <label htmlFor="version-description" className="mb-1 block text-sm font-medium">Description (optional)</label>
             <input
+              id="version-description"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -97,8 +100,9 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
             <div className="grid grid-cols-3 gap-3">
               {showsShafts(loomType) && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Shafts</label>
+                  <label htmlFor="version-shafts" className="mb-1 block text-sm font-medium">Shafts</label>
                   <input
+                    id="version-shafts"
                     type="number"
                     min={1}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -110,8 +114,9 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
               )}
               {showsTreadles(loomType) && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Treadles</label>
+                  <label htmlFor="version-treadles" className="mb-1 block text-sm font-medium">Treadles</label>
                   <input
+                    id="version-treadles"
                     type="number"
                     min={0}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -123,8 +128,9 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
               )}
               {showsHeddles(loomType) && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Heddles (optional)</label>
+                  <label htmlFor="version-heddles" className="mb-1 block text-sm font-medium">Heddles (optional)</label>
                   <input
+                    id="version-heddles"
                     type="number"
                     min={1}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -138,9 +144,10 @@ export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props)
 
           {showsWarpWaste(loomType) && (
             <div>
-              <label className="mb-1 block text-sm font-medium">Warp waste (optional)</label>
+              <label htmlFor="version-warp-waste" className="mb-1 block text-sm font-medium">Warp waste (optional)</label>
               <div className="flex gap-2">
                 <input
+                  id="version-warp-waste"
                   type="number"
                   min={0}
                   step="0.1"
