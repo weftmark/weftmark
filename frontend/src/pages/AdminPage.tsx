@@ -1687,15 +1687,14 @@ function FeedbackTab() {
       {/* Detail modal */}
       {detail && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setDetail(null)}
-          onKeyDown={(e) => e.key === "Escape" && setDetail(null)}
+          onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}
+          onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setDetail(null); }}
         >
-          <div
-            className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setDetail(null); }}
-          >
+          <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">
                 {SUBMISSION_TYPE_LABELS[detail.submission_type as SubmissionType] ?? detail.submission_type}

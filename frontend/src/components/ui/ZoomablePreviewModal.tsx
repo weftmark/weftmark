@@ -79,9 +79,12 @@ export function ZoomablePreviewModal({ src, title, onClose, gateConfirmed = true
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       className="fixed inset-0 z-50 flex flex-col bg-black/60"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div className="flex flex-col w-full h-full max-w-7xl mx-auto bg-background shadow-xl rounded-none sm:rounded-lg sm:my-6 sm:h-[calc(100vh-3rem)] overflow-hidden">
 

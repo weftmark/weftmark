@@ -384,9 +384,12 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
       {/* Mobile backdrop */}
       {open && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
           className="fixed inset-0 z-20 bg-black/40 lg:hidden"
           onClick={onClose}
-          onKeyDown={(e) => e.key === "Escape" && onClose()}
+          onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
         />
       )}
 
