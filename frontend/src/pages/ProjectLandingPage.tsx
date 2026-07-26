@@ -296,15 +296,16 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
   return (
     <div
       ref={backdropRef}
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div
         className="bg-card rounded-xl border border-border shadow-xl flex flex-col"
         style={{ width: "min(96vw, 1400px)", height: "min(92vh, 1200px)" }}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
@@ -382,9 +383,12 @@ function TieUpModal({ projectId, draftName, onClose }: {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-lg w-full max-h-[80vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">

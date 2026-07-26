@@ -848,15 +848,17 @@ function PhotoGrid({
       )}
       {lightbox && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setLightbox(null)}
-          onKeyDown={(e) => e.key === "Escape" && setLightbox(null)}
+          onClick={(e) => { if (e.target === e.currentTarget) setLightbox(null); }}
+          onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setLightbox(null); }}
         >
           <AuthedImage
             src={projectPhotoUrl(projectId, lightbox)}
             alt=""
             className="max-h-full max-w-full rounded-lg shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
           />
           <button
             type="button"
@@ -2198,9 +2200,12 @@ export function ProjectDetailPage() {
       {settingsOpen && (
         <>
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Close"
             className="fixed inset-0 z-40 bg-black/40"
             onClick={() => setSettingsOpen(false)}
-            onKeyDown={(e) => e.key === "Escape" && setSettingsOpen(false)}
+            onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setSettingsOpen(false); }}
           />
           <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
