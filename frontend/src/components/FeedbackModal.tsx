@@ -105,15 +105,14 @@ export function FeedbackModal({ onClose }: Props) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Close"
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
-      <div
-        className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
-      >
+      <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold flex items-center gap-2">
