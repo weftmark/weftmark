@@ -349,8 +349,9 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
         {/* ── Step: search ── */}
         {step === "search" && (
           <div ref={searchContainerRef} className="relative">
-            <label className="mb-1 block text-sm font-medium">Search loom catalog</label>
+            <label htmlFor="link-catalog-search" className="mb-1 block text-sm font-medium">Search loom catalog</label>
             <input
+              id="link-catalog-search"
               type="search"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={displayQuery}
@@ -430,9 +431,10 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
 
             {showsShafts(newLoomType) && shaftOptions.length > 0 && (
               <div>
-                <label className="mb-1 block text-sm font-medium">Shafts</label>
+                <label htmlFor="link-catalog-shafts" className="mb-1 block text-sm font-medium">Shafts</label>
                 {shaftOptions.length > 1 ? (
                   <select
+                    id="link-catalog-shafts"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={selectedShaftIdx}
                     onChange={(e) => setSelectedShaftIdx(Number(e.target.value))}
@@ -453,7 +455,7 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
 
             {showsTreadles(newLoomType) && derivedTreadles != null && (
               <div>
-                <label className="mb-1 block text-sm font-medium">Treadles</label>
+                <span className="mb-1 block text-sm font-medium">Treadles</span>
                 <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
                   {derivedTreadles}
                 </p>
@@ -462,9 +464,10 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
 
             {widthOptions.length > 0 && (
               <div>
-                <label className="mb-1 block text-sm font-medium">Weaving width</label>
+                <label htmlFor="link-catalog-width" className="mb-1 block text-sm font-medium">Weaving width</label>
                 {widthOptions.length > 1 ? (
                   <select
+                    id="link-catalog-width"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={selectedWidthIdx}
                     onChange={(e) => setSelectedWidthIdx(Number(e.target.value))}
