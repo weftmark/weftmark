@@ -86,21 +86,38 @@ def extract_measurements(wif_bytes: bytes) -> dict:
         return {}
 
 
+def _color_index_from_direct_option(config: RawConfigParser, sect: str) -> int | None:
+    """Read [sect] Color= and parse its first comma-separated value. None on failure."""
+    if not config.has_section(sect):
+        return None
+    try:
+        return int(config.get(sect, "Color").split(",")[0].strip())
+    except Exception:
+        return None
+
+
+def _color_indices_from_list_section(config: RawConfigParser, sect: str) -> set[int]:
+    """Parse every value in a [WEFT COLORS]/[WARP COLORS]-style section as a
+    leading comma-separated int index, skipping unparseable entries."""
+    result: set[int] = set()
+    if not config.has_section(sect):
+        return result
+    for _, v in config.items(sect):
+        try:
+            result.add(int(v.split(",")[0].strip()))
+        except ValueError:
+            continue
+    return result
+
+
 def _collect_used_color_indices(config: RawConfigParser) -> set[int]:
     used: set[int] = set()
     for sect in ("WEFT", "WARP"):
-        if config.has_section(sect):
-            try:
-                used.add(int(config.get(sect, "Color").split(",")[0].strip()))
-            except Exception:
-                pass
+        idx = _color_index_from_direct_option(config, sect)
+        if idx is not None:
+            used.add(idx)
     for sect in (_SECTION_WEFT_COLORS, _SECTION_WARP_COLORS):
-        if config.has_section(sect):
-            for _, v in config.items(sect):
-                try:
-                    used.add(int(v.split(",")[0].strip()))
-                except ValueError:
-                    continue
+        used |= _color_indices_from_list_section(config, sect)
     return used
 
 

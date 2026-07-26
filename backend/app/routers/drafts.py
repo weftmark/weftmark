@@ -354,6 +354,53 @@ async def _record_drawdown_render_limit_exceeded(
     await db.commit()
 
 
+async def _try_serve_cached_tile(
+    draft_id: uuid.UUID,
+    weft_count: int,
+    tile_row_count: int,
+    expected_scale: int,
+    hide_unused_shafts_treadles: bool,
+    warp_count: int,
+    sr: int,
+    rc: int | None,
+) -> Response | None:
+    """Return a cached tile response if the request aligns with standard tile
+    boundaries and a pre-rendered tile exists, else None."""
+    aligned = not hide_unused_shafts_treadles and warp_count > 0 and sr % tile_row_count == 0 and rc == tile_row_count
+    if not aligned or not await storage.adrawdown_tile_exists(draft_id, expected_scale, sr):
+        return None
+
+    cached_png = await storage.aread_drawdown_tile(draft_id, expected_scale, sr)
+    actual_rc = min(tile_row_count, weft_count - sr) if weft_count > 0 else tile_row_count
+    return Response(
+        content=cached_png,
+        media_type=_MEDIA_TYPE_PNG,
+        headers={
+            "X-Pixels-Per-Row": str(expected_scale),
+            "X-Total-Rows": str(weft_count),
+            "X-Start-Row": str(sr),
+            "X-Row-Count": str(actual_rc),
+            "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
+        },
+    )
+
+
+async def _maybe_trigger_tile_prerender(
+    draft_id: uuid.UUID, expected_scale: int, tile_row_count: int, sr: int, rc: int | None
+) -> None:
+    """Trigger background tile pre-render on a standard cache miss, but only if
+    t0 doesn't exist yet — avoids double-fire when eager prerender already ran."""
+    if sr % tile_row_count != 0 or rc != tile_row_count:
+        return
+    if await storage.adrawdown_tile_exists(draft_id, expected_scale, 0):
+        return
+
+    from app.services.task_history import record_queued
+
+    tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
+    record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+
+
 async def _get_tiled_drawdown(
     draft_id: uuid.UUID,
     draft: Draft,
@@ -382,26 +429,11 @@ async def _get_tiled_drawdown(
     else:
         expected_scale = rendering.DRAWDOWN_SCALE
 
-    if (
-        not hide_unused_shafts_treadles
-        and warp_count > 0
-        and _sr % tile_row_count == 0
-        and _rc == tile_row_count
-        and await storage.adrawdown_tile_exists(draft_id, expected_scale, _sr)
-    ):
-        cached_png = await storage.aread_drawdown_tile(draft_id, expected_scale, _sr)
-        actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
-        return Response(
-            content=cached_png,
-            media_type=_MEDIA_TYPE_PNG,
-            headers={
-                "X-Pixels-Per-Row": str(expected_scale),
-                "X-Total-Rows": str(weft_count),
-                "X-Start-Row": str(_sr),
-                "X-Row-Count": str(actual_rc),
-                "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
-            },
-        )
+    cached = await _try_serve_cached_tile(
+        draft_id, weft_count, tile_row_count, expected_scale, hide_unused_shafts_treadles, warp_count, _sr, _rc
+    )
+    if cached is not None:
+        return cached
 
     wif_bytes = await storage.aread_file(draft.wif_path)
     try:
@@ -421,17 +453,7 @@ async def _get_tiled_drawdown(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
 
-    # Trigger background tile pre-render on standard cache miss, but only if
-    # t0 doesn't exist yet — avoids double-fire when eager prerender already ran.
-    if (
-        _sr % tile_row_count == 0
-        and _rc == tile_row_count
-        and not await storage.adrawdown_tile_exists(draft_id, expected_scale, 0)
-    ):
-        from app.services.task_history import record_queued
-
-        tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
-        record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+    await _maybe_trigger_tile_prerender(draft_id, expected_scale, tile_row_count, _sr, _rc)
 
     return Response(
         content=png,

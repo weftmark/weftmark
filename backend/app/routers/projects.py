@@ -719,6 +719,57 @@ async def _maybe_queue_project_tile_prerender(
     record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_project_tiles", "preview")
 
 
+async def _load_project_wif_for_drawdown(
+    project_id: uuid.UUID, current_user: User, db: AsyncSession
+) -> tuple[Project, Draft, str]:
+    from app.services.storage import afile_exists
+
+    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
+
+    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
+    if draft is None:
+        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
+
+    wif_path = await _wif_path_for_project(draft, project.project_type)
+    if not wif_path or not await afile_exists(wif_path):
+        raise HTTPException(status_code=404, detail=_WIF_NOT_FOUND_IN_STORAGE)
+
+    return project, draft, wif_path
+
+
+async def _render_project_drawdown_tile(
+    wif_path: str,
+    color_replacements: dict,
+    sr: int,
+    rc: int | None,
+    sc: int | None,
+    cc: int | None,
+    warp_count: int,
+) -> tuple:
+    from app.services import rendering
+    from app.services.storage import aread_file
+
+    wif_bytes = await aread_file(wif_path)
+    try:
+
+        def _render_tile() -> tuple:
+            d = rendering.load_draft(wif_bytes)
+            if color_replacements:
+                rendering.apply_color_replacements(d, color_replacements)
+            return rendering.render_drawdown_tile(d, start_row=sr, row_count=rc, start_col=sc, col_count=cc)
+
+        result = await asyncio.to_thread(_render_tile)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
+
+    if len(result) == 7:
+        return result
+    png, total_rows, actual_start, actual_row_count, actual_scale = result
+    return png, total_rows, actual_start, actual_row_count, actual_scale, 0, warp_count
+
+
 @router.get(
     "/{project_id}/drawdown",
     responses={404: {"description": "Draft not found"}, 500: {"description": "Drawdown rendering failed"}},
@@ -734,17 +785,8 @@ async def get_project_drawdown(
 ) -> Response:
     from app.config import get_settings
     from app.services import rendering
-    from app.services.storage import afile_exists, aread_file
 
-    project = await _get_owned_project(project_id, current_user, db, allow_superuser=True)
-
-    draft = await db.scalar(select(Draft).where(Draft.id == project.draft_id, Draft.deleted_at.is_(None)))
-    if draft is None:
-        raise HTTPException(status_code=404, detail=_DRAFT_NOT_FOUND)
-
-    wif_path = await _wif_path_for_project(draft, project.project_type)
-    if not wif_path or not await afile_exists(wif_path):
-        raise HTTPException(status_code=404, detail=_WIF_NOT_FOUND_IN_STORAGE)
+    project, draft, wif_path = await _load_project_wif_for_drawdown(project_id, current_user, db)
 
     _settings = get_settings()
     _sr = start_row or 0
@@ -767,30 +809,18 @@ async def get_project_drawdown(
     if cached is not None:
         return cached
 
-    wif_bytes = await aread_file(wif_path)
     _sc = start_col
     _cc = col_count
     _replacements = project.color_replacements or {}
-    try:
-
-        def _render_tile() -> tuple:
-            d = rendering.load_draft(wif_bytes)
-            if _replacements:
-                rendering.apply_color_replacements(d, _replacements)
-            return rendering.render_drawdown_tile(d, start_row=_sr, row_count=_rc, start_col=_sc, col_count=_cc)
-
-        result = await asyncio.to_thread(_render_tile)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
-
-    if len(result) == 7:
-        png, total_rows, actual_start, actual_row_count, actual_scale, actual_start_col, actual_col_count = result
-    else:
-        png, total_rows, actual_start, actual_row_count, actual_scale = result
-        actual_start_col = 0
-        actual_col_count = warp_count
+    (
+        png,
+        total_rows,
+        actual_start,
+        actual_row_count,
+        actual_scale,
+        actual_start_col,
+        actual_col_count,
+    ) = await _render_project_drawdown_tile(wif_path, _replacements, _sr, _rc, _sc, _cc, warp_count)
 
     # Trigger background tile pre-render on standard boundary miss only when t0 is absent.
     # Only applies to full-width (non-column-sliced) requests.
