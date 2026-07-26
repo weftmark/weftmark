@@ -134,15 +134,14 @@ function ProjectCard({ project, onAssign }: {
       )}
       {showPreview && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setShowPreview(false)}
-          onKeyDown={(e) => e.key === "Escape" && setShowPreview(false)}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPreview(false); }}
+          onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setShowPreview(false); }}
         >
-          <div
-            className="relative max-w-xl w-full"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setShowPreview(false); }}
-          >
+          <div className="relative max-w-xl w-full">
             <button
               type="button"
               onClick={() => setShowPreview(false)}
