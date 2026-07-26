@@ -19,6 +19,9 @@ concurrency:
   group: main-pr-${{ github.head_ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
 
   # ============================================================

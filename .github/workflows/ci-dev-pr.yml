@@ -20,6 +20,9 @@ concurrency:
   group: dev-pr-${{ github.head_ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
 
   backend-lint:

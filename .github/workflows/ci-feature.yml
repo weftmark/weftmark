@@ -13,6 +13,9 @@ concurrency:
   group: feature-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
 
   backend-lint:

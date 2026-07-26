@@ -22,6 +22,9 @@ name: SonarCloud full scan
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   sonarcloud:
     name: SonarCloud full re-scan

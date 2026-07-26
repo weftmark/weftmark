@@ -36,6 +36,9 @@ concurrency:
   group: dev-push-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
 
   sbom-backend:
