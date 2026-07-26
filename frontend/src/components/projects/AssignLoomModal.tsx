@@ -124,8 +124,8 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
 
         <div className="px-6 py-4 space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Loom <span className="text-destructive">*</span></label>
-            <select className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
+            <label htmlFor="assign-loom" className="mb-1 block text-sm font-medium">Loom <span className="text-destructive">*</span></label>
+            <select id="assign-loom" className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
               <option value="">Select a loom…</option>
               {looms.filter((l) => SUPPORTED_LOOM_TYPES.has(l.loom_type)).map((l) => (
                 <option key={l.id} value={l.id}>{l.manufacturer} {l.model_name}</option>
@@ -138,8 +138,8 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
 
           {loomVersions.length > 1 && (
             <div>
-              <label className="mb-1 block text-sm font-medium">Loom configuration</label>
-              <select className={f} value={loomVersionId} onChange={(e) => setLoomVersionId(e.target.value)}>
+              <label htmlFor="assign-loom-version" className="mb-1 block text-sm font-medium">Loom configuration</label>
+              <select id="assign-loom-version" className={f} value={loomVersionId} onChange={(e) => setLoomVersionId(e.target.value)}>
                 <option value="">Latest ({loomVersions.at(-1)?.name ?? `v${loomVersions.at(-1)?.version_number}`})</option>
                 {loomVersions.map((v) => (
                   <option key={v.id} value={v.id}>{v.name ?? `Version ${v.version_number}`}</option>

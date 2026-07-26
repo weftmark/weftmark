@@ -152,8 +152,9 @@ export function ShareModal({
                 Create a read-only link — anyone with it can view this project without an account.
               </p>
               <div className="flex items-center gap-2 text-sm">
-                <label className="text-muted-foreground text-xs shrink-0">Expires after</label>
+                <label htmlFor="share-expiry" className="text-muted-foreground text-xs shrink-0">Expires after</label>
                 <select
+                  id="share-expiry"
                   value={expiryDays}
                   onChange={(e) => setExpiryDays(e.target.value)}
                   className="rounded border border-border bg-background px-2 py-1 text-xs"

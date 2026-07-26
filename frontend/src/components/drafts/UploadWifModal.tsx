@@ -39,8 +39,9 @@ export function UploadWifModal({ onSuccess, onClose }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Draft name</label>
+            <label htmlFor="wif-name" className="mb-1 block text-sm font-medium">Draft name</label>
             <input
+              id="wif-name"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -50,8 +51,9 @@ export function UploadWifModal({ onSuccess, onClose }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Description (optional)</label>
+            <label htmlFor="wif-description" className="mb-1 block text-sm font-medium">Description (optional)</label>
             <textarea
+              id="wif-description"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -61,13 +63,14 @@ export function UploadWifModal({ onSuccess, onClose }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Tags <span className="text-muted-foreground font-normal">(optional)</span></label>
-            <TagInput tags={tags} onChange={setTags} placeholder="twill, cotton…" />
+            <label htmlFor="wif-tags" className="mb-1 block text-sm font-medium">Tags <span className="text-muted-foreground font-normal">(optional)</span></label>
+            <TagInput id="wif-tags" tags={tags} onChange={setTags} placeholder="twill, cotton…" />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">WIF file</label>
+            <label htmlFor="wif-file" className="mb-1 block text-sm font-medium">WIF file</label>
             <input
+              id="wif-file"
               ref={fileRef}
               type="file"
               accept=".wif"

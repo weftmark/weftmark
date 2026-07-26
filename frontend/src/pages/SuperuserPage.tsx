@@ -216,8 +216,9 @@ function EulaTab() {
         </p>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">Version string</label>
+          <label htmlFor="eula-version" className="text-xs font-medium">Version string</label>
           <input
+            id="eula-version"
             className={`w-full rounded border bg-background px-3 py-1.5 text-sm ${version && !versionValid ? "border-destructive" : ""}`}
             placeholder="e.g. 0.4"
             value={version}
@@ -229,8 +230,9 @@ function EulaTab() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">Effective date</label>
+          <label htmlFor="eula-effective-date" className="text-xs font-medium">Effective date</label>
           <input
+            id="eula-effective-date"
             type="datetime-local"
             className="w-full rounded border bg-background px-3 py-1.5 text-sm"
             value={effectiveDate}
@@ -240,7 +242,7 @@ function EulaTab() {
 
         <div className="space-y-1">
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-medium">Body HTML</label>
+            <label htmlFor="eula-body-html" className="text-xs font-medium">Body HTML</label>
             {current && (
               <Button variant="outline" size="sm" type="button" onClick={() => {
                 const html = current.body_html.replace(/Version \d+\.\d+/, `Version ${version}`);
@@ -252,6 +254,7 @@ function EulaTab() {
             )}
           </div>
           <textarea
+            id="eula-body-html"
             className="w-full rounded border bg-background px-3 py-1.5 text-sm font-mono min-h-[240px]"
             placeholder="<p>Paste full EULA HTML here…</p>"
             value={bodyHtml}

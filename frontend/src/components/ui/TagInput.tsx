@@ -13,9 +13,10 @@ interface Props {
   readonly onChange: (tags: string[]) => void;
   readonly placeholder?: string;
   readonly disabled?: boolean;
+  readonly id?: string;
 }
 
-export function TagInput({ tags, onChange, placeholder = "Add a tag…", disabled = false }: Props) {
+export function TagInput({ tags, onChange, placeholder = "Add a tag…", disabled = false, id }: Props) {
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +64,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag…", disable
       ))}
       {!disabled && (
         <input
+          id={id}
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value.replace(",", ""))}
