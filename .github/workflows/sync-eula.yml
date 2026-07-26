@@ -3,6 +3,9 @@ name: Sync EULA to migration
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   sync-eula:
     runs-on: ubuntu-latest

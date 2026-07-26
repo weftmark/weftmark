@@ -12,6 +12,9 @@ concurrency:
   group: hotfix-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
 
   backend-lint:
