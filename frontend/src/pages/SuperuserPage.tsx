@@ -99,10 +99,16 @@ function lintHtml(html: string): LintResult {
     }
   }
 
-  // javascript: hrefs
+  // Dangerous URL schemes in hrefs — strip whitespace/control characters first,
+  // since browsers ignore them when determining a URL's scheme (e.g. a tab or
+  // leading space inside "javascript:" still executes), which a bare
+  // .startsWith() check misses. Char code 32 is space; anything below it is a
+  // C0 control character (tab, newline, etc).
   for (const a of doc.body.querySelectorAll("a[href]")) {
-    if ((a.getAttribute("href") ?? "").toLowerCase().startsWith("javascript:")) {
-      issues.push({ level: "error", message: "javascript: URL in <a> href" });
+    const raw = a.getAttribute("href") ?? "";
+    const normalized = raw.split("").filter((c) => c.charCodeAt(0) > 32).join("").toLowerCase();
+    if (/^(javascript|vbscript|data):/.test(normalized)) {
+      issues.push({ level: "error", message: "Dangerous URL scheme in <a> href" });
     }
   }
 
