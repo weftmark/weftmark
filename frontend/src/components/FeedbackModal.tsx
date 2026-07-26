@@ -140,8 +140,8 @@ export function FeedbackModal({ onClose }: Props) {
         {!submitted && user && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Type selector */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Type</label>
+            <fieldset>
+              <legend className="mb-1.5 block text-sm font-medium">Type</legend>
               <div className="flex gap-2 flex-wrap">
                 {(Object.keys(SUBMISSION_TYPE_LABELS) as SubmissionType[]).map((t) => (
                   <button
@@ -158,14 +158,15 @@ export function FeedbackModal({ onClose }: Props) {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Subject */}
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label htmlFor="feedback-subject" className="mb-1 block text-sm font-medium">
                 Subject <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <input
+                id="feedback-subject"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 placeholder="Brief summary"
                 value={subject}
@@ -176,10 +177,11 @@ export function FeedbackModal({ onClose }: Props) {
 
             {/* Body */}
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label htmlFor="feedback-body" className="mb-1 block text-sm font-medium">
                 Details <span className="text-destructive">*</span>
               </label>
               <textarea
+                id="feedback-body"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                 rows={5}
                 placeholder={TYPE_PLACEHOLDERS[type]}
