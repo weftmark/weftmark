@@ -2057,23 +2057,23 @@ function LoomRefFormModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Brand <span className="text-destructive">*</span></label>
-            <input className={inputCls} value={form.brand} onChange={(e) => onChange({ ...form, brand: e.target.value })} placeholder="Schacht" />
+            <label htmlFor="loomref-brand" className={labelCls}>Brand <span className="text-destructive">*</span></label>
+            <input id="loomref-brand" className={inputCls} value={form.brand} onChange={(e) => onChange({ ...form, brand: e.target.value })} placeholder="Schacht" />
           </div>
           <div>
-            <label className={labelCls}>Model name <span className="text-destructive">*</span></label>
-            <input className={inputCls} value={form.model_name} onChange={(e) => onChange({ ...form, model_name: e.target.value })} placeholder="Baby Wolf" />
+            <label htmlFor="loomref-model-name" className={labelCls}>Model name <span className="text-destructive">*</span></label>
+            <input id="loomref-model-name" className={inputCls} value={form.model_name} onChange={(e) => onChange({ ...form, model_name: e.target.value })} placeholder="Baby Wolf" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Series <span className="text-muted-foreground font-normal text-xs">(optional)</span></label>
-            <input className={inputCls} value={form.model_series} onChange={(e) => onChange({ ...form, model_series: e.target.value })} placeholder="Wolf Family" />
+            <label htmlFor="loomref-series" className={labelCls}>Series <span className="text-muted-foreground font-normal text-xs">(optional)</span></label>
+            <input id="loomref-series" className={inputCls} value={form.model_series} onChange={(e) => onChange({ ...form, model_series: e.target.value })} placeholder="Wolf Family" />
           </div>
           <div>
-            <label className={labelCls}>Category</label>
-            <select className={inputCls} value={form.loom_category} onChange={(e) => onChange({ ...form, loom_category: e.target.value })}>
+            <label htmlFor="loomref-category" className={labelCls}>Category</label>
+            <select id="loomref-category" className={inputCls} value={form.loom_category} onChange={(e) => onChange({ ...form, loom_category: e.target.value })}>
               {LOOM_CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
@@ -2081,43 +2081,43 @@ function LoomRefFormModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Shedding mechanism</label>
-            <select className={inputCls} value={form.shedding_mechanism} onChange={(e) => onChange({ ...form, shedding_mechanism: e.target.value })}>
+            <label htmlFor="loomref-shedding" className={labelCls}>Shedding mechanism</label>
+            <select id="loomref-shedding" className={inputCls} value={form.shedding_mechanism} onChange={(e) => onChange({ ...form, shedding_mechanism: e.target.value })}>
               <option value="">—</option>
               {SHEDDING_OPTIONS.map((o) => <option key={o} value={o}>{o.replaceAll("_", " ")}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelCls}>Origin country</label>
-            <input className={inputCls} value={form.origin_country} onChange={(e) => onChange({ ...form, origin_country: e.target.value })} placeholder="USA" />
+            <label htmlFor="loomref-origin" className={labelCls}>Origin country</label>
+            <input id="loomref-origin" className={inputCls} value={form.origin_country} onChange={(e) => onChange({ ...form, origin_country: e.target.value })} placeholder="USA" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Shaft count options <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
-            <input className={inputCls} value={form.shaft_count_options} onChange={(e) => onChange({ ...form, shaft_count_options: e.target.value })} placeholder="4, 8" />
+            <label htmlFor="loomref-shaft-counts" className={labelCls}>Shaft count options <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input id="loomref-shaft-counts" className={inputCls} value={form.shaft_count_options} onChange={(e) => onChange({ ...form, shaft_count_options: e.target.value })} placeholder="4, 8" />
           </div>
           <div>
-            <label className={labelCls}>Treadle count options <span className="text-muted-foreground font-normal text-xs">parallel to shafts</span></label>
-            <input className={inputCls} value={form.treadle_count} onChange={(e) => onChange({ ...form, treadle_count: e.target.value })} placeholder="6, 10" />
+            <label htmlFor="loomref-treadle-counts" className={labelCls}>Treadle count options <span className="text-muted-foreground font-normal text-xs">parallel to shafts</span></label>
+            <input id="loomref-treadle-counts" className={inputCls} value={form.treadle_count} onChange={(e) => onChange({ ...form, treadle_count: e.target.value })} placeholder="6, 10" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Weaving width (inches) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
-            <input className={inputCls} value={form.weaving_width_options_inches} onChange={(e) => onChange({ ...form, weaving_width_options_inches: e.target.value })} placeholder="26" />
+            <label htmlFor="loomref-width-in" className={labelCls}>Weaving width (inches) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input id="loomref-width-in" className={inputCls} value={form.weaving_width_options_inches} onChange={(e) => onChange({ ...form, weaving_width_options_inches: e.target.value })} placeholder="26" />
           </div>
           <div>
-            <label className={labelCls}>Weaving width (cm) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
-            <input className={inputCls} value={form.weaving_width_options_cm} onChange={(e) => onChange({ ...form, weaving_width_options_cm: e.target.value })} placeholder="66" />
+            <label htmlFor="loomref-width-cm" className={labelCls}>Weaving width (cm) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input id="loomref-width-cm" className={inputCls} value={form.weaving_width_options_cm} onChange={(e) => onChange({ ...form, weaving_width_options_cm: e.target.value })} placeholder="66" />
           </div>
         </div>
 
         <div>
-          <label className={labelCls}>Foldable</label>
-          <select className={inputCls} value={form.foldable} onChange={(e) => onChange({ ...form, foldable: e.target.value as LoomRefForm["foldable"] })}>
+          <label htmlFor="loomref-foldable" className={labelCls}>Foldable</label>
+          <select id="loomref-foldable" className={inputCls} value={form.foldable} onChange={(e) => onChange({ ...form, foldable: e.target.value as LoomRefForm["foldable"] })}>
             <option value="">Unknown</option>
             <option value="true">Yes</option>
             <option value="false">No</option>
