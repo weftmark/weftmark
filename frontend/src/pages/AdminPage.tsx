@@ -1015,6 +1015,156 @@ function StatusDot({ status, small }: { readonly status: "ok" | "error"; readonl
   );
 }
 
+async function runWebhookTest(
+  e: React.MouseEvent,
+  setTesting: (v: boolean) => void,
+  setResult: (v: WebhookProbeResult | null) => void,
+) {
+  e.stopPropagation();
+  setTesting(true);
+  setResult(null);
+  try {
+    const result = await testWebhook();
+    setResult(result);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Request failed";
+    setResult({ status: "error", latency_ms: null, message: msg });
+  } finally {
+    setTesting(false);
+  }
+}
+
+async function runEmailTest(
+  e: React.MouseEvent,
+  setSending: (v: boolean) => void,
+  setResult: (v: { ok: boolean; msg: string } | null) => void,
+) {
+  e.stopPropagation();
+  setSending(true);
+  setResult(null);
+  try {
+    const result = await sendTestEmail();
+    setResult({ ok: true, msg: `Sent to ${result.to}` });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Request failed";
+    setResult({ ok: false, msg });
+  } finally {
+    setSending(false);
+  }
+}
+
+function TestResultBar({ ok, text, mono }: { readonly ok: boolean; readonly text: string; readonly mono?: boolean }) {
+  return (
+    <div className={`px-4 py-2 border-t text-xs ${mono ? "font-mono" : ""} ${ok ? "text-green-600" : "text-destructive"}`}>
+      {text}
+    </div>
+  );
+}
+
+function ServiceRowHeader({
+  service,
+  hasDetail,
+  open,
+  onToggle,
+  isWebhook,
+  isSmtp,
+  webhookTesting,
+  emailSending,
+  onTestWebhook,
+  onTestEmail,
+}: {
+  readonly service: ReadinessService;
+  readonly hasDetail: boolean;
+  readonly open: boolean;
+  readonly onToggle: () => void;
+  readonly isWebhook: boolean;
+  readonly isSmtp: boolean;
+  readonly webhookTesting: boolean;
+  readonly emailSending: boolean;
+  readonly onTestWebhook: (e: React.MouseEvent) => void;
+  readonly onTestEmail: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`w-full flex items-center gap-3 px-4 py-3 text-left ${hasDetail ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
+      onClick={hasDetail ? onToggle : undefined}
+    >
+      <StatusDot status={service.ok ? "ok" : "error"} />
+      <span className="text-sm font-medium w-32 shrink-0">{service.name}</span>
+      <span className={`text-sm flex-1 ${!service.ok ? "text-destructive" : "text-muted-foreground"}`}>
+        {service.message || (service.ok ? "ok" : "failed")}
+      </span>
+      {isWebhook && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-xs"
+          disabled={webhookTesting}
+          onClick={onTestWebhook}
+        >
+          {webhookTesting ? "Testing…" : "Test"}
+        </Button>
+      )}
+      {isSmtp && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-xs"
+          disabled={emailSending}
+          onClick={onTestEmail}
+        >
+          {emailSending ? "Sending…" : "Send Test"}
+        </Button>
+      )}
+      {!service.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
+      {hasDetail && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
+    </button>
+  );
+}
+
+function ServiceDetailPanel({
+  open,
+  hasDetail,
+  detail,
+}: {
+  readonly open: boolean;
+  readonly hasDetail: boolean;
+  readonly detail?: ServiceCheck;
+}) {
+  if (!open || !hasDetail || !detail) return null;
+
+  const metaEntries = Object.entries(detail.meta ?? {});
+
+  return (
+    <div className="border-t">
+      {metaEntries.length > 0 && (
+        <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 pl-10 pr-4 py-2.5 bg-muted/10 border-b">
+          {metaEntries.map(([k, v]) => (
+            <React.Fragment key={k}>
+              <span className="text-xs text-muted-foreground">{k}</span>
+              <span className="text-xs font-mono break-all">{v}</span>
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+      {detail.checks.length > 0 && (
+        <div className="divide-y">
+          {detail.checks.map((c: ServicePermCheck) => (
+            <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
+              <StatusDot status={c.status} small />
+              <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
+              <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                {c.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CombinedServiceRow({ service, detail }: { readonly service: ReadinessService; readonly detail?: ServiceCheck }) {
   const [open, setOpen] = useState(false);
   const [webhookResult, setWebhookResult] = useState<WebhookProbeResult | null>(null);
@@ -1024,114 +1174,37 @@ function CombinedServiceRow({ service, detail }: { readonly service: ReadinessSe
   const isWebhook = service.name === "Clerk Webhook";
   const isSmtp = service.name === "SMTP";
   const metaEntries = Object.entries(detail?.meta ?? {});
-  const hasDetail = detail && (metaEntries.length > 0 || detail.checks.length > 0);
-
-  async function handleTestWebhook(e: React.MouseEvent) {
-    e.stopPropagation();
-    setWebhookTesting(true);
-    setWebhookResult(null);
-    try {
-      const result = await testWebhook();
-      setWebhookResult(result);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Request failed";
-      setWebhookResult({ status: "error", latency_ms: null, message: msg });
-    } finally {
-      setWebhookTesting(false);
-    }
-  }
-
-  async function handleTestEmail(e: React.MouseEvent) {
-    e.stopPropagation();
-    setEmailSending(true);
-    setEmailResult(null);
-    try {
-      const result = await sendTestEmail();
-      setEmailResult({ ok: true, msg: `Sent to ${result.to}` });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Request failed";
-      setEmailResult({ ok: false, msg });
-    } finally {
-      setEmailSending(false);
-    }
-  }
+  const hasDetail = !!(detail && (metaEntries.length > 0 || detail.checks.length > 0));
 
   return (
     <div className="bg-background">
-      <button
-        type="button"
-        className={`w-full flex items-center gap-3 px-4 py-3 text-left ${hasDetail ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
-        onClick={hasDetail ? () => setOpen((o) => !o) : undefined}
-      >
-        <StatusDot status={service.ok ? "ok" : "error"} />
-        <span className="text-sm font-medium w-32 shrink-0">{service.name}</span>
-        <span className={`text-sm flex-1 ${!service.ok ? "text-destructive" : "text-muted-foreground"}`}>
-          {service.message || (service.ok ? "ok" : "failed")}
-        </span>
-        {isWebhook && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-xs"
-            disabled={webhookTesting}
-            onClick={handleTestWebhook}
-          >
-            {webhookTesting ? "Testing…" : "Test"}
-          </Button>
-        )}
-        {isSmtp && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-xs"
-            disabled={emailSending}
-            onClick={handleTestEmail}
-          >
-            {emailSending ? "Sending…" : "Send Test"}
-          </Button>
-        )}
-        {!service.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
-        {hasDetail && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
-      </button>
+      <ServiceRowHeader
+        service={service}
+        hasDetail={hasDetail}
+        open={open}
+        onToggle={() => setOpen((o) => !o)}
+        isWebhook={isWebhook}
+        isSmtp={isSmtp}
+        webhookTesting={webhookTesting}
+        emailSending={emailSending}
+        onTestWebhook={(e) => runWebhookTest(e, setWebhookTesting, setWebhookResult)}
+        onTestEmail={(e) => runEmailTest(e, setEmailSending, setEmailResult)}
+      />
       {webhookResult && (
-        <div className={`px-4 py-2 border-t text-xs font-mono ${webhookResult.status === "ok" ? "text-green-600" : "text-destructive"}`}>
-          {webhookResult.status === "ok"
-            ? `✓ Round-trip: ${webhookResult.latency_ms}ms`
-            : `✗ ${webhookResult.message}`}
-        </div>
+        <TestResultBar
+          ok={webhookResult.status === "ok"}
+          mono
+          text={
+            webhookResult.status === "ok"
+              ? `✓ Round-trip: ${webhookResult.latency_ms}ms`
+              : `✗ ${webhookResult.message}`
+          }
+        />
       )}
       {emailResult && (
-        <div className={`px-4 py-2 border-t text-xs ${emailResult.ok ? "text-green-600" : "text-destructive"}`}>
-          {emailResult.ok ? `✓ ${emailResult.msg}` : `✗ ${emailResult.msg}`}
-        </div>
+        <TestResultBar ok={emailResult.ok} text={emailResult.ok ? `✓ ${emailResult.msg}` : `✗ ${emailResult.msg}`} />
       )}
-      {open && hasDetail && (
-        <div className="border-t">
-          {metaEntries.length > 0 && (
-            <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 pl-10 pr-4 py-2.5 bg-muted/10 border-b">
-              {metaEntries.map(([k, v]) => (
-                <React.Fragment key={k}>
-                  <span className="text-xs text-muted-foreground">{k}</span>
-                  <span className="text-xs font-mono break-all">{v}</span>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-          {detail!.checks.length > 0 && (
-            <div className="divide-y">
-              {detail!.checks.map((c: ServicePermCheck) => (
-                <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
-                  <StatusDot status={c.status} small />
-                  <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
-                  <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
-                    {c.message}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <ServiceDetailPanel open={open} hasDetail={hasDetail} detail={detail} />
     </div>
   );
 }
