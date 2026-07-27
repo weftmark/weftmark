@@ -47,7 +47,7 @@
   {
     "License": "Apache-2.0 AND MIT",
     "Name": "aiohttp",
-    "Version": "3.14.1"
+    "Version": "3.14.3"
   },
   {
     "License": "Apache Software License",
@@ -75,9 +75,9 @@
     "Version": "0.0.4"
   },
   {
-    "License": "MIT License",
+    "License": "MIT",
     "Name": "annotated-types",
-    "Version": "0.7.0"
+    "Version": "0.8.0"
   },
   {
     "License": "MIT",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.51"
+    "Version": "1.43.56"
   },
   {
     "License": "BSD-3-Clause",
@@ -132,7 +132,7 @@
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
     "Name": "certifi",
-    "Version": "2026.6.17"
+    "Version": "2026.7.22"
   },
   {
     "License": "MIT-0",
@@ -182,7 +182,7 @@
   {
     "License": "Apache Software License",
     "Name": "cyclonedx-bom",
-    "Version": "7.3.0"
+    "Version": "7.3.1"
   },
   {
     "License": "Apache Software License",
@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.31.1"
+    "Version": "3.32.0"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -237,7 +237,7 @@
   {
     "License": "MIT AND PSF-2.0",
     "Name": "greenlet",
-    "Version": "3.5.3"
+    "Version": "3.5.4"
   },
   {
     "License": "MIT License",
@@ -457,12 +457,12 @@
   {
     "License": "MIT",
     "Name": "platformdirs",
-    "Version": "4.10.1"
+    "Version": "4.11.0"
   },
   {
     "License": "BSD License",
     "Name": "prompt_toolkit",
-    "Version": "3.0.52"
+    "Version": "3.0.53"
   },
   {
     "License": "Apache Software License",
@@ -577,7 +577,7 @@
   {
     "License": "Apache Software License",
     "Name": "s3transfer",
-    "Version": "0.19.1"
+    "Version": "0.19.2"
   },
   {
     "License": "MIT",
@@ -595,9 +595,9 @@
     "Version": "2.4.0"
   },
   {
-    "License": "MIT License",
+    "License": "MIT",
     "Name": "standardwebhooks",
-    "Version": "1.0.1"
+    "Version": "1.1.0"
   },
   {
     "License": "BSD-3-Clause",
@@ -618,16 +618,6 @@
     "License": "MIT License",
     "Name": "tomli_w",
     "Version": "1.2.0"
-  },
-  {
-    "License": "Apache-2.0",
-    "Name": "types-Deprecated",
-    "Version": "1.3.1.20260520"
-  },
-  {
-    "License": "Apache-2.0",
-    "Name": "types-python-dateutil",
-    "Version": "2.9.0.20260716"
   },
   {
     "License": "MIT",
