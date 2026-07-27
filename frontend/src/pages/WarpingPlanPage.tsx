@@ -17,6 +17,58 @@ const TABS: { id: ReportTab; key: string }[] = [
   { id: "threading", key: "warpingPlanPage.tabThreading" },
 ];
 
+const GREYSCALE_LADDER: readonly { readonly max: number; readonly label: string }[] = [
+  { max: 0.08, label: "Black" },
+  { max: 0.22, label: "Very Dark Grey" },
+  { max: 0.42, label: "Dark Grey" },
+  { max: 0.62, label: "Grey" },
+  { max: 0.82, label: "Light Grey" },
+  { max: 0.93, label: "Off White" },
+];
+
+function greyscaleName(l: number): string {
+  return GREYSCALE_LADDER.find((g) => l < g.max)?.label ?? "White";
+}
+
+const BROWN_LADDER: readonly { readonly max: number; readonly label: string }[] = [
+  { max: 0.12, label: "Very Dark Brown" },
+  { max: 0.24, label: "Dark Brown" },
+  { max: 0.36, label: "Brown" },
+];
+
+function brownName(l: number): string {
+  return BROWN_LADDER.find((b) => l < b.max)?.label ?? "Tan";
+}
+
+const LIGHTNESS_PREFIX_RULES: readonly { readonly test: (l: number) => boolean; readonly label: string }[] = [
+  { test: (l) => l < 0.18, label: "Very Dark " },
+  { test: (l) => l < 0.32, label: "Dark " },
+  { test: (l) => l > 0.78, label: "Pale " },
+  { test: (l) => l > 0.63, label: "Light " },
+];
+
+function lightnessPrefix(l: number): string {
+  return LIGHTNESS_PREFIX_RULES.find((r) => r.test(l))?.label ?? "";
+}
+
+const HUE_NAME_RULES: readonly { readonly test: (h: number) => boolean; readonly label: string }[] = [
+  { test: (h) => h < 12 || h >= 348, label: "Red" },
+  { test: (h) => h < 26, label: "Red Orange" },
+  { test: (h) => h < 46, label: "Orange" },
+  { test: (h) => h < 65, label: "Yellow" },
+  { test: (h) => h < 80, label: "Yellow Green" },
+  { test: (h) => h < 155, label: "Green" },
+  { test: (h) => h < 178, label: "Teal" },
+  { test: (h) => h < 200, label: "Cyan" },
+  { test: (h) => h < 255, label: "Blue" },
+  { test: (h) => h < 290, label: "Purple" },
+  { test: (h) => h < 325, label: "Violet" },
+];
+
+function hueName(h: number): string {
+  return HUE_NAME_RULES.find((r) => r.test(h))?.label ?? "Pink";
+}
+
 function approximateColorName(hex: string): string {
   if (!hex || hex.length < 7) return "";
   const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
@@ -27,52 +79,19 @@ function approximateColorName(hex: string): string {
   const delta = max - min;
   const l = (max + min) / 2;
 
-  if (delta < 0.06) {
-    if (l < 0.08) return "Black";
-    if (l < 0.22) return "Very Dark Grey";
-    if (l < 0.42) return "Dark Grey";
-    if (l < 0.62) return "Grey";
-    if (l < 0.82) return "Light Grey";
-    if (l < 0.93) return "Off White";
-    return "White";
-  }
+  if (delta < 0.06) return greyscaleName(l);
 
   let h: number;
-  if (max === r) h = ((g - b) / delta + 6) % 6 * 60;
+  if (max === r) h = (((g - b) / delta + 6) % 6) * 60;
   else if (max === g) h = ((b - r) / delta + 2) * 60;
   else h = ((r - g) / delta + 4) * 60;
 
   const s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
 
   // Browns: orange-ish hue, low-medium saturation, darker lightness
-  if (h >= 10 && h <= 52 && s < 0.55 && l < 0.48) {
-    if (l < 0.12) return "Very Dark Brown";
-    if (l < 0.24) return "Dark Brown";
-    if (l < 0.36) return "Brown";
-    return "Tan";
-  }
+  if (h >= 10 && h <= 52 && s < 0.55 && l < 0.48) return brownName(l);
 
-  let prefix = "";
-  if (l < 0.18) prefix = "Very Dark ";
-  else if (l < 0.32) prefix = "Dark ";
-  else if (l > 0.78) prefix = "Pale ";
-  else if (l > 0.63) prefix = "Light ";
-
-  let name: string;
-  if (h < 12 || h >= 348) name = "Red";
-  else if (h < 26) name = "Red Orange";
-  else if (h < 46) name = "Orange";
-  else if (h < 65) name = "Yellow";
-  else if (h < 80) name = "Yellow Green";
-  else if (h < 155) name = "Green";
-  else if (h < 178) name = "Teal";
-  else if (h < 200) name = "Cyan";
-  else if (h < 255) name = "Blue";
-  else if (h < 290) name = "Purple";
-  else if (h < 325) name = "Violet";
-  else name = "Pink";
-
-  return `${prefix}${name}`.trim();
+  return `${lightnessPrefix(l)}${hueName(h)}`.trim();
 }
 
 interface WarpSetup {

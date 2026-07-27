@@ -995,17 +995,7 @@ function formatDentPattern(pattern: number[]): string {
   return pattern.length > MAX ? `${preview}, … (${pattern.length} dents)` : preview;
 }
 
-function ReedSelector({
-  project,
-  onUpdated,
-}: {
-  readonly project: ProjectDetail;
-  readonly onUpdated: (p: ProjectDetail) => void;
-}) {
-  const { t } = useTranslation();
-  const locked = project.status !== "created";
-
-  // Resolve EPI from draft data (same logic as DraftDetailPage)
+function resolveEpi(project: ProjectDetail): number | null {
   const epiFromSpacing =
     project.draft_wif_measurements?.warp_spacing != null && project.draft_wif_measurements.warp_spacing > 0
       ? Math.round((2.54 / project.draft_wif_measurements.warp_spacing) * 10) / 10
@@ -1016,23 +1006,178 @@ function ReedSelector({
       ? Math.round((project.draft_warp_threads / (weavingWidthCm / 2.54)) * 10) / 10
       : null;
   const resolvedEpi = project.draft_epi_override ?? epiFromSpacing ?? epiFromWidthAndCount;
-  const epiInt = resolvedEpi != null ? Math.round(resolvedEpi) : null;
+  return resolvedEpi != null ? Math.round(resolvedEpi) : null;
+}
 
-  // Build dropdown options: loom reeds first (sorted), then common dents not already covered
+function buildDentsList(project: ProjectDetail): { loomDents: number[]; extraDents: number[]; allDents: number[] } {
   const loomDents = project.loom_reeds.map((r) => r.dents_per_inch).sort((a, b) => a - b);
   const extraDents = COMMON_DENTS.filter((d) => !loomDents.includes(d));
-  const allDents = [...loomDents, ...extraDents];
+  return { loomDents, extraDents, allDents: [...loomDents, ...extraDents] };
+}
+
+interface ReedFit {
+  isCleanMultiple: boolean;
+  threadsPerDent: number | null;
+  dentPattern: number[] | null;
+  idealDent: number | null;
+}
+
+function computeReedFit(epiInt: number | null, dentsInt: number | null, allDents: number[]): ReedFit {
+  const isCleanMultiple = epiInt != null && dentsInt != null && dentsInt > 0 && epiInt % dentsInt === 0;
+  const threadsPerDent = isCleanMultiple ? epiInt! / dentsInt! : null;
+  const dentPattern =
+    !isCleanMultiple && epiInt != null && dentsInt != null && dentsInt > 0 ? buildDentPattern(epiInt, dentsInt) : null;
+  const idealDent = dentPattern != null && epiInt != null ? nearestCleanDent(epiInt, allDents) : null;
+  return { isCleanMultiple, threadsPerDent, dentPattern, idealDent };
+}
+
+function LockedReedDisplay({ epiInt, savedDents }: { readonly epiInt: number | null; readonly savedDents: number | null }) {
+  const { t } = useTranslation();
+  const savedDentsInt = savedDents != null ? Math.round(savedDents) : null;
+  const { threadsPerDent: savedTpd, dentPattern: savedPattern } = computeReedFit(epiInt, savedDentsInt, []);
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.reed")}</h3>
+        <span className="text-xs text-muted-foreground">{t("projectLandingPage.locked")}</span>
+      </div>
+      {savedDents != null ? (
+        <div className="space-y-1">
+          <p className="text-sm font-medium">{t("projectLandingPage.reedDent", { dents: savedDents })}</p>
+          {savedTpd != null && (
+            <p className="text-sm font-semibold">
+              {t("projectLandingPage.threadsPerDent", { count: savedTpd })}{savedTpd === 1 ? ` ${t("projectLandingPage.ideal")}` : ""}
+            </p>
+          )}
+          {savedPattern != null && (
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold">
+                {t("projectLandingPage.threadsPerDentRange", { min: Math.min(...savedPattern), max: Math.max(...savedPattern) })}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("projectLandingPage.threadingPattern")} {formatDentPattern(savedPattern)}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground italic">{t("projectLandingPage.noReedSelected")}</p>
+      )}
+    </section>
+  );
+}
+
+function DentMismatchWarning({
+  dentPattern,
+  epiInt,
+  effectiveDentsInt,
+  idealDent,
+  onSwitchReed,
+}: {
+  readonly dentPattern: number[] | null;
+  readonly epiInt: number | null;
+  readonly effectiveDentsInt: number | null;
+  readonly idealDent: number | null;
+  readonly onSwitchReed: (dent: number) => void;
+}) {
+  const { t } = useTranslation();
+  if (dentPattern == null || epiInt == null || effectiveDentsInt == null) return null;
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 px-3 py-2 space-y-1">
+      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+        {t("projectLandingPage.approxDistribution", { epi: epiInt, dents: effectiveDentsInt })}
+      </p>
+      <p className="font-mono text-xs text-amber-700 dark:text-amber-400">
+        {formatDentPattern(dentPattern)}
+      </p>
+      {idealDent != null && idealDent !== effectiveDentsInt && (
+        <p className="text-xs text-amber-700 dark:text-amber-400 pt-0.5">
+          {t("projectLandingPage.useCleanSett", { dent: idealDent })}{" "}
+          <button type="button"
+            className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200"
+            onClick={() => onSwitchReed(idealDent)}
+          >
+            {t("projectLandingPage.switchReed")}
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RecommendedReedNudge({
+  epiInt,
+  bestMatch,
+  effectiveDentsInt,
+  dentPattern,
+  onUseThis,
+}: {
+  readonly epiInt: number | null;
+  readonly bestMatch: number | null;
+  readonly effectiveDentsInt: number | null;
+  readonly dentPattern: number[] | null;
+  readonly onUseThis: (dent: number) => void;
+}) {
+  const { t } = useTranslation();
+  if (epiInt == null || bestMatch == null || effectiveDentsInt === bestMatch || dentPattern) return null;
+  return (
+    <p className="text-xs text-muted-foreground">
+      {t("projectLandingPage.recommendedReed", { epi: epiInt, dents: bestMatch })}{" "}
+      <button type="button"
+        className="underline underline-offset-2 hover:text-foreground"
+        onClick={() => onUseThis(bestMatch)}
+      >
+        {t("projectLandingPage.useThis")}
+      </button>
+    </p>
+  );
+}
+
+function resolveInitialReedSelectValue(project: ProjectDetail, bestMatch: number | null): string {
+  if (project.reed_dents_per_inch != null) return String(project.reed_dents_per_inch);
+  if (bestMatch != null) return String(bestMatch);
+  return "";
+}
+
+function selectReedValue(val: string, setSelectValue: (v: string) => void, mutate: (dents: number | null) => void) {
+  setSelectValue(val);
+  if (val !== "custom" && val !== "") mutate(Number.parseFloat(val));
+  else if (val === "") mutate(null);
+}
+
+function saveCustomReed(customInput: string, mutate: (dents: number | null) => void) {
+  const n = Number.parseFloat(customInput);
+  if (!Number.isNaN(n) && n > 0) mutate(n);
+}
+
+function computeEffectiveDents(isCustom: boolean, customInput: string, selectValue: string): number | null {
+  if (isCustom) return Number.parseFloat(customInput);
+  if (selectValue !== "") return Number.parseFloat(selectValue);
+  return null;
+}
+
+function ReedSelector({
+  project,
+  onUpdated,
+}: {
+  readonly project: ProjectDetail;
+  readonly onUpdated: (p: ProjectDetail) => void;
+}) {
+  const { t } = useTranslation();
+  const locked = project.status !== "created";
+
+  const epiInt = resolveEpi(project);
+
+  // Build dropdown options: loom reeds first (sorted), then common dents not already covered
+  const { loomDents, extraDents, allDents } = buildDentsList(project);
 
   // Best recommendation for the resolved EPI
   const bestMatch = epiInt != null
     ? (getReedRecommendation(epiInt).matches[0]?.dents ?? null)
     : null;
 
-  const [selectValue, setSelectValue] = useState<string>(() => {
-    if (project.reed_dents_per_inch != null) return String(project.reed_dents_per_inch);
-    if (bestMatch != null) return String(bestMatch);
-    return "";
-  });
+  const [selectValue, setSelectValue] = useState<string>(() => resolveInitialReedSelectValue(project, bestMatch));
   const [customInput, setCustomInput] = useState<string>(
     project.reed_dents_per_inch != null && !allDents.includes(project.reed_dents_per_inch)
       ? String(project.reed_dents_per_inch)
@@ -1045,79 +1190,17 @@ function ReedSelector({
     onSuccess: onUpdated,
   });
 
-  function handleSelect(val: string) {
-    setSelectValue(val);
-    if (val !== "custom" && val !== "") mutation.mutate(Number.parseFloat(val));
-    else if (val === "") mutation.mutate(null);
-  }
+  const handleSelect = (val: string) => selectReedValue(val, setSelectValue, mutation.mutate);
+  const handleCustomSave = () => saveCustomReed(customInput, mutation.mutate);
 
-  function handleCustomSave() {
-    const n = Number.parseFloat(customInput);
-    if (!Number.isNaN(n) && n > 0) mutation.mutate(n);
-  }
-
-  let effectiveDents: number | null = null;
-  if (isCustom) effectiveDents = Number.parseFloat(customInput);
-  else if (selectValue !== "") effectiveDents = Number.parseFloat(selectValue);
+  const effectiveDents = computeEffectiveDents(isCustom, customInput, selectValue);
   const effectiveDentsInt = effectiveDents != null ? Math.round(effectiveDents) : null;
 
-  const isCleanMultiple =
-    epiInt != null && effectiveDentsInt != null && effectiveDentsInt > 0 &&
-    epiInt % effectiveDentsInt === 0;
-
-  const threadsPerDent = isCleanMultiple ? epiInt! / effectiveDentsInt! : null;
-
-  const dentPattern =
-    !isCleanMultiple && epiInt != null && effectiveDentsInt != null && effectiveDentsInt > 0
-      ? buildDentPattern(epiInt, effectiveDentsInt)
-      : null;
-
-  const idealDent =
-    dentPattern != null && epiInt != null
-      ? nearestCleanDent(epiInt, allDents)
-      : null;
+  const { threadsPerDent, dentPattern, idealDent } = computeReedFit(epiInt, effectiveDentsInt, allDents);
 
   // Locked: read-only display
   if (locked) {
-    const savedDents = project.reed_dents_per_inch;
-    const savedDentsInt = savedDents != null ? Math.round(savedDents) : null;
-    const savedClean = epiInt != null && savedDentsInt != null && savedDentsInt > 0 && epiInt % savedDentsInt === 0;
-    const savedTpd = savedClean ? epiInt! / savedDentsInt! : null;
-    const savedPattern =
-      !savedClean && epiInt != null && savedDentsInt != null && savedDentsInt > 0
-        ? buildDentPattern(epiInt, savedDentsInt)
-        : null;
-
-    return (
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.reed")}</h3>
-          <span className="text-xs text-muted-foreground">{t("projectLandingPage.locked")}</span>
-        </div>
-        {savedDents != null ? (
-          <div className="space-y-1">
-            <p className="text-sm font-medium">{t("projectLandingPage.reedDent", { dents: savedDents })}</p>
-            {savedTpd != null && (
-              <p className="text-sm font-semibold">
-                {t("projectLandingPage.threadsPerDent", { count: savedTpd })}{savedTpd === 1 ? ` ${t("projectLandingPage.ideal")}` : ""}
-              </p>
-            )}
-            {savedPattern != null && (
-              <div className="space-y-0.5">
-                <p className="text-sm font-semibold">
-                  {t("projectLandingPage.threadsPerDentRange", { min: Math.min(...savedPattern), max: Math.max(...savedPattern) })}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("projectLandingPage.threadingPattern")} {formatDentPattern(savedPattern)}
-                </p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground italic">{t("projectLandingPage.noReedSelected")}</p>
-        )}
-      </section>
-    );
+    return <LockedReedDisplay epiInt={epiInt} savedDents={project.reed_dents_per_inch} />;
   }
 
   return (
@@ -1175,41 +1258,21 @@ function ReedSelector({
         {mutation.isPending && <AppIcons.Spinner className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
       </div>
 
-      {/* Non-clean multiple: amber warning + Bresenham pattern */}
-      {dentPattern != null && epiInt != null && effectiveDentsInt != null && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 px-3 py-2 space-y-1">
-          <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-            {t("projectLandingPage.approxDistribution", { epi: epiInt, dents: effectiveDentsInt })}
-          </p>
-          <p className="font-mono text-xs text-amber-700 dark:text-amber-400">
-            {formatDentPattern(dentPattern)}
-          </p>
-          {idealDent != null && idealDent !== effectiveDentsInt && (
-            <p className="text-xs text-amber-700 dark:text-amber-400 pt-0.5">
-              {t("projectLandingPage.useCleanSett", { dent: idealDent })}{" "}
-              <button type="button"
-                className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200"
-                onClick={() => handleSelect(String(idealDent))}
-              >
-                {t("projectLandingPage.switchReed")}
-              </button>
-            </p>
-          )}
-        </div>
-      )}
+      <DentMismatchWarning
+        dentPattern={dentPattern}
+        epiInt={epiInt}
+        effectiveDentsInt={effectiveDentsInt}
+        idealDent={idealDent}
+        onSwitchReed={(dent) => handleSelect(String(dent))}
+      />
 
-      {/* "Use this" nudge when a better clean-multiple reed exists */}
-      {epiInt != null && bestMatch != null && effectiveDentsInt !== bestMatch && !dentPattern && (
-        <p className="text-xs text-muted-foreground">
-          {t("projectLandingPage.recommendedReed", { epi: epiInt, dents: bestMatch })}{" "}
-          <button type="button"
-            className="underline underline-offset-2 hover:text-foreground"
-            onClick={() => handleSelect(String(bestMatch))}
-          >
-            {t("projectLandingPage.useThis")}
-          </button>
-        </p>
-      )}
+      <RecommendedReedNudge
+        epiInt={epiInt}
+        bestMatch={bestMatch}
+        effectiveDentsInt={effectiveDentsInt}
+        dentPattern={dentPattern}
+        onUseThis={(dent) => handleSelect(String(dent))}
+      />
 
       {project.loom_id && project.loom_reeds.length === 0 && (
         <p className="text-xs text-muted-foreground">

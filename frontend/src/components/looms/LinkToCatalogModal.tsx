@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type RefObject } from "react";
 import {
   searchLoomCatalog,
   updateLoom,
@@ -94,6 +94,289 @@ function deriveTreadles(
     if (idx !== -1 && treadleOptions[idx] != null) return treadleOptions[idx];
   }
   return shaftVal + 2;
+}
+
+// ---------- step components ----------
+
+function SearchStep({
+  searchContainerRef,
+  displayQuery,
+  onInputChange,
+  searching,
+  showResults,
+  results,
+  onSelectRef,
+  onClose,
+}: {
+  readonly searchContainerRef: RefObject<HTMLDivElement | null>;
+  readonly displayQuery: string;
+  readonly onInputChange: (val: string) => void;
+  readonly searching: boolean;
+  readonly showResults: boolean;
+  readonly results: LoomReferenceSummary[];
+  readonly onSelectRef: (ref: LoomReferenceSummary) => void;
+  readonly onClose: () => void;
+}) {
+  return (
+    <div ref={searchContainerRef} className="relative">
+      <label htmlFor="link-catalog-search" className="mb-1 block text-sm font-medium">Search loom catalog</label>
+      <input
+        id="link-catalog-search"
+        type="search"
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        value={displayQuery}
+        onChange={(e) => onInputChange(e.target.value)}
+        placeholder="Schacht Baby Wolf, Louet Spring…"
+        autoFocus
+        autoComplete="off"
+      />
+      {searching && (
+        <p className="mt-1 text-xs text-muted-foreground">Searching…</p>
+      )}
+      {showResults && results.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-60 overflow-y-auto">
+          {results.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground flex flex-col"
+              onMouseDown={() => onSelectRef(r)}
+            >
+              <span className="font-medium">
+                {r.brand} {r.model_name}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {LOOM_TYPE_LABELS[categoryToLoomType(r.loom_category)]}
+                {r.shaft_count_options?.length
+                  ? ` · ${r.shaft_count_options.join("/")} shafts`
+                  : ""}
+                {r.origin_country ? ` · ${r.origin_country}` : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {showResults &&
+        results.length === 0 &&
+        !searching &&
+        displayQuery.length >= 2 && (
+          <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-md">
+            No results found.
+          </div>
+        )}
+      <div className="mt-4 flex justify-end">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ConfigureStep({
+  selectedRef,
+  newLoomType,
+  shaftOptions,
+  selectedShaftIdx,
+  setSelectedShaftIdx,
+  derivedTreadles,
+  widthOptions,
+  selectedWidthIdx,
+  setSelectedWidthIdx,
+  onChangeRef,
+  onReview,
+}: {
+  readonly selectedRef: LoomReferenceSummary;
+  readonly newLoomType: LoomType;
+  readonly shaftOptions: number[];
+  readonly selectedShaftIdx: number;
+  readonly setSelectedShaftIdx: (i: number) => void;
+  readonly derivedTreadles: number | null;
+  readonly widthOptions: WidthOption[];
+  readonly selectedWidthIdx: number;
+  readonly setSelectedWidthIdx: (i: number) => void;
+  readonly onChangeRef: () => void;
+  readonly onReview: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border bg-muted/30 px-3 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold">
+              {selectedRef.brand} {selectedRef.model_name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {LOOM_TYPE_LABELS[newLoomType]}
+              {selectedRef.origin_country ? ` · ${selectedRef.origin_country}` : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+            onClick={onChangeRef}
+          >
+            Change
+          </button>
+        </div>
+      </div>
+
+      {showsShafts(newLoomType) && shaftOptions.length > 0 && (
+        <div>
+          <label htmlFor="link-catalog-shafts" className="mb-1 block text-sm font-medium">Shafts</label>
+          {shaftOptions.length > 1 ? (
+            <select
+              id="link-catalog-shafts"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              value={selectedShaftIdx}
+              onChange={(e) => setSelectedShaftIdx(Number(e.target.value))}
+            >
+              {shaftOptions.map((s, i) => (
+                <option key={s} value={i}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              {shaftOptions[0]}
+            </p>
+          )}
+        </div>
+      )}
+
+      {showsTreadles(newLoomType) && derivedTreadles != null && (
+        <div>
+          <span className="mb-1 block text-sm font-medium">Treadles</span>
+          <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            {derivedTreadles}
+          </p>
+        </div>
+      )}
+
+      {widthOptions.length > 0 && (
+        <div>
+          <label htmlFor="link-catalog-width" className="mb-1 block text-sm font-medium">Weaving width</label>
+          {widthOptions.length > 1 ? (
+            <select
+              id="link-catalog-width"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              value={selectedWidthIdx}
+              onChange={(e) => setSelectedWidthIdx(Number(e.target.value))}
+            >
+              {widthOptions.map((o, i) => (
+                <option key={o.value} value={i}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              {widthOptions[0].label}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onChangeRef}>
+          Back
+        </Button>
+        <Button type="button" onClick={onReview}>
+          Review changes
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface DiffRow {
+  label: string;
+  oldVal: string;
+  newVal: string;
+  changed: boolean;
+}
+
+function ConfirmStep({
+  diffRows,
+  hasChanges,
+  error,
+  saving,
+  onBack,
+  onSave,
+}: {
+  readonly diffRows: DiffRow[];
+  readonly hasChanges: boolean;
+  readonly error: string | null;
+  readonly saving: boolean;
+  readonly onBack: () => void;
+  readonly onSave: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Review the changes below. The loom identity and current configuration will be
+        updated to match the catalog entry.
+      </p>
+
+      <div className="rounded-md border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/30">
+              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-28">
+                Field
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                Current
+              </th>
+              <th className="px-3 py-2 text-center text-xs text-muted-foreground w-6">→</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                New
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {diffRows.map((row) => (
+              <tr
+                key={row.label}
+                className={`border-b last:border-0 ${row.changed ? "" : "opacity-40"}`}
+              >
+                <td className="px-3 py-2 text-xs text-muted-foreground">{row.label}</td>
+                <td className="px-3 py-2">{row.oldVal}</td>
+                <td className="px-3 py-2 text-center text-muted-foreground">→</td>
+                <td
+                  className={`px-3 py-2 ${row.changed ? "font-medium text-foreground" : ""}`}
+                >
+                  {row.newVal}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!hasChanges && (
+        <p className="text-sm text-muted-foreground italic">
+          No fields will change — only the catalog link will be set.
+        </p>
+      )}
+
+      {error && (
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onBack} disabled={saving}>
+          Back
+        </Button>
+        <Button type="button" onClick={onSave} disabled={saving}>
+          {saving ? "Saving…" : "Confirm & save"}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 // ---------- component ----------
@@ -221,13 +504,6 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
   // Diff rows for confirm step
   const cv = version;
 
-  interface DiffRow {
-    label: string;
-    oldVal: string;
-    newVal: string;
-    changed: boolean;
-  }
-
   const diffRows: DiffRow[] = selectedRef
     ? [
         {
@@ -346,240 +622,53 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
           </button>
         </div>
 
-        {/* ── Step: search ── */}
         {step === "search" && (
-          <div ref={searchContainerRef} className="relative">
-            <label htmlFor="link-catalog-search" className="mb-1 block text-sm font-medium">Search loom catalog</label>
-            <input
-              id="link-catalog-search"
-              type="search"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              value={displayQuery}
-              onChange={(e) => handleInputChange(e.target.value)}
-              placeholder="Schacht Baby Wolf, Louet Spring…"
-              autoFocus
-              autoComplete="off"
-            />
-            {searching && (
-              <p className="mt-1 text-xs text-muted-foreground">Searching…</p>
-            )}
-            {showResults && results.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-60 overflow-y-auto">
-                {results.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground flex flex-col"
-                    onMouseDown={() => handleSelectRef(r)}
-                  >
-                    <span className="font-medium">
-                      {r.brand} {r.model_name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {LOOM_TYPE_LABELS[categoryToLoomType(r.loom_category)]}
-                      {r.shaft_count_options?.length
-                        ? ` · ${r.shaft_count_options.join("/")} shafts`
-                        : ""}
-                      {r.origin_country ? ` · ${r.origin_country}` : ""}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {showResults &&
-              results.length === 0 &&
-              !searching &&
-              displayQuery.length >= 2 && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-md">
-                  No results found.
-                </div>
-              )}
-            <div className="mt-4 flex justify-end">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-            </div>
-          </div>
+          <SearchStep
+            searchContainerRef={searchContainerRef}
+            displayQuery={displayQuery}
+            onInputChange={handleInputChange}
+            searching={searching}
+            showResults={showResults}
+            results={results}
+            onSelectRef={handleSelectRef}
+            onClose={onClose}
+          />
         )}
 
-        {/* ── Step: configure ── */}
         {step === "configure" && selectedRef && (
-          <div className="space-y-4">
-            <div className="rounded-md border bg-muted/30 px-3 py-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">
-                    {selectedRef.brand} {selectedRef.model_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {LOOM_TYPE_LABELS[newLoomType]}
-                    {selectedRef.origin_country ? ` · ${selectedRef.origin_country}` : ""}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setSelectedRef(null);
-                    setStep("search");
-                  }}
-                >
-                  Change
-                </button>
-              </div>
-            </div>
-
-            {showsShafts(newLoomType) && shaftOptions.length > 0 && (
-              <div>
-                <label htmlFor="link-catalog-shafts" className="mb-1 block text-sm font-medium">Shafts</label>
-                {shaftOptions.length > 1 ? (
-                  <select
-                    id="link-catalog-shafts"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={selectedShaftIdx}
-                    onChange={(e) => setSelectedShaftIdx(Number(e.target.value))}
-                  >
-                    {shaftOptions.map((s, i) => (
-                      <option key={s} value={i}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-                    {shaftOptions[0]}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {showsTreadles(newLoomType) && derivedTreadles != null && (
-              <div>
-                <span className="mb-1 block text-sm font-medium">Treadles</span>
-                <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-                  {derivedTreadles}
-                </p>
-              </div>
-            )}
-
-            {widthOptions.length > 0 && (
-              <div>
-                <label htmlFor="link-catalog-width" className="mb-1 block text-sm font-medium">Weaving width</label>
-                {widthOptions.length > 1 ? (
-                  <select
-                    id="link-catalog-width"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={selectedWidthIdx}
-                    onChange={(e) => setSelectedWidthIdx(Number(e.target.value))}
-                  >
-                    {widthOptions.map((o, i) => (
-                      <option key={o.value} value={i}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-                    {widthOptions[0].label}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setSelectedRef(null);
-                  setStep("search");
-                }}
-              >
-                Back
-              </Button>
-              <Button type="button" onClick={() => setStep("confirm")}>
-                Review changes
-              </Button>
-            </div>
-          </div>
+          <ConfigureStep
+            selectedRef={selectedRef}
+            newLoomType={newLoomType}
+            shaftOptions={shaftOptions}
+            selectedShaftIdx={selectedShaftIdx}
+            setSelectedShaftIdx={setSelectedShaftIdx}
+            derivedTreadles={derivedTreadles}
+            widthOptions={widthOptions}
+            selectedWidthIdx={selectedWidthIdx}
+            setSelectedWidthIdx={setSelectedWidthIdx}
+            onChangeRef={() => {
+              setSelectedRef(null);
+              setStep("search");
+            }}
+            onReview={() => setStep("confirm")}
+          />
         )}
 
-        {/* ── Step: confirm ── */}
         {step === "confirm" && selectedRef && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Review the changes below. The loom identity and current configuration will be
-              updated to match the catalog entry.
-            </p>
-
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-28">
-                      Field
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                      Current
-                    </th>
-                    <th className="px-3 py-2 text-center text-xs text-muted-foreground w-6">→</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                      New
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {diffRows.map((row) => (
-                    <tr
-                      key={row.label}
-                      className={`border-b last:border-0 ${row.changed ? "" : "opacity-40"}`}
-                    >
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{row.label}</td>
-                      <td className="px-3 py-2">{row.oldVal}</td>
-                      <td className="px-3 py-2 text-center text-muted-foreground">→</td>
-                      <td
-                        className={`px-3 py-2 ${row.changed ? "font-medium text-foreground" : ""}`}
-                      >
-                        {row.newVal}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {!hasChanges && (
-              <p className="text-sm text-muted-foreground italic">
-                No fields will change — only the catalog link will be set.
-              </p>
-            )}
-
-            {error && (
-              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  setStep(
-                    shaftOptions.length > 1 || widthOptions.length > 1
-                      ? "configure"
-                      : "search",
-                  )
-                }
-                disabled={saving}
-              >
-                Back
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Confirm & save"}
-              </Button>
-            </div>
-          </div>
+          <ConfirmStep
+            diffRows={diffRows}
+            hasChanges={hasChanges}
+            error={error}
+            saving={saving}
+            onBack={() =>
+              setStep(
+                shaftOptions.length > 1 || widthOptions.length > 1
+                  ? "configure"
+                  : "search",
+              )
+            }
+            onSave={handleSave}
+          />
         )}
       </div>
     </div>
