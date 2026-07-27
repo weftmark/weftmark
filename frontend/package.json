@@ -19,7 +19,7 @@
     "clsx": "^2.1.1",
     "dompurify": "^3.4.12",
     "i18next": "^26.3.6",
-    "lucide-react": "^1.25.0",
+    "lucide-react": "^1.27.0",
     "react": "^19.2.7",
     "react-colorful": "^5.8.0",
     "react-dom": "^19.2.7",
