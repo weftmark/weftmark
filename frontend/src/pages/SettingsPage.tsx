@@ -17,6 +17,68 @@ import { TrackerStylePreview, TrackerLivePreview } from "@/components/TrackerSty
 
 type Section = "appearance" | "preferences" | "privacy" | "terms" | "account" | "feedback-history" | "connections";
 
+type SavePatch = Parameters<typeof updateSettings>[0];
+type SaveFn = (patch: SavePatch) => void;
+
+const THEME_OPTIONS = ["light", "dark", "system"] as const;
+type ThemeOption = (typeof THEME_OPTIONS)[number];
+
+const ACTIVITY_THEME_OPTIONS = ["default", "compact", "high_contrast"] as const;
+type ActivityThemeOption = (typeof ACTIVITY_THEME_OPTIONS)[number];
+
+const TRACKER_COLOR_MODE_OPTIONS = ["theme", "strip", "filled"] as const;
+type TrackerColorModeOption = (typeof TRACKER_COLOR_MODE_OPTIONS)[number];
+
+const MEASUREMENT_SYSTEM_OPTIONS = ["metric", "imperial"] as const;
+type MeasurementSystemOption = (typeof MEASUREMENT_SYSTEM_OPTIONS)[number];
+
+async function performSave(
+  patch: SavePatch,
+  setSaving: (v: boolean) => void,
+  setSaveError: (v: string | null) => void,
+  setSaveSuccess: (v: boolean) => void,
+  refetch: () => void,
+) {
+  setSaving(true);
+  setSaveError(null);
+  setSaveSuccess(false);
+  try {
+    await updateSettings(patch);
+    refetch();
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
+  } catch (e: unknown) {
+    setSaveError(e instanceof Error ? e.message : "Failed to save");
+  } finally {
+    setSaving(false);
+  }
+}
+
+function performConsentOptOut(setDataConsent: (v: boolean) => void, setShowConsentWarning: (v: boolean) => void, save: SaveFn) {
+  setDataConsent(false);
+  setShowConsentWarning(false);
+  save({ ai_training_consent: false });
+}
+
+async function performDeleteAccount(
+  deleteInput: string,
+  setDeleting: (v: boolean) => void,
+  setDeleteError: (v: string | null) => void,
+  signOut: () => Promise<void>,
+) {
+  if (deleteInput !== "DELETE MY ACCOUNT") return;
+  setDeleting(true);
+  setDeleteError(null);
+  try {
+    await deleteAccount("DELETE MY ACCOUNT");
+    await signOut();
+    window.location.href = "/";
+  } catch (e: unknown) {
+    setDeleteError(e instanceof Error ? e.message : "Failed to delete account");
+    setDeleting(false);
+  }
+}
+
 export function SettingsPage() {
   const { t } = useTranslation();
   const { signOut } = useClerk();
@@ -110,23 +172,10 @@ export function SettingsPage() {
 
   if (!user) return null;
 
-  async function save(patch: Parameters<typeof updateSettings>[0]) {
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-    try {
-      await updateSettings(patch);
-      refetch();
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
-    } catch (e: unknown) {
-      setSaveError(e instanceof Error ? e.message : "Failed to save");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleConsentToggle() {
+  const save: SaveFn = (patch) => {
+    void performSave(patch, setSaving, setSaveError, setSaveSuccess, refetch);
+  };
+  const handleConsentToggle = () => {
     if (dataConsent) {
       // Turning off — warn about sharing impact
       setShowConsentWarning(true);
@@ -134,27 +183,11 @@ export function SettingsPage() {
       setDataConsent(true);
       save({ ai_training_consent: true });
     }
-  }
-
-  function confirmConsentOptOut() {
-    setDataConsent(false);
-    setShowConsentWarning(false);
-    save({ ai_training_consent: false });
-  }
-
-  async function handleDeleteAccount() {
-    if (deleteInput !== "DELETE MY ACCOUNT") return;
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      await deleteAccount("DELETE MY ACCOUNT");
-      await signOut();
-      window.location.href = "/";
-    } catch (e: unknown) {
-      setDeleteError(e instanceof Error ? e.message : "Failed to delete account");
-      setDeleting(false);
-    }
-  }
+  };
+  const confirmConsentOptOut = () => performConsentOptOut(setDataConsent, setShowConsentWarning, save);
+  const handleDeleteAccount = () => {
+    void performDeleteAccount(deleteInput, setDeleting, setDeleteError, signOut);
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -173,427 +206,67 @@ export function SettingsPage() {
 
             {/* ── Appearance ── */}
             {activeSection === "appearance" && (
-              <>
-              <Section title={t("settings.sections.appearance")} description={t("settings.sections.appearanceDesc")}>
-                <Field label={t("settings.appearance.theme")}>
-                  <div className="flex gap-2">
-                    {(["light", "dark", "system"] as const).map((t) => (
-                      <button type="button"
-                        key={t}
-                        onClick={() => {
-                          setTheme(t);
-                          save({ theme: t });
-                        }}
-                        className={`rounded-md border px-4 py-2 text-sm capitalize transition-colors ${
-                          theme === t
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border hover:bg-accent"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-
-                <Field label={t("settings.appearance.activityTrackerStyle")}>
-                  <div className="flex flex-col gap-3 mt-1">
-                    {(["default", "compact", "high_contrast"] as const).map((s) => {
-                      const meta: Record<string, { label: string; desc: string }> = {
-                        default: { label: t("settings.appearance.activityStyles.default.label"), desc: t("settings.appearance.activityStyles.default.desc") },
-                        compact: { label: t("settings.appearance.activityStyles.compact.label"), desc: t("settings.appearance.activityStyles.compact.desc") },
-                        high_contrast: { label: t("settings.appearance.activityStyles.high_contrast.label"), desc: t("settings.appearance.activityStyles.high_contrast.desc") },
-                      };
-                      const selected = activityTheme === s;
-                      return (
-                        <button type="button"
-                          key={s}
-                          onClick={() => { setActivityTheme(s); save({ activity_theme: s }); }}
-                          className={`rounded-lg border-2 p-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
-                            selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-                          }`}
-                        >
-                          <div className="mb-2">
-                            <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
-                              {meta[s].label}
-                              {selected && <span className="ml-2 text-xs font-normal text-primary/70">{t("settings.appearance.active")}</span>}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{meta[s].desc}</p>
-                          </div>
-                          <TrackerStylePreview style={s} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {t("settings.appearance.styleVariantNote")}
-                  </p>
-                </Field>
-
-                <Field label={t("settings.appearance.trackerDefaults")}>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    {t("settings.appearance.trackerDefaultsHelp")}
-                  </p>
-
-                  {/* Color mode */}
-                  <div className="mb-4">
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("settings.appearance.colorMode")}</p>
-                    <div className="inline-flex rounded-md border border-input overflow-hidden text-sm">
-                      {(["theme", "strip", "filled"] as const).map((mode) => (
-                        <button type="button"
-                          key={mode}
-                          onClick={() => { setTrackerColorMode(mode); save({ tracker_color_mode: mode }); }}
-                          className={`px-3 py-1.5 capitalize transition-colors ${
-                            trackerColorMode === mode
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-background text-muted-foreground hover:bg-muted"
-                          }`}
-                        >
-                          {mode}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Show/hide toggles */}
-                  <div className="space-y-2.5">
-                    {([
-                      { label: t("settings.appearance.progressBar"), value: trackerShowProgress, setter: setTrackerShowProgress, key: "tracker_show_progress" as const, disabled: activityTheme === "compact", disabledTitle: t("settings.appearance.hiddenInCompact") },
-                      { label: t("settings.appearance.drawdownPattern"), value: trackerShowDrawdown, setter: setTrackerShowDrawdown, key: "tracker_show_drawdown" as const },
-                      { label: t("settings.appearance.weftColorBar"), value: trackerShowWeftColor, setter: setTrackerShowWeftColor, key: "tracker_show_weft_color" as const },
-                      { label: t("settings.appearance.prevNextPickCards"), value: trackerShowPickCards, setter: setTrackerShowPickCards, key: "tracker_show_pick_cards" as const },
-                    ] as { label: string; value: boolean; setter: (v: boolean) => void; key: "tracker_show_progress" | "tracker_show_drawdown" | "tracker_show_weft_color" | "tracker_show_pick_cards"; disabled?: boolean; disabledTitle?: string }[]).map(({ label, value, setter, key, disabled, disabledTitle }) => (
-                      <div key={key} className={`flex items-center justify-between ${disabled ? "opacity-40" : ""}`} title={disabledTitle}>
-                        <span className="text-sm">{label}</span>
-                        <button type="button"
-                          role="switch"
-                          aria-checked={value}
-                          disabled={disabled}
-                          onClick={() => { setter(!value); save({ [key]: !value }); }}
-                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"} disabled:cursor-not-allowed`}
-                        >
-                          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-1"}`} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Live preview */}
-                  <div className="mt-5">
-                    <TrackerLivePreview
-                      style={activityTheme}
-                      colorMode={trackerColorMode}
-                      showProgress={activityTheme === "compact" ? false : trackerShowProgress}
-                      showDrawdown={trackerShowDrawdown}
-                      showWeftColor={trackerShowWeftColor}
-                      showPickCards={trackerShowPickCards}
-                      hideUnusedShafts={hideUnusedShaftsTreadles}
-                    />
-                  </div>
-                </Field>
-
-                <Field label={t("settings.appearance.hideUnusedShaftsTreadles")}>
-                  <div className="flex items-center gap-3">
-                    <button type="button"
-                      role="switch"
-                      aria-checked={hideUnusedShaftsTreadles}
-                      onClick={() => {
-                        const next = !hideUnusedShaftsTreadles;
-                        setHideUnusedShaftsTreadles(next);
-                        save({ hide_unused_shafts_treadles: next });
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        hideUnusedShaftsTreadles ? "bg-primary" : "bg-input"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                          hideUnusedShaftsTreadles ? "translate-x-6" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm">{hideUnusedShaftsTreadles ? t("settings.appearance.hidden") : t("settings.appearance.shown")}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("settings.appearance.hideUnusedHelp")}
-                  </p>
-                </Field>
-              </Section>
-
-              <Section title={t("settings.sections.diagnostics")} description={t("settings.sections.diagnosticsDesc")}>
-                <Field label={t("settings.diagnostics.showVersionNumbers")}>
-                  <div className="flex items-center gap-3">
-                    <button type="button"
-                      role="switch"
-                      aria-checked={showVersionNumbers}
-                      onClick={() => {
-                        const next = !showVersionNumbers;
-                        setShowVersionNumbers(next);
-                        save({ show_version_numbers: next });
-                      }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        showVersionNumbers ? "bg-primary" : "bg-input"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                          showVersionNumbers ? "translate-x-6" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm">{showVersionNumbers ? t("settings.diagnostics.visible") : t("settings.diagnostics.hidden")}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("settings.diagnostics.showVersionNumbersHelp")}
-                  </p>
-                </Field>
-              </Section>
-              </>
+              <AppearanceSection
+                theme={theme}
+                setTheme={setTheme}
+                activityTheme={activityTheme}
+                setActivityTheme={setActivityTheme}
+                trackerColorMode={trackerColorMode}
+                setTrackerColorMode={setTrackerColorMode}
+                trackerShowProgress={trackerShowProgress}
+                setTrackerShowProgress={setTrackerShowProgress}
+                trackerShowDrawdown={trackerShowDrawdown}
+                setTrackerShowDrawdown={setTrackerShowDrawdown}
+                trackerShowWeftColor={trackerShowWeftColor}
+                setTrackerShowWeftColor={setTrackerShowWeftColor}
+                trackerShowPickCards={trackerShowPickCards}
+                setTrackerShowPickCards={setTrackerShowPickCards}
+                hideUnusedShaftsTreadles={hideUnusedShaftsTreadles}
+                setHideUnusedShaftsTreadles={setHideUnusedShaftsTreadles}
+                showVersionNumbers={showVersionNumbers}
+                setShowVersionNumbers={setShowVersionNumbers}
+                save={save}
+              />
             )}
 
             {/* ── Preferences ── */}
             {activeSection === "preferences" && (
-              <Section title={t("settings.sections.preferences")} description={t("settings.sections.preferencesDesc")}>
-                <Field label={t("settings.preferences.displayName")}>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      maxLength={255}
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => save({ display_name: displayName })}
-                      disabled={saving || displayName === user.display_name}
-                    >
-                      {t("common.save")}
-                    </Button>
-                  </div>
-                </Field>
-
-                <Field label={t("settings.preferences.measurementSystem")}>
-                  <div className="flex gap-2">
-                    {(["metric", "imperial"] as const).map((m) => (
-                      <button type="button"
-                        key={m}
-                        onClick={() => {
-                          setMeasurementSystem(m);
-                          save({ measurement_system: m });
-                        }}
-                        className={`rounded-md border px-4 py-2 text-sm capitalize transition-colors ${
-                          measurementSystem === m
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border hover:bg-accent"
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-
-                <Field label={t("settings.preferences.language")}>
-                  <LanguageSelector variant="app" />
-                </Field>
-
-                <Field label={t("settings.preferences.sessionIdleTimeout")}>
-                  <select
-                    value={idleTimeout}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setIdleTimeout(v);
-                      save({ idle_timeout_minutes: v });
-                    }}
-                    className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  >
-                    <option value={15}>{t("settings.preferences.timeout15min")}</option>
-                    <option value={30}>{t("settings.preferences.timeout30min")}</option>
-                    <option value={60}>{t("settings.preferences.timeout1hr")}</option>
-                    <option value={120}>{t("settings.preferences.timeout2hr")}</option>
-                  </select>
-                </Field>
-              </Section>
+              <PreferencesSection
+                displayName={displayName}
+                setDisplayName={setDisplayName}
+                userDisplayName={user.display_name}
+                saving={saving}
+                measurementSystem={measurementSystem}
+                setMeasurementSystem={setMeasurementSystem}
+                idleTimeout={idleTimeout}
+                setIdleTimeout={setIdleTimeout}
+                save={save}
+              />
             )}
 
             {/* ── Privacy & data ── */}
             {activeSection === "privacy" && (
-              <Section title={t("settings.sections.privacy")} description={t("settings.sections.privacyDesc")}>
-                <Field label={t("settings.privacy.optOut")}>
-                  <p className="text-xs text-muted-foreground">
-                    {t("settings.privacy.optOutHelp")}
-                  </p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <button type="button"
-                      role="switch"
-                      aria-checked={!dataConsent}
-                      onClick={handleConsentToggle}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                        !dataConsent ? "bg-primary" : "bg-input"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                          !dataConsent ? "translate-x-6" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm">{!dataConsent ? t("settings.privacy.optedOut") : t("settings.privacy.participating")}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {t("settings.privacy.dataUseNote")}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <strong>Note:</strong> {t("settings.privacy.sharingNote")}
-                  </p>
-                </Field>
-
-                {showConsentWarning && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-md rounded-xl border bg-background shadow-xl space-y-4 p-6">
-                      <h2 className="text-base font-semibold">{t("settings.privacy.optOutModal.title")}</h2>
-
-                      <p className="text-sm text-muted-foreground">
-                        {t("settings.privacy.optOutModal.body")}
-                      </p>
-
-                      <div className="rounded-md bg-amber-500/10 border border-amber-500/30 px-4 py-3 space-y-1.5">
-                        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                          {t("settings.privacy.optOutModal.warningTitle")}
-                        </p>
-                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                          <li>
-                            {t("settings.privacy.optOutModal.sharingLinks")}
-                            {sharedDraftCount > 0 && (
-                              <span className="font-medium text-foreground">
-                                {" "}{t("settings.privacy.optOutModal.currentlyActive", { count: sharedDraftCount })}
-                              </span>
-                            )}
-                          </li>
-                          <li>{t("settings.privacy.optOutModal.futureSharing")}</li>
-                        </ul>
-                        {sharedDraftCount > 0 && (
-                          <p className="text-xs text-amber-700 dark:text-amber-400 pt-1">
-                            {t("settings.privacy.optOutModal.loseAccess")}
-                          </p>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        {t("settings.privacy.optOutModal.reOptInNote")}
-                      </p>
-
-                      <div className="flex gap-2 pt-1">
-                        <Button variant="destructive" size="sm" onClick={confirmConsentOptOut}>
-                          {t("settings.privacy.optOutModal.confirmButton")}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowConsentWarning(false)}
-                        >
-                          {t("settings.privacy.optOutModal.cancelButton")}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="rounded-md bg-muted px-4 py-3 text-xs text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground">{t("settings.privacy.whatWeStore")}</p>
-                  <ul className="list-disc list-inside space-y-0.5">
-                    <li>{t("settings.privacy.storeEmail")}</li>
-                    <li>{t("settings.privacy.storeFiles")}</li>
-                    <li>{t("settings.privacy.storeSettings")}</li>
-                    <li>{t("settings.privacy.storeTimestamp")}</li>
-                  </ul>
-                  <p className="pt-1">{t("settings.privacy.noSell")}</p>
-                </div>
-
-                <Field label={t("settings.account.downloadData")}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => requestExportMutation.mutate()}
-                    disabled={requestExportMutation.isPending || exportStatus?.status === "pending"}
-                  >
-                    {t("settings.account.requestArchive")}
-                  </Button>
-                  {exportStatus?.status === "pending" && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <AppIcons.Spinner className="h-4 w-4 animate-spin" />
-                      {t("settings.account.archivePending")}
-                    </div>
-                  )}
-                  {exportStatus?.status === "pending" && (
-                    <p className="text-xs text-muted-foreground">
-                      {t("settings.account.archiveEmailNotice")}
-                    </p>
-                  )}
-                  {exportStatus?.status === "complete" && exportStatus.request_id && (
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">{t("settings.account.archiveReady")}</p>
-                      {exportStatus.expires_at && (
-                        <p className="text-xs text-muted-foreground">
-                          {t("settings.account.archiveExpires", {
-                            date: new Date(exportStatus.expires_at).toLocaleDateString(),
-                          })}
-                        </p>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          downloadAuthed(
-                            getDataExportDownloadUrl(exportStatus.request_id!),
-                            "weftmark-data-export.zip"
-                          ).catch(() => {})
-                        }
-                      >
-                        {t("settings.account.downloadArchive")}
-                      </Button>
-                    </div>
-                  )}
-                  {exportStatus?.status === "failed" && (
-                    <p className="text-xs text-destructive">
-                      {t("settings.account.archiveFailed")}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {t("settings.account.archiveNote")}
-                  </p>
-                </Field>
-              </Section>
+              <PrivacySection
+                dataConsent={dataConsent}
+                handleConsentToggle={handleConsentToggle}
+                showConsentWarning={showConsentWarning}
+                setShowConsentWarning={setShowConsentWarning}
+                confirmConsentOptOut={confirmConsentOptOut}
+                sharedDraftCount={sharedDraftCount}
+                exportStatus={exportStatus}
+                requestExportMutation={requestExportMutation}
+              />
             )}
 
             {/* ── Terms ── */}
             {activeSection === "terms" && (
-              <Section title={t("settings.sections.terms")} description={t("settings.sections.termsDesc")}>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div>
-                      <p className="text-sm font-medium">
-                        {t("settings.terms.tosTitle", { version: user.current_eula_version })}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {user.eula_accepted_version === user.current_eula_version
-                          ? t("settings.terms.accepted")
-                          : t("settings.terms.notAccepted")}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setShowEula(!showEula)}>
-                      {showEula ? t("settings.terms.hide") : t("settings.terms.readTerms")}
-                    </Button>
-                  </div>
-
-                  {showEula && currentEula && (
-                    <div className="rounded-lg border p-4 max-h-[50vh] overflow-y-auto">
-                      <EulaContent bodyHtml={currentEula.body_html} />
-                    </div>
-                  )}
-                </div>
-              </Section>
+              <TermsSection
+                currentEulaVersion={user.current_eula_version}
+                eulaAcceptedVersion={user.eula_accepted_version}
+                showEula={showEula}
+                setShowEula={setShowEula}
+                currentEula={currentEula}
+              />
             )}
 
             {/* ── Feedback history ── */}
@@ -601,164 +274,807 @@ export function SettingsPage() {
 
             {/* ── Connections ── */}
             {activeSection === "connections" && (
-              <Section title={t("settings.sections.connections")} description={t("settings.sections.connectionsDesc")}>
-                {ravelryNotice && (
-                  <div className={`rounded-md px-4 py-2 text-sm mb-4 ${
-                    ravelryNotice.type === "success"
-                      ? "bg-green-500/10 text-green-700 dark:text-green-400"
-                      : "bg-destructive/10 text-destructive"
-                  }`}>
-                    {ravelryNotice.message}
-                  </div>
-                )}
-                <div className="rounded-lg border p-4 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{t("settings.connections.ravelryTitle")}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {ravelryStatus?.connected
-                          ? t("settings.connections.ravelryConnectedAs", { username: ravelryStatus.ravelry_username })
-                          : t("settings.connections.ravelryDisconnected")}
-                      </p>
-                      {ravelryStatus?.connected && ravelryStatus.last_synced_at && (
-                        <p className="text-xs text-muted-foreground">
-                          {t("settings.connections.ravelryLastSync", {
-                            date: new Date(ravelryStatus.last_synced_at).toLocaleString(),
-                          })}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      {ravelryStatus?.connected ? (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={ravelrySyncing}
-                            onClick={async () => {
-                              setRavelrySyncing(true);
-                              setRavelryNotice(null);
-                              try {
-                                await syncRavelryStash();
-                                setRavelryNotice({ type: "success", message: t("settings.connections.ravelrySyncDone") });
-                                refetchRavelry();
-                              } catch {
-                                setRavelryNotice({ type: "error", message: t("settings.connections.ravelrySyncError") });
-                              } finally {
-                                setRavelrySyncing(false);
-                              }
-                            }}
-                          >
-                            {ravelrySyncing ? t("common.loading") : t("settings.connections.ravelrySync")}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={ravelryDisconnecting}
-                            onClick={async () => {
-                              setRavelryDisconnecting(true);
-                              setRavelryNotice(null);
-                              try {
-                                await disconnectRavelry();
-                                setRavelryNotice({ type: "success", message: t("settings.connections.ravelryDisconnectedSuccess") });
-                                refetchRavelry();
-                              } catch {
-                                setRavelryNotice({ type: "error", message: t("settings.connections.ravelryDisconnectError") });
-                              } finally {
-                                setRavelryDisconnecting(false);
-                              }
-                            }}
-                          >
-                            {t("settings.connections.ravelryDisconnect")}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          disabled={ravelryConnecting}
-                          onClick={async () => {
-                            setRavelryConnecting(true);
-                            setRavelryNotice(null);
-                            try {
-                              const { url } = await getRavelryAuthorizeUrl();
-                              window.location.href = url;
-                            } catch {
-                              setRavelryNotice({ type: "error", message: t("settings.connections.ravelryConnectError") });
-                              setRavelryConnecting(false);
-                            }
-                          }}
-                        >
-                          {ravelryConnecting ? t("common.loading") : t("settings.connections.ravelryConnect")}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{t("settings.connections.ravelryDescription")}</p>
-                </div>
-              </Section>
+              <ConnectionsSection
+                ravelryNotice={ravelryNotice}
+                setRavelryNotice={setRavelryNotice}
+                ravelryStatus={ravelryStatus}
+                refetchRavelry={refetchRavelry}
+                ravelryConnecting={ravelryConnecting}
+                setRavelryConnecting={setRavelryConnecting}
+                ravelryDisconnecting={ravelryDisconnecting}
+                setRavelryDisconnecting={setRavelryDisconnecting}
+                ravelrySyncing={ravelrySyncing}
+                setRavelrySyncing={setRavelrySyncing}
+              />
             )}
 
             {/* ── Account ── */}
             {activeSection === "account" && (
-              <Section title={t("settings.sections.account")} description={t("settings.sections.accountDesc")}>
-                <div className="rounded-lg border border-destructive/30 p-4 space-y-3">
-                  <p className="text-sm font-medium text-destructive">{t("settings.account.dangerZone")}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t("settings.account.dangerDescription")}
-                  </p>
-
-                  {!showDeleteConfirm ? (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setShowDeleteConfirm(true)}
-                    >
-                      {t("settings.account.deleteAccount")}
-                    </Button>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-sm">
-                        {t("settings.account.deleteConfirmInstruction")}
-                      </p>
-                      <input
-                        type="text"
-                        value={deleteInput}
-                        onChange={(e) => setDeleteInput(e.target.value)}
-                        placeholder={t("settings.account.deleteConfirmPlaceholder")}
-                        className="w-full rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm"
-                      />
-                      {deleteError && (
-                        <p className="text-xs text-destructive">{deleteError}</p>
-                      )}
-                      <div className="flex gap-2">
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={handleDeleteAccount}
-                          disabled={deleteInput !== "DELETE MY ACCOUNT" || deleting}
-                        >
-                          {deleting ? t("settings.account.deleting") : t("settings.account.permanentDelete")}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setShowDeleteConfirm(false);
-                            setDeleteInput("");
-                            setDeleteError(null);
-                          }}
-                          disabled={deleting}
-                        >
-                          {t("common.cancel")}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Section>
+              <AccountDangerZoneSection
+                showDeleteConfirm={showDeleteConfirm}
+                setShowDeleteConfirm={setShowDeleteConfirm}
+                deleteInput={deleteInput}
+                setDeleteInput={setDeleteInput}
+                deleteError={deleteError}
+                setDeleteError={setDeleteError}
+                deleting={deleting}
+                handleDeleteAccount={handleDeleteAccount}
+              />
             )}
         </div>
     </div>
+  );
+}
+
+function AppearanceSection({
+  theme,
+  setTheme,
+  activityTheme,
+  setActivityTheme,
+  trackerColorMode,
+  setTrackerColorMode,
+  trackerShowProgress,
+  setTrackerShowProgress,
+  trackerShowDrawdown,
+  setTrackerShowDrawdown,
+  trackerShowWeftColor,
+  setTrackerShowWeftColor,
+  trackerShowPickCards,
+  setTrackerShowPickCards,
+  hideUnusedShaftsTreadles,
+  setHideUnusedShaftsTreadles,
+  showVersionNumbers,
+  setShowVersionNumbers,
+  save,
+}: {
+  readonly theme: string;
+  readonly setTheme: (v: ThemeOption) => void;
+  readonly activityTheme: ActivityThemeOption;
+  readonly setActivityTheme: (v: ActivityThemeOption) => void;
+  readonly trackerColorMode: string;
+  readonly setTrackerColorMode: (v: TrackerColorModeOption) => void;
+  readonly trackerShowProgress: boolean;
+  readonly setTrackerShowProgress: (v: boolean) => void;
+  readonly trackerShowDrawdown: boolean;
+  readonly setTrackerShowDrawdown: (v: boolean) => void;
+  readonly trackerShowWeftColor: boolean;
+  readonly setTrackerShowWeftColor: (v: boolean) => void;
+  readonly trackerShowPickCards: boolean;
+  readonly setTrackerShowPickCards: (v: boolean) => void;
+  readonly hideUnusedShaftsTreadles: boolean;
+  readonly setHideUnusedShaftsTreadles: (v: boolean) => void;
+  readonly showVersionNumbers: boolean;
+  readonly setShowVersionNumbers: (v: boolean) => void;
+  readonly save: SaveFn;
+}) {
+  const { t } = useTranslation();
+
+  const toggles = [
+    {
+      label: t("settings.appearance.progressBar"),
+      value: trackerShowProgress,
+      setter: setTrackerShowProgress,
+      key: "tracker_show_progress" as const,
+      disabled: activityTheme === "compact",
+      disabledTitle: t("settings.appearance.hiddenInCompact"),
+    },
+    { label: t("settings.appearance.drawdownPattern"), value: trackerShowDrawdown, setter: setTrackerShowDrawdown, key: "tracker_show_drawdown" as const },
+    { label: t("settings.appearance.weftColorBar"), value: trackerShowWeftColor, setter: setTrackerShowWeftColor, key: "tracker_show_weft_color" as const },
+    { label: t("settings.appearance.prevNextPickCards"), value: trackerShowPickCards, setter: setTrackerShowPickCards, key: "tracker_show_pick_cards" as const },
+  ];
+
+  return (
+    <>
+      <Section title={t("settings.sections.appearance")} description={t("settings.sections.appearanceDesc")}>
+        <Field label={t("settings.appearance.theme")}>
+          <div className="flex gap-2">
+            {THEME_OPTIONS.map((opt) => (
+              <button type="button"
+                key={opt}
+                onClick={() => {
+                  setTheme(opt);
+                  save({ theme: opt });
+                }}
+                className={`rounded-md border px-4 py-2 text-sm capitalize transition-colors ${
+                  theme === opt
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border hover:bg-accent"
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        <Field label={t("settings.appearance.activityTrackerStyle")}>
+          <div className="flex flex-col gap-3 mt-1">
+            {ACTIVITY_THEME_OPTIONS.map((s) => {
+              const meta: Record<string, { label: string; desc: string }> = {
+                default: { label: t("settings.appearance.activityStyles.default.label"), desc: t("settings.appearance.activityStyles.default.desc") },
+                compact: { label: t("settings.appearance.activityStyles.compact.label"), desc: t("settings.appearance.activityStyles.compact.desc") },
+                high_contrast: { label: t("settings.appearance.activityStyles.high_contrast.label"), desc: t("settings.appearance.activityStyles.high_contrast.desc") },
+              };
+              const selected = activityTheme === s;
+              return (
+                <button type="button"
+                  key={s}
+                  onClick={() => { setActivityTheme(s); save({ activity_theme: s }); }}
+                  className={`rounded-lg border-2 p-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
+                    selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="mb-2">
+                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
+                      {meta[s].label}
+                      {selected && <span className="ml-2 text-xs font-normal text-primary/70">{t("settings.appearance.active")}</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{meta[s].desc}</p>
+                  </div>
+                  <TrackerStylePreview style={s} />
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {t("settings.appearance.styleVariantNote")}
+          </p>
+        </Field>
+
+        <Field label={t("settings.appearance.trackerDefaults")}>
+          <p className="text-xs text-muted-foreground mb-3">
+            {t("settings.appearance.trackerDefaultsHelp")}
+          </p>
+
+          {/* Color mode */}
+          <div className="mb-4">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("settings.appearance.colorMode")}</p>
+            <div className="inline-flex rounded-md border border-input overflow-hidden text-sm">
+              {TRACKER_COLOR_MODE_OPTIONS.map((mode) => (
+                <button type="button"
+                  key={mode}
+                  onClick={() => { setTrackerColorMode(mode); save({ tracker_color_mode: mode }); }}
+                  className={`px-3 py-1.5 capitalize transition-colors ${
+                    trackerColorMode === mode
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Show/hide toggles */}
+          <div className="space-y-2.5">
+            {toggles.map(({ label, value, setter, key, disabled, disabledTitle }) => (
+              <div key={key} className={`flex items-center justify-between ${disabled ? "opacity-40" : ""}`} title={disabledTitle}>
+                <span className="text-sm">{label}</span>
+                <button type="button"
+                  role="switch"
+                  aria-checked={value}
+                  disabled={disabled}
+                  onClick={() => { setter(!value); save({ [key]: !value }); }}
+                  className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"} disabled:cursor-not-allowed`}
+                >
+                  <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-1"}`} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Live preview */}
+          <div className="mt-5">
+            <TrackerLivePreview
+              style={activityTheme}
+              colorMode={trackerColorMode}
+              showProgress={activityTheme === "compact" ? false : trackerShowProgress}
+              showDrawdown={trackerShowDrawdown}
+              showWeftColor={trackerShowWeftColor}
+              showPickCards={trackerShowPickCards}
+              hideUnusedShafts={hideUnusedShaftsTreadles}
+            />
+          </div>
+        </Field>
+
+        <Field label={t("settings.appearance.hideUnusedShaftsTreadles")}>
+          <div className="flex items-center gap-3">
+            <button type="button"
+              role="switch"
+              aria-checked={hideUnusedShaftsTreadles}
+              onClick={() => {
+                const next = !hideUnusedShaftsTreadles;
+                setHideUnusedShaftsTreadles(next);
+                save({ hide_unused_shafts_treadles: next });
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                hideUnusedShaftsTreadles ? "bg-primary" : "bg-input"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  hideUnusedShaftsTreadles ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+            <span className="text-sm">{hideUnusedShaftsTreadles ? t("settings.appearance.hidden") : t("settings.appearance.shown")}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("settings.appearance.hideUnusedHelp")}
+          </p>
+        </Field>
+      </Section>
+
+      <Section title={t("settings.sections.diagnostics")} description={t("settings.sections.diagnosticsDesc")}>
+        <Field label={t("settings.diagnostics.showVersionNumbers")}>
+          <div className="flex items-center gap-3">
+            <button type="button"
+              role="switch"
+              aria-checked={showVersionNumbers}
+              onClick={() => {
+                const next = !showVersionNumbers;
+                setShowVersionNumbers(next);
+                save({ show_version_numbers: next });
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                showVersionNumbers ? "bg-primary" : "bg-input"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  showVersionNumbers ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+            <span className="text-sm">{showVersionNumbers ? t("settings.diagnostics.visible") : t("settings.diagnostics.hidden")}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("settings.diagnostics.showVersionNumbersHelp")}
+          </p>
+        </Field>
+      </Section>
+    </>
+  );
+}
+
+function PreferencesSection({
+  displayName,
+  setDisplayName,
+  userDisplayName,
+  saving,
+  measurementSystem,
+  setMeasurementSystem,
+  idleTimeout,
+  setIdleTimeout,
+  save,
+}: {
+  readonly displayName: string;
+  readonly setDisplayName: (v: string) => void;
+  readonly userDisplayName: string;
+  readonly saving: boolean;
+  readonly measurementSystem: string;
+  readonly setMeasurementSystem: (v: MeasurementSystemOption) => void;
+  readonly idleTimeout: number;
+  readonly setIdleTimeout: (v: number) => void;
+  readonly save: SaveFn;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Section title={t("settings.sections.preferences")} description={t("settings.sections.preferencesDesc")}>
+      <Field label={t("settings.preferences.displayName")}>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+            maxLength={255}
+          />
+          <Button
+            size="sm"
+            onClick={() => save({ display_name: displayName })}
+            disabled={saving || displayName === userDisplayName}
+          >
+            {t("common.save")}
+          </Button>
+        </div>
+      </Field>
+
+      <Field label={t("settings.preferences.measurementSystem")}>
+        <div className="flex gap-2">
+          {MEASUREMENT_SYSTEM_OPTIONS.map((m) => (
+            <button type="button"
+              key={m}
+              onClick={() => {
+                setMeasurementSystem(m);
+                save({ measurement_system: m });
+              }}
+              className={`rounded-md border px-4 py-2 text-sm capitalize transition-colors ${
+                measurementSystem === m
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:bg-accent"
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      <Field label={t("settings.preferences.language")}>
+        <LanguageSelector variant="app" />
+      </Field>
+
+      <Field label={t("settings.preferences.sessionIdleTimeout")}>
+        <select
+          value={idleTimeout}
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setIdleTimeout(v);
+            save({ idle_timeout_minutes: v });
+          }}
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+        >
+          <option value={15}>{t("settings.preferences.timeout15min")}</option>
+          <option value={30}>{t("settings.preferences.timeout30min")}</option>
+          <option value={60}>{t("settings.preferences.timeout1hr")}</option>
+          <option value={120}>{t("settings.preferences.timeout2hr")}</option>
+        </select>
+      </Field>
+    </Section>
+  );
+}
+
+type ExportStatus = Awaited<ReturnType<typeof getDataExportStatus>>;
+interface RequestExportMutation {
+  readonly mutate: () => void;
+  readonly isPending: boolean;
+}
+
+function PrivacySection({
+  dataConsent,
+  handleConsentToggle,
+  showConsentWarning,
+  setShowConsentWarning,
+  confirmConsentOptOut,
+  sharedDraftCount,
+  exportStatus,
+  requestExportMutation,
+}: {
+  readonly dataConsent: boolean;
+  readonly handleConsentToggle: () => void;
+  readonly showConsentWarning: boolean;
+  readonly setShowConsentWarning: (v: boolean) => void;
+  readonly confirmConsentOptOut: () => void;
+  readonly sharedDraftCount: number;
+  readonly exportStatus: ExportStatus | undefined;
+  readonly requestExportMutation: RequestExportMutation;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Section title={t("settings.sections.privacy")} description={t("settings.sections.privacyDesc")}>
+      <Field label={t("settings.privacy.optOut")}>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.privacy.optOutHelp")}
+        </p>
+        <div className="flex items-center gap-3 mt-2">
+          <button type="button"
+            role="switch"
+            aria-checked={!dataConsent}
+            onClick={handleConsentToggle}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              !dataConsent ? "bg-primary" : "bg-input"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                !dataConsent ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+          <span className="text-sm">{!dataConsent ? t("settings.privacy.optedOut") : t("settings.privacy.participating")}</span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          {t("settings.privacy.dataUseNote")}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          <strong>Note:</strong> {t("settings.privacy.sharingNote")}
+        </p>
+      </Field>
+
+      {showConsentWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl border bg-background shadow-xl space-y-4 p-6">
+            <h2 className="text-base font-semibold">{t("settings.privacy.optOutModal.title")}</h2>
+
+            <p className="text-sm text-muted-foreground">
+              {t("settings.privacy.optOutModal.body")}
+            </p>
+
+            <div className="rounded-md bg-amber-500/10 border border-amber-500/30 px-4 py-3 space-y-1.5">
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                {t("settings.privacy.optOutModal.warningTitle")}
+              </p>
+              <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                <li>
+                  {t("settings.privacy.optOutModal.sharingLinks")}
+                  {sharedDraftCount > 0 && (
+                    <span className="font-medium text-foreground">
+                      {" "}{t("settings.privacy.optOutModal.currentlyActive", { count: sharedDraftCount })}
+                    </span>
+                  )}
+                </li>
+                <li>{t("settings.privacy.optOutModal.futureSharing")}</li>
+              </ul>
+              {sharedDraftCount > 0 && (
+                <p className="text-xs text-amber-700 dark:text-amber-400 pt-1">
+                  {t("settings.privacy.optOutModal.loseAccess")}
+                </p>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              {t("settings.privacy.optOutModal.reOptInNote")}
+            </p>
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="destructive" size="sm" onClick={confirmConsentOptOut}>
+                {t("settings.privacy.optOutModal.confirmButton")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowConsentWarning(false)}
+              >
+                {t("settings.privacy.optOutModal.cancelButton")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-md bg-muted px-4 py-3 text-xs text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground">{t("settings.privacy.whatWeStore")}</p>
+        <ul className="list-disc list-inside space-y-0.5">
+          <li>{t("settings.privacy.storeEmail")}</li>
+          <li>{t("settings.privacy.storeFiles")}</li>
+          <li>{t("settings.privacy.storeSettings")}</li>
+          <li>{t("settings.privacy.storeTimestamp")}</li>
+        </ul>
+        <p className="pt-1">{t("settings.privacy.noSell")}</p>
+      </div>
+
+      <Field label={t("settings.account.downloadData")}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => requestExportMutation.mutate()}
+          disabled={requestExportMutation.isPending || exportStatus?.status === "pending"}
+        >
+          {t("settings.account.requestArchive")}
+        </Button>
+        {exportStatus?.status === "pending" && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <AppIcons.Spinner className="h-4 w-4 animate-spin" />
+            {t("settings.account.archivePending")}
+          </div>
+        )}
+        {exportStatus?.status === "pending" && (
+          <p className="text-xs text-muted-foreground">
+            {t("settings.account.archiveEmailNotice")}
+          </p>
+        )}
+        {exportStatus?.status === "complete" && exportStatus.request_id && (
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{t("settings.account.archiveReady")}</p>
+            {exportStatus.expires_at && (
+              <p className="text-xs text-muted-foreground">
+                {t("settings.account.archiveExpires", {
+                  date: new Date(exportStatus.expires_at).toLocaleDateString(),
+                })}
+              </p>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                downloadAuthed(
+                  getDataExportDownloadUrl(exportStatus.request_id!),
+                  "weftmark-data-export.zip"
+                ).catch(() => {})
+              }
+            >
+              {t("settings.account.downloadArchive")}
+            </Button>
+          </div>
+        )}
+        {exportStatus?.status === "failed" && (
+          <p className="text-xs text-destructive">
+            {t("settings.account.archiveFailed")}
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {t("settings.account.archiveNote")}
+        </p>
+      </Field>
+    </Section>
+  );
+}
+
+type CurrentEula = Awaited<ReturnType<typeof getCurrentEula>>;
+
+function TermsSection({
+  currentEulaVersion,
+  eulaAcceptedVersion,
+  showEula,
+  setShowEula,
+  currentEula,
+}: {
+  readonly currentEulaVersion: string;
+  readonly eulaAcceptedVersion: string | null;
+  readonly showEula: boolean;
+  readonly setShowEula: (v: boolean) => void;
+  readonly currentEula: CurrentEula | undefined;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Section title={t("settings.sections.terms")} description={t("settings.sections.termsDesc")}>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div>
+            <p className="text-sm font-medium">
+              {t("settings.terms.tosTitle", { version: currentEulaVersion })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {eulaAcceptedVersion === currentEulaVersion
+                ? t("settings.terms.accepted")
+                : t("settings.terms.notAccepted")}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowEula(!showEula)}>
+            {showEula ? t("settings.terms.hide") : t("settings.terms.readTerms")}
+          </Button>
+        </div>
+
+        {showEula && currentEula && (
+          <div className="rounded-lg border p-4 max-h-[50vh] overflow-y-auto">
+            <EulaContent bodyHtml={currentEula.body_html} />
+          </div>
+        )}
+      </div>
+    </Section>
+  );
+}
+
+type RavelryNotice = { type: "success" | "error"; message: string } | null;
+type RavelryStatus = Awaited<ReturnType<typeof getRavelryStatus>>;
+
+async function performRavelrySync(
+  setSyncing: (v: boolean) => void,
+  setNotice: (v: RavelryNotice) => void,
+  refetchRavelry: () => void,
+  t: (key: string) => string,
+) {
+  setSyncing(true);
+  setNotice(null);
+  try {
+    await syncRavelryStash();
+    setNotice({ type: "success", message: t("settings.connections.ravelrySyncDone") });
+    refetchRavelry();
+  } catch {
+    setNotice({ type: "error", message: t("settings.connections.ravelrySyncError") });
+  } finally {
+    setSyncing(false);
+  }
+}
+
+async function performRavelryDisconnect(
+  setDisconnecting: (v: boolean) => void,
+  setNotice: (v: RavelryNotice) => void,
+  refetchRavelry: () => void,
+  t: (key: string) => string,
+) {
+  setDisconnecting(true);
+  setNotice(null);
+  try {
+    await disconnectRavelry();
+    setNotice({ type: "success", message: t("settings.connections.ravelryDisconnectedSuccess") });
+    refetchRavelry();
+  } catch {
+    setNotice({ type: "error", message: t("settings.connections.ravelryDisconnectError") });
+  } finally {
+    setDisconnecting(false);
+  }
+}
+
+async function performRavelryConnect(
+  setConnecting: (v: boolean) => void,
+  setNotice: (v: RavelryNotice) => void,
+  t: (key: string) => string,
+) {
+  setConnecting(true);
+  setNotice(null);
+  try {
+    const { url } = await getRavelryAuthorizeUrl();
+    window.location.href = url;
+  } catch {
+    setNotice({ type: "error", message: t("settings.connections.ravelryConnectError") });
+    setConnecting(false);
+  }
+}
+
+function ConnectionsSection({
+  ravelryNotice,
+  setRavelryNotice,
+  ravelryStatus,
+  refetchRavelry,
+  ravelryConnecting,
+  setRavelryConnecting,
+  ravelryDisconnecting,
+  setRavelryDisconnecting,
+  ravelrySyncing,
+  setRavelrySyncing,
+}: {
+  readonly ravelryNotice: RavelryNotice;
+  readonly setRavelryNotice: (v: RavelryNotice) => void;
+  readonly ravelryStatus: RavelryStatus | undefined;
+  readonly refetchRavelry: () => void;
+  readonly ravelryConnecting: boolean;
+  readonly setRavelryConnecting: (v: boolean) => void;
+  readonly ravelryDisconnecting: boolean;
+  readonly setRavelryDisconnecting: (v: boolean) => void;
+  readonly ravelrySyncing: boolean;
+  readonly setRavelrySyncing: (v: boolean) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Section title={t("settings.sections.connections")} description={t("settings.sections.connectionsDesc")}>
+      {ravelryNotice && (
+        <div className={`rounded-md px-4 py-2 text-sm mb-4 ${
+          ravelryNotice.type === "success"
+            ? "bg-green-500/10 text-green-700 dark:text-green-400"
+            : "bg-destructive/10 text-destructive"
+        }`}>
+          {ravelryNotice.message}
+        </div>
+      )}
+      <div className="rounded-lg border p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">{t("settings.connections.ravelryTitle")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {ravelryStatus?.connected
+                ? t("settings.connections.ravelryConnectedAs", { username: ravelryStatus.ravelry_username })
+                : t("settings.connections.ravelryDisconnected")}
+            </p>
+            {ravelryStatus?.connected && ravelryStatus.last_synced_at && (
+              <p className="text-xs text-muted-foreground">
+                {t("settings.connections.ravelryLastSync", {
+                  date: new Date(ravelryStatus.last_synced_at).toLocaleString(),
+                })}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 shrink-0">
+            {ravelryStatus?.connected ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={ravelrySyncing}
+                  onClick={() => void performRavelrySync(setRavelrySyncing, setRavelryNotice, refetchRavelry, t)}
+                >
+                  {ravelrySyncing ? t("common.loading") : t("settings.connections.ravelrySync")}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={ravelryDisconnecting}
+                  onClick={() => void performRavelryDisconnect(setRavelryDisconnecting, setRavelryNotice, refetchRavelry, t)}
+                >
+                  {t("settings.connections.ravelryDisconnect")}
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                disabled={ravelryConnecting}
+                onClick={() => void performRavelryConnect(setRavelryConnecting, setRavelryNotice, t)}
+              >
+                {ravelryConnecting ? t("common.loading") : t("settings.connections.ravelryConnect")}
+              </Button>
+            )}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("settings.connections.ravelryDescription")}</p>
+      </div>
+    </Section>
+  );
+}
+
+function AccountDangerZoneSection({
+  showDeleteConfirm,
+  setShowDeleteConfirm,
+  deleteInput,
+  setDeleteInput,
+  deleteError,
+  setDeleteError,
+  deleting,
+  handleDeleteAccount,
+}: {
+  readonly showDeleteConfirm: boolean;
+  readonly setShowDeleteConfirm: (v: boolean) => void;
+  readonly deleteInput: string;
+  readonly setDeleteInput: (v: string) => void;
+  readonly deleteError: string | null;
+  readonly setDeleteError: (v: string | null) => void;
+  readonly deleting: boolean;
+  readonly handleDeleteAccount: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Section title={t("settings.sections.account")} description={t("settings.sections.accountDesc")}>
+      <div className="rounded-lg border border-destructive/30 p-4 space-y-3">
+        <p className="text-sm font-medium text-destructive">{t("settings.account.dangerZone")}</p>
+        <p className="text-sm text-muted-foreground">
+          {t("settings.account.dangerDescription")}
+        </p>
+
+        {!showDeleteConfirm ? (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            {t("settings.account.deleteAccount")}
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm">
+              {t("settings.account.deleteConfirmInstruction")}
+            </p>
+            <input
+              type="text"
+              value={deleteInput}
+              onChange={(e) => setDeleteInput(e.target.value)}
+              placeholder={t("settings.account.deleteConfirmPlaceholder")}
+              className="w-full rounded-md border border-destructive/50 bg-background px-3 py-2 text-sm"
+            />
+            {deleteError && (
+              <p className="text-xs text-destructive">{deleteError}</p>
+            )}
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteAccount}
+                disabled={deleteInput !== "DELETE MY ACCOUNT" || deleting}
+              >
+                {deleting ? t("settings.account.deleting") : t("settings.account.permanentDelete")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteInput("");
+                  setDeleteError(null);
+                }}
+                disabled={deleting}
+              >
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Section>
   );
 }
 
