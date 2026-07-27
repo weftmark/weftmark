@@ -54,16 +54,6 @@ async function performSave(
   }
 }
 
-function performConsentToggle(dataConsent: boolean, setShowConsentWarning: (v: boolean) => void, setDataConsent: (v: boolean) => void, save: SaveFn) {
-  if (dataConsent) {
-    // Turning off — warn about sharing impact
-    setShowConsentWarning(true);
-  } else {
-    setDataConsent(true);
-    save({ ai_training_consent: true });
-  }
-}
-
 function performConsentOptOut(setDataConsent: (v: boolean) => void, setShowConsentWarning: (v: boolean) => void, save: SaveFn) {
   setDataConsent(false);
   setShowConsentWarning(false);
@@ -182,10 +172,22 @@ export function SettingsPage() {
 
   if (!user) return null;
 
-  const save: SaveFn = (patch) => performSave(patch, setSaving, setSaveError, setSaveSuccess, refetch);
-  const handleConsentToggle = () => performConsentToggle(dataConsent, setShowConsentWarning, setDataConsent, save);
+  const save: SaveFn = (patch) => {
+    void performSave(patch, setSaving, setSaveError, setSaveSuccess, refetch);
+  };
+  const handleConsentToggle = () => {
+    if (dataConsent) {
+      // Turning off — warn about sharing impact
+      setShowConsentWarning(true);
+    } else {
+      setDataConsent(true);
+      save({ ai_training_consent: true });
+    }
+  };
   const confirmConsentOptOut = () => performConsentOptOut(setDataConsent, setShowConsentWarning, save);
-  const handleDeleteAccount = () => performDeleteAccount(deleteInput, setDeleting, setDeleteError, signOut);
+  const handleDeleteAccount = () => {
+    void performDeleteAccount(deleteInput, setDeleting, setDeleteError, signOut);
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
@@ -965,7 +967,7 @@ function ConnectionsSection({
                   variant="outline"
                   size="sm"
                   disabled={ravelrySyncing}
-                  onClick={() => performRavelrySync(setRavelrySyncing, setRavelryNotice, refetchRavelry, t)}
+                  onClick={() => void performRavelrySync(setRavelrySyncing, setRavelryNotice, refetchRavelry, t)}
                 >
                   {ravelrySyncing ? t("common.loading") : t("settings.connections.ravelrySync")}
                 </Button>
@@ -973,7 +975,7 @@ function ConnectionsSection({
                   variant="destructive"
                   size="sm"
                   disabled={ravelryDisconnecting}
-                  onClick={() => performRavelryDisconnect(setRavelryDisconnecting, setRavelryNotice, refetchRavelry, t)}
+                  onClick={() => void performRavelryDisconnect(setRavelryDisconnecting, setRavelryNotice, refetchRavelry, t)}
                 >
                   {t("settings.connections.ravelryDisconnect")}
                 </Button>
@@ -982,7 +984,7 @@ function ConnectionsSection({
               <Button
                 size="sm"
                 disabled={ravelryConnecting}
-                onClick={() => performRavelryConnect(setRavelryConnecting, setRavelryNotice, t)}
+                onClick={() => void performRavelryConnect(setRavelryConnecting, setRavelryNotice, t)}
               >
                 {ravelryConnecting ? t("common.loading") : t("settings.connections.ravelryConnect")}
               </Button>

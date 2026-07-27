@@ -1187,8 +1187,8 @@ function CombinedServiceRow({ service, detail }: { readonly service: ReadinessSe
         isSmtp={isSmtp}
         webhookTesting={webhookTesting}
         emailSending={emailSending}
-        onTestWebhook={(e) => runWebhookTest(e, setWebhookTesting, setWebhookResult)}
-        onTestEmail={(e) => runEmailTest(e, setEmailSending, setEmailResult)}
+        onTestWebhook={(e) => void runWebhookTest(e, setWebhookTesting, setWebhookResult)}
+        onTestEmail={(e) => void runEmailTest(e, setEmailSending, setEmailResult)}
       />
       {webhookResult && (
         <TestResultBar
