@@ -612,6 +612,239 @@ function ReedsPanel({ loom, onChanged }: { readonly loom: LoomDetail; readonly o
 // Version card
 // ---------------------------------------------------------------------------
 
+function WarpWasteDisplay({ version, displayUnit }: { readonly version: LoomVersion; readonly displayUnit: LengthUnit }) {
+  const { t } = useTranslation();
+  if (!version.warp_waste_allowance) {
+    return <span className="italic text-muted-foreground">{t("loomDetailPage.notSet")}</span>;
+  }
+  const storedUnit = (version.warp_waste_unit ?? displayUnit) as LengthUnit;
+  const primary = displayLength(version.warp_waste_allowance, storedUnit, storedUnit);
+  if (storedUnit === displayUnit) return <>{primary}</>;
+  const secondary = displayLength(version.warp_waste_allowance, storedUnit, displayUnit);
+  return (
+    <>
+      <span className="font-medium">{primary}</span> <span className="text-xs text-muted-foreground">({secondary})</span>
+    </>
+  );
+}
+
+function VersionSpecsDisplay({
+  version,
+  displayUnit,
+  isReadOnly,
+  onEdit,
+}: {
+  readonly version: LoomVersion;
+  readonly displayUnit: LengthUnit;
+  readonly isReadOnly: boolean;
+  readonly onEdit: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+        {version.num_shafts != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.shafts")}</dt><dd>{version.num_shafts}</dd></>)}
+        {version.num_treadles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.treadles")}</dt><dd>{version.num_treadles}</dd></>)}
+        {version.num_heddles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.heddles")}</dt><dd>{version.num_heddles}</dd></>)}
+        {version.weaving_width && (<><dt className="text-muted-foreground">{t("loomDetailPage.weavingWidth")}</dt><dd>{displayLength(version.weaving_width, version.weaving_width_unit, displayUnit)}</dd></>)}
+        <dt className="text-muted-foreground">{t("loomDetailPage.warpWaste")}</dt>
+        <dd>
+          <WarpWasteDisplay version={version} displayUnit={displayUnit} />
+        </dd>
+      </dl>
+      {!isReadOnly && (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          title={t("loomDetailPage.editConfig")}
+        >
+          <AppIcons.Edit className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function VersionEditForm({
+  version,
+  editName,
+  setEditName,
+  editDesc,
+  setEditDesc,
+  editWaste,
+  setEditWaste,
+  editWasteUnit,
+  onWasteUnitChange,
+  editError,
+  saving,
+  onSubmit,
+  onCancel,
+}: {
+  readonly version: LoomVersion;
+  readonly editName: string;
+  readonly setEditName: (v: string) => void;
+  readonly editDesc: string;
+  readonly setEditDesc: (v: string) => void;
+  readonly editWaste: string;
+  readonly setEditWaste: (v: string) => void;
+  readonly editWasteUnit: LengthUnit;
+  readonly onWasteUnitChange: (v: LengthUnit) => void;
+  readonly editError: string | null;
+  readonly saving: boolean;
+  readonly onSubmit: (e: React.FormEvent) => void;
+  readonly onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.configName")}</label>
+        <input
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          placeholder={`v${version.version_number}`}
+          autoFocus
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.versionDescription")}</label>
+        <input
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          value={editDesc}
+          onChange={(e) => setEditDesc(e.target.value)}
+          placeholder={t("loomDetailPage.descriptionPlaceholder")}
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.warpWasteDefault")}</label>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min="0"
+            step="0.1"
+            className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={editWaste}
+            onChange={(e) => setEditWaste(e.target.value)}
+            placeholder={t("loomDetailPage.wastePlaceholder")}
+          />
+          <select
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={editWasteUnit}
+            onChange={(e) => onWasteUnitChange(e.target.value as LengthUnit)}
+          >
+            <option value="cm">cm</option>
+            <option value="in">in</option>
+          </select>
+        </div>
+      </div>
+      {editError && <p className="text-xs text-destructive">{editError}</p>}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={saving}>{saving ? t("loomDetailPage.saving") : t("loomDetailPage.save")}</Button>
+        <Button type="button" size="sm" variant="outline" onClick={onCancel} disabled={saving}>{t("common.cancel")}</Button>
+      </div>
+    </form>
+  );
+}
+
+function VersionLinkedBadge({
+  version,
+  unlinking,
+  onChangeLink,
+  onUnlink,
+}: {
+  readonly version: LoomVersion;
+  readonly unlinking: boolean;
+  readonly onChangeLink: () => void;
+  readonly onUnlink: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = version.loom_reference_brand && version.loom_reference_model_name
+    ? `${version.loom_reference_brand} ${version.loom_reference_model_name}`
+    : t("loomDetailPage.linkedToCatalog");
+  return (
+    <>
+      <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={onChangeLink}
+        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {t("loomDetailPage.change")}
+      </button>
+      <button
+        type="button"
+        onClick={onUnlink}
+        disabled={unlinking}
+        className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+      >
+        {unlinking ? t("loomDetailPage.unlinking") : t("loomDetailPage.unlink")}
+      </button>
+    </>
+  );
+}
+
+function VersionUnlinkedBadge({ loom, onLink }: { readonly loom: LoomDetail; readonly onLink: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
+        {t("loomDetailPage.notInCatalog")}
+      </span>
+      <button
+        type="button"
+        onClick={onLink}
+        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {t("loomDetailPage.linkToCatalog")}
+      </button>
+      <CatalogRequestButton loom={loom} />
+    </>
+  );
+}
+
+function VersionCatalogLinkSection({
+  loom,
+  version,
+  displayName,
+  unlinking,
+  onUnlink,
+  onShowLinkCatalog,
+  onClone,
+}: {
+  readonly loom: LoomDetail;
+  readonly version: LoomVersion;
+  readonly displayName: string;
+  readonly unlinking: boolean;
+  readonly onUnlink: () => void;
+  readonly onShowLinkCatalog: () => void;
+  readonly onClone: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="border-t pt-3 space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        {version.loom_reference_id ? (
+          <VersionLinkedBadge version={version} unlinking={unlinking} onChangeLink={onShowLinkCatalog} onUnlink={onUnlink} />
+        ) : (
+          <VersionUnlinkedBadge loom={loom} onLink={onShowLinkCatalog} />
+        )}
+      </div>
+      <div>
+        <Button size="sm" variant="outline" onClick={onClone}>
+          {t("loomDetailPage.cloneConfig")}
+        </Button>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("loomDetailPage.cloneNote", { name: displayName })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function VersionCard({
   loom, version, isCurrent, onChanged, onClone,
 }: {
@@ -712,83 +945,28 @@ function VersionCard({
           {/* Specs / edit form */}
           <div className="rounded-md border border-border p-3">
             {editing ? (
-              <form onSubmit={handleEditSave} className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.configName")}</label>
-                  <input
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder={`v${version.version_number}`}
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.versionDescription")}</label>
-                  <input
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                    placeholder={t("loomDetailPage.descriptionPlaceholder")}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.warpWasteDefault")}</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      value={editWaste}
-                      onChange={(e) => setEditWaste(e.target.value)}
-                      placeholder={t("loomDetailPage.wastePlaceholder")}
-                    />
-                    <select
-                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      value={editWasteUnit}
-                      onChange={(e) => handleWasteUnitChange(e.target.value as LengthUnit)}
-                    >
-                      <option value="cm">cm</option>
-                      <option value="in">in</option>
-                    </select>
-                  </div>
-                </div>
-                {editError && <p className="text-xs text-destructive">{editError}</p>}
-                <div className="flex gap-2">
-                  <Button type="submit" size="sm" disabled={saving}>{saving ? t("loomDetailPage.saving") : t("loomDetailPage.save")}</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={handleEditCancel} disabled={saving}>{t("common.cancel")}</Button>
-                </div>
-              </form>
+              <VersionEditForm
+                version={version}
+                editName={editName}
+                setEditName={setEditName}
+                editDesc={editDesc}
+                setEditDesc={setEditDesc}
+                editWaste={editWaste}
+                setEditWaste={setEditWaste}
+                editWasteUnit={editWasteUnit}
+                onWasteUnitChange={handleWasteUnitChange}
+                editError={editError}
+                saving={saving}
+                onSubmit={handleEditSave}
+                onCancel={handleEditCancel}
+              />
             ) : (
-              <div className="flex items-start justify-between gap-2">
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-                  {version.num_shafts != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.shafts")}</dt><dd>{version.num_shafts}</dd></>)}
-                  {version.num_treadles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.treadles")}</dt><dd>{version.num_treadles}</dd></>)}
-                  {version.num_heddles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.heddles")}</dt><dd>{version.num_heddles}</dd></>)}
-                  {version.weaving_width && (<><dt className="text-muted-foreground">{t("loomDetailPage.weavingWidth")}</dt><dd>{displayLength(version.weaving_width, version.weaving_width_unit, displayUnit)}</dd></>)}
-                  <dt className="text-muted-foreground">{t("loomDetailPage.warpWaste")}</dt>
-                  <dd>
-                    {version.warp_waste_allowance ? (() => {
-                      const storedUnit = (version.warp_waste_unit ?? displayUnit) as LengthUnit;
-                      const primary = displayLength(version.warp_waste_allowance, storedUnit, storedUnit);
-                      if (storedUnit === displayUnit) return primary;
-                      const secondary = displayLength(version.warp_waste_allowance, storedUnit, displayUnit);
-                      return <><span className="font-medium">{primary}</span>{" "}<span className="text-xs text-muted-foreground">({secondary})</span></>;
-                    })() : <span className="italic text-muted-foreground">{t("loomDetailPage.notSet")}</span>}
-                  </dd>
-                </dl>
-                {!isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => setEditing(true)}
-                    className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    title={t("loomDetailPage.editConfig")}
-                  >
-                    <AppIcons.Edit className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              <VersionSpecsDisplay
+                version={version}
+                displayUnit={displayUnit}
+                isReadOnly={isReadOnly}
+                onEdit={() => setEditing(true)}
+              />
             )}
           </div>
 
@@ -803,56 +981,15 @@ function VersionCard({
           </div>
 
           {!isReadOnly && (
-            <div className="border-t pt-3 space-y-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                {version.loom_reference_id ? (
-                  <>
-                    <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
-                      {version.loom_reference_brand && version.loom_reference_model_name
-                        ? `${version.loom_reference_brand} ${version.loom_reference_model_name}`
-                        : t("loomDetailPage.linkedToCatalog")}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowLinkCatalog(true)}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {t("loomDetailPage.change")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleUnlink}
-                      disabled={unlinking}
-                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      {unlinking ? t("loomDetailPage.unlinking") : t("loomDetailPage.unlink")}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
-                      {t("loomDetailPage.notInCatalog")}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowLinkCatalog(true)}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {t("loomDetailPage.linkToCatalog")}
-                    </button>
-                    <CatalogRequestButton loom={loom} />
-                  </>
-                )}
-              </div>
-              <div>
-                <Button size="sm" variant="outline" onClick={() => onClone(version)}>
-                  {t("loomDetailPage.cloneConfig")}
-                </Button>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("loomDetailPage.cloneNote", { name: displayName })}
-                </p>
-              </div>
-            </div>
+            <VersionCatalogLinkSection
+              loom={loom}
+              version={version}
+              displayName={displayName}
+              unlinking={unlinking}
+              onUnlink={handleUnlink}
+              onShowLinkCatalog={() => setShowLinkCatalog(true)}
+              onClone={() => onClone(version)}
+            />
           )}
         </div>
       )}
