@@ -9,13 +9,48 @@ backfill_all_project_drawdown_previews — bulk task for projects missing drawdo
 import asyncio
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 from celery import Task
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.celery_app import celery_app
 
+if TYPE_CHECKING:
+    from app.models.draft import Draft
+    from app.models.project import Project
+
 log = logging.getLogger(__name__)
+
+
+def _resolve_project_wif_path(project: "Project", draft: "Draft") -> str | None:
+    """Match the router's _wif_path_for_project logic: prefer the modified WIF
+    for lift-type projects when it exists on disk, else fall back to the original."""
+    from app.services import storage
+
+    if project.project_type == "lift" and draft.wif_modified_path and storage.file_exists(draft.wif_modified_path):
+        wif_path = draft.wif_modified_path
+    else:
+        wif_path = draft.wif_path
+    if not wif_path or not storage.file_exists(wif_path):
+        return None
+    return wif_path
+
+
+async def _finish_project_task(
+    task: Task, project_id: uuid.UUID, label: str, compute: Callable[[], Awaitable[None]]
+) -> None:
+    """Run `compute()`, logging success/failure and retrying via Celery on exception."""
+    try:
+        await compute()
+        log.info("%s_done project_id=%s", label, project_id)
+    except Exception as exc:
+        log.warning("%s_failed project_id=%s error=%s", label, project_id, exc)
+        try:
+            raise task.retry(exc=exc)
+        except task.MaxRetriesExceededError:
+            pass
 
 
 @celery_app.task(
@@ -160,20 +195,12 @@ async def _generate_project_preview(task: Task, project_id: uuid.UUID) -> None:
             if draft is None or draft.deleted_at is not None:
                 return
 
-            # Match the router's _wif_path_for_project logic
-            if (
-                project.project_type == "lift"
-                and draft.wif_modified_path
-                and storage.file_exists(draft.wif_modified_path)
-            ):
-                wif_path = draft.wif_modified_path
-            else:
-                wif_path = draft.wif_path
-            if not wif_path or not storage.file_exists(wif_path):
+            wif_path = _resolve_project_wif_path(project, draft)
+            if wif_path is None:
                 log.warning("project_preview_skip project_id=%s reason=no_wif", project_id)
                 return
 
-            try:
+            async def _compute() -> None:
                 wif_bytes = storage.read_file(wif_path)
                 color_replacements = project.color_replacements or {}
 
@@ -193,13 +220,8 @@ async def _generate_project_preview(task: Task, project_id: uuid.UUID) -> None:
                         storage._delete(old_path)
                     except Exception:
                         pass
-                log.info("project_preview_done project_id=%s", project_id)
-            except Exception as exc:
-                log.warning("project_preview_failed project_id=%s error=%s", project_id, exc)
-                try:
-                    raise task.retry(exc=exc)
-                except task.MaxRetriesExceededError:
-                    pass
+
+            await _finish_project_task(task, project_id, "project_preview", _compute)
     finally:
         await engine.dispose()
 
@@ -302,19 +324,12 @@ async def _generate_project_svg(task: Task, project_id: uuid.UUID) -> None:
             if draft is None or draft.deleted_at is not None:
                 return
 
-            if (
-                project.project_type == "lift"
-                and draft.wif_modified_path
-                and storage.file_exists(draft.wif_modified_path)
-            ):
-                wif_path = draft.wif_modified_path
-            else:
-                wif_path = draft.wif_path
-            if not wif_path or not storage.file_exists(wif_path):
+            wif_path = _resolve_project_wif_path(project, draft)
+            if wif_path is None:
                 log.warning("project_svg_skip project_id=%s reason=no_wif", project_id)
                 return
 
-            try:
+            async def _compute() -> None:
                 wif_bytes = storage.read_file(wif_path)
                 color_replacements = project.color_replacements or {}
 
@@ -333,13 +348,8 @@ async def _generate_project_svg(task: Task, project_id: uuid.UUID) -> None:
                         storage._delete(old_path)
                     except Exception:
                         pass
-                log.info("project_svg_done project_id=%s", project_id)
-            except Exception as exc:
-                log.warning("project_svg_failed project_id=%s error=%s", project_id, exc)
-                try:
-                    raise task.retry(exc=exc)
-                except task.MaxRetriesExceededError:
-                    pass
+
+            await _finish_project_task(task, project_id, "project_svg", _compute)
     finally:
         await engine.dispose()
 

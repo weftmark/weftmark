@@ -28,6 +28,14 @@ def run_s3_orphan_scan(self: Task) -> dict:
     return asyncio.run(_do_scan())
 
 
+def _add_nonnull_paths(db_paths: set[str], objs, *attrs: str) -> None:
+    for obj in objs:
+        for attr in attrs:
+            val = getattr(obj, attr)
+            if val:
+                db_paths.add(val)
+
+
 async def _collect_db_storage_paths(db) -> set[str]:
     from sqlalchemy import select
 
@@ -38,36 +46,19 @@ async def _collect_db_storage_paths(db) -> set[str]:
 
     db_paths: set[str] = set()
 
-    drafts = await db.scalars(select(Draft))
-    for d in drafts.all():
-        for p in [d.wif_path, d.preview_path, d.drawdown_preview_path, d.wif_modified_path]:
-            if p:
-                db_paths.add(p)
-
-    yarns = await db.scalars(select(Yarn))
-    for y in yarns.all():
-        if y.photo_path:
-            db_paths.add(y.photo_path)
-
-    looms = await db.scalars(select(Loom))
-    for lm in looms.all():
-        if lm.photo_path:
-            db_paths.add(lm.photo_path)
-
-    vps = await db.scalars(select(LoomVersionPhoto))
-    for vp in vps.all():
-        if vp.path:
-            db_paths.add(vp.path)
-
-    vrs = await db.scalars(select(LoomVersionReceipt))
-    for vr in vrs.all():
-        if vr.path:
-            db_paths.add(vr.path)
-
-    pps = await db.scalars(select(ProjectPhoto))
-    for pp in pps.all():
-        if pp.file_path:
-            db_paths.add(pp.file_path)
+    _add_nonnull_paths(
+        db_paths,
+        (await db.scalars(select(Draft))).all(),
+        "wif_path",
+        "preview_path",
+        "drawdown_preview_path",
+        "wif_modified_path",
+    )
+    _add_nonnull_paths(db_paths, (await db.scalars(select(Yarn))).all(), "photo_path")
+    _add_nonnull_paths(db_paths, (await db.scalars(select(Loom))).all(), "photo_path")
+    _add_nonnull_paths(db_paths, (await db.scalars(select(LoomVersionPhoto))).all(), "path")
+    _add_nonnull_paths(db_paths, (await db.scalars(select(LoomVersionReceipt))).all(), "path")
+    _add_nonnull_paths(db_paths, (await db.scalars(select(ProjectPhoto))).all(), "file_path")
 
     return db_paths
 

@@ -1,7 +1,7 @@
 import io
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -2572,6 +2572,48 @@ class TestProjectDrawdown:
             f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4&start_col=-1&col_count=2"
         )
         assert resp.status_code == 422
+
+    async def test_wif_missing_from_storage_returns_404(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="No WIF Draft",
+            wif_filename="missing.wif",
+            wif_path="drafts/does-not-exist.wif",
+            has_treadling=True,
+            has_liftplan=False,
+            num_shafts=4,
+            num_treadles=4,
+            warp_threads=4,
+            weft_threads=4,
+        )
+        db_session.add(draft)
+        await db_session.flush()
+        project = Project(
+            owner_id=test_user.id,
+            draft_id=draft.id,
+            name="No WIF Project",
+            project_type="treadle",
+            status="active",
+            current_pick=1,
+            total_picks=4,
+        )
+        db_session.add(project)
+        await db_session.commit()
+
+        resp = await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4")
+        assert resp.status_code == 404
+
+    async def test_returns_500_when_rendering_fails(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        _, project = await _insert_project_with_wif(db_session, test_user)
+        with patch("app.services.rendering.load_draft", side_effect=RuntimeError("boom")):
+            resp = await auth_client.get(f"/api/projects/{project.id}/drawdown?start_row=0&row_count=4")
+        assert resp.status_code == 500
+        assert "Drawdown rendering failed" in resp.json()["detail"]
 
 
 # ---------------------------------------------------------------------------

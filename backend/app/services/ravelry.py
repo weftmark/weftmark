@@ -394,11 +394,19 @@ def _color_family_to_hex(color_family_name: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def _extract_stash_entry_fields(entry: dict) -> dict:
-    yarn_data = entry.get("yarn") or {}
-    company = yarn_data.get("yarn_company") or {}
-    weight_info = yarn_data.get("yarn_weight") or {}
+def _extract_stash_yarn_identity(entry: dict, yarn_data: dict, company: dict, weight_info: dict) -> dict:
+    return {
+        "brand": company.get("name") or "Unknown",
+        "name": yarn_data.get("name") or entry.get("name") or "Unknown",
+        "color_name": entry.get("colorway_name"),
+        "weight_category": _map_weight(weight_info.get("name")),
+        "fiber_content": yarn_data.get("fiber_content"),
+        "discontinued": bool(yarn_data.get("discontinued") or False),
+        "machine_washable": yarn_data.get("machine_washable"),
+    }
 
+
+def _extract_stash_yarn_references(entry: dict, yarn_data: dict, company: dict) -> dict:
     yarn_photos: list[dict] = yarn_data.get("photos") or []
     stash_photos: list[dict] = entry.get("photos") or []
     photo_candidates = yarn_photos if yarn_photos else stash_photos
@@ -410,21 +418,25 @@ def _extract_stash_entry_fields(entry: dict) -> dict:
     unit_yardage_raw = yarn_data.get("yardage")
 
     return {
-        "brand": company.get("name") or "Unknown",
-        "name": yarn_data.get("name") or entry.get("name") or "Unknown",
-        "color_name": entry.get("colorway_name"),
-        "weight_category": _map_weight(weight_info.get("name")),
-        "fiber_content": yarn_data.get("fiber_content"),
         "ravelry_yarn_id": yarn_data.get("id") or None,
         "permalink": yarn_data.get("permalink") or None,
-        "discontinued": bool(yarn_data.get("discontinued") or False),
-        "machine_washable": yarn_data.get("machine_washable"),
         "yarn_company_url": company.get("url") or None,
         "yarn_attribute_ids": [a["id"] for a in (yarn_data.get("yarn_attributes") or []) if "id" in a],
         "photo_url": photo_url,
         "thumbnail_url": thumbnail_url,
         "color_hex_guess": _color_family_to_hex(color_family),
         "unit_yardage": Decimal(str(unit_yardage_raw)) if unit_yardage_raw else None,
+    }
+
+
+def _extract_stash_entry_fields(entry: dict) -> dict:
+    yarn_data = entry.get("yarn") or {}
+    company = yarn_data.get("yarn_company") or {}
+    weight_info = yarn_data.get("yarn_weight") or {}
+
+    return {
+        **_extract_stash_yarn_identity(entry, yarn_data, company, weight_info),
+        **_extract_stash_yarn_references(entry, yarn_data, company),
     }
 
 

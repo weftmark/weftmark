@@ -498,6 +498,31 @@ class TestGenerateProjectPreview:
 
         mock_engine_and_session.dispose.assert_called_once()
 
+    async def test_rendering_error_retries(self, db_session, test_user, mock_engine_and_session, mock_storage):
+        draft = await self._make_draft(db_session, test_user)
+        project = await self._make_project(db_session, test_user, draft)
+        mock_storage["drafts/proj.wif"] = MINIMAL_WIF
+
+        task = _task_mock(retries=0, max_retries=2)
+
+        with patch("app.services.rendering.load_draft", side_effect=RuntimeError("render fail")):
+            await _generate_project_preview(task, project.id)
+
+        task.retry.assert_called_once()
+
+    async def test_rendering_error_at_max_retries_does_not_raise(
+        self, db_session, test_user, mock_engine_and_session, mock_storage
+    ):
+        draft = await self._make_draft(db_session, test_user)
+        project = await self._make_project(db_session, test_user, draft)
+        mock_storage["drafts/proj.wif"] = MINIMAL_WIF
+
+        task = _task_mock(retries=2, max_retries=2)
+        task.MaxRetriesExceededError = Exception
+
+        with patch("app.services.rendering.load_draft", side_effect=RuntimeError("fail")):
+            await _generate_project_preview(task, project.id)  # must not raise
+
 
 # ---------------------------------------------------------------------------
 # TestGenerateProjectSVG — _generate_project_svg
@@ -603,6 +628,31 @@ class TestGenerateProjectSVG:
         await _generate_project_svg(_task_mock(), project.id)
 
         mock_engine_and_session.dispose.assert_called_once()
+
+    async def test_rendering_error_retries(self, db_session, test_user, mock_engine_and_session, mock_storage):
+        draft = await self._make_draft(db_session, test_user)
+        project = await self._make_project(db_session, test_user, draft)
+        mock_storage["drafts/svg.wif"] = MINIMAL_WIF
+
+        task = _task_mock(retries=0, max_retries=2)
+
+        with patch("app.services.rendering.load_draft", side_effect=RuntimeError("render fail")):
+            await _generate_project_svg(task, project.id)
+
+        task.retry.assert_called_once()
+
+    async def test_rendering_error_at_max_retries_does_not_raise(
+        self, db_session, test_user, mock_engine_and_session, mock_storage
+    ):
+        draft = await self._make_draft(db_session, test_user)
+        project = await self._make_project(db_session, test_user, draft)
+        mock_storage["drafts/svg.wif"] = MINIMAL_WIF
+
+        task = _task_mock(retries=2, max_retries=2)
+        task.MaxRetriesExceededError = Exception
+
+        with patch("app.services.rendering.load_draft", side_effect=RuntimeError("fail")):
+            await _generate_project_svg(task, project.id)  # must not raise
 
     async def test_lift_project_uses_modified_wif_path(
         self, db_session, test_user, mock_engine_and_session, mock_storage, mock_rendering

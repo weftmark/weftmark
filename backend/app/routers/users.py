@@ -209,18 +209,7 @@ async def _apply_ai_training_consent(current_user: User, db: AsyncSession, conse
         draft.is_shared = False
 
 
-@router.patch("/me", responses={422: {"description": "display_name cannot be empty"}})
-async def update_settings(
-    body: UserSettingsUpdate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> UserSettingsResponse:
-    if body.display_name is not None:
-        name = body.display_name.strip()
-        if not name:
-            raise HTTPException(status_code=422, detail="display_name cannot be empty")
-        current_user.display_name = name
-
+def _apply_validated_choice_settings(body: UserSettingsUpdate, current_user: User) -> None:
     if body.theme is not None:
         _validate_choice(body.theme, _VALID_THEMES, "theme")
         current_user.theme = body.theme
@@ -237,15 +226,17 @@ async def update_settings(
         _validate_choice(body.measurement_system, _VALID_MEASUREMENT_SYSTEMS, "measurement_system")
         current_user.measurement_system = body.measurement_system
 
+    if body.tracker_color_mode is not None:
+        _validate_choice(body.tracker_color_mode, _VALID_COLOR_MODES, "tracker_color_mode")
+        current_user.tracker_color_mode = body.tracker_color_mode
+
+
+def _apply_passthrough_settings(body: UserSettingsUpdate, current_user: User) -> None:
     if body.show_version_numbers is not None:
         current_user.show_version_numbers = body.show_version_numbers
 
     if body.hide_unused_shafts_treadles is not None:
         current_user.hide_unused_shafts_treadles = body.hide_unused_shafts_treadles
-
-    if body.tracker_color_mode is not None:
-        _validate_choice(body.tracker_color_mode, _VALID_COLOR_MODES, "tracker_color_mode")
-        current_user.tracker_color_mode = body.tracker_color_mode
 
     if body.tracker_show_weft_color is not None:
         current_user.tracker_show_weft_color = body.tracker_show_weft_color
@@ -261,6 +252,22 @@ async def update_settings(
 
     if body.onboarding_dismissed is not None:
         current_user.onboarding_dismissed = body.onboarding_dismissed
+
+
+@router.patch("/me", responses={422: {"description": "display_name cannot be empty"}})
+async def update_settings(
+    body: UserSettingsUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserSettingsResponse:
+    if body.display_name is not None:
+        name = body.display_name.strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="display_name cannot be empty")
+        current_user.display_name = name
+
+    _apply_validated_choice_settings(body, current_user)
+    _apply_passthrough_settings(body, current_user)
 
     if body.ai_training_consent is not None:
         await _apply_ai_training_consent(current_user, db, body.ai_training_consent)
