@@ -379,6 +379,118 @@ function ConfirmStep({
   );
 }
 
+// ---------- pure logic helpers ----------
+
+function matchWidthIndexForVersion(version: LoomVersion, wOpts: WidthOption[]): number {
+  if (wOpts.length === 0 || !version.weaving_width) return 0;
+  const curVal = Number.parseFloat(version.weaving_width);
+  const curUnit = version.weaving_width_unit as "cm" | "in";
+  const targetUnit = wOpts[0].unit;
+  let converted = curVal;
+  if (curUnit !== targetUnit) converted = curUnit === "cm" ? curVal / 2.54 : curVal * 2.54;
+  return closestIdx(wOpts.map((o) => Number.parseFloat(o.value)), converted);
+}
+
+function computeDiffRows(
+  loom: LoomDetail,
+  cv: LoomVersion,
+  newLoomType: LoomType,
+  selectedRef: LoomReferenceSummary | null,
+  selectedShafts: number | null,
+  derivedTreadles: number | null,
+  selectedWidthOpt: WidthOption | null,
+): DiffRow[] {
+  if (!selectedRef) return [];
+
+  const rows: DiffRow[] = [
+    { label: "Manufacturer", oldVal: loom.manufacturer, newVal: selectedRef.brand, changed: loom.manufacturer !== selectedRef.brand },
+    { label: "Model", oldVal: loom.model_name, newVal: selectedRef.model_name, changed: loom.model_name !== selectedRef.model_name },
+    {
+      label: "Loom type",
+      oldVal: LOOM_TYPE_LABELS[loom.loom_type] ?? loom.loom_type,
+      newVal: LOOM_TYPE_LABELS[newLoomType] ?? newLoomType,
+      changed: loom.loom_type !== newLoomType,
+    },
+  ];
+
+  if (showsShafts(newLoomType) && selectedShafts != null) {
+    rows.push({
+      label: "Shafts",
+      oldVal: cv.num_shafts != null ? String(cv.num_shafts) : "—",
+      newVal: String(selectedShafts),
+      changed: cv.num_shafts !== selectedShafts,
+    });
+  }
+
+  if (showsTreadles(newLoomType) && derivedTreadles != null) {
+    rows.push({
+      label: "Treadles",
+      oldVal: cv.num_treadles != null ? String(cv.num_treadles) : "—",
+      newVal: String(derivedTreadles),
+      changed: cv.num_treadles !== derivedTreadles,
+    });
+  }
+
+  if (selectedWidthOpt != null) {
+    rows.push({
+      label: "Weaving width",
+      oldVal: cv.weaving_width ? `${Number.parseFloat(cv.weaving_width)} ${cv.weaving_width_unit}` : "—",
+      newVal: selectedWidthOpt.label,
+      changed:
+        !cv.weaving_width ||
+        Number.parseFloat(cv.weaving_width) !== Number.parseFloat(selectedWidthOpt.value) ||
+        cv.weaving_width_unit !== selectedWidthOpt.unit,
+    });
+  }
+
+  return rows;
+}
+
+async function saveLoomCatalogLink(
+  loom: LoomDetail,
+  version: LoomVersion,
+  selectedRef: LoomReferenceSummary,
+  newLoomType: LoomType,
+  selectedShafts: number | null,
+  derivedTreadles: number | null,
+  selectedWidthOpt: WidthOption | null,
+  setSaving: (v: boolean) => void,
+  setError: (v: string | null) => void,
+  onSuccess: () => void,
+) {
+  setSaving(true);
+  setError(null);
+  try {
+    await updateLoom(loom.id, {
+      manufacturer: selectedRef.brand,
+      model_name: selectedRef.model_name,
+      loom_type: newLoomType,
+    });
+    await linkVersionReference(loom.id, version.id, selectedRef.id);
+
+    const versionPayload: UpdateVersionPayload = {};
+    if (showsShafts(newLoomType) && selectedShafts != null) {
+      versionPayload.num_shafts = selectedShafts;
+    }
+    if (showsTreadles(newLoomType) && derivedTreadles != null) {
+      versionPayload.num_treadles = derivedTreadles;
+    }
+    if (selectedWidthOpt != null) {
+      versionPayload.weaving_width = Number.parseFloat(selectedWidthOpt.value);
+      versionPayload.weaving_width_unit = selectedWidthOpt.unit;
+    }
+    if (Object.keys(versionPayload).length > 0) {
+      await updateVersion(loom.id, version.id, versionPayload);
+    }
+
+    onSuccess();
+  } catch (e) {
+    setError(e instanceof Error ? e.message : "Failed to save changes");
+  } finally {
+    setSaving(false);
+  }
+}
+
 // ---------- component ----------
 
 interface Props {
@@ -480,126 +592,22 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
     const sOpts = ref.shaft_count_options ?? [];
     const wOpts = buildWidthOptions(ref);
 
-    // Auto-match shaft to target version
+    // Auto-match shaft/width to target version (convert units if needed)
     setSelectedShaftIdx(closestIdx(sOpts, version.num_shafts));
-
-    // Auto-match width to target version (convert units if needed)
-    if (wOpts.length > 0 && version.weaving_width) {
-      const curVal = Number.parseFloat(version.weaving_width);
-      const curUnit = version.weaving_width_unit as "cm" | "in";
-      const targetUnit = wOpts[0].unit;
-      let converted = curVal;
-      if (curUnit !== targetUnit) converted = curUnit === "cm" ? curVal / 2.54 : curVal * 2.54;
-      setSelectedWidthIdx(closestIdx(wOpts.map((o) => Number.parseFloat(o.value)), converted));
-    } else {
-      setSelectedWidthIdx(0);
-    }
+    setSelectedWidthIdx(matchWidthIndexForVersion(version, wOpts));
 
     // Skip configure step if nothing to configure
-    const hasDropdowns =
-      (showsShafts(lt) && sOpts.length > 1) || wOpts.length > 1;
+    const hasDropdowns = (showsShafts(lt) && sOpts.length > 1) || wOpts.length > 1;
     setStep(hasDropdowns ? "configure" : "confirm");
   }
 
-  // Diff rows for confirm step
-  const cv = version;
-
-  const diffRows: DiffRow[] = selectedRef
-    ? [
-        {
-          label: "Manufacturer",
-          oldVal: loom.manufacturer,
-          newVal: selectedRef.brand,
-          changed: loom.manufacturer !== selectedRef.brand,
-        },
-        {
-          label: "Model",
-          oldVal: loom.model_name,
-          newVal: selectedRef.model_name,
-          changed: loom.model_name !== selectedRef.model_name,
-        },
-        {
-          label: "Loom type",
-          oldVal: LOOM_TYPE_LABELS[loom.loom_type] ?? loom.loom_type,
-          newVal: LOOM_TYPE_LABELS[newLoomType] ?? newLoomType,
-          changed: loom.loom_type !== newLoomType,
-        },
-        ...(cv && showsShafts(newLoomType) && selectedShafts != null
-          ? [
-              {
-                label: "Shafts",
-                oldVal: cv.num_shafts != null ? String(cv.num_shafts) : "—",
-                newVal: String(selectedShafts),
-                changed: cv.num_shafts !== selectedShafts,
-              },
-            ]
-          : []),
-        ...(cv && showsTreadles(newLoomType) && derivedTreadles != null
-          ? [
-              {
-                label: "Treadles",
-                oldVal: cv.num_treadles != null ? String(cv.num_treadles) : "—",
-                newVal: String(derivedTreadles),
-                changed: cv.num_treadles !== derivedTreadles,
-              },
-            ]
-          : []),
-        ...(cv && selectedWidthOpt != null
-          ? [
-              {
-                label: "Weaving width",
-                oldVal: cv.weaving_width
-                  ? `${Number.parseFloat(cv.weaving_width)} ${cv.weaving_width_unit}`
-                  : "—",
-                newVal: selectedWidthOpt.label,
-                changed:
-                  !cv.weaving_width ||
-                  Number.parseFloat(cv.weaving_width) !== Number.parseFloat(selectedWidthOpt.value) ||
-                  cv.weaving_width_unit !== selectedWidthOpt.unit,
-              },
-            ]
-          : []),
-      ]
-    : [];
-
+  const diffRows = computeDiffRows(loom, version, newLoomType, selectedRef, selectedShafts, derivedTreadles, selectedWidthOpt);
   const hasChanges = diffRows.some((r) => r.changed);
 
-  async function handleSave() {
+  const handleSave = () => {
     if (!selectedRef) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await updateLoom(loom.id, {
-        manufacturer: selectedRef.brand,
-        model_name: selectedRef.model_name,
-        loom_type: newLoomType,
-      });
-      await linkVersionReference(loom.id, version.id, selectedRef.id);
-
-      if (cv) {
-        const versionPayload: UpdateVersionPayload = {};
-        if (showsShafts(newLoomType) && selectedShafts != null) {
-          versionPayload.num_shafts = selectedShafts;
-        }
-        if (showsTreadles(newLoomType) && derivedTreadles != null) {
-          versionPayload.num_treadles = derivedTreadles;
-        }
-        if (selectedWidthOpt != null) {
-          versionPayload.weaving_width = Number.parseFloat(selectedWidthOpt.value);
-          versionPayload.weaving_width_unit = selectedWidthOpt.unit;
-        }
-        if (Object.keys(versionPayload).length > 0) {
-          await updateVersion(loom.id, cv.id, versionPayload);
-        }
-      }
-
-      onSuccess();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save changes");
-    } finally {
-      setSaving(false);
-    }
-  }
+    void saveLoomCatalogLink(loom, version, selectedRef, newLoomType, selectedShafts, derivedTreadles, selectedWidthOpt, setSaving, setError, onSuccess);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

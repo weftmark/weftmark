@@ -17,6 +17,7 @@ import {
   advanceItem, jumpItem, claimTracking, releaseTracking,
   ApiError, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS,
   type ProjectSummary, type ProjectPhoto, type PickRow, type ProjectMetrics,
+  type ProjectDetail, type PicksResponse,
 } from "@/api/projects";
 import { drawdownPreviewUrl, projectDrawdownPreviewUrl } from "@/api/projects";
 import { getAuthToken } from "@/api/client";
@@ -799,20 +800,20 @@ function PhotoGrid({
         />
       </div>
       {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
-      {photos.length === 0 ? (
-        readOnly ? (
-          <p className="text-sm text-muted-foreground/60 italic">{t("projectDetailPage.noPhotos")}</p>
-        ) : (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50"
-          >
-            {t("projectDetailPage.addPhotosPrompt")}
-          </button>
-        )
-      ) : (
+      {photos.length === 0 && readOnly && (
+        <p className="text-sm text-muted-foreground/60 italic">{t("projectDetailPage.noPhotos")}</p>
+      )}
+      {photos.length === 0 && !readOnly && (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="w-full rounded-lg border border-dashed p-8 text-sm text-muted-foreground hover:border-ring hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          {t("projectDetailPage.addPhotosPrompt")}
+        </button>
+      )}
+      {photos.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {photos.map((p) => (
             <div key={p.id} className="group relative aspect-square">
@@ -882,6 +883,12 @@ function PhotoGrid({
       )}
     </div>
   );
+}
+
+function siblingBadgeClass(isPlanning: boolean, status: string): string {
+  if (isPlanning) return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+  if (status === "active") return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+  return "bg-muted text-muted-foreground";
 }
 
 function CompletedSummary({
@@ -989,11 +996,7 @@ function CompletedSummary({
             {siblings.map((s) => {
               const isPlanning = s.status === "active" && !s.loom_id;
               const label = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[s.status];
-              const badgeCls = isPlanning
-                ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-                : s.status === "active"
-                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                  : "bg-muted text-muted-foreground";
+              const badgeCls = siblingBadgeClass(isPlanning, s.status);
               return (
                 <Link
                   key={s.id}
@@ -1024,58 +1027,23 @@ function CompletedSummary({
 // Page
 // ---------------------------------------------------------------------------
 
-export function ProjectDetailPage() {
-  const { t } = useTranslation();
-  const { id } = useParams<{ id: string }>();
+// ---------------------------------------------------------------------------
+// useProjectTracker — data fetching + step/jump/complete/abandon/restart/clone/
+// delete actions, the tracker lock, and offline-step queueing. Everything the
+// tracker screen needs that talks to the server or reacts to connectivity.
+// ---------------------------------------------------------------------------
+
+function useProjectTracker(id: string | undefined, showAssignLoom: boolean) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthContext();
-  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
   const [stepping, setStepping] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [colorMode, setColorMode] = useState<ColorMode>(() => {
-    const stored = localStorage.getItem("proj-view:colorMode");
-    return (stored as ColorMode) ?? (user?.tracker_color_mode as ColorMode) ?? "strip";
-  });
-  const [showWeftColor, setShowWeftColor] = useState(() => {
-    const stored = localStorage.getItem("proj-view:showWeftColor");
-    return stored !== null ? stored !== "false" : (user?.tracker_show_weft_color ?? true);
-  });
-  const [showDrawdown, setShowDrawdown] = useState(() => {
-    const stored = localStorage.getItem("proj-view:showDrawdown");
-    return stored !== null ? stored !== "false" : (user?.tracker_show_drawdown ?? true);
-  });
-  const [showPickDisplay] = useState(
-    () => localStorage.getItem("proj-view:showPickDisplay") !== "false"
-  );
-  const [showProgress, setShowProgress] = useState(() => {
-    const stored = localStorage.getItem("proj-view:showProgress");
-    return stored !== null ? stored !== "false" : (user?.tracker_show_progress ?? true);
-  });
-  const [hideTrailingUnused, setHideTrailingUnused] = useState(
-    () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
-  );
-  const [showPickCards, setShowPickCards] = useState(() => {
-    const stored = localStorage.getItem("proj-view:showPickCards");
-    return stored !== null ? stored !== "false" : (user?.tracker_show_pick_cards ?? true);
-  });
-  const [panelOpen, setPanelOpen] = useState(
-    () => localStorage.getItem("proj-view:panelOpen") === "true"
-  );
-  const [showDesignPreview, setShowDesignPreview] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState("");
-  const [editingNotes, setEditingNotes] = useState(false);
-  const [notesInput, setNotesInput] = useState("");
-  const [showAssignLoom, setShowAssignLoom] = useState(false);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [confirmComplete, setConfirmComplete] = useState(false);
   const [confirmIncomplete, setConfirmIncomplete] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [confirmClone, setConfirmClone] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
   const [cloneConflict, setCloneConflict] = useState<ProjectSummary | null>(null);
   const [restartConflict, setRestartConflict] = useState<ProjectSummary | null>(null);
   const [localPick, setLocalPick] = useState(1);
@@ -1083,7 +1051,6 @@ export function ProjectDetailPage() {
   const trackerSessionId = useTrackerSession(id);
   const [trackerLocked, setTrackerLocked] = useState(false);
 
-  const { isPresent, isSupported: presentModeSupported, toggle: togglePresentMode } = usePresentMode();
   const isOnline = useOnlineStatus();
   const { enqueue: enqueueStep, pending: pendingOfflineSteps, drainAll } = useStepQueue();
 
@@ -1296,22 +1263,6 @@ export function ProjectDetailPage() {
     setLocalPick(Math.max(1, Math.min(pick, total + 1)));
   }, [project?.total_picks]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (isPlanning) {
-        if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); handleLocalStep("advance"); }
-        if (e.key === "ArrowLeft") { e.preventDefault(); handleLocalStep("reverse"); }
-        return;
-      }
-      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); handleStep("advance"); }
-      if (e.key === "ArrowLeft") { e.preventDefault(); handleStep("reverse"); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [handleStep, handleLocalStep, isPlanning]);
-
   const handleComplete = async () => {
     if (!id) return;
     setActionLoading(true);
@@ -1374,7 +1325,6 @@ export function ProjectDetailPage() {
       await restartProject(id);
       invalidate();
       setConfirmRestart(false);
-      setRestartConflict(null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && project?.loom_id) {
         const allActive = await listProjects().catch(() => []);
@@ -1436,6 +1386,1508 @@ export function ProjectDetailPage() {
     } finally { setActionLoading(false); }
   };
 
+  return {
+    project, picksData, allProjects, siblingProjects, metrics,
+    isLoading, error,
+    isPlanning, isCreated, isCompleted, isActivelyTracked,
+    stepping, actionLoading, trackerLocked, localPick, isOnline,
+    invalidate, queryClient,
+    handleJump, handleStep, handleLocalStep, handleLocalJump,
+    handleTakeOverTracking,
+    handleComplete, handleForceComplete, handleAbandon,
+    handleAdvanceItem, handleJumpItem,
+    handleRestart, handleResolveAndRestart, restartConflict, setRestartConflict,
+    handleClone, handleResolveAndClone, cloneConflict, setCloneConflict,
+    handleDelete,
+    confirmComplete, setConfirmComplete,
+    confirmIncomplete, setConfirmIncomplete,
+    confirmAbandon, setConfirmAbandon,
+    confirmRestart, setConfirmRestart,
+    confirmClone, setConfirmClone,
+    confirmDelete, setConfirmDelete,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// useTrackerViewPrefs — localStorage-backed display preference toggles
+// ---------------------------------------------------------------------------
+
+function useTrackerViewPrefs(user: ReturnType<typeof useAuthContext>["user"]) {
+  const [colorMode, setColorMode] = useState<ColorMode>(() => {
+    const stored = localStorage.getItem("proj-view:colorMode");
+    return (stored as ColorMode) ?? (user?.tracker_color_mode as ColorMode) ?? "strip";
+  });
+  const [showWeftColor, setShowWeftColor] = useState(() => {
+    const stored = localStorage.getItem("proj-view:showWeftColor");
+    return stored !== null ? stored !== "false" : (user?.tracker_show_weft_color ?? true);
+  });
+  const [showDrawdown, setShowDrawdown] = useState(() => {
+    const stored = localStorage.getItem("proj-view:showDrawdown");
+    return stored !== null ? stored !== "false" : (user?.tracker_show_drawdown ?? true);
+  });
+  const [showPickDisplay] = useState(
+    () => localStorage.getItem("proj-view:showPickDisplay") !== "false"
+  );
+  const [showProgress, setShowProgress] = useState(() => {
+    const stored = localStorage.getItem("proj-view:showProgress");
+    return stored !== null ? stored !== "false" : (user?.tracker_show_progress ?? true);
+  });
+  const [hideTrailingUnused, setHideTrailingUnused] = useState(
+    () => localStorage.getItem("proj-view:hideTrailingUnused") === "true"
+  );
+  const [showPickCards, setShowPickCards] = useState(() => {
+    const stored = localStorage.getItem("proj-view:showPickCards");
+    return stored !== null ? stored !== "false" : (user?.tracker_show_pick_cards ?? true);
+  });
+  const [panelOpen, setPanelOpen] = useState(
+    () => localStorage.getItem("proj-view:panelOpen") === "true"
+  );
+
+  return {
+    colorMode, setColorMode,
+    showWeftColor, setShowWeftColor,
+    showDrawdown, setShowDrawdown,
+    showPickDisplay,
+    showProgress, setShowProgress,
+    hideTrailingUnused, setHideTrailingUnused,
+    showPickCards, setShowPickCards,
+    panelOpen, setPanelOpen,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Page header
+// ---------------------------------------------------------------------------
+
+function ProjectNameEditor({
+  project,
+  id,
+  queryClient,
+  nameInput,
+  setNameInput,
+  editing,
+  setEditing,
+}: {
+  readonly project: ProjectDetail;
+  readonly id: string;
+  readonly queryClient: ReturnType<typeof useQueryClient>;
+  readonly nameInput: string;
+  readonly setNameInput: (v: string) => void;
+  readonly editing: boolean;
+  readonly setEditing: (v: boolean) => void;
+}) {
+  const { t } = useTranslation();
+
+  const save = async (trimmed: string) => {
+    const updated = await renameProject(id, trimmed);
+    queryClient.setQueryData<ProjectDetail>(["project", id], (old) =>
+      old ? { ...updated, photos: old.photos } : updated
+    );
+    queryClient.invalidateQueries({ queryKey: ["projects"] });
+  };
+
+  if (editing) {
+    return (
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const trimmed = nameInput.trim();
+          if (!trimmed) { setEditing(false); return; }
+          await save(trimmed);
+          setEditing(false);
+        }}
+        className="flex items-center gap-2 min-w-0"
+      >
+        <input
+          autoFocus
+          className="rounded border border-input bg-background px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
+          value={nameInput}
+          onChange={(e) => setNameInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Escape") setEditing(false); }}
+          onBlur={async () => {
+            const trimmed = nameInput.trim();
+            if (trimmed && trimmed !== project.name) await save(trimmed);
+            setEditing(false);
+          }}
+        />
+      </form>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => { setNameInput(project.name); setEditing(true); }}
+      className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text truncate"
+      title={t("projectDetailPage.clickToRename")}
+    >
+      {project.name}
+    </button>
+  );
+}
+
+function ProjectPageHeader({
+  project,
+  isReadOnly,
+  id,
+  queryClient,
+  nameInput,
+  setNameInput,
+  editingName,
+  setEditingName,
+  onShowDesignPreview,
+  onShareModal,
+  onSettingsOpen,
+  presentModeSupported,
+  isPresent,
+  togglePresentMode,
+  badgeClasses,
+  badgeLabel,
+}: {
+  readonly project: ProjectDetail;
+  readonly isReadOnly: boolean;
+  readonly id: string;
+  readonly queryClient: ReturnType<typeof useQueryClient>;
+  readonly nameInput: string;
+  readonly setNameInput: (v: string) => void;
+  readonly editingName: boolean;
+  readonly setEditingName: (v: boolean) => void;
+  readonly onShowDesignPreview: () => void;
+  readonly onShareModal: () => void;
+  readonly onSettingsOpen: () => void;
+  readonly presentModeSupported: boolean;
+  readonly isPresent: boolean;
+  readonly togglePresentMode: () => void;
+  readonly badgeClasses: string;
+  readonly badgeLabel: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
+        <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
+          {project.loom_id && (
+            <>
+              <Link to="/looms" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.equipment")}</Link>
+              <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            </>
+          )}
+          <Link to="/drafts" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.drafts")}</Link>
+          <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <Link to="/projects" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.projects")}</Link>
+          <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <Link to={`/projects/${project.id}`} className="text-muted-foreground hover:text-foreground truncate max-w-[12rem]">{project.name}</Link>
+          <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+        {isReadOnly ? (
+          <span className="font-semibold truncate">{project.name}</span>
+        ) : (
+          <ProjectNameEditor
+            project={project}
+            id={id}
+            queryClient={queryClient}
+            nameInput={nameInput}
+            setNameInput={setNameInput}
+            editing={editingName}
+            setEditing={setEditingName}
+          />
+        )}
+        <span className="text-sm text-muted-foreground truncate hidden sm:block">{project.draft_name}</span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onClick={onShowDesignPreview}
+          className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+          title={t("projectDetailPage.viewDesignTitle")}
+        >
+          {t("projectDetailPage.viewDesign")}
+        </button>
+        <Link
+          to={`/projects/${project.id}/warping-plan`}
+          className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hidden sm:inline-flex items-center gap-1"
+          title={t("projectDetailPage.weavePlanTitle")}
+        >
+          {t("projectDetailPage.weavePlan")}
+        </Link>
+        {!isReadOnly && (
+          <button
+            type="button"
+            onClick={onShareModal}
+            className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title={t("projectDetailPage.shareProject")}
+            aria-label={t("projectDetailPage.shareProject")}
+          >
+            <AppIcons.Share className="h-4 w-4" />
+          </button>
+        )}
+        {!isReadOnly && (
+          <button
+            type="button"
+            onClick={onSettingsOpen}
+            className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title={t("projectDetailPage.viewSettings")}
+            aria-label={t("projectDetailPage.viewSettings")}
+          >
+            <AppIcons.Settings className="h-4 w-4" />
+          </button>
+        )}
+        <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
+          {badgeLabel}
+        </span>
+        {!isReadOnly && project.share_slug && project.share_visibility !== "private" && (
+          <button
+            type="button"
+            onClick={onShareModal}
+            className="rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
+            title={t("projectDetailPage.projectSharedManage")}
+          >
+            <AppIcons.Share className="h-3 w-3" />
+            {t("projectDetailPage.shared")}
+          </button>
+        )}
+        {presentModeSupported && (
+          <button
+            type="button"
+            onClick={togglePresentMode}
+            className="ml-3 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
+            aria-label={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
+          >
+            {isPresent
+              ? <AppIcons.ExitPresentMode className="h-4 w-4" />
+              : <AppIcons.PresentMode className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Planning / abandoned banners
+// ---------------------------------------------------------------------------
+
+function PlanningBanner({ onAssignLoom }: { readonly onAssignLoom: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-auto max-w-2xl px-8 pt-6">
+      <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 text-sm overflow-hidden">
+        <div className="px-4 py-3">
+          <p className="font-medium text-blue-900 dark:text-blue-200">{t("projectDetailPage.planningMode")}</p>
+          <p className="mt-0.5 text-xs text-blue-800 dark:text-blue-300">{t("projectDetailPage.assignLoomToStart")}</p>
+        </div>
+        <div className="border-t border-blue-200 dark:border-blue-800 px-3 pb-3 pt-2">
+          <button
+            type="button"
+            onClick={onAssignLoom}
+            className="w-full rounded-md border border-dashed border-blue-300 dark:border-blue-700 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-300 transition-colors hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:text-blue-900 dark:hover:text-blue-200"
+          >
+            {t("projectDetailPage.assignToLoom")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AbandonedBanner({ project }: { readonly project: ProjectDetail }) {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-auto max-w-2xl px-8 pt-6">
+      <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm">
+        <p className="font-medium text-copper-on-subtle">{t("projectDetailPage.notCompleted")}</p>
+        <p className="mt-0.5 text-xs text-copper-on-subtle">
+          {t("projectDetailPage.abandonedAt", { current: project.current_pick, total: project.total_picks, pct: Math.round((project.current_pick - 1) / project.total_picks * 100) })}
+          {project.abandoned_at && ` · ${new Date(project.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Progress section
+// ---------------------------------------------------------------------------
+
+function ItemProgressDots({
+  project,
+  isActiveTracking,
+  actionLoading,
+  trackerLocked,
+  onJumpItem,
+}: {
+  readonly project: ProjectDetail;
+  readonly isActiveTracking: boolean;
+  readonly actionLoading: boolean;
+  readonly trackerLocked: boolean;
+  readonly onJumpItem: (item: number) => void;
+}) {
+  const { t } = useTranslation();
+  const canJump = isActiveTracking && !actionLoading && !trackerLocked;
+  return (
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-1">
+        {Array.from({ length: project.num_items }, (_, i) => (
+          <button
+            type="button"
+            key={i}
+            onClick={() => isActiveTracking && onJumpItem(i + 1)}
+            disabled={!isActiveTracking || actionLoading || trackerLocked}
+            title={t("projectDetailPage.jumpToItem", { n: i + 1 })}
+            className={`h-2.5 rounded-full transition-all ${itemDotWidthClass(i, project.current_item)} ${canJump ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
+          />
+        ))}
+      </div>
+      <span className="text-xs text-muted-foreground font-medium">
+        {t("projectDetailPage.itemNofM", { current: project.current_item, total: project.num_items })}
+      </span>
+    </div>
+  );
+}
+
+function itemDotWidthClass(index: number, currentItem: number): string {
+  if (index + 1 === currentItem) return "w-6 bg-primary";
+  if (index + 1 < currentItem) return "w-2.5 bg-primary/40";
+  return "w-2.5 bg-muted-foreground/30";
+}
+
+function ProgressSection({
+  project,
+  isMultiItem,
+  isActiveTracking,
+  actionLoading,
+  trackerLocked,
+  onJumpItem,
+}: {
+  readonly project: ProjectDetail;
+  readonly isMultiItem: boolean;
+  readonly isActiveTracking: boolean;
+  readonly actionLoading: boolean;
+  readonly trackerLocked: boolean;
+  readonly onJumpItem: (item: number) => void;
+}) {
+  return (
+    <div className="w-full px-8 pt-6">
+      {isMultiItem && (
+        <ItemProgressDots
+          project={project}
+          isActiveTracking={isActiveTracking}
+          actionLoading={actionLoading}
+          trackerLocked={trackerLocked}
+          onJumpItem={onJumpItem}
+        />
+      )}
+      <ProgressBar current={project.current_pick} total={project.total_picks} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pick instruction section
+// ---------------------------------------------------------------------------
+
+function ItemCompleteCard({
+  project,
+  isActiveTracking,
+  actionLoading,
+  trackerLocked,
+  onAdvanceItem,
+}: {
+  readonly project: ProjectDetail;
+  readonly isActiveTracking: boolean;
+  readonly actionLoading: boolean;
+  readonly trackerLocked: boolean;
+  readonly onAdvanceItem: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
+      <p className="text-lg font-medium">{t("projectDetailPage.itemComplete", { n: project.current_item })}</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {t("projectDetailPage.picksDoneReadyNext", { picks: project.total_picks, next: project.current_item + 1, total: project.num_items })}
+      </p>
+      {isActiveTracking && (
+        <div className="mt-6">
+          <Button variant="success" onClick={onAdvanceItem} disabled={actionLoading || trackerLocked}>
+            {actionLoading ? "…" : t("projectDetailPage.startItem", { n: project.current_item + 1 })}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AllPicksCompleteCard({
+  project,
+  isMultiItem,
+  isActiveTracking,
+  actionLoading,
+  confirmComplete,
+  setConfirmComplete,
+  onComplete,
+}: {
+  readonly project: ProjectDetail;
+  readonly isMultiItem: boolean;
+  readonly isActiveTracking: boolean;
+  readonly actionLoading: boolean;
+  readonly confirmComplete: boolean;
+  readonly setConfirmComplete: (v: boolean) => void;
+  readonly onComplete: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
+      <p className="text-lg font-medium">
+        {isMultiItem ? t("projectDetailPage.allItemsComplete", { n: project.num_items }) : t("projectDetailPage.allPicksComplete", { n: project.total_picks })}
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {t("projectDetailPage.markAsDone")}
+      </p>
+      {isActiveTracking && (
+        <div className="mt-6">
+          {!confirmComplete ? (
+            <Button variant="success" onClick={() => setConfirmComplete(true)}>{t("projectDetailPage.markComplete")}</Button>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
+              <Button size="sm" variant="success" onClick={onComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrevNextPickCard({
+  label,
+  pick,
+  displayCount,
+  projectType,
+  colorMode,
+}: {
+  readonly label: string;
+  readonly pick: PickRow;
+  readonly displayCount: number;
+  readonly projectType: string;
+  readonly colorMode: ColorMode;
+}) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground text-center mb-1.5">{label}</p>
+      <PickDisplay
+        pick={pick}
+        totalCount={displayCount}
+        projectType={projectType}
+        colorMode={colorMode}
+        showWeftColor={false}
+        compact
+      />
+    </div>
+  );
+}
+
+function CurrentPickCards({
+  project,
+  picksData,
+  currentPickIndex,
+  displayCount,
+  colorMode,
+  showWeftColor,
+  showPickCards,
+}: {
+  readonly project: ProjectDetail;
+  readonly picksData: PicksResponse;
+  readonly currentPickIndex: number;
+  readonly displayCount: number;
+  readonly colorMode: ColorMode;
+  readonly showWeftColor: boolean;
+  readonly showPickCards: boolean;
+}) {
+  const { t } = useTranslation();
+
+  if (!showPickCards) {
+    return (
+      <PickDisplay
+        pick={picksData.picks[currentPickIndex]}
+        totalCount={displayCount}
+        projectType={project.project_type}
+        colorMode={colorMode}
+        showWeftColor={showWeftColor}
+      />
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr] gap-3 items-center w-full">
+      {/* Prev pick card — desktop only */}
+      <div className="hidden md:block">
+        {currentPickIndex > 0 ? (
+          <PrevNextPickCard
+            label={t("projectDetailPage.prevPickLabel", { n: picksData.picks[currentPickIndex - 1].pick })}
+            pick={picksData.picks[currentPickIndex - 1]}
+            displayCount={displayCount}
+            projectType={project.project_type}
+            colorMode={colorMode}
+          />
+        ) : <div className="h-20" />}
+      </div>
+      {/* Current pick */}
+      <PickDisplay
+        pick={picksData.picks[currentPickIndex]}
+        totalCount={displayCount}
+        projectType={project.project_type}
+        colorMode={colorMode}
+        showWeftColor={showWeftColor}
+      />
+      {/* Next pick card — desktop only */}
+      <div className="hidden md:block">
+        {currentPickIndex < picksData.picks.length - 1 ? (
+          <PrevNextPickCard
+            label={t("projectDetailPage.nextPickLabel", { n: picksData.picks[currentPickIndex + 1].pick })}
+            pick={picksData.picks[currentPickIndex + 1]}
+            displayCount={displayCount}
+            projectType={project.project_type}
+            colorMode={colorMode}
+          />
+        ) : <div className="h-20" />}
+      </div>
+    </div>
+  );
+}
+
+interface PickInstructionSectionProps {
+  readonly project: ProjectDetail;
+  readonly picksData: PicksResponse | undefined;
+  readonly isAtItemEnd: boolean;
+  readonly isFinished: boolean;
+  readonly isMultiItem: boolean;
+  readonly isActiveTracking: boolean;
+  readonly actionLoading: boolean;
+  readonly trackerLocked: boolean;
+  readonly confirmComplete: boolean;
+  readonly setConfirmComplete: (v: boolean) => void;
+  readonly onAdvanceItem: () => void;
+  readonly onComplete: () => void;
+  readonly currentPickIndex: number;
+  readonly displayCount: number;
+  readonly colorMode: ColorMode;
+  readonly showWeftColor: boolean;
+  readonly showPickCards: boolean;
+}
+
+function PickInstructionSection({
+  project, picksData, isAtItemEnd, isFinished, isMultiItem, isActiveTracking, actionLoading, trackerLocked,
+  confirmComplete, setConfirmComplete, onAdvanceItem, onComplete,
+  currentPickIndex, displayCount, colorMode, showWeftColor, showPickCards,
+}: PickInstructionSectionProps) {
+  const { t } = useTranslation();
+
+  if (isAtItemEnd) {
+    return (
+      <ItemCompleteCard
+        project={project}
+        isActiveTracking={isActiveTracking}
+        actionLoading={actionLoading}
+        trackerLocked={trackerLocked}
+        onAdvanceItem={onAdvanceItem}
+      />
+    );
+  }
+
+  if (isFinished) {
+    return (
+      <AllPicksCompleteCard
+        project={project}
+        isMultiItem={isMultiItem}
+        isActiveTracking={isActiveTracking}
+        actionLoading={actionLoading}
+        confirmComplete={confirmComplete}
+        setConfirmComplete={setConfirmComplete}
+        onComplete={onComplete}
+      />
+    );
+  }
+
+  if (picksData) {
+    return (
+      <CurrentPickCards
+        project={project}
+        picksData={picksData}
+        currentPickIndex={currentPickIndex}
+        displayCount={displayCount}
+        colorMode={colorMode}
+        showWeftColor={showWeftColor}
+        showPickCards={showPickCards}
+      />
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
+      <p className="text-sm text-muted-foreground">{t("projectDetailPage.pickDataLoading")}</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pattern section
+// ---------------------------------------------------------------------------
+
+function PatternSection({
+  project,
+  picksData,
+  currentPickIndex,
+  displayCount,
+  showDrawdown,
+  isFinished,
+  isAtItemEnd,
+  isCompleted,
+  isAbandoned,
+}: {
+  readonly project: ProjectDetail;
+  readonly picksData: PicksResponse | undefined;
+  readonly currentPickIndex: number;
+  readonly displayCount: number;
+  readonly showDrawdown: boolean;
+  readonly isFinished: boolean;
+  readonly isAtItemEnd: boolean;
+  readonly isCompleted: boolean;
+  readonly isAbandoned: boolean;
+}) {
+  return (
+    <div className="flex-1 min-h-0 overflow-hidden">
+      {/* Pattern view — wider on large screens to show more warp threads */}
+      {showDrawdown && picksData && !isFinished && !isAtItemEnd && !isCompleted && !isAbandoned && (
+        <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+          <WeavingPatternView
+            projectId={project.id}
+            currentPickIndex={currentPickIndex}
+            totalPicks={project.total_picks}
+            picks={picksData.picks}
+            maxActive={displayCount}
+          />
+        </div>
+      )}
+
+      {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
+      {isAbandoned && (
+        <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+          <AbandonedDrawdownView
+            draftId={project.draft_id}
+            currentPick={project.current_pick}
+            totalPicks={project.total_picks}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step controls section
+// ---------------------------------------------------------------------------
+
+function StepControlsSection({
+  isReadOnly,
+  trackerLocked,
+  isPlanning,
+  isActiveTracking,
+  actionLoading,
+  onTakeOverTracking,
+  project,
+  displayPick,
+  stepping,
+  isOnline,
+  handleLocalJump,
+  handleJump,
+  handleLocalStep,
+  handleStep,
+}: {
+  readonly isReadOnly: boolean;
+  readonly trackerLocked: boolean;
+  readonly isPlanning: boolean;
+  readonly isActiveTracking: boolean;
+  readonly actionLoading: boolean;
+  readonly onTakeOverTracking: () => void;
+  readonly project: ProjectDetail;
+  readonly displayPick: number;
+  readonly stepping: boolean;
+  readonly isOnline: boolean;
+  readonly handleLocalJump: (pick: number) => void;
+  readonly handleJump: (pick: number) => void;
+  readonly handleLocalStep: (direction: "advance" | "reverse") => void;
+  readonly handleStep: (direction: "advance" | "reverse") => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="w-full px-4 pb-6">
+      {!isReadOnly && trackerLocked && !isPlanning && (
+        <div className="mb-4 rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+          <p className="font-medium text-copper-on-subtle">{t("projectDetailPage.trackerLockedElsewhere")}</p>
+          <Button type="button" size="sm" onClick={onTakeOverTracking} disabled={actionLoading}>
+            {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.takeOverTracking")}
+          </Button>
+        </div>
+      )}
+
+      {!isReadOnly && (isActiveTracking || isPlanning) && (
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8 mb-4">
+          {/* Left 1/3 on desktop, below step buttons on mobile */}
+          <div className="order-2 lg:order-1 lg:flex lg:justify-center">
+            <JumpToPick
+              total={project.total_picks}
+              onJump={isPlanning ? handleLocalJump : handleJump}
+              disabled={stepping || (!isPlanning && !isOnline) || (!isPlanning && trackerLocked)}
+            />
+          </div>
+          {/* Center 1/3 on desktop, top on mobile */}
+          <div className="order-1 lg:order-2 flex justify-center">
+            <StepControls
+              currentPick={displayPick}
+              total={project.total_picks}
+              onStep={isPlanning ? handleLocalStep : handleStep}
+              onJump={isPlanning ? handleLocalJump : handleJump}
+              stepping={stepping || (!isPlanning && trackerLocked)}
+              jumpDisabled={!isPlanning && (!isOnline || trackerLocked)}
+            />
+          </div>
+          {/* Right 1/3 reserved for future use */}
+          <div className="hidden lg:block lg:order-3" />
+        </div>
+      )}
+
+      {!isReadOnly && (isActiveTracking || isPlanning) && (
+        <p className="text-center text-sm text-muted-foreground">
+          {t("projectDetailPage.arrowKeysHint")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Details & settings panel — collapsible sub-sections
+// ---------------------------------------------------------------------------
+
+function NotesCollapsible({
+  project,
+  id,
+  isReadOnly,
+  queryClient,
+}: {
+  readonly project: ProjectDetail;
+  readonly id: string;
+  readonly isReadOnly: boolean;
+  readonly queryClient: ReturnType<typeof useQueryClient>;
+}) {
+  const { t } = useTranslation();
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesInput, setNotesInput] = useState("");
+
+  let body: React.ReactNode;
+  if (isReadOnly) {
+    body = project.notes ? (
+      <p className="whitespace-pre-wrap text-sm text-muted-foreground">{project.notes}</p>
+    ) : (
+      <p className="text-sm text-muted-foreground/60 italic">{t("projectDetailPage.noNotes")}</p>
+    );
+  } else if (editingNotes) {
+    body = (
+      <textarea
+        autoFocus
+        className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+        rows={4}
+        value={notesInput}
+        onChange={(e) => setNotesInput(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Escape") setEditingNotes(false); }}
+        onBlur={async () => {
+          const trimmed = notesInput.trim();
+          const current = project.notes ?? "";
+          if (trimmed !== current) {
+            const updated = await updateProjectNotes(id, trimmed || null);
+            queryClient.setQueryData<ProjectDetail>(["project", id], (old) =>
+              old ? { ...updated, photos: old.photos } : updated
+            );
+          }
+          setEditingNotes(false);
+        }}
+      />
+    );
+  } else {
+    body = (
+      <button
+        type="button"
+        onClick={() => { setNotesInput(project.notes ?? ""); setEditingNotes(true); }}
+        className="w-full text-left text-sm"
+        title={t("projectDetailPage.clickToEditNotes")}
+      >
+        {project.notes ? (
+          <p className="whitespace-pre-wrap text-muted-foreground">{project.notes}</p>
+        ) : (
+          <p className="text-muted-foreground/60 italic">{t("projectDetailPage.addNotes")}</p>
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <CollapsibleSection title={t("projectDetailPage.notes")} defaultOpen={!!project.notes}>
+      {body}
+    </CollapsibleSection>
+  );
+}
+
+function ProjectDetailsCollapsible({
+  project,
+  displayUnit,
+}: {
+  readonly project: ProjectDetail;
+  readonly displayUnit: ReturnType<typeof measurementSystemToUnit>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <CollapsibleSection title={t("projectDetailPage.details")}>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+        <dt className="text-muted-foreground">{t("projectDetailPage.type")}</dt>
+        <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
+        {project.loom_name && (
+          <><dt className="text-muted-foreground">{t("projectDetailPage.loom")}</dt><dd>{project.loom_name}</dd></>
+        )}
+        {project.draft_metadata_overrides?.num_treadles && (
+          <><dt className="text-muted-foreground">{t("projectDetailPage.treadleCount")}</dt>
+          <dd className="flex items-center gap-1.5">
+            {project.draft_num_treadles}
+            <span className="text-xs text-muted-foreground">{t("projectDetailPage.overriddenFrom", { original: project.draft_metadata_overrides.num_treadles.original })}</span>
+          </dd></>
+        )}
+        {project.draft_metadata_overrides?.num_shafts && (
+          <><dt className="text-muted-foreground">{t("projectDetailPage.shaftCount")}</dt>
+          <dd className="flex items-center gap-1.5">
+            {project.draft_num_shafts}
+            <span className="text-xs text-muted-foreground">{t("projectDetailPage.overriddenFrom", { original: project.draft_metadata_overrides.num_shafts.original })}</span>
+          </dd></>
+        )}
+        {project.num_items > 1 && (
+          <><dt className="text-muted-foreground">{t("projectDetailPage.items")}</dt><dd>{project.num_items}</dd></>
+        )}
+        {project.finished_length_per_item && (
+          <><dt className="text-muted-foreground">{t("projectDetailPage.lengthPerItem")}</dt>
+          <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd></>
+        )}
+        {project.warp_waste_allowance && (
+          <><dt className="text-muted-foreground">{t("projectDetailPage.warpWaste")}</dt>
+          <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
+        )}
+        {project.completed_at && (
+          <><dt className="text-muted-foreground">{t("projectDetailPage.completedOn")}</dt>
+          <dd>{new Date(project.completed_at).toLocaleDateString()}</dd></>
+        )}
+      </dl>
+    </CollapsibleSection>
+  );
+}
+
+function ActiveTrackingActionsCollapsible({
+  project,
+  isFinished,
+  actionLoading,
+  confirmComplete,
+  setConfirmComplete,
+  confirmIncomplete,
+  setConfirmIncomplete,
+  confirmAbandon,
+  setConfirmAbandon,
+  onComplete,
+  onForceComplete,
+  onAbandon,
+}: {
+  readonly project: ProjectDetail;
+  readonly isFinished: boolean;
+  readonly actionLoading: boolean;
+  readonly confirmComplete: boolean;
+  readonly setConfirmComplete: (v: boolean) => void;
+  readonly confirmIncomplete: boolean;
+  readonly setConfirmIncomplete: (v: boolean) => void;
+  readonly confirmAbandon: boolean;
+  readonly setConfirmAbandon: (v: boolean) => void;
+  readonly onComplete: () => void;
+  readonly onForceComplete: () => void;
+  readonly onAbandon: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <CollapsibleSection title={t("projectDetailPage.actions")}>
+      <div className="flex flex-wrap gap-2">
+        {!confirmComplete && !confirmIncomplete && !confirmAbandon && (
+          <>
+            <Button
+              variant="success"
+              size="sm"
+              onClick={() => isFinished ? setConfirmComplete(true) : setConfirmIncomplete(true)}
+            >
+              {t("projectDetailPage.markComplete")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
+              {t("projectDetailPage.abandon")}
+            </Button>
+          </>
+        )}
+        {confirmComplete && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
+            <Button size="sm" variant="success" onClick={onComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+          </div>
+        )}
+        {confirmIncomplete && (
+          <div className="space-y-2 w-full">
+            <p className="text-sm text-muted-foreground">
+              {t("projectDetailPage.confirmIncomplete", {
+                current: Math.min(project.current_pick - 1, project.total_picks),
+                total: project.total_picks,
+              })}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="success" onClick={onForceComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirmIncomplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+            </div>
+          </div>
+        )}
+        {confirmAbandon && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-destructive">{t("projectDetailPage.confirmAbandon")}</span>
+            <Button size="sm" onClick={onAbandon} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirmAbandon(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+          </div>
+        )}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+function RestartCollapsible({
+  project,
+  actionLoading,
+  confirmRestart,
+  setConfirmRestart,
+  restartConflict,
+  setRestartConflict,
+  onRestart,
+  onResolveAndRestart,
+}: {
+  readonly project: ProjectDetail;
+  readonly actionLoading: boolean;
+  readonly confirmRestart: boolean;
+  readonly setConfirmRestart: (v: boolean) => void;
+  readonly restartConflict: ProjectSummary | null;
+  readonly setRestartConflict: (v: ProjectSummary | null) => void;
+  readonly onRestart: () => void;
+  readonly onResolveAndRestart: (resolve: "complete" | "abandon") => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <CollapsibleSection title={t("projectDetailPage.actions")}>
+      <div className="space-y-3">
+        {!confirmRestart && !restartConflict && (
+          <Button variant="outline" size="sm" onClick={() => setConfirmRestart(true)}>
+            {t("projectDetailPage.restartProject")}
+          </Button>
+        )}
+        {confirmRestart && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{t("projectDetailPage.resumeFromPick", { pick: project.current_pick })}</span>
+            <Button size="sm" onClick={onRestart} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+          </div>
+        )}
+        {restartConflict && (
+          <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+            <p className="font-medium text-copper-on-subtle">
+              {t("projectDetailPage.loomHasActive")} <span className="font-semibold">{restartConflict.name}</span>
+            </p>
+            <p className="text-copper-on-subtle text-xs">{t("projectDetailPage.resolveToRestart")}</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button type="button" size="sm" onClick={() => onResolveAndRestart("complete")} disabled={actionLoading}>
+                {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.markCompletedAndRestart")}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => onResolveAndRestart("abandon")} disabled={actionLoading}>
+                {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.abandonAndRestart")}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setRestartConflict(null)} disabled={actionLoading}>
+                {t("projectDetailPage.dismiss")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+function CloneCollapsible({
+  actionLoading,
+  confirmClone,
+  setConfirmClone,
+  cloneConflict,
+  setCloneConflict,
+  onClone,
+  onResolveAndClone,
+}: {
+  readonly actionLoading: boolean;
+  readonly confirmClone: boolean;
+  readonly setConfirmClone: (v: boolean) => void;
+  readonly cloneConflict: ProjectSummary | null;
+  readonly setCloneConflict: (v: ProjectSummary | null) => void;
+  readonly onClone: () => void;
+  readonly onResolveAndClone: (resolve: "complete" | "abandon") => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <CollapsibleSection title={t("projectDetailPage.cloneProjectSection")}>
+      <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">{t("projectDetailPage.cloneDesc")}</p>
+        {!confirmClone && !cloneConflict && (
+          <Button variant="outline" size="sm" onClick={() => setConfirmClone(true)}>
+            {t("projectDetailPage.cloneProjectButton")}
+          </Button>
+        )}
+        {confirmClone && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{t("projectDetailPage.confirmCloneQuestion")}</span>
+            <Button size="sm" onClick={onClone} disabled={actionLoading}>{actionLoading ? t("projectDetailPage.cloning") : t("projectDetailPage.confirm")}</Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirmClone(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+          </div>
+        )}
+        {cloneConflict && (
+          <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+            <p className="font-medium text-copper-on-subtle">
+              {t("projectDetailPage.loomHasActive")} <span className="font-semibold">{cloneConflict.name}</span>
+            </p>
+            <p className="text-copper-on-subtle text-xs">{t("projectDetailPage.resolveToClone")}</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button type="button" size="sm" onClick={() => onResolveAndClone("complete")} disabled={actionLoading}>
+                {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.markCompletedAndClone")}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => onResolveAndClone("abandon")} disabled={actionLoading}>
+                {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.abandonAndClone")}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setCloneConflict(null)} disabled={actionLoading}>
+                {t("projectDetailPage.dismiss")}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
+function DangerZoneCollapsible({
+  actionLoading,
+  confirmDelete,
+  setConfirmDelete,
+  onDelete,
+}: {
+  readonly actionLoading: boolean;
+  readonly confirmDelete: boolean;
+  readonly setConfirmDelete: (v: boolean) => void;
+  readonly onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <CollapsibleSection title={t("projectDetailPage.dangerZone")}>
+      {!confirmDelete ? (
+        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>
+          {t("projectDetailPage.deleteProject")}
+        </Button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-destructive">
+            {t("projectDetailPage.deleteProjectConfirm")}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={actionLoading}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            size="sm"
+            onClick={onDelete}
+            disabled={actionLoading}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {actionLoading ? t("projectDetailPage.deleting") : t("projectDetailPage.confirmDelete")}
+          </Button>
+        </div>
+      )}
+    </CollapsibleSection>
+  );
+}
+
+interface DetailsSettingsPanelProps {
+  readonly project: ProjectDetail;
+  readonly id: string;
+  readonly isReadOnly: boolean;
+  readonly isAbandoned: boolean;
+  readonly isCompleted: boolean;
+  readonly isActiveTracking: boolean;
+  readonly isFinished: boolean;
+  readonly metrics: ProjectMetrics | undefined;
+  readonly displayUnit: ReturnType<typeof measurementSystemToUnit>;
+  readonly queryClient: ReturnType<typeof useQueryClient>;
+  readonly panelOpen: boolean;
+  readonly setPanelOpen: (v: boolean) => void;
+  readonly actionLoading: boolean;
+  readonly tracker: ReturnType<typeof useProjectTracker>;
+}
+
+function DetailsSettingsPanel({
+  project, id, isReadOnly, isAbandoned, isCompleted, isActiveTracking, isFinished, metrics, displayUnit, queryClient,
+  panelOpen, setPanelOpen, actionLoading, tracker,
+}: DetailsSettingsPanelProps) {
+  const { t } = useTranslation();
+  return (
+    <div className="shrink-0 border-t bg-card">
+      <button
+        type="button"
+        onClick={() => {
+          const next = !panelOpen;
+          setPanelOpen(next);
+          localStorage.setItem("proj-view:panelOpen", String(next));
+        }}
+        className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+        aria-expanded={panelOpen}
+      >
+        {t("projectDetailPage.detailsSettings")}
+        <AppIcons.ChevronDown
+          className={`h-4 w-4 transition-transform duration-200 ${panelOpen ? "" : "-rotate-90"}`}
+        />
+      </button>
+      {panelOpen && (
+        <div className="overflow-y-auto max-h-[55dvh] border-t border-border/50">
+          <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0">
+            {(!isCompleted || isReadOnly) && (
+              <CollapsibleSection title={t("projectDetailPage.photosSection", { count: project.photos.length })} defaultOpen={isAbandoned}>
+                <PhotoGrid
+                  projectId={project.id}
+                  photos={project.photos}
+                  readOnly={isReadOnly}
+                  onUploaded={(p) =>
+                    queryClient.setQueryData<ProjectDetail>(["project", id], (old) =>
+                      old ? { ...old, photos: [...old.photos, p] } : old
+                    )
+                  }
+                  onDeleted={(photoId) =>
+                    queryClient.setQueryData<ProjectDetail>(["project", id], (old) =>
+                      old ? { ...old, photos: old.photos.filter((ph) => ph.id !== photoId) } : old
+                    )
+                  }
+                />
+              </CollapsibleSection>
+            )}
+
+            {metrics && (
+              <CollapsibleSection title={t("projectDetailPage.sessionMetrics")}>
+                <SessionMetricsPanel metrics={metrics} />
+              </CollapsibleSection>
+            )}
+
+            <NotesCollapsible project={project} id={id} isReadOnly={isReadOnly} queryClient={queryClient} />
+
+            <ProjectDetailsCollapsible project={project} displayUnit={displayUnit} />
+
+            {!isReadOnly && isActiveTracking && (
+              <ActiveTrackingActionsCollapsible
+                project={project}
+                isFinished={isFinished}
+                actionLoading={actionLoading}
+                confirmComplete={tracker.confirmComplete}
+                setConfirmComplete={tracker.setConfirmComplete}
+                confirmIncomplete={tracker.confirmIncomplete}
+                setConfirmIncomplete={tracker.setConfirmIncomplete}
+                confirmAbandon={tracker.confirmAbandon}
+                setConfirmAbandon={tracker.setConfirmAbandon}
+                onComplete={tracker.handleComplete}
+                onForceComplete={tracker.handleForceComplete}
+                onAbandon={tracker.handleAbandon}
+              />
+            )}
+
+            {!isReadOnly && project.status === "abandoned" && (
+              <RestartCollapsible
+                project={project}
+                actionLoading={actionLoading}
+                confirmRestart={tracker.confirmRestart}
+                setConfirmRestart={tracker.setConfirmRestart}
+                restartConflict={tracker.restartConflict}
+                setRestartConflict={tracker.setRestartConflict}
+                onRestart={tracker.handleRestart}
+                onResolveAndRestart={tracker.handleResolveAndRestart}
+              />
+            )}
+
+            {!isReadOnly && (
+              <CloneCollapsible
+                actionLoading={actionLoading}
+                confirmClone={tracker.confirmClone}
+                setConfirmClone={tracker.setConfirmClone}
+                cloneConflict={tracker.cloneConflict}
+                setCloneConflict={tracker.setCloneConflict}
+                onClone={tracker.handleClone}
+                onResolveAndClone={tracker.handleResolveAndClone}
+              />
+            )}
+
+            {!isReadOnly && (
+              <DangerZoneCollapsible
+                actionLoading={actionLoading}
+                confirmDelete={tracker.confirmDelete}
+                setConfirmDelete={tracker.setConfirmDelete}
+                onDelete={tracker.handleDelete}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// View settings drawer
+// ---------------------------------------------------------------------------
+
+interface ViewToggleRow {
+  label: string;
+  value: boolean;
+  key: string;
+  setter: (v: boolean) => void;
+  disabled?: boolean;
+  disabledTitle?: string;
+}
+
+function ViewToggleSwitch({ row }: { readonly row: ViewToggleRow }) {
+  const { label, value, key, setter, disabled, disabledTitle } = row;
+  return (
+    <div className={`flex items-center justify-between${disabled ? " opacity-40" : ""}`} title={disabled ? disabledTitle : undefined}>
+      <span className="text-sm">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        disabled={disabled}
+        onClick={() => { setter(!value); localStorage.setItem(key, String(!value)); }}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-1"}`} />
+      </button>
+    </div>
+  );
+}
+
+function trailingUnitLabel(t: ReturnType<typeof useTranslation>["t"], isLift: boolean, count: number): string {
+  if (count === 1) return isLift ? t("projectDetailPage.shaft") : t("projectDetailPage.treadle");
+  return isLift ? t("projectDetailPage.shafts") : t("projectDetailPage.treadles");
+}
+
+function TrailingUnusedToggle({
+  project,
+  trailingUnused,
+  hideTrailingUnused,
+  setHideTrailingUnused,
+}: {
+  readonly project: ProjectDetail;
+  readonly trailingUnused: number;
+  readonly hideTrailingUnused: boolean;
+  readonly setHideTrailingUnused: (v: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const isLift = project.project_type === "lift";
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {isLift ? t("projectDetailPage.shaftDisplay") : t("projectDetailPage.treadleDisplay")}
+      </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm">
+            {t("projectDetailPage.hideUnused", { type: isLift ? t("projectDetailPage.shafts") : t("projectDetailPage.treadles") })}
+          </span>
+          <p className="text-xs text-muted-foreground">
+            {t("projectDetailPage.unusedTrailing", { count: trailingUnused, type: trailingUnitLabel(t, isLift, trailingUnused) })}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={hideTrailingUnused}
+          onClick={() => {
+            const next = !hideTrailingUnused;
+            setHideTrailingUnused(next);
+            localStorage.setItem("proj-view:hideTrailingUnused", String(next));
+          }}
+          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${hideTrailingUnused ? "bg-primary" : "bg-input"}`}
+        >
+          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${hideTrailingUnused ? "translate-x-4" : "translate-x-1"}`} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ColorModeSelector({
+  colorMode,
+  setColorMode,
+  hasWeftColors,
+}: {
+  readonly colorMode: ColorMode;
+  readonly setColorMode: (m: ColorMode) => void;
+  readonly hasWeftColors: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("projectDetailPage.colorMode")}</p>
+      <div className="inline-flex rounded-md border border-input overflow-hidden text-sm w-full">
+        {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
+          <button
+            type="button"
+            key={mode}
+            onClick={() => { setColorMode(mode); localStorage.setItem("proj-view:colorMode", mode); }}
+            className={`flex-1 px-2.5 py-1.5 capitalize transition-colors ${
+              colorMode === mode
+                ? "bg-primary text-primary-foreground"
+                : "bg-background text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {mode}
+          </button>
+        ))}
+      </div>
+      {!hasWeftColors && (
+        <p className="text-xs text-muted-foreground">{t("projectDetailPage.noWeftColors")}</p>
+      )}
+    </div>
+  );
+}
+
+interface ViewSettingsDrawerProps {
+  readonly onClose: () => void;
+  readonly viewPrefs: ReturnType<typeof useTrackerViewPrefs>;
+  readonly user: ReturnType<typeof useAuthContext>["user"];
+  readonly project: ProjectDetail;
+  readonly trailingUnused: number;
+  readonly hasWeftColors: boolean;
+}
+
+function ViewSettingsDrawer({ onClose, viewPrefs, user, project, trailingUnused, hasWeftColors }: ViewSettingsDrawerProps) {
+  const { t } = useTranslation();
+
+  const toggleRows: ViewToggleRow[] = [
+    {
+      label: t("projectDetailPage.progressBar"),
+      value: viewPrefs.showProgress,
+      key: "proj-view:showProgress",
+      setter: viewPrefs.setShowProgress,
+      disabled: user?.activity_theme === "compact",
+      disabledTitle: t("settings.appearance.hiddenInCompact"),
+    },
+    { label: t("projectDetailPage.drawdownPattern"), value: viewPrefs.showDrawdown, key: "proj-view:showDrawdown", setter: viewPrefs.setShowDrawdown },
+    { label: t("projectDetailPage.weftColorToggle"), value: viewPrefs.showWeftColor, key: "proj-view:showWeftColor", setter: viewPrefs.setShowWeftColor },
+    { label: t("projectDetailPage.prevNextCards"), value: viewPrefs.showPickCards, key: "proj-view:showPickCards", setter: viewPrefs.setShowPickCards },
+  ];
+
+  return (
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close"
+        className="fixed inset-0 z-40 bg-black/40"
+        onClick={onClose}
+        onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
+      />
+      <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <span className="text-sm font-semibold">{t("projectDetailPage.viewSettings")}</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Close settings"
+          >
+            <AppIcons.Close className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+          <div className="space-y-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("projectDetailPage.showHide")}</p>
+            {toggleRows.map((row) => <ViewToggleSwitch key={row.label} row={row} />)}
+          </div>
+
+          {trailingUnused > 0 && (
+            <TrailingUnusedToggle
+              project={project}
+              trailingUnused={trailingUnused}
+              hideTrailingUnused={viewPrefs.hideTrailingUnused}
+              setHideTrailingUnused={viewPrefs.setHideTrailingUnused}
+            />
+          )}
+
+          <ColorModeSelector colorMode={viewPrefs.colorMode} setColorMode={viewPrefs.setColorMode} hasWeftColors={hasWeftColors} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function ProjectDetailPage() {
+  const { t } = useTranslation();
+  const { id } = useParams<{ id: string }>();
+  const { user } = useAuthContext();
+  const displayUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showDesignPreview, setShowDesignPreview] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [showAssignLoom, setShowAssignLoom] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  const { isPresent, isSupported: presentModeSupported, toggle: togglePresentMode } = usePresentMode();
+
+  const tracker = useProjectTracker(id, showAssignLoom);
+  const viewPrefs = useTrackerViewPrefs(user);
+
+  const {
+    project, picksData, allProjects, isLoading, error,
+    isPlanning, isCompleted,
+    stepping, actionLoading, trackerLocked, localPick, isOnline,
+    invalidate, queryClient,
+    handleJump, handleStep, handleLocalStep, handleLocalJump,
+    handleTakeOverTracking,
+    handleAdvanceItem, handleJumpItem,
+  } = tracker;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isPlanning) {
+        if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); handleLocalStep("advance"); }
+        if (e.key === "ArrowLeft") { e.preventDefault(); handleLocalStep("reverse"); }
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); handleStep("advance"); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); handleStep("reverse"); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleStep, handleLocalStep, isPlanning]);
+
   if (isLoading) return (
     <div className="flex min-h-screen items-center justify-center">
       <p className="text-sm text-muted-foreground">{t("projectDetailPage.loading")}</p>
@@ -1468,7 +2920,7 @@ export function ProjectDetailPage() {
   // Count of trailing unused boxes (never used in any pick, counting from the top).
   const trailingUnused = maxActive > maxUsed ? maxActive - maxUsed : 0;
   // Effective box count shown: when hiding trailing, shrink to maxUsed.
-  const displayCount = hideTrailingUnused && trailingUnused > 0 ? maxUsed : maxActive;
+  const displayCount = viewPrefs.hideTrailingUnused && trailingUnused > 0 ? maxUsed : maxActive;
 
   const isMultiItem = project.num_items > 1;
   const isOnLastItem = project.current_item >= project.num_items;
@@ -1480,681 +2932,132 @@ export function ProjectDetailPage() {
   const isReadOnly = !!user?.is_superuser && project.owner_id !== user.id;
 
   // Badge for planning vs active
-  const badgeClasses = isPlanning
-    ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-    : project.status === "active"
-      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-      : "bg-muted text-muted-foreground";
+  const badgeClasses = siblingBadgeClass(isPlanning, project.status);
   const badgeLabel = isPlanning ? t("projectDetailPage.plan") : PROJECT_STATUS_LABELS[project.status];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {isReadOnly && <SuperuserInspectionBanner />}
-      {/* Page header */}
-      <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
-          <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
-            {project.loom_id && (
-              <>
-                <Link to="/looms" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.equipment")}</Link>
-                <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-              </>
-            )}
-            <Link to="/drafts" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.drafts")}</Link>
-            <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            <Link to="/projects" className="text-muted-foreground hover:text-foreground">{t("projectDetailPage.projects")}</Link>
-            <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            <Link to={`/projects/${project.id}`} className="text-muted-foreground hover:text-foreground truncate max-w-[12rem]">{project.name}</Link>
-            <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-          {isReadOnly ? (
-            <span className="font-semibold truncate">{project.name}</span>
-          ) : editingName ? (
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const trimmed = nameInput.trim();
-                if (!trimmed) { setEditingName(false); return; }
-                const updated = await renameProject(id!, trimmed);
-                queryClient.setQueryData<typeof project>(["project", id], (old) =>
-                  old ? { ...updated, photos: old.photos } : updated
-                );
-                queryClient.invalidateQueries({ queryKey: ["projects"] });
-                setEditingName(false);
-              }}
-              className="flex items-center gap-2 min-w-0"
-            >
-              <input
-                autoFocus
-                className="rounded border border-input bg-background px-2 py-0.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-ring"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Escape") setEditingName(false); }}
-                onBlur={async () => {
-                  const trimmed = nameInput.trim();
-                  if (trimmed && trimmed !== project.name) {
-                    const updated = await renameProject(id!, trimmed);
-                    queryClient.setQueryData<typeof project>(["project", id], (old) =>
-                      old ? { ...updated, photos: old.photos } : updated
-                    );
-                    queryClient.invalidateQueries({ queryKey: ["projects"] });
-                  }
-                  setEditingName(false);
-                }}
-              />
-            </form>
-          ) : (
-            <button
-              type="button"
-              onClick={() => { setNameInput(project.name); setEditingName(true); }}
-              className="font-semibold hover:underline decoration-dashed underline-offset-2 cursor-text truncate"
-              title={t("projectDetailPage.clickToRename")}
-            >
-              {project.name}
-            </button>
-          )}
-          <span className="text-sm text-muted-foreground truncate hidden sm:block">{project.draft_name}</span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowDesignPreview(true)}
-            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
-            title={t("projectDetailPage.viewDesignTitle")}
-          >
-            {t("projectDetailPage.viewDesign")}
-          </button>
-          <Link
-            to={`/projects/${project.id}/warping-plan`}
-            className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hidden sm:inline-flex items-center gap-1"
-            title={t("projectDetailPage.weavePlanTitle")}
-          >
-            {t("projectDetailPage.weavePlan")}
-          </Link>
-          {!isReadOnly && (
-            <button
-              type="button"
-              onClick={() => setShareModalOpen(true)}
-              className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title={t("projectDetailPage.shareProject")}
-              aria-label={t("projectDetailPage.shareProject")}
-            >
-              <AppIcons.Share className="h-4 w-4" />
-            </button>
-          )}
-          {!isReadOnly && (
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title={t("projectDetailPage.viewSettings")}
-              aria-label={t("projectDetailPage.viewSettings")}
-            >
-              <AppIcons.Settings className="h-4 w-4" />
-            </button>
-          )}
-          <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
-            {badgeLabel}
-          </span>
-          {!isReadOnly && project.share_slug && project.share_visibility !== "private" && (
-            <button
-              type="button"
-              onClick={() => setShareModalOpen(true)}
-              className="rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
-              title={t("projectDetailPage.projectSharedManage")}
-            >
-              <AppIcons.Share className="h-3 w-3" />
-              {t("projectDetailPage.shared")}
-            </button>
-          )}
-          {presentModeSupported && (
-            <button
-              type="button"
-              onClick={togglePresentMode}
-              className="ml-3 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
-              aria-label={isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
-            >
-              {isPresent
-                ? <AppIcons.ExitPresentMode className="h-4 w-4" />
-                : <AppIcons.PresentMode className="h-4 w-4" />}
-            </button>
-          )}
-        </div>
-      </div>
+
+      <ProjectPageHeader
+        project={project}
+        isReadOnly={isReadOnly}
+        id={id!}
+        queryClient={queryClient}
+        nameInput={nameInput}
+        setNameInput={setNameInput}
+        editingName={editingName}
+        setEditingName={setEditingName}
+        onShowDesignPreview={() => setShowDesignPreview(true)}
+        onShareModal={() => setShareModalOpen(true)}
+        onSettingsOpen={() => setSettingsOpen(true)}
+        presentModeSupported={presentModeSupported}
+        isPresent={isPresent}
+        togglePresentMode={togglePresentMode}
+        badgeClasses={badgeClasses}
+        badgeLabel={badgeLabel}
+      />
 
       {/* Main content — fills remaining height; overflow-hidden prevents any page scroll */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        {/* Completed summary */}
         {isCompleted && (
           <CompletedSummary
             project={project}
-            siblings={siblingProjects.filter((s) => s.id !== id)}
+            siblings={tracker.siblingProjects.filter((s) => s.id !== id)}
             onPhotosChange={(photos) =>
               queryClient.setQueryData(["project", id], { ...project, photos })
             }
           />
         )}
 
-        {/* Planning banner */}
-        {isPlanning && (
-          <div className="mx-auto max-w-2xl px-8 pt-6">
-            <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 text-sm overflow-hidden">
-              <div className="px-4 py-3">
-                <p className="font-medium text-blue-900 dark:text-blue-200">{t("projectDetailPage.planningMode")}</p>
-                <p className="mt-0.5 text-xs text-blue-800 dark:text-blue-300">{t("projectDetailPage.assignLoomToStart")}</p>
-              </div>
-              <div className="border-t border-blue-200 dark:border-blue-800 px-3 pb-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAssignLoom(true)}
-                  className="w-full rounded-md border border-dashed border-blue-300 dark:border-blue-700 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-300 transition-colors hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:text-blue-900 dark:hover:text-blue-200"
-                >
-                  {t("projectDetailPage.assignToLoom")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {isPlanning && <PlanningBanner onAssignLoom={() => setShowAssignLoom(true)} />}
 
-        {/* Abandoned banner */}
-        {isAbandoned && (
-          <div className="mx-auto max-w-2xl px-8 pt-6">
-            <div className="rounded-md border border-copper-subtle bg-copper-subtle px-4 py-3 text-sm">
-              <p className="font-medium text-copper-on-subtle">{t("projectDetailPage.notCompleted")}</p>
-              <p className="mt-0.5 text-xs text-copper-on-subtle">
-                {t("projectDetailPage.abandonedAt", { current: project.current_pick, total: project.total_picks, pct: Math.round((project.current_pick - 1) / project.total_picks * 100) })}
-                {project.abandoned_at && ` · ${new Date(project.abandoned_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}`}
-              </p>
-            </div>
-          </div>
-        )}
+        {isAbandoned && <AbandonedBanner project={project} />}
 
-        {/* Progress bar + item indicator */}
-        {showProgress && !isPlanning && !isCompleted && user?.activity_theme !== "compact" && (
-          <div className="w-full px-8 pt-6">
-            {isMultiItem && (
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: project.num_items }, (_, i) => (
-                    <button
-                      type="button"
-                      key={i}
-                      onClick={() => isActiveTracking && handleJumpItem(i + 1)}
-                      disabled={!isActiveTracking || actionLoading || trackerLocked}
-                      title={t("projectDetailPage.jumpToItem", { n: i + 1 })}
-                      className={`h-2.5 rounded-full transition-all ${
-                        i + 1 === project.current_item
-                          ? "w-6 bg-primary"
-                          : i + 1 < project.current_item
-                          ? "w-2.5 bg-primary/40"
-                          : "w-2.5 bg-muted-foreground/30"
-                      } ${isActiveTracking && !actionLoading && !trackerLocked ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs text-muted-foreground font-medium">
-                  {t("projectDetailPage.itemNofM", { current: project.current_item, total: project.num_items })}
-                </span>
-              </div>
-            )}
-            <ProgressBar current={project.current_pick} total={project.total_picks} />
-          </div>
+        {viewPrefs.showProgress && !isPlanning && !isCompleted && user?.activity_theme !== "compact" && (
+          <ProgressSection
+            project={project}
+            isMultiItem={isMultiItem}
+            isActiveTracking={isActiveTracking}
+            actionLoading={actionLoading}
+            trackerLocked={trackerLocked}
+            onJumpItem={handleJumpItem}
+          />
         )}
 
         {/* Pick instruction — full width so treadle/lift boxes use available space */}
-        {!isCompleted && showPickDisplay && <div className="w-full px-8 pt-4">
-          {isAtItemEnd ? (
-            <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-lg font-medium">{t("projectDetailPage.itemComplete", { n: project.current_item })}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("projectDetailPage.picksDoneReadyNext", { picks: project.total_picks, next: project.current_item + 1, total: project.num_items })}
-              </p>
-              {isActiveTracking && (
-                <div className="mt-6">
-                  <Button variant="success" onClick={handleAdvanceItem} disabled={actionLoading || trackerLocked}>
-                    {actionLoading ? "…" : t("projectDetailPage.startItem", { n: project.current_item + 1 })}
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : isFinished ? (
-            <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-lg font-medium">
-                {isMultiItem ? t("projectDetailPage.allItemsComplete", { n: project.num_items }) : t("projectDetailPage.allPicksComplete", { n: project.total_picks })}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("projectDetailPage.markAsDone")}
-              </p>
-              {isActiveTracking && (
-                <div className="mt-6">
-                  {!confirmComplete ? (
-                    <Button variant="success" onClick={() => setConfirmComplete(true)}>{t("projectDetailPage.markComplete")}</Button>
-                  ) : (
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
-                      <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-                      <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : picksData ? (
-            showPickCards ? (
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr] gap-3 items-center w-full">
-                {/* Prev pick card — desktop only */}
-                <div className="hidden md:block">
-                  {currentPickIndex > 0 ? (
-                    <div>
-                      <p className="text-xs text-muted-foreground text-center mb-1.5">{t("projectDetailPage.prevPickLabel", { n: picksData.picks[currentPickIndex - 1].pick })}</p>
-                      <PickDisplay
-                        pick={picksData.picks[currentPickIndex - 1]}
-                        totalCount={displayCount}
-                        projectType={project.project_type}
-                        colorMode={colorMode}
-                        showWeftColor={false}
-                        compact
-                      />
-                    </div>
-                  ) : <div className="h-20" />}
-                </div>
-                {/* Current pick */}
-                <PickDisplay
-                  pick={picksData.picks[currentPickIndex]}
-                  totalCount={displayCount}
-                  projectType={project.project_type}
-                  colorMode={colorMode}
-                  showWeftColor={showWeftColor}
-                />
-                {/* Next pick card — desktop only */}
-                <div className="hidden md:block">
-                  {currentPickIndex < picksData.picks.length - 1 ? (
-                    <div>
-                      <p className="text-xs text-muted-foreground text-center mb-1.5">{t("projectDetailPage.nextPickLabel", { n: picksData.picks[currentPickIndex + 1].pick })}</p>
-                      <PickDisplay
-                        pick={picksData.picks[currentPickIndex + 1]}
-                        totalCount={displayCount}
-                        projectType={project.project_type}
-                        colorMode={colorMode}
-                        showWeftColor={false}
-                        compact
-                      />
-                    </div>
-                  ) : <div className="h-20" />}
-                </div>
-              </div>
-            ) : (
-              <PickDisplay
-                pick={picksData.picks[currentPickIndex]}
-                totalCount={displayCount}
-                projectType={project.project_type}
-                colorMode={colorMode}
-                showWeftColor={showWeftColor}
-              />
-            )
-          ) : (
-            <div className="mx-auto max-w-lg rounded-lg border border-dashed p-10 text-center">
-              <p className="text-sm text-muted-foreground">{t("projectDetailPage.pickDataLoading")}</p>
-            </div>
-          )}
-        </div>}
+        {!isCompleted && viewPrefs.showPickDisplay && (
+          <div className="w-full px-8 pt-4">
+            <PickInstructionSection
+              project={project}
+              picksData={picksData}
+              isAtItemEnd={isAtItemEnd}
+              isFinished={isFinished}
+              isMultiItem={isMultiItem}
+              isActiveTracking={isActiveTracking}
+              actionLoading={actionLoading}
+              trackerLocked={trackerLocked}
+              confirmComplete={tracker.confirmComplete}
+              setConfirmComplete={tracker.setConfirmComplete}
+              onAdvanceItem={handleAdvanceItem}
+              onComplete={tracker.handleComplete}
+              currentPickIndex={currentPickIndex}
+              displayCount={displayCount}
+              colorMode={viewPrefs.colorMode}
+              showWeftColor={viewPrefs.showWeftColor}
+              showPickCards={viewPrefs.showPickCards}
+            />
+          </div>
+        )}
 
         {/* Spacer — always consumes remaining height so step controls stay pinned to bottom */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          {/* Pattern view — wider on large screens to show more warp threads */}
-          {showDrawdown && picksData && !isFinished && !isAtItemEnd && !isCompleted && !isAbandoned && (
-            <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
-              <WeavingPatternView
-                projectId={project.id}
-                currentPickIndex={currentPickIndex}
-                totalPicks={project.total_picks}
-                picks={picksData.picks}
-                maxActive={displayCount}
-              />
-            </div>
-          )}
+        <PatternSection
+          project={project}
+          picksData={picksData}
+          currentPickIndex={currentPickIndex}
+          displayCount={displayCount}
+          showDrawdown={viewPrefs.showDrawdown}
+          isFinished={isFinished}
+          isAtItemEnd={isAtItemEnd}
+          isCompleted={isCompleted}
+          isAbandoned={isAbandoned}
+        />
 
-          {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
-          {isAbandoned && (
-            <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
-              <AbandonedDrawdownView
-                draftId={project.draft_id}
-                currentPick={project.current_pick}
-                totalPicks={project.total_picks}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Step controls — active tracking and planning */}
-        <div className="w-full px-4 pb-6">
-          {!isReadOnly && trackerLocked && !isPlanning && (
-            <div className="mb-4 rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
-              <p className="font-medium text-copper-on-subtle">{t("projectDetailPage.trackerLockedElsewhere")}</p>
-              <Button type="button" size="sm" onClick={handleTakeOverTracking} disabled={actionLoading}>
-                {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.takeOverTracking")}
-              </Button>
-            </div>
-          )}
-
-          {!isReadOnly && (isActiveTracking || isPlanning) && (
-            <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8 mb-4">
-              {/* Left 1/3 on desktop, below step buttons on mobile */}
-              <div className="order-2 lg:order-1 lg:flex lg:justify-center">
-                <JumpToPick
-                  total={project.total_picks}
-                  onJump={isPlanning ? handleLocalJump : handleJump}
-                  disabled={stepping || (!isPlanning && !isOnline) || (!isPlanning && trackerLocked)}
-                />
-              </div>
-              {/* Center 1/3 on desktop, top on mobile */}
-              <div className="order-1 lg:order-2 flex justify-center">
-                <StepControls
-                  currentPick={displayPick}
-                  total={project.total_picks}
-                  onStep={isPlanning ? handleLocalStep : handleStep}
-                  onJump={isPlanning ? handleLocalJump : handleJump}
-                  stepping={stepping || (!isPlanning && trackerLocked)}
-                  jumpDisabled={!isPlanning && (!isOnline || trackerLocked)}
-                />
-              </div>
-              {/* Right 1/3 reserved for future use */}
-              <div className="hidden lg:block lg:order-3" />
-            </div>
-          )}
-
-          {!isReadOnly && (isActiveTracking || isPlanning) && (
-            <p className="text-center text-sm text-muted-foreground">
-              {t("projectDetailPage.arrowKeysHint")}
-            </p>
-          )}
-        </div>
-
+        <StepControlsSection
+          isReadOnly={isReadOnly}
+          trackerLocked={trackerLocked}
+          isPlanning={isPlanning}
+          isActiveTracking={isActiveTracking}
+          actionLoading={actionLoading}
+          onTakeOverTracking={handleTakeOverTracking}
+          project={project}
+          displayPick={displayPick}
+          stepping={stepping}
+          isOnline={isOnline}
+          handleLocalJump={handleLocalJump}
+          handleJump={handleJump}
+          handleLocalStep={handleLocalStep}
+          handleStep={handleStep}
+        />
       </div>
 
       {/* Details & settings panel — toggle bar always visible; sections scroll when open */}
-      <div className="shrink-0 border-t bg-card">
-        <button
-          type="button"
-          onClick={() => {
-            const next = !panelOpen;
-            setPanelOpen(next);
-            localStorage.setItem("proj-view:panelOpen", String(next));
-          }}
-          className="flex w-full items-center justify-between px-6 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
-          aria-expanded={panelOpen}
-        >
-          {t("projectDetailPage.detailsSettings")}
-          <AppIcons.ChevronDown
-            className={`h-4 w-4 transition-transform duration-200 ${panelOpen ? "" : "-rotate-90"}`}
-          />
-        </button>
-        {panelOpen && (
-          <div className="overflow-y-auto max-h-[55dvh] border-t border-border/50">
-            <div className="mx-auto max-w-2xl px-8 pb-10 space-y-0">
-          {(!isCompleted || isReadOnly) && (
-            <CollapsibleSection title={t("projectDetailPage.photosSection", { count: project.photos.length })} defaultOpen={isAbandoned}>
-              <PhotoGrid
-                projectId={project.id}
-                photos={project.photos}
-                readOnly={isReadOnly}
-                onUploaded={(p) =>
-                  queryClient.setQueryData<typeof project>(["project", id], (old) =>
-                    old ? { ...old, photos: [...old.photos, p] } : old
-                  )
-                }
-                onDeleted={(photoId) =>
-                  queryClient.setQueryData<typeof project>(["project", id], (old) =>
-                    old ? { ...old, photos: old.photos.filter((ph) => ph.id !== photoId) } : old
-                  )
-                }
-              />
-            </CollapsibleSection>
-          )}
-
-          {metrics && (
-            <CollapsibleSection title={t("projectDetailPage.sessionMetrics")}>
-              <SessionMetricsPanel metrics={metrics} />
-            </CollapsibleSection>
-          )}
-
-          <CollapsibleSection title={t("projectDetailPage.notes")} defaultOpen={!!project.notes}>
-            {isReadOnly ? (
-              project.notes ? (
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground">{project.notes}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground/60 italic">{t("projectDetailPage.noNotes")}</p>
-              )
-            ) : editingNotes ? (
-              <textarea
-                autoFocus
-                className="w-full rounded border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-                rows={4}
-                value={notesInput}
-                onChange={(e) => setNotesInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Escape") setEditingNotes(false); }}
-                onBlur={async () => {
-                  const trimmed = notesInput.trim();
-                  const current = project.notes ?? "";
-                  if (trimmed !== current) {
-                    const updated = await updateProjectNotes(id!, trimmed || null);
-                    queryClient.setQueryData<typeof project>(["project", id], (old) =>
-                      old ? { ...updated, photos: old.photos } : updated
-                    );
-                  }
-                  setEditingNotes(false);
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => { setNotesInput(project.notes ?? ""); setEditingNotes(true); }}
-                className="w-full text-left text-sm"
-                title={t("projectDetailPage.clickToEditNotes")}
-              >
-                {project.notes ? (
-                  <p className="whitespace-pre-wrap text-muted-foreground">{project.notes}</p>
-                ) : (
-                  <p className="text-muted-foreground/60 italic">{t("projectDetailPage.addNotes")}</p>
-                )}
-              </button>
-            )}
-          </CollapsibleSection>
-
-          <CollapsibleSection title={t("projectDetailPage.details")}>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">{t("projectDetailPage.type")}</dt>
-              <dd>{PROJECT_TYPE_LABELS[project.project_type]}</dd>
-              {project.loom_name && (
-                <><dt className="text-muted-foreground">{t("projectDetailPage.loom")}</dt><dd>{project.loom_name}</dd></>
-              )}
-              {project.draft_metadata_overrides?.num_treadles && (
-                <><dt className="text-muted-foreground">{t("projectDetailPage.treadleCount")}</dt>
-                <dd className="flex items-center gap-1.5">
-                  {project.draft_num_treadles}
-                  <span className="text-xs text-muted-foreground">{t("projectDetailPage.overriddenFrom", { original: project.draft_metadata_overrides.num_treadles.original })}</span>
-                </dd></>
-              )}
-              {project.draft_metadata_overrides?.num_shafts && (
-                <><dt className="text-muted-foreground">{t("projectDetailPage.shaftCount")}</dt>
-                <dd className="flex items-center gap-1.5">
-                  {project.draft_num_shafts}
-                  <span className="text-xs text-muted-foreground">{t("projectDetailPage.overriddenFrom", { original: project.draft_metadata_overrides.num_shafts.original })}</span>
-                </dd></>
-              )}
-              {project.num_items > 1 && (
-                <><dt className="text-muted-foreground">{t("projectDetailPage.items")}</dt><dd>{project.num_items}</dd></>
-              )}
-              {project.finished_length_per_item && (
-                <><dt className="text-muted-foreground">{t("projectDetailPage.lengthPerItem")}</dt>
-                <dd>{displayLength(project.finished_length_per_item, project.length_unit, displayUnit)}</dd></>
-              )}
-              {project.warp_waste_allowance && (
-                <><dt className="text-muted-foreground">{t("projectDetailPage.warpWaste")}</dt>
-                <dd>{displayLength(project.warp_waste_allowance, project.length_unit, displayUnit)}</dd></>
-              )}
-              {project.completed_at && (
-                <><dt className="text-muted-foreground">{t("projectDetailPage.completedOn")}</dt>
-                <dd>{new Date(project.completed_at).toLocaleDateString()}</dd></>
-              )}
-            </dl>
-          </CollapsibleSection>
-
-          {/* Active tracking: complete / abandon */}
-          {!isReadOnly && isActiveTracking && (
-            <CollapsibleSection title={t("projectDetailPage.actions")}>
-              <div className="flex flex-wrap gap-2">
-                {!confirmComplete && !confirmIncomplete && !confirmAbandon && (
-                  <>
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={() => isFinished ? setConfirmComplete(true) : setConfirmIncomplete(true)}
-                    >
-                      {t("projectDetailPage.markComplete")}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
-                      {t("projectDetailPage.abandon")}
-                    </Button>
-                  </>
-                )}
-                {confirmComplete && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
-                    <Button size="sm" variant="success" onClick={handleComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-                    <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-                  </div>
-                )}
-                {confirmIncomplete && (
-                  <div className="space-y-2 w-full">
-                    <p className="text-sm text-muted-foreground">
-                      {t("projectDetailPage.confirmIncomplete", {
-                        current: Math.min(project.current_pick - 1, project.total_picks),
-                        total: project.total_picks,
-                      })}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="success" onClick={handleForceComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-                      <Button size="sm" variant="outline" onClick={() => setConfirmIncomplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-                    </div>
-                  </div>
-                )}
-                {confirmAbandon && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-destructive">{t("projectDetailPage.confirmAbandon")}</span>
-                    <Button size="sm" onClick={handleAbandon} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-                    <Button size="sm" variant="outline" onClick={() => setConfirmAbandon(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-                  </div>
-                )}
-              </div>
-            </CollapsibleSection>
-          )}
-
-          {!isReadOnly && project.status === "abandoned" && (
-            <CollapsibleSection title={t("projectDetailPage.actions")}>
-              <div className="space-y-3">
-                {!confirmRestart && !restartConflict && (
-                  <Button variant="outline" size="sm" onClick={() => setConfirmRestart(true)}>
-                    {t("projectDetailPage.restartProject")}
-                  </Button>
-                )}
-                {confirmRestart && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{t("projectDetailPage.resumeFromPick", { pick: project.current_pick })}</span>
-                    <Button size="sm" onClick={handleRestart} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-                    <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-                  </div>
-                )}
-                {restartConflict && (
-                  <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
-                    <p className="font-medium text-copper-on-subtle">
-                      {t("projectDetailPage.loomHasActive")} <span className="font-semibold">{restartConflict.name}</span>
-                    </p>
-                    <p className="text-copper-on-subtle text-xs">{t("projectDetailPage.resolveToRestart")}</p>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <Button type="button" size="sm" onClick={() => handleResolveAndRestart("complete")} disabled={actionLoading}>
-                        {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.markCompletedAndRestart")}
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndRestart("abandon")} disabled={actionLoading}>
-                        {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.abandonAndRestart")}
-                      </Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={() => setRestartConflict(null)} disabled={actionLoading}>
-                        {t("projectDetailPage.dismiss")}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CollapsibleSection>
-          )}
-
-          {!isReadOnly && <CollapsibleSection title={t("projectDetailPage.cloneProjectSection")}>
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">{t("projectDetailPage.cloneDesc")}</p>
-              {!confirmClone && !cloneConflict && (
-                <Button variant="outline" size="sm" onClick={() => setConfirmClone(true)}>
-                  {t("projectDetailPage.cloneProjectButton")}
-                </Button>
-              )}
-              {confirmClone && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{t("projectDetailPage.confirmCloneQuestion")}</span>
-                  <Button size="sm" onClick={handleClone} disabled={actionLoading}>{actionLoading ? t("projectDetailPage.cloning") : t("projectDetailPage.confirm")}</Button>
-                  <Button size="sm" variant="outline" onClick={() => setConfirmClone(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-                </div>
-              )}
-              {cloneConflict && (
-                <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
-                  <p className="font-medium text-copper-on-subtle">
-                    {t("projectDetailPage.loomHasActive")} <span className="font-semibold">{cloneConflict.name}</span>
-                  </p>
-                  <p className="text-copper-on-subtle text-xs">{t("projectDetailPage.resolveToClone")}</p>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button type="button" size="sm" onClick={() => handleResolveAndClone("complete")} disabled={actionLoading}>
-                      {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.markCompletedAndClone")}
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => handleResolveAndClone("abandon")} disabled={actionLoading}>
-                      {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.abandonAndClone")}
-                    </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => setCloneConflict(null)} disabled={actionLoading}>
-                      {t("projectDetailPage.dismiss")}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CollapsibleSection>}
-
-          {!isReadOnly && <CollapsibleSection title={t("projectDetailPage.dangerZone")}>
-            {!confirmDelete ? (
-              <Button variant="outline" size="sm" onClick={() => setConfirmDelete(true)}>
-                {t("projectDetailPage.deleteProject")}
-              </Button>
-            ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                <p className="text-sm text-destructive">
-                  {t("projectDetailPage.deleteProjectConfirm")}
-                </p>
-                <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={actionLoading}>
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleDelete}
-                  disabled={actionLoading}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  {actionLoading ? t("projectDetailPage.deleting") : t("projectDetailPage.confirmDelete")}
-                </Button>
-              </div>
-            )}
-          </CollapsibleSection>}
-            </div>
-          </div>
-        )}
-      </div>
+      <DetailsSettingsPanel
+        project={project}
+        id={id!}
+        isReadOnly={isReadOnly}
+        isAbandoned={isAbandoned}
+        isCompleted={isCompleted}
+        isActiveTracking={isActiveTracking}
+        isFinished={isFinished}
+        metrics={tracker.metrics}
+        displayUnit={displayUnit}
+        queryClient={queryClient}
+        panelOpen={viewPrefs.panelOpen}
+        setPanelOpen={viewPrefs.setPanelOpen}
+        actionLoading={actionLoading}
+        tracker={tracker}
+      />
 
       {showDesignPreview && (
         <DesignPreviewModal
@@ -2198,112 +3101,14 @@ export function ProjectDetailPage() {
 
       {/* View settings drawer */}
       {settingsOpen && (
-        <>
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Close"
-            className="fixed inset-0 z-40 bg-black/40"
-            onClick={() => setSettingsOpen(false)}
-            onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setSettingsOpen(false); }}
-          />
-          <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <span className="text-sm font-semibold">{t("projectDetailPage.viewSettings")}</span>
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(false)}
-                className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label="Close settings"
-              >
-                <AppIcons.Close className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-              {/* Show/hide toggles */}
-              <div className="space-y-3">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("projectDetailPage.showHide")}</p>
-                {([
-                  { label: t("projectDetailPage.progressBar"), value: showProgress, key: "proj-view:showProgress", setter: setShowProgress, disabled: user?.activity_theme === "compact", disabledTitle: t("settings.appearance.hiddenInCompact") },
-                  { label: t("projectDetailPage.drawdownPattern"), value: showDrawdown, key: "proj-view:showDrawdown", setter: setShowDrawdown },
-                  { label: t("projectDetailPage.weftColorToggle"), value: showWeftColor, key: "proj-view:showWeftColor", setter: setShowWeftColor },
-                  { label: t("projectDetailPage.prevNextCards"), value: showPickCards, key: "proj-view:showPickCards", setter: setShowPickCards },
-                ] as { label: string; value: boolean; key: string; setter: (v: boolean) => void; disabled?: boolean; disabledTitle?: string }[]).map(({ label, value, key, setter, disabled, disabledTitle }) => (
-                  <div key={label} className={`flex items-center justify-between${disabled ? " opacity-40" : ""}`} title={disabled ? disabledTitle : undefined}>
-                    <span className="text-sm">{label}</span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={value}
-                      disabled={disabled}
-                      onClick={() => { setter(!value); localStorage.setItem(key, String(!value)); }}
-                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${value ? "bg-primary" : "bg-input"}`}
-                    >
-                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-4" : "translate-x-1"}`} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* Trailing unused toggle — only shown when there are trailing boxes */}
-              {trailingUnused > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {project.project_type === "lift" ? t("projectDetailPage.shaftDisplay") : t("projectDetailPage.treadleDisplay")}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-sm">
-                        {t("projectDetailPage.hideUnused", { type: project.project_type === "lift" ? t("projectDetailPage.shafts") : t("projectDetailPage.treadles") })}
-                      </span>
-                      <p className="text-xs text-muted-foreground">
-                        {t("projectDetailPage.unusedTrailing", { count: trailingUnused, type: trailingUnused === 1 ? (project.project_type === "lift" ? t("projectDetailPage.shaft") : t("projectDetailPage.treadle")) : (project.project_type === "lift" ? t("projectDetailPage.shafts") : t("projectDetailPage.treadles")) })}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={hideTrailingUnused}
-                      onClick={() => {
-                        const next = !hideTrailingUnused;
-                        setHideTrailingUnused(next);
-                        localStorage.setItem("proj-view:hideTrailingUnused", String(next));
-                      }}
-                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${hideTrailingUnused ? "bg-primary" : "bg-input"}`}
-                    >
-                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${hideTrailingUnused ? "translate-x-4" : "translate-x-1"}`} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Color mode selector — always shown; strip/filled have no visible effect without weft colors */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("projectDetailPage.colorMode")}</p>
-                <div className="inline-flex rounded-md border border-input overflow-hidden text-sm w-full">
-                  {(["theme", "strip", "filled"] as ColorMode[]).map((mode) => (
-                    <button
-                      type="button"
-                      key={mode}
-                      onClick={() => { setColorMode(mode); localStorage.setItem("proj-view:colorMode", mode); }}
-                      className={`flex-1 px-2.5 py-1.5 capitalize transition-colors ${
-                        colorMode === mode
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-                {!picksData?.has_weft_colors && (
-                  <p className="text-xs text-muted-foreground">{t("projectDetailPage.noWeftColors")}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </>
+        <ViewSettingsDrawer
+          onClose={() => setSettingsOpen(false)}
+          viewPrefs={viewPrefs}
+          user={user}
+          project={project}
+          trailingUnused={trailingUnused}
+          hasWeftColors={!!picksData?.has_weft_colors}
+        />
       )}
     </div>
   );
