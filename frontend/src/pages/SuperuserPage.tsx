@@ -1948,6 +1948,7 @@ function ConfigSection() {
   const [testResults, setTestResults] = useState<Record<string, ConfigTestResult | null>>({});
   const [testingGroup, setTestingGroup] = useState<string | null>(null);
   const [savingGroup, setSavingGroup] = useState<string | null>(null);
+  const [clearingGroup, setClearingGroup] = useState<string | null>(null);
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
   const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
 
@@ -1986,6 +1987,24 @@ function ConfigSection() {
       setSaveErrors((prev) => ({ ...prev, [groupKey]: e instanceof Error ? e.message : "Save failed" }));
     } finally {
       setSavingGroup(null);
+    }
+  }
+
+  async function handleClear(groupKey: string) {
+    const { label, fields } = GROUP_CONFIG[groupKey];
+    if (!window.confirm(`Clear all stored ${label} credentials? This cannot be undone.`)) return;
+    const values: Record<string, string | null> = {};
+    fields.forEach((f) => { values[f] = null; });
+    setClearingGroup(groupKey);
+    setSaveErrors((prev) => ({ ...prev, [groupKey]: "" }));
+    try {
+      const result = await saveConfig(values);
+      qc.setQueryData(["admin", "config"], result);
+      clearGroupDrafts(groupKey);
+    } catch (e) {
+      setSaveErrors((prev) => ({ ...prev, [groupKey]: e instanceof Error ? e.message : "Clear failed" }));
+    } finally {
+      setClearingGroup(null);
     }
   }
 
@@ -2065,6 +2084,11 @@ function ConfigSection() {
         const isDirty = fields.some((f) => f in drafts);
         const saveError = saveErrors[groupKey];
         const testResult = testResults[groupKey];
+        const groupHasStoredValue = fields.some((f) => {
+          const s = fieldMap[f];
+          if (!s) return false;
+          return CONFIG_SECRET_FIELDS.has(f) ? s.secret_set : !!s.value;
+        });
 
         return (
           <div key={groupKey} className="border rounded-lg overflow-hidden">
@@ -2107,6 +2131,17 @@ function ConfigSection() {
                     onClick={() => handleTest(groupKey)}
                   >
                     {testingGroup === groupKey ? "Testing…" : "Test"}
+                  </Button>
+                )}
+                {groupKey === "neon" && groupHasStoredValue && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                    disabled={clearingGroup === groupKey}
+                    onClick={() => handleClear(groupKey)}
+                  >
+                    {clearingGroup === groupKey ? "Clearing…" : "Clear stored credentials"}
                   </Button>
                 )}
                 <div className="flex-1" />
