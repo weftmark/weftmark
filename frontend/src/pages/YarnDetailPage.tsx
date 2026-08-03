@@ -7,16 +7,14 @@ import { formatColorwayLabel, getRavelryStatus, getRavelryYarnDetail, pushYarnTo
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { ColorwayGrid } from "@/components/yarn/ColorwayGrid";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 function DevJsonModal({ data, onClose }: { readonly data: unknown; readonly onClose: () => void }) {
+  useEscapeKey(onClose);
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div className="relative bg-card border border-border rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto m-4">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -57,6 +55,7 @@ function EditColorwayModal({
   readonly onSaved: () => void;
 }) {
   const { t } = useTranslation();
+  useEscapeKey(onClose);
   const [tab, setTab] = useState<"rename" | "link">("rename");
   const [colorName, setColorName] = useState(yarn.color_name ?? "");
   const [colorways, setColorways] = useState<RavelryColorway[]>([]);
@@ -123,12 +122,8 @@ function EditColorwayModal({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div
         role="dialog"

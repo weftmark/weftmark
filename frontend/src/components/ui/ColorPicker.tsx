@@ -450,32 +450,24 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
                 {suggestions.length > 0 && (
                   <ul className="absolute left-0 right-0 top-full mt-0.5 z-10 rounded border border-border bg-card shadow-md overflow-y-auto max-h-36">
                     {suggestions.map((name) => (
-                      <li
-                        key={name}
-                        role="button"
-                        tabIndex={0}
-                        className="flex items-center gap-2 px-2 py-1 text-xs text-card-foreground cursor-pointer hover:bg-muted"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setNameInput(name);
-                          setNameError(false);
-                          const hex = resolveColorName(name);
-                          if (hex) { syncAllInputs(hex); onChange(hex); }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key !== "Enter" && e.key !== " ") return;
-                          e.preventDefault();
-                          setNameInput(name);
-                          setNameError(false);
-                          const hex = resolveColorName(name);
-                          if (hex) { syncAllInputs(hex); onChange(hex); }
-                        }}
-                      >
-                        <span
-                          className="inline-block h-3 w-3 rounded-sm border border-border flex-shrink-0"
-                          style={{ backgroundColor: resolveColorName(name) ?? undefined }}
-                        />
-                        {name}
+                      <li key={name}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-2 py-1 text-xs text-card-foreground cursor-pointer hover:bg-muted"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setNameInput(name);
+                            setNameError(false);
+                            const hex = resolveColorName(name);
+                            if (hex) { syncAllInputs(hex); onChange(hex); }
+                          }}
+                        >
+                          <span
+                            className="inline-block h-3 w-3 rounded-sm border border-border flex-shrink-0"
+                            style={{ backgroundColor: resolveColorName(name) ?? undefined }}
+                          />
+                          {name}
+                        </button>
                       </li>
                     ))}
                   </ul>
