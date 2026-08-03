@@ -72,7 +72,7 @@
   {
     "License": "MIT",
     "Name": "annotated-doc",
-    "Version": "0.0.4"
+    "Version": "0.0.5"
   },
   {
     "License": "MIT",
@@ -117,12 +117,12 @@
   {
     "License": "Apache-2.0",
     "Name": "boto3",
-    "Version": "1.43.51"
+    "Version": "1.43.56"
   },
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.56"
+    "Version": "1.43.62"
   },
   {
     "License": "BSD-3-Clause",
@@ -207,12 +207,12 @@
   {
     "License": "MIT",
     "Name": "fastapi",
-    "Version": "0.139.2"
+    "Version": "0.140.0"
   },
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.32.0"
+    "Version": "3.32.2"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -582,7 +582,7 @@
   {
     "License": "MIT",
     "Name": "sentry-sdk",
-    "Version": "2.66.0"
+    "Version": "2.66.1"
   },
   {
     "License": "MIT License",
@@ -607,7 +607,7 @@
   {
     "License": "MIT",
     "Name": "svix",
-    "Version": "1.98.0"
+    "Version": "1.99.1"
   },
   {
     "License": "MIT",
@@ -677,12 +677,12 @@
   {
     "License": "BSD-3-Clause",
     "Name": "websockets",
-    "Version": "16.1.1"
+    "Version": "17.0.1"
   },
   {
     "License": "BSD-2-Clause",
     "Name": "wrapt",
-    "Version": "2.2.2"
+    "Version": "2.3.0"
   },
   {
     "License": "Apache-2.0",

@@ -68,7 +68,7 @@
     },
     {
       "bom-ref": "requirements-L21",
-      "description": "requirements line 21: boto3==1.43.51",
+      "description": "requirements line 21: boto3==1.43.56",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -77,9 +77,9 @@
         }
       ],
       "name": "boto3",
-      "purl": "pkg:pypi/boto3@1.43.51",
+      "purl": "pkg:pypi/boto3@1.43.56",
       "type": "library",
-      "version": "1.43.51"
+      "version": "1.43.56"
     },
     {
       "bom-ref": "requirements-L9",
@@ -149,7 +149,7 @@
     },
     {
       "bom-ref": "requirements-L1",
-      "description": "requirements line 1: fastapi==0.139.2",
+      "description": "requirements line 1: fastapi==0.140.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -158,9 +158,9 @@
         }
       ],
       "name": "fastapi",
-      "purl": "pkg:pypi/fastapi@0.139.2",
+      "purl": "pkg:pypi/fastapi@0.140.0",
       "type": "library",
-      "version": "0.139.2"
+      "version": "0.140.0"
     },
     {
       "bom-ref": "requirements-L36",
@@ -493,7 +493,7 @@
     },
     {
       "bom-ref": "requirements-L37",
-      "description": "requirements line 37: sentry-sdk[fastapi,celery]==2.66.0",
+      "description": "requirements line 37: sentry-sdk[fastapi,celery]==2.66.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -512,9 +512,9 @@
           "value": "fastapi"
         }
       ],
-      "purl": "pkg:pypi/sentry-sdk@2.66.0",
+      "purl": "pkg:pypi/sentry-sdk@2.66.1",
       "type": "library",
-      "version": "2.66.0"
+      "version": "2.66.1"
     },
     {
       "bom-ref": "requirements-L25",
@@ -553,7 +553,7 @@
     },
     {
       "bom-ref": "requirements-L20",
-      "description": "requirements line 20: svix==1.98.0",
+      "description": "requirements line 20: svix==1.99.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -562,9 +562,9 @@
         }
       ],
       "name": "svix",
-      "purl": "pkg:pypi/svix@1.98.0",
+      "purl": "pkg:pypi/svix@1.99.1",
       "type": "library",
-      "version": "1.98.0"
+      "version": "1.99.1"
     },
     {
       "bom-ref": "requirements-L2",
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-07-27T06:33:54.225382+00:00",
+    "timestamp": "2026-08-03T04:08:05.630650+00:00",
     "tools": {
       "components": [
         {
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:f1f2818d-7d24-4737-90b2-09b9f6f05a9a",
+  "serialNumber": "urn:uuid:e5ecdcc5-c793-4d5d-bb00-e7bfa57a4c35",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
