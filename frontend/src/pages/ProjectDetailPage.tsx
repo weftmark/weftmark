@@ -27,6 +27,7 @@ import { AuthedImage } from "@/components/ui/AuthedImage";
 import { Button } from "@/components/ui/button";
 import { ZoomablePreviewModal } from "@/components/ui/ZoomablePreviewModal";
 import { SuperuserInspectionBanner } from "@/components/ui/SuperuserInspectionBanner";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 // ---------------------------------------------------------------------------
 // Color utilities
@@ -752,6 +753,7 @@ function PhotoGrid({
   const [error, setError] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  useEscapeKey(() => setLightbox(null), lightbox !== null);
 
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -849,12 +851,8 @@ function PhotoGrid({
       )}
       {lightbox && (
         <div
-          role="button"
-          tabIndex={0}
-          aria-label="Close"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setLightbox(null); }}
-          onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setLightbox(null); }}
         >
           <AuthedImage
             src={projectPhotoUrl(projectId, lightbox)}
@@ -2784,6 +2782,7 @@ interface ViewSettingsDrawerProps {
 
 function ViewSettingsDrawer({ onClose, viewPrefs, user, project, trailingUnused, hasWeftColors }: ViewSettingsDrawerProps) {
   const { t } = useTranslation();
+  useEscapeKey(onClose);
 
   const toggleRows: ViewToggleRow[] = [
     {
@@ -2802,12 +2801,8 @@ function ViewSettingsDrawer({ onClose, viewPrefs, user, project, trailingUnused,
   return (
     <>
       <div
-        role="button"
-        tabIndex={0}
-        aria-label="Close"
         className="fixed inset-0 z-40 bg-black/40"
         onClick={onClose}
-        onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
       />
       <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">

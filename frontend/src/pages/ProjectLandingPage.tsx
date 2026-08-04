@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { ShareModal } from "@/components/projects/ShareModal";
 import { addProjectToCollection, removeProjectFromCollection } from "@/api/collections";
 import { AddToCollectionModal } from "@/components/collections/AddToCollectionModal";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -132,6 +133,7 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
   readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
+  useEscapeKey(onClose);
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   const panRef = useRef({ x: 0, y: 0 });
@@ -296,12 +298,8 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
   return (
     <div
       ref={backdropRef}
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div
         className="bg-card rounded-xl border border-border shadow-xl flex flex-col"
@@ -370,25 +368,16 @@ function TieUpModal({ projectId, draftName, onClose }: {
   readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
+  useEscapeKey(onClose);
   const { data: plan, isLoading } = useQuery({
     queryKey: ["warping-plan", projectId],
     queryFn: () => getWarpingPlan(projectId),
   });
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-lg w-full max-h-[80vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
