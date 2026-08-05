@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
   submitFeedback,
   getFeedbackStatus,
@@ -69,12 +70,7 @@ export function FeedbackModal({ onClose }: Props) {
     getAppVersion().then(setAppVersion);
   }, []);
 
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const mutation = useMutation({
     mutationFn: submitFeedback,
@@ -105,12 +101,8 @@ export function FeedbackModal({ onClose }: Props) {
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4">
         {/* Header */}
