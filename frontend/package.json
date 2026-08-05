@@ -12,19 +12,19 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.9",
-    "@sentry/react": "^10.66.0",
+    "@sentry/react": "^10.69.0",
     "@tanstack/react-query": "^5.101.2",
     "@types/dompurify": "^3.2.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.12",
     "i18next": "^26.3.6",
-    "lucide-react": "^1.27.0",
+    "lucide-react": "^1.28.0",
     "react": "^19.2.7",
     "react-colorful": "^5.8.0",
     "react-dom": "^19.2.7",
     "react-i18next": "^17.0.10",
-    "react-router-dom": "^7.18.1",
+    "react-router-dom": "^7.18.2",
     "tailwind-merge": "^3.6.0"
   },
   "overrides": {
@@ -37,16 +37,16 @@
   "devDependencies": {
     "@codecov/vite-plugin": "^2.0.1",
     "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^26.1.1",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.0.0",
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@typescript-eslint/eslint-plugin": "^8.64.0",
     "@typescript-eslint/parser": "^8.59.2",
-    "@vitejs/plugin-react": "^6.0.3",
+    "@vitejs/plugin-react": "^6.0.5",
     "eslint": "^10.7.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vite": "^8.1.5"
+    "vite": "^8.2.0"
   }
 }
