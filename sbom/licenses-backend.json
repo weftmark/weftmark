@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.65"
+    "Version": "1.43.66"
   },
   {
     "License": "BSD-3-Clause",
@@ -177,7 +177,7 @@
   {
     "License": "Apache-2.0 OR BSD-3-Clause",
     "Name": "cryptography",
-    "Version": "49.0.0"
+    "Version": "50.0.0"
   },
   {
     "License": "Apache Software License",
@@ -232,7 +232,7 @@
   {
     "License": "Apache Software License",
     "Name": "googleapis-common-protos",
-    "Version": "1.75.0"
+    "Version": "1.75.1"
   },
   {
     "License": "MIT AND PSF-2.0",

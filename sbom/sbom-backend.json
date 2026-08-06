@@ -119,7 +119,7 @@
     },
     {
       "bom-ref": "requirements-L18",
-      "description": "requirements line 18: cryptography==49.0.0",
+      "description": "requirements line 18: cryptography==50.0.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -128,9 +128,9 @@
         }
       ],
       "name": "cryptography",
-      "purl": "pkg:pypi/cryptography@49.0.0",
+      "purl": "pkg:pypi/cryptography@50.0.0",
       "type": "library",
-      "version": "49.0.0"
+      "version": "50.0.0"
     },
     {
       "bom-ref": "requirements-L16",
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-08-05T20:45:07.790047+00:00",
+    "timestamp": "2026-08-06T23:00:54.806875+00:00",
     "tools": {
       "components": [
         {
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:bf1bafc8-d778-419d-9a43-57cf66b8b49e",
+  "serialNumber": "urn:uuid:6aa92b8f-4376-458b-9ebe-012a9add76d7",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
