@@ -75,6 +75,7 @@ export function ShareModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-md w-full">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
