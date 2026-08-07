@@ -367,6 +367,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-16 px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl">
         {/* Header */}
