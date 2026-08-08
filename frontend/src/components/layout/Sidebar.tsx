@@ -388,6 +388,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
         <div
           className="fixed inset-0 z-20 bg-black/40 lg:hidden"
           onClick={onClose}
+          onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
         />
       )}
 
