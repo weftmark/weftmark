@@ -16,6 +16,7 @@ import {
   CircleCheck,
   CircleHelp,
   Copy,
+  EllipsisVertical,
   ExternalLink,
   FileDown,
   FolderOpen,
@@ -94,6 +95,9 @@ export const AppIcons = {
   Share: Share2,
   CopyLink: Copy,
   ExternalLink: ExternalLink,
+
+  // ── Project status actions ────────────────────────────────────────────────
+  StatusActions: EllipsisVertical,
 
   // ── Landing page features ─────────────────────────────────────────────────
   DesignLibrary: Layers,
