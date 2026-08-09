@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listCollections, getCollection } from "@/api/collections";
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly itemId: string;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function AddToCollectionModal({ itemId, itemType, onAdd, onRemove, onClose }: Props) {
+  useEscapeKey(onClose);
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<string | null>(null);
 

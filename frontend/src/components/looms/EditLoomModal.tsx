@@ -3,6 +3,7 @@ import {
   updateLoom, type LoomDetail, type UpdateLoomPayload, type LoomType, LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly loom: LoomDetail;
@@ -13,6 +14,7 @@ interface Props {
 const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby_floor_loom", "tapestry_loom", "rug_loom", "frame_loom", "other"];
 
 export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [loomType, setLoomType] = useState<LoomType>(loom.loom_type);
   const [manufacturer, setManufacturer] = useState(loom.manufacturer);
   const [modelName, setModelName] = useState(loom.model_name);

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cloneYarn, type YarnDetail } from "@/api/yarn";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly yarn: YarnDetail;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function CloneYarnModal({ yarn, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [colorName, setColorName] = useState(yarn.color_name ?? "");
   const [colorHex, setColorHex] = useState(yarn.color_hex ?? "#ffffff");
   const [hasColor, setHasColor] = useState(!!yarn.color_hex);

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createYarn, getYarnProperties, listYarn, weightBothUnits, type CreateYarnPayload } from "@/api/yarn";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 const WEIGHT_CATEGORIES = [
   "thread", "lace", "fingering", "sport", "dk",
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function AddYarnModal({ onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const { t } = useTranslation();
   const navigate = useNavigate();
 

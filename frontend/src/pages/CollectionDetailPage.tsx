@@ -18,6 +18,7 @@ import { listProjects } from "@/api/projects";
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 type SortKey = "name" | "added";
 
@@ -86,6 +87,7 @@ function PickerModal({
   readonly onClose: () => void;
   readonly children: ReactNode;
 }) {
+  useEscapeKey(onClose);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-lg flex flex-col max-h-[80vh]">

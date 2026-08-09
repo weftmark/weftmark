@@ -3,6 +3,7 @@ import { addLoomVersion, type AddVersionPayload, type LoomType } from "@/api/loo
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit } from "@/lib/units";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly loomId: string;
@@ -19,6 +20,7 @@ function showsHeddles(t: LoomType) { return t === "rigid_heddle" || t === "other
 function showsWarpWaste(t: LoomType) { return t !== "inkle"; }
 
 export function AddVersionModal({ loomId, loomType, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const { user } = useAuthContext();
   const [versionName, setVersionName] = useState("");
   const [numShafts, setNumShafts] = useState("4");

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { uploadDraft } from "@/api/drafts";
 import { Button } from "@/components/ui/button";
 import { TagInput } from "@/components/ui/TagInput";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly onSuccess: () => void;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function UploadWifModal({ onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<string[]>([]);

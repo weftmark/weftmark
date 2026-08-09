@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/image-utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
   patchAdminUser,
   banUser,
@@ -744,6 +745,7 @@ function RegularUserView({
 }
 
 export function UserDetailModal({ target, onClose }: Props) {
+  useEscapeKey(onClose);
   const qc = useQueryClient();
   const { user: currentUser } = useAuth();
   const [confirming, setConfirming] = useState<Confirm>(null);

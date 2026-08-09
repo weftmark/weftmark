@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { assignLoom, completeProject, abandonProject, ApiError, type ProjectSummary } from "@/api/projects";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly projectId: string;
@@ -19,6 +20,7 @@ interface Props {
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
 export function AssignLoomModal({ projectId, activeProjects, projectType, draftNumTreadles, draftNumShafts, draftEffectiveNumTreadles, draftEffectiveNumShafts, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
   const [loading, setLoading] = useState(false);
