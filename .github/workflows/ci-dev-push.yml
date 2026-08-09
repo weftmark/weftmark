@@ -53,7 +53,7 @@ jobs:
           client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
@@ -72,7 +72,7 @@ jobs:
           fi
 
       - if: steps.detect.outputs.changed == 'true'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -136,9 +136,9 @@ jobs:
           fi
 
       - if: steps.detect.outputs.changed == 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Generate frontend SBOM and license manifest
         if: steps.detect.outputs.changed == 'true'
@@ -181,7 +181,7 @@ jobs:
           client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
