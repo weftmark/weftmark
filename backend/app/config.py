@@ -213,6 +213,14 @@ class Settings(BaseSettings):
     config_encryption_key: str = ""
     config_file_path: str = "/data/weftmark_config.json"
 
+    # System polling / health-check intervals (#1124) — admin-configurable via the
+    # Credentials tab (same encrypted-file mechanism as SMTP/S3/Neon above, just
+    # not secret), takes effect on next restart like every other field there.
+    # Defaults match the values that used to be hardcoded constants.
+    detailed_refresh_interval_s: int = 300  # /health/detailed background loop (S3/Clerk/SMTP/config/webhook)
+    postgres_probe_interval_s: int = 3600  # Postgres leg of the above — kept sparser to avoid waking Neon's autosuspend
+    scheduled_tasks_dispatch_interval_s: int = 1800  # Celery beat cadence for run_scheduled_tasks
+
     # Rendering
     render_max_width: int = 4000
     render_max_height: int = 4000

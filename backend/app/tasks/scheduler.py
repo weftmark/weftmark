@@ -1,8 +1,10 @@
 """Celery task: scheduled-task tick.
 
-Runs every 60 seconds via Celery Beat. For each enabled ScheduledTask row,
-checks whether the cron expression matches the current minute and dispatches
-the corresponding Celery task if so.
+Runs via Celery Beat at Settings.scheduled_tasks_dispatch_interval_s (default
+1800s / 30 min — admin-configurable, see #1124). For each enabled
+ScheduledTask row, checks whether its cron expression fired at any point in
+the window since the previous tick and dispatches the corresponding Celery
+task if so.
 """
 
 import logging
@@ -366,7 +368,9 @@ def run_scheduled_tasks() -> None:
 
     settings = get_settings()
     now = datetime.now(timezone.utc)
-    window_start = now - timedelta(seconds=1810)
+    # Sized to the actual dispatch cadence (+ a small buffer) so a cron match
+    # can't fall in the gap between ticks and get silently skipped — see #1124.
+    window_start = now - timedelta(seconds=settings.scheduled_tasks_dispatch_interval_s + 10)
 
     try:
         from sqlalchemy import create_engine, select

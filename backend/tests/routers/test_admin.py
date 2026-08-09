@@ -1165,6 +1165,41 @@ class TestAdminServices:
 
 
 # ---------------------------------------------------------------------------
+# GET /api/admin/config
+# ---------------------------------------------------------------------------
+
+
+class TestConfigStateEndpoint:
+    """#1124 — the three system-interval fields, defaulting to the values that
+    used to be hardcoded constants, in the same managed-field list as SMTP/S3/Neon."""
+
+    async def test_system_interval_fields_present_with_defaults(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/config")
+        assert resp.status_code == 200
+        fields = {f["field"]: f for f in resp.json()["fields"]}
+
+        assert fields["detailed_refresh_interval_s"]["value"] == "300"
+        assert fields["postgres_probe_interval_s"]["value"] == "3600"
+        assert fields["scheduled_tasks_dispatch_interval_s"]["value"] == "1800"
+        interval_fields = (
+            "detailed_refresh_interval_s",
+            "postgres_probe_interval_s",
+            "scheduled_tasks_dispatch_interval_s",
+        )
+        for field in interval_fields:
+            assert fields[field]["source"] == "default"
+            assert fields[field]["secret_set"] is False
+
+    async def test_admin_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/config")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/api/admin/config")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
 # GET /api/admin/neon-dashboard
 # ---------------------------------------------------------------------------
 

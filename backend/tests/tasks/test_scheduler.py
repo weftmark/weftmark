@@ -459,6 +459,7 @@ class TestRunScheduledTasks:
         create_engine, Session_cls, engine, _db = _mock_sync_session([])
         settings = MagicMock()
         settings.database_url_sync = "postgresql://test/test"
+        settings.scheduled_tasks_dispatch_interval_s = 1800
 
         with (
             patch("sqlalchemy.create_engine", create_engine),
@@ -474,6 +475,7 @@ class TestRunScheduledTasks:
 
         settings = MagicMock()
         settings.database_url_sync = "postgresql://test/test"
+        settings.scheduled_tasks_dispatch_interval_s = 1800
 
         with (
             patch("sqlalchemy.create_engine", side_effect=Exception("db unreachable")),
@@ -492,6 +494,7 @@ class TestRunScheduledTasks:
         create_engine, Session_cls, engine, _db = _mock_sync_session([task_obj])
         settings = MagicMock()
         settings.database_url_sync = "postgresql://test/test"
+        settings.scheduled_tasks_dispatch_interval_s = 1800
 
         with (
             patch("sqlalchemy.create_engine", create_engine),
@@ -514,6 +517,7 @@ class TestRunScheduledTasks:
         create_engine, Session_cls, engine, db = _mock_sync_session([task_obj])
         settings = MagicMock()
         settings.database_url_sync = "postgresql://test/test"
+        settings.scheduled_tasks_dispatch_interval_s = 1800
 
         with (
             patch("sqlalchemy.create_engine", create_engine),
@@ -535,6 +539,7 @@ class TestRunScheduledTasks:
         create_engine, Session_cls, engine, _db = _mock_sync_session([task_obj])
         settings = MagicMock()
         settings.database_url_sync = "postgresql://test/test"
+        settings.scheduled_tasks_dispatch_interval_s = 1800
 
         with (
             patch("sqlalchemy.create_engine", create_engine),
