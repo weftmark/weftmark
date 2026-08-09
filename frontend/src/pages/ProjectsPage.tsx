@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { TagChips } from "@/components/ui/TagChips";
 import { SkeletonCardGrid } from "@/components/ui/skeleton";
 import { TagFilterBar } from "@/components/TagFilterBar";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 const STATUS_COLORS: Record<string, string> = {
   created: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -32,6 +33,7 @@ function ProjectCard({ project, onAssign }: {
 }) {
   const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState(false);
+  useEscapeKey(() => setShowPreview(false), showPreview);
   const isPlanning = (project.status === "active" || project.status === "created") && !project.loom_id;
   const badgeKey = isPlanning ? "plan" : project.status;
   const badgeLabel = isPlanning ? t("projectsPage.planBadge") : PROJECT_STATUS_LABELS[project.status];
@@ -134,12 +136,9 @@ function ProjectCard({ project, onAssign }: {
       )}
       {showPreview && (
         <div
-          role="button"
-          tabIndex={0}
-          aria-label="Close"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowPreview(false); }}
-          onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setShowPreview(false); }}
+          onKeyDown={(e) => { if (e.key === "Escape") setShowPreview(false); }}
         >
           <div className="relative max-w-xl w-full">
             <button
