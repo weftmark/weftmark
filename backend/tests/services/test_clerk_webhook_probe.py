@@ -158,7 +158,8 @@ class TestRunWebhookProbeNetwork:
         with patch("httpx.AsyncClient", return_value=_patched_client(post_side_effect=capture_url)):
             await run_webhook_probe()
 
-        assert calls and calls[0] == "https://api.example.com/webhooks/clerk"
+        assert calls
+        assert calls[0] == "https://api.example.com/webhooks/clerk"
 
     async def test_webhook_url_falls_back_to_api_url(self, monkeypatch):
         monkeypatch.setattr(
@@ -175,7 +176,8 @@ class TestRunWebhookProbeNetwork:
         with patch("httpx.AsyncClient", return_value=_patched_client(post_side_effect=capture_url)):
             await run_webhook_probe()
 
-        assert calls and calls[0] == "https://fallback.example.com/webhooks/clerk"
+        assert calls
+        assert calls[0] == "https://fallback.example.com/webhooks/clerk"
 
 
 # ---------------------------------------------------------------------------

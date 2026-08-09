@@ -34,7 +34,7 @@ def _use_test_db(monkeypatch, db_available):
     monkeypatch.setattr(settings, "postgres_port", int(os.getenv("POSTGRES_PORT", "5433")))
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_redis():
     """Return a mock Redis client that always acquires the SETNX lock."""
     client = MagicMock()
@@ -43,7 +43,7 @@ def mock_redis():
     return client
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_redis_locked():
     """Return a mock Redis client where the SETNX lock is already held."""
     client = MagicMock()

@@ -277,7 +277,7 @@ def _session_factory(db: AsyncSession):
     return _Factory()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_engine_and_session(db_session: AsyncSession):
     """Patch engine/session creation so prerender tasks run against db_session."""
     fake_engine = MagicMock()
