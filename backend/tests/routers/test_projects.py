@@ -3375,7 +3375,7 @@ class TestUpdateWarpSetup:
             f"/api/projects/{project.id}/warp-setup", json={"finished_length_per_item": 100.0}
         )
         assert resp.status_code == 200
-        assert float(resp.json()["finished_length_per_item"]) == 100.0
+        assert float(resp.json()["finished_length_per_item"]) == pytest.approx(100.0)
 
     async def test_updates_waste_between_items(
         self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
@@ -3427,7 +3427,7 @@ class TestSetReed:
         project = await _insert_active_project(db_session, test_user, draft, None)
         resp = await auth_client.patch(f"/api/projects/{project.id}/reed", json={"reed_dents_per_inch": 12.0})
         assert resp.status_code == 200
-        assert resp.json()["reed_dents_per_inch"] == 12.0
+        assert resp.json()["reed_dents_per_inch"] == pytest.approx(12.0)
 
     async def test_clears_reed(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         draft = await _insert_draft(db_session, test_user)
