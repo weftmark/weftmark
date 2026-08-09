@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { updateProjectShare, revokeProjectShare, type ProjectDetail } from "@/api/projects";
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -35,13 +36,7 @@ export function ShareModal({
   const hasSlug = !!project.share_slug && project.share_visibility !== "private";
   const shareUrl = hasSlug ? `${window.location.origin}/p/${project.share_slug}` : null;
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const shareMutation = useMutation({
     mutationFn: () => {
@@ -76,14 +71,11 @@ export function ShareModal({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-md w-full">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
