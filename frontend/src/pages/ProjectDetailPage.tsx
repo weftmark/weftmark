@@ -2841,6 +2841,65 @@ function ViewSettingsDrawer({ onClose, viewPrefs, user, project, trailingUnused,
   );
 }
 
+interface TrackerDisplayState {
+  readonly displayPick: number;
+  readonly currentPickIndex: number;
+  readonly displayCount: number;
+  readonly trailingUnused: number;
+  readonly isMultiItem: boolean;
+  readonly isAtItemEnd: boolean;
+  readonly isFinished: boolean;
+  readonly isActiveTracking: boolean;
+  readonly isAbandoned: boolean;
+}
+
+// Derives the tracker's display-only state (current pick, treadle/shaft box
+// count, item-boundary flags) from the project + picks data. Pulled out of
+// ProjectDetailPage so the component body reads as orchestration rather than
+// a wall of ternaries — see #1063.
+function computeTrackerDisplayState(
+  project: ProjectDetail,
+  picksData: PicksResponse | undefined,
+  isPlanning: boolean,
+  localPick: number,
+  hideTrailingUnused: boolean,
+): TrackerDisplayState {
+  const displayPick = isPlanning ? localPick : project.current_pick;
+  const currentPickIndex = displayPick - 1;
+
+  const loomCount = project.project_type === "lift"
+    ? (project.loom_num_shafts ?? null)
+    : (project.loom_num_treadles ?? null);
+  const declaredCount = project.project_type === "lift"
+    ? (project.draft_num_shafts ?? 0)
+    : (project.draft_num_treadles ?? 0);
+
+  const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
+  // When a loom is assigned, use its treadle/shaft count; otherwise fall back to draft declared count.
+  const maxActive = (loomCount !== null && loomCount > 0)
+    ? loomCount
+    : (declaredCount > 0 ? declaredCount : maxFromPicks);
+
+  // Count of trailing unused boxes (never used in any pick, counting from the top).
+  const trailingUnused = maxActive > maxFromPicks ? maxActive - maxFromPicks : 0;
+  // Effective box count shown: when hiding trailing, shrink to the highest used index.
+  const displayCount = hideTrailingUnused && trailingUnused > 0 ? maxFromPicks : maxActive;
+
+  const isOnLastItem = project.current_item >= project.num_items;
+
+  return {
+    displayPick,
+    currentPickIndex,
+    displayCount,
+    trailingUnused,
+    isMultiItem: project.num_items > 1,
+    isAtItemEnd: displayPick > project.total_picks && !isOnLastItem,
+    isFinished: displayPick > project.total_picks && isOnLastItem,
+    isActiveTracking: (project.status === "active" || project.status === "created") && !isPlanning,
+    isAbandoned: project.status === "abandoned",
+  };
+}
+
 export function ProjectDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
@@ -2896,35 +2955,10 @@ export function ProjectDetailPage() {
     </div>
   );
 
-  const displayPick = isPlanning ? localPick : project.current_pick;
-  const currentPickIndex = displayPick - 1;
-
-  const loomCount = project.project_type === "lift"
-    ? (project.loom_num_shafts ?? null)
-    : (project.loom_num_treadles ?? null);
-  const declaredCount = project.project_type === "lift"
-    ? (project.draft_num_shafts ?? 0)
-    : (project.draft_num_treadles ?? 0);
-
-  const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
-  // When a loom is assigned, use its treadle/shaft count; otherwise fall back to draft declared count.
-  const maxActive = (loomCount !== null && loomCount > 0)
-    ? loomCount
-    : (declaredCount > 0 ? declaredCount : maxFromPicks);
-
-  // Highest treadle/shaft index actually used in any pick across the full sequence.
-  const maxUsed = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
-  // Count of trailing unused boxes (never used in any pick, counting from the top).
-  const trailingUnused = maxActive > maxUsed ? maxActive - maxUsed : 0;
-  // Effective box count shown: when hiding trailing, shrink to maxUsed.
-  const displayCount = viewPrefs.hideTrailingUnused && trailingUnused > 0 ? maxUsed : maxActive;
-
-  const isMultiItem = project.num_items > 1;
-  const isOnLastItem = project.current_item >= project.num_items;
-  const isAtItemEnd = displayPick > project.total_picks && !isOnLastItem;
-  const isFinished = displayPick > project.total_picks && isOnLastItem;
-  const isActiveTracking = (project.status === "active" || project.status === "created") && !isPlanning;
-  const isAbandoned = project.status === "abandoned";
+  const {
+    displayPick, currentPickIndex, displayCount, trailingUnused,
+    isMultiItem, isAtItemEnd, isFinished, isActiveTracking, isAbandoned,
+  } = computeTrackerDisplayState(project, picksData, isPlanning, localPick, viewPrefs.hideTrailingUnused);
 
   const isReadOnly = !!user?.is_superuser && project.owner_id !== user.id;
 
