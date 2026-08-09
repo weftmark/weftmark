@@ -191,6 +191,18 @@ jobs:
           git config user.name  "weftmark-bot[bot]"
           git config user.email "weftmark-bot[bot]@users.noreply.github.com"
 
+      - name: Sync to latest dev
+        # actions/checkout pins to github.sha — the commit that triggered THIS
+        # run, not the current branch tip. When merges land back-to-back, a
+        # later run in the (serialized) queue can still be pinned to a SHA from
+        # before an earlier run's version-bump commit landed, so it reads a
+        # stale VERSION and computes the same "next" version — colliding on
+        # tag creation (#1125). Resetting to the live tip here means each run
+        # always bumps from whatever the previous run actually left behind.
+        run: |
+          git fetch origin dev
+          git reset --hard origin/dev
+
       - name: Determine and apply version bump
         id: version
         run: |
@@ -267,15 +279,27 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          TAG="${{ steps.version.outputs.tag }}"
+
+          # Belt-and-suspenders: the sync-to-latest-dev step above should make
+          # this version number unique to this run, but a tag with the same
+          # name showing up here means some other run already produced this
+          # exact version — the merged code is fine either way, so no-op
+          # instead of failing noisily (#1125).
+          if gh api "repos/${{ github.repository }}/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists — skipping (likely a concurrent dev-push run)."
+            exit 0
+          fi
+
           COMMIT_SHA=$(git rev-parse HEAD)
           TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
             --method POST \
-            --field tag="${{ steps.version.outputs.tag }}" \
-            --field message="Release ${{ steps.version.outputs.tag }}" \
+            --field tag="$TAG" \
+            --field message="Release $TAG" \
             --field object="$COMMIT_SHA" \
             --field type="commit" \
             --jq '.sha')
           gh api repos/${{ github.repository }}/git/refs \
             --method POST \
-            --field ref="refs/tags/${{ steps.version.outputs.tag }}" \
+            --field ref="refs/tags/$TAG" \
             --field sha="$TAG_SHA"
