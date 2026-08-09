@@ -1663,6 +1663,11 @@ const GROUP_CONFIG: Record<string, { label: string; fields: string[]; testServic
     fields: ["neon_api_key", "neon_org_id", "neon_project_id"],
     testService: "neon",
   },
+  system_intervals: {
+    label: "System Intervals (seconds)",
+    fields: ["detailed_refresh_interval_s", "postgres_probe_interval_s", "scheduled_tasks_dispatch_interval_s"],
+    testService: null,
+  },
 };
 
 const CONFIG_SECRET_FIELDS = new Set([
@@ -1712,6 +1717,9 @@ const CONFIG_FIELD_LABELS: Record<string, string> = {
   neon_api_key: "API Key",
   neon_org_id: "Organization ID",
   neon_project_id: "Project ID (optional filter)",
+  detailed_refresh_interval_s: "Detailed Health Poll Interval",
+  postgres_probe_interval_s: "Postgres Probe Interval",
+  scheduled_tasks_dispatch_interval_s: "Scheduled Tasks Dispatch Interval",
 };
 
 interface ConfigFieldRowProps {

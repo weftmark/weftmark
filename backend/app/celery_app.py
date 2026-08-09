@@ -51,7 +51,7 @@ def _make_celery() -> Celery:
         beat_schedule={
             "run-scheduled-tasks": {
                 "task": "app.tasks.scheduler.run_scheduled_tasks",
-                "schedule": 1800.0,
+                "schedule": float(settings.scheduled_tasks_dispatch_interval_s),
             },
             "record-business-metrics": {
                 "task": "app.tasks.metrics.record_business_metrics",

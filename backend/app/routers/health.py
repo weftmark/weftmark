@@ -20,8 +20,13 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/api", tags=["health"])
 log = logging.getLogger(__name__)
 
-DETAILED_REFRESH_INTERVAL_S = 300  # 5 minutes steady-state poll (S3, Clerk, SMTP, config, webhook)
-POSTGRES_PROBE_INTERVAL_S = 3600  # 1 hour — Postgres runs on Neon; frequent probes defeat autosuspend
+# Admin-configurable via the Credentials tab (#1124) — defaults match the
+# values these used to be hardcoded to. Read once at import time, same as
+# every other config_file.py-managed setting: takes effect on next restart.
+# Steady-state poll: S3, Clerk, SMTP, config, webhook.
+DETAILED_REFRESH_INTERVAL_S = get_settings().detailed_refresh_interval_s
+# Postgres leg — kept sparser to avoid waking Neon's autosuspend.
+POSTGRES_PROBE_INTERVAL_S = get_settings().postgres_probe_interval_s
 
 
 class ReadinessService(BaseModel):
