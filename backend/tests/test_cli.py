@@ -358,9 +358,12 @@ async def test_poll_for_clerk_attach_raises_timeout_when_never_attached():
     session.get = AsyncMock(return_value=mock_user)
     factory = MagicMock(return_value=session)
 
-    with pytest.raises(TimeoutError):
+    async def poll_with_zero_timeout():
         async with asyncio.timeout(0):
             await _poll_for_clerk_attach(factory, user_id)
+
+    with pytest.raises(TimeoutError):
+        await poll_with_zero_timeout()
 
 
 # ---------------------------------------------------------------------------
