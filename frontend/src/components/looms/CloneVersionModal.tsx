@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cloneVersion, type LoomVersion, type CloneVersionPayload } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly loomId: string;
@@ -12,6 +13,7 @@ interface Props {
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export function CloneVersionModal({ loomId, source, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [name, setName] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(today());
   const [description, setDescription] = useState("");

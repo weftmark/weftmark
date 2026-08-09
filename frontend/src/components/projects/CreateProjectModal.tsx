@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TagInput } from "@/components/ui/TagInput";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit, convertLength, formatLength } from "@/lib/units";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly onSuccess: (id: string) => void;
@@ -378,6 +379,7 @@ function LoomConflictNotice({
 }
 
 export function CreateProjectModal({ onSuccess, onClose, defaultDraftId }: Props) {
+  useEscapeKey(onClose);
   const { user } = useAuthContext();
   const [name, setName] = useState("");
   const [draftId, setDraftId] = useState(defaultDraftId ?? "");

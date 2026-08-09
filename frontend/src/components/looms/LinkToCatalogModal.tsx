@@ -12,6 +12,7 @@ import {
   LOOM_TYPE_LABELS,
 } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 type Step = "search" | "configure" | "confirm";
 
@@ -501,6 +502,7 @@ interface Props {
 }
 
 export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [step, setStep] = useState<Step>("search");
 
   // Search state — displayQuery shown in input, searchQuery triggers API

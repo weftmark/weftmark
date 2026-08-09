@@ -6,8 +6,10 @@ import { listCollections, createCollection, type CollectionSummary } from "@/api
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { SkeletonCardGrid } from "@/components/ui/skeleton";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 function NewCollectionModal({ onClose, onSuccess }: { readonly onClose: () => void; readonly onSuccess: () => void }) {
+  useEscapeKey(onClose);
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

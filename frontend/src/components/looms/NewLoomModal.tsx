@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit } from "@/lib/units";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly onSuccess: () => void;
@@ -90,6 +91,7 @@ function buildWidthOptions(ref: LoomReferenceSummary): WidthOption[] {
 }
 
 export function NewLoomModal({ onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const { user } = useAuthContext();
   const defaultUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
 
