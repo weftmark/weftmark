@@ -1542,6 +1542,11 @@ function ProjectPageHeader({
   togglePresentMode,
   badgeClasses,
   badgeLabel,
+  isActiveTracking,
+  isAbandoned,
+  isFinished,
+  actionLoading,
+  tracker,
 }: {
   readonly project: ProjectDetail;
   readonly isReadOnly: boolean;
@@ -1559,8 +1564,29 @@ function ProjectPageHeader({
   readonly togglePresentMode: () => void;
   readonly badgeClasses: string;
   readonly badgeLabel: string;
+  readonly isActiveTracking: boolean;
+  readonly isAbandoned: boolean;
+  readonly isFinished: boolean;
+  readonly actionLoading: boolean;
+  readonly tracker: ReturnType<typeof useProjectTracker>;
 }) {
   const { t } = useTranslation();
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click — same pattern as LinkToCatalogModal's search results.
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) {
+        setShowStatusMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const showStatusButton = !isReadOnly && (isActiveTracking || isAbandoned);
+
   return (
     <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-3 min-w-0">
@@ -1631,6 +1657,52 @@ function ProjectPageHeader({
           >
             <AppIcons.Settings className="h-4 w-4" />
           </button>
+        )}
+        {showStatusButton && (
+          <div ref={statusMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setShowStatusMenu((v) => !v)}
+              className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title={t("projectDetailPage.actions")}
+              aria-label={t("projectDetailPage.actions")}
+              aria-expanded={showStatusMenu}
+            >
+              <AppIcons.StatusActions className="h-4 w-4" />
+            </button>
+            {showStatusMenu && (
+              <div className="absolute right-0 mt-2 z-20 w-72 rounded-md border border-border bg-popover p-3 shadow-md">
+                {isActiveTracking && (
+                  <TrackingStatusActions
+                    project={project}
+                    isFinished={isFinished}
+                    actionLoading={actionLoading}
+                    confirmComplete={tracker.confirmComplete}
+                    setConfirmComplete={tracker.setConfirmComplete}
+                    confirmIncomplete={tracker.confirmIncomplete}
+                    setConfirmIncomplete={tracker.setConfirmIncomplete}
+                    confirmAbandon={tracker.confirmAbandon}
+                    setConfirmAbandon={tracker.setConfirmAbandon}
+                    onComplete={tracker.handleComplete}
+                    onForceComplete={tracker.handleForceComplete}
+                    onAbandon={tracker.handleAbandon}
+                  />
+                )}
+                {isAbandoned && (
+                  <ReactivateStatusActions
+                    project={project}
+                    actionLoading={actionLoading}
+                    confirmRestart={tracker.confirmRestart}
+                    setConfirmRestart={tracker.setConfirmRestart}
+                    restartConflict={tracker.restartConflict}
+                    setRestartConflict={tracker.setRestartConflict}
+                    onRestart={tracker.handleRestart}
+                    onResolveAndRestart={tracker.handleResolveAndRestart}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         )}
         <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>
           {badgeLabel}
@@ -2290,20 +2362,7 @@ function ProjectDetailsCollapsible({
   );
 }
 
-function ActiveTrackingActionsCollapsible({
-  project,
-  isFinished,
-  actionLoading,
-  confirmComplete,
-  setConfirmComplete,
-  confirmIncomplete,
-  setConfirmIncomplete,
-  confirmAbandon,
-  setConfirmAbandon,
-  onComplete,
-  onForceComplete,
-  onAbandon,
-}: {
+interface TrackingStatusActionsProps {
   readonly project: ProjectDetail;
   readonly isFinished: boolean;
   readonly actionLoading: boolean;
@@ -2316,68 +2375,84 @@ function ActiveTrackingActionsCollapsible({
   readonly onComplete: () => void;
   readonly onForceComplete: () => void;
   readonly onAbandon: () => void;
-}) {
+}
+
+// Shared between the Details & Settings panel's Actions collapsible and the
+// header's always-visible status-actions dropdown (#978) — one component, two
+// render sites, so there's no duplicated status-change logic between them.
+function TrackingStatusActions({
+  project,
+  isFinished,
+  actionLoading,
+  confirmComplete,
+  setConfirmComplete,
+  confirmIncomplete,
+  setConfirmIncomplete,
+  confirmAbandon,
+  setConfirmAbandon,
+  onComplete,
+  onForceComplete,
+  onAbandon,
+}: TrackingStatusActionsProps) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-wrap gap-2">
+      {!confirmComplete && !confirmIncomplete && !confirmAbandon && (
+        <>
+          <Button
+            variant="success"
+            size="sm"
+            onClick={() => isFinished ? setConfirmComplete(true) : setConfirmIncomplete(true)}
+          >
+            {t("projectDetailPage.markComplete")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
+            {t("projectDetailPage.abandon")}
+          </Button>
+        </>
+      )}
+      {confirmComplete && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
+          <Button size="sm" variant="success" onClick={onComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+          <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+        </div>
+      )}
+      {confirmIncomplete && (
+        <div className="space-y-2 w-full">
+          <p className="text-sm text-muted-foreground">
+            {t("projectDetailPage.confirmIncomplete", {
+              current: Math.min(project.current_pick - 1, project.total_picks),
+              total: project.total_picks,
+            })}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="success" onClick={onForceComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+            <Button size="sm" variant="outline" onClick={() => setConfirmIncomplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+          </div>
+        </div>
+      )}
+      {confirmAbandon && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-destructive">{t("projectDetailPage.confirmAbandon")}</span>
+          <Button size="sm" onClick={onAbandon} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+          <Button size="sm" variant="outline" onClick={() => setConfirmAbandon(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActiveTrackingActionsCollapsible(props: TrackingStatusActionsProps) {
   const { t } = useTranslation();
   return (
     <CollapsibleSection title={t("projectDetailPage.actions")}>
-      <div className="flex flex-wrap gap-2">
-        {!confirmComplete && !confirmIncomplete && !confirmAbandon && (
-          <>
-            <Button
-              variant="success"
-              size="sm"
-              onClick={() => isFinished ? setConfirmComplete(true) : setConfirmIncomplete(true)}
-            >
-              {t("projectDetailPage.markComplete")}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setConfirmAbandon(true)}>
-              {t("projectDetailPage.abandon")}
-            </Button>
-          </>
-        )}
-        {confirmComplete && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{t("projectDetailPage.confirmComplete")}</span>
-            <Button size="sm" variant="success" onClick={onComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-            <Button size="sm" variant="outline" onClick={() => setConfirmComplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-          </div>
-        )}
-        {confirmIncomplete && (
-          <div className="space-y-2 w-full">
-            <p className="text-sm text-muted-foreground">
-              {t("projectDetailPage.confirmIncomplete", {
-                current: Math.min(project.current_pick - 1, project.total_picks),
-                total: project.total_picks,
-              })}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="success" onClick={onForceComplete} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-              <Button size="sm" variant="outline" onClick={() => setConfirmIncomplete(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-            </div>
-          </div>
-        )}
-        {confirmAbandon && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-destructive">{t("projectDetailPage.confirmAbandon")}</span>
-            <Button size="sm" onClick={onAbandon} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-            <Button size="sm" variant="outline" onClick={() => setConfirmAbandon(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-          </div>
-        )}
-      </div>
+      <TrackingStatusActions {...props} />
     </CollapsibleSection>
   );
 }
 
-function RestartCollapsible({
-  project,
-  actionLoading,
-  confirmRestart,
-  setConfirmRestart,
-  restartConflict,
-  setRestartConflict,
-  onRestart,
-  onResolveAndRestart,
-}: {
+interface ReactivateStatusActionsProps {
   readonly project: ProjectDetail;
   readonly actionLoading: boolean;
   readonly confirmRestart: boolean;
@@ -2386,43 +2461,63 @@ function RestartCollapsible({
   readonly setRestartConflict: (v: ProjectSummary | null) => void;
   readonly onRestart: () => void;
   readonly onResolveAndRestart: (resolve: "complete" | "abandon") => void;
-}) {
+}
+
+// Shared between the Details & Settings panel's Actions collapsible and the
+// header's always-visible status-actions dropdown (#978) — see TrackingStatusActions.
+function ReactivateStatusActions({
+  project,
+  actionLoading,
+  confirmRestart,
+  setConfirmRestart,
+  restartConflict,
+  setRestartConflict,
+  onRestart,
+  onResolveAndRestart,
+}: ReactivateStatusActionsProps) {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-3">
+      {!confirmRestart && !restartConflict && (
+        <Button variant="outline" size="sm" onClick={() => setConfirmRestart(true)}>
+          {t("projectDetailPage.restartProject")}
+        </Button>
+      )}
+      {confirmRestart && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm">{t("projectDetailPage.resumeFromPick", { pick: project.current_pick })}</span>
+          <Button size="sm" onClick={onRestart} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
+          <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
+        </div>
+      )}
+      {restartConflict && (
+        <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
+          <p className="font-medium text-copper-on-subtle">
+            {t("projectDetailPage.loomHasActive")} <span className="font-semibold">{restartConflict.name}</span>
+          </p>
+          <p className="text-copper-on-subtle text-xs">{t("projectDetailPage.resolveToRestart")}</p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button type="button" size="sm" onClick={() => onResolveAndRestart("complete")} disabled={actionLoading}>
+              {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.markCompletedAndRestart")}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => onResolveAndRestart("abandon")} disabled={actionLoading}>
+              {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.abandonAndRestart")}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setRestartConflict(null)} disabled={actionLoading}>
+              {t("projectDetailPage.dismiss")}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RestartCollapsible(props: ReactivateStatusActionsProps) {
   const { t } = useTranslation();
   return (
     <CollapsibleSection title={t("projectDetailPage.actions")}>
-      <div className="space-y-3">
-        {!confirmRestart && !restartConflict && (
-          <Button variant="outline" size="sm" onClick={() => setConfirmRestart(true)}>
-            {t("projectDetailPage.restartProject")}
-          </Button>
-        )}
-        {confirmRestart && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{t("projectDetailPage.resumeFromPick", { pick: project.current_pick })}</span>
-            <Button size="sm" onClick={onRestart} disabled={actionLoading}>{t("projectDetailPage.confirm")}</Button>
-            <Button size="sm" variant="outline" onClick={() => setConfirmRestart(false)} disabled={actionLoading}>{t("common.cancel")}</Button>
-          </div>
-        )}
-        {restartConflict && (
-          <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-3 text-sm space-y-2">
-            <p className="font-medium text-copper-on-subtle">
-              {t("projectDetailPage.loomHasActive")} <span className="font-semibold">{restartConflict.name}</span>
-            </p>
-            <p className="text-copper-on-subtle text-xs">{t("projectDetailPage.resolveToRestart")}</p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button type="button" size="sm" onClick={() => onResolveAndRestart("complete")} disabled={actionLoading}>
-                {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.markCompletedAndRestart")}
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => onResolveAndRestart("abandon")} disabled={actionLoading}>
-                {actionLoading ? t("projectDetailPage.working") : t("projectDetailPage.abandonAndRestart")}
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setRestartConflict(null)} disabled={actionLoading}>
-                {t("projectDetailPage.dismiss")}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+      <ReactivateStatusActions {...props} />
     </CollapsibleSection>
   );
 }
@@ -2986,6 +3081,11 @@ export function ProjectDetailPage() {
         togglePresentMode={togglePresentMode}
         badgeClasses={badgeClasses}
         badgeLabel={badgeLabel}
+        isActiveTracking={isActiveTracking}
+        isAbandoned={isAbandoned}
+        isFinished={isFinished}
+        actionLoading={actionLoading}
+        tracker={tracker}
       />
 
       {/* Main content — fills remaining height; overflow-hidden prevents any page scroll */}
