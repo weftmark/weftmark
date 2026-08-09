@@ -447,18 +447,27 @@ function computeDiffRows(
   return rows;
 }
 
+interface SaveLoomCatalogLinkData {
+  readonly loom: LoomDetail;
+  readonly version: LoomVersion;
+  readonly selectedRef: LoomReferenceSummary;
+  readonly newLoomType: LoomType;
+  readonly selectedShafts: number | null;
+  readonly derivedTreadles: number | null;
+  readonly selectedWidthOpt: WidthOption | null;
+}
+
+interface SaveLoomCatalogLinkCallbacks {
+  readonly setSaving: (v: boolean) => void;
+  readonly setError: (v: string | null) => void;
+  readonly onSuccess: () => void;
+}
+
 async function saveLoomCatalogLink(
-  loom: LoomDetail,
-  version: LoomVersion,
-  selectedRef: LoomReferenceSummary,
-  newLoomType: LoomType,
-  selectedShafts: number | null,
-  derivedTreadles: number | null,
-  selectedWidthOpt: WidthOption | null,
-  setSaving: (v: boolean) => void,
-  setError: (v: string | null) => void,
-  onSuccess: () => void,
+  data: SaveLoomCatalogLinkData,
+  { setSaving, setError, onSuccess }: SaveLoomCatalogLinkCallbacks,
 ) {
+  const { loom, version, selectedRef, newLoomType, selectedShafts, derivedTreadles, selectedWidthOpt } = data;
   setSaving(true);
   setError(null);
   try {
@@ -608,7 +617,10 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
 
   const handleSave = () => {
     if (!selectedRef) return;
-    void saveLoomCatalogLink(loom, version, selectedRef, newLoomType, selectedShafts, derivedTreadles, selectedWidthOpt, setSaving, setError, onSuccess);
+    void saveLoomCatalogLink(
+      { loom, version, selectedRef, newLoomType, selectedShafts, derivedTreadles, selectedWidthOpt },
+      { setSaving, setError, onSuccess },
+    );
   };
 
   return (

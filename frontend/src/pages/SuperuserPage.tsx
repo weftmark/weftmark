@@ -106,7 +106,7 @@ function lintHtml(html: string): LintResult {
   // C0 control character (tab, newline, etc).
   for (const a of doc.body.querySelectorAll("a[href]")) {
     const raw = a.getAttribute("href") ?? "";
-    const normalized = raw.split("").filter((c) => c.charCodeAt(0) > 32).join("").toLowerCase();
+    const normalized = raw.split("").filter((c) => (c.codePointAt(0) ?? 0) > 32).join("").toLowerCase();
     if (/^(javascript|vbscript|data):/.test(normalized)) {
       issues.push({ level: "error", message: "Dangerous URL scheme in <a> href" });
     }

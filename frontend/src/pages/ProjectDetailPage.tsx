@@ -2876,9 +2876,8 @@ function computeTrackerDisplayState(
 
   const maxFromPicks = picksData ? Math.max(0, ...picksData.picks.flatMap((p) => p.active)) : 0;
   // When a loom is assigned, use its treadle/shaft count; otherwise fall back to draft declared count.
-  const maxActive = (loomCount !== null && loomCount > 0)
-    ? loomCount
-    : (declaredCount > 0 ? declaredCount : maxFromPicks);
+  const fallbackCount = declaredCount > 0 ? declaredCount : maxFromPicks;
+  const maxActive = (loomCount !== null && loomCount > 0) ? loomCount : fallbackCount;
 
   // Count of trailing unused boxes (never used in any pick, counting from the top).
   const trailingUnused = maxActive > maxFromPicks ? maxActive - maxFromPicks : 0;
