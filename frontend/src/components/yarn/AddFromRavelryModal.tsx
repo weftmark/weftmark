@@ -18,6 +18,7 @@ import { listYarn } from "@/api/yarn";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { ColorwayGrid } from "@/components/yarn/ColorwayGrid";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly onSuccess: () => void;
@@ -38,6 +39,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  useEscapeKey(onClose);
 
   const [step, setStep] = useState<Step>("company");
 
@@ -363,12 +365,9 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-16 px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl">
         {/* Header */}
