@@ -155,17 +155,14 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
               {brandOpen && brandSuggestions.length > 0 && (
                 <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover shadow-md text-sm">
                   {brandSuggestions.map((b) => (
-                    <li
-                      key={b}
-                      role="button"
-                      tabIndex={0}
-                      className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
-                      onMouseDown={() => { setBrand(b); setBrandOpen(false); }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setBrand(b); setBrandOpen(false); }
-                      }}
-                    >
-                      {b}
+                    <li key={b}>
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => { setBrand(b); setBrandOpen(false); }}
+                      >
+                        {b}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -188,17 +185,14 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
               {nameOpen && nameSuggestions.length > 0 && (
                 <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover shadow-md text-sm">
                   {nameSuggestions.map((n) => (
-                    <li
-                      key={n}
-                      role="button"
-                      tabIndex={0}
-                      className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
-                      onMouseDown={() => { setName(n); setNameOpen(false); }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setName(n); setNameOpen(false); }
-                      }}
-                    >
-                      {n}
+                    <li key={n}>
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => { setName(n); setNameOpen(false); }}
+                      >
+                        {n}
+                      </button>
                     </li>
                   ))}
                 </ul>

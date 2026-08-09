@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useImpersonation } from "@/context/ImpersonationContext";
 import { FeedbackModal } from "@/components/FeedbackModal";
 import { OnboardingChecklist } from "@/components/layout/OnboardingChecklist";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import type { User } from "@/context/AuthContext";
 
 interface NavItem {
@@ -378,18 +379,16 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
   // console guards below still use the real `user`.
   const effectiveUser = isImpersonating ? impersonatedUser : user;
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  useEscapeKey(onClose, open);
 
   return (
     <>
       {/* Mobile backdrop */}
       {open && (
         <div
-          role="button"
-          tabIndex={0}
-          aria-label="Close"
           className="fixed inset-0 z-20 bg-black/40 lg:hidden"
           onClick={onClose}
-          onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
+          onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
         />
       )}
 

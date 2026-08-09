@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getAuthToken } from "@/api/client";
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
   readonly src: string;
@@ -68,23 +69,21 @@ export function ZoomablePreviewModal({ src, title, onClose, gateConfirmed = true
     };
   }, [src, gateConfirmed]);
 
+  useEscapeKey(onClose);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
       if (e.key === "0" && blobUrl) setZoom(computeFitZoom());
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, blobUrl, computeFitZoom]);
+  }, [blobUrl, computeFitZoom]);
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Close"
       className="fixed inset-0 z-50 flex flex-col bg-black/60"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div className="flex flex-col w-full h-full max-w-7xl mx-auto bg-background shadow-xl rounded-none sm:rounded-lg sm:my-6 sm:h-[calc(100vh-3rem)] overflow-hidden">
 

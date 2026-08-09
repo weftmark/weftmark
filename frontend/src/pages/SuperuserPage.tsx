@@ -1806,20 +1806,14 @@ function ConfigFieldControl({
 }: ConfigFieldControlProps) {
   if (showMasked) {
     return (
-      <div
-        role="button"
-        tabIndex={0}
-        className={`${CONFIG_INPUT_CLS} text-muted-foreground cursor-text select-none`}
+      <button
+        type="button"
+        className={`${CONFIG_INPUT_CLS} text-left text-muted-foreground cursor-text select-none`}
         onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
-        onKeyDown={(e) => {
-          if (e.key !== "Enter" && e.key !== " ") return;
-          e.preventDefault();
-          setEditingFields((prev) => new Set([...prev, field]));
-        }}
         title="Click to change"
       >
         {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
-      </div>
+      </button>
     );
   }
   if (selectOptions?.length) {
