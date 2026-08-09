@@ -54,7 +54,7 @@ def _session_factory(db: AsyncSession):
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_db(db_session: AsyncSession):
     """Patch engine/session creation so _delete_user runs against db_session."""
     fake_engine = MagicMock()
@@ -66,13 +66,13 @@ def mock_db(db_session: AsyncSession):
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_storage():
     with patch("app.tasks.deletion._purge_storage", new_callable=AsyncMock):
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_emails():
     with (
         patch("app.services.email.send_deletion_completed_admin", new_callable=AsyncMock),

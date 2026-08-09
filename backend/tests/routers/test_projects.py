@@ -3111,9 +3111,12 @@ class TestProjectDrawdownData:
             x, y, w, h, color = f
             assert isinstance(x, int)
             assert isinstance(y, int)
-            assert isinstance(w, int) and w > 0
-            assert isinstance(h, int) and h > 0
-            assert isinstance(color, str) and color.startswith("#")
+            assert isinstance(w, int)
+            assert w > 0
+            assert isinstance(h, int)
+            assert h > 0
+            assert isinstance(color, str)
+            assert color.startswith("#")
 
     async def test_returns_dimension_headers(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
         _, project = await _insert_project_with_wif(db_session, test_user, warp_threads=4, weft_threads=4)

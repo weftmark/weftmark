@@ -83,7 +83,7 @@ async def _make_draft(db: AsyncSession, owner_id: uuid.UUID, name: str = "Test D
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_db(db_session: AsyncSession):
     fake_engine = MagicMock()
     fake_engine.dispose = AsyncMock()
@@ -94,7 +94,7 @@ def mock_db(db_session: AsyncSession):
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_storage():
     with (
         patch("app.services.storage.aread_file", new_callable=AsyncMock, return_value=b"fake-file-data"),
@@ -103,7 +103,7 @@ def mock_storage():
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_email():
     with patch("app.services.email.send_export_ready", new_callable=AsyncMock):
         yield

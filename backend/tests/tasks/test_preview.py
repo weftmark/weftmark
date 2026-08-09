@@ -112,7 +112,7 @@ def _task_mock(retries: int = 0, max_retries: int = 2):
     return t
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_engine_and_session(db_session: AsyncSession):
     fake_engine = MagicMock()
     fake_engine.dispose = AsyncMock()
@@ -123,7 +123,7 @@ def mock_engine_and_session(db_session: AsyncSession):
         yield fake_engine
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_rendering():
     """Patch the rendering service to avoid real image generation."""
     mock_draft = MagicMock()
