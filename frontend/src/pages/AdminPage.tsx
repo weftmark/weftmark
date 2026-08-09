@@ -1764,7 +1764,6 @@ function FeedbackTab() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}
-          onKeyDown={(e) => { if (e.key === "Escape") setDetail(null); }}
         >
           <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">

@@ -15,7 +15,6 @@ function DevJsonModal({ data, onClose }: { readonly data: unknown; readonly onCl
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div className="relative bg-card border border-border rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto m-4">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -125,7 +124,6 @@ function EditColorwayModal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
     >
       <div
         role="dialog"

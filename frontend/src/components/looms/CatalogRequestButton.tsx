@@ -103,7 +103,6 @@ export function CatalogRequestButton({ loom }: Props) {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={(e) => { if (e.target === e.currentTarget && !mutation.isPending) setShowModal(false); }}
-          onKeyDown={(e) => { if (e.key === "Escape" && !mutation.isPending) setShowModal(false); }}
         >
           <div className="w-full max-w-md rounded-lg border border-border bg-background shadow-xl p-6 space-y-4">
             <div className="flex items-center justify-between">

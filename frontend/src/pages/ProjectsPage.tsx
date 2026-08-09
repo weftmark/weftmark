@@ -138,7 +138,6 @@ function ProjectCard({ project, onAssign }: {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowPreview(false); }}
-          onKeyDown={(e) => { if (e.key === "Escape") setShowPreview(false); }}
         >
           <div className="relative max-w-xl w-full">
             <button
