@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { type LoomDetail, LOOM_TYPE_LABELS } from "@/api/looms";
 import { submitFeedback } from "@/api/feedback";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 // ---------- localStorage dedup ----------
 
@@ -49,6 +50,8 @@ export function CatalogRequestButton({ loom }: Props) {
       setShowModal(false);
     },
   });
+
+  useEscapeKey(() => { if (!mutation.isPending) setShowModal(false); }, showModal);
 
   function handleSubmit() {
     const typeLabel = LOOM_TYPE_LABELS[loom.loom_type] ?? loom.loom_type;
@@ -98,14 +101,9 @@ export function CatalogRequestButton({ loom }: Props) {
 
       {showModal && (
         <div
-          role="button"
-          tabIndex={0}
-          aria-label="Close"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={(e) => { if (e.target === e.currentTarget && !mutation.isPending) setShowModal(false); }}
-          onKeyDown={(e) => {
-            if ((e.key === "Escape" || e.key === "Enter" || e.key === " ") && !mutation.isPending) setShowModal(false);
-          }}
+          onKeyDown={(e) => { if (e.key === "Escape" && !mutation.isPending) setShowModal(false); }}
         >
           <div className="w-full max-w-md rounded-lg border border-border bg-background shadow-xl p-6 space-y-4">
             <div className="flex items-center justify-between">

@@ -59,6 +59,7 @@ import {
   adminDeleteLoomReference,
   type LoomReferenceDetail,
 } from "@/api/looms";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "slugs" | "feedback" | "looms";
 
@@ -1627,6 +1628,7 @@ function FeedbackTab() {
   const [typeFilter, setTypeFilter] = useState<SubmissionType | "">("");
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [detail, setDetail] = useState<FeedbackRecord | null>(null);
+  useEscapeKey(() => setDetail(null), detail !== null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "feedback", page, typeFilter, includeDeleted],
@@ -1760,12 +1762,9 @@ function FeedbackTab() {
       {/* Detail modal */}
       {detail && (
         <div
-          role="button"
-          tabIndex={0}
-          aria-label="Close"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}
-          onKeyDown={(e) => { if (e.key === "Escape" || e.key === "Enter" || e.key === " ") setDetail(null); }}
+          onKeyDown={(e) => { if (e.key === "Escape") setDetail(null); }}
         >
           <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
