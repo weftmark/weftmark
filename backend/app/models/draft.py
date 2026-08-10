@@ -91,6 +91,19 @@ class Draft(Base, TimestampMixin, SoftDeleteMixin, RetireMixin):
     # User-defined tags for categorisation (e.g. "twill", "cotton", "gift")
     tags: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
 
+    # Structural fingerprints (sha256 hex digests) for exact-match "related draft"
+    # detection (#983). threading_fingerprint/tieup_fingerprint are computed
+    # synchronously at upload time from [THREADING]/[TIEUP]; null if the section
+    # is absent or degenerate (no shaft assignments). drawdown_fingerprint is
+    # computed asynchronously from the full warp x weft interlacement grid —
+    # catches drafts that are physically identical fabric despite a different
+    # tie-up/treadling encoding; null until the background task completes, or
+    # if warp_threads/weft_threads is 0. v1 is exact-match only — no rotation
+    # or transposition awareness.
+    threading_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    tieup_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    drawdown_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
     # Sharing
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     share_slug: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)

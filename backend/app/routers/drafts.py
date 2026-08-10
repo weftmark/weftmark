@@ -14,9 +14,10 @@ from app.config import get_settings
 from app.deps import get_db, get_effective_user
 from app.models.draft import Draft
 from app.models.user import User
-from app.services import rendering, storage, wif_linter, wif_modifier, wif_parser
+from app.services import fingerprints, rendering, storage, wif_linter, wif_modifier, wif_parser
 from app.services.audit import write_audit_log
 from app.services.rate_limiter import rate_limit
+from app.tasks.fingerprint import compute_draft_drawdown_fingerprint
 from app.tasks.preview import generate_drawdown_preview
 from app.tasks.tiles import prerender_drawdown_tiles
 
@@ -27,6 +28,7 @@ _MEDIA_TYPE_PNG = "image/png"
 _NO_WIF_FILE = "No WIF file for this draft"
 _IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable"
 _PREVIEW_TASK_NAME = "app.tasks.preview.generate_drawdown_preview"
+_DRAWDOWN_FINGERPRINT_TASK_NAME = "app.tasks.fingerprint.compute_draft_drawdown_fingerprint"
 
 _upload_rate_limit = rate_limit("wif_upload", max_requests=30, window_seconds=3600)
 
@@ -157,6 +159,8 @@ async def create_draft(
 
     lint = wif_linter.lint(wif_bytes)
     measurements = wif_parser.extract_measurements(wif_bytes)
+    threading_fp = fingerprints.compute_threading_fingerprint(wif_bytes)
+    tieup_fp = fingerprints.compute_tieup_fingerprint(wif_bytes)
 
     import json as _json
 
@@ -194,6 +198,8 @@ async def create_draft(
         wif_colors=wif_parser.extract_colors(wif_bytes) or None,
         weft_color_stats=wif_parser.extract_weft_color_stats(wif_bytes) or None,
         warp_color_stats=wif_parser.extract_warp_color_stats(wif_bytes) or None,
+        threading_fingerprint=threading_fp,
+        tieup_fingerprint=tieup_fp,
     )
     db.add(draft)
     await db.flush()  # get draft.id without committing
@@ -210,6 +216,8 @@ async def create_draft(
         record_queued(get_settings(), task.id, _PREVIEW_TASK_NAME, "preview")
         tile_task = prerender_drawdown_tiles.delay(str(draft.id))
         record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+        fp_task = compute_draft_drawdown_fingerprint.delay(str(draft.id))
+        record_queued(get_settings(), fp_task.id, _DRAWDOWN_FINGERPRINT_TASK_NAME, "fingerprint")
     return DraftSummary.from_draft(draft)
 
 
@@ -249,6 +257,59 @@ async def get_draft(
 ) -> DraftDetail:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     return DraftDetail(**_draft_detail_data(draft))
+
+
+class RelatedDraftRef(BaseModel):
+    id: uuid.UUID
+    name: str
+    created_at: datetime
+
+
+class RelatedDraftsResponse(BaseModel):
+    same_threading: list[RelatedDraftRef]
+    same_tieup: list[RelatedDraftRef]
+    same_drawdown: list[RelatedDraftRef]
+
+
+_RELATED_DRAFTS_LIMIT = 50
+
+
+@router.get("/{draft_id}/related", responses={404: {"description": "Draft not found"}})
+async def get_related_drafts(
+    draft_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RelatedDraftsResponse:
+    """Other drafts sharing this draft's threading/tie-up/drawdown fingerprint (#983).
+
+    Exact-match only (v1). Scoped to the draft owner's library — for a
+    superuser inspecting another user's draft, that means the inspected
+    user's other drafts, consistent with get_draft's own inspection scoping.
+    """
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
+
+    async def _matches(column, value: str | None) -> list[RelatedDraftRef]:
+        if value is None:
+            return []
+        stmt = (
+            select(Draft)
+            .where(
+                column == value,
+                Draft.owner_id == draft.owner_id,
+                Draft.id != draft.id,
+                Draft.deleted_at.is_(None),
+            )
+            .order_by(Draft.created_at.desc())
+            .limit(_RELATED_DRAFTS_LIMIT)
+        )
+        rows = (await db.scalars(stmt)).all()
+        return [RelatedDraftRef(id=d.id, name=d.name, created_at=d.created_at) for d in rows]
+
+    return RelatedDraftsResponse(
+        same_threading=await _matches(Draft.threading_fingerprint, draft.threading_fingerprint),
+        same_tieup=await _matches(Draft.tieup_fingerprint, draft.tieup_fingerprint),
+        same_drawdown=await _matches(Draft.drawdown_fingerprint, draft.drawdown_fingerprint),
+    )
 
 
 @router.patch(

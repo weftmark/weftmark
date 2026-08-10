@@ -49,12 +49,13 @@ _REDIS_KEY_PREFIX = "weftmark:post_migrate:"
 
 
 def _backfill_registry() -> list[dict]:
+    from app.tasks.fingerprint import backfill_all_drawdown_fingerprints
     from app.tasks.preview import (
         backfill_all_drawdown_previews,
         backfill_all_project_drawdown_previews,
         backfill_all_project_drawdown_svgs,
     )
-    from app.tasks.reparse import reparse_all_drafts
+    from app.tasks.reparse import backfill_draft_fingerprints, reparse_all_drafts
     from app.tasks.seeds import seed_loom_references
 
     return [
@@ -97,6 +98,26 @@ def _backfill_registry() -> list[dict]:
             "description": "Pre-render drawdown SVG for projects missing it",
             "condition": ("SELECT COUNT(*) FROM projects WHERE drawdown_svg_path IS NULL AND deleted_at IS NULL"),
             "dispatch": lambda: backfill_all_project_drawdown_svgs.delay(),
+        },
+        {
+            "name": "draft_fingerprints",
+            "task_name": "app.tasks.reparse.backfill_draft_fingerprints",
+            "description": "Backfill threading_fingerprint/tieup_fingerprint on drafts uploaded before #983",
+            "condition": (
+                "SELECT COUNT(*) FROM drafts"
+                " WHERE threading_fingerprint IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
+            ),
+            "dispatch": lambda: backfill_draft_fingerprints.delay(),
+        },
+        {
+            "name": "drawdown_fingerprint",
+            "task_name": "app.tasks.fingerprint.backfill_all_drawdown_fingerprints",
+            "description": "Compute drawdown_fingerprint for drafts missing it",
+            "condition": (
+                "SELECT COUNT(*) FROM drafts"
+                " WHERE drawdown_fingerprint IS NULL AND wif_path IS NOT NULL AND deleted_at IS NULL"
+            ),
+            "dispatch": lambda: backfill_all_drawdown_fingerprints.delay(),
         },
     ]
 

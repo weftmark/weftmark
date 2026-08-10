@@ -34,6 +34,14 @@ def _mock_tile_task(monkeypatch):
     return mock
 
 
+@pytest.fixture(autouse=True)
+def _mock_fingerprint_task(monkeypatch):
+    """Prevent compute_draft_drawdown_fingerprint.delay() from connecting to Celery in tests."""
+    mock = MagicMock()
+    monkeypatch.setattr("app.routers.drafts.compute_draft_drawdown_fingerprint", mock)
+    return mock
+
+
 # ---------------------------------------------------------------------------
 # Unit tests for _has_wif_header
 # ---------------------------------------------------------------------------
@@ -1849,3 +1857,201 @@ class TestPatchMeasurements:
             json={"unit": "cm", "warp_length": 100.0},
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# TestCreateDraftFingerprints — #983
+# ---------------------------------------------------------------------------
+
+
+class TestCreateDraftFingerprints:
+    @pytest.fixture(autouse=True)
+    def _use_tmp_upload_dir(self, tmp_path, monkeypatch):
+        import app.services.storage as _storage
+
+        monkeypatch.setattr(_storage.settings, "upload_dir", str(tmp_path))
+
+    async def test_threading_and_tieup_fingerprints_set_synchronously(
+        self, auth_client: AsyncClient, db_session: AsyncSession
+    ):
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "Fingerprinted Draft"},
+        )
+        draft_id = resp.json()["id"]
+
+        draft = await db_session.get(Draft, draft_id)
+        assert draft.threading_fingerprint is not None
+        assert len(draft.threading_fingerprint) == 64
+        assert draft.tieup_fingerprint is not None
+        assert len(draft.tieup_fingerprint) == 64
+
+    async def test_drawdown_fingerprint_is_none_immediately_after_create(
+        self, auth_client: AsyncClient, db_session: AsyncSession
+    ):
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "Async Fingerprint Draft"},
+        )
+        draft_id = resp.json()["id"]
+
+        draft = await db_session.get(Draft, draft_id)
+        assert draft.drawdown_fingerprint is None
+
+    async def test_dispatches_drawdown_fingerprint_task(self, auth_client: AsyncClient, _mock_fingerprint_task):
+        resp = await auth_client.post(
+            "/api/drafts",
+            files={"wif_file": ("test.wif", _WIF, "application/octet-stream")},
+            data={"name": "Dispatch Draft"},
+        )
+        draft_id = resp.json()["id"]
+
+        _mock_fingerprint_task.delay.assert_called_once_with(draft_id)
+
+
+# ---------------------------------------------------------------------------
+# TestGetRelatedDrafts — #983
+# ---------------------------------------------------------------------------
+
+
+async def _insert_fingerprinted_draft(
+    db_session: AsyncSession,
+    owner: User,
+    *,
+    threading_fingerprint: str | None = None,
+    tieup_fingerprint: str | None = None,
+    drawdown_fingerprint: str | None = None,
+    deleted: bool = False,
+    retired: bool = False,
+) -> Draft:
+    from datetime import datetime, timezone
+
+    draft = Draft(
+        owner_id=owner.id,
+        name="Fingerprint Fixture",
+        wif_filename="test.wif",
+        wif_path="d/fp-fixture.wif",
+        threading_fingerprint=threading_fingerprint,
+        tieup_fingerprint=tieup_fingerprint,
+        drawdown_fingerprint=drawdown_fingerprint,
+    )
+    if deleted:
+        draft.deleted_at = datetime.now(timezone.utc)
+    if retired:
+        draft.retired_at = datetime.now(timezone.utc)
+    db_session.add(draft)
+    await db_session.commit()
+    return draft
+
+
+_FP_A = "a" * 64
+_FP_B = "b" * 64
+_FP_C = "c" * 64
+
+
+class TestGetRelatedDrafts:
+    async def test_no_matches_returns_empty_lists(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/related")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["same_threading"] == []
+        assert body["same_tieup"] == []
+        assert body["same_drawdown"] == []
+
+    async def test_same_threading_match_appears_both_ways(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft1 = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+        draft2 = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+
+        resp1 = await auth_client.get(f"/api/drafts/{draft1.id}/related")
+        ids1 = [d["id"] for d in resp1.json()["same_threading"]]
+        assert str(draft2.id) in ids1
+        assert str(draft1.id) not in ids1  # never includes itself
+
+        resp2 = await auth_client.get(f"/api/drafts/{draft2.id}/related")
+        ids2 = [d["id"] for d in resp2.json()["same_threading"]]
+        assert str(draft1.id) in ids2
+
+    async def test_matches_are_grouped_by_fingerprint_type(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft1 = await _insert_fingerprinted_draft(
+            db_session, test_user, threading_fingerprint=_FP_A, tieup_fingerprint=_FP_B
+        )
+        await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+        await _insert_fingerprinted_draft(db_session, test_user, tieup_fingerprint=_FP_B)
+        await _insert_fingerprinted_draft(db_session, test_user, drawdown_fingerprint=_FP_C)
+
+        resp = await auth_client.get(f"/api/drafts/{draft1.id}/related")
+        body = resp.json()
+        assert len(body["same_threading"]) == 1
+        assert len(body["same_tieup"]) == 1
+        assert len(body["same_drawdown"]) == 0
+
+    async def test_other_users_draft_never_appears(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User, admin_user: User
+    ):
+        draft = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+        await _insert_fingerprinted_draft(db_session, admin_user, threading_fingerprint=_FP_A)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/related")
+
+        assert resp.json()["same_threading"] == []
+
+    async def test_soft_deleted_draft_excluded(
+        self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User
+    ):
+        draft = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+        await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A, deleted=True)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/related")
+
+        assert resp.json()["same_threading"] == []
+
+    async def test_archived_draft_included(self, auth_client: AsyncClient, db_session: AsyncSession, test_user: User):
+        draft = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+        archived = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A, retired=True)
+
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/related")
+
+        ids = [d["id"] for d in resp.json()["same_threading"]]
+        assert str(archived.id) in ids
+
+    async def test_nonexistent_draft_returns_404(self, auth_client: AsyncClient):
+        resp = await auth_client.get(f"/api/drafts/{uuid.uuid4()}/related")
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get(f"/api/drafts/{uuid.uuid4()}/related")
+        assert resp.status_code == 401
+
+    async def test_other_users_draft_returns_404_for_non_superuser(
+        self, auth_client: AsyncClient, db_session: AsyncSession, admin_user: User
+    ):
+        draft = await _insert_fingerprinted_draft(db_session, admin_user, threading_fingerprint=_FP_A)
+        resp = await auth_client.get(f"/api/drafts/{draft.id}/related")
+        assert resp.status_code == 404
+
+    async def test_superuser_scoped_to_inspected_users_library(
+        self, superuser_client: AsyncClient, db_session: AsyncSession, test_user: User, superuser_user: User
+    ):
+        """Superuser inspecting test_user's draft sees matches from test_user's own
+        library, not the superuser's own — consistent with get_draft's scoping."""
+        target = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+        same_owner_match = await _insert_fingerprinted_draft(db_session, test_user, threading_fingerprint=_FP_A)
+        await _insert_fingerprinted_draft(db_session, superuser_user, threading_fingerprint=_FP_A)
+
+        resp = await superuser_client.get(f"/api/drafts/{target.id}/related")
+
+        assert resp.status_code == 200
+        ids = [d["id"] for d in resp.json()["same_threading"]]
+        assert str(same_owner_match.id) in ids
+        assert len(ids) == 1

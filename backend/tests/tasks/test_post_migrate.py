@@ -251,3 +251,172 @@ class TestReturnStructure:
         assert "skipped" in result
         assert isinstance(result["dispatched"], list)
         assert isinstance(result["skipped"], list)
+
+
+# ---------------------------------------------------------------------------
+# New fingerprint backfill entries (#983)
+#
+# Uses the mocked-registry mechanism (like every test above) for dispatch
+# behavior — it's entry-agnostic and already proven generic. What's NOT
+# already covered is whether the two new entries' raw SQL condition strings
+# and task names are actually correct (a typo in a column name isn't caught
+# by mypy/ruff) — verified by running the real _backfill_registry()'s
+# condition SQL directly against the test DB, without ever dispatching.
+# ---------------------------------------------------------------------------
+
+
+class TestFingerprintRegistryEntries:
+    def test_registry_includes_both_new_entries(self):
+        from app.tasks.post_migrate import _backfill_registry
+
+        registry = _backfill_registry()
+        by_name = {e["name"]: e for e in registry}
+        assert "draft_fingerprints" in by_name
+        assert by_name["draft_fingerprints"]["task_name"] == "app.tasks.reparse.backfill_draft_fingerprints"
+        assert "drawdown_fingerprint" in by_name
+        assert (
+            by_name["drawdown_fingerprint"]["task_name"] == "app.tasks.fingerprint.backfill_all_drawdown_fingerprints"
+        )
+
+    async def test_draft_fingerprints_condition_zero_when_empty(self, db_session):
+        from sqlalchemy import text
+
+        from app.tasks.post_migrate import _backfill_registry
+
+        entry = next(e for e in _backfill_registry() if e["name"] == "draft_fingerprints")
+        count = await db_session.scalar(text(entry["condition"]))
+        assert count == 0
+
+    async def test_draft_fingerprints_condition_counts_unfingerprinted_draft(self, db_session, test_user):
+        from sqlalchemy import text
+
+        from app.models.draft import Draft
+        from app.tasks.post_migrate import _backfill_registry
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Needs fingerprint",
+            wif_filename="test.wif",
+            wif_path="drafts/needs-fp.wif",
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        entry = next(e for e in _backfill_registry() if e["name"] == "draft_fingerprints")
+        count = await db_session.scalar(text(entry["condition"]))
+        assert count == 1
+
+        draft.threading_fingerprint = "a" * 64
+        await db_session.commit()
+        count_after = await db_session.scalar(text(entry["condition"]))
+        assert count_after == 0
+
+    async def test_drawdown_fingerprint_condition_zero_when_empty(self, db_session):
+        from sqlalchemy import text
+
+        from app.tasks.post_migrate import _backfill_registry
+
+        entry = next(e for e in _backfill_registry() if e["name"] == "drawdown_fingerprint")
+        count = await db_session.scalar(text(entry["condition"]))
+        assert count == 0
+
+    async def test_drawdown_fingerprint_condition_counts_unfingerprinted_draft(self, db_session, test_user):
+        from sqlalchemy import text
+
+        from app.models.draft import Draft
+        from app.tasks.post_migrate import _backfill_registry
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Needs drawdown fingerprint",
+            wif_filename="test.wif",
+            wif_path="drafts/needs-drawdown-fp.wif",
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        entry = next(e for e in _backfill_registry() if e["name"] == "drawdown_fingerprint")
+        count = await db_session.scalar(text(entry["condition"]))
+        assert count == 1
+
+        draft.drawdown_fingerprint = "b" * 64
+        await db_session.commit()
+        count_after = await db_session.scalar(text(entry["condition"]))
+        assert count_after == 0
+
+
+# ---------------------------------------------------------------------------
+# record_queued on successful dispatch — pre-existing branch (_run lines
+# ~176-188) that no test in this file exercised before: every dispatch lambda
+# above returns None, so `result is not None and hasattr(result, "id")` was
+# never true. A real Celery .delay() call returns an AsyncResult with .id.
+# ---------------------------------------------------------------------------
+
+
+class TestRecordQueuedOnDispatch:
+    async def test_record_queued_called_when_dispatch_returns_task_result(self, db_session, test_user, mock_redis):
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
+
+        fake_result = MagicMock()
+        fake_result.id = "fake-task-id-123"
+
+        with (
+            patch("app.tasks.post_migrate._backfill_registry") as mock_registry,
+            patch("app.services.task_history.record_queued") as mock_record_queued,
+        ):
+            mock_registry.return_value = [_reparse_registry_entry(lambda: fake_result)]
+            result = _run(mock_redis)
+
+        assert len(result["dispatched"]) == 1
+        mock_record_queued.assert_called_once()
+        assert mock_record_queued.call_args.args[1] == "fake-task-id-123"
+
+    async def test_record_queued_failure_does_not_block_dispatch(self, db_session, test_user, mock_redis):
+        """record_queued failures are caught and swallowed — a broken task-history
+        write must never prevent the backfill dispatch itself from succeeding."""
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
+
+        fake_result = MagicMock()
+        fake_result.id = "fake-task-id-456"
+
+        with (
+            patch("app.tasks.post_migrate._backfill_registry") as mock_registry,
+            patch("app.services.task_history.record_queued", side_effect=RuntimeError("db down")),
+        ):
+            mock_registry.return_value = [_reparse_registry_entry(lambda: fake_result)]
+            result = _run(mock_redis)
+
+        assert len(result["dispatched"]) == 1
+
+    async def test_result_without_id_attribute_skips_record_queued(self, db_session, test_user, mock_redis):
+        """A dispatch lambda returning a plain non-Celery value (e.g. None, like
+        every other test in this file) must not attempt to call record_queued."""
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
+
+        with (
+            patch("app.tasks.post_migrate._backfill_registry") as mock_registry,
+            patch("app.services.task_history.record_queued") as mock_record_queued,
+        ):
+            mock_registry.return_value = [_reparse_registry_entry(lambda: None)]
+            result = _run(mock_redis)
+
+        assert len(result["dispatched"]) == 1
+        mock_record_queued.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# TestCeleryWrapper — cover the run_post_migrate_backfills -> _run() delegation
+# ---------------------------------------------------------------------------
+
+
+class TestCeleryWrapper:
+    def test_run_post_migrate_backfills_delegates(self):
+        from app.tasks.post_migrate import run_post_migrate_backfills
+
+        task_mock = MagicMock()
+        with patch("app.tasks.post_migrate._run", return_value={"dispatched": [], "skipped": []}):
+            result = run_post_migrate_backfills.run.__func__(task_mock)
+
+        assert result == {"dispatched": [], "skipped": []}

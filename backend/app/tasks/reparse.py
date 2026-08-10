@@ -76,3 +76,54 @@ async def _reparse_all() -> dict:
     result = {"updated": updated, "skipped": skipped, "errors": errors}
     log.info("reparse_all_drafts_complete %s", result)
     return result
+
+
+@celery_app.task(
+    bind=True,
+    max_retries=0,
+    soft_time_limit=600,
+    time_limit=660,
+    name="app.tasks.reparse.backfill_draft_fingerprints",
+)
+def backfill_draft_fingerprints(self: Task) -> dict:
+    """Backfill threading_fingerprint/tieup_fingerprint for drafts uploaded before #983."""
+    return asyncio.run(_backfill_draft_fingerprints())
+
+
+async def _backfill_draft_fingerprints() -> dict:
+    from app.config import get_settings
+    from app.models.draft import Draft
+    from app.services import fingerprints, storage
+
+    settings = get_settings()
+    engine = create_async_engine(settings.database_url, echo=False)
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
+
+    updated = skipped = errors = 0
+
+    try:
+        async with async_session() as db:
+            drafts = (
+                await db.scalars(select(Draft).where(Draft.deleted_at.is_(None)).order_by(Draft.created_at))
+            ).all()
+
+            for draft in drafts:
+                if not draft.wif_path or not storage.file_exists(draft.wif_path):
+                    skipped += 1
+                    continue
+                try:
+                    wif_bytes = storage.read_file(draft.wif_path)
+                    draft.threading_fingerprint = fingerprints.compute_threading_fingerprint(wif_bytes)
+                    draft.tieup_fingerprint = fingerprints.compute_tieup_fingerprint(wif_bytes)
+                    updated += 1
+                except Exception as exc:
+                    log.warning("backfill_fingerprint_failed draft_id=%s error=%s", draft.id, exc)
+                    errors += 1
+
+            await db.commit()
+    finally:
+        await engine.dispose()
+
+    result = {"updated": updated, "skipped": skipped, "errors": errors}
+    log.info("backfill_draft_fingerprints_complete %s", result)
+    return result
