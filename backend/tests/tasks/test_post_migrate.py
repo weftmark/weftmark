@@ -345,3 +345,78 @@ class TestFingerprintRegistryEntries:
         await db_session.commit()
         count_after = await db_session.scalar(text(entry["condition"]))
         assert count_after == 0
+
+
+# ---------------------------------------------------------------------------
+# record_queued on successful dispatch — pre-existing branch (_run lines
+# ~176-188) that no test in this file exercised before: every dispatch lambda
+# above returns None, so `result is not None and hasattr(result, "id")` was
+# never true. A real Celery .delay() call returns an AsyncResult with .id.
+# ---------------------------------------------------------------------------
+
+
+class TestRecordQueuedOnDispatch:
+    async def test_record_queued_called_when_dispatch_returns_task_result(self, db_session, test_user, mock_redis):
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
+
+        fake_result = MagicMock()
+        fake_result.id = "fake-task-id-123"
+
+        with (
+            patch("app.tasks.post_migrate._backfill_registry") as mock_registry,
+            patch("app.services.task_history.record_queued") as mock_record_queued,
+        ):
+            mock_registry.return_value = [_reparse_registry_entry(lambda: fake_result)]
+            result = _run(mock_redis)
+
+        assert len(result["dispatched"]) == 1
+        mock_record_queued.assert_called_once()
+        assert mock_record_queued.call_args.args[1] == "fake-task-id-123"
+
+    async def test_record_queued_failure_does_not_block_dispatch(self, db_session, test_user, mock_redis):
+        """record_queued failures are caught and swallowed — a broken task-history
+        write must never prevent the backfill dispatch itself from succeeding."""
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
+
+        fake_result = MagicMock()
+        fake_result.id = "fake-task-id-456"
+
+        with (
+            patch("app.tasks.post_migrate._backfill_registry") as mock_registry,
+            patch("app.services.task_history.record_queued", side_effect=RuntimeError("db down")),
+        ):
+            mock_registry.return_value = [_reparse_registry_entry(lambda: fake_result)]
+            result = _run(mock_redis)
+
+        assert len(result["dispatched"]) == 1
+
+    async def test_result_without_id_attribute_skips_record_queued(self, db_session, test_user, mock_redis):
+        """A dispatch lambda returning a plain non-Celery value (e.g. None, like
+        every other test in this file) must not attempt to call record_queued."""
+        await _seed_draft(db_session, test_user.id, wif_colors=None)
+
+        with (
+            patch("app.tasks.post_migrate._backfill_registry") as mock_registry,
+            patch("app.services.task_history.record_queued") as mock_record_queued,
+        ):
+            mock_registry.return_value = [_reparse_registry_entry(lambda: None)]
+            result = _run(mock_redis)
+
+        assert len(result["dispatched"]) == 1
+        mock_record_queued.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# TestCeleryWrapper — cover the run_post_migrate_backfills -> _run() delegation
+# ---------------------------------------------------------------------------
+
+
+class TestCeleryWrapper:
+    def test_run_post_migrate_backfills_delegates(self):
+        from app.tasks.post_migrate import run_post_migrate_backfills
+
+        task_mock = MagicMock()
+        with patch("app.tasks.post_migrate._run", return_value={"dispatched": [], "skipped": []}):
+            result = run_post_migrate_backfills.run.__func__(task_mock)
+
+        assert result == {"dispatched": [], "skipped": []}
