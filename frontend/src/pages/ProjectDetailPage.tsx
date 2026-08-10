@@ -1574,16 +1574,34 @@ function ProjectPageHeader({
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const statusMenuRef = useRef<HTMLDivElement>(null);
 
+  const { setConfirmComplete, setConfirmIncomplete, setConfirmAbandon, setConfirmRestart, setRestartConflict } = tracker;
+
+  // Dismissing the dropdown without confirming must also reset the shared
+  // confirm-state it renders from (#1145) — otherwise a confirm view left
+  // mid-flow here reappears unprompted in the Details & Settings panel's
+  // Actions collapsible, which reads the same tracker state.
+  const closeStatusMenu = useCallback(() => {
+    setShowStatusMenu(false);
+    setConfirmComplete(false);
+    setConfirmIncomplete(false);
+    setConfirmAbandon(false);
+    setConfirmRestart(false);
+    setRestartConflict(null);
+  }, [setConfirmComplete, setConfirmIncomplete, setConfirmAbandon, setConfirmRestart, setRestartConflict]);
+
   // Close dropdown on outside click — same pattern as LinkToCatalogModal's search results.
+  // Only attached while open, so it can't reset the collapsible's confirm state
+  // via a click elsewhere on the page before this menu was ever opened.
   useEffect(() => {
+    if (!showStatusMenu) return;
     function handler(e: MouseEvent) {
       if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) {
-        setShowStatusMenu(false);
+        closeStatusMenu();
       }
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [showStatusMenu, closeStatusMenu]);
 
   const showStatusButton = !isReadOnly && (isActiveTracking || isAbandoned);
 
@@ -1662,7 +1680,7 @@ function ProjectPageHeader({
           <div ref={statusMenuRef} className="relative">
             <button
               type="button"
-              onClick={() => setShowStatusMenu((v) => !v)}
+              onClick={() => (showStatusMenu ? closeStatusMenu() : setShowStatusMenu(true))}
               className="rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title={t("projectDetailPage.actions")}
               aria-label={t("projectDetailPage.actions")}
