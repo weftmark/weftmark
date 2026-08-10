@@ -69,7 +69,9 @@ _TREADLING_4 = "[TREADLING]\n1=1\n2=2\n3=3\n4=4"
 class TestThreadingFingerprint:
     def test_deterministic(self):
         wif_bytes = _wif(threading=_THREADING_4)
-        assert compute_threading_fingerprint(wif_bytes) == compute_threading_fingerprint(wif_bytes)
+        first = compute_threading_fingerprint(wif_bytes)
+        second = compute_threading_fingerprint(wif_bytes)
+        assert first == second
 
     def test_returns_none_when_section_absent(self):
         wif_bytes = _wif()
@@ -99,7 +101,9 @@ class TestThreadingFingerprint:
 class TestTieupFingerprint:
     def test_deterministic(self):
         wif_bytes = _wif(tieup=_TIEUP_4)
-        assert compute_tieup_fingerprint(wif_bytes) == compute_tieup_fingerprint(wif_bytes)
+        first = compute_tieup_fingerprint(wif_bytes)
+        second = compute_tieup_fingerprint(wif_bytes)
+        assert first == second
 
     def test_returns_none_when_section_absent(self):
         wif_bytes = _wif()
@@ -133,7 +137,9 @@ class TestTieupFingerprint:
 class TestDrawdownFingerprint:
     def test_deterministic(self):
         wif_bytes = _wif(threading=_THREADING_4, tieup=_TIEUP_4, treadling=_TREADLING_4)
-        assert compute_drawdown_fingerprint(wif_bytes) == compute_drawdown_fingerprint(wif_bytes)
+        first = compute_drawdown_fingerprint(wif_bytes)
+        second = compute_drawdown_fingerprint(wif_bytes)
+        assert first == second
 
     def test_returns_none_when_zero_warp_threads(self):
         wif_bytes = _wif(threading="[THREADING]", tieup=_TIEUP_4, treadling=_TREADLING_4).replace(
