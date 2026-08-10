@@ -881,7 +881,14 @@
     "usedByConflict_other": "This draft is used by {{count}} active projects:",
     "conflictNote": "Remove this draft from those projects first, or force-delete — which will also delete all listed projects.",
     "forceDelete_one": "Force delete ({{count}} project will be deleted)",
-    "forceDelete_other": "Force delete ({{count}} projects will be deleted)"
+    "forceDelete_other": "Force delete ({{count}} projects will be deleted)",
+    "relatedDraftsHeading": "Related drafts",
+    "relatedDraftsThreading_one": "{{count}} other draft shares this threading",
+    "relatedDraftsThreading_other": "{{count}} other drafts share this threading",
+    "relatedDraftsTieup_one": "{{count}} other draft shares this tie-up",
+    "relatedDraftsTieup_other": "{{count}} other drafts share this tie-up",
+    "relatedDraftsDrawdown_one": "{{count}} other draft has the same drawdown",
+    "relatedDraftsDrawdown_other": "{{count}} other drafts have the same drawdown"
   },
   "yarnDetailPage": {
     "loading": "Loading…",

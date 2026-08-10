@@ -880,7 +880,14 @@
     "usedByConflict_other": "Cette armure est utilisée par {{count}} projets actifs :",
     "conflictNote": "Retirez d'abord cette armure de ces projets ou forcez la suppression — ce qui supprimera également tous les projets listés.",
     "forceDelete_one": "Forcer la suppression ({{count}} projet sera supprimé)",
-    "forceDelete_other": "Forcer la suppression ({{count}} projets seront supprimés)"
+    "forceDelete_other": "Forcer la suppression ({{count}} projets seront supprimés)",
+    "relatedDraftsHeading": "Related drafts",
+    "relatedDraftsThreading_one": "{{count}} other draft shares this threading",
+    "relatedDraftsThreading_other": "{{count}} other drafts share this threading",
+    "relatedDraftsTieup_one": "{{count}} other draft shares this tie-up",
+    "relatedDraftsTieup_other": "{{count}} other drafts share this tie-up",
+    "relatedDraftsDrawdown_one": "{{count}} other draft has the same drawdown",
+    "relatedDraftsDrawdown_other": "{{count}} other drafts have the same drawdown"
   },
   "yarnDetailPage": {
     "loading": "Chargement…",

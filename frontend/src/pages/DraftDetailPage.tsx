@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
 import { useQuery, useMutation, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
-import { getDraft, deleteDraft, archiveDraft, unarchiveDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, updateDraft, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat, type DeleteConflict, type DraftDetail } from "@/api/drafts";
+import { getDraft, getRelatedDrafts, deleteDraft, archiveDraft, unarchiveDraft, generateLiftplan, overrideDraftMetadata, setDraftWarpLength, setDraftWeavingWidth, setDraftEpi, updateDraft, previewUrl, previewSvgUrl, downloadWif, downloadWifModified, type ColorStat, type DeleteConflict, type DraftDetail, type RelatedDrafts } from "@/api/drafts";
 import { TagInput } from "@/components/ui/TagInput";
 import { TagChips } from "@/components/ui/TagChips";
 import { addDraftToCollection, removeDraftFromCollection } from "@/api/collections";
@@ -945,6 +945,41 @@ function ProjectsSection({
   );
 }
 
+function RelatedDraftsSection({ related }: { readonly related: RelatedDrafts | undefined }) {
+  const { t } = useTranslation();
+  if (!related) return null;
+
+  const groups: { key: string; labelKey: string; items: RelatedDrafts["same_threading"] }[] = [
+    { key: "same_threading", labelKey: "relatedDraftsThreading", items: related.same_threading },
+    { key: "same_tieup", labelKey: "relatedDraftsTieup", items: related.same_tieup },
+    { key: "same_drawdown", labelKey: "relatedDraftsDrawdown", items: related.same_drawdown },
+  ].filter((g) => g.items.length > 0);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <div className="border-t pt-4 space-y-3">
+      <h2 className="text-base font-semibold">{t("draftDetailPage.relatedDraftsHeading")}</h2>
+      {groups.map((group) => (
+        <div key={group.key} className="space-y-1.5">
+          <h3 className="text-sm text-muted-foreground">
+            {t(`draftDetailPage.${group.labelKey}`, { count: group.items.length })}
+          </h3>
+          <ul className="space-y-1.5">
+            {group.items.map((ref) => (
+              <li key={ref.id}>
+                <Link to={`/drafts/${ref.id}`} className="text-sm hover:underline text-card-foreground">
+                  {ref.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PreviewColumn({ draft, onOpenPreview }: { readonly draft: DraftDetail; readonly onOpenPreview: () => void }) {
   const { t } = useTranslation();
   return (
@@ -1164,6 +1199,12 @@ export function DraftDetailPage() {
     enabled: !!id,
   });
 
+  const { data: relatedDrafts } = useQuery({
+    queryKey: ["draft-related", id],
+    queryFn: () => getRelatedDrafts(id!),
+    enabled: !!id,
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -1266,6 +1307,8 @@ export function DraftDetailPage() {
               isReadOnly={isReadOnly}
               onNewProject={() => setShowCreateProject(true)}
             />
+
+            <RelatedDraftsSection related={relatedDrafts} />
           </div>
 
           {/* Right column: Preview */}

@@ -881,7 +881,14 @@
     "usedByConflict_other": "Dieses Ligament wird von {{count}} aktiven Projekten verwendet:",
     "conflictNote": "Entfernen Sie dieses Ligament zuerst aus diesen Projekten oder erzwingen Sie das Löschen — was auch alle aufgeführten Projekte löscht.",
     "forceDelete_one": "Erzwingenes Löschen ({{count}} Projekt wird gelöscht)",
-    "forceDelete_other": "Erzwingenes Löschen ({{count}} Projekte werden gelöscht)"
+    "forceDelete_other": "Erzwingenes Löschen ({{count}} Projekte werden gelöscht)",
+    "relatedDraftsHeading": "Related drafts",
+    "relatedDraftsThreading_one": "{{count}} other draft shares this threading",
+    "relatedDraftsThreading_other": "{{count}} other drafts share this threading",
+    "relatedDraftsTieup_one": "{{count}} other draft shares this tie-up",
+    "relatedDraftsTieup_other": "{{count}} other drafts share this tie-up",
+    "relatedDraftsDrawdown_one": "{{count}} other draft has the same drawdown",
+    "relatedDraftsDrawdown_other": "{{count}} other drafts have the same drawdown"
   },
   "yarnDetailPage": {
     "loading": "Laden…",
