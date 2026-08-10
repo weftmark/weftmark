@@ -62,7 +62,7 @@
   {
     "License": "MIT",
     "Name": "alembic",
-    "Version": "1.18.5"
+    "Version": "1.19.0"
   },
   {
     "License": "BSD License",
@@ -117,7 +117,7 @@
   {
     "License": "Apache-2.0",
     "Name": "boto3",
-    "Version": "1.43.61"
+    "Version": "1.43.66"
   },
   {
     "License": "Apache-2.0",
@@ -502,7 +502,7 @@
   {
     "License": "MIT",
     "Name": "pydantic-settings",
-    "Version": "2.14.2"
+    "Version": "2.15.0"
   },
   {
     "License": "MIT",
@@ -622,7 +622,7 @@
   {
     "License": "MIT",
     "Name": "typing-inspection",
-    "Version": "0.4.2"
+    "Version": "0.4.3"
   },
   {
     "License": "PSF-2.0",
@@ -652,7 +652,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "uvicorn",
-    "Version": "0.52.0"
+    "Version": "0.52.1"
   },
   {
     "License": "Apache Software License; MIT License",
