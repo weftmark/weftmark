@@ -853,7 +853,7 @@ function PhotoGrid({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setLightbox(null); }}
-          onKeyDown={(e) => { if (e.key === "Escape") setLightbox(null); }}
+          onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
         >
           <AuthedImage
             src={projectPhotoUrl(projectId, lightbox)}
@@ -2899,7 +2899,7 @@ function ViewSettingsDrawer({ onClose, viewPrefs, user, project, trailingUnused,
       <div
         className="fixed inset-0 z-40 bg-black/40"
         onClick={onClose}
-        onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+        onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
       />
       <div className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-border bg-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">

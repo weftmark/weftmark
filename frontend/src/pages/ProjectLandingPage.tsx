@@ -300,7 +300,7 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
       ref={backdropRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
       <div
         className="bg-card rounded-xl border border-border shadow-xl flex flex-col"
@@ -379,7 +379,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-lg w-full max-h-[80vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
