@@ -98,6 +98,18 @@ export interface DeleteConflict {
   projects: { id: string; name: string }[];
 }
 
+export interface RelatedDraftRef {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface RelatedDrafts {
+  same_threading: RelatedDraftRef[];
+  same_tieup: RelatedDraftRef[];
+  same_drawdown: RelatedDraftRef[];
+}
+
 export async function listDrafts(includeArchived = false, tags?: string[]): Promise<Draft[]> {
   const qs = new URLSearchParams();
   if (includeArchived) qs.set("include_archived", "true");
@@ -108,6 +120,10 @@ export async function listDrafts(includeArchived = false, tags?: string[]): Prom
 
 export async function getDraft(id: string): Promise<DraftDetail> {
   return req(`/api/drafts/${id}`);
+}
+
+export async function getRelatedDrafts(id: string): Promise<RelatedDrafts> {
+  return req(`/api/drafts/${id}/related`);
 }
 
 export async function uploadDraft(

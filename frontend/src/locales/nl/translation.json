@@ -880,7 +880,14 @@
     "usedByConflict_other": "Deze binding wordt gebruikt door {{count}} actieve projecten:",
     "conflictNote": "Verwijder deze binding eerst uit die projecten of forceer verwijdering — wat ook alle genoemde projecten verwijdert.",
     "forceDelete_one": "Geforceerd verwijderen ({{count}} project wordt verwijderd)",
-    "forceDelete_other": "Geforceerd verwijderen ({{count}} projecten worden verwijderd)"
+    "forceDelete_other": "Geforceerd verwijderen ({{count}} projecten worden verwijderd)",
+    "relatedDraftsHeading": "Related drafts",
+    "relatedDraftsThreading_one": "{{count}} other draft shares this threading",
+    "relatedDraftsThreading_other": "{{count}} other drafts share this threading",
+    "relatedDraftsTieup_one": "{{count}} other draft shares this tie-up",
+    "relatedDraftsTieup_other": "{{count}} other drafts share this tie-up",
+    "relatedDraftsDrawdown_one": "{{count}} other draft has the same drawdown",
+    "relatedDraftsDrawdown_other": "{{count}} other drafts have the same drawdown"
   },
   "yarnDetailPage": {
     "loading": "Laden…",
