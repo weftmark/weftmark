@@ -44,6 +44,7 @@
 | `app/cli.py` | 63% | Seeding CLI paths not tested |
 | `app/services/clerk.py` | 23% | Clerk API calls not tested (no Clerk mock) |
 | `app/routers/ravelry.py` | 86% | Status, disconnect, sync, authorize, and OAuth callback success/failure now covered (#963); popular/search endpoints and one `import-yarn` 404 branch remain untested — explicitly deferred by #963's own work order |
+| `app/services/fingerprints.py` | 100% | Threading/tie-up/drawdown structural fingerprinting (#983) — all guard branches (absent section, degenerate-empty, zero warp/weft threads) covered |
 | `app/routers/collections.py` | ~90% | Comprehensive CRUD tests; exact % not yet measured |
 | `app/routers/feedback.py` | ~90% | Full CRUD + admin paths tested; exact % not yet measured |
 | `app/routers/webhooks.py` | ~85% | Webhook handler paths covered; exact % not yet measured |

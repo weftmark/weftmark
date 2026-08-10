@@ -252,3 +252,120 @@ class TestReparseErrors:
 
         assert result["errors"] >= 1
         assert result["updated"] == 0
+
+
+# ---------------------------------------------------------------------------
+# TestBackfillDraftFingerprints (#983)
+# ---------------------------------------------------------------------------
+
+
+class TestBackfillDraftFingerprints:
+    async def test_returns_expected_keys(self, db_session, mock_engine_and_session):
+        from app.tasks.reparse import _backfill_draft_fingerprints
+
+        result = await _backfill_draft_fingerprints()
+        assert "updated" in result
+        assert "skipped" in result
+        assert "errors" in result
+
+    async def test_draft_without_wif_on_disk_is_skipped(self, db_session, test_user, mock_engine_and_session):
+        from app.models.draft import Draft
+        from app.tasks.reparse import _backfill_draft_fingerprints
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="No WIF",
+            wif_filename="nope.wif",
+            wif_path="drafts/nope-not-here.wif",
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        result = await _backfill_draft_fingerprints()
+        assert result["skipped"] >= 1
+        assert result["updated"] == 0
+
+    async def test_draft_with_valid_wif_gets_fingerprints_set(self, db_session, test_user, mock_engine_and_session):
+        import app.services.storage as _storage
+        from app.models.draft import Draft
+        from app.tasks.reparse import _backfill_draft_fingerprints
+
+        wif_key = f"drafts/fp-{uuid.uuid4().hex}.wif"
+        _storage._put(wif_key, MINIMAL_WIF)
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Valid WIF",
+            wif_filename="valid.wif",
+            wif_path=wif_key,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        result = await _backfill_draft_fingerprints()
+        assert result["updated"] >= 1
+
+        await db_session.refresh(draft)
+        assert draft.threading_fingerprint is not None
+        assert draft.tieup_fingerprint is not None
+
+    async def test_deleted_draft_excluded(self, db_session, test_user, mock_engine_and_session):
+        import app.services.storage as _storage
+        from app.models.draft import Draft
+        from app.tasks.reparse import _backfill_draft_fingerprints
+
+        wif_key = f"drafts/deleted-fp-{uuid.uuid4().hex}.wif"
+        _storage._put(wif_key, MINIMAL_WIF)
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Deleted Draft",
+            wif_filename="deleted.wif",
+            wif_path=wif_key,
+            deleted_at=datetime.now(timezone.utc),
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        result = await _backfill_draft_fingerprints()
+        assert result["updated"] == 0
+        assert result["skipped"] == 0
+
+    async def test_parse_error_counted_not_raised(self, db_session, test_user, mock_engine_and_session):
+        import app.services.storage as _storage
+        from app.models.draft import Draft
+        from app.tasks.reparse import _backfill_draft_fingerprints
+
+        wif_key = f"drafts/bad-fp-{uuid.uuid4().hex}.wif"
+        _storage._put(wif_key, b"[WIF]\ncorrupted=garbage")
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Bad WIF",
+            wif_filename="bad.wif",
+            wif_path=wif_key,
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        with patch("app.services.fingerprints.compute_threading_fingerprint", side_effect=Exception("parse failed")):
+            result = await _backfill_draft_fingerprints()
+
+        assert result["errors"] >= 1
+        assert result["updated"] == 0
+
+    def test_backfill_draft_fingerprints_delegates(self):
+        from app.tasks.reparse import backfill_draft_fingerprints
+
+        task_mock = MagicMock()
+        with patch(
+            "app.tasks.reparse._backfill_draft_fingerprints",
+            new=AsyncMock(return_value={"updated": 0, "skipped": 0, "errors": 0}),
+        ):
+            result = backfill_draft_fingerprints.run.__func__(task_mock)
+
+        assert result["errors"] == 0

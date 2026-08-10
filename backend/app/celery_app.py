@@ -24,6 +24,7 @@ def _make_celery() -> Celery:
             "app.tasks.deletion",
             "app.tasks.email_task",
             "app.tasks.feedback_dispatch",
+            "app.tasks.fingerprint",
             "app.tasks.geo",
             "app.tasks.maintenance",
             "app.tasks.metrics",

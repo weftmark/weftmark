@@ -251,3 +251,97 @@ class TestReturnStructure:
         assert "skipped" in result
         assert isinstance(result["dispatched"], list)
         assert isinstance(result["skipped"], list)
+
+
+# ---------------------------------------------------------------------------
+# New fingerprint backfill entries (#983)
+#
+# Uses the mocked-registry mechanism (like every test above) for dispatch
+# behavior — it's entry-agnostic and already proven generic. What's NOT
+# already covered is whether the two new entries' raw SQL condition strings
+# and task names are actually correct (a typo in a column name isn't caught
+# by mypy/ruff) — verified by running the real _backfill_registry()'s
+# condition SQL directly against the test DB, without ever dispatching.
+# ---------------------------------------------------------------------------
+
+
+class TestFingerprintRegistryEntries:
+    def test_registry_includes_both_new_entries(self):
+        from app.tasks.post_migrate import _backfill_registry
+
+        registry = _backfill_registry()
+        by_name = {e["name"]: e for e in registry}
+        assert "draft_fingerprints" in by_name
+        assert by_name["draft_fingerprints"]["task_name"] == "app.tasks.reparse.backfill_draft_fingerprints"
+        assert "drawdown_fingerprint" in by_name
+        assert (
+            by_name["drawdown_fingerprint"]["task_name"] == "app.tasks.fingerprint.backfill_all_drawdown_fingerprints"
+        )
+
+    async def test_draft_fingerprints_condition_zero_when_empty(self, db_session):
+        from sqlalchemy import text
+
+        from app.tasks.post_migrate import _backfill_registry
+
+        entry = next(e for e in _backfill_registry() if e["name"] == "draft_fingerprints")
+        count = await db_session.scalar(text(entry["condition"]))
+        assert count == 0
+
+    async def test_draft_fingerprints_condition_counts_unfingerprinted_draft(self, db_session, test_user):
+        from sqlalchemy import text
+
+        from app.models.draft import Draft
+        from app.tasks.post_migrate import _backfill_registry
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Needs fingerprint",
+            wif_filename="test.wif",
+            wif_path="drafts/needs-fp.wif",
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        entry = next(e for e in _backfill_registry() if e["name"] == "draft_fingerprints")
+        count = await db_session.scalar(text(entry["condition"]))
+        assert count == 1
+
+        draft.threading_fingerprint = "a" * 64
+        await db_session.commit()
+        count_after = await db_session.scalar(text(entry["condition"]))
+        assert count_after == 0
+
+    async def test_drawdown_fingerprint_condition_zero_when_empty(self, db_session):
+        from sqlalchemy import text
+
+        from app.tasks.post_migrate import _backfill_registry
+
+        entry = next(e for e in _backfill_registry() if e["name"] == "drawdown_fingerprint")
+        count = await db_session.scalar(text(entry["condition"]))
+        assert count == 0
+
+    async def test_drawdown_fingerprint_condition_counts_unfingerprinted_draft(self, db_session, test_user):
+        from sqlalchemy import text
+
+        from app.models.draft import Draft
+        from app.tasks.post_migrate import _backfill_registry
+
+        draft = Draft(
+            id=uuid.uuid4(),
+            owner_id=test_user.id,
+            name="Needs drawdown fingerprint",
+            wif_filename="test.wif",
+            wif_path="drafts/needs-drawdown-fp.wif",
+        )
+        db_session.add(draft)
+        await db_session.commit()
+
+        entry = next(e for e in _backfill_registry() if e["name"] == "drawdown_fingerprint")
+        count = await db_session.scalar(text(entry["condition"]))
+        assert count == 1
+
+        draft.drawdown_fingerprint = "b" * 64
+        await db_session.commit()
+        count_after = await db_session.scalar(text(entry["condition"]))
+        assert count_after == 0
