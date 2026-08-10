@@ -1764,6 +1764,7 @@ function FeedbackTab() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}
+          onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
         >
           <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
