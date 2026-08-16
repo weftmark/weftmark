@@ -1780,6 +1780,17 @@ function ProjectPageHeader({
       {/* Standard toolbar — tablet and up */}
       <div className="hidden sm:flex items-center justify-between px-6 py-3">
       <div className="flex items-center gap-3 min-w-0">
+        {/* Hamburger — the sidebar is an overlay (not static) below lg, and
+            AppLayout's own trigger is suppressed on this route (#1168), so
+            this bar must provide one for the sm..lg gap (e.g. tablet portrait). */}
+        <button
+          type="button"
+          onClick={openSidebar}
+          className="lg:hidden shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Open navigation"
+        >
+          <AppIcons.MobileMenu className="h-5 w-5" />
+        </button>
         {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
         <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
           {project.loom_id && (
