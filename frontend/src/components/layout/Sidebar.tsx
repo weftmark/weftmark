@@ -209,14 +209,23 @@ interface SidebarBottomNavProps {
   readonly desktopCollapsed: boolean;
   readonly onClose: () => void;
   readonly onFeedbackClick: () => void;
+  readonly onDesktopExpand?: () => void;
 }
 
-function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick }: SidebarBottomNavProps) {
+function SidebarBottomNav({ user, desktopCollapsed, onClose, onFeedbackClick, onDesktopExpand }: SidebarBottomNavProps) {
   const { t } = useTranslation();
   const { signOut } = useClerk();
   const [expandedGroup, setExpandedGroup] = useState<NavGroup | null>(null);
 
   function toggleGroup(group: NavGroup) {
+    // Rail mode hides submenus entirely (see NavGroupSection), so a click here
+    // must expand the rail first, then open the group — otherwise the button
+    // highlights with no visible submenu (#1161).
+    if (desktopCollapsed) {
+      onDesktopExpand?.();
+      setExpandedGroup(group);
+      return;
+    }
     setExpandedGroup((prev) => (prev === group ? null : group));
   }
 
@@ -416,6 +425,7 @@ export function Sidebar({ open, onClose, desktopCollapsed = false, onDesktopExpa
           desktopCollapsed={desktopCollapsed}
           onClose={onClose}
           onFeedbackClick={() => setFeedbackOpen(true)}
+          onDesktopExpand={onDesktopExpand}
         />
 
         <SidebarUserFooter
