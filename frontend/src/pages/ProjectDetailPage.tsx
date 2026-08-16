@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
@@ -268,23 +268,35 @@ function PickDisplay({
 // Weaving pattern view — drawdown image windowed to current pick
 // ---------------------------------------------------------------------------
 
-// Overhead accounts for: app header, project header, progress bar,
-// controls bar, pick instruction card, step controls, padding, and details panel bar.
-const PATTERN_OVERHEAD_PX = 600;
 const PATTERN_MIN_H = 200;
+const PATTERN_VERTICAL_PADDING = 32; // pt-4 + pb-4 on the wrapper around WeavingPatternView/AbandonedDrawdownView
+const PATTERN_HORIZONTAL_PADDING = 64; // px-8 (left + right) on the same wrapper
 const STEP_PANEL_W = 128;
 const COLOR_COL_W = 24;
+const ROW_GAP_PX = 8; // gap-2 between canvas / step panel / color column
 const BLEED = 12;
+const DEFAULT_CELL_PX = 20;
+const MAX_CELL_PX = 30; // backend caps cell_px at 30 (routers/projects.py); also our own sane ceiling
 
-function useAdaptivePatternHeight(): number {
-  const compute = () => Math.max(PATTERN_MIN_H, window.innerHeight - PATTERN_OVERHEAD_PX);
-  const [height, setHeight] = useState(compute);
-  useEffect(() => {
-    const onResize = () => setHeight(compute());
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+type ElementSize = { width: number; height: number };
+
+// Measures the actual space PatternSection has to work with, instead of guessing
+// via a fixed window.innerHeight offset (#1164 — that guess left a gap whenever
+// real surrounding chrome was shorter than the hardcoded estimate).
+function useElementSize<T extends HTMLElement>(): [React.RefObject<T | null>, ElementSize] {
+  const ref = useRef<T | null>(null);
+  const [size, setSize] = useState<ElementSize>({ width: 0, height: 0 });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setSize({ width: el.clientWidth, height: el.clientHeight });
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
-  return height;
+  return [ref, size];
 }
 
 type DrawdownPayload = {
@@ -300,15 +312,18 @@ function WeavingPatternView({
   totalPicks,
   picks,
   maxActive,
+  containerH,
+  cellPx,
 }: {
   readonly projectId: string;
   readonly currentPickIndex: number;
   readonly totalPicks: number;
   readonly picks: PickRow[];
   readonly maxActive: number;
+  readonly containerH: number;
+  readonly cellPx: number;
 }) {
   const { t } = useTranslation();
-  const containerH = useAdaptivePatternHeight();
   const [drawdownData, setDrawdownData] = useState<DrawdownPayload | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -322,7 +337,7 @@ function WeavingPatternView({
       try {
         const token = await getAuthToken();
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(`/api/projects/${projectId}/drawdown/data?cell_px=20`, { headers, credentials: "include" });
+        const res = await fetch(`/api/projects/${projectId}/drawdown/data?cell_px=${cellPx}`, { headers, credentials: "include" });
         if (!res.ok) throw new Error(`Pattern failed to load (${res.status})`);
         const data = (await res.json()) as DrawdownPayload;
         if (cancelled) return;
@@ -339,7 +354,7 @@ function WeavingPatternView({
     }
     load();
     return () => { cancelled = true; };
-  }, [projectId, lsColKey]);
+  }, [projectId, lsColKey, cellPx]);
 
   useEffect(() => {
     if (!drawdownData || !canvasRef.current) return;
@@ -366,7 +381,7 @@ function WeavingPatternView({
     try { localStorage.setItem(lsColKey, String(e.currentTarget.scrollLeft)); } catch { /* noop */ }
   }, [lsColKey]);
 
-  const pixelsPerRow = drawdownData?.cell_px ?? 20;
+  const pixelsPerRow = drawdownData?.cell_px ?? cellPx;
   const warpCount = drawdownData?.warp_count ?? 0;
 
   // Canvas is flipped: last pick at y=0 (top), first pick at bottom — matches PNG tile orientation.
@@ -2147,24 +2162,40 @@ function PatternSection({
   readonly isCompleted: boolean;
   readonly isAbandoned: boolean;
 }) {
+  const [sectionRef, sectionSize] = useElementSize<HTMLDivElement>();
+  const containerH = Math.max(PATTERN_MIN_H, sectionSize.height - PATTERN_VERTICAL_PADDING);
+
+  // Stretch cell size to fill available width for narrow (few-warp-thread) drafts,
+  // instead of leaving the extra room blank (#1164). Wide drafts are unaffected —
+  // the floor at DEFAULT_CELL_PX keeps their existing size + horizontal scroll.
+  const warpCount = project.draft_warp_threads ?? 0;
+  const sizeReady = sectionSize.width > 0;
+  const availableCanvasW = sectionSize.width - PATTERN_HORIZONTAL_PADDING - STEP_PANEL_W - COLOR_COL_W - ROW_GAP_PX * 2;
+  const cellPx = warpCount > 0 && availableCanvasW > 0
+    ? Math.min(MAX_CELL_PX, Math.max(DEFAULT_CELL_PX, Math.floor(availableCanvasW / warpCount)))
+    : DEFAULT_CELL_PX;
+
   return (
-    <div className="flex-1 min-h-0 overflow-hidden">
-      {/* Pattern view — wider on large screens to show more warp threads */}
-      {showDrawdown && picksData && !isFinished && !isAtItemEnd && !isCompleted && !isAbandoned && (
-        <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+    <div ref={sectionRef} className="flex-1 min-h-0 overflow-hidden">
+      {/* Pattern view — uses the full width PatternSection has, so it never
+          leaves unused margin on narrower (tablet/mobile) viewports (#1164) */}
+      {showDrawdown && sizeReady && picksData && !isFinished && !isAtItemEnd && !isCompleted && !isAbandoned && (
+        <div className="w-full px-8 pb-4 pt-4">
           <WeavingPatternView
             projectId={project.id}
             currentPickIndex={currentPickIndex}
             totalPicks={project.total_picks}
             picks={picksData.picks}
             maxActive={displayCount}
+            containerH={containerH}
+            cellPx={cellPx}
           />
         </div>
       )}
 
       {/* Abandoned design preview — full drawdown with unweaved portion desaturated */}
       {isAbandoned && (
-        <div className="mx-auto w-full max-w-2xl lg:max-w-5xl xl:max-w-7xl px-8 pb-4 pt-4">
+        <div className="w-full px-8 pb-4 pt-4">
           <AbandonedDrawdownView
             draftId={project.draft_id}
             currentPick={project.current_pick}
