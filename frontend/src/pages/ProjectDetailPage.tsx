@@ -9,6 +9,7 @@ import { useStepQueue } from "@/hooks/useStepQueue";
 import { useTrackerSession } from "@/hooks/useTrackerSession";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthContext } from "@/context/AuthContext";
+import { useMobileNav } from "@/context/MobileNavContext";
 import { measurementSystemToUnit, displayLength } from "@/lib/units";
 import {
   getProject, getProjectPicks, getProjectMetrics, stepProject, jumpProject, completeProject, abandonProject,
@@ -1588,15 +1589,21 @@ function ProjectPageHeader({
   const { t } = useTranslation();
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const statusMenuRef = useRef<HTMLDivElement>(null);
+  // Compact mobile header's single overflow menu (#1168) — separate open state
+  // from the desktop status dropdown since both exist in the DOM at once
+  // (Tailwind breakpoint classes hide one or the other, not unmount it).
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   const { setConfirmComplete, setConfirmIncomplete, setConfirmAbandon, setConfirmRestart, setRestartConflict } = tracker;
 
-  // Dismissing the dropdown without confirming must also reset the shared
+  // Dismissing either dropdown without confirming must also reset the shared
   // confirm-state it renders from (#1145) — otherwise a confirm view left
   // mid-flow here reappears unprompted in the Details & Settings panel's
   // Actions collapsible, which reads the same tracker state.
   const closeStatusMenu = useCallback(() => {
     setShowStatusMenu(false);
+    setShowMobileMenu(false);
     setConfirmComplete(false);
     setConfirmIncomplete(false);
     setConfirmAbandon(false);
@@ -1618,10 +1625,160 @@ function ProjectPageHeader({
     return () => document.removeEventListener("mousedown", handler);
   }, [showStatusMenu, closeStatusMenu]);
 
+  useEffect(() => {
+    if (!showMobileMenu) return;
+    function handler(e: MouseEvent) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        closeStatusMenu();
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMobileMenu, closeStatusMenu]);
+
   const showStatusButton = !isReadOnly && (isActiveTracking || isAbandoned);
+  const { openSidebar, openFeedback } = useMobileNav();
+
+  // Reused inside both the desktop status dropdown and the compact mobile
+  // overflow menu — same underlying tracker state either way.
+  const statusActionsContent = (
+    <>
+      {isActiveTracking && (
+        <TrackingStatusActions
+          project={project}
+          isFinished={isFinished}
+          actionLoading={actionLoading}
+          confirmComplete={tracker.confirmComplete}
+          setConfirmComplete={tracker.setConfirmComplete}
+          confirmIncomplete={tracker.confirmIncomplete}
+          setConfirmIncomplete={tracker.setConfirmIncomplete}
+          confirmAbandon={tracker.confirmAbandon}
+          setConfirmAbandon={tracker.setConfirmAbandon}
+          onComplete={tracker.handleComplete}
+          onForceComplete={tracker.handleForceComplete}
+          onAbandon={tracker.handleAbandon}
+        />
+      )}
+      {isAbandoned && (
+        <ReactivateStatusActions
+          project={project}
+          actionLoading={actionLoading}
+          confirmRestart={tracker.confirmRestart}
+          setConfirmRestart={tracker.setConfirmRestart}
+          restartConflict={tracker.restartConflict}
+          setRestartConflict={tracker.setRestartConflict}
+          onRestart={tracker.handleRestart}
+          onResolveAndRestart={tracker.handleResolveAndRestart}
+        />
+      )}
+    </>
+  );
 
   return (
-    <div className="shrink-0 border-b border-border bg-card px-6 py-3 flex items-center justify-between">
+    <div className="shrink-0 border-b border-border bg-card">
+      {/* Compact mobile header — combines AppLayout's mobile nav bar with this
+          page's toolbar into a single row to recover vertical space (#1168).
+          hamburger | project name | overflow menu (everything else). */}
+      <div className="flex sm:hidden items-center justify-between gap-1 px-2 py-2">
+        <button
+          type="button"
+          onClick={openSidebar}
+          className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Open navigation"
+        >
+          <AppIcons.MobileMenu className="h-5 w-5" />
+        </button>
+        <span className="min-w-0 flex-1 truncate text-center text-sm font-semibold">{project.name}</span>
+        <div ref={mobileMenuRef} className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => (showMobileMenu ? closeStatusMenu() : setShowMobileMenu(true))}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title={t("projectDetailPage.actions")}
+            aria-label={t("projectDetailPage.actions")}
+            aria-expanded={showMobileMenu}
+          >
+            <AppIcons.StatusActions className="h-5 w-5" />
+          </button>
+          {showMobileMenu && (
+            <div className="absolute right-0 mt-2 z-20 max-h-[70vh] w-64 overflow-y-auto rounded-md border border-border bg-popover p-2 shadow-md">
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <span className={`rounded px-2 py-0.5 text-xs font-medium ${badgeClasses}`}>{badgeLabel}</span>
+                {!isReadOnly && project.share_slug && project.share_visibility !== "private" && (
+                  <span className="flex items-center gap-1 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">
+                    <AppIcons.Share className="h-3 w-3" />
+                    {t("projectDetailPage.shared")}
+                  </span>
+                )}
+              </div>
+              <div className="my-1 border-t border-border" />
+              <button
+                type="button"
+                onClick={() => { onShowDesignPreview(); setShowMobileMenu(false); }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-muted"
+              >
+                {t("projectDetailPage.viewDesign")}
+              </button>
+              <Link
+                to={`/projects/${project.id}/warping-plan`}
+                onClick={() => setShowMobileMenu(false)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-muted"
+              >
+                {t("projectDetailPage.weavePlan")}
+              </Link>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => { onShareModal(); setShowMobileMenu(false); }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-muted"
+                >
+                  <AppIcons.Share className="h-4 w-4" />
+                  {t("projectDetailPage.shareProject")}
+                </button>
+              )}
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => { onSettingsOpen(); setShowMobileMenu(false); }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-muted"
+                >
+                  <AppIcons.Settings className="h-4 w-4" />
+                  {t("projectDetailPage.viewSettings")}
+                </button>
+              )}
+              {presentModeSupported && (
+                <button
+                  type="button"
+                  onClick={() => { togglePresentMode(); setShowMobileMenu(false); }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-muted"
+                >
+                  {isPresent
+                    ? <AppIcons.ExitPresentMode className="h-4 w-4" />
+                    : <AppIcons.PresentMode className="h-4 w-4" />}
+                  {isPresent ? t("projectDetailPage.exitPresentMode") : t("projectDetailPage.presentModeTitle")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { openFeedback(); setShowMobileMenu(false); }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-muted"
+              >
+                <AppIcons.Feedback className="h-4 w-4" />
+                {t("nav.sendFeedback")}
+              </button>
+              {showStatusButton && (
+                <>
+                  <div className="my-1 border-t border-border" />
+                  {statusActionsContent}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Standard toolbar — tablet and up */}
+      <div className="hidden sm:flex items-center justify-between px-6 py-3">
       <div className="flex items-center gap-3 min-w-0">
         {/* Breadcrumb — hidden on mobile/tablet, shown on desktop only */}
         <div className="hidden lg:flex items-center gap-1.5 text-sm shrink-0">
@@ -1705,34 +1862,7 @@ function ProjectPageHeader({
             </button>
             {showStatusMenu && (
               <div className="absolute right-0 mt-2 z-20 w-72 rounded-md border border-border bg-popover p-3 shadow-md">
-                {isActiveTracking && (
-                  <TrackingStatusActions
-                    project={project}
-                    isFinished={isFinished}
-                    actionLoading={actionLoading}
-                    confirmComplete={tracker.confirmComplete}
-                    setConfirmComplete={tracker.setConfirmComplete}
-                    confirmIncomplete={tracker.confirmIncomplete}
-                    setConfirmIncomplete={tracker.setConfirmIncomplete}
-                    confirmAbandon={tracker.confirmAbandon}
-                    setConfirmAbandon={tracker.setConfirmAbandon}
-                    onComplete={tracker.handleComplete}
-                    onForceComplete={tracker.handleForceComplete}
-                    onAbandon={tracker.handleAbandon}
-                  />
-                )}
-                {isAbandoned && (
-                  <ReactivateStatusActions
-                    project={project}
-                    actionLoading={actionLoading}
-                    confirmRestart={tracker.confirmRestart}
-                    setConfirmRestart={tracker.setConfirmRestart}
-                    restartConflict={tracker.restartConflict}
-                    setRestartConflict={tracker.setRestartConflict}
-                    onRestart={tracker.handleRestart}
-                    onResolveAndRestart={tracker.handleResolveAndRestart}
-                  />
-                )}
+                {statusActionsContent}
               </div>
             )}
           </div>
@@ -1764,6 +1894,7 @@ function ProjectPageHeader({
               : <AppIcons.PresentMode className="h-4 w-4" />}
           </button>
         )}
+      </div>
       </div>
     </div>
   );
