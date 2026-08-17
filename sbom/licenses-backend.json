@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.67"
+    "Version": "1.43.72"
   },
   {
     "License": "BSD-3-Clause",
@@ -147,7 +147,7 @@
   {
     "License": "MIT",
     "Name": "charset-normalizer",
-    "Version": "3.4.9"
+    "Version": "3.5.1"
   },
   {
     "License": "BSD-3-Clause",
@@ -187,7 +187,7 @@
   {
     "License": "Apache Software License",
     "Name": "cyclonedx-python-lib",
-    "Version": "11.11.0"
+    "Version": "11.12.0"
   },
   {
     "License": "Python Software Foundation License",
@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.32.2"
+    "Version": "3.32.3"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -237,7 +237,7 @@
   {
     "License": "MIT AND PSF-2.0",
     "Name": "greenlet",
-    "Version": "3.5.4"
+    "Version": "3.5.5"
   },
   {
     "License": "MIT License",
@@ -457,7 +457,7 @@
   {
     "License": "MIT",
     "Name": "platformdirs",
-    "Version": "4.11.1"
+    "Version": "4.11.3"
   },
   {
     "License": "BSD License",
@@ -522,7 +522,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "python-dotenv",
-    "Version": "1.2.2"
+    "Version": "1.2.3"
   },
   {
     "License": "Apache-2.0",
@@ -622,7 +622,7 @@
   {
     "License": "MIT",
     "Name": "typing-inspection",
-    "Version": "0.4.3"
+    "Version": "0.4.4"
   },
   {
     "License": "PSF-2.0",
