@@ -1260,7 +1260,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lru-cache",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lru-cache/LICENSE"
   },
-  "lucide-react@1.28.0": {
+  "lucide-react@1.30.0": {
     "licenses": "ISC",
     "repository": "https://github.com/lucide-icons/lucide",
     "publisher": "Eric Fennis",
@@ -1372,7 +1372,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/picomatch",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/picomatch/LICENSE"
   },
-  "postcss@8.5.23": {
+  "postcss@8.5.26": {
     "licenses": "MIT",
     "repository": "https://github.com/postcss/postcss",
     "publisher": "Andrey Sitnik",
@@ -1635,14 +1635,14 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/use-sync-external-store",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/use-sync-external-store/LICENSE"
   },
-  "vite@8.2.0": {
+  "vite@8.2.1": {
     "licenses": "MIT",
     "repository": "https://github.com/vitejs/vite",
     "publisher": "Evan You",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.214.6": {
+  "weaving-site@0.216.3": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",
