@@ -32,7 +32,7 @@
   {
     "License": "BSD-2-Clause",
     "Name": "Pygments",
-    "Version": "2.20.0"
+    "Version": "2.21.0"
   },
   {
     "License": "MIT",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.72"
+    "Version": "1.43.78"
   },
   {
     "License": "BSD-3-Clause",
@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.32.3"
+    "Version": "3.32.4"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -262,7 +262,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "idna",
-    "Version": "3.18"
+    "Version": "3.19"
   },
   {
     "License": "ISC License (ISCL)",
@@ -312,7 +312,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "lxml",
-    "Version": "6.1.1"
+    "Version": "6.1.2"
   },
   {
     "License": "MIT License",
@@ -472,7 +472,7 @@
   {
     "License": "3-Clause BSD License",
     "Name": "protobuf",
-    "Version": "7.35.1"
+    "Version": "7.36.0"
   },
   {
     "License": "BSD-3-Clause",
