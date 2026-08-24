@@ -3,9 +3,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
   "version": 1,
-  "serialNumber": "urn:uuid:50586faf-da80-49bd-bd43-2fe9225de9af",
+  "serialNumber": "urn:uuid:8409ae2b-4ffd-42d0-9ab7-fee9cafdf681",
   "metadata": {
-    "timestamp": "2026-08-17T03:52:33.048Z",
+    "timestamp": "2026-08-24T03:56:40.447Z",
     "tools": {
       "components": [
         {
@@ -43,13 +43,23 @@
               "type": "issue-tracker",
               "comment": "as detected from PackageJson property \"bugs.url\""
             }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.18.0"
+            },
+            {
+              "name": "cdx:npm:package:constraint:engine:npm",
+              "value": ">=9"
+            }
           ]
         },
         {
           "type": "library",
           "name": "cyclonedx-library",
           "group": "@cyclonedx",
-          "version": "10.1.1",
+          "version": "10.2.0",
           "author": "Jan Kowalleck",
           "description": "Core functionality of CycloneDX for JavaScript (Node.js or WebBrowser).",
           "licenses": [
@@ -74,6 +84,12 @@
               "url": "https://github.com/CycloneDX/cyclonedx-javascript-library/issues",
               "type": "issue-tracker",
               "comment": "as detected from PackageJson property \"bugs.url\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">=20.18.0"
             }
           ]
         }
@@ -145,6 +161,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.17.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@clerk/clerk-react"
         }
@@ -181,6 +201,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=20.0.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -237,6 +261,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@sentry/react"
@@ -654,6 +682,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -708,6 +740,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -764,6 +800,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || >=22.12.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -871,6 +911,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/clsx"
         }
@@ -970,6 +1014,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -1024,6 +1072,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.13.0 || >=24"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -1080,6 +1132,10 @@
           ],
           "properties": [
             {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": "^20.19.0 || ^22.13.0 || >=24"
+            },
+            {
               "name": "cdx:npm:package:development",
               "value": "true"
             },
@@ -1134,6 +1190,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">= 4"
+            },
             {
               "name": "cdx:npm:package:development",
               "value": "true"
@@ -1446,6 +1506,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=20.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/react-router-dom"
         }
@@ -1495,6 +1559,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/react"
@@ -1652,6 +1720,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=14.17"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -1707,6 +1779,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || >=22.12.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -1760,6 +1836,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">= 12.0.0"
+            },
             {
               "name": "cdx:npm:package:development",
               "value": "true"
@@ -1816,6 +1896,10 @@
           ],
           "properties": [
             {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">= 12.0.0"
+            },
+            {
               "name": "cdx:npm:package:development",
               "value": "true"
             },
@@ -1870,6 +1954,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": ">= 12.0.0"
+            },
             {
               "name": "cdx:npm:package:development",
               "value": "true"
@@ -1928,6 +2016,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.17.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@clerk/shared"
@@ -2017,6 +2109,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=20.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -2070,6 +2166,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=14.0.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -2127,6 +2227,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@sentry/browser"
         }
@@ -2176,6 +2280,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=14"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@sentry/conventions"
@@ -2228,6 +2336,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@sentry/core"
@@ -2333,6 +2445,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -2496,6 +2612,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^12.0.0 || ^14.0.0 || >=16.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -2550,6 +2670,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -2606,6 +2730,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -2660,6 +2788,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -2716,6 +2848,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -2770,6 +2906,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": "^20.19.0 || ^22.13.0 || >=24"
+            },
             {
               "name": "cdx:npm:package:development",
               "value": "true"
@@ -2827,6 +2967,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 4"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -2938,6 +3082,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.12"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -2992,6 +3140,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -3048,6 +3200,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -3102,6 +3258,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -3266,6 +3426,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -3379,6 +3543,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -3487,6 +3655,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.0.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -3599,6 +3771,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^12.22.0 || ^14.17.0 || >=16.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -3655,6 +3831,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.13.0 || >=24"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -3709,6 +3889,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.13.0 || >=24"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -3766,6 +3950,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.13.0 || >=24"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -3821,6 +4009,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.13.0 || >=24"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -3878,6 +4070,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.18.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -3934,6 +4130,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.22"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -3989,6 +4189,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.18"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -4155,6 +4359,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 8"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -4210,6 +4418,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -4263,6 +4475,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.13.0 || >=24"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -4319,6 +4535,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.13.0 || >=24"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -4373,6 +4593,10 @@
             }
           ],
           "properties": [
+            {
+              "name": "cdx:npm:package:constraint:engine:node",
+              "value": "^20.19.0 || ^22.13.0 || >=24"
+            },
             {
               "name": "cdx:npm:package:development",
               "value": "true"
@@ -4431,6 +4655,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -4484,6 +4712,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -4595,6 +4827,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=16.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -4649,6 +4885,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -4705,6 +4945,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10.13.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -4760,6 +5004,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.8.19"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -4814,6 +5062,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -4979,6 +5231,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "18 || 20 || >=22"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -5033,6 +5289,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.8.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -5139,6 +5399,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@babel/runtime"
@@ -5292,6 +5556,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=20.0.0"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/react-router"
         }
@@ -5342,6 +5610,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -5398,6 +5670,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^10 || ^12 || >=14"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -5451,6 +5727,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || >=22.12.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -5506,6 +5786,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.0.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -5613,6 +5897,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/dequal"
         }
@@ -5714,6 +6002,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=20"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/js-cookie"
@@ -6032,6 +6324,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -6087,6 +6383,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -6140,6 +6440,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.4.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -6252,6 +6556,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@sentry/browser-utils"
         }
@@ -6303,6 +6611,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@sentry/feedback"
@@ -6356,6 +6668,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
+        {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@sentry/replay-canvas"
         }
@@ -6407,6 +6723,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@sentry/replay"
@@ -6515,6 +6835,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10.13.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -6568,6 +6892,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 12.0.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -6679,6 +7007,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -6733,6 +7065,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -6789,6 +7125,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -6844,6 +7184,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -6898,6 +7242,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^18.18.0 || ^20.9.0 || >=21.1.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -7009,6 +7357,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -7065,6 +7417,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -7120,6 +7476,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -7234,6 +7594,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -7289,6 +7653,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -7346,6 +7714,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -7402,6 +7774,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -7457,6 +7833,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -7568,6 +7948,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -7622,6 +8006,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -7732,6 +8120,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^12.22.0 || ^14.17.0 || >=16.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -7787,6 +8179,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || ^22.13.0 || >=24"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -7898,6 +8294,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.8.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -7954,6 +8354,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.18.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -8009,6 +8413,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.18.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -8230,6 +8638,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -8285,6 +8697,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -8339,6 +8755,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 8"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -8449,6 +8869,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=4.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -8502,6 +8926,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=4.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -8612,6 +9040,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=16"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -8666,6 +9098,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -8722,6 +9158,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -8777,6 +9217,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -8830,6 +9274,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "20 || >=22"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -8996,6 +9444,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.8.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -9050,6 +9502,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 0.8.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -9106,6 +9562,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.10.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -9160,6 +9620,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/cookie"
@@ -9263,6 +9727,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -9317,6 +9785,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^10 || ^12 || ^13.7 || ^14 || >=15.0.1"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -9485,6 +9957,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || >=22.12.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -9541,6 +10017,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^20.19.0 || >=22.12.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -9595,6 +10075,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=12.0.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -9762,6 +10246,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -9816,6 +10304,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -9873,6 +10365,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -9928,6 +10424,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -9985,6 +10485,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -10038,6 +10542,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18.17"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -10094,6 +10602,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -10148,6 +10660,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -10370,6 +10886,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -10425,6 +10945,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 12.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -10479,6 +11003,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 12.0.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -10592,6 +11120,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -10702,6 +11234,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -10757,6 +11293,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -10814,6 +11354,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -10868,6 +11412,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -10980,6 +11528,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -11035,6 +11587,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -11092,6 +11648,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.9.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -11147,6 +11707,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -11201,6 +11765,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -11422,6 +11990,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -11475,6 +12047,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": "18 || 20 || >=22"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -11586,6 +12162,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=0.6.11 <=0.7.0 || >=0.7.3"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -11642,6 +12222,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -11697,6 +12281,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -11920,6 +12508,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">= 20"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -11974,6 +12566,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -12085,6 +12681,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=7.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -12139,6 +12739,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=8"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -12196,6 +12800,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.0.0"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -12249,6 +12857,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6.0.0"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -12414,6 +13026,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=18"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
@@ -12635,6 +13251,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -12801,6 +13421,10 @@
       ],
       "properties": [
         {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=6"
+        },
+        {
           "name": "cdx:npm:package:development",
           "value": "true"
         },
@@ -12855,6 +13479,10 @@
         }
       ],
       "properties": [
+        {
+          "name": "cdx:npm:package:constraint:engine:node",
+          "value": ">=10"
+        },
         {
           "name": "cdx:npm:package:development",
           "value": "true"
