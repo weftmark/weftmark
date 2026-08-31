@@ -3,9 +3,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
   "version": 1,
-  "serialNumber": "urn:uuid:e91f3e7a-491e-4dd3-b597-7ca0b882ce75",
+  "serialNumber": "urn:uuid:7c412fbd-3800-4ee7-b775-7d4042e0757f",
   "metadata": {
-    "timestamp": "2026-08-31T09:29:23.499Z",
+    "timestamp": "2026-08-31T11:31:54.323Z",
     "tools": {
       "components": [
         {
@@ -219,8 +219,8 @@
       "type": "library",
       "name": "react",
       "group": "@sentry",
-      "version": "10.69.0",
-      "bom-ref": "weaving-site@0.216.3|@sentry/react@10.69.0",
+      "version": "10.71.0",
+      "bom-ref": "weaving-site@0.216.3|@sentry/react@10.71.0",
       "author": "Sentry",
       "description": "Official Sentry SDK for React.js",
       "licenses": [
@@ -231,7 +231,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/react@10.69.0",
+      "purl": "pkg:npm/%40sentry/react@10.71.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -249,12 +249,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/react/-/react-10.69.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/react/-/react-10.71.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "7f4225fc932d7878dd58f359401debb69d4f723d8b79bde9d0a499bafdeb874114ae297d09b5ad415cb9cc9868029a62f8c5969a04566bee81a476d07fe00140"
+              "content": "01bd5c1723a99743ca2a010195c908abf8024483ff303ef981ce01f3962789f7530072b72b18125b1cf8dc609ec934f23410b1d7d5d0b1dd1db62f5809160293"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -330,8 +330,8 @@
       "type": "library",
       "name": "react-query",
       "group": "@tanstack",
-      "version": "5.101.4",
-      "bom-ref": "weaving-site@0.216.3|@tanstack/react-query@5.101.4",
+      "version": "5.102.8",
+      "bom-ref": "weaving-site@0.216.3|@tanstack/react-query@5.102.8",
       "author": "tannerlinsley",
       "description": "Hooks for managing, caching and syncing asynchronous and remote data in React",
       "licenses": [
@@ -342,7 +342,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40tanstack/react-query@5.101.4",
+      "purl": "pkg:npm/%40tanstack/react-query@5.102.8",
       "externalReferences": [
         {
           "url": "git+https://github.com/TanStack/query.git#packages/react-query",
@@ -360,12 +360,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.101.4.tgz",
+          "url": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.102.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "c91836a5f382c48b386495b75d860753f5a0b43d381474a77c7969453ee1ee947bee1c247511b8c316ca7b86aae8fd11bd751305242941e69d4b54946147be28"
+              "content": "4d805e6b83ae5d60fb3216921ead3af5359b15eeeb73058dea4cd3ec917438a8b52ba735813bf62330fa03a13126c08ca33764a8159eb885199aee0a420d0ee4"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -418,8 +418,8 @@
       "type": "library",
       "name": "node",
       "group": "@types",
-      "version": "26.1.2",
-      "bom-ref": "weaving-site@0.216.3|@types/node@26.1.2",
+      "version": "26.4.0",
+      "bom-ref": "weaving-site@0.216.3|@types/node@26.4.0",
       "description": "TypeScript definitions for node",
       "licenses": [
         {
@@ -429,7 +429,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40types/node@26.1.2",
+      "purl": "pkg:npm/%40types/node@26.4.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/DefinitelyTyped/DefinitelyTyped.git#types/node",
@@ -447,12 +447,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@types/node/-/node-26.1.2.tgz",
+          "url": "https://registry.npmjs.org/@types/node/-/node-26.4.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "56ee1ae54140f6b208149eeb07f55a69f87d96b090b33a294c2c7a2a315ba174c641b3cd6ac7a1551e531228ad8520c6c9dd43122501ca081366c83c8ee91e22"
+              "content": "7da8869e822b2c7fd5f1c89b38c10067ca4cc3aa17a92ba4976f6b6b898df0675a07665ec3379a2e3f8836957937e67578a5b363e233688647d84211e9865135"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -473,8 +473,8 @@
       "type": "library",
       "name": "react-dom",
       "group": "@types",
-      "version": "19.2.4",
-      "bom-ref": "weaving-site@0.216.3|@types/react-dom@19.2.4",
+      "version": "19.2.5",
+      "bom-ref": "weaving-site@0.216.3|@types/react-dom@19.2.5",
       "description": "TypeScript definitions for react-dom",
       "licenses": [
         {
@@ -484,7 +484,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40types/react-dom@19.2.4",
+      "purl": "pkg:npm/%40types/react-dom@19.2.5",
       "externalReferences": [
         {
           "url": "git+https://github.com/DefinitelyTyped/DefinitelyTyped.git#types/react-dom",
@@ -502,12 +502,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.2.4.tgz",
+          "url": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.2.5.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "06c73e407829f8ffc5d365c3ccd098f639d934252e2e48b7e8a4fb54aad35d72dd1dffaf1cc3599d6d6b56ee43356feb08af9fc9adc3013c926cb338ca1b4a53"
+              "content": "7cc3f01fdbfbaffa69e37c94776fcc6e27b1e4aa2e270c11dddcc79212d11140baefae15c83b2ac61031bfa3851184754618cec83d676aa6daf0408305eed942"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -640,8 +640,8 @@
       "type": "library",
       "name": "eslint-plugin",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/eslint-plugin@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/eslint-plugin@8.68.0",
       "description": "TypeScript plugin for ESLint",
       "licenses": [
         {
@@ -651,7 +651,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/eslint-plugin@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/eslint-plugin@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/eslint-plugin",
@@ -669,12 +669,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "a74f3c79a1abcd8cf5b3eedca2fd1a30e0a43464c9955c45e2382e6dfdbc73c2f40aff519688fc6011e7bf88572eae8820413502c8cd59abcefa4fbc90fd98d0"
+              "content": "5804870e90a6eaa3b98e3f60d5afbc3625b9f860a40322d1791e7aff856bb9898d81f526aa9c4e7d9d987dbf3119f24f5afe508ba2d20fcb1775c7acdef6e9fd"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -699,8 +699,8 @@
       "type": "library",
       "name": "parser",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/parser@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/parser@8.68.0",
       "description": "An ESLint custom parser which leverages TypeScript ESTree",
       "licenses": [
         {
@@ -710,7 +710,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/parser@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/parser@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/parser",
@@ -728,12 +728,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "5faca918285a59893a3c1b54836070b93644145707240b464d527dfe50933ae7e16788bd7cda2540d9e4b6afa490c0b0323ed5f12becabbf93c520ec966844d2"
+              "content": "7c7ab6542d64a7261fbc471b88c8cea72498e164bbbe8129f3dc804e1ac7457e6c9bd8f6973629a426f6ba614c11e7787d673278b8c7c6bcf49a98cd05a07131"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -758,8 +758,8 @@
       "type": "library",
       "name": "plugin-react",
       "group": "@vitejs",
-      "version": "6.0.5",
-      "bom-ref": "weaving-site@0.216.3|@vitejs/plugin-react@6.0.5",
+      "version": "6.1.1",
+      "bom-ref": "weaving-site@0.216.3|@vitejs/plugin-react@6.1.1",
       "author": "Evan You",
       "description": "The default Vite plugin for React projects",
       "licenses": [
@@ -770,7 +770,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40vitejs/plugin-react@6.0.5",
+      "purl": "pkg:npm/%40vitejs/plugin-react@6.1.1",
       "externalReferences": [
         {
           "url": "git+https://github.com/vitejs/vite-plugin-react.git#packages/plugin-react",
@@ -788,12 +788,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.0.5.tgz",
+          "url": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.1.1.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "04e5739defcd2f5eb6b0c7517ac076e6652ffaf58c17936802335fd3d4de1a513b669b33656483df08a7c9c89c2c9c3bdb2795b280a7ff690e844b82bc44a130"
+              "content": "cb12da415f609214bc7b326a08cebe9dd53b98363a82a020ef9350fb4223c0423c2183a64028244701ca5527d65d6d3be83b2a328d0393ed052b553e33946017"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -923,8 +923,8 @@
     {
       "type": "library",
       "name": "dompurify",
-      "version": "3.4.13",
-      "bom-ref": "weaving-site@0.216.3|dompurify@3.4.13",
+      "version": "3.4.14",
+      "bom-ref": "weaving-site@0.216.3|dompurify@3.4.14",
       "author": "Dr.-Ing. Mario Heiderich, Cure53",
       "description": "DOMPurify is a DOM-only, super-fast, uber-tolerant XSS sanitizer for HTML, MathML and SVG. It runs as JavaScript and works in all modern browsers, as well as in Node.js (via jsdom). DOMPurify is written by security people who have vast background in web attacks and XSS. Fear not.",
       "licenses": [
@@ -933,7 +933,7 @@
           "acknowledgement": "declared"
         }
       ],
-      "purl": "pkg:npm/dompurify@3.4.13",
+      "purl": "pkg:npm/dompurify@3.4.14",
       "externalReferences": [
         {
           "url": "git://github.com/cure53/DOMPurify.git",
@@ -951,12 +951,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.13.tgz",
+          "url": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.14.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "daf998228aa3cded9dfa46a43fc4bf9d2e6c85fb25e7cee4cf012370695376292c5158051e7142b0b603563fc936a2553906464980539aec9cbf43e87709a731"
+              "content": "755a07f73f8c63e0bd22296018293761f16a8cb8b77c2866d8e88a24cce1e9ac6b279ab0c6a59a65a9a0987ae9bf6d8237f29d6d926e1841a07d0a0bd342d376"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1030,8 +1030,8 @@
     {
       "type": "library",
       "name": "eslint",
-      "version": "10.8.0",
-      "bom-ref": "weaving-site@0.216.3|eslint@10.8.0",
+      "version": "10.9.1",
+      "bom-ref": "weaving-site@0.216.3|eslint@10.9.1",
       "author": "Nicholas C. Zakas",
       "description": "An AST-based pattern checker for JavaScript.",
       "licenses": [
@@ -1042,7 +1042,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/eslint@10.8.0",
+      "purl": "pkg:npm/eslint@10.9.1",
       "externalReferences": [
         {
           "url": "git+https://github.com/eslint/eslint.git",
@@ -1060,12 +1060,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/eslint/-/eslint-10.8.0.tgz",
+          "url": "https://registry.npmjs.org/eslint/-/eslint-10.9.1.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "9ee28abcdfa82013b492837b4e6edd9649a791cdb59adb744092f000ace32ead78cba9514dd546dfa3191c9f1e407c1d24cc196d034c94f39879d32afe8549bd"
+              "content": "f556809035117a48b1510272d282589760dc37aa0a31fc5acbb5f3686600590c2c6faa9f29ffb1efa4769352fc91bd5ba1cf85c8201a4c0f469a229a6a2685f8"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1090,7 +1090,7 @@
           "type": "library",
           "name": "eslint-visitor-keys",
           "version": "5.0.1",
-          "bom-ref": "weaving-site@0.216.3|eslint@10.8.0|eslint-visitor-keys@5.0.1",
+          "bom-ref": "weaving-site@0.216.3|eslint@10.9.1|eslint-visitor-keys@5.0.1",
           "author": "Toru Nagashima",
           "description": "Constants and utilities about visitor keys to traverse AST.",
           "licenses": [
@@ -1149,7 +1149,7 @@
           "type": "library",
           "name": "ignore",
           "version": "5.3.2",
-          "bom-ref": "weaving-site@0.216.3|eslint@10.8.0|ignore@5.3.2",
+          "bom-ref": "weaving-site@0.216.3|eslint@10.9.1|ignore@5.3.2",
           "author": "kael",
           "description": "Ignore is a manager and filter for .gitignore rules, the one used by eslint, gitbook and many others.",
           "licenses": [
@@ -1209,8 +1209,8 @@
     {
       "type": "library",
       "name": "i18next",
-      "version": "26.3.6",
-      "bom-ref": "weaving-site@0.216.3|i18next@26.3.6",
+      "version": "26.4.0",
+      "bom-ref": "weaving-site@0.216.3|i18next@26.4.0",
       "author": "Jan Mühlemann",
       "description": "i18next internationalization framework",
       "licenses": [
@@ -1221,7 +1221,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/i18next@26.3.6",
+      "purl": "pkg:npm/i18next@26.4.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/i18next/i18next.git",
@@ -1239,12 +1239,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/i18next/-/i18next-26.3.6.tgz",
+          "url": "https://registry.npmjs.org/i18next/-/i18next-26.4.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "06ee59da701781f57233cc6f5b78e4f4429122e5f7ecfb9db2b05589384d171ec247b69a613a4fd35731341fc4e1ce145334c3880651b2d121b117cf38bffcc4"
+              "content": "aec98ae5b16ab03d407ad4854886b8df0b4d4785a9bef1f8a74b4b12c4f1902ed04eb7dd166d3a9db43de5b87c3a0e30c1a0a7504726f435582f6720c62b6242"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1260,8 +1260,8 @@
     {
       "type": "library",
       "name": "lucide-react",
-      "version": "1.30.0",
-      "bom-ref": "weaving-site@0.216.3|lucide-react@1.30.0",
+      "version": "1.35.0",
+      "bom-ref": "weaving-site@0.216.3|lucide-react@1.35.0",
       "author": "Eric Fennis",
       "description": "A Lucide icon library package for React applications.",
       "licenses": [
@@ -1272,7 +1272,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/lucide-react@1.30.0",
+      "purl": "pkg:npm/lucide-react@1.35.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/lucide-icons/lucide.git#packages/lucide-react",
@@ -1290,12 +1290,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.30.0.tgz",
+          "url": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.35.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "b5422bda35cb6d6a4291db47f173fb3fb629a4cf6e796813932f7d96958363acf9444b3a07e3ba650dd4e6d1e4514639f403723affcf05cb3c13815edca3b778"
+              "content": "c970825b1185613e9b2c83d80b8498e9f3d03d1b3f77bf7bad122e7be27d5cfd9377abd0bc3e7781a4110429c8553d644d0447b40b7195f39035602e205f042e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1412,8 +1412,8 @@
     {
       "type": "library",
       "name": "react-i18next",
-      "version": "17.0.11",
-      "bom-ref": "weaving-site@0.216.3|react-i18next@17.0.11",
+      "version": "17.0.12",
+      "bom-ref": "weaving-site@0.216.3|react-i18next@17.0.12",
       "author": "Jan Mühlemann",
       "description": "Internationalization for react done right. Using the i18next i18n ecosystem.",
       "licenses": [
@@ -1424,7 +1424,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/react-i18next@17.0.11",
+      "purl": "pkg:npm/react-i18next@17.0.12",
       "externalReferences": [
         {
           "url": "git+https://github.com/i18next/react-i18next.git",
@@ -1442,12 +1442,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/react-i18next/-/react-i18next-17.0.11.tgz",
+          "url": "https://registry.npmjs.org/react-i18next/-/react-i18next-17.0.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "703b645e0c63b854d6507e95f9a427d557b9bc3894ced08d3d65b91ad4870dc72c8115ced6713a405582126735280badadbdce52ff3bc054a124be51854c0f5e"
+              "content": "94558f10693143a461bac754932b05043e7c5477d24b3bc7073a8c80dd12bdf56975019fc2d3644ad4ea772d3cfec25deecf34eeaaaeb60c7dddf4690f40c9dd"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1736,8 +1736,8 @@
     {
       "type": "library",
       "name": "vite",
-      "version": "8.2.1",
-      "bom-ref": "weaving-site@0.216.3|vite@8.2.1",
+      "version": "8.2.2",
+      "bom-ref": "weaving-site@0.216.3|vite@8.2.2",
       "author": "Evan You",
       "description": "Native-ESM powered web dev build tool",
       "licenses": [
@@ -1748,7 +1748,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/vite@8.2.1",
+      "purl": "pkg:npm/vite@8.2.2",
       "externalReferences": [
         {
           "url": "git+https://github.com/vitejs/vite.git#packages/vite",
@@ -1766,12 +1766,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/vite/-/vite-8.2.1.tgz",
+          "url": "https://registry.npmjs.org/vite/-/vite-8.2.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "114fde4bb047dd744e1e1d989c179f8cce8304a03a65e31911841b8fb34b5a0e701d896107c07f31ac9de57b205aaf8d15871c0ce4de991a5d113591e8a6bf97"
+              "content": "70528b57f3d18005252119b95a332327cea3adfb73a6a7201fe52cf834bc988dc20cd887df45a1af3f2e1cbdfe30e2cf020a9b30102a59d00702984e00cfb3fd"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1796,7 +1796,7 @@
           "type": "library",
           "name": "lightningcss",
           "version": "1.33.0",
-          "bom-ref": "weaving-site@0.216.3|vite@8.2.1|lightningcss@1.33.0",
+          "bom-ref": "weaving-site@0.216.3|vite@8.2.2|lightningcss@1.33.0",
           "description": "A CSS parser, transformer, and minifier written in Rust",
           "licenses": [
             {
@@ -1854,7 +1854,7 @@
           "type": "library",
           "name": "lightningcss-linux-x64-gnu",
           "version": "1.33.0",
-          "bom-ref": "weaving-site@0.216.3|vite@8.2.1|lightningcss-linux-x64-gnu@1.33.0",
+          "bom-ref": "weaving-site@0.216.3|vite@8.2.2|lightningcss-linux-x64-gnu@1.33.0",
           "description": "A CSS parser, transformer, and minifier written in Rust",
           "scope": "optional",
           "licenses": [
@@ -1913,7 +1913,7 @@
           "type": "library",
           "name": "lightningcss-linux-x64-musl",
           "version": "1.33.0",
-          "bom-ref": "weaving-site@0.216.3|vite@8.2.1|lightningcss-linux-x64-musl@1.33.0",
+          "bom-ref": "weaving-site@0.216.3|vite@8.2.2|lightningcss-linux-x64-musl@1.33.0",
           "description": "A CSS parser, transformer, and minifier written in Rust",
           "scope": "optional",
           "licenses": [
@@ -2184,8 +2184,8 @@
       "type": "library",
       "name": "browser",
       "group": "@sentry",
-      "version": "10.69.0",
-      "bom-ref": "weaving-site@0.216.3|@sentry/browser@10.69.0",
+      "version": "10.71.0",
+      "bom-ref": "weaving-site@0.216.3|@sentry/browser@10.71.0",
       "author": "Sentry",
       "description": "Official Sentry SDK for browsers",
       "licenses": [
@@ -2196,7 +2196,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/browser@10.69.0",
+      "purl": "pkg:npm/%40sentry/browser@10.71.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -2214,12 +2214,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/browser/-/browser-10.69.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/browser/-/browser-10.71.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "f37f75b679bde986d1edbf1261f100fcd10866ec9bdabdd266bb404f46e166d8e5ba37185a3a3b82e810be4f2c58b53d7006bf7ae0f4d1e26822826f35fa5ded"
+              "content": "7d313db540e882025216ff1c43e875500f689e8bcea143495aef156abd4c5e6515b951bf5b75aacc9155c8a02b64c8fde658b3664abc6a24badd2511beb06c15"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2294,8 +2294,8 @@
       "type": "library",
       "name": "core",
       "group": "@sentry",
-      "version": "10.69.0",
-      "bom-ref": "weaving-site@0.216.3|@sentry/core@10.69.0",
+      "version": "10.71.0",
+      "bom-ref": "weaving-site@0.216.3|@sentry/core@10.71.0",
       "author": "Sentry",
       "description": "Base implementation for all Sentry JavaScript SDKs",
       "licenses": [
@@ -2306,7 +2306,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/core@10.69.0",
+      "purl": "pkg:npm/%40sentry/core@10.71.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -2324,12 +2324,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/core/-/core-10.69.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/core/-/core-10.71.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "faebaa5447a20f362e00a8d92eab1138a5ef4536e5fd0787d207c646da5889bd5cb9de2b005591224166711ec96fb246158c2645ec90a2d8938ff85c0eccd366"
+              "content": "3888d3eebcdc5898d40baaf77814f74ddd63d1a7c304c91b6f1f634e87120fe6527dcdb978453b86820f4b45af7de20e4c8377cbc6df4275dabf031179a3551d"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2463,8 +2463,8 @@
       "type": "library",
       "name": "query-core",
       "group": "@tanstack",
-      "version": "5.101.4",
-      "bom-ref": "weaving-site@0.216.3|@tanstack/query-core@5.101.4",
+      "version": "5.102.8",
+      "bom-ref": "weaving-site@0.216.3|@tanstack/query-core@5.102.8",
       "author": "tannerlinsley",
       "description": "The framework agnostic core that powers TanStack Query",
       "licenses": [
@@ -2475,7 +2475,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40tanstack/query-core@5.101.4",
+      "purl": "pkg:npm/%40tanstack/query-core@5.102.8",
       "externalReferences": [
         {
           "url": "git+https://github.com/TanStack/query.git#packages/query-core",
@@ -2493,12 +2493,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.101.4.tgz",
+          "url": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.102.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "80dc1cbce25c45b2d63ce2c6ff63819becccf98bfe30ab172843960b9ed44ae64312c23bd61104ad0b22106c79c17f6bcd65a47f03347d548fa222054acc5f8b"
+              "content": "64d8e4277dc2aaf3cd79cffa9590671ea2dcdc45463d9f7248b8586a153d4dcb9115d9b05dec2e8f47388704967061ea114c1c4ab29e67ea0672f3c1a9771072"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2629,8 +2629,8 @@
       "type": "library",
       "name": "scope-manager",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.68.0",
       "description": "TypeScript scope analyser for ESLint",
       "licenses": [
         {
@@ -2640,7 +2640,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/scope-manager@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/scope-manager@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/scope-manager",
@@ -2658,12 +2658,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "f1319c1f6e63f73a89fc850b07fa69ca146fc40f1061f14467b9df6e0ebf04df6ca4381bf1f3d6417944e65f135812f9d04b54c74d3bb99d68f553b0aeadbff6"
+              "content": "4f9797a5c689360f1b8631c9f118e9ebc56afd006d798b53298f1366a54d3da51bbb3d1fea323db7a683932970bda969001f574d315e14e8eb8d7019dd8be654"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2688,8 +2688,8 @@
       "type": "library",
       "name": "type-utils",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/type-utils@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/type-utils@8.68.0",
       "description": "Type utilities for working with TypeScript + ESLint together",
       "licenses": [
         {
@@ -2699,7 +2699,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/type-utils@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/type-utils@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/type-utils",
@@ -2717,12 +2717,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "2c6d9d59f8d9410a74003b40bbf1162556b279f18bd94119dc20de238e03f6fdeb5c1fd6614a84fe3a4edbc2ab10aba5e40c92ae623e661d6feaffb15b653dfa"
+              "content": "5fbef3aa86351237961acff424dc5e68c7e9e42e65233e13c3ccbae85d4d7bc15aaba838db8b0135833ac4102a1257c664f2e9592f82640a740d7c8a0f35a21e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2747,8 +2747,8 @@
       "type": "library",
       "name": "utils",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/utils@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/utils@8.68.0",
       "description": "Utilities for working with TypeScript + ESLint together",
       "licenses": [
         {
@@ -2758,7 +2758,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/utils@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/utils@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/utils",
@@ -2776,12 +2776,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "8dab1e6ab64fa25070e4d24d606330c731cc17cde78955a6314d55747cc6d42c9f236552edfee7665b672ad1dc836d215beed4a3919f2b831e0cfa14dea23c10"
+              "content": "3c1e6024c30e8344393f5b6c816b4402a41a7095ead2a12a4470d7fd827815a4cc2df64fa47077823976109ba26723c00719a3e19418898f66d5b740279cbbb5"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2806,8 +2806,8 @@
       "type": "library",
       "name": "visitor-keys",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0",
       "description": "Visitor keys used to help traverse the TypeScript-ESTree AST",
       "licenses": [
         {
@@ -2817,7 +2817,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/visitor-keys@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/visitor-keys@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/visitor-keys",
@@ -2835,12 +2835,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "764291f2afa529c8ac923d58defb611e4b65fb770c2d61b25543f6ddb4623d9e4ef41453fbee04a830d5f9355e20a04bd555d512aac9973f0c61b727bc970096"
+              "content": "611eb9806746bd350058b95d0b7c4b3af3b36a6746cc1e00e7f37cade844687b3766fa1edfd061818faed123dc8753afad54df2dc739e70b1280ad8d7274d2fc"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2865,7 +2865,7 @@
           "type": "library",
           "name": "eslint-visitor-keys",
           "version": "5.0.1",
-          "bom-ref": "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0|eslint-visitor-keys@5.0.1",
+          "bom-ref": "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0|eslint-visitor-keys@5.0.1",
           "author": "Toru Nagashima",
           "description": "Constants and utilities about visitor keys to traverse AST.",
           "licenses": [
@@ -3099,8 +3099,8 @@
       "type": "library",
       "name": "types",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/types@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/types@8.68.0",
       "description": "Types for the TypeScript-ESTree AST spec",
       "licenses": [
         {
@@ -3110,7 +3110,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/types@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/types@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/types",
@@ -3128,12 +3128,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "1fa81c61a4833b2bcbdc00ff8c752d505a368ea1a09ff17a9eecae652bb44137acc4bf9c3f8750a0832b3834687ee242d3d83ae3e5a067ab44d7d63537660815"
+              "content": "f519e9b06263ac096508c79f19556c22624cdb862eae10b443587851bbe2bedbcea97991fef10981ed8ea04fbecfd9ba87283c4f543cb7948d4fab4749baf172"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -3158,8 +3158,8 @@
       "type": "library",
       "name": "typescript-estree",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.68.0",
       "description": "A parser that converts TypeScript source code into an ESTree compatible form",
       "licenses": [
         {
@@ -3169,7 +3169,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/typescript-estree@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/typescript-estree@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/typescript-estree",
@@ -3187,12 +3187,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "f3fc7820d8a241bd748c6817603ef5d7aff343e38bf38648167d336baf30c051c26a74ff54b6c112ba1686df1157c7e7d3f6420286b31cb420c140b45107037e"
+              "content": "38a2ac0f4b589a83625393d6db37a13b5c8ee7a8d83a6d52858971a27fd9d1224d89d02475583ce9e83daee46ea177fcc5f9ee59919bc03b12b64a176d9b4820"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5686,8 +5686,8 @@
     {
       "type": "library",
       "name": "rolldown",
-      "version": "1.2.3",
-      "bom-ref": "weaving-site@0.216.3|rolldown@1.2.3",
+      "version": "1.2.6",
+      "bom-ref": "weaving-site@0.216.3|rolldown@1.2.6",
       "description": "Fast JavaScript/TypeScript bundler in Rust with Rollup-compatible API.",
       "licenses": [
         {
@@ -5697,7 +5697,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/rolldown@1.2.3",
+      "purl": "pkg:npm/rolldown@1.2.6",
       "externalReferences": [
         {
           "url": "git+https://github.com/rolldown/rolldown.git#packages/rolldown",
@@ -5715,12 +5715,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.3.tgz",
+          "url": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.6.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "ae7f70a66c6994b7fb34b3720a4f45c9687714ce370db63c8cecc27443f31fbb9f9614dfb516c2129aa2e8bcb6a2c82853c3b039bb666af31b58b696cb82d7ec"
+              "content": "bcc338ab76a2c5fe3a1a21752a893c8c33c5b04a578055868d41d7364347366f98d9a757006d9d6d7f758e4b62de2d1946c3a57266eecc0cf5a6839b4870a650"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -6513,8 +6513,8 @@
       "type": "library",
       "name": "browser-utils",
       "group": "@sentry",
-      "version": "10.69.0",
-      "bom-ref": "weaving-site@0.216.3|@sentry/browser-utils@10.69.0",
+      "version": "10.71.0",
+      "bom-ref": "weaving-site@0.216.3|@sentry/browser-utils@10.71.0",
       "author": "Sentry",
       "description": "Browser Utilities for all Sentry JavaScript SDKs",
       "licenses": [
@@ -6525,7 +6525,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/browser-utils@10.69.0",
+      "purl": "pkg:npm/%40sentry/browser-utils@10.71.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -6543,12 +6543,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/browser-utils/-/browser-utils-10.69.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/browser-utils/-/browser-utils-10.71.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "7bfbb501b8f4cd13f047f75e19900fdc63942ebb31ebbfd75e73394a49e2aace2ec53b1d36d3de93535e7f4b69c70690258c7087aa56761b302cf3db6cf3a005"
+              "content": "0e385bf91744c127584e50da333736b91080f9b603205b050ad673284b41f5447b949355fdb2749377a5de27da5464d110b3bc581965fd7d1e96dcb50e4e6d4f"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -6569,8 +6569,8 @@
       "type": "library",
       "name": "feedback",
       "group": "@sentry",
-      "version": "10.69.0",
-      "bom-ref": "weaving-site@0.216.3|@sentry/feedback@10.69.0",
+      "version": "10.71.0",
+      "bom-ref": "weaving-site@0.216.3|@sentry/feedback@10.71.0",
       "author": "Sentry",
       "description": "Sentry SDK integration for user feedback",
       "licenses": [
@@ -6581,7 +6581,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/feedback@10.69.0",
+      "purl": "pkg:npm/%40sentry/feedback@10.71.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -6599,12 +6599,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/feedback/-/feedback-10.69.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/feedback/-/feedback-10.71.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "aab1b3e506b0f77fc884c8e514deae21a5de1f08070da2866ba1644c03fa3e89e992f49b186a9a9fac5fb04371ce3f47515a258b5959ead3110e7b76aad48f86"
+              "content": "e3eccc0269f50dc6d806d144d295adeb3a3cbd6a011d3b8ffd486d08c4c2a06078b1562f9b0471bfd1dcf4ea511d2cc4f644a5f1b783d33285c6ea151e2cca41"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -6625,8 +6625,8 @@
       "type": "library",
       "name": "replay-canvas",
       "group": "@sentry",
-      "version": "10.69.0",
-      "bom-ref": "weaving-site@0.216.3|@sentry/replay-canvas@10.69.0",
+      "version": "10.71.0",
+      "bom-ref": "weaving-site@0.216.3|@sentry/replay-canvas@10.71.0",
       "author": "Sentry",
       "description": "Replay canvas integration",
       "licenses": [
@@ -6637,7 +6637,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/replay-canvas@10.69.0",
+      "purl": "pkg:npm/%40sentry/replay-canvas@10.71.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/getsentry/sentry-javascript.git",
@@ -6655,12 +6655,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/replay-canvas/-/replay-canvas-10.69.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/replay-canvas/-/replay-canvas-10.71.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "545ea75ef4a78a71dc73b742d5999ed118e40bb56044c0a2c6cea329a417e734cd7aa4d6ddd64649e7d2395bfe66d7918b7849bd5391abdf39563502f59ff4f8"
+              "content": "613a9eb31061f5aac4c48e3d2eb4e6e18dbfc4f5f8d2ad865a2d20591c3a94d7d8b72373eff65f1e2f3fd4de8911cf1d95d4ec96a161208e9915e714c94f6268"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -6681,8 +6681,8 @@
       "type": "library",
       "name": "replay",
       "group": "@sentry",
-      "version": "10.69.0",
-      "bom-ref": "weaving-site@0.216.3|@sentry/replay@10.69.0",
+      "version": "10.71.0",
+      "bom-ref": "weaving-site@0.216.3|@sentry/replay@10.71.0",
       "author": "Sentry",
       "description": "User replays for Sentry",
       "licenses": [
@@ -6693,7 +6693,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/replay@10.69.0",
+      "purl": "pkg:npm/%40sentry/replay@10.71.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/getsentry/sentry-javascript.git",
@@ -6711,12 +6711,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/replay/-/replay-10.69.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/replay/-/replay-10.71.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "b91866361b4518f3a53348a78959962805f72955c8d257b8d7260afe229d3e38a74fd8c0dd9ae6ca43bf16fd6ffca239ce73adc1af43e9e1d19c34d3311c45ae"
+              "content": "cad120560ee2b2f6af40bea182c8187ae48291c03713238a9bd94c2d03994cb922502b454ff22d5b018d8734b8eaf43ac2c4efdd47346352657091d214a7bf2a"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -7142,8 +7142,8 @@
       "type": "library",
       "name": "project-service",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/project-service@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/project-service@8.68.0",
       "description": "Standalone TypeScript project service wrapper for linting.",
       "licenses": [
         {
@@ -7153,7 +7153,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/project-service@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/project-service@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/project-service",
@@ -7171,12 +7171,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "eccb6118f4ede013faf654abcaaa6aabc1d0ab1bb3ca7b2c7242ff8f20f2937f9334c437cb68c55a4a6d0ab92d5af06b3fe107efcecd979379429c3b59983ee6"
+              "content": "e4642d59909715c158bb1f79e69be84b4d962dce3da57365bc8c6870a8d2d1c96fc28de29f545d97354aca2a901fdbc4e4029614b4da52079090ead34bed10c7"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -7201,8 +7201,8 @@
       "type": "library",
       "name": "tsconfig-utils",
       "group": "@typescript-eslint",
-      "version": "8.66.0",
-      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/tsconfig-utils@8.66.0",
+      "version": "8.68.0",
+      "bom-ref": "weaving-site@0.216.3|@typescript-eslint/tsconfig-utils@8.68.0",
       "description": "Utilities for collecting TSConfigs for linting scenarios.",
       "licenses": [
         {
@@ -7212,7 +7212,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/tsconfig-utils@8.66.0",
+      "purl": "pkg:npm/%40typescript-eslint/tsconfig-utils@8.68.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/tsconfig-utils",
@@ -7230,12 +7230,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.66.0.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.68.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "f43e602d8646e2b3a37286a0f0c43f7d623c5aa03dc1c3c3c8e1b25ad58586f33594745b962a9448f218e49df3a82535b6f4b0cd7c679e3850873e4d7bb989e2"
+              "content": "17bceb1907e2247a233f08bcbe1c59402d6d5ad273bcbef870afe7aab8b6964f18517bd8698c25dbadf1389ebd8c358f524d6199c7686b217093d957d3d9e957"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -9858,8 +9858,8 @@
       "type": "library",
       "name": "types",
       "group": "@oxc-project",
-      "version": "0.143.0",
-      "bom-ref": "weaving-site@0.216.3|@oxc-project/types@0.143.0",
+      "version": "0.147.0",
+      "bom-ref": "weaving-site@0.216.3|@oxc-project/types@0.147.0",
       "author": "Boshen and oxc contributors",
       "description": "Types for Oxc AST nodes",
       "licenses": [
@@ -9870,7 +9870,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40oxc-project/types@0.143.0",
+      "purl": "pkg:npm/%40oxc-project/types@0.147.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/oxc-project/oxc.git#npm/oxc-types",
@@ -9888,12 +9888,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@oxc-project/types/-/types-0.143.0.tgz",
+          "url": "https://registry.npmjs.org/@oxc-project/types/-/types-0.147.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "bba25974b0532e8b6b342f5577abcfb2c20d773702ce578a007e8424a22641bec6b58bd7e6478dd9dc64a0ae38b2d09ce2d7df13a41046d6535d54b3b0b52558"
+              "content": "209decea5b472e9e394b46e1ee98645fe8093bb0355aecf611aaa90216fc5a3a83c1bccc896287872c93e36b6c91a5a31185ed1ed5423e99c12554fdf9d7112e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -9914,8 +9914,8 @@
       "type": "library",
       "name": "binding-linux-x64-gnu",
       "group": "@rolldown",
-      "version": "1.2.3",
-      "bom-ref": "weaving-site@0.216.3|@rolldown/binding-linux-x64-gnu@1.2.3",
+      "version": "1.2.6",
+      "bom-ref": "weaving-site@0.216.3|@rolldown/binding-linux-x64-gnu@1.2.6",
       "description": "Fast JavaScript/TypeScript bundler in Rust with Rollup-compatible API.",
       "scope": "optional",
       "licenses": [
@@ -9926,7 +9926,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40rolldown/binding-linux-x64-gnu@1.2.3",
+      "purl": "pkg:npm/%40rolldown/binding-linux-x64-gnu@1.2.6",
       "externalReferences": [
         {
           "url": "git+https://github.com/rolldown/rolldown.git#packages/rolldown",
@@ -9944,12 +9944,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.2.3.tgz",
+          "url": "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.2.6.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "4f2b4cc05d8a546a8fdad81dd08d4e6343c0bfbf1d651018705e6cb03ce3337e125170840f7b97bd2779fa51e80b46d30fa784745cfb2dd40d08ed72d28564f7"
+              "content": "29e908d204b4c0bc5ed540524128de9c1570a2efc991c40f0f304f2021998f152ff64dd1b5e1c33c141a88e89c65414a4481f6c0a122986c15a6726c6cfceeef"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -9967,66 +9967,6 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@rolldown/binding-linux-x64-gnu"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "binding-linux-x64-musl",
-      "group": "@rolldown",
-      "version": "1.2.3",
-      "bom-ref": "weaving-site@0.216.3|@rolldown/binding-linux-x64-musl@1.2.3",
-      "description": "Fast JavaScript/TypeScript bundler in Rust with Rollup-compatible API.",
-      "scope": "optional",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/%40rolldown/binding-linux-x64-musl@1.2.3",
-      "externalReferences": [
-        {
-          "url": "git+https://github.com/rolldown/rolldown.git#packages/rolldown",
-          "type": "vcs",
-          "comment": "as detected from PackageJson property \"repository.url\" and \"repository.directory\""
-        },
-        {
-          "url": "https://rolldown.rs/",
-          "type": "website",
-          "comment": "as detected from PackageJson property \"homepage\""
-        },
-        {
-          "url": "https://github.com/rolldown/rolldown/issues",
-          "type": "issue-tracker",
-          "comment": "as detected from PackageJson property \"bugs.url\""
-        },
-        {
-          "url": "https://registry.npmjs.org/@rolldown/binding-linux-x64-musl/-/binding-linux-x64-musl-1.2.3.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "fc4f66deab2dac91553e850b576e665506e548d131636fa406c61ee2ccb44e7d3238e809f3065b66ddca9d16c5fd7794d869754932944270cd4ea848139303e0"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:constraint:engine:node",
-          "value": "^20.19.0 || >=22.12.0"
-        },
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/@rolldown/binding-linux-x64-musl"
         }
       ]
     },
@@ -13500,32 +13440,32 @@
       "dependsOn": [
         "weaving-site@0.216.3|@clerk/clerk-react@5.61.9",
         "weaving-site@0.216.3|@codecov/vite-plugin@2.0.1",
-        "weaving-site@0.216.3|@sentry/react@10.69.0",
+        "weaving-site@0.216.3|@sentry/react@10.71.0",
         "weaving-site@0.216.3|@tailwindcss/vite@4.3.3",
-        "weaving-site@0.216.3|@tanstack/react-query@5.101.4",
+        "weaving-site@0.216.3|@tanstack/react-query@5.102.8",
         "weaving-site@0.216.3|@types/dompurify@3.2.0",
-        "weaving-site@0.216.3|@types/node@26.1.2",
-        "weaving-site@0.216.3|@types/react-dom@19.2.4",
+        "weaving-site@0.216.3|@types/node@26.4.0",
+        "weaving-site@0.216.3|@types/react-dom@19.2.5",
         "weaving-site@0.216.3|@types/react@19.2.18",
-        "weaving-site@0.216.3|@typescript-eslint/eslint-plugin@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/parser@8.66.0",
-        "weaving-site@0.216.3|@vitejs/plugin-react@6.0.5",
+        "weaving-site@0.216.3|@typescript-eslint/eslint-plugin@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/parser@8.68.0",
+        "weaving-site@0.216.3|@vitejs/plugin-react@6.1.1",
         "weaving-site@0.216.3|class-variance-authority@0.7.1",
         "weaving-site@0.216.3|clsx@2.1.1",
-        "weaving-site@0.216.3|dompurify@3.4.13",
+        "weaving-site@0.216.3|dompurify@3.4.14",
         "weaving-site@0.216.3|eslint-plugin-react-hooks@7.1.1",
-        "weaving-site@0.216.3|eslint@10.8.0",
-        "weaving-site@0.216.3|i18next@26.3.6",
-        "weaving-site@0.216.3|lucide-react@1.30.0",
+        "weaving-site@0.216.3|eslint@10.9.1",
+        "weaving-site@0.216.3|i18next@26.4.0",
+        "weaving-site@0.216.3|lucide-react@1.35.0",
         "weaving-site@0.216.3|react-colorful@5.8.0",
         "weaving-site@0.216.3|react-dom@19.2.8",
-        "weaving-site@0.216.3|react-i18next@17.0.11",
+        "weaving-site@0.216.3|react-i18next@17.0.12",
         "weaving-site@0.216.3|react-router-dom@7.18.2",
         "weaving-site@0.216.3|react@19.2.8",
         "weaving-site@0.216.3|tailwind-merge@3.6.0",
         "weaving-site@0.216.3|tailwindcss@4.3.3",
         "weaving-site@0.216.3|typescript@6.0.3",
-        "weaving-site@0.216.3|vite@8.2.1"
+        "weaving-site@0.216.3|vite@8.2.2"
       ]
     },
     {
@@ -13542,15 +13482,15 @@
       "dependsOn": [
         "weaving-site@0.216.3|@codecov/bundler-plugin-core@2.0.1",
         "weaving-site@0.216.3|unplugin@1.16.1",
-        "weaving-site@0.216.3|vite@8.2.1"
+        "weaving-site@0.216.3|vite@8.2.2"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@sentry/react@10.69.0",
+      "ref": "weaving-site@0.216.3|@sentry/react@10.71.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@sentry/browser@10.69.0",
+        "weaving-site@0.216.3|@sentry/browser@10.71.0",
         "weaving-site@0.216.3|@sentry/conventions@0.16.0",
-        "weaving-site@0.216.3|@sentry/core@10.69.0",
+        "weaving-site@0.216.3|@sentry/core@10.71.0",
         "weaving-site@0.216.3|react@19.2.8"
       ]
     },
@@ -13560,30 +13500,30 @@
         "weaving-site@0.216.3|@tailwindcss/node@4.3.3",
         "weaving-site@0.216.3|@tailwindcss/oxide@4.3.3",
         "weaving-site@0.216.3|tailwindcss@4.3.3",
-        "weaving-site@0.216.3|vite@8.2.1"
+        "weaving-site@0.216.3|vite@8.2.2"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@tanstack/react-query@5.101.4",
+      "ref": "weaving-site@0.216.3|@tanstack/react-query@5.102.8",
       "dependsOn": [
-        "weaving-site@0.216.3|@tanstack/query-core@5.101.4",
+        "weaving-site@0.216.3|@tanstack/query-core@5.102.8",
         "weaving-site@0.216.3|react@19.2.8"
       ]
     },
     {
       "ref": "weaving-site@0.216.3|@types/dompurify@3.2.0",
       "dependsOn": [
-        "weaving-site@0.216.3|dompurify@3.4.13"
+        "weaving-site@0.216.3|dompurify@3.4.14"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@types/node@26.1.2",
+      "ref": "weaving-site@0.216.3|@types/node@26.4.0",
       "dependsOn": [
         "weaving-site@0.216.3|undici-types@8.3.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@types/react-dom@19.2.4",
+      "ref": "weaving-site@0.216.3|@types/react-dom@19.2.5",
       "dependsOn": [
         "weaving-site@0.216.3|@types/react@19.2.18"
       ]
@@ -13598,15 +13538,15 @@
       "ref": "weaving-site@0.216.3|@types/react@19.2.18|csstype@3.2.3"
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/eslint-plugin@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/eslint-plugin@8.68.0",
       "dependsOn": [
         "weaving-site@0.216.3|@eslint-community/regexpp@4.12.2",
-        "weaving-site@0.216.3|@typescript-eslint/parser@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/type-utils@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/utils@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0",
-        "weaving-site@0.216.3|eslint@10.8.0",
+        "weaving-site@0.216.3|@typescript-eslint/parser@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/type-utils@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/utils@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0",
+        "weaving-site@0.216.3|eslint@10.9.1",
         "weaving-site@0.216.3|ignore@7.0.6",
         "weaving-site@0.216.3|natural-compare@1.4.0",
         "weaving-site@0.216.3|ts-api-utils@2.5.0",
@@ -13614,22 +13554,22 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/parser@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/parser@8.68.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/types@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0",
+        "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/types@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0",
         "weaving-site@0.216.3|debug@4.4.3",
-        "weaving-site@0.216.3|eslint@10.8.0",
+        "weaving-site@0.216.3|eslint@10.9.1",
         "weaving-site@0.216.3|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@vitejs/plugin-react@6.0.5",
+      "ref": "weaving-site@0.216.3|@vitejs/plugin-react@6.1.1",
       "dependsOn": [
         "weaving-site@0.216.3|@rolldown/pluginutils@1.0.1",
-        "weaving-site@0.216.3|vite@8.2.1"
+        "weaving-site@0.216.3|vite@8.2.2"
       ]
     },
     {
@@ -13642,7 +13582,7 @@
       "ref": "weaving-site@0.216.3|clsx@2.1.1"
     },
     {
-      "ref": "weaving-site@0.216.3|dompurify@3.4.13",
+      "ref": "weaving-site@0.216.3|dompurify@3.4.14",
       "dependsOn": [
         "weaving-site@0.216.3|@types/trusted-types@2.0.7"
       ]
@@ -13652,14 +13592,14 @@
       "dependsOn": [
         "weaving-site@0.216.3|@babel/core@7.29.7",
         "weaving-site@0.216.3|@babel/parser@7.29.7",
-        "weaving-site@0.216.3|eslint@10.8.0",
+        "weaving-site@0.216.3|eslint@10.9.1",
         "weaving-site@0.216.3|hermes-parser@0.25.1",
         "weaving-site@0.216.3|zod-validation-error@4.0.2",
         "weaving-site@0.216.3|zod@3.25.76"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|eslint@10.8.0",
+      "ref": "weaving-site@0.216.3|eslint@10.9.1",
       "dependsOn": [
         "weaving-site@0.216.3|@eslint-community/eslint-utils@4.10.1",
         "weaving-site@0.216.3|@eslint-community/regexpp@4.12.2",
@@ -13676,7 +13616,7 @@
         "weaving-site@0.216.3|debug@4.4.3",
         "weaving-site@0.216.3|escape-string-regexp@4.0.0",
         "weaving-site@0.216.3|eslint-scope@9.1.2",
-        "weaving-site@0.216.3|eslint@10.8.0|eslint-visitor-keys@5.0.1",
+        "weaving-site@0.216.3|eslint@10.9.1|eslint-visitor-keys@5.0.1",
         "weaving-site@0.216.3|espree@11.2.0",
         "weaving-site@0.216.3|esquery@1.7.0",
         "weaving-site@0.216.3|esutils@2.0.3",
@@ -13684,7 +13624,7 @@
         "weaving-site@0.216.3|file-entry-cache@8.0.0",
         "weaving-site@0.216.3|find-up@5.0.0",
         "weaving-site@0.216.3|glob-parent@6.0.2",
-        "weaving-site@0.216.3|eslint@10.8.0|ignore@5.3.2",
+        "weaving-site@0.216.3|eslint@10.9.1|ignore@5.3.2",
         "weaving-site@0.216.3|imurmurhash@0.1.4",
         "weaving-site@0.216.3|is-glob@4.0.3",
         "weaving-site@0.216.3|jiti@2.7.0",
@@ -13695,19 +13635,19 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|eslint@10.8.0|eslint-visitor-keys@5.0.1"
+      "ref": "weaving-site@0.216.3|eslint@10.9.1|eslint-visitor-keys@5.0.1"
     },
     {
-      "ref": "weaving-site@0.216.3|eslint@10.8.0|ignore@5.3.2"
+      "ref": "weaving-site@0.216.3|eslint@10.9.1|ignore@5.3.2"
     },
     {
-      "ref": "weaving-site@0.216.3|i18next@26.3.6",
+      "ref": "weaving-site@0.216.3|i18next@26.4.0",
       "dependsOn": [
         "weaving-site@0.216.3|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|lucide-react@1.30.0",
+      "ref": "weaving-site@0.216.3|lucide-react@1.35.0",
       "dependsOn": [
         "weaving-site@0.216.3|react@19.2.8"
       ]
@@ -13727,11 +13667,11 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|react-i18next@17.0.11",
+      "ref": "weaving-site@0.216.3|react-i18next@17.0.12",
       "dependsOn": [
         "weaving-site@0.216.3|@babel/runtime@7.29.7",
         "weaving-site@0.216.3|html-parse-stringify@4.0.1",
-        "weaving-site@0.216.3|i18next@26.3.6",
+        "weaving-site@0.216.3|i18next@26.4.0",
         "weaving-site@0.216.3|react@19.2.8",
         "weaving-site@0.216.3|typescript@6.0.3",
         "weaving-site@0.216.3|use-sync-external-store@1.6.0"
@@ -13758,30 +13698,30 @@
       "ref": "weaving-site@0.216.3|typescript@6.0.3"
     },
     {
-      "ref": "weaving-site@0.216.3|vite@8.2.1",
+      "ref": "weaving-site@0.216.3|vite@8.2.2",
       "dependsOn": [
-        "weaving-site@0.216.3|@types/node@26.1.2",
+        "weaving-site@0.216.3|@types/node@26.4.0",
         "weaving-site@0.216.3|jiti@2.7.0",
-        "weaving-site@0.216.3|vite@8.2.1|lightningcss@1.33.0",
+        "weaving-site@0.216.3|vite@8.2.2|lightningcss@1.33.0",
         "weaving-site@0.216.3|picomatch@4.0.5",
         "weaving-site@0.216.3|postcss@8.5.26",
-        "weaving-site@0.216.3|rolldown@1.2.3",
+        "weaving-site@0.216.3|rolldown@1.2.6",
         "weaving-site@0.216.3|tinyglobby@0.2.17"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|vite@8.2.1|lightningcss@1.33.0",
+      "ref": "weaving-site@0.216.3|vite@8.2.2|lightningcss@1.33.0",
       "dependsOn": [
         "weaving-site@0.216.3|detect-libc@2.1.2",
-        "weaving-site@0.216.3|vite@8.2.1|lightningcss-linux-x64-gnu@1.33.0",
-        "weaving-site@0.216.3|vite@8.2.1|lightningcss-linux-x64-musl@1.33.0"
+        "weaving-site@0.216.3|vite@8.2.2|lightningcss-linux-x64-gnu@1.33.0",
+        "weaving-site@0.216.3|vite@8.2.2|lightningcss-linux-x64-musl@1.33.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|vite@8.2.1|lightningcss-linux-x64-gnu@1.33.0"
+      "ref": "weaving-site@0.216.3|vite@8.2.2|lightningcss-linux-x64-gnu@1.33.0"
     },
     {
-      "ref": "weaving-site@0.216.3|vite@8.2.1|lightningcss-linux-x64-musl@1.33.0"
+      "ref": "weaving-site@0.216.3|vite@8.2.2|lightningcss-linux-x64-musl@1.33.0"
     },
     {
       "ref": "weaving-site@0.216.3|@clerk/shared@3.47.8",
@@ -13818,21 +13758,21 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@sentry/browser@10.69.0",
+      "ref": "weaving-site@0.216.3|@sentry/browser@10.71.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@sentry/browser-utils@10.69.0",
+        "weaving-site@0.216.3|@sentry/browser-utils@10.71.0",
         "weaving-site@0.216.3|@sentry/conventions@0.16.0",
-        "weaving-site@0.216.3|@sentry/core@10.69.0",
-        "weaving-site@0.216.3|@sentry/feedback@10.69.0",
-        "weaving-site@0.216.3|@sentry/replay-canvas@10.69.0",
-        "weaving-site@0.216.3|@sentry/replay@10.69.0"
+        "weaving-site@0.216.3|@sentry/core@10.71.0",
+        "weaving-site@0.216.3|@sentry/feedback@10.71.0",
+        "weaving-site@0.216.3|@sentry/replay-canvas@10.71.0",
+        "weaving-site@0.216.3|@sentry/replay@10.71.0"
       ]
     },
     {
       "ref": "weaving-site@0.216.3|@sentry/conventions@0.16.0"
     },
     {
-      "ref": "weaving-site@0.216.3|@sentry/core@10.69.0",
+      "ref": "weaving-site@0.216.3|@sentry/core@10.71.0",
       "dependsOn": [
         "weaving-site@0.216.3|@sentry/conventions@0.16.0"
       ]
@@ -13857,7 +13797,7 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@tanstack/query-core@5.101.4"
+      "ref": "weaving-site@0.216.3|@tanstack/query-core@5.102.8"
     },
     {
       "ref": "weaving-site@0.216.3|undici-types@8.3.0"
@@ -13866,44 +13806,44 @@
       "ref": "weaving-site@0.216.3|@eslint-community/regexpp@4.12.2"
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.68.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@typescript-eslint/types@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0"
+        "weaving-site@0.216.3|@typescript-eslint/types@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/type-utils@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/type-utils@8.68.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@typescript-eslint/types@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/utils@8.66.0",
+        "weaving-site@0.216.3|@typescript-eslint/types@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/utils@8.68.0",
         "weaving-site@0.216.3|debug@4.4.3",
-        "weaving-site@0.216.3|eslint@10.8.0",
+        "weaving-site@0.216.3|eslint@10.9.1",
         "weaving-site@0.216.3|ts-api-utils@2.5.0",
         "weaving-site@0.216.3|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/utils@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/utils@8.68.0",
       "dependsOn": [
         "weaving-site@0.216.3|@eslint-community/eslint-utils@4.10.1",
-        "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/types@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.66.0",
-        "weaving-site@0.216.3|eslint@10.8.0",
+        "weaving-site@0.216.3|@typescript-eslint/scope-manager@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/types@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.68.0",
+        "weaving-site@0.216.3|eslint@10.9.1",
         "weaving-site@0.216.3|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@typescript-eslint/types@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0|eslint-visitor-keys@5.0.1"
+        "weaving-site@0.216.3|@typescript-eslint/types@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0|eslint-visitor-keys@5.0.1"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0|eslint-visitor-keys@5.0.1"
+      "ref": "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0|eslint-visitor-keys@5.0.1"
     },
     {
       "ref": "weaving-site@0.216.3|ignore@7.0.6"
@@ -13918,15 +13858,15 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/types@8.66.0"
+      "ref": "weaving-site@0.216.3|@typescript-eslint/types@8.68.0"
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/typescript-estree@8.68.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@typescript-eslint/project-service@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/tsconfig-utils@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/types@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.66.0",
+        "weaving-site@0.216.3|@typescript-eslint/project-service@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/tsconfig-utils@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/types@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/visitor-keys@8.68.0",
         "weaving-site@0.216.3|debug@4.4.3",
         "weaving-site@0.216.3|minimatch@10.2.5",
         "weaving-site@0.216.3|semver@7.8.5",
@@ -13995,7 +13935,7 @@
       "ref": "weaving-site@0.216.3|@eslint-community/eslint-utils@4.10.1",
       "dependsOn": [
         "weaving-site@0.216.3|eslint-visitor-keys@3.4.3",
-        "weaving-site@0.216.3|eslint@10.8.0"
+        "weaving-site@0.216.3|eslint@10.9.1"
       ]
     },
     {
@@ -14181,11 +14121,10 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|rolldown@1.2.3",
+      "ref": "weaving-site@0.216.3|rolldown@1.2.6",
       "dependsOn": [
-        "weaving-site@0.216.3|@oxc-project/types@0.143.0",
-        "weaving-site@0.216.3|@rolldown/binding-linux-x64-gnu@1.2.3",
-        "weaving-site@0.216.3|@rolldown/binding-linux-x64-musl@1.2.3",
+        "weaving-site@0.216.3|@oxc-project/types@0.147.0",
+        "weaving-site@0.216.3|@rolldown/binding-linux-x64-gnu@1.2.6",
         "weaving-site@0.216.3|@rolldown/pluginutils@1.0.1"
       ]
     },
@@ -14262,30 +14201,30 @@
       "ref": "weaving-site@0.216.3|webpack-virtual-modules@0.6.2"
     },
     {
-      "ref": "weaving-site@0.216.3|@sentry/browser-utils@10.69.0",
+      "ref": "weaving-site@0.216.3|@sentry/browser-utils@10.71.0",
       "dependsOn": [
         "weaving-site@0.216.3|@sentry/conventions@0.16.0",
-        "weaving-site@0.216.3|@sentry/core@10.69.0"
+        "weaving-site@0.216.3|@sentry/core@10.71.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@sentry/feedback@10.69.0",
+      "ref": "weaving-site@0.216.3|@sentry/feedback@10.71.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@sentry/core@10.69.0"
+        "weaving-site@0.216.3|@sentry/core@10.71.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@sentry/replay-canvas@10.69.0",
+      "ref": "weaving-site@0.216.3|@sentry/replay-canvas@10.71.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@sentry/core@10.69.0",
-        "weaving-site@0.216.3|@sentry/replay@10.69.0"
+        "weaving-site@0.216.3|@sentry/core@10.71.0",
+        "weaving-site@0.216.3|@sentry/replay@10.71.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@sentry/replay@10.69.0",
+      "ref": "weaving-site@0.216.3|@sentry/replay@10.71.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@sentry/browser-utils@10.69.0",
-        "weaving-site@0.216.3|@sentry/core@10.69.0"
+        "weaving-site@0.216.3|@sentry/browser-utils@10.71.0",
+        "weaving-site@0.216.3|@sentry/core@10.71.0"
       ]
     },
     {
@@ -14326,16 +14265,16 @@
       "ref": "weaving-site@0.216.3|@tailwindcss/oxide-linux-x64-musl@4.3.3"
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/project-service@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/project-service@8.68.0",
       "dependsOn": [
-        "weaving-site@0.216.3|@typescript-eslint/tsconfig-utils@8.66.0",
-        "weaving-site@0.216.3|@typescript-eslint/types@8.66.0",
+        "weaving-site@0.216.3|@typescript-eslint/tsconfig-utils@8.68.0",
+        "weaving-site@0.216.3|@typescript-eslint/types@8.68.0",
         "weaving-site@0.216.3|debug@4.4.3",
         "weaving-site@0.216.3|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.3|@typescript-eslint/tsconfig-utils@8.66.0",
+      "ref": "weaving-site@0.216.3|@typescript-eslint/tsconfig-utils@8.68.0",
       "dependsOn": [
         "weaving-site@0.216.3|typescript@6.0.3"
       ]
@@ -14558,13 +14497,10 @@
       "ref": "weaving-site@0.216.3|picocolors@1.1.1"
     },
     {
-      "ref": "weaving-site@0.216.3|@oxc-project/types@0.143.0"
+      "ref": "weaving-site@0.216.3|@oxc-project/types@0.147.0"
     },
     {
-      "ref": "weaving-site@0.216.3|@rolldown/binding-linux-x64-gnu@1.2.3"
-    },
-    {
-      "ref": "weaving-site@0.216.3|@rolldown/binding-linux-x64-musl@1.2.3"
+      "ref": "weaving-site@0.216.3|@rolldown/binding-linux-x64-gnu@1.2.6"
     },
     {
       "ref": "weaving-site@0.216.3|fdir@6.5.0",
