@@ -67,7 +67,7 @@
   {
     "License": "BSD License",
     "Name": "amqp",
-    "Version": "5.3.1"
+    "Version": "5.4.0"
   },
   {
     "License": "MIT",
@@ -107,7 +107,7 @@
   {
     "License": "BSD License",
     "Name": "billiard",
-    "Version": "4.2.4"
+    "Version": "4.3.0"
   },
   {
     "License": "BSD-2-Clause",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.93"
+    "Version": "1.43.98"
   },
   {
     "License": "BSD-3-Clause",
@@ -167,7 +167,7 @@
   {
     "License": "MIT",
     "Name": "click-repl",
-    "Version": "0.3.0"
+    "Version": "0.4.0"
   },
   {
     "License": "MIT",
@@ -182,7 +182,7 @@
   {
     "License": "Apache Software License",
     "Name": "cyclonedx-bom",
-    "Version": "7.3.1"
+    "Version": "7.4.0"
   },
   {
     "License": "Apache Software License",
@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "3.32.6"
+    "Version": "4.0.1"
   },
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
@@ -237,7 +237,7 @@
   {
     "License": "MIT AND PSF-2.0",
     "Name": "greenlet",
-    "Version": "3.5.5"
+    "Version": "3.5.6"
   },
   {
     "License": "MIT License",
@@ -262,7 +262,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "idna",
-    "Version": "3.19"
+    "Version": "3.20"
   },
   {
     "License": "ISC License (ISCL)",
@@ -337,7 +337,7 @@
   {
     "License": "Apache License 2.0",
     "Name": "multidict",
-    "Version": "6.8.0"
+    "Version": "6.9.0"
   },
   {
     "License": "Apache-2.0",
@@ -457,7 +457,7 @@
   {
     "License": "MIT",
     "Name": "platformdirs",
-    "Version": "4.11.8"
+    "Version": "4.11.11"
   },
   {
     "License": "BSD License",
@@ -465,14 +465,14 @@
     "Version": "3.0.53"
   },
   {
-    "License": "Apache Software License",
+    "License": "Apache-2.0",
     "Name": "propcache",
-    "Version": "0.5.2"
+    "Version": "0.5.4"
   },
   {
     "License": "3-Clause BSD License",
     "Name": "protobuf",
-    "Version": "7.36.1"
+    "Version": "7.36.2"
   },
   {
     "License": "BSD-3-Clause",
@@ -512,7 +512,7 @@
   {
     "License": "MIT",
     "Name": "pyparsing",
-    "Version": "3.3.2"
+    "Version": "3.3.3"
   },
   {
     "License": "Apache Software License; BSD License",
@@ -647,7 +647,7 @@
   {
     "License": "MIT",
     "Name": "urllib3",
-    "Version": "2.7.0"
+    "Version": "2.8.0"
   },
   {
     "License": "BSD-3-Clause",
@@ -687,6 +687,6 @@
   {
     "License": "Apache-2.0",
     "Name": "yarl",
-    "Version": "1.24.5"
+    "Version": "1.25.1"
   }
 ]
