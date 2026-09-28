@@ -5,14 +5,14 @@
     "Version": "0.14.4"
   },
   {
-    "License": "MIT License",
+    "License": "MIT",
     "Name": "Deprecated",
-    "Version": "1.3.1"
+    "Version": "3.0.0"
   },
   {
     "License": "MIT",
     "Name": "Mako",
-    "Version": "1.4.1"
+    "Version": "1.4.3"
   },
   {
     "License": "BSD-3-Clause",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.98"
+    "Version": "1.43.103"
   },
   {
     "License": "BSD-3-Clause",
@@ -212,12 +212,12 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "4.0.1"
+    "Version": "4.0.5"
   },
   {
-    "License": "Mozilla Public License 2.0 (MPL 2.0)",
+    "License": "MPL-2.0",
     "Name": "fqdn",
-    "Version": "1.5.1"
+    "Version": "1.6.0"
   },
   {
     "License": "Apache-2.0",
@@ -232,7 +232,7 @@
   {
     "License": "Apache-2.0",
     "Name": "googleapis-common-protos",
-    "Version": "1.75.3"
+    "Version": "1.75.4"
   },
   {
     "License": "MIT AND PSF-2.0",
@@ -337,7 +337,7 @@
   {
     "License": "Apache License 2.0",
     "Name": "multidict",
-    "Version": "6.9.0"
+    "Version": "6.9.1"
   },
   {
     "License": "Apache-2.0",
@@ -457,7 +457,7 @@
   {
     "License": "MIT",
     "Name": "platformdirs",
-    "Version": "4.11.11"
+    "Version": "4.12.1"
   },
   {
     "License": "BSD License",
@@ -602,7 +602,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "starlette",
-    "Version": "1.6.0"
+    "Version": "1.7.0"
   },
   {
     "License": "MIT",
@@ -667,7 +667,7 @@
   {
     "License": "MIT License",
     "Name": "watchfiles",
-    "Version": "1.2.0"
+    "Version": "1.3.0"
   },
   {
     "License": "BSD License",
@@ -682,7 +682,7 @@
   {
     "License": "BSD-2-Clause",
     "Name": "wrapt",
-    "Version": "2.4.1"
+    "Version": "2.5.0"
   },
   {
     "License": "Apache-2.0",
