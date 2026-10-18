@@ -3,9 +3,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
   "version": 1,
-  "serialNumber": "urn:uuid:0a45e559-0034-43bb-b9d7-7c6044a80610",
+  "serialNumber": "urn:uuid:8bf8987a-a115-4b03-ac60-2c984cb109ea",
   "metadata": {
-    "timestamp": "2026-10-12T10:27:21.274Z",
+    "timestamp": "2026-10-18T03:53:56.085Z",
     "tools": {
       "components": [
         {
@@ -923,8 +923,8 @@
     {
       "type": "library",
       "name": "dompurify",
-      "version": "3.4.14",
-      "bom-ref": "weaving-site@0.216.4|dompurify@3.4.14",
+      "version": "3.4.16",
+      "bom-ref": "weaving-site@0.216.4|dompurify@3.4.16",
       "author": "Dr.-Ing. Mario Heiderich, Cure53",
       "description": "DOMPurify is a DOM-only, super-fast, uber-tolerant XSS sanitizer for HTML, MathML and SVG. It runs as JavaScript and works in all modern browsers, as well as in Node.js (via jsdom). DOMPurify is written by security people who have vast background in web attacks and XSS. Fear not.",
       "licenses": [
@@ -933,7 +933,7 @@
           "acknowledgement": "declared"
         }
       ],
-      "purl": "pkg:npm/dompurify@3.4.14",
+      "purl": "pkg:npm/dompurify@3.4.16",
       "externalReferences": [
         {
           "url": "git://github.com/cure53/DOMPurify.git",
@@ -951,12 +951,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.14.tgz",
+          "url": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.16.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "755a07f73f8c63e0bd22296018293761f16a8cb8b77c2866d8e88a24cce1e9ac6b279ab0c6a59a65a9a0987ae9bf6d8237f29d6d926e1841a07d0a0bd342d376"
+              "content": "b2aa3ea4da77a918422296e0462d72f13824dbb068d91cbbc34742d4d05e3537590a15a3cfd5dbfca3a865b44ffd1ea9419f34430f18857c35de159605b3119d"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -9233,8 +9233,8 @@
     {
       "type": "library",
       "name": "brace-expansion",
-      "version": "5.0.9",
-      "bom-ref": "weaving-site@0.216.4|brace-expansion@5.0.9",
+      "version": "5.0.12",
+      "bom-ref": "weaving-site@0.216.4|brace-expansion@5.0.12",
       "description": "Brace expansion as known from sh/bash",
       "licenses": [
         {
@@ -9244,7 +9244,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/brace-expansion@5.0.9",
+      "purl": "pkg:npm/brace-expansion@5.0.12",
       "externalReferences": [
         {
           "url": "git+https://github.com/juliangruber/brace-expansion.git",
@@ -9262,12 +9262,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.9.tgz",
+          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "49c43822ebc8105d533253fb66dfaf8c9ffff7394f6f64837315b13376e4f2ceade8619d27b28ed5d09c4e274e3c929e3d6df42c4ff6713ef00b23e1a3dfd6c6"
+              "content": "628bd0debce168b308ac38cd0cc90d4b4d6d79af77aa11211b9c72f1febe47497e770dca8bee6c0a822823de368ae2d94c75a881692d830543854d3d88d12299"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -10441,8 +10441,8 @@
     {
       "type": "library",
       "name": "undici",
-      "version": "6.28.0",
-      "bom-ref": "weaving-site@0.216.4|undici@6.28.0",
+      "version": "6.29.0",
+      "bom-ref": "weaving-site@0.216.4|undici@6.29.0",
       "description": "An HTTP/1.1 client, written from scratch for Node.js",
       "licenses": [
         {
@@ -10452,7 +10452,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/undici@6.28.0",
+      "purl": "pkg:npm/undici@6.29.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/nodejs/undici.git",
@@ -10470,12 +10470,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/undici/-/undici-6.28.0.tgz",
+          "url": "https://registry.npmjs.org/undici/-/undici-6.29.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "2c863dd7483d4c8d77612f7996b305aecf119bfbbf8ab8077935a8282a2d79e274e02509f767847e3d2b567fbb54a30f06950f894a0129f84dc8b236dc413f28"
+              "content": "47e44e0c1aa9ea2da93df94676afb120e52497e44d7c6807c288a779c2aefc90ae7f6b8ed3a70e2a80db2363fb0e7e8a72cc1d2b0adccdb53a21827a2bc5fec2"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -13452,7 +13452,7 @@
         "weaving-site@0.216.4|@vitejs/plugin-react@6.1.1",
         "weaving-site@0.216.4|class-variance-authority@0.7.1",
         "weaving-site@0.216.4|clsx@2.1.1",
-        "weaving-site@0.216.4|dompurify@3.4.14",
+        "weaving-site@0.216.4|dompurify@3.4.16",
         "weaving-site@0.216.4|eslint-plugin-react-hooks@7.1.1",
         "weaving-site@0.216.4|eslint@10.9.1",
         "weaving-site@0.216.4|i18next@26.4.0",
@@ -13513,7 +13513,7 @@
     {
       "ref": "weaving-site@0.216.4|@types/dompurify@3.2.0",
       "dependsOn": [
-        "weaving-site@0.216.4|dompurify@3.4.14"
+        "weaving-site@0.216.4|dompurify@3.4.16"
       ]
     },
     {
@@ -13582,7 +13582,7 @@
       "ref": "weaving-site@0.216.4|clsx@2.1.1"
     },
     {
-      "ref": "weaving-site@0.216.4|dompurify@3.4.14",
+      "ref": "weaving-site@0.216.4|dompurify@3.4.16",
       "dependsOn": [
         "weaving-site@0.216.4|@types/trusted-types@2.0.7"
       ]
@@ -14071,7 +14071,7 @@
     {
       "ref": "weaving-site@0.216.4|minimatch@10.2.5",
       "dependsOn": [
-        "weaving-site@0.216.4|brace-expansion@5.0.9"
+        "weaving-site@0.216.4|brace-expansion@5.0.12"
       ]
     },
     {
@@ -14174,14 +14174,14 @@
         "weaving-site@0.216.4|@octokit/plugin-rest-endpoint-methods@17.0.0",
         "weaving-site@0.216.4|@octokit/request-error@7.1.0",
         "weaving-site@0.216.4|@octokit/request@10.0.11",
-        "weaving-site@0.216.4|undici@6.28.0"
+        "weaving-site@0.216.4|undici@6.29.0"
       ]
     },
     {
       "ref": "weaving-site@0.216.4|@actions/github@9.1.1|@actions/http-client@3.0.2",
       "dependsOn": [
         "weaving-site@0.216.4|tunnel@0.0.6",
-        "weaving-site@0.216.4|undici@6.28.0"
+        "weaving-site@0.216.4|undici@6.29.0"
       ]
     },
     {
@@ -14458,7 +14458,7 @@
       "ref": "weaving-site@0.216.4|is-extglob@2.1.1"
     },
     {
-      "ref": "weaving-site@0.216.4|brace-expansion@5.0.9",
+      "ref": "weaving-site@0.216.4|brace-expansion@5.0.12",
       "dependsOn": [
         "weaving-site@0.216.4|balanced-match@4.0.4"
       ]
@@ -14518,7 +14518,7 @@
       "ref": "weaving-site@0.216.4|@actions/http-client@4.0.1",
       "dependsOn": [
         "weaving-site@0.216.4|tunnel@0.0.6",
-        "weaving-site@0.216.4|undici@6.28.0"
+        "weaving-site@0.216.4|undici@6.29.0"
       ]
     },
     {
@@ -14565,7 +14565,7 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.4|undici@6.28.0"
+      "ref": "weaving-site@0.216.4|undici@6.29.0"
     },
     {
       "ref": "weaving-site@0.216.4|ansi-styles@4.3.0",

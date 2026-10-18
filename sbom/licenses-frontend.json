@@ -677,7 +677,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/before-after-hook",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/before-after-hook/LICENSE"
   },
-  "brace-expansion@5.0.9": {
+  "brace-expansion@5.0.12": {
     "licenses": "MIT",
     "repository": "https://github.com/juliangruber/brace-expansion",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/brace-expansion",
@@ -822,7 +822,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/detect-libc",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/detect-libc/LICENSE"
   },
-  "dompurify@3.4.14": {
+  "dompurify@3.4.16": {
     "licenses": "(MPL-2.0 OR Apache-2.0)",
     "repository": "https://github.com/cure53/DOMPurify",
     "publisher": "Dr.-Ing. Mario Heiderich, Cure53",
@@ -1587,7 +1587,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/undici-types",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/undici-types/LICENSE"
   },
-  "undici@6.28.0": {
+  "undici@6.29.0": {
     "licenses": "MIT",
     "repository": "https://github.com/nodejs/undici",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/undici",
