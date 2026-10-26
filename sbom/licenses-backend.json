@@ -90,9 +90,9 @@
     "Version": "1.4.0"
   },
   {
-    "License": "BSD License",
+    "License": "BSD-3-Clause",
     "Name": "asgiref",
-    "Version": "3.12.1"
+    "Version": "3.13.0"
   },
   {
     "License": "Apache-2.0",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.114"
+    "Version": "1.43.118"
   },
   {
     "License": "BSD-3-Clause",
@@ -132,7 +132,7 @@
   {
     "License": "Mozilla Public License 2.0 (MPL 2.0)",
     "Name": "certifi",
-    "Version": "2026.10.18"
+    "Version": "2026.10.23"
   },
   {
     "License": "MIT-0",
@@ -232,7 +232,7 @@
   {
     "License": "Apache-2.0",
     "Name": "googleapis-common-protos",
-    "Version": "1.75.5"
+    "Version": "1.76.0"
   },
   {
     "License": "MIT AND PSF-2.0",
@@ -282,7 +282,7 @@
   {
     "License": "BSD License",
     "Name": "jsonpointer",
-    "Version": "3.3"
+    "Version": "3.5"
   },
   {
     "License": "MIT",
@@ -337,7 +337,7 @@
   {
     "License": "Apache-2.0",
     "Name": "multidict",
-    "Version": "7.1.0"
+    "Version": "7.2.1"
   },
   {
     "License": "Apache-2.0",
@@ -492,7 +492,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "pycparser",
-    "Version": "3.11"
+    "Version": "3.12"
   },
   {
     "License": "MIT",
@@ -577,7 +577,7 @@
   {
     "License": "Apache Software License",
     "Name": "s3transfer",
-    "Version": "0.19.2"
+    "Version": "0.19.3"
   },
   {
     "License": "MIT",
@@ -602,7 +602,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "starlette",
-    "Version": "1.9.0"
+    "Version": "1.10.0"
   },
   {
     "License": "MIT",
@@ -637,7 +637,7 @@
   {
     "License": "MIT",
     "Name": "tzlocal",
-    "Version": "5.4.4"
+    "Version": "5.4.5"
   },
   {
     "License": "MIT License",
@@ -677,7 +677,7 @@
   {
     "License": "BSD-3-Clause",
     "Name": "websockets",
-    "Version": "17.2"
+    "Version": "17.3"
   },
   {
     "License": "BSD-2-Clause",
