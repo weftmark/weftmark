@@ -7,7 +7,7 @@
   {
     "License": "MIT",
     "Name": "Deprecated",
-    "Version": "3.0.0"
+    "Version": "3.0.1"
   },
   {
     "License": "MIT",
@@ -67,7 +67,7 @@
   {
     "License": "BSD License",
     "Name": "amqp",
-    "Version": "5.4.1"
+    "Version": "5.4.2"
   },
   {
     "License": "MIT",
@@ -82,7 +82,7 @@
   {
     "License": "MIT",
     "Name": "anyio",
-    "Version": "4.15.1"
+    "Version": "4.16.0"
   },
   {
     "License": "Apache Software License",
@@ -107,7 +107,7 @@
   {
     "License": "BSD License",
     "Name": "billiard",
-    "Version": "4.3.1"
+    "Version": "4.3.2"
   },
   {
     "License": "BSD-2-Clause",
@@ -122,7 +122,7 @@
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.118"
+    "Version": "1.43.123"
   },
   {
     "License": "BSD-3-Clause",
@@ -182,7 +182,7 @@
   {
     "License": "Apache Software License",
     "Name": "cyclonedx-bom",
-    "Version": "7.5.0"
+    "Version": "7.6.0"
   },
   {
     "License": "Apache Software License",
@@ -197,7 +197,7 @@
   {
     "License": "ISC",
     "Name": "dnspython",
-    "Version": "2.9.0"
+    "Version": "2.9.1"
   },
   {
     "License": "The Unlicense (Unlicense)",
@@ -212,7 +212,7 @@
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "4.2.4"
+    "Version": "4.2.6"
   },
   {
     "License": "MPL-2.0",
@@ -282,7 +282,7 @@
   {
     "License": "BSD License",
     "Name": "jsonpointer",
-    "Version": "3.5"
+    "Version": "3.7"
   },
   {
     "License": "MIT",
@@ -332,7 +332,7 @@
   {
     "License": "Apache-2.0",
     "Name": "msgpack",
-    "Version": "1.2.3"
+    "Version": "1.2.4"
   },
   {
     "License": "Apache-2.0",
@@ -457,7 +457,7 @@
   {
     "License": "MIT",
     "Name": "platformdirs",
-    "Version": "4.13.5"
+    "Version": "4.14.3"
   },
   {
     "License": "BSD License",
@@ -632,7 +632,7 @@
   {
     "License": "Apache-2.0",
     "Name": "tzdata",
-    "Version": "2026.5"
+    "Version": "2026.6"
   },
   {
     "License": "MIT",
@@ -677,12 +677,12 @@
   {
     "License": "BSD-3-Clause",
     "Name": "websockets",
-    "Version": "17.3"
+    "Version": "17.4"
   },
   {
     "License": "BSD-2-Clause",
     "Name": "wrapt",
-    "Version": "2.5.1"
+    "Version": "2.5.2"
   },
   {
     "License": "Apache-2.0",
