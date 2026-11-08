@@ -7,7 +7,7 @@ psycopg2-binary==2.9.13
 pydantic==2.14.3
 pydantic-settings==2.16.2
 celery[redis]==5.7.0
-redis==6.4.0
+redis==8.1.0
 httpx==0.28.1
 ravelpy==0.3.1
 python-multipart==0.0.33
