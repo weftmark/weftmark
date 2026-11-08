@@ -26,6 +26,17 @@ const ALLOWLIST = {
       "(GHSA-49rj-9fvp-4h2h). Revisit once a >7.18.1 release fixes this " +
       "without regressing those.",
   },
+  "GHSA-mrhx-c7xc-m3w5": {
+    reason:
+      "Zod memory exhaustion on oversized constrained collections (fixed in " +
+      "zod 4.6.6). zod is a dev-only transitive dependency here: it is " +
+      "pulled in by @codecov/bundler-plugin-core, which pins zod ^3.22.4 " +
+      "and only uses it to validate its own build-time plugin options. It " +
+      "is not imported anywhere in src/ and is never shipped in the bundle, " +
+      "so untrusted input can't reach it. No non-breaking fix exists: " +
+      "forcing zod 4 would break the codecov plugin. Revisit once " +
+      "@codecov/bundler-plugin-core supports zod >=4.6.6.",
+  },
 };
 
 const SEVERITY_GATE = ["high", "critical"];
