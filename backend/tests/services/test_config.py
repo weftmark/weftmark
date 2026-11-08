@@ -162,3 +162,40 @@ class TestConfigWarnings:
         )
         warnings = s.config_warnings()
         assert len(warnings) >= 3
+
+
+class TestSyncDatabaseUrls:
+    """Sync URLs must name the psycopg2 driver explicitly.
+
+    SQLAlchemy 2.1 changed the default driver for a bare ``postgresql://`` URL
+    from psycopg2 to psycopg (v3), which is not installed. Both the Celery
+    maintenance tasks (database_url_sync) and Alembic (database_url_alembic)
+    would fail with ``ModuleNotFoundError: No module named 'psycopg'``.
+    """
+
+    @pytest.mark.parametrize("prop", ["database_url_sync", "database_url_alembic"])
+    def test_component_url_uses_psycopg2(self, prop):
+        s = _s(postgres_dsn="", postgres_dsn_direct="", postgres_user="u", postgres_password="p",
+               postgres_host="h", postgres_port=5432, postgres_db="d")
+        assert getattr(s, prop) == "postgresql+psycopg2://u:p@h:5432/d"
+
+    @pytest.mark.parametrize("prop", ["database_url_sync", "database_url_alembic"])
+    @pytest.mark.parametrize(
+        "dsn",
+        [
+            "postgresql://u:p@h:5432/d?sslmode=require",
+            "postgres://u:p@h:5432/d?sslmode=require",
+            "postgresql+asyncpg://u:p@h:5432/d?sslmode=require",
+        ],
+    )
+    def test_dsn_url_uses_psycopg2(self, prop, dsn):
+        s = _s(postgres_dsn=dsn, postgres_dsn_direct="")
+        assert getattr(s, prop) == "postgresql+psycopg2://u:p@h:5432/d?sslmode=require"
+
+    def test_alembic_prefers_direct_dsn(self):
+        s = _s(postgres_dsn="postgresql://u:p@pooler:5432/d", postgres_dsn_direct="postgresql://u:p@direct:5432/d")
+        assert s.database_url_alembic == "postgresql+psycopg2://u:p@direct:5432/d"
+
+    def test_async_url_unchanged(self):
+        s = _s(postgres_dsn="postgresql://u:p@h:5432/d")
+        assert s.database_url.startswith("postgresql+asyncpg://")

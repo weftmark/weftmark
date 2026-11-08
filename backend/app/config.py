@@ -33,6 +33,17 @@ class _ConfigFileSource(PydanticBaseSettingsSource):
 _SCHEME_POSTGRES = "postgres://"
 _SCHEME_POSTGRESQL = "postgresql://"
 _SCHEME_POSTGRESQL_ASYNCPG = "postgresql+asyncpg://"
+# Sync engines name the driver explicitly: SQLAlchemy 2.1 maps a bare
+# postgresql:// URL to psycopg (v3), which is not installed — we ship psycopg2.
+_SCHEME_POSTGRESQL_PSYCOPG2 = "postgresql+psycopg2://"
+
+
+
+def _to_psycopg2_url(dsn: str) -> str:
+    """Normalise a Postgres DSN (postgres://, postgresql://, +asyncpg) to postgresql+psycopg2://."""
+    url = dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)
+    url = url.replace(_SCHEME_POSTGRESQL_ASYNCPG, _SCHEME_POSTGRESQL, 1)
+    return url.replace(_SCHEME_POSTGRESQL, _SCHEME_POSTGRESQL_PSYCOPG2, 1)
 
 
 class Settings(BaseSettings):
@@ -101,10 +112,9 @@ class Settings(BaseSettings):
     @property
     def database_url_sync(self) -> str:
         if self.postgres_dsn:
-            url = self.postgres_dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)
-            return url.replace(_SCHEME_POSTGRESQL_ASYNCPG, _SCHEME_POSTGRESQL, 1)
+            return _to_psycopg2_url(self.postgres_dsn)
         return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"{_SCHEME_POSTGRESQL_PSYCOPG2}{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
@@ -113,10 +123,9 @@ class Settings(BaseSettings):
         """Direct (non-pooled) connection for Alembic DDL migrations."""
         dsn = self.postgres_dsn_direct or self.postgres_dsn
         if dsn:
-            url = dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)
-            return url.replace(_SCHEME_POSTGRESQL_ASYNCPG, _SCHEME_POSTGRESQL, 1)
+            return _to_psycopg2_url(dsn)
         return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"{_SCHEME_POSTGRESQL_PSYCOPG2}{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
