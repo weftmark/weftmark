@@ -2273,3 +2273,23 @@ class TestDbInfo:
     async def test_non_admin_forbidden(self, auth_client: AsyncClient):
         resp = await auth_client.get("/api/admin/db-info")
         assert resp.status_code == 403
+
+
+class TestAdminWorkerVersionHelper:
+    """app.routers.admin._worker_version — reads the Celery worker version key from Redis."""
+
+    @pytest.mark.parametrize("stored, expected", [(b"0.216.10", "0.216.10"), ("0.216.11", "0.216.11"), (None, None)])
+    async def test_decodes_bytes_and_passes_str(self, stored, expected):
+        from app.routers.admin import _worker_version
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=stored)
+        mock_client.aclose = AsyncMock()
+        with patch("redis.asyncio.from_url", return_value=mock_client):
+            assert await _worker_version() == expected
+
+    async def test_returns_none_when_redis_unavailable(self):
+        from app.routers.admin import _worker_version
+
+        with patch("redis.asyncio.from_url", side_effect=Exception("connection refused")):
+            assert await _worker_version() is None
