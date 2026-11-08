@@ -68,7 +68,7 @@
     },
     {
       "bom-ref": "requirements-L21",
-      "description": "requirements line 21: boto3==1.43.124",
+      "description": "requirements line 21: boto3==1.43.125",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -77,9 +77,9 @@
         }
       ],
       "name": "boto3",
-      "purl": "pkg:pypi/boto3@1.43.124",
+      "purl": "pkg:pypi/boto3@1.43.125",
       "type": "library",
-      "version": "1.43.124"
+      "version": "1.43.125"
     },
     {
       "bom-ref": "requirements-L9",
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-11-08T20:56:48.446241+00:00",
+    "timestamp": "2026-11-08T21:09:37.070367+00:00",
     "tools": {
       "components": [
         {
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:e92741b5-d7a4-4a76-8d40-28736dc6d6be",
+  "serialNumber": "urn:uuid:0880bbbe-598c-42d2-8056-8addd4c2db4a",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
