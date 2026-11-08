@@ -1685,10 +1685,12 @@ async def get_db_info(
     try:
         meta_rows = (await db.execute(text("SELECT key, value FROM alembic_meta"))).fetchall()
         for key, value in meta_rows:
+            # SQLAlchemy 2.1 types untyped text() row values as object.
+            str_value = None if value is None else str(value)
             if key == "last_squash_at":
-                last_squash_at = value
+                last_squash_at = str_value
             elif key == "last_migrated_at":
-                last_migrated_at = value
+                last_migrated_at = str_value
     except Exception:
         pass
 
