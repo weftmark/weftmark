@@ -1634,7 +1634,10 @@ async def _worker_version() -> str | None:
         client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
         value = await client.get(WORKER_VERSION_KEY)
         await client.aclose()
-        return value.decode() if value else None
+        # redis-py 8 types get() as bytes | str (str when decode_responses=True).
+        if isinstance(value, bytes):
+            return value.decode() or None
+        return value or None
     except Exception:
         return None
 

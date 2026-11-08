@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from app.main import app, lifespan
 from app.routers.health import ReadinessResponse
 
@@ -25,3 +27,23 @@ class TestLifespanStartup:
         mock_set_readiness.assert_called_once_with(readiness)
         mock_start_refresh.assert_called_once_with(initial_status="ok")
         assert mock_fire.call_count == 4
+
+
+class TestMainWorkerVersionHelper:
+    """app.main._get_worker_version_for_alert — used in the stack startup alert."""
+
+    @pytest.mark.parametrize("stored, expected", [(b"0.216.10", "0.216.10"), ("0.216.11", "0.216.11"), (None, None)])
+    async def test_decodes_bytes_and_passes_str(self, stored, expected):
+        from app.main import _get_worker_version_for_alert as _get_worker_version
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=stored)
+        mock_client.aclose = AsyncMock()
+        with patch("redis.asyncio.from_url", return_value=mock_client):
+            assert await _get_worker_version() == expected
+
+    async def test_returns_none_when_redis_unavailable(self):
+        from app.main import _get_worker_version_for_alert as _get_worker_version
+
+        with patch("redis.asyncio.from_url", side_effect=Exception("connection refused")):
+            assert await _get_worker_version() is None

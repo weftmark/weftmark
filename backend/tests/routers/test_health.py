@@ -330,6 +330,19 @@ class TestGetWorkerVersion:
 
         assert result is None
 
+    async def test_returns_str_value_unchanged(self):
+        """redis-py 8 types get() as bytes | str; a str value (decode_responses=True) is returned as-is."""
+        from app.routers.health import _get_worker_version
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value="0.171.0")
+        mock_client.aclose = AsyncMock()
+
+        with patch("redis.asyncio.from_url", return_value=mock_client):
+            result = await _get_worker_version()
+
+        assert result == "0.171.0"
+
     async def test_health_endpoint_includes_worker_version(self, client: AsyncClient):
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(return_value=b"1.2.3")
