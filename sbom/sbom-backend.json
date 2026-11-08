@@ -2,7 +2,7 @@
   "components": [
     {
       "bom-ref": "requirements-L17",
-      "description": "requirements line 17: PyJWT[crypto]==2.13.0",
+      "description": "requirements line 17: PyJWT[crypto]==2.15.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -17,9 +17,9 @@
           "value": "crypto"
         }
       ],
-      "purl": "pkg:pypi/pyjwt@2.13.0",
+      "purl": "pkg:pypi/pyjwt@2.15.1",
       "type": "library",
-      "version": "2.13.0"
+      "version": "2.15.1"
     },
     {
       "bom-ref": "requirements-L15",
@@ -209,7 +209,7 @@
     },
     {
       "bom-ref": "requirements-L26",
-      "description": "requirements line 26: opentelemetry-api==1.44.0",
+      "description": "requirements line 26: opentelemetry-api==1.45.2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -218,13 +218,13 @@
         }
       ],
       "name": "opentelemetry-api",
-      "purl": "pkg:pypi/opentelemetry-api@1.44.0",
+      "purl": "pkg:pypi/opentelemetry-api@1.45.2",
       "type": "library",
-      "version": "1.44.0"
+      "version": "1.45.2"
     },
     {
       "bom-ref": "requirements-L28",
-      "description": "requirements line 28: opentelemetry-exporter-otlp-proto-http==1.44.0",
+      "description": "requirements line 28: opentelemetry-exporter-otlp-proto-http==1.45.2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -233,13 +233,13 @@
         }
       ],
       "name": "opentelemetry-exporter-otlp-proto-http",
-      "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-http@1.44.0",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-http@1.45.2",
       "type": "library",
-      "version": "1.44.0"
+      "version": "1.45.2"
     },
     {
       "bom-ref": "requirements-L34",
-      "description": "requirements line 34: opentelemetry-instrumentation-botocore==0.65b0",
+      "description": "requirements line 34: opentelemetry-instrumentation-botocore==0.66b2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -248,13 +248,13 @@
         }
       ],
       "name": "opentelemetry-instrumentation-botocore",
-      "purl": "pkg:pypi/opentelemetry-instrumentation-botocore@0.65b0",
+      "purl": "pkg:pypi/opentelemetry-instrumentation-botocore@0.66b2",
       "type": "library",
-      "version": "0.65b0"
+      "version": "0.66b2"
     },
     {
       "bom-ref": "requirements-L31",
-      "description": "requirements line 31: opentelemetry-instrumentation-celery==0.65b0",
+      "description": "requirements line 31: opentelemetry-instrumentation-celery==0.66b2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -263,13 +263,13 @@
         }
       ],
       "name": "opentelemetry-instrumentation-celery",
-      "purl": "pkg:pypi/opentelemetry-instrumentation-celery@0.65b0",
+      "purl": "pkg:pypi/opentelemetry-instrumentation-celery@0.66b2",
       "type": "library",
-      "version": "0.65b0"
+      "version": "0.66b2"
     },
     {
       "bom-ref": "requirements-L29",
-      "description": "requirements line 29: opentelemetry-instrumentation-fastapi==0.65b0",
+      "description": "requirements line 29: opentelemetry-instrumentation-fastapi==0.66b2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -278,13 +278,13 @@
         }
       ],
       "name": "opentelemetry-instrumentation-fastapi",
-      "purl": "pkg:pypi/opentelemetry-instrumentation-fastapi@0.65b0",
+      "purl": "pkg:pypi/opentelemetry-instrumentation-fastapi@0.66b2",
       "type": "library",
-      "version": "0.65b0"
+      "version": "0.66b2"
     },
     {
       "bom-ref": "requirements-L33",
-      "description": "requirements line 33: opentelemetry-instrumentation-httpx==0.65b0",
+      "description": "requirements line 33: opentelemetry-instrumentation-httpx==0.66b2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -293,13 +293,13 @@
         }
       ],
       "name": "opentelemetry-instrumentation-httpx",
-      "purl": "pkg:pypi/opentelemetry-instrumentation-httpx@0.65b0",
+      "purl": "pkg:pypi/opentelemetry-instrumentation-httpx@0.66b2",
       "type": "library",
-      "version": "0.65b0"
+      "version": "0.66b2"
     },
     {
       "bom-ref": "requirements-L35",
-      "description": "requirements line 35: opentelemetry-instrumentation-logging==0.65b0",
+      "description": "requirements line 35: opentelemetry-instrumentation-logging==0.66b2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -308,13 +308,13 @@
         }
       ],
       "name": "opentelemetry-instrumentation-logging",
-      "purl": "pkg:pypi/opentelemetry-instrumentation-logging@0.65b0",
+      "purl": "pkg:pypi/opentelemetry-instrumentation-logging@0.66b2",
       "type": "library",
-      "version": "0.65b0"
+      "version": "0.66b2"
     },
     {
       "bom-ref": "requirements-L32",
-      "description": "requirements line 32: opentelemetry-instrumentation-redis==0.65b0",
+      "description": "requirements line 32: opentelemetry-instrumentation-redis==0.66b2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -323,13 +323,13 @@
         }
       ],
       "name": "opentelemetry-instrumentation-redis",
-      "purl": "pkg:pypi/opentelemetry-instrumentation-redis@0.65b0",
+      "purl": "pkg:pypi/opentelemetry-instrumentation-redis@0.66b2",
       "type": "library",
-      "version": "0.65b0"
+      "version": "0.66b2"
     },
     {
       "bom-ref": "requirements-L30",
-      "description": "requirements line 30: opentelemetry-instrumentation-sqlalchemy==0.65b0",
+      "description": "requirements line 30: opentelemetry-instrumentation-sqlalchemy==0.66b2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -338,13 +338,13 @@
         }
       ],
       "name": "opentelemetry-instrumentation-sqlalchemy",
-      "purl": "pkg:pypi/opentelemetry-instrumentation-sqlalchemy@0.65b0",
+      "purl": "pkg:pypi/opentelemetry-instrumentation-sqlalchemy@0.66b2",
       "type": "library",
-      "version": "0.65b0"
+      "version": "0.66b2"
     },
     {
       "bom-ref": "requirements-L27",
-      "description": "requirements line 27: opentelemetry-sdk==1.44.0",
+      "description": "requirements line 27: opentelemetry-sdk==1.45.2",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -353,13 +353,13 @@
         }
       ],
       "name": "opentelemetry-sdk",
-      "purl": "pkg:pypi/opentelemetry-sdk@1.44.0",
+      "purl": "pkg:pypi/opentelemetry-sdk@1.45.2",
       "type": "library",
-      "version": "1.44.0"
+      "version": "1.45.2"
     },
     {
       "bom-ref": "requirements-L14",
-      "description": "requirements line 14: pillow==12.3.0",
+      "description": "requirements line 14: pillow==13.0.0",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -368,9 +368,9 @@
         }
       ],
       "name": "pillow",
-      "purl": "pkg:pypi/pillow@12.3.0",
+      "purl": "pkg:pypi/pillow@13.0.0",
       "type": "library",
-      "version": "12.3.0"
+      "version": "13.0.0"
     },
     {
       "bom-ref": "requirements-L23",
@@ -518,7 +518,7 @@
     },
     {
       "bom-ref": "requirements-L25",
-      "description": "requirements line 25: setuptools<84",
+      "description": "requirements line 25: setuptools<85",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-11-02T10:42:49.460330+00:00",
+    "timestamp": "2026-11-08T18:34:40.446428+00:00",
     "tools": {
       "components": [
         {
@@ -752,7 +752,7 @@
           ],
           "name": "cyclonedx-py",
           "type": "application",
-          "version": "7.6.0"
+          "version": "8.0.1"
         },
         {
           "description": "Python library for CycloneDX",
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:b4b66d17-0406-412e-ad98-f46d3deb6973",
+  "serialNumber": "urn:uuid:ecef1053-f07a-46ce-80a0-339c7b116f06",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
