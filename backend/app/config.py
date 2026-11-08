@@ -38,7 +38,6 @@ _SCHEME_POSTGRESQL_ASYNCPG = "postgresql+asyncpg://"
 _SCHEME_POSTGRESQL_PSYCOPG2 = "postgresql+psycopg2://"
 
 
-
 def _to_psycopg2_url(dsn: str) -> str:
     """Normalise a Postgres DSN (postgres://, postgresql://, +asyncpg) to postgresql+psycopg2://."""
     url = dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)

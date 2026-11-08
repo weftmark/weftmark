@@ -175,8 +175,15 @@ class TestSyncDatabaseUrls:
 
     @pytest.mark.parametrize("prop", ["database_url_sync", "database_url_alembic"])
     def test_component_url_uses_psycopg2(self, prop):
-        s = _s(postgres_dsn="", postgres_dsn_direct="", postgres_user="u", postgres_password="p",
-               postgres_host="h", postgres_port=5432, postgres_db="d")
+        s = _s(
+            postgres_dsn="",
+            postgres_dsn_direct="",
+            postgres_user="u",
+            postgres_password="p",
+            postgres_host="h",
+            postgres_port=5432,
+            postgres_db="d",
+        )
         assert getattr(s, prop) == "postgresql+psycopg2://u:p@h:5432/d"
 
     @pytest.mark.parametrize("prop", ["database_url_sync", "database_url_alembic"])
