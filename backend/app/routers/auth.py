@@ -23,6 +23,7 @@ The seed CLI follows the same pattern: it pre-creates User records with the corr
 roles before creating Clerk accounts, so the webhook just attaches.
 """
 
+import json
 import logging
 import secrets
 import uuid
@@ -71,11 +72,22 @@ async def _handle_clerk_webhook(request: Request, db: AsyncSession) -> dict:
 
     try:
         wh = Webhook(settings.clerk_webhook_secret)
-        event = wh.verify(payload, headers)
+        # svix 2.x verify() only validates the signature and returns None — parse the
+        # body ourselves, and only after verification has passed.
+        wh.verify(payload, headers)
     except WebhookVerificationError:
         log.info("webhook_rejected reason=invalid_signature")
         await write_audit_log(db, event_type="webhook.signature_failed")
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    try:
+        event = json.loads(payload)
+    except ValueError:
+        log.info("webhook_rejected reason=invalid_json")
+        raise HTTPException(status_code=400, detail="Invalid webhook payload")
+    if not isinstance(event, dict):
+        log.info("webhook_rejected reason=invalid_json")
+        raise HTTPException(status_code=400, detail="Invalid webhook payload")
 
     event_type = event.get("type")
     data = event.get("data", {})
