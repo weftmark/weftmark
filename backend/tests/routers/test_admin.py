@@ -2223,3 +2223,53 @@ class TestSandbox:
     async def test_sentry_test_requires_auth(self, client: AsyncClient):
         resp = await client.post("/api/admin/sandbox/sentry-test")
         assert resp.status_code in (401, 403)
+
+
+class TestDbInfo:
+    """GET /api/admin/db-info — migration revision + alembic_meta tracking values."""
+
+    @pytest.fixture
+    async def alembic_version(self, db_session: AsyncSession):
+        """The test schema is built with create_all, so alembic_version doesn't exist — create it."""
+        from sqlalchemy import text
+
+        await db_session.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL)"))
+        await db_session.execute(text("DELETE FROM alembic_version"))
+        await db_session.execute(text("INSERT INTO alembic_version (version_num) VALUES ('abc123')"))
+        await db_session.commit()
+        yield "abc123"
+        await db_session.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        await db_session.commit()
+
+    async def test_returns_revision_and_meta(
+        self, admin_client: AsyncClient, db_session: AsyncSession, alembic_version
+    ):
+        from app.models.alembic_meta import AlembicMeta
+
+        db_session.add_all(
+            [
+                AlembicMeta(key="last_squash_at", value="2026-05-27"),
+                AlembicMeta(key="last_migrated_at", value="2026-11-08T12:00:00Z"),
+                AlembicMeta(key="unrelated_key", value="ignored"),
+            ]
+        )
+        await db_session.commit()
+
+        resp = await admin_client.get("/api/admin/db-info")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["revision"] == "abc123"
+        assert body["last_squash_at"] == "2026-05-27"
+        assert body["last_migrated_at"] == "2026-11-08T12:00:00Z"
+        assert isinstance(body["is_at_head"], bool)
+
+    async def test_missing_meta_rows_are_null(self, admin_client: AsyncClient, alembic_version):
+        resp = await admin_client.get("/api/admin/db-info")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["last_squash_at"] is None
+        assert body["last_migrated_at"] is None
+
+    async def test_non_admin_forbidden(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/db-info")
+        assert resp.status_code == 403

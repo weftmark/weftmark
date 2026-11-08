@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
 from app.metrics import role_changes_total, signups_approved_total
+from app.models.alembic_meta import AlembicMeta
 from app.models.audit_log import AuditLog
 from app.models.credential_expiry import RESOURCE_CHOICES, CredentialExpiry
 from app.models.draft import Draft
@@ -1683,7 +1684,8 @@ async def get_db_info(
     last_squash_at: str | None = None
     last_migrated_at: str | None = None
     try:
-        meta_rows = (await db.execute(text("SELECT key, value FROM alembic_meta"))).fetchall()
+        # Typed ORM select: SQLAlchemy 2.1 types untyped text() row values as object.
+        meta_rows = (await db.execute(select(AlembicMeta.key, AlembicMeta.value))).all()
         for key, value in meta_rows:
             if key == "last_squash_at":
                 last_squash_at = value
