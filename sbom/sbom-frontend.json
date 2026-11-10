@@ -1,11 +1,11 @@
 {
-  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
   "bomFormat": "CycloneDX",
-  "specVersion": "1.6",
+  "specVersion": "1.7",
   "version": 1,
-  "serialNumber": "urn:uuid:912d8abe-02a7-47cc-bacd-329fce28248e",
+  "serialNumber": "urn:uuid:ac02f664-434e-4474-93ac-02aa8594d7dc",
   "metadata": {
-    "timestamp": "2026-11-09T11:05:48.198Z",
+    "timestamp": "2026-11-10T03:50:32.995Z",
     "tools": {
       "components": [
         {
@@ -17,7 +17,7 @@
           "type": "application",
           "name": "cyclonedx-npm",
           "group": "@cyclonedx",
-          "version": "6.0.1",
+          "version": "7.0.0",
           "author": "Jan Kowalleck",
           "description": "Create CycloneDX Software Bill of Materials (SBOM) from NPM projects.",
           "licenses": [
@@ -59,7 +59,7 @@
           "type": "library",
           "name": "cyclonedx-library",
           "group": "@cyclonedx",
-          "version": "10.4.0",
+          "version": "10.5.0",
           "author": "Jan Kowalleck",
           "description": "Core functionality of CycloneDX for JavaScript (Node.js or WebBrowser).",
           "licenses": [
@@ -1260,8 +1260,8 @@
     {
       "type": "library",
       "name": "lucide-react",
-      "version": "1.69.0",
-      "bom-ref": "weaving-site@0.216.11|lucide-react@1.69.0",
+      "version": "1.70.0",
+      "bom-ref": "weaving-site@0.216.11|lucide-react@1.70.0",
       "author": "Eric Fennis",
       "description": "A Lucide icon library package for React applications.",
       "licenses": [
@@ -1272,7 +1272,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/lucide-react@1.69.0",
+      "purl": "pkg:npm/lucide-react@1.70.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/lucide-icons/lucide.git#packages/lucide-react",
@@ -1290,12 +1290,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.69.0.tgz",
+          "url": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.70.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "5131440a6e3212092030dd247cbbb159c9a593ee2ed3626ba9e860937657471fd477af0ea4fee18e4a7aedbbe4047988a4c699088bde17540361eba93bb5e661"
+              "content": "8024cf3cdd4c950501b5481db14bfed020148fe5fc8627d1522441c38139bfb96f0c8388a71d0465ecdd1903128a64bca4a03a7acbee96526e6f8198af49821c"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -14025,7 +14025,7 @@
         "weaving-site@0.216.11|eslint-plugin-react-hooks@7.1.1",
         "weaving-site@0.216.11|eslint@10.14.0",
         "weaving-site@0.216.11|i18next@26.7.2",
-        "weaving-site@0.216.11|lucide-react@1.69.0",
+        "weaving-site@0.216.11|lucide-react@1.70.0",
         "weaving-site@0.216.11|react-colorful@5.8.1",
         "weaving-site@0.216.11|react-dom@19.3.1",
         "weaving-site@0.216.11|react-i18next@17.1.13",
@@ -14218,7 +14218,7 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.11|lucide-react@1.69.0",
+      "ref": "weaving-site@0.216.11|lucide-react@1.70.0",
       "dependsOn": [
         "weaving-site@0.216.11|@types/react@19.3.0",
         "weaving-site@0.216.11|react@19.3.1"
