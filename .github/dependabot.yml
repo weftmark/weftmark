@@ -1,13 +1,18 @@
-# Dependabot configuration — keeps pip and npm dependencies fresh.
+# Dependabot configuration: keeps pip, npm, Docker and GitHub Actions dependencies fresh.
 #
-# Both ecosystems use weekly grouped updates to minimise PR volume.
+# All ecosystems use weekly grouped updates to keep PR volume low.
 # PRs target dev and run through ci-dev-pr.yml (full test suite).
 #
-# Auto-merge is intentionally not configured — review manually until
-# the cadence and false-positive rate are understood.
+# Commit prefixes drive release-please (release-please-config.json):
+#   fix(deps)     runtime deps that ship in the images (backend pip, frontend npm,
+#                 Dockerfile base images). release-please counts these as
+#                 user-facing and opens or updates a release PR on main.
+#   chore(deps*)  build/test-only deps (dev deps, Actions, e2e, compose services).
+#                 These never trigger a release on their own.
+# If runtime-dep PRs still say chore(deps), GitHub is on a stale copy of this file:
+# check commit-message-options in the "Dependabot Updates" run log.
 #
-# The version-bump job in ci-dev-push.yml guards on weftmark-bot[bot];
-# Dependabot's actor is dependabot[bot] — no guard extension needed.
+# Auto-merge is intentionally not configured; review manually.
 
 version: 2
 updates:
@@ -20,6 +25,9 @@ updates:
       timezone: America/Denver
     open-pull-requests-limit: 5
     target-branch: dev
+    commit-message:
+      prefix: "fix(deps)"
+      prefix-development: "chore(deps-dev)"
     labels:
       - dependencies
       - backend
@@ -39,11 +47,108 @@ updates:
       timezone: America/Denver
     open-pull-requests-limit: 5
     target-branch: dev
+    commit-message:
+      prefix: "fix(deps)"
+      prefix-development: "chore(deps-dev)"
     labels:
       - dependencies
       - frontend
     groups:
       frontend-deps:
+        patterns:
+          - "*"
+    assignees:
+      - gx1400
+
+  # Playwright end-to-end suite: test tooling only, never shipped.
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: America/Denver
+    open-pull-requests-limit: 2
+    target-branch: dev
+    commit-message:
+      prefix: "chore(deps-dev)"
+    labels:
+      - dependencies
+    groups:
+      e2e-deps:
+        patterns:
+          - "*"
+    assignees:
+      - gx1400
+
+  # Base images the published containers ship on.
+  - package-ecosystem: docker
+    directories:
+      - /backend
+      - /frontend
+      - /errors
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: America/Denver
+    open-pull-requests-limit: 5
+    target-branch: dev
+    commit-message:
+      prefix: "fix(deps)"
+    labels:
+      - dependencies
+      - infra
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"
+    assignees:
+      - gx1400
+
+  # Service images in the compose files (postgres, redis). The deployed stacks are
+  # defined in Komodo, so these files are reference/dev copies; hence chore.
+  # Postgres majors need a dump/restore, so they are upgraded by hand.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: America/Denver
+    open-pull-requests-limit: 2
+    target-branch: dev
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+      - infra
+    groups:
+      compose-images:
+        patterns:
+          - "*"
+    ignore:
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
+    assignees:
+      - gx1400
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: America/Denver
+    open-pull-requests-limit: 5
+    target-branch: dev
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+      - ci/cd
+    groups:
+      actions:
         patterns:
           - "*"
     assignees:
