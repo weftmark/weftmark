@@ -139,14 +139,6 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/parser",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/parser/LICENSE"
   },
-  "@babel/runtime@7.29.7": {
-    "licenses": "MIT",
-    "repository": "https://github.com/babel/babel",
-    "publisher": "The Babel Team",
-    "url": "https://babel.dev/team",
-    "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/runtime",
-    "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@babel/runtime/LICENSE"
-  },
   "@babel/template@7.29.7": {
     "licenses": "MIT",
     "repository": "https://github.com/babel/babel",
@@ -534,44 +526,44 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/replay",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@sentry/replay/LICENSE"
   },
-  "@tailwindcss/node@4.3.4": {
+  "@tailwindcss/node@4.3.5": {
     "licenses": "MIT",
     "repository": "https://github.com/tailwindlabs/tailwindcss",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/node",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/node/LICENSE"
   },
-  "@tailwindcss/oxide-linux-x64-gnu@4.3.4": {
+  "@tailwindcss/oxide-linux-x64-gnu@4.3.5": {
     "licenses": "MIT",
     "repository": "https://github.com/tailwindlabs/tailwindcss",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/oxide-linux-x64-gnu",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/oxide-linux-x64-gnu/LICENSE"
   },
-  "@tailwindcss/oxide-wasm32-wasi@4.3.4": {
+  "@tailwindcss/oxide-wasm32-wasi@4.3.5": {
     "licenses": "MIT",
     "repository": "https://github.com/tailwindlabs/tailwindcss",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/oxide-wasm32-wasi",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/oxide-wasm32-wasi/README.md"
   },
-  "@tailwindcss/oxide@4.3.4": {
+  "@tailwindcss/oxide@4.3.5": {
     "licenses": "MIT",
     "repository": "https://github.com/tailwindlabs/tailwindcss",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/oxide",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/oxide/LICENSE"
   },
-  "@tailwindcss/vite@4.3.4": {
+  "@tailwindcss/vite@4.3.5": {
     "licenses": "MIT",
     "repository": "https://github.com/tailwindlabs/tailwindcss",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tailwindcss/vite/LICENSE"
   },
-  "@tanstack/query-core@5.106.1": {
+  "@tanstack/query-core@5.107.1": {
     "licenses": "MIT",
     "repository": "https://github.com/TanStack/query",
     "publisher": "tannerlinsley",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/query-core",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/@tanstack/query-core/LICENSE"
   },
-  "@tanstack/react-query@5.106.1": {
+  "@tanstack/react-query@5.107.1": {
     "licenses": "MIT",
     "repository": "https://github.com/TanStack/query",
     "publisher": "tannerlinsley",
@@ -1159,7 +1151,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/html-parse-stringify",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/html-parse-stringify/LICENSE"
   },
-  "i18next@26.7.2": {
+  "i18next@27.0.0": {
     "licenses": "MIT",
     "repository": "https://github.com/i18next/i18next",
     "publisher": "Jan Mühlemann",
@@ -1480,7 +1472,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/react-dom/LICENSE"
   },
-  "react-i18next@17.1.13": {
+  "react-i18next@18.0.0": {
     "licenses": "MIT",
     "repository": "https://github.com/i18next/react-i18next",
     "publisher": "Jan Mühlemann",
@@ -1599,7 +1591,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/tailwind-merge",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/tailwind-merge/LICENSE.md"
   },
-  "tailwindcss@4.3.4": {
+  "tailwindcss@4.3.5": {
     "licenses": "MIT",
     "repository": "https://github.com/tailwindlabs/tailwindcss",
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/tailwindcss",
@@ -1712,7 +1704,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.216.11": {
+  "weaving-site@0.216.12": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",
