@@ -68,7 +68,7 @@
     },
     {
       "bom-ref": "requirements-L21",
-      "description": "requirements line 21: boto3==1.43.125",
+      "description": "requirements line 21: boto3==1.43.126",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -77,9 +77,9 @@
         }
       ],
       "name": "boto3",
-      "purl": "pkg:pypi/boto3@1.43.125",
+      "purl": "pkg:pypi/boto3@1.43.126",
       "type": "library",
-      "version": "1.43.125"
+      "version": "1.43.126"
     },
     {
       "bom-ref": "requirements-L9",
@@ -149,7 +149,7 @@
     },
     {
       "bom-ref": "requirements-L1",
-      "description": "requirements line 1: fastapi==0.162.0",
+      "description": "requirements line 1: fastapi==0.162.1",
       "externalReferences": [
         {
           "comment": "implicit dist url",
@@ -158,9 +158,9 @@
         }
       ],
       "name": "fastapi",
-      "purl": "pkg:pypi/fastapi@0.162.0",
+      "purl": "pkg:pypi/fastapi@0.162.1",
       "type": "library",
-      "version": "0.162.0"
+      "version": "0.162.1"
     },
     {
       "bom-ref": "requirements-L36",
@@ -702,7 +702,7 @@
     }
   ],
   "metadata": {
-    "timestamp": "2026-11-09T11:05:29.159460+00:00",
+    "timestamp": "2026-11-10T13:08:38.573931+00:00",
     "tools": {
       "components": [
         {
@@ -806,7 +806,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:f4cec082-d500-4d3c-93c3-98d1bb1bd31f",
+  "serialNumber": "urn:uuid:0deddc81-ed4e-4356-9e3e-f8f86ffaf428",
   "version": 1,
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",

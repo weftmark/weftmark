@@ -117,12 +117,12 @@
   {
     "License": "Apache-2.0",
     "Name": "boto3",
-    "Version": "1.43.125"
+    "Version": "1.43.126"
   },
   {
     "License": "Apache-2.0",
     "Name": "botocore",
-    "Version": "1.43.126"
+    "Version": "1.43.127"
   },
   {
     "License": "BSD-3-Clause",
@@ -207,12 +207,12 @@
   {
     "License": "MIT",
     "Name": "fastapi",
-    "Version": "0.162.0"
+    "Version": "0.162.1"
   },
   {
     "License": "MIT",
     "Name": "filelock",
-    "Version": "4.2.9"
+    "Version": "4.2.10"
   },
   {
     "License": "MPL-2.0",
