@@ -1,7 +1,13 @@
 """Generate a QA issue body for a dev build.
 
-Reads VERSION and REPO from environment variables set by the workflow.
-Writes the issue body to qa_issue_body.md in the current directory.
+Reads IMAGE_TAG (e.g. 0.217.0-dev.abc1234) and REPO from environment
+variables set by publish-dev.yml. Writes the issue body to qa_issue_body.md
+in the current directory.
+
+The range starts at the commit of the previous dev publish, read from the
+most recent `qa`-labelled issue title ("QA: v<version>-dev.<sha7> — ...").
+Older QA issues titled "QA: v<version>-dev" (from before release-please,
+when every dev merge was tagged v<version>-dev) map to that git tag.
 """
 
 import json
@@ -9,23 +15,48 @@ import os
 import re
 import subprocess
 
-version = os.environ["VERSION"]
+image_tag = os.environ["IMAGE_TAG"]
 repo = os.environ["REPO"]
-current_tag = f"v{version}-dev"
 
-# All dev tags sorted oldest to newest
-tags = subprocess.run(
-    ["git", "tag", "--list", "v*-dev", "--sort=version:refname"],
-    capture_output=True,
-    text=True,
-).stdout.strip().splitlines()
-tags = [t for t in tags if t]
+_NEW_TITLE_RE = re.compile(r"^QA: v\d+\.\d+\.\d+-dev\.([0-9a-f]{7,40})\b")
+_OLD_TITLE_RE = re.compile(r"^QA: v(\d+\.\d+\.\d+)-dev\b(?!\.)")
 
-prev_tag = None
-for i, tag in enumerate(tags):
-    if tag == current_tag and i > 0:
-        prev_tag = tags[i - 1]
-        break
+
+def _git_ok(*args: str) -> bool:
+    return subprocess.run(["git", *args], capture_output=True).returncode == 0
+
+
+def _previous_publish_ref() -> str | None:
+    """Commit-ish of the previous dev publish, or None if it can't be found."""
+    result = subprocess.run(
+        [
+            "gh", "issue", "list", "--repo", repo, "--label", "qa", "--state", "all",
+            "--limit", "20", "--json", "title,createdAt",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    issues = sorted(json.loads(result.stdout), key=lambda i: i["createdAt"], reverse=True)
+    for issue in issues:
+        title = issue["title"]
+        if m := _NEW_TITLE_RE.match(title):
+            ref = m.group(1)
+        elif m := _OLD_TITLE_RE.match(title):
+            ref = f"v{m.group(1)}-dev"
+        else:
+            continue
+        # Must be a real commit that's an ancestor of what we're publishing
+        # (re-publishing the same commit yields an empty range, which is fine).
+        if _git_ok("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}") and _git_ok(
+            "merge-base", "--is-ancestor", ref, "HEAD"
+        ):
+            return ref
+    return None
+
+
+prev_tag = _previous_publish_ref()
 
 # Merge commits in range
 if prev_tag:
@@ -83,14 +114,14 @@ for pr_num in unique_prs:
     plan = m.group(1).strip() if m else "_No test plan specified._"
     sections.append(f"### #{pr_num} — {title}\n\n{plan}")
 
-range_label = f"`{prev_tag}..HEAD`" if prev_tag else "_(no previous dev tag)_"
+range_label = f"`{prev_tag}..HEAD`" if prev_tag else "_(no previous dev publish found)_"
 pr_block = "\n\n---\n\n".join(sections) if sections else "_No merged PRs found in range._"
 
-issue_body = f"""## Dev build v{version}
+issue_body = f"""## Dev build v{image_tag}
 
 **Images**
-- `ghcr.io/weftmark/weftmark-backend:{version}-dev`
-- `ghcr.io/weftmark/weftmark-frontend:{version}-dev`
+- `ghcr.io/weftmark/weftmark-backend:{image_tag}`
+- `ghcr.io/weftmark/weftmark-frontend:{image_tag}`
 
 **Range:** {range_label}
 

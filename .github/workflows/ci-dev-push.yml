@@ -1,14 +1,17 @@
 name: Dev push
 
 # Post-merge bookkeeping for pushes to dev.
-# Tests already passed on the PR — this workflow only does SBOM updates
-# and version bumping. No validation jobs run here.
+# Tests already passed on the PR — this workflow only does SBOM updates.
+# No validation jobs run here.
+#
+# Versioning is NOT done here: release-please owns VERSION, frontend/package.json
+# and CHANGELOG.md via its release PR on main (see ci-main-push.yml). The release
+# commit comes back to dev through the main → dev sync PR.
 #
 # sbom-backend and sbom-frontend run in parallel — they write to separate
 # files so git pull --rebase handles ordering without conflicts.
-# bump-version waits for both before running.
 #
-# All jobs are skipped when weftmark-bot[bot] pushes (version bump commits
+# All jobs are skipped when weftmark-bot[bot] pushes (SBOM commits
 # would otherwise re-trigger this workflow infinitely).
 # Note: do NOT put ci-skip tokens in bot commit messages; they propagate
 # into merge commit bodies and suppress PR workflows on the target branch.
@@ -167,139 +170,3 @@ jobs:
           name: sbom-frontend-${{ github.sha }}
           path: sbom/sbom-frontend.json
           retention-days: 90
-
-  bump-version:
-    name: Bump version
-    runs-on: ubuntu-latest
-    needs: [sbom-backend, sbom-frontend]
-    if: github.actor != 'weftmark-bot[bot]' && github.event_name != 'schedule'
-    steps:
-      - name: Generate bot token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
-
-      - uses: actions/checkout@v7
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          fetch-depth: 0
-
-      - name: Configure git identity
-        run: |
-          git config user.name  "weftmark-bot[bot]"
-          git config user.email "weftmark-bot[bot]@users.noreply.github.com"
-
-      - name: Sync to latest dev
-        # actions/checkout pins to github.sha — the commit that triggered THIS
-        # run, not the current branch tip. When merges land back-to-back, a
-        # later run in the (serialized) queue can still be pinned to a SHA from
-        # before an earlier run's version-bump commit landed, so it reads a
-        # stale VERSION and computes the same "next" version — colliding on
-        # tag creation (#1125). Resetting to the live tip here means each run
-        # always bumps from whatever the previous run actually left behind.
-        run: |
-          git fetch origin dev
-          git reset --hard origin/dev
-
-      - name: Determine and apply version bump
-        id: version
-        run: |
-          python3 - << 'PYEOF'
-          import subprocess, re, os
-
-          with open("VERSION") as f:
-              current = f.read().strip()
-          major, minor, patch = map(int, current.split("."))
-
-          result = subprocess.run(
-              ["git", "describe", "--tags", "--abbrev=0"],
-              capture_output=True, text=True
-          )
-          last_tag = result.stdout.strip() if result.returncode == 0 else None
-
-          if last_tag:
-              log = subprocess.run(
-                  ["git", "log", f"{last_tag}..HEAD", "--first-parent", "--pretty=format:%s%n%b"],
-                  capture_output=True, text=True
-              ).stdout
-          else:
-              log = subprocess.run(
-                  ["git", "log", "--first-parent", "--pretty=format:%s%n%b"],
-                  capture_output=True, text=True
-              ).stdout
-
-          breaking = bool(
-              re.search(r"^BREAKING CHANGE:", log, re.MULTILINE) or
-              re.search(r"^[a-z]+!:", log, re.MULTILINE)
-          )
-          has_feat = bool(re.search(r"^feat(\(.*?\))?:", log, re.MULTILINE))
-
-          if breaking:
-              bump = "major"
-          elif has_feat:
-              bump = "minor"
-          else:
-              bump = "patch"
-
-          if bump == "major":
-              new_ver = f"{major + 1}.0.0"
-          elif bump == "minor":
-              new_ver = f"{major}.{minor + 1}.0"
-          else:
-              new_ver = f"{major}.{minor}.{patch + 1}"
-
-          tag = f"v{new_ver}-dev"
-          print(f"Bump: {bump}  ({current} → {new_ver})")
-
-          with open("VERSION", "w") as f:
-              f.write(new_ver + "\n")
-
-          pkg = open("frontend/package.json").read()
-          pkg = re.sub(r'("version"\s*:\s*")[^"]+(")', rf'\g<1>{new_ver}\2', pkg)
-          open("frontend/package.json", "w").write(pkg)
-
-          with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
-              gh_out.write(f"new_version={new_ver}\n")
-              gh_out.write(f"tag={tag}\n")
-          PYEOF
-
-      - name: Commit version files
-        run: |
-          git add VERSION frontend/package.json
-          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
-
-      - name: Push version commit
-        run: |
-          git pull --rebase origin dev
-          git push origin dev
-
-      - name: Create tag via API (produces Verified tag)
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          TAG="${{ steps.version.outputs.tag }}"
-
-          # Belt-and-suspenders: the sync-to-latest-dev step above should make
-          # this version number unique to this run, but a tag with the same
-          # name showing up here means some other run already produced this
-          # exact version — the merged code is fine either way, so no-op
-          # instead of failing noisily (#1125).
-          if gh api "repos/${{ github.repository }}/git/ref/tags/$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists — skipping (likely a concurrent dev-push run)."
-            exit 0
-          fi
-
-          COMMIT_SHA=$(git rev-parse HEAD)
-          TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
-            --method POST \
-            --field tag="$TAG" \
-            --field message="Release $TAG" \
-            --field object="$COMMIT_SHA" \
-            --field type="commit" \
-            --jq '.sha')
-          gh api repos/${{ github.repository }}/git/refs \
-            --method POST \
-            --field ref="refs/tags/$TAG" \
-            --field sha="$TAG_SHA"

@@ -10,11 +10,11 @@ Complete reference for all GitHub Actions workflows: triggers, jobs, and purpose
 | --- | --- | --- | --- |
 | Feature CI | `ci-feature.yml` | push `feature/*`, `fix/*` | Lint + typecheck |
 | Dev PR gate | `ci-dev-pr.yml` | PR to `dev` | Full suite — the merge gate |
-| Dev push | `ci-dev-push.yml` | push to `dev` | SBOM update + version bump |
+| Dev push | `ci-dev-push.yml` | push to `dev` | SBOM update |
 | Hotfix CI | `ci-hotfix.yml` | push `hotfix/*` | Full suite + dep audit + docker build |
 | Main PR gate | `ci-main-pr.yml` | PR to `main` | Lint, typecheck, dep audit, docker build |
-| Main push | `ci-main-push.yml` | push to `main` | Tag release + SBOM update |
-| Merge source check | `check-merge-source.yml` | PR to `main` | Enforces source must be `dev` or `hotfix/*` |
+| Main push | `ci-main-push.yml` | push to `main` | release-please; on release: tag, GitHub Release, prod images, SBOMs |
+| Merge source check | `check-merge-source.yml` | PR to `main` | Enforces source must be `dev`, `hotfix/*` or the release-please PR |
 | Publish dev | `publish-dev.yml` | Manual dispatch | Build + push `:dev` image → Komodo deploy |
 | EULA sync | `sync-eula.yml` | Manual dispatch | Export EULA content and open a sync PR |
 | Main→dev sync | `sync-main-to-dev.yml` | push to `main` | Open PR to backport main changes to dev |
@@ -84,9 +84,8 @@ Tests do not re-run after the merge commit — the PR gate result is the authori
 | --- | --- |
 | `sbom-backend` | Detects `requirements.txt` changes; regenerates backend SBOM and license manifest; commits via bot |
 | `sbom-frontend` | Detects `package.json` / `package-lock.json` changes; regenerates frontend SBOM; commits via bot |
-| `version-bump` | Increments `VERSION` and `frontend/package.json` patch version; commits via bot |
 
-Bot commits from this workflow are the reason you must `git pull origin dev` before starting any new work — the VERSION file will conflict otherwise.
+Bot SBOM commits are the reason to `git pull origin dev` before starting new work. Versioning is not done here (see [Releases](#releases-release-please)).
 
 ---
 
@@ -132,15 +131,17 @@ Fails if the source branch is anything other than `dev` or `hotfix/*`. Prevents 
 
 ### `ci-main-push.yml` — Main Post-Merge
 
-**Trigger:** push to `main` (fires after merge, excluding bot commits)
+**Trigger:** push to `main` (every merge)
 
 **Jobs:**
 
 | Job | What it does |
 | --- | --- |
-| `tag-release` | Creates an annotated git tag `v{VERSION}` via GitHub API (idempotent; produces a verified tag) |
-| `sbom-backend` | Regenerates backend SBOM on package changes; bot commits |
-| `sbom-frontend` | Regenerates frontend SBOM on package changes; bot commits |
+| `release-please` | Opens/updates the release PR on main; when that PR is merged, creates tag `vX.Y.Z` and the GitHub Release |
+| `sbom-backend` / `sbom-frontend` | On release only: regenerate SBOMs from the tag and attach them to the GitHub Release |
+| `docker-publish-*` | On release only: build the tag, push `:X.Y.Z` + `:latest` (backend, frontend) and `:latest` (errors) |
+
+Pushes that don't create a release publish nothing.
 
 ---
 
@@ -152,9 +153,10 @@ Fails if the source branch is anything other than `dev` or `hotfix/*`. Prevents 
 
 | Job | What it does |
 | --- | --- |
-| `build-push-backend` | Builds backend Docker image, pushes `ghcr.io/weftmark/weftmark-backend:{version}-dev` and `:dev` |
-| `build-push-frontend` | Builds frontend Docker image, pushes `ghcr.io/weftmark/weftmark-frontend:{version}-dev` and `:dev` |
-| `create-qa-issue` | Opens a GitHub issue with a QA checklist for the dev deployment |
+| `resolve` | Pins the dev commit once and computes the tag `{version}-dev.{sha7}` |
+| `publish-backend` | Builds that commit, pushes `ghcr.io/weftmark/weftmark-backend:{version}-dev.{sha7}` and `:dev` |
+| `publish-frontend` | Builds that commit, pushes `ghcr.io/weftmark/weftmark-frontend:{version}-dev.{sha7}` and `:dev` |
+| `open-qa-issue` | Opens a QA issue covering PRs merged since the previous publish (found from the last `qa` issue title) |
 
 After publish completes, trigger the Komodo deploy webhook to pull the new `:dev` image to `dev.weftmark.com`.
 
@@ -164,7 +166,7 @@ After publish completes, trigger the Komodo deploy webhook to pull the new `:dev
 
 **Trigger:** push to `main`
 
-If `main` has commits not present in `dev` (e.g., a hotfix merge or bot tag commit), this workflow opens a backport PR from `main` → `dev` automatically.
+If `main` has commits not present in `dev` (e.g., a hotfix merge or a release-please release commit), this workflow opens a backport PR from `main` → `dev` automatically.
 
 ---
 
@@ -188,9 +190,9 @@ Applies the `needs-triage` label to every newly opened issue automatically, so n
 
 | Git event | Backend image tag | Frontend image tag | Destination |
 | --- | --- | --- | --- |
-| Manual (`publish-dev.yml`) | `:dev`, `:{version}-dev` | `:dev`, `:{version}-dev` | `dev.weftmark.com` via Komodo |
+| Manual (`publish-dev.yml`) | `:dev`, `:{version}-dev.{sha7}` | `:dev`, `:{version}-dev.{sha7}` | `dev.weftmark.com` via Komodo |
 | Manual (`publish-staging`) | `:staging`, `:{version}-rc` | `:staging`, `:{version}-rc` | `staging.weftmark.com` via Komodo |
-| Push to `main` (via Komodo) | `:latest`, `:{version}` | `:latest`, `:{version}` | `weftmark.com` via Komodo |
+| release-please release merged to `main` | `:latest`, `:{version}` | `:latest`, `:{version}` | `weftmark.com` via Komodo |
 
 Registry: `ghcr.io/weftmark/weftmark-backend` and `ghcr.io/weftmark/weftmark-frontend`
 
@@ -202,20 +204,50 @@ Registry: `ghcr.io/weftmark/weftmark-backend` and `ghcr.io/weftmark/weftmark-fro
 feature/* or fix/*
     push → ci-feature.yml (lint + typecheck)
     PR to dev → ci-dev-pr.yml (full gate)
-    merge → ci-dev-push.yml (SBOM + version bump)
+    merge → ci-dev-push.yml (SBOM)
     manual → publish-dev.yml (image build + deploy)
 
 hotfix/*
     push → ci-hotfix.yml (full gate + docker build)
     PR to main → ci-main-pr.yml + check-merge-source.yml
-    merge → ci-main-push.yml (tag + SBOM)
+    merge → ci-main-push.yml (release-please opens/updates release PR)
               sync-main-to-dev.yml (backport PR)
 
 dev → main
     PR → ci-main-pr.yml + check-merge-source.yml
-    merge → ci-main-push.yml (tag + SBOM)
+    merge → ci-main-push.yml (release-please opens/updates release PR)
               sync-main-to-dev.yml
+
+release-please--branches--main (release PR, opened by weftmark-bot)
+    PR → ci-main-pr.yml + check-merge-source.yml
+    merge → ci-main-push.yml (tag vX.Y.Z + GitHub Release + prod images + SBOMs)
+              sync-main-to-dev.yml (brings VERSION/CHANGELOG back to dev)
 ```
+
+---
+
+## Releases (release-please)
+
+Config: `release-please-config.json` (release type `simple`) and `.release-please-manifest.json` (current released version).
+
+release-please owns `VERSION`, the `version` in `frontend/package.json`, and `CHANGELOG.md`. Don't edit them by hand.
+
+1. Merge dev → main (or a hotfix). release-please opens or updates the PR `chore(main): release X.Y.Z` with the version bump and changelog.
+2. Review and merge the release PR. That creates tag `vX.Y.Z`, the GitHub Release, and the prod images.
+3. Merge the automatic main → dev sync PR so dev picks up the new VERSION and CHANGELOG.
+
+The bump comes from conventional commits since the last release:
+
+| Commit type | Bump |
+| --- | --- |
+| `feat:` | minor |
+| `fix:`, `perf:`, `fix(deps):` | patch |
+| `type!:` or `BREAKING CHANGE:` footer | major |
+| `chore`, `ci`, `docs`, `test`, `refactor`, `style`, `build` | none on their own |
+
+Dependabot uses `fix(deps)` for runtime deps (backend pip, frontend npm, Dockerfile base images) so they produce a release, and `chore(deps)` / `chore(deps-dev)` for Actions, dev deps, e2e and compose images. Commits that only touch `.github/`, `docs/`, `e2e/` or `sbom/` are excluded from release notes.
+
+The release PR is opened with the weftmark-bot token so `ci-main-pr.yml` runs on it (PRs created with `GITHUB_TOKEN` don't trigger workflows).
 
 ---
 

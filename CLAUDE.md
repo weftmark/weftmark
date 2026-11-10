@@ -55,8 +55,12 @@ Branches: `main` (prod-ready), `dev` (integration), `feature/*`, `fix/*`, `hotfi
 | `ci-dev-pr.yml` | PR to `dev` | **full suite — this is the merge gate**; tests don't re-run after merge |
 | `ci-hotfix.yml` | push `hotfix/*` | full suite (lint, typecheck, pytest, migration, dep audit, docker build) |
 | `ci-main-pr.yml` | PR to `main` | lint, typecheck, dep audit, docker build; **no file writes allowed** |
-| `check-merge-source.yml` | PR to `main` | source branch must be `dev` or `hotfix/*` |
-| `ci-dev-push.yml` | push to `dev` | SBOM update + semver version bump (bot commits) |
+| `check-merge-source.yml` | PR to `main` | source branch must be `dev`, `hotfix/*`, or the bot's `release-please--branches--main` |
+| `ci-dev-push.yml` | push to `dev` | SBOM update (bot commits) |
+| `ci-main-push.yml` | push to `main` | release-please: opens/updates the release PR; on release, tags `vX.Y.Z`, publishes `:X.Y.Z` + `:latest` images, attaches SBOMs |
+| `publish-dev.yml` | manual | `:{version}-dev.{sha7}` + `:dev` images and a QA issue |
+
+**Releases (release-please):** `release-please-config.json` + `.release-please-manifest.json`. release-please owns `VERSION`, `frontend/package.json` version and `CHANGELOG.md`, so never bump them by hand. Flow: merge dev → main → release-please opens `chore(main): release X.Y.Z` PR on main → user merges it → tag + GitHub Release + prod images → `sync-main-to-dev.yml` brings the release commit back to dev. Bumps come from conventional commit types since the last release (`feat` → minor, `fix`/`perf`/`fix(deps)` → patch, `!`/`BREAKING CHANGE` → major); `chore`/`ci`/`docs`/`test`/`refactor` alone don't cut a release. Write PR commits accordingly.
 
 Bot actor: `weftmark-bot[bot]`. Post-merge jobs guard with `if: github.actor != 'weftmark-bot[bot]'` — do NOT use `[skip actions]` (that token suppresses PR CI on the target branch).
 
@@ -79,7 +83,7 @@ When the user types one of these aliases, execute the corresponding action immed
 | `eqa [target]` | Execute QA activities | Fetch open issues labelled `qa` or containing QA tasks → identify which can be executed automatically (smoke tests, endpoint checks, data validation, log review, Playwright UI tests) → run them against `target` (`local`=localhost:3000, `dev`=dev.weftmark.com; default: `local`) → post results as issue comments → close any that fully pass |
 | `sqa` | Suggest QA activities | Review open issues and QA tickets for tests requiring human verification → present them one step at a time → wait for pass/fail feedback after each step → update the relevant ticket with results → repeat until all suggested steps are worked |
 | `aac` | Active actions check | `gh run list --limit 10` → print current runs in chat → schedule a non-blocking wakeup to recheck until all runs complete → notify with final pass/fail summary when done |
-| `ddev` | Deploy dev containers | (1) `gh run list --repo weftmark/weftmark --limit 10` — check for any `in_progress` runs, especially `ci-dev-push.yml` (SBOM + version bump) triggered by a recent merge to `dev`; (2) if any in-progress, schedule a wakeup and wait — do NOT proceed until the branch is settled; (3) once all clear, trigger `gh workflow run publish-dev.yml --repo weftmark/weftmark --ref dev`; (4) use `aac` to watch the publish run to completion and report the final image tags |
+| `ddev` | Deploy dev containers | (1) `gh run list --repo weftmark/weftmark --limit 10` — check for any `in_progress` runs, especially `ci-dev-push.yml` (SBOM updates) triggered by a recent merge to `dev`; (2) if any in-progress, schedule a wakeup and wait — do NOT proceed until the branch is settled; (3) once all clear, trigger `gh workflow run publish-dev.yml --repo weftmark/weftmark --ref dev`; (4) use `aac` to watch the publish run to completion and report the final image tags |
 | `itc [N]` | Increase test coverage | Run pytest with coverage → if N given, write tests until coverage reaches N% → if no N, write tests until the CI gate (65%) is met → prioritize high-impact reliable paths (router happy paths, auth guards, service logic) over low-value noise (CLI entry points, error branches that can't occur) → if N is unreasonable (e.g. 100%), push back with justification → update `docs/testing.md` when done |
 
 **`ussh` — remote execution modifier:** When the user includes `ussh` in a request, read `.remotehost` from the repo root to get connection details and run the requested checks or tests on the remote server via SSH instead of locally. `.remotehost` format: `host`, `user`, `ssh` (full connection string). `.remotehost` is gitignored; `.remotehost.example` shows the structure.

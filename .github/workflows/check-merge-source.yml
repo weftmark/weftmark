@@ -9,18 +9,26 @@ permissions: {}
 
 jobs:
   check-source-branch:
+    # Job name is kept as-is: it may be a required status check in the main ruleset.
     name: Source branch must be dev or hotfix/*
     runs-on: ubuntu-latest
     steps:
       - name: Verify source branch
+        # SOURCE goes through env (never interpolated into the script) since
+        # head_ref is attacker-controlled on fork PRs.
         env:
           SOURCE: ${{ github.head_ref }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
+          # release-please--branches--main is the release PR opened by
+          # ci-main-push.yml (release-please). Only accept it from the bot.
           if [[ "$SOURCE" == "dev" || "$SOURCE" == hotfix/* ]]; then
             echo "ok  Source branch '$SOURCE' is allowed to merge into main."
+          elif [[ "$SOURCE" == "release-please--branches--main" && "$AUTHOR" == "weftmark-bot[bot]" ]]; then
+            echo "ok  release-please release PR from $AUTHOR is allowed to merge into main."
           else
             echo "ERR Source branch '$SOURCE' is not allowed to merge into main."
-            echo "    Only 'dev' and 'hotfix/*' branches may target main."
+            echo "    Only 'dev', 'hotfix/*' and the release-please release PR may target main."
             echo "    Merge your changes into 'dev' first, then open a release PR from dev."
             exit 1
           fi
