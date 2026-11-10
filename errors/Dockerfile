@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /build
 
 # Copy only what the CSS build needs
