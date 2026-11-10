@@ -238,7 +238,8 @@ See [`docs/deployment/ci-cd.md`](deployment/ci-cd.md) for the full pipeline refe
 | `ci-dev-pr.yml` | PR to `dev` | full suite — lint, typecheck, pytest, migration check |
 | `ci-hotfix.yml` | push `hotfix/*` | full suite + dep audit + docker build |
 | `ci-main-pr.yml` | PR to `main` | lint, typecheck, dep audit, docker build |
-| `ci-dev-push.yml` | push to `dev` | SBOM update + semver version bump (bot commits) |
+| `ci-dev-push.yml` | push to `dev` | SBOM update (bot commits) |
+| `ci-main-push.yml` | push to `main` | release-please release PR; on release: tag, GitHub Release, `:X.Y.Z` + `:latest` images |
 | `publish-dev.yml` | manual dispatch | build + push `:dev` image → Komodo deploy to `dev.weftmark.com` |
 
 Bot actor: `weftmark-bot[bot]`. Post-merge jobs guard with `if: github.actor != 'weftmark-bot[bot]'`.

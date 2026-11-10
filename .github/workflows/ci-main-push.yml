@@ -4,11 +4,15 @@ name: Main push
 # NO FILE WRITES POLICY — this workflow must never commit or
 # push files back to the repository.
 #
-# Allowed:  verify, build, create git tags via API, publish
-#           images to ghcr.io, upload Actions artifacts.
+# Allowed:  verify, build, run release-please (it updates its own
+#           release PR branch and creates tags/releases via the
+#           API), publish images to ghcr.io, upload Actions
+#           artifacts and release assets.
 # Forbidden: git commit, git push, auto-committing SBOMs,
-#            version bumps, lockfile updates, or any other
-#            file write of any kind.
+#            lockfile updates, or any other direct write to main.
+#
+# Version bumps reach main only through the release-please PR,
+# which is reviewed and merged like any other PR.
 #
 # If a generated artifact (SBOM, snapshot, etc.) is stale,
 # this workflow MUST FAIL — not auto-fix. The fix must be
@@ -17,14 +21,25 @@ name: Main push
 # The no-write-guard job in ci-main-pr.yml enforces this at PR time.
 # ============================================================
 #
-# Delivery pipeline — runs after a PR merges into main.
-# Promotes the version tag, generates SBOM artifacts, and
-# publishes versioned + :latest images to ghcr.io.
+# Release pipeline (release-please, see release-please-config.json):
+#
+#   1. A dev → main (or hotfix/* → main) merge lands here. release-please
+#      opens or updates the release PR on main ("chore(main): release X.Y.Z").
+#      It bumps VERSION + frontend/package.json and adds a CHANGELOG.md entry
+#      built from the conventional commits since the last release.
+#   2. Merging that release PR lands here again. release-please creates
+#      the vX.Y.Z tag and GitHub Release, then the jobs below build that tag
+#      and publish :X.Y.Z + :latest images and attach SBOMs to the release.
+#   3. sync-main-to-dev.yml opens the main → dev PR that carries the
+#      release commit (VERSION, CHANGELOG) back to dev.
+#
+# Pushes that don't create a release (step 1) publish nothing.
 #
 # Required secrets:
 #   WEFTMARK_BOT_CLIENT_ID        — GitHub App client ID
 #   WEFTMARK_BOT_PRIVATE_KEY      — GitHub App private key
-#   CLERK_PUBLISHABLE_KEY_PROD secret is no longer required — key is injected at runtime
+#   (The bot token is used for release-please so its PR triggers CI;
+#   PRs opened with GITHUB_TOKEN don't run workflows.)
 
 on:
   push:
@@ -34,13 +49,20 @@ concurrency:
   group: main-push-${{ github.ref }}
   cancel-in-progress: false
 
+permissions: {}
+
 jobs:
 
-  promote-version-tag:
-    name: Promote version tag
+  release-please:
+    name: release-please
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - name: Generate bot token
         id: app-token
@@ -49,66 +71,31 @@ jobs:
           client-id: ${{ secrets.WEFTMARK_BOT_CLIENT_ID }}
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v7
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
-          fetch-depth: 0
-
-      - name: Create production tag via API (idempotent, produces Verified tag)
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          VERSION=$(cat VERSION)
-          TAG="v${VERSION}"
-          echo "Version: ${VERSION}"
-          echo "Tag:     ${TAG}"
-          if git rev-parse "${TAG}" >/dev/null 2>&1; then
-            echo "Tag ${TAG} already exists — skipping creation"
-          else
-            COMMIT_SHA=$(git rev-parse HEAD)
-            TAG_SHA=$(gh api repos/${{ github.repository }}/git/tags \
-              --method POST \
-              --field tag="${TAG}" \
-              --field message="Release ${TAG}" \
-              --field object="$COMMIT_SHA" \
-              --field type="commit" \
-              --jq '.sha')
-            gh api repos/${{ github.repository }}/git/refs \
-              --method POST \
-              --field ref="refs/tags/${TAG}" \
-              --field sha="$TAG_SHA"
-            echo "Tag ${TAG} created"
-          fi
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
   sbom-backend:
     name: SBOM backend (CycloneDX + pip-licenses)
     runs-on: ubuntu-latest
-    needs: [promote-version-tag]
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
     permissions:
-      contents: read
+      contents: write # attach to the GitHub Release
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
-      - name: Detect backend package changes
-        id: detect
-        run: |
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            git diff --name-only HEAD~1 HEAD | grep -q "^backend/requirements" \
-              && echo "changed=true" >> $GITHUB_OUTPUT \
-              || echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - if: steps.detect.outputs.changed == 'true'
-        uses: actions/setup-python@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Generate backend SBOM and license manifest
-        if: steps.detect.outputs.changed == 'true'
         run: |
           pip install cyclonedx-bom pip-licenses
           pip install -r backend/requirements.txt
@@ -117,44 +104,31 @@ jobs:
             --output-format JSON --output-file sbom/sbom-backend.json
           pip-licenses --format=json --output-file sbom/licenses-backend.json
 
-      - uses: actions/upload-artifact@v7
-        if: steps.detect.outputs.changed == 'true'
-        with:
-          name: sbom-backend-${{ github.sha }}
-          path: |
-            sbom/sbom-backend.json
-            sbom/licenses-backend.json
-          retention-days: 90
+      - name: Attach to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          gh release upload "$TAG" sbom/sbom-backend.json sbom/licenses-backend.json \
+            --clobber --repo "$GITHUB_REPOSITORY"
 
   sbom-frontend:
     name: SBOM frontend (CycloneDX + license-checker)
     runs-on: ubuntu-latest
-    needs: [promote-version-tag]
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
     permissions:
-      contents: read
+      contents: write # attach to the GitHub Release
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
-      - name: Detect frontend package changes
-        id: detect
-        run: |
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            git diff --name-only HEAD~1 HEAD | grep -qE "^frontend/package(-lock)?\.json" \
-              && echo "changed=true" >> $GITHUB_OUTPUT \
-              || echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - if: steps.detect.outputs.changed == 'true'
-        uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
 
       - name: Generate frontend SBOM and license manifest
-        if: steps.detect.outputs.changed == 'true'
         run: |
           cd frontend && npm ci
           mkdir -p ../sbom
@@ -162,27 +136,31 @@ jobs:
             --output-format JSON --output-file ../sbom/sbom-frontend.json
           npx license-checker --json --out ../sbom/licenses-frontend.json
 
-      - uses: actions/upload-artifact@v7
-        if: steps.detect.outputs.changed == 'true'
-        with:
-          name: sbom-frontend-${{ github.sha }}
-          path: |
-            sbom/sbom-frontend.json
-            sbom/licenses-frontend.json
-          retention-days: 90
+      - name: Attach to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          gh release upload "$TAG" sbom/sbom-frontend.json sbom/licenses-frontend.json \
+            --clobber --repo "$GITHUB_REPOSITORY"
 
   docker-publish-backend:
     name: Publish — backend (main)
     runs-on: ubuntu-latest
-    needs: [promote-version-tag]
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
     permissions:
+      contents: read
       packages: write
+    env:
+      VERSION: ${{ needs.release-please.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
-      - name: Read version
-        id: version
-        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+      - name: Check VERSION file matches the release
+        run: test "$(cat VERSION)" = "$VERSION"
 
       - name: Log in to ghcr.io
         uses: docker/login-action@v4
@@ -194,24 +172,29 @@ jobs:
       - name: Build and push backend image
         run: |
           docker build -f backend/Dockerfile \
-            -t ghcr.io/weftmark/weftmark-backend:${{ steps.version.outputs.version }} \
+            -t "ghcr.io/weftmark/weftmark-backend:${VERSION}" \
             -t ghcr.io/weftmark/weftmark-backend:latest \
             .
-          docker push ghcr.io/weftmark/weftmark-backend:${{ steps.version.outputs.version }}
+          docker push "ghcr.io/weftmark/weftmark-backend:${VERSION}"
           docker push ghcr.io/weftmark/weftmark-backend:latest
 
   docker-publish-frontend:
     name: Publish — frontend (main)
     runs-on: ubuntu-latest
-    needs: [promote-version-tag]
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
     permissions:
+      contents: read
       packages: write
+    env:
+      VERSION: ${{ needs.release-please.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
-      - name: Read version
-        id: version
-        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+      - name: Check VERSION file matches the release
+        run: test "$(cat VERSION)" = "$VERSION"
 
       - name: Log in to ghcr.io
         uses: docker/login-action@v4
@@ -225,20 +208,24 @@ jobs:
           docker build -f frontend/Dockerfile \
             --build-arg VITE_APP_ENV="production" \
             --build-arg CODECOV_TOKEN=${{ secrets.CODECOV_TOKEN }} \
-            -t ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }} \
+            -t "ghcr.io/weftmark/weftmark-frontend:${VERSION}" \
             -t ghcr.io/weftmark/weftmark-frontend:latest \
             ./frontend
-          docker push ghcr.io/weftmark/weftmark-frontend:${{ steps.version.outputs.version }}
+          docker push "ghcr.io/weftmark/weftmark-frontend:${VERSION}"
           docker push ghcr.io/weftmark/weftmark-frontend:latest
 
   docker-publish-errors:
     name: Publish — error pages (main)
     runs-on: ubuntu-latest
-    needs: [promote-version-tag]
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
     permissions:
+      contents: read
       packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
       - name: Log in to ghcr.io
         uses: docker/login-action@v4
