@@ -8,13 +8,11 @@ name: Dev PR
 #   WEFTMARK_BOT_PRIVATE_KEY — GitHub App private key
 
 on:
+  # No `paths:` filter on purpose. The dev ruleset requires checks from this
+  # workflow, so any PR it skips (e2e/, docker-compose*.yml, errors/, docs,
+  # Dependabot's e2e/docker-compose/github-actions updates) can never merge.
   pull_request:
     branches: [dev]
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - "tools/**"
-      - ".github/workflows/**"
 
 concurrency:
   group: dev-pr-${{ github.head_ref }}
