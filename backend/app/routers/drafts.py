@@ -14,14 +14,21 @@ from app.config import get_settings
 from app.deps import get_db, get_effective_user
 from app.models.draft import Draft
 from app.models.user import User
-from app.services import rendering, storage, wif_linter, wif_modifier, wif_parser
+from app.services import fingerprints, rendering, storage, wif_linter, wif_modifier, wif_parser
 from app.services.audit import write_audit_log
 from app.services.rate_limiter import rate_limit
+from app.tasks.fingerprint import compute_draft_drawdown_fingerprint
 from app.tasks.preview import generate_drawdown_preview
 from app.tasks.tiles import prerender_drawdown_tiles
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 settings = get_settings()
+
+_MEDIA_TYPE_PNG = "image/png"
+_NO_WIF_FILE = "No WIF file for this draft"
+_IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable"
+_PREVIEW_TASK_NAME = "app.tasks.preview.generate_drawdown_preview"
+_DRAWDOWN_FINGERPRINT_TASK_NAME = "app.tasks.fingerprint.compute_draft_drawdown_fingerprint"
 
 _upload_rate_limit = rate_limit("wif_upload", max_requests=30, window_seconds=3600)
 
@@ -119,15 +126,19 @@ class UpdateDraftRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=DraftSummary, status_code=201)
+@router.post(
+    "",
+    status_code=201,
+    responses={400: {"description": "File must have a .wif extension"}, 413: {"description": "File too large"}},
+)
 async def create_draft(
     name: Annotated[str, Form()],
     wif_file: Annotated[UploadFile, File()],
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _rl: Annotated[None, Depends(_upload_rate_limit)],
     description: Annotated[str | None, Form()] = None,
     tags: Annotated[str | None, Form()] = None,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
-    _rl: None = Depends(_upload_rate_limit),
 ) -> DraftSummary:
     if not wif_file.filename or not wif_file.filename.lower().endswith(".wif"):
         raise HTTPException(status_code=400, detail="File must have a .wif extension")
@@ -148,6 +159,8 @@ async def create_draft(
 
     lint = wif_linter.lint(wif_bytes)
     measurements = wif_parser.extract_measurements(wif_bytes)
+    threading_fp = fingerprints.compute_threading_fingerprint(wif_bytes)
+    tieup_fp = fingerprints.compute_tieup_fingerprint(wif_bytes)
 
     import json as _json
 
@@ -185,6 +198,8 @@ async def create_draft(
         wif_colors=wif_parser.extract_colors(wif_bytes) or None,
         weft_color_stats=wif_parser.extract_weft_color_stats(wif_bytes) or None,
         warp_color_stats=wif_parser.extract_warp_color_stats(wif_bytes) or None,
+        threading_fingerprint=threading_fp,
+        tieup_fingerprint=tieup_fp,
     )
     db.add(draft)
     await db.flush()  # get draft.id without committing
@@ -198,9 +213,11 @@ async def create_draft(
         from app.services.task_history import record_queued
 
         task = generate_drawdown_preview.delay(str(draft.id))
-        record_queued(get_settings(), task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+        record_queued(get_settings(), task.id, _PREVIEW_TASK_NAME, "preview")
         tile_task = prerender_drawdown_tiles.delay(str(draft.id))
         record_queued(get_settings(), tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+        fp_task = compute_draft_drawdown_fingerprint.delay(str(draft.id))
+        record_queued(get_settings(), fp_task.id, _DRAWDOWN_FINGERPRINT_TASK_NAME, "fingerprint")
     return DraftSummary.from_draft(draft)
 
 
@@ -209,12 +226,12 @@ async def create_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.get("", response_model=list[DraftSummary])
+@router.get("")
 async def list_drafts(
-    include_archived: bool = Query(False),
-    tags: list[str] | None = Query(None),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    include_archived: Annotated[bool, Query()] = False,
+    tags: Annotated[list[str] | None, Query()] = None,
 ) -> list[DraftSummary]:
     q = select(Draft).where(Draft.owner_id == current_user.id, Draft.deleted_at.is_(None))
     if not include_archived:
@@ -232,22 +249,78 @@ async def list_drafts(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}", response_model=DraftDetail)
+@router.get("/{draft_id}", responses={404: {"description": "Draft not found"}})
 async def get_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     return DraftDetail(**_draft_detail_data(draft))
 
 
-@router.patch("/{draft_id}", response_model=DraftDetail)
+class RelatedDraftRef(BaseModel):
+    id: uuid.UUID
+    name: str
+    created_at: datetime
+
+
+class RelatedDraftsResponse(BaseModel):
+    same_threading: list[RelatedDraftRef]
+    same_tieup: list[RelatedDraftRef]
+    same_drawdown: list[RelatedDraftRef]
+
+
+_RELATED_DRAFTS_LIMIT = 50
+
+
+@router.get("/{draft_id}/related", responses={404: {"description": "Draft not found"}})
+async def get_related_drafts(
+    draft_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> RelatedDraftsResponse:
+    """Other drafts sharing this draft's threading/tie-up/drawdown fingerprint (#983).
+
+    Exact-match only (v1). Scoped to the draft owner's library — for a
+    superuser inspecting another user's draft, that means the inspected
+    user's other drafts, consistent with get_draft's own inspection scoping.
+    """
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
+
+    async def _matches(column, value: str | None) -> list[RelatedDraftRef]:
+        if value is None:
+            return []
+        stmt = (
+            select(Draft)
+            .where(
+                column == value,
+                Draft.owner_id == draft.owner_id,
+                Draft.id != draft.id,
+                Draft.deleted_at.is_(None),
+            )
+            .order_by(Draft.created_at.desc())
+            .limit(_RELATED_DRAFTS_LIMIT)
+        )
+        rows = (await db.scalars(stmt)).all()
+        return [RelatedDraftRef(id=d.id, name=d.name, created_at=d.created_at) for d in rows]
+
+    return RelatedDraftsResponse(
+        same_threading=await _matches(Draft.threading_fingerprint, draft.threading_fingerprint),
+        same_tieup=await _matches(Draft.tieup_fingerprint, draft.tieup_fingerprint),
+        same_drawdown=await _matches(Draft.drawdown_fingerprint, draft.drawdown_fingerprint),
+    )
+
+
+@router.patch(
+    "/{draft_id}",
+    responses={400: {"description": "At least one field must be provided"}, 404: {"description": "Draft not found"}},
+)
 async def update_draft(
     draft_id: uuid.UUID,
     body: UpdateDraftRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     if body.name is None and body.description is None and body.tags is None:
         raise HTTPException(status_code=400, detail="At least one field must be provided")
@@ -271,41 +344,44 @@ async def update_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}/preview")
+@router.get("/{draft_id}/preview", responses={404: {"description": "Preview not available"}})
 async def get_preview(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not await storage.afile_exists(draft.preview_path):
         raise HTTPException(status_code=404, detail="Preview not available")
     png = await storage.aread_file(draft.preview_path)  # type: ignore[arg-type]
-    return Response(content=png, media_type="image/png")
+    return Response(content=png, media_type=_MEDIA_TYPE_PNG)
 
 
-@router.get("/{draft_id}/drawdown_preview")
+@router.get("/{draft_id}/drawdown_preview", responses={404: {"description": "Drawdown preview not available"}})
 async def get_drawdown_preview(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.drawdown_preview_path or not await storage.afile_exists(draft.drawdown_preview_path):
         raise HTTPException(status_code=404, detail="Drawdown preview not available")
     png = await storage.aread_drawdown_preview(draft.drawdown_preview_path)
-    return Response(content=png, media_type="image/png")
+    return Response(content=png, media_type=_MEDIA_TYPE_PNG)
 
 
-@router.get("/{draft_id}/preview/svg")
+@router.get(
+    "/{draft_id}/preview/svg",
+    responses={404: {"description": "No WIF file for this draft"}, 500: {"description": "SVG rendering failed"}},
+)
 async def get_preview_svg(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_path:
-        raise HTTPException(status_code=404, detail="No WIF file for this draft")
+        raise HTTPException(status_code=404, detail=_NO_WIF_FILE)
     wif_bytes = await storage.aread_file(draft.wif_path)
     try:
         wif_draft = await asyncio.to_thread(rendering.load_draft, wif_bytes)
@@ -320,131 +396,166 @@ async def get_preview_svg(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}/drawdown")
-async def get_drawdown(
+async def _record_drawdown_render_limit_exceeded(
+    db: AsyncSession, draft_id: uuid.UUID, draft: Draft, current_user: User, mode: str
+) -> None:
+    await write_audit_log(
+        db,
+        event_type="render.limit_exceeded",
+        actor=current_user,
+        details={
+            "draft_id": str(draft_id),
+            "warp_threads": draft.warp_threads,
+            "weft_threads": draft.weft_threads,
+            "render_max_width": settings.render_max_width,
+            "render_max_height": settings.render_max_height,
+            "mode": mode,
+        },
+    )
+    await db.commit()
+
+
+async def _try_serve_cached_tile(
     draft_id: uuid.UUID,
-    start_row: int | None = Query(None, ge=0),
-    row_count: int | None = Query(None, ge=1),
-    hide_unused_shafts_treadles: bool = Query(False),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    weft_count: int,
+    tile_row_count: int,
+    expected_scale: int,
+    hide_unused_shafts_treadles: bool,
+    warp_count: int,
+    sr: int,
+    rc: int | None,
+) -> Response | None:
+    """Return a cached tile response if the request aligns with standard tile
+    boundaries and a pre-rendered tile exists, else None."""
+    aligned = not hide_unused_shafts_treadles and warp_count > 0 and sr % tile_row_count == 0 and rc == tile_row_count
+    if not aligned or not await storage.adrawdown_tile_exists(draft_id, expected_scale, sr):
+        return None
+
+    cached_png = await storage.aread_drawdown_tile(draft_id, expected_scale, sr)
+    actual_rc = min(tile_row_count, weft_count - sr) if weft_count > 0 else tile_row_count
+    return Response(
+        content=cached_png,
+        media_type=_MEDIA_TYPE_PNG,
+        headers={
+            "X-Pixels-Per-Row": str(expected_scale),
+            "X-Total-Rows": str(weft_count),
+            "X-Start-Row": str(sr),
+            "X-Row-Count": str(actual_rc),
+            "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
+        },
+    )
+
+
+async def _maybe_trigger_tile_prerender(
+    draft_id: uuid.UUID, expected_scale: int, tile_row_count: int, sr: int, rc: int | None
+) -> None:
+    """Trigger background tile pre-render on a standard cache miss, but only if
+    t0 doesn't exist yet — avoids double-fire when eager prerender already ran."""
+    if sr % tile_row_count != 0 or rc != tile_row_count:
+        return
+    if await storage.adrawdown_tile_exists(draft_id, expected_scale, 0):
+        return
+
+    from app.services.task_history import record_queued
+
+    tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
+    record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
+
+
+async def _get_tiled_drawdown(
+    draft_id: uuid.UUID,
+    draft: Draft,
+    current_user: User,
+    db: AsyncSession,
+    start_row: int | None,
+    row_count: int | None,
+    hide_unused_shafts_treadles: bool,
+    effective_shafts: int | None,
+    effective_treadles: int | None,
 ) -> Response:
-    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
+    if not draft.wif_path:
+        raise HTTPException(status_code=404, detail=_NO_WIF_FILE)
+    if not await storage.afile_exists(draft.wif_path):
+        raise HTTPException(status_code=404, detail="WIF file not found in storage")
 
-    effective_shafts = draft.effective_num_shafts if hide_unused_shafts_treadles else None
-    effective_treadles = draft.effective_num_treadles if hide_unused_shafts_treadles else None
+    _sr = start_row or 0
+    _rc = row_count
 
-    # Tiled request: check pre-rendered tile cache first, then render on-demand
-    if start_row is not None or row_count is not None:
-        if not draft.wif_path:
-            raise HTTPException(status_code=404, detail="No WIF file for this draft")
-        if not await storage.afile_exists(draft.wif_path):
-            raise HTTPException(status_code=404, detail="WIF file not found in storage")
+    # Check pre-rendered tile cache when request aligns with standard boundaries
+    tile_row_count = settings.tile_row_count
+    warp_count = draft.warp_threads or 0
+    weft_count = draft.weft_threads or 0
+    if warp_count > 0:
+        expected_scale = min(settings.render_max_width // warp_count, rendering.DRAWDOWN_SCALE)
+    else:
+        expected_scale = rendering.DRAWDOWN_SCALE
 
-        _sr = start_row or 0
-        _rc = row_count
+    cached = await _try_serve_cached_tile(
+        draft_id, weft_count, tile_row_count, expected_scale, hide_unused_shafts_treadles, warp_count, _sr, _rc
+    )
+    if cached is not None:
+        return cached
 
-        # Check pre-rendered tile cache when request aligns with standard boundaries
-        tile_row_count = settings.tile_row_count
-        warp_count = draft.warp_threads or 0
-        weft_count = draft.weft_threads or 0
-        if warp_count > 0:
-            expected_scale = min(settings.render_max_width // warp_count, rendering.DRAWDOWN_SCALE)
-        else:
-            expected_scale = rendering.DRAWDOWN_SCALE
-
-        if (
-            not hide_unused_shafts_treadles
-            and warp_count > 0
-            and _sr % tile_row_count == 0
-            and _rc == tile_row_count
-            and await storage.adrawdown_tile_exists(draft_id, expected_scale, _sr)
-        ):
-            cached_png = await storage.aread_drawdown_tile(draft_id, expected_scale, _sr)
-            actual_rc = min(tile_row_count, weft_count - _sr) if weft_count > 0 else tile_row_count
-            return Response(
-                content=cached_png,
-                media_type="image/png",
-                headers={
-                    "X-Pixels-Per-Row": str(expected_scale),
-                    "X-Total-Rows": str(weft_count),
-                    "X-Start-Row": str(_sr),
-                    "X-Row-Count": str(actual_rc),
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
+    wif_bytes = await storage.aread_file(draft.wif_path)
+    try:
+        png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(  # type: ignore[misc]
+            lambda: rendering.render_drawdown_tile(
+                rendering.load_draft(wif_bytes),
+                start_row=_sr,
+                row_count=_rc,
+                effective_shafts=effective_shafts,
+                effective_treadles=effective_treadles,
             )
-
-        wif_bytes = await storage.aread_file(draft.wif_path)
-        try:
-            png, total_rows, actual_start, actual_row_count, actual_scale = await asyncio.to_thread(  # type: ignore[misc]
-                lambda: rendering.render_drawdown_tile(
-                    rendering.load_draft(wif_bytes),
-                    start_row=_sr,
-                    row_count=_rc,
-                    effective_shafts=effective_shafts,
-                    effective_treadles=effective_treadles,
-                )
-            )
-        except HTTPException as exc:
-            if exc.status_code == 413:
-                await write_audit_log(
-                    db,
-                    event_type="render.limit_exceeded",
-                    actor=current_user,
-                    details={
-                        "draft_id": str(draft_id),
-                        "warp_threads": draft.warp_threads,
-                        "weft_threads": draft.weft_threads,
-                        "render_max_width": settings.render_max_width,
-                        "render_max_height": settings.render_max_height,
-                        "mode": "tile",
-                    },
-                )
-                await db.commit()
-            raise
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
-
-        # Trigger background tile pre-render on standard cache miss, but only if
-        # t0 doesn't exist yet — avoids double-fire when eager prerender already ran.
-        if _sr % tile_row_count == 0 and _rc == tile_row_count:
-            if not await storage.adrawdown_tile_exists(draft_id, expected_scale, 0):
-                from app.services.task_history import record_queued
-
-                tile_task = prerender_drawdown_tiles.apply_async(args=[str(draft_id)])
-                record_queued(settings, tile_task.id, "app.tasks.tiles.prerender_drawdown_tiles", "preview")
-
-        return Response(
-            content=png,
-            media_type="image/png",
-            headers={
-                "X-Pixels-Per-Row": str(actual_scale),
-                "X-Total-Rows": str(total_rows),
-                "X-Start-Row": str(actual_start),
-                "X-Row-Count": str(actual_row_count),
-                "Cache-Control": "no-store",
-            },
         )
+    except HTTPException as exc:
+        if exc.status_code == 413:
+            await _record_drawdown_render_limit_exceeded(db, draft_id, draft, current_user, "tile")
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
 
-    # Non-tiled: serve pre-generated cached preview if available
+    await _maybe_trigger_tile_prerender(draft_id, expected_scale, tile_row_count, _sr, _rc)
+
+    return Response(
+        content=png,
+        media_type=_MEDIA_TYPE_PNG,
+        headers={
+            "X-Pixels-Per-Row": str(actual_scale),
+            "X-Total-Rows": str(total_rows),
+            "X-Start-Row": str(actual_start),
+            "X-Row-Count": str(actual_row_count),
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+async def _get_full_drawdown(
+    draft_id: uuid.UUID,
+    draft: Draft,
+    current_user: User,
+    db: AsyncSession,
+    effective_shafts: int | None,
+    effective_treadles: int | None,
+) -> Response:
+    # Serve pre-generated cached preview if available
     if draft.drawdown_preview_path and await storage.afile_exists(draft.drawdown_preview_path):
         png = await storage.aread_drawdown_preview(draft.drawdown_preview_path)
         scale = draft.drawdown_preview_scale or rendering.DRAWDOWN_SCALE
         total_rows = draft.weft_threads or 0
         return Response(
             content=png,
-            media_type="image/png",
+            media_type=_MEDIA_TYPE_PNG,
             headers={
                 "X-Pixels-Per-Row": str(scale),
                 "X-Total-Rows": str(total_rows),
-                "Cache-Control": "public, max-age=31536000, immutable",
+                "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
                 "ETag": f'"{draft_id}"',
             },
         )
 
     # Fall back to live render
     if not draft.wif_path:
-        raise HTTPException(status_code=404, detail="No WIF file for this draft")
+        raise HTTPException(status_code=404, detail=_NO_WIF_FILE)
 
     if not await storage.afile_exists(draft.wif_path):
         raise HTTPException(status_code=404, detail="WIF file not found in storage")
@@ -460,34 +571,54 @@ async def get_drawdown(
         )
     except HTTPException as exc:
         if exc.status_code == 413:
-            await write_audit_log(
-                db,
-                event_type="render.limit_exceeded",
-                actor=current_user,
-                details={
-                    "draft_id": str(draft_id),
-                    "warp_threads": draft.warp_threads,
-                    "weft_threads": draft.weft_threads,
-                    "render_max_width": settings.render_max_width,
-                    "render_max_height": settings.render_max_height,
-                    "mode": "full",
-                },
-            )
-            await db.commit()
+            await _record_drawdown_render_limit_exceeded(db, draft_id, draft, current_user, "full")
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Drawdown rendering failed: {exc}")
 
     return Response(
         content=png,
-        media_type="image/png",
+        media_type=_MEDIA_TYPE_PNG,
         headers={
             "X-Pixels-Per-Row": str(actual_scale),
             "X-Total-Rows": str(total_rows),
-            "Cache-Control": "public, max-age=31536000, immutable",
+            "Cache-Control": _IMMUTABLE_CACHE_CONTROL,
             "ETag": f'"{draft_id}"',
         },
     )
+
+
+@router.get(
+    "/{draft_id}/drawdown",
+    responses={404: {"description": "No WIF file for this draft"}, 500: {"description": "Drawdown rendering failed"}},
+)
+async def get_drawdown(
+    draft_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    start_row: Annotated[int | None, Query(ge=0)] = None,
+    row_count: Annotated[int | None, Query(ge=1)] = None,
+    hide_unused_shafts_treadles: Annotated[bool, Query()] = False,
+) -> Response:
+    draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
+
+    effective_shafts = draft.effective_num_shafts if hide_unused_shafts_treadles else None
+    effective_treadles = draft.effective_num_treadles if hide_unused_shafts_treadles else None
+
+    if start_row is not None or row_count is not None:
+        return await _get_tiled_drawdown(
+            draft_id,
+            draft,
+            current_user,
+            db,
+            start_row,
+            row_count,
+            hide_unused_shafts_treadles,
+            effective_shafts,
+            effective_treadles,
+        )
+
+    return await _get_full_drawdown(draft_id, draft, current_user, db, effective_shafts, effective_treadles)
 
 
 # ---------------------------------------------------------------------------
@@ -495,11 +626,11 @@ async def get_drawdown(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}/wif")
+@router.get("/{draft_id}/wif", responses={404: {"description": "WIF file not available for this draft"}})
 async def download_wif(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_path or not await storage.afile_exists(draft.wif_path):
@@ -518,11 +649,11 @@ async def download_wif(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/{draft_id}/wif-modified")
+@router.get("/{draft_id}/wif-modified", responses={404: {"description": "No modified WIF file for this draft"}})
 async def download_wif_modified(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     draft = await _get_owned_draft(draft_id, current_user, db, allow_superuser=True)
     if not draft.wif_modified_path or not await storage.afile_exists(draft.wif_modified_path):
@@ -542,12 +673,19 @@ async def download_wif_modified(
 # ---------------------------------------------------------------------------
 
 
-@router.delete("/{draft_id}", status_code=204)
+@router.delete(
+    "/{draft_id}",
+    status_code=204,
+    responses={
+        404: {"description": "Draft not found"},
+        409: {"description": "Draft is used by one or more active projects; pass force=true to delete anyway"},
+    },
+)
 async def delete_draft(
     draft_id: uuid.UUID,
-    force: bool = Query(False),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    force: Annotated[bool, Query()] = False,
 ) -> None:
     from app.models.project import Project
 
@@ -577,22 +715,22 @@ async def delete_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{draft_id}/archive", status_code=204)
+@router.post("/{draft_id}/archive", status_code=204, responses={404: {"description": "Draft not found"}})
 async def archive_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     draft = await _get_owned_draft(draft_id, current_user, db)
     draft.retire()
     await db.commit()
 
 
-@router.post("/{draft_id}/unarchive", status_code=204)
+@router.post("/{draft_id}/unarchive", status_code=204, responses={404: {"description": "Draft not found"}})
 async def unarchive_draft(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     draft = await _get_owned_draft(draft_id, current_user, db)
     draft.unretire()
@@ -604,11 +742,17 @@ async def unarchive_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{draft_id}/generate-liftplan", response_model=DraftDetail)
+@router.post(
+    "/{draft_id}/generate-liftplan",
+    responses={
+        400: {"description": "WIF file has no [TREADLING] section — cannot compute lift plan"},
+        404: {"description": "Draft not found"},
+    },
+)
 async def generate_liftplan(
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     draft = await _get_owned_draft(draft_id, current_user, db)
 
@@ -637,7 +781,7 @@ async def generate_liftplan(
     from app.config import get_settings
     from app.services.task_history import record_queued
 
-    record_queued(get_settings(), _prev_task.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+    record_queued(get_settings(), _prev_task.id, _PREVIEW_TASK_NAME, "preview")
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -656,12 +800,18 @@ class OverrideMetadataRequest(BaseModel):
     value: int
 
 
-@router.post("/{draft_id}/override-metadata", response_model=DraftDetail)
+@router.post(
+    "/{draft_id}/override-metadata",
+    responses={
+        400: {"description": "Unsupported field; must be one of num_treadles or num_shafts"},
+        404: {"description": "Draft not found"},
+    },
+)
 async def override_metadata(
     draft_id: uuid.UUID,
     body: OverrideMetadataRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     if body.field not in _OVERRIDE_FIELDS:
         raise HTTPException(
@@ -709,7 +859,7 @@ async def override_metadata(
     from app.config import get_settings
     from app.services.task_history import record_queued
 
-    record_queued(get_settings(), _prev_task2.id, "app.tasks.preview.generate_drawdown_preview", "preview")
+    record_queued(get_settings(), _prev_task2.id, _PREVIEW_TASK_NAME, "preview")
     return DraftDetail(**_draft_detail_data(draft))
 
 
@@ -725,12 +875,15 @@ class PatchMeasurementsRequest(BaseModel):
     unit: str = "cm"  # "cm" | "in" — applies to warp_length and weaving_width; epi is always ends/inch
 
 
-@router.patch("/{draft_id}/measurements", response_model=DraftDetail)
+@router.patch(
+    "/{draft_id}/measurements",
+    responses={400: {"description": "unit must be 'cm' or 'in'"}, 404: {"description": "Draft not found"}},
+)
 async def patch_measurements(
     draft_id: uuid.UUID,
     body: PatchMeasurementsRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DraftDetail:
     if body.unit not in ("cm", "in"):
         raise HTTPException(status_code=400, detail="unit must be 'cm' or 'in'")

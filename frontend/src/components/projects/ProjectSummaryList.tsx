@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
+import { groupByYear } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
@@ -13,15 +14,13 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function ProjectRow({ project }: { project: ProjectSummary }) {
+function ProjectRow({ project }: { readonly project: ProjectSummary }) {
   const isPlanning = project.status === "active" && !project.loom_id;
   const badgeKey = isPlanning ? "plan" : project.status;
   const badgeLabel = isPlanning ? "Plan" : PROJECT_STATUS_LABELS[project.status];
-  const endDate = project.status === "completed"
-    ? project.completed_at
-    : project.status === "abandoned"
-      ? project.abandoned_at
-      : null;
+  let endDate: string | null = null;
+  if (project.status === "completed") endDate = project.completed_at;
+  else if (project.status === "abandoned") endDate = project.abandoned_at;
 
   return (
     <Link
@@ -39,7 +38,7 @@ function ProjectRow({ project }: { project: ProjectSummary }) {
   );
 }
 
-function YearGroup({ year, items, defaultOpen }: { year: number; items: ProjectSummary[]; defaultOpen: boolean }) {
+function YearGroup({ year, items, defaultOpen }: { readonly year: number; readonly items: ProjectSummary[]; readonly defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
@@ -59,20 +58,7 @@ function YearGroup({ year, items, defaultOpen }: { year: number; items: ProjectS
   );
 }
 
-function groupByYear(items: ProjectSummary[], getDate: (p: ProjectSummary) => string | null) {
-  const map = new Map<number, ProjectSummary[]>();
-  for (const item of items) {
-    const d = getDate(item);
-    const year = d ? new Date(d).getFullYear() : new Date().getFullYear();
-    if (!map.has(year)) map.set(year, []);
-    map.get(year)!.push(item);
-  }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => b - a)
-    .map(([year, items]) => ({ year, items }));
-}
-
-export function ProjectSummaryList({ projects }: { projects: ProjectSummary[] }) {
+export function ProjectSummaryList({ projects }: { readonly projects: ProjectSummary[] }) {
   const currentYear = new Date().getFullYear();
 
   const active = projects.filter((p) => p.status === "active" && !!p.loom_id);

@@ -3,6 +3,7 @@
 import logging
 import uuid
 from datetime import datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
@@ -80,10 +81,10 @@ class BulkStashPushResult(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.get("/authorize")
+@router.get("/authorize", responses={503: {"description": "Ravelry integration is not configured on this server"}})
 async def authorize(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Return a Ravelry OAuth authorization URL for the current user."""
     settings = get_settings()
@@ -95,11 +96,11 @@ async def authorize(
 
 @router.get("/callback")
 async def oauth_callback(
-    state: str = Query(...),
-    code: str | None = Query(None),
-    error: str | None = Query(None),
-    error_description: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    state: Annotated[str, Query()],
+    code: Annotated[str | None, Query()] = None,
+    error: Annotated[str | None, Query()] = None,
+    error_description: Annotated[str | None, Query()] = None,
 ) -> RedirectResponse:
     """Ravelry redirects here after the user approves or denies access.
 
@@ -136,10 +137,10 @@ async def oauth_callback(
     return RedirectResponse(url=f"{frontend_url}/settings/connections?ravelry=connected")
 
 
-@router.get("/status", response_model=RavelryStatus)
+@router.get("/status")
 async def status(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> RavelryStatus:
     cred = await svc.get_credential(current_user.id, db)
     if cred is None:
@@ -151,10 +152,10 @@ async def status(
     )
 
 
-@router.delete("/connection", status_code=204)
+@router.delete("/connection", status_code=204, responses={404: {"description": "Not connected to Ravelry"}})
 async def disconnect(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     """Remove stored Ravelry credentials for the current user."""
     cred = await svc.get_credential(current_user.id, db)
@@ -164,10 +165,10 @@ async def disconnect(
     await db.commit()
 
 
-@router.get("/yarn-detail/{ravelry_yarn_id}")
+@router.get("/yarn-detail/{ravelry_yarn_id}", responses={502: {"description": "Ravelry yarn detail fetch failed"}})
 async def yarn_detail(
     ravelry_yarn_id: int,
-    _current_user: User = Depends(get_current_user),
+    _current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
     """Proxy a single yarn's full detail from the Ravelry API (no OAuth required)."""
     try:
@@ -178,10 +179,13 @@ async def yarn_detail(
     return data
 
 
-@router.get("/popular/companies", response_model=list[RavelryCompany])
+@router.get(
+    "/popular/companies",
+    responses={502: {"description": "Ravelry request failed"}},
+)
 async def popular_companies(
-    limit: int = Query(10, ge=1, le=20),
-    _current_user: User = Depends(get_current_user),
+    _current_user: Annotated[User, Depends(get_current_user)],
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
 ) -> list[RavelryCompany]:
     """Return popular yarn companies (uses dev read-only key, sort=best)."""
     try:
@@ -192,12 +196,12 @@ async def popular_companies(
     return [RavelryCompany(**r) for r in results]
 
 
-@router.get("/popular/yarns", response_model=list[RavelryYarnResult])
+@router.get("/popular/yarns", responses={502: {"description": "Ravelry request failed"}})
 async def popular_yarns(
-    company_id: int = Query(...),
-    company_name: str = Query(...),
-    limit: int = Query(8, ge=1, le=20),
-    _current_user: User = Depends(get_current_user),
+    _current_user: Annotated[User, Depends(get_current_user)],
+    company_id: Annotated[int, Query()],
+    company_name: Annotated[str, Query()],
+    limit: Annotated[int, Query(ge=1, le=20)] = 8,
 ) -> list[RavelryYarnResult]:
     """Return popular yarns for a company (uses dev read-only key, seeded by company name)."""
     try:
@@ -208,10 +212,10 @@ async def popular_yarns(
     return [RavelryYarnResult(**r) for r in results]
 
 
-@router.get("/search/companies", response_model=list[RavelryCompany])
+@router.get("/search/companies", responses={502: {"description": "Ravelry search failed"}})
 async def search_companies(
-    q: str = Query(..., min_length=1),
-    _current_user: User = Depends(get_current_user),
+    _current_user: Annotated[User, Depends(get_current_user)],
+    q: Annotated[str, Query(min_length=1)],
 ) -> list[RavelryCompany]:
     """Search Ravelry yarn companies by name (uses dev read-only key)."""
     try:
@@ -222,11 +226,11 @@ async def search_companies(
     return [RavelryCompany(**r) for r in results]
 
 
-@router.get("/search/yarns", response_model=list[RavelryYarnResult])
+@router.get("/search/yarns", responses={502: {"description": "Ravelry search failed"}})
 async def search_yarns(
-    q: str = Query(..., min_length=1),
-    company_id: int | None = Query(None),
-    _current_user: User = Depends(get_current_user),
+    _current_user: Annotated[User, Depends(get_current_user)],
+    q: Annotated[str, Query(min_length=1)],
+    company_id: Annotated[int | None, Query()] = None,
 ) -> list[RavelryYarnResult]:
     """Search Ravelry yarns, optionally filtered by company (uses dev read-only key)."""
     try:
@@ -237,11 +241,14 @@ async def search_yarns(
     return [RavelryYarnResult(**r) for r in results]
 
 
-@router.post("/import-yarn")
+@router.post(
+    "/import-yarn",
+    responses={404: {"description": "Yarn not found or not importable"}, 502: {"description": "Ravelry import failed"}},
+)
 async def import_yarn(
     payload: ImportYarnPayload,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Import a Ravelry yarn into the user's WeftMark inventory (uses dev read-only key)."""
     try:
@@ -260,10 +267,16 @@ async def import_yarn(
     return {"id": str(yarn.id)}
 
 
-@router.post("/stash-push/bulk")
+@router.post(
+    "/stash-push/bulk",
+    responses={
+        404: {"description": "Not connected to Ravelry"},
+        502: {"description": "Ravelry bulk stash push failed"},
+    },
+)
 async def push_bulk_to_stash(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BulkStashPushResult:
     """Push all eligible Tier 1 yarns to the user's Ravelry stash."""
     cred = await svc.get_credential(current_user.id, db)
@@ -277,11 +290,18 @@ async def push_bulk_to_stash(
     return BulkStashPushResult(**result)
 
 
-@router.post("/stash-push/{yarn_id}")
+@router.post(
+    "/stash-push/{yarn_id}",
+    responses={
+        404: {"description": "Yarn not found"},
+        422: {"description": "Yarn cannot be pushed to Ravelry stash"},
+        502: {"description": "Ravelry stash push failed"},
+    },
+)
 async def push_yarn_to_stash(
     yarn_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> StashPushResult:
     """Push a single yarn to the user's Ravelry stash."""
     try:
@@ -296,10 +316,13 @@ async def push_yarn_to_stash(
     return StashPushResult(ravelry_stash_id=stash_id)
 
 
-@router.post("/sync", response_model=SyncResult)
+@router.post(
+    "/sync",
+    responses={404: {"description": "Not connected to Ravelry"}, 502: {"description": "Ravelry stash sync failed"}},
+)
 async def sync_stash(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SyncResult:
     """Trigger an on-demand stash sync for the current user."""
     cred = await svc.get_credential(current_user.id, db)

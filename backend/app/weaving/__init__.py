@@ -158,12 +158,12 @@ class Draft:
         for thread_obj in weft:
             draft.add_weft_thread(
                 color=thread_obj["color"],
-                shafts=set(draft.shafts[n] for n in thread_obj["shafts"]),
-                treadles=set(draft.treadles[n] for n in thread_obj["treadles"]),
+                shafts={draft.shafts[n] for n in thread_obj["shafts"]},
+                treadles={draft.treadles[n] for n in thread_obj["treadles"]},
             )
 
         for ii, shaft_nos in enumerate(tieup):
-            draft.treadles[ii].shafts = set(draft.shafts[n] for n in shaft_nos)
+            draft.treadles[ii].shafts = {draft.shafts[n] for n in shaft_nos}
 
         return draft
 

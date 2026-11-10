@@ -15,9 +15,9 @@ declare global {
 // ---------------------------------------------------------------------------
 
 function hexToRgb(hex: string): [number, number, number] | null {
-  const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
   if (!m) return null;
-  return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+  return [Number.parseInt(m[1], 16), Number.parseInt(m[2], 16), Number.parseInt(m[3], 16)];
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
@@ -50,12 +50,12 @@ function hslToHex(h: number, s: number, l: number): string {
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = ll - c / 2;
   let rv = 0, gv = 0, bv = 0;
-  if (h < 60) { rv = c; gv = x; bv = 0; }
-  else if (h < 120) { rv = x; gv = c; bv = 0; }
-  else if (h < 180) { rv = 0; gv = c; bv = x; }
-  else if (h < 240) { rv = 0; gv = x; bv = c; }
-  else if (h < 300) { rv = x; gv = 0; bv = c; }
-  else { rv = c; gv = 0; bv = x; }
+  if (h < 60) { rv = c; gv = x; }
+  else if (h < 120) { rv = x; gv = c; }
+  else if (h < 180) { gv = c; bv = x; }
+  else if (h < 240) { gv = x; bv = c; }
+  else if (h < 300) { rv = x; bv = c; }
+  else { rv = c; bv = x; }
   return rgbToHex(Math.round((rv + m) * 255), Math.round((gv + m) * 255), Math.round((bv + m) * 255));
 }
 
@@ -134,10 +134,10 @@ const PICKER_HEIGHT = 360;
 const PICKER_WIDTH = 240;
 
 interface ColorPickerProps {
-  value: string;
-  onChange: (hex: string) => void;
-  size?: "sm" | "md";
-  className?: string;
+  readonly value: string;
+  readonly onChange: (hex: string) => void;
+  readonly size?: "sm" | "md";
+  readonly className?: string;
 }
 
 export function ColorPicker({ value, onChange, size = "md", className }: ColorPickerProps) {
@@ -225,7 +225,7 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
     next[index] = raw;
     setRgbInput(next);
     const nums = next.map(Number);
-    if (next.every((v) => v !== "" && !isNaN(Number(v))) && nums.every((v) => v >= 0 && v <= 255)) {
+    if (next.every((v) => v !== "" && !Number.isNaN(Number(v))) && nums.every((v) => v >= 0 && v <= 255)) {
       const hex = rgbToHex(nums[0], nums[1], nums[2]);
       setHexInput(hex);
       const hsl = hexToHsl(hex);
@@ -240,7 +240,7 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
     setHslInput(next);
     const [h, s, l] = next.map(Number);
     if (
-      next.every((v) => v !== "" && !isNaN(Number(v))) &&
+      next.every((v) => v !== "" && !Number.isNaN(Number(v))) &&
       h >= 0 && h <= 360 &&
       s >= 0 && s <= 100 &&
       l >= 0 && l <= 100
@@ -450,22 +450,24 @@ export function ColorPicker({ value, onChange, size = "md", className }: ColorPi
                 {suggestions.length > 0 && (
                   <ul className="absolute left-0 right-0 top-full mt-0.5 z-10 rounded border border-border bg-card shadow-md overflow-y-auto max-h-36">
                     {suggestions.map((name) => (
-                      <li
-                        key={name}
-                        className="flex items-center gap-2 px-2 py-1 text-xs text-card-foreground cursor-pointer hover:bg-muted"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setNameInput(name);
-                          setNameError(false);
-                          const hex = resolveColorName(name);
-                          if (hex) { syncAllInputs(hex); onChange(hex); }
-                        }}
-                      >
-                        <span
-                          className="inline-block h-3 w-3 rounded-sm border border-border flex-shrink-0"
-                          style={{ backgroundColor: resolveColorName(name) ?? undefined }}
-                        />
-                        {name}
+                      <li key={name}>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-2 py-1 text-xs text-card-foreground cursor-pointer hover:bg-muted"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setNameInput(name);
+                            setNameError(false);
+                            const hex = resolveColorName(name);
+                            if (hex) { syncAllInputs(hex); onChange(hex); }
+                          }}
+                        >
+                          <span
+                            className="inline-block h-3 w-3 rounded-sm border border-border flex-shrink-0"
+                            style={{ backgroundColor: resolveColorName(name) ?? undefined }}
+                          />
+                          {name}
+                        </button>
                       </li>
                     ))}
                   </ul>

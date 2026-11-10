@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGUAGES } from "@/i18n/config";
 
 interface Props {
-  variant?: "public" | "app";
+  readonly variant?: "public" | "app";
 }
 
 export function LanguageSelector({ variant = "app" }: Props) {

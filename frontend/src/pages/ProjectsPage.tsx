@@ -1,17 +1,19 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, type ReactNode } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { listProjects, projectDrawdownPreviewUrl, PROJECT_TYPE_LABELS, PROJECT_STATUS_LABELS, type ProjectSummary } from "@/api/projects";
 import { AppIcons } from "@/lib/icons";
+import { groupByYear } from "@/lib/utils";
 import { previewUrl } from "@/api/drafts";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { AssignLoomModal } from "@/components/projects/AssignLoomModal";
 import { Button } from "@/components/ui/button";
 import { TagChips } from "@/components/ui/TagChips";
-import { Link } from "react-router-dom";
 import { SkeletonCardGrid } from "@/components/ui/skeleton";
+import { TagFilterBar } from "@/components/TagFilterBar";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 const STATUS_COLORS: Record<string, string> = {
   created: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -25,37 +27,25 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function groupByYear(
-  items: ProjectSummary[],
-  getDate: (p: ProjectSummary) => string | null,
-): Array<{ year: number; items: ProjectSummary[] }> {
-  const map = new Map<number, ProjectSummary[]>();
-  for (const item of items) {
-    const d = getDate(item);
-    const year = d ? new Date(d).getFullYear() : new Date().getFullYear();
-    if (!map.has(year)) map.set(year, []);
-    map.get(year)!.push(item);
-  }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => b - a)
-    .map(([year, items]) => ({ year, items }));
-}
-
 function ProjectCard({ project, onAssign }: {
-  project: ProjectSummary;
-  onAssign?: (id: string) => void;
+  readonly project: ProjectSummary;
+  readonly onAssign?: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [showPreview, setShowPreview] = useState(false);
+  useEscapeKey(() => setShowPreview(false), showPreview);
   const isPlanning = (project.status === "active" || project.status === "created") && !project.loom_id;
   const badgeKey = isPlanning ? "plan" : project.status;
   const badgeLabel = isPlanning ? t("projectsPage.planBadge") : PROJECT_STATUS_LABELS[project.status];
 
-  const endDate = project.status === "completed"
-    ? project.completed_at
-    : project.status === "abandoned"
-      ? project.abandoned_at
-      : null;
+  let endDate: string | null = null;
+  if (project.status === "completed") endDate = project.completed_at;
+  else if (project.status === "abandoned") endDate = project.abandoned_at;
+
+  let typeIcon: ReactNode;
+  if (isPlanning) typeIcon = <AppIcons.Planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+  else if (project.project_type === "treadle") typeIcon = <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+  else typeIcon = <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
 
   const pct = project.total_picks > 0
     ? Math.round((Math.min(project.current_pick - 1, project.total_picks) / project.total_picks) * 100)
@@ -76,11 +66,7 @@ function ProjectCard({ project, onAssign }: {
       <Link to={`/projects/${project.id}`} className="block p-4">
         <div className="flex gap-3">
           <div className="shrink-0 mt-0.5">
-            {isPlanning
-              ? <AppIcons.planning className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-              : project.project_type === "treadle"
-                ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+            {typeIcon}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
@@ -143,7 +129,7 @@ function ProjectCard({ project, onAssign }: {
             to={`/projects/${project.id}/track`}
             className="flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
           >
-            <AppIcons.projectActive className="h-3.5 w-3.5" />
+            <AppIcons.ProjectActive className="h-3.5 w-3.5" />
             {t("projectsPage.continueWeaving")}
           </Link>
         </div>
@@ -151,15 +137,12 @@ function ProjectCard({ project, onAssign }: {
       {showPreview && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setShowPreview(false)}
-          onKeyDown={(e) => e.key === "Escape" && setShowPreview(false)}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPreview(false); }}
+          onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
         >
-          <div
-            className="relative max-w-xl w-full"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setShowPreview(false); }}
-          >
+          <div className="relative max-w-xl w-full">
             <button
+              type="button"
               onClick={() => setShowPreview(false)}
               className="absolute -top-9 right-0 text-white/70 hover:text-white text-sm"
             >
@@ -185,10 +168,10 @@ function YearGroup({
   defaultExpanded,
   onAssign,
 }: {
-  year: number;
-  items: ProjectSummary[];
-  defaultExpanded: boolean;
-  onAssign?: (id: string) => void;
+  readonly year: number;
+  readonly items: ProjectSummary[];
+  readonly defaultExpanded: boolean;
+  readonly onAssign?: (id: string) => void;
 }) {
   const [open, setOpen] = useState(defaultExpanded);
   return (
@@ -257,31 +240,14 @@ export function ProjectsPage() {
         <Button size="sm" onClick={() => setShowCreate(true)}>{t("projectsPage.newButton")}</Button>
       </div>
 
-      {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
-              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
-                activeTagFilter === tag
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-accent/20"
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-          {activeTagFilter && (
-            <button
-              onClick={() => setActiveTagFilter(null)}
-              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-            >
-              <AppIcons.close className="h-3 w-3" /> {t("projectsPage.clearFilter")}
-            </button>
-          )}
-        </div>
-      )}
+      <TagFilterBar
+        tags={allTags}
+        activeTag={activeTagFilter}
+        onToggle={(tag) => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+        onClear={() => setActiveTagFilter(null)}
+        clearLabel={t("projectsPage.clearFilter")}
+        clearIcon={<AppIcons.Close className="h-3 w-3" />}
+      />
 
       {isLoading && <SkeletonCardGrid count={4} cardClassName="h-[160px]" gridClassName="grid gap-3 sm:grid-cols-2" />}
       {error && <p className="text-sm text-destructive">{t("projectsPage.loadError")}</p>}

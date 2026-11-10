@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,22 +6,21 @@ import { getYarn, updateYarn, patchYarnColorway, getYarnProjects, type YarnProje
 import { formatColorwayLabel, getRavelryStatus, getRavelryYarnDetail, pushYarnToStash, type RavelryColorway, type RavelryYarnApiDetail } from "@/api/ravelry";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { ColorwayGrid } from "@/components/yarn/ColorwayGrid";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
-function DevJsonModal({ data, onClose }: { data: unknown; onClose: () => void }) {
+function DevJsonModal({ data, onClose }: { readonly data: unknown; readonly onClose: () => void }) {
+  useEscapeKey(onClose);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
-      <div
-        className="relative bg-card border border-border rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto m-4"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
-      >
+      <div className="relative bg-card border border-border rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto m-4">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-xs font-mono font-semibold text-accent">DEV — raw data</span>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
         </div>
         <pre className="p-4 text-xs font-mono text-card-foreground whitespace-pre-wrap break-all">
           {JSON.stringify(data, null, 2)}
@@ -52,11 +51,12 @@ function EditColorwayModal({
   onClose,
   onSaved,
 }: {
-  yarn: { id: string; color_name: string | null; ravelry_yarn_id: number | null };
-  onClose: () => void;
-  onSaved: () => void;
+  readonly yarn: { id: string; color_name: string | null; ravelry_yarn_id: number | null };
+  readonly onClose: () => void;
+  readonly onSaved: () => void;
 }) {
   const { t } = useTranslation();
+  useEscapeKey(onClose);
   const [tab, setTab] = useState<"rename" | "link">("rename");
   const [colorName, setColorName] = useState(yarn.color_name ?? "");
   const [colorways, setColorways] = useState<RavelryColorway[]>([]);
@@ -124,20 +124,18 @@ function EditColorwayModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-colorway-title"
         className="w-full max-w-sm rounded-xl border border-border bg-card shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 id="edit-colorway-title" className="text-sm font-semibold">{t("yarnDetailPage.editColorwayTitle")}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
         </div>
 
         {yarn.ravelry_yarn_id && (
@@ -145,6 +143,7 @@ function EditColorwayModal({
             {(["rename", "link"] as const).map((t_) => (
               <button
                 key={t_}
+                type="button"
                 onClick={() => handleTabChange(t_)}
                 className={`flex-1 px-4 py-2.5 text-xs font-medium transition-colors ${
                   tab === t_
@@ -171,7 +170,7 @@ function EditColorwayModal({
                     onChange={(e) => setColorwayFilter(e.target.value)}
                   />
                   {colorwayFilter && (
-                    <button className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs" onClick={() => setColorwayFilter("")}>✕</button>
+                    <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs" onClick={() => setColorwayFilter("")}>✕</button>
                   )}
                 </div>
               )}
@@ -179,24 +178,7 @@ function EditColorwayModal({
                 <p className="text-xs text-muted-foreground">{t("yarnDetailPage.noColorways")}</p>
               )}
               {filteredColorways.length > 0 && (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {filteredColorways.map((cw) => (
-                    <button
-                      key={cw.id}
-                      className={`text-left rounded-md border p-1.5 text-xs transition-colors ${
-                        selectedColorway?.id === cw.id
-                          ? "border-ring bg-accent/10 text-accent"
-                          : "border-border hover:border-ring text-card-foreground"
-                      }`}
-                      onClick={() => pickColorway(cw)}
-                    >
-                      {cw.photos?.[0]?.square_url && (
-                        <img src={cw.photos[0].square_url} alt={cw.name} className="h-10 w-full rounded object-cover mb-1" />
-                      )}
-                      <span className="truncate block leading-tight">{formatColorwayLabel(cw)}</span>
-                    </button>
-                  ))}
-                </div>
+                <ColorwayGrid colorways={filteredColorways} selectedColorway={selectedColorway} onPick={pickColorway} />
               )}
             </>
           )}
@@ -230,7 +212,7 @@ function EditColorwayModal({
 // Color picker section
 // ---------------------------------------------------------------------------
 
-function ColorSection({ yarn, onSaved }: { yarn: { id: string; color_hex: string | null; ravelry_stash_id: number | null }; onSaved: () => void }) {
+function ColorSection({ yarn, onSaved }: { readonly yarn: { id: string; color_hex: string | null; ravelry_stash_id: number | null }; readonly onSaved: () => void }) {
   const { t } = useTranslation();
   const [colorHex, setColorHex] = useState(yarn.color_hex ?? "#888888");
   const [saving, setSaving] = useState(false);
@@ -273,9 +255,9 @@ function ColorSection({ yarn, onSaved }: { yarn: { id: string; color_hex: string
 // ---------------------------------------------------------------------------
 
 function RavelrySection({ ry, companyUrl, permalink }: {
-  ry: RavelryYarnApiDetail;
-  companyUrl: string | null;
-  permalink: string | null;
+  readonly ry: RavelryYarnApiDetail;
+  readonly companyUrl: string | null;
+  readonly permalink: string | null;
 }) {
   const { t } = useTranslation();
 
@@ -297,7 +279,7 @@ function RavelrySection({ ry, companyUrl, permalink }: {
   const fibers = ry.fiber_contents?.filter(f => f.fiber_category?.name) ?? [];
 
   const ratingStr = ry.rating_average && ry.rating_count
-    ? t("yarnDetailPage.rating", { avg: parseFloat(ry.rating_average).toFixed(2), count: ry.rating_count.toLocaleString() })
+    ? t("yarnDetailPage.rating", { avg: Number.parseFloat(ry.rating_average).toFixed(2), count: ry.rating_count.toLocaleString() })
     : null;
 
   const attributes: string[] = [
@@ -315,8 +297,8 @@ function RavelrySection({ ry, companyUrl, permalink }: {
       {/* Multi-fiber breakdown */}
       {fibers.length > 1 && (
         <ul className="space-y-1">
-          {fibers.map((f, i) => (
-            <li key={i} className="text-sm text-muted-foreground flex gap-2">
+          {fibers.map((f) => (
+            <li key={f.fiber_category.name} className="text-sm text-muted-foreground flex gap-2">
               <span className="text-card-foreground font-medium w-12 text-right shrink-0">
                 {f.percentage != null ? `${f.percentage}%` : "—"}
               </span>
@@ -329,8 +311,8 @@ function RavelrySection({ ry, companyUrl, permalink }: {
       {/* Attribute bullets */}
       {attributes.length > 0 && (
         <ul className="space-y-1 text-sm text-muted-foreground list-none">
-          {attributes.map((attr, i) => (
-            <li key={i} className="flex items-start gap-2">
+          {attributes.map((attr) => (
+            <li key={attr} className="flex items-start gap-2">
               <span className="text-accent mt-0.5">•</span>
               <span>{attr}</span>
             </li>
@@ -466,6 +448,30 @@ export function YarnDetailPage() {
     heroPhoto?.medium_url ?? heroPhoto?.small_url ?? heroPhoto?.square_url ??
     yarn.ravelry_photo_url;
 
+  let heroContent: ReactNode;
+  if (heroPhotoUrl) {
+    heroContent = (
+      <img
+        src={heroPhotoUrl}
+        alt={`${yarn.brand} ${yarn.name}`}
+        className="h-36 w-36 rounded-xl object-cover border border-border shrink-0"
+      />
+    );
+  } else if (yarn.color_hex) {
+    heroContent = (
+      <div
+        className="h-36 w-36 rounded-xl border border-border shrink-0"
+        style={{ backgroundColor: yarn.color_hex }}
+      />
+    );
+  } else {
+    heroContent = (
+      <div className="h-36 w-36 rounded-xl border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground shrink-0">
+        {t("yarnDetailPage.noPhoto")}
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-2xl mx-auto w-full space-y-6">
 
@@ -488,22 +494,7 @@ export function YarnDetailPage() {
 
       {/* Hero: photo + title block */}
       <div className="flex gap-5 items-start">
-        {heroPhotoUrl ? (
-          <img
-            src={heroPhotoUrl}
-            alt={`${yarn.brand} ${yarn.name}`}
-            className="h-36 w-36 rounded-xl object-cover border border-border shrink-0"
-          />
-        ) : yarn.color_hex ? (
-          <div
-            className="h-36 w-36 rounded-xl border border-border shrink-0"
-            style={{ backgroundColor: yarn.color_hex }}
-          />
-        ) : (
-          <div className="h-36 w-36 rounded-xl border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground shrink-0">
-            {t("yarnDetailPage.noPhoto")}
-          </div>
-        )}
+        {heroContent}
 
         <div className="flex-1 min-w-0 space-y-1.5 pt-1">
           <h1 className="text-xl font-semibold text-card-foreground leading-tight">{yarn.brand}</h1>
@@ -512,6 +503,7 @@ export function YarnDetailPage() {
           {/* Tags row */}
           <div className="flex flex-wrap gap-1.5 pt-0.5 items-center">
             <button
+              type="button"
               onClick={() => setShowEditColorway(true)}
               title={t("yarnDetailPage.editColorway")}
               className="flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs hover:bg-accent/20 hover:text-foreground transition-colors"
@@ -548,6 +540,7 @@ export function YarnDetailPage() {
             )}
             {ravelryStatus?.connected && yarn.ravelry_yarn_id !== null && yarn.ravelry_stash_id === null && !yarn.out_of_stash && !yarn.archived && (
               <button
+                type="button"
                 onClick={() => pushMutation.mutate()}
                 disabled={pushMutation.isPending}
                 className="rounded-full bg-muted text-muted-foreground px-2.5 py-0.5 text-xs hover:bg-muted/80 disabled:opacity-50 transition-colors"
@@ -589,6 +582,7 @@ export function YarnDetailPage() {
           {isDevEnv && (
             <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-4">
               <button
+                type="button"
                 onClick={() => setShowDebug(true)}
                 className="text-xs font-mono text-accent hover:text-accent/80"
               >
@@ -596,6 +590,7 @@ export function YarnDetailPage() {
               </button>
               {yarn.ravelry_yarn_id && (
                 <button
+                  type="button"
                   onClick={async () => {
                     setRavelryLoading(true);
                     try {

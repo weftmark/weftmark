@@ -1,5 +1,5 @@
 interface Props {
-  ownerEmail?: string;
+  readonly ownerEmail?: string;
 }
 
 export function SuperuserInspectionBanner({ ownerEmail }: Props) {

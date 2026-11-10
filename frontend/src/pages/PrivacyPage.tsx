@@ -39,8 +39,8 @@ export function PrivacyPage() {
                 className="text-amber-800 underline hover:text-amber-900 transition-colors"
               >
                 admin@weftmark.com
-              </a>
-              .
+              </a>{/*
+              */}.
             </p>
             <p className="text-stone-600 leading-relaxed">
               WeftMark is intended for users aged 18 or older. We do not knowingly collect personal
@@ -197,8 +197,8 @@ export function PrivacyPage() {
                 className="text-amber-800 underline hover:text-amber-900 transition-colors"
               >
                 admin@weftmark.com
-              </a>
-              . We will respond within 30 days.
+              </a>{/*
+              */}. We will respond within 30 days.
             </p>
           </section>
 

@@ -3,7 +3,7 @@ import { VersionErrorPage } from "@/pages/VersionErrorPage";
 
 type Status = "loading" | "ok" | "mismatch" | "unreachable";
 
-export function VersionGate({ children }: { children: React.ReactNode }) {
+export function VersionGate({ children }: { readonly children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [backendVersion, setBackendVersion] = useState("");
   const [workerVersion, setWorkerVersion] = useState<string | undefined>();

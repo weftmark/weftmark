@@ -38,3 +38,96 @@ class TestClerkWebhookPath:
         """Endpoint is registered — does not 404."""
         resp = await client.post("/webhooks/clerk", content=b"{}")
         assert resp.status_code != 404
+
+    async def test_accepts_valid_signature(self, client: AsyncClient, monkeypatch):
+        """A correctly signed event is parsed and acknowledged.
+
+        Regression guard for svix 2.x, where Webhook.verify() returns None
+        instead of the decoded payload — the handler must parse the body itself.
+        """
+        import base64
+        import json
+        from datetime import datetime, timezone
+
+        from svix.webhooks import Webhook
+
+        import app.routers.auth as auth_module
+
+        secret = "whsec_" + base64.b64encode(b"weftmark-test-webhook-secret!").decode()
+        monkeypatch.setattr(auth_module, "settings", type("S", (), {"clerk_webhook_secret": secret})())
+
+        msg_id = "msg_test_valid_signature"
+        ts = datetime.now(timezone.utc)
+        body = json.dumps({"type": "test.unhandled_event", "data": {"id": "user_test_123"}})
+        signature = Webhook(secret).sign(msg_id, ts, body)
+
+        resp = await client.post(
+            "/webhooks/clerk",
+            content=body.encode(),
+            headers={
+                "content-type": "application/json",
+                "svix-id": msg_id,
+                "svix-timestamp": str(int(ts.timestamp())),
+                "svix-signature": signature,
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok"}
+
+    async def test_rejects_signed_non_json_body(self, client: AsyncClient, monkeypatch):
+        """A correctly signed body that isn't a JSON object is rejected with 400, not 500."""
+        import base64
+        from datetime import datetime, timezone
+
+        from svix.webhooks import Webhook
+
+        import app.routers.auth as auth_module
+
+        secret = "whsec_" + base64.b64encode(b"weftmark-test-webhook-secret!").decode()
+        monkeypatch.setattr(auth_module, "settings", type("S", (), {"clerk_webhook_secret": secret})())
+
+        msg_id = "msg_test_non_json"
+        ts = datetime.now(timezone.utc)
+        body = "[1, 2, 3]"
+        signature = Webhook(secret).sign(msg_id, ts, body)
+
+        resp = await client.post(
+            "/webhooks/clerk",
+            content=body.encode(),
+            headers={
+                "content-type": "application/json",
+                "svix-id": msg_id,
+                "svix-timestamp": str(int(ts.timestamp())),
+                "svix-signature": signature,
+            },
+        )
+        assert resp.status_code == 400
+
+    async def test_rejects_signed_invalid_json(self, client: AsyncClient, monkeypatch):
+        """A correctly signed body that isn't valid JSON is rejected with 400, not 500."""
+        import base64
+        from datetime import datetime, timezone
+
+        from svix.webhooks import Webhook
+
+        import app.routers.auth as auth_module
+
+        secret = "whsec_" + base64.b64encode(b"weftmark-test-webhook-secret!").decode()
+        monkeypatch.setattr(auth_module, "settings", type("S", (), {"clerk_webhook_secret": secret})())
+
+        msg_id = "msg_test_invalid_json"
+        ts = datetime.now(timezone.utc)
+        body = "not json {"
+        signature = Webhook(secret).sign(msg_id, ts, body)
+
+        resp = await client.post(
+            "/webhooks/clerk",
+            content=body.encode(),
+            headers={
+                "content-type": "application/json",
+                "svix-id": msg_id,
+                "svix-timestamp": str(int(ts.timestamp())),
+                "svix-signature": signature,
+            },
+        )
+        assert resp.status_code == 400

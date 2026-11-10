@@ -12,7 +12,7 @@ export function CveBanner() {
     staleTime: 5 * 60_000,
   });
 
-  if (dismissed || !data || data.finding_count == null || data.finding_count === 0) return null;
+  if (dismissed || data?.finding_count == null || data.finding_count === 0) return null;
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
@@ -25,13 +25,13 @@ export function CveBanner() {
         )}
       </span>
       <div className="flex items-center gap-2 shrink-0">
-        <button
+        <button type="button"
           className="text-xs text-amber-700 dark:text-amber-300 underline hover:no-underline"
           onClick={() => navigate("/superuser/cve")}
         >
           View report
         </button>
-        <button
+        <button type="button"
           className="text-xs text-muted-foreground hover:text-foreground"
           onClick={() => setDismissed(true)}
         >

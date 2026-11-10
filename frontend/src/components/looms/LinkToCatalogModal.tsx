@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type RefObject } from "react";
 import {
   searchLoomCatalog,
   updateLoom,
@@ -12,6 +12,7 @@ import {
   LOOM_TYPE_LABELS,
 } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 type Step = "search" | "configure" | "confirm";
 
@@ -96,16 +97,421 @@ function deriveTreadles(
   return shaftVal + 2;
 }
 
+// ---------- step components ----------
+
+function SearchStep({
+  searchContainerRef,
+  displayQuery,
+  onInputChange,
+  searching,
+  showResults,
+  results,
+  onSelectRef,
+  onClose,
+}: {
+  readonly searchContainerRef: RefObject<HTMLDivElement | null>;
+  readonly displayQuery: string;
+  readonly onInputChange: (val: string) => void;
+  readonly searching: boolean;
+  readonly showResults: boolean;
+  readonly results: LoomReferenceSummary[];
+  readonly onSelectRef: (ref: LoomReferenceSummary) => void;
+  readonly onClose: () => void;
+}) {
+  return (
+    <div ref={searchContainerRef} className="relative">
+      <label htmlFor="link-catalog-search" className="mb-1 block text-sm font-medium">Search loom catalog</label>
+      <input
+        id="link-catalog-search"
+        type="search"
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        value={displayQuery}
+        onChange={(e) => onInputChange(e.target.value)}
+        placeholder="Schacht Baby Wolf, Louet Spring…"
+        autoFocus
+        autoComplete="off"
+      />
+      {searching && (
+        <p className="mt-1 text-xs text-muted-foreground">Searching…</p>
+      )}
+      {showResults && results.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-60 overflow-y-auto">
+          {results.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground flex flex-col"
+              onMouseDown={() => onSelectRef(r)}
+            >
+              <span className="font-medium">
+                {r.brand} {r.model_name}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {LOOM_TYPE_LABELS[categoryToLoomType(r.loom_category)]}
+                {r.shaft_count_options?.length
+                  ? ` · ${r.shaft_count_options.join("/")} shafts`
+                  : ""}
+                {r.origin_country ? ` · ${r.origin_country}` : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {showResults &&
+        results.length === 0 &&
+        !searching &&
+        displayQuery.length >= 2 && (
+          <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-md">
+            No results found.
+          </div>
+        )}
+      <div className="mt-4 flex justify-end">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ConfigureStep({
+  selectedRef,
+  newLoomType,
+  shaftOptions,
+  selectedShaftIdx,
+  setSelectedShaftIdx,
+  derivedTreadles,
+  widthOptions,
+  selectedWidthIdx,
+  setSelectedWidthIdx,
+  onChangeRef,
+  onReview,
+}: {
+  readonly selectedRef: LoomReferenceSummary;
+  readonly newLoomType: LoomType;
+  readonly shaftOptions: number[];
+  readonly selectedShaftIdx: number;
+  readonly setSelectedShaftIdx: (i: number) => void;
+  readonly derivedTreadles: number | null;
+  readonly widthOptions: WidthOption[];
+  readonly selectedWidthIdx: number;
+  readonly setSelectedWidthIdx: (i: number) => void;
+  readonly onChangeRef: () => void;
+  readonly onReview: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border bg-muted/30 px-3 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold">
+              {selectedRef.brand} {selectedRef.model_name}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {LOOM_TYPE_LABELS[newLoomType]}
+              {selectedRef.origin_country ? ` · ${selectedRef.origin_country}` : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+            onClick={onChangeRef}
+          >
+            Change
+          </button>
+        </div>
+      </div>
+
+      {showsShafts(newLoomType) && shaftOptions.length > 0 && (
+        <div>
+          <label htmlFor="link-catalog-shafts" className="mb-1 block text-sm font-medium">Shafts</label>
+          {shaftOptions.length > 1 ? (
+            <select
+              id="link-catalog-shafts"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              value={selectedShaftIdx}
+              onChange={(e) => setSelectedShaftIdx(Number(e.target.value))}
+            >
+              {shaftOptions.map((s, i) => (
+                <option key={s} value={i}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              {shaftOptions[0]}
+            </p>
+          )}
+        </div>
+      )}
+
+      {showsTreadles(newLoomType) && derivedTreadles != null && (
+        <div>
+          <span className="mb-1 block text-sm font-medium">Treadles</span>
+          <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            {derivedTreadles}
+          </p>
+        </div>
+      )}
+
+      {widthOptions.length > 0 && (
+        <div>
+          <label htmlFor="link-catalog-width" className="mb-1 block text-sm font-medium">Weaving width</label>
+          {widthOptions.length > 1 ? (
+            <select
+              id="link-catalog-width"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              value={selectedWidthIdx}
+              onChange={(e) => setSelectedWidthIdx(Number(e.target.value))}
+            >
+              {widthOptions.map((o, i) => (
+                <option key={o.value} value={i}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              {widthOptions[0].label}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onChangeRef}>
+          Back
+        </Button>
+        <Button type="button" onClick={onReview}>
+          Review changes
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface DiffRow {
+  label: string;
+  oldVal: string;
+  newVal: string;
+  changed: boolean;
+}
+
+function ConfirmStep({
+  diffRows,
+  hasChanges,
+  error,
+  saving,
+  onBack,
+  onSave,
+}: {
+  readonly diffRows: DiffRow[];
+  readonly hasChanges: boolean;
+  readonly error: string | null;
+  readonly saving: boolean;
+  readonly onBack: () => void;
+  readonly onSave: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Review the changes below. The loom identity and current configuration will be
+        updated to match the catalog entry.
+      </p>
+
+      <div className="rounded-md border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/30">
+              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-28">
+                Field
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                Current
+              </th>
+              <th className="px-3 py-2 text-center text-xs text-muted-foreground w-6">→</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
+                New
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {diffRows.map((row) => (
+              <tr
+                key={row.label}
+                className={`border-b last:border-0 ${row.changed ? "" : "opacity-40"}`}
+              >
+                <td className="px-3 py-2 text-xs text-muted-foreground">{row.label}</td>
+                <td className="px-3 py-2">{row.oldVal}</td>
+                <td className="px-3 py-2 text-center text-muted-foreground">→</td>
+                <td
+                  className={`px-3 py-2 ${row.changed ? "font-medium text-foreground" : ""}`}
+                >
+                  {row.newVal}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {!hasChanges && (
+        <p className="text-sm text-muted-foreground italic">
+          No fields will change — only the catalog link will be set.
+        </p>
+      )}
+
+      {error && (
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onBack} disabled={saving}>
+          Back
+        </Button>
+        <Button type="button" onClick={onSave} disabled={saving}>
+          {saving ? "Saving…" : "Confirm & save"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------- pure logic helpers ----------
+
+function matchWidthIndexForVersion(version: LoomVersion, wOpts: WidthOption[]): number {
+  if (wOpts.length === 0 || !version.weaving_width) return 0;
+  const curVal = Number.parseFloat(version.weaving_width);
+  const curUnit = version.weaving_width_unit as "cm" | "in";
+  const targetUnit = wOpts[0].unit;
+  let converted = curVal;
+  if (curUnit !== targetUnit) converted = curUnit === "cm" ? curVal / 2.54 : curVal * 2.54;
+  return closestIdx(wOpts.map((o) => Number.parseFloat(o.value)), converted);
+}
+
+function computeDiffRows(
+  loom: LoomDetail,
+  cv: LoomVersion,
+  newLoomType: LoomType,
+  selectedRef: LoomReferenceSummary | null,
+  selectedShafts: number | null,
+  derivedTreadles: number | null,
+  selectedWidthOpt: WidthOption | null,
+): DiffRow[] {
+  if (!selectedRef) return [];
+
+  const rows: DiffRow[] = [
+    { label: "Manufacturer", oldVal: loom.manufacturer, newVal: selectedRef.brand, changed: loom.manufacturer !== selectedRef.brand },
+    { label: "Model", oldVal: loom.model_name, newVal: selectedRef.model_name, changed: loom.model_name !== selectedRef.model_name },
+    {
+      label: "Loom type",
+      oldVal: LOOM_TYPE_LABELS[loom.loom_type] ?? loom.loom_type,
+      newVal: LOOM_TYPE_LABELS[newLoomType] ?? newLoomType,
+      changed: loom.loom_type !== newLoomType,
+    },
+  ];
+
+  if (showsShafts(newLoomType) && selectedShafts != null) {
+    rows.push({
+      label: "Shafts",
+      oldVal: cv.num_shafts != null ? String(cv.num_shafts) : "—",
+      newVal: String(selectedShafts),
+      changed: cv.num_shafts !== selectedShafts,
+    });
+  }
+
+  if (showsTreadles(newLoomType) && derivedTreadles != null) {
+    rows.push({
+      label: "Treadles",
+      oldVal: cv.num_treadles != null ? String(cv.num_treadles) : "—",
+      newVal: String(derivedTreadles),
+      changed: cv.num_treadles !== derivedTreadles,
+    });
+  }
+
+  if (selectedWidthOpt != null) {
+    rows.push({
+      label: "Weaving width",
+      oldVal: cv.weaving_width ? `${Number.parseFloat(cv.weaving_width)} ${cv.weaving_width_unit}` : "—",
+      newVal: selectedWidthOpt.label,
+      changed:
+        !cv.weaving_width ||
+        Number.parseFloat(cv.weaving_width) !== Number.parseFloat(selectedWidthOpt.value) ||
+        cv.weaving_width_unit !== selectedWidthOpt.unit,
+    });
+  }
+
+  return rows;
+}
+
+interface SaveLoomCatalogLinkData {
+  readonly loom: LoomDetail;
+  readonly version: LoomVersion;
+  readonly selectedRef: LoomReferenceSummary;
+  readonly newLoomType: LoomType;
+  readonly selectedShafts: number | null;
+  readonly derivedTreadles: number | null;
+  readonly selectedWidthOpt: WidthOption | null;
+}
+
+interface SaveLoomCatalogLinkCallbacks {
+  readonly setSaving: (v: boolean) => void;
+  readonly setError: (v: string | null) => void;
+  readonly onSuccess: () => void;
+}
+
+async function saveLoomCatalogLink(
+  data: SaveLoomCatalogLinkData,
+  { setSaving, setError, onSuccess }: SaveLoomCatalogLinkCallbacks,
+) {
+  const { loom, version, selectedRef, newLoomType, selectedShafts, derivedTreadles, selectedWidthOpt } = data;
+  setSaving(true);
+  setError(null);
+  try {
+    await updateLoom(loom.id, {
+      manufacturer: selectedRef.brand,
+      model_name: selectedRef.model_name,
+      loom_type: newLoomType,
+    });
+    await linkVersionReference(loom.id, version.id, selectedRef.id);
+
+    const versionPayload: UpdateVersionPayload = {};
+    if (showsShafts(newLoomType) && selectedShafts != null) {
+      versionPayload.num_shafts = selectedShafts;
+    }
+    if (showsTreadles(newLoomType) && derivedTreadles != null) {
+      versionPayload.num_treadles = derivedTreadles;
+    }
+    if (selectedWidthOpt != null) {
+      versionPayload.weaving_width = Number.parseFloat(selectedWidthOpt.value);
+      versionPayload.weaving_width_unit = selectedWidthOpt.unit;
+    }
+    if (Object.keys(versionPayload).length > 0) {
+      await updateVersion(loom.id, version.id, versionPayload);
+    }
+
+    onSuccess();
+  } catch (e) {
+    setError(e instanceof Error ? e.message : "Failed to save changes");
+  } finally {
+    setSaving(false);
+  }
+}
+
 // ---------- component ----------
 
 interface Props {
-  loom: LoomDetail;
-  version: LoomVersion;
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly loom: LoomDetail;
+  readonly version: LoomVersion;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [step, setStep] = useState<Step>("search");
 
   // Search state — displayQuery shown in input, searchQuery triggers API
@@ -197,137 +603,25 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
     const sOpts = ref.shaft_count_options ?? [];
     const wOpts = buildWidthOptions(ref);
 
-    // Auto-match shaft to target version
+    // Auto-match shaft/width to target version (convert units if needed)
     setSelectedShaftIdx(closestIdx(sOpts, version.num_shafts));
-
-    // Auto-match width to target version (convert units if needed)
-    if (wOpts.length > 0 && version.weaving_width) {
-      const curVal = parseFloat(version.weaving_width);
-      const curUnit = version.weaving_width_unit as "cm" | "in";
-      const targetUnit = wOpts[0].unit;
-      const converted =
-        curUnit === targetUnit
-          ? curVal
-          : curUnit === "cm"
-            ? curVal / 2.54
-            : curVal * 2.54;
-      setSelectedWidthIdx(closestIdx(wOpts.map((o) => parseFloat(o.value)), converted));
-    } else {
-      setSelectedWidthIdx(0);
-    }
+    setSelectedWidthIdx(matchWidthIndexForVersion(version, wOpts));
 
     // Skip configure step if nothing to configure
-    const hasDropdowns =
-      (showsShafts(lt) && sOpts.length > 1) || wOpts.length > 1;
+    const hasDropdowns = (showsShafts(lt) && sOpts.length > 1) || wOpts.length > 1;
     setStep(hasDropdowns ? "configure" : "confirm");
   }
 
-  // Diff rows for confirm step
-  const cv = version;
-
-  interface DiffRow {
-    label: string;
-    oldVal: string;
-    newVal: string;
-    changed: boolean;
-  }
-
-  const diffRows: DiffRow[] = selectedRef
-    ? [
-        {
-          label: "Manufacturer",
-          oldVal: loom.manufacturer,
-          newVal: selectedRef.brand,
-          changed: loom.manufacturer !== selectedRef.brand,
-        },
-        {
-          label: "Model",
-          oldVal: loom.model_name,
-          newVal: selectedRef.model_name,
-          changed: loom.model_name !== selectedRef.model_name,
-        },
-        {
-          label: "Loom type",
-          oldVal: LOOM_TYPE_LABELS[loom.loom_type] ?? loom.loom_type,
-          newVal: LOOM_TYPE_LABELS[newLoomType] ?? newLoomType,
-          changed: loom.loom_type !== newLoomType,
-        },
-        ...(cv && showsShafts(newLoomType) && selectedShafts != null
-          ? [
-              {
-                label: "Shafts",
-                oldVal: cv.num_shafts != null ? String(cv.num_shafts) : "—",
-                newVal: String(selectedShafts),
-                changed: cv.num_shafts !== selectedShafts,
-              },
-            ]
-          : []),
-        ...(cv && showsTreadles(newLoomType) && derivedTreadles != null
-          ? [
-              {
-                label: "Treadles",
-                oldVal: cv.num_treadles != null ? String(cv.num_treadles) : "—",
-                newVal: String(derivedTreadles),
-                changed: cv.num_treadles !== derivedTreadles,
-              },
-            ]
-          : []),
-        ...(cv && selectedWidthOpt != null
-          ? [
-              {
-                label: "Weaving width",
-                oldVal: cv.weaving_width
-                  ? `${parseFloat(cv.weaving_width)} ${cv.weaving_width_unit}`
-                  : "—",
-                newVal: selectedWidthOpt.label,
-                changed:
-                  !cv.weaving_width ||
-                  parseFloat(cv.weaving_width) !== parseFloat(selectedWidthOpt.value) ||
-                  cv.weaving_width_unit !== selectedWidthOpt.unit,
-              },
-            ]
-          : []),
-      ]
-    : [];
-
+  const diffRows = computeDiffRows(loom, version, newLoomType, selectedRef, selectedShafts, derivedTreadles, selectedWidthOpt);
   const hasChanges = diffRows.some((r) => r.changed);
 
-  async function handleSave() {
+  const handleSave = () => {
     if (!selectedRef) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await updateLoom(loom.id, {
-        manufacturer: selectedRef.brand,
-        model_name: selectedRef.model_name,
-        loom_type: newLoomType,
-      });
-      await linkVersionReference(loom.id, version.id, selectedRef.id);
-
-      if (cv) {
-        const versionPayload: UpdateVersionPayload = {};
-        if (showsShafts(newLoomType) && selectedShafts != null) {
-          versionPayload.num_shafts = selectedShafts;
-        }
-        if (showsTreadles(newLoomType) && derivedTreadles != null) {
-          versionPayload.num_treadles = derivedTreadles;
-        }
-        if (selectedWidthOpt != null) {
-          versionPayload.weaving_width = parseFloat(selectedWidthOpt.value);
-          versionPayload.weaving_width_unit = selectedWidthOpt.unit;
-        }
-        if (Object.keys(versionPayload).length > 0) {
-          await updateVersion(loom.id, cv.id, versionPayload);
-        }
-      }
-
-      onSuccess();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save changes");
-    } finally {
-      setSaving(false);
-    }
-  }
+    void saveLoomCatalogLink(
+      { loom, version, selectedRef, newLoomType, selectedShafts, derivedTreadles, selectedWidthOpt },
+      { setSaving, setError, onSuccess },
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -350,237 +644,53 @@ export function LinkToCatalogModal({ loom, version, onSuccess, onClose }: Props)
           </button>
         </div>
 
-        {/* ── Step: search ── */}
         {step === "search" && (
-          <div ref={searchContainerRef} className="relative">
-            <label className="mb-1 block text-sm font-medium">Search loom catalog</label>
-            <input
-              type="search"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              value={displayQuery}
-              onChange={(e) => handleInputChange(e.target.value)}
-              placeholder="Schacht Baby Wolf, Louet Spring…"
-              autoFocus
-              autoComplete="off"
-            />
-            {searching && (
-              <p className="mt-1 text-xs text-muted-foreground">Searching…</p>
-            )}
-            {showResults && results.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-60 overflow-y-auto">
-                {results.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground flex flex-col"
-                    onMouseDown={() => handleSelectRef(r)}
-                  >
-                    <span className="font-medium">
-                      {r.brand} {r.model_name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {LOOM_TYPE_LABELS[categoryToLoomType(r.loom_category)]}
-                      {r.shaft_count_options?.length
-                        ? ` · ${r.shaft_count_options.join("/")} shafts`
-                        : ""}
-                      {r.origin_country ? ` · ${r.origin_country}` : ""}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {showResults &&
-              results.length === 0 &&
-              !searching &&
-              displayQuery.length >= 2 && (
-                <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-md">
-                  No results found.
-                </div>
-              )}
-            <div className="mt-4 flex justify-end">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-            </div>
-          </div>
+          <SearchStep
+            searchContainerRef={searchContainerRef}
+            displayQuery={displayQuery}
+            onInputChange={handleInputChange}
+            searching={searching}
+            showResults={showResults}
+            results={results}
+            onSelectRef={handleSelectRef}
+            onClose={onClose}
+          />
         )}
 
-        {/* ── Step: configure ── */}
         {step === "configure" && selectedRef && (
-          <div className="space-y-4">
-            <div className="rounded-md border bg-muted/30 px-3 py-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold">
-                    {selectedRef.brand} {selectedRef.model_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {LOOM_TYPE_LABELS[newLoomType]}
-                    {selectedRef.origin_country ? ` · ${selectedRef.origin_country}` : ""}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setSelectedRef(null);
-                    setStep("search");
-                  }}
-                >
-                  Change
-                </button>
-              </div>
-            </div>
-
-            {showsShafts(newLoomType) && shaftOptions.length > 0 && (
-              <div>
-                <label className="mb-1 block text-sm font-medium">Shafts</label>
-                {shaftOptions.length > 1 ? (
-                  <select
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={selectedShaftIdx}
-                    onChange={(e) => setSelectedShaftIdx(Number(e.target.value))}
-                  >
-                    {shaftOptions.map((s, i) => (
-                      <option key={s} value={i}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-                    {shaftOptions[0]}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {showsTreadles(newLoomType) && derivedTreadles != null && (
-              <div>
-                <label className="mb-1 block text-sm font-medium">Treadles</label>
-                <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-                  {derivedTreadles}
-                </p>
-              </div>
-            )}
-
-            {widthOptions.length > 0 && (
-              <div>
-                <label className="mb-1 block text-sm font-medium">Weaving width</label>
-                {widthOptions.length > 1 ? (
-                  <select
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={selectedWidthIdx}
-                    onChange={(e) => setSelectedWidthIdx(Number(e.target.value))}
-                  >
-                    {widthOptions.map((o, i) => (
-                      <option key={o.value} value={i}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-                    {widthOptions[0].label}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setSelectedRef(null);
-                  setStep("search");
-                }}
-              >
-                Back
-              </Button>
-              <Button type="button" onClick={() => setStep("confirm")}>
-                Review changes
-              </Button>
-            </div>
-          </div>
+          <ConfigureStep
+            selectedRef={selectedRef}
+            newLoomType={newLoomType}
+            shaftOptions={shaftOptions}
+            selectedShaftIdx={selectedShaftIdx}
+            setSelectedShaftIdx={setSelectedShaftIdx}
+            derivedTreadles={derivedTreadles}
+            widthOptions={widthOptions}
+            selectedWidthIdx={selectedWidthIdx}
+            setSelectedWidthIdx={setSelectedWidthIdx}
+            onChangeRef={() => {
+              setSelectedRef(null);
+              setStep("search");
+            }}
+            onReview={() => setStep("confirm")}
+          />
         )}
 
-        {/* ── Step: confirm ── */}
         {step === "confirm" && selectedRef && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Review the changes below. The loom identity and current configuration will be
-              updated to match the catalog entry.
-            </p>
-
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground w-28">
-                      Field
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                      Current
-                    </th>
-                    <th className="px-3 py-2 text-center text-xs text-muted-foreground w-6">→</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                      New
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {diffRows.map((row) => (
-                    <tr
-                      key={row.label}
-                      className={`border-b last:border-0 ${row.changed ? "" : "opacity-40"}`}
-                    >
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{row.label}</td>
-                      <td className="px-3 py-2">{row.oldVal}</td>
-                      <td className="px-3 py-2 text-center text-muted-foreground">→</td>
-                      <td
-                        className={`px-3 py-2 ${row.changed ? "font-medium text-foreground" : ""}`}
-                      >
-                        {row.newVal}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {!hasChanges && (
-              <p className="text-sm text-muted-foreground italic">
-                No fields will change — only the catalog link will be set.
-              </p>
-            )}
-
-            {error && (
-              <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  setStep(
-                    shaftOptions.length > 1 || widthOptions.length > 1
-                      ? "configure"
-                      : "search",
-                  )
-                }
-                disabled={saving}
-              >
-                Back
-              </Button>
-              <Button type="button" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Confirm & save"}
-              </Button>
-            </div>
-          </div>
+          <ConfirmStep
+            diffRows={diffRows}
+            hasChanges={hasChanges}
+            error={error}
+            saving={saving}
+            onBack={() =>
+              setStep(
+                shaftOptions.length > 1 || widthOptions.length > 1
+                  ? "configure"
+                  : "search",
+              )
+            }
+            onSave={handleSave}
+          />
         )}
       </div>
     </div>

@@ -32,7 +32,7 @@ class ClientLogEvent(BaseModel):
 async def ingest_client_logs(
     events: Annotated[list[ClientLogEvent], Field(max_length=_MAX_EVENTS_PER_REQUEST)],
     request: Request,
-    current_user: User | None = Depends(get_optional_user),
+    current_user: Annotated[User | None, Depends(get_optional_user)],
 ) -> None:
     if current_user is None:
         return

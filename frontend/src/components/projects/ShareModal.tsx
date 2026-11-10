@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { updateProjectShare, revokeProjectShare, type ProjectDetail } from "@/api/projects";
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
@@ -15,7 +16,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     document.body.appendChild(ta);
     ta.select();
     const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
+    ta.remove();
     return ok;
   }
 }
@@ -25,9 +26,9 @@ export function ShareModal({
   onUpdated,
   onClose,
 }: {
-  project: ProjectDetail;
-  onUpdated: (updated: ProjectDetail) => void;
-  onClose: () => void;
+  readonly project: ProjectDetail;
+  readonly onUpdated: (updated: ProjectDetail) => void;
+  readonly onClose: () => void;
 }) {
   const [expiryDays, setExpiryDays] = useState<string>("30");
   const [copied, setCopied] = useState(false);
@@ -35,19 +36,13 @@ export function ShareModal({
   const hasSlug = !!project.share_slug && project.share_visibility !== "private";
   const shareUrl = hasSlug ? `${window.location.origin}/p/${project.share_slug}` : null;
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const shareMutation = useMutation({
     mutationFn: () => {
-      const days = parseInt(expiryDays, 10);
+      const days = Number.parseInt(expiryDays, 10);
       const expires =
-        !isNaN(days) && days > 0
+        !Number.isNaN(days) && days > 0
           ? new Date(Date.now() + days * 86_400_000).toISOString()
           : null;
       return updateProjectShare(project.id, "link", expires);
@@ -80,20 +75,20 @@ export function ShareModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-md w-full">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="font-semibold text-sm flex items-center gap-2">
-            <AppIcons.share className="h-4 w-4" />
+            <AppIcons.Share className="h-4 w-4" />
             Share project
           </h2>
-          <button
+          <button type="button"
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
             aria-label="Close"
           >
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
 
@@ -112,7 +107,7 @@ export function ShareModal({
                     "Copied!"
                   ) : (
                     <>
-                      <AppIcons.copyLink className="h-3.5 w-3.5 mr-1" />
+                      <AppIcons.CopyLink className="h-3.5 w-3.5 mr-1" />
                       Copy
                     </>
                   )}
@@ -129,7 +124,7 @@ export function ShareModal({
                   rel="noopener noreferrer"
                   className="ml-auto flex items-center gap-1 hover:text-foreground transition-colors"
                 >
-                  View <AppIcons.externalLink className="h-3 w-3" />
+                  View <AppIcons.ExternalLink className="h-3 w-3" />
                 </a>
               </div>
               <div className="pt-1 border-t border-border">
@@ -149,8 +144,9 @@ export function ShareModal({
                 Create a read-only link — anyone with it can view this project without an account.
               </p>
               <div className="flex items-center gap-2 text-sm">
-                <label className="text-muted-foreground text-xs shrink-0">Expires after</label>
+                <label htmlFor="share-expiry" className="text-muted-foreground text-xs shrink-0">Expires after</label>
                 <select
+                  id="share-expiry"
                   value={expiryDays}
                   onChange={(e) => setExpiryDays(e.target.value)}
                   className="rounded border border-border bg-background px-2 py-1 text-xs"

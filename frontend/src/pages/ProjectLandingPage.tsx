@@ -1,5 +1,5 @@
 import DOMPurify from "dompurify";
-import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useMemo, type ReactNode } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { ShareModal } from "@/components/projects/ShareModal";
 import { addProjectToCollection, removeProjectFromCollection } from "@/api/collections";
 import { AddToCollectionModal } from "@/components/collections/AddToCollectionModal";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -66,7 +67,10 @@ function useAuthedSvg(url: string | null): { svg: string | null; loading: boolea
       const token = await getAuthToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await fetch(fetchUrl, { headers, credentials: "include" });
-      if (!res.ok || cancelled) { if (!cancelled) dispatch({ type: "error" }); return; }
+      if (!res.ok || cancelled) {
+        if (!cancelled) { dispatch({ type: "error" }); }
+        return;
+      }
       const text = await res.text();
       if (!cancelled) dispatch({ type: "done", svg: text });
     }
@@ -81,7 +85,7 @@ function useAuthedSvg(url: string | null): { svg: string | null; loading: boolea
 // Zoom percentage input — lets the user type a zoom value directly.
 // ---------------------------------------------------------------------------
 
-function ZoomInput({ zoom, onCommit }: { zoom: number; onCommit: (z: number) => void }) {
+function ZoomInput({ zoom, onCommit }: { readonly zoom: number; readonly onCommit: (z: number) => void }) {
   const [editing, setEditing] = useState(false);
   const [raw, setRaw] = useState("");
 
@@ -93,8 +97,8 @@ function ZoomInput({ zoom, onCommit }: { zoom: number; onCommit: (z: number) => 
 
   function commit(input: string) {
     setEditing(false);
-    const n = parseInt(input, 10);
-    if (!isNaN(n)) {
+    const n = Number.parseInt(input, 10);
+    if (!Number.isNaN(n)) {
       onCommit(Math.max(0.05, Math.min(8, n / 100)));
     }
   }
@@ -124,11 +128,12 @@ function ZoomInput({ zoom, onCommit }: { zoom: number; onCommit: (z: number) => 
 // ---------------------------------------------------------------------------
 
 function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
-  svgUrl: string;
-  title?: string;
-  onClose: () => void;
+  readonly svgUrl: string;
+  readonly title?: string;
+  readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
+  useEscapeKey(onClose);
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   const panRef = useRef({ x: 0, y: 0 });
@@ -223,12 +228,12 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
       const w = svgEl.getAttribute("width");
       const h = svgEl.getAttribute("height");
       if (w && h) {
-        svgSizeRef.current = { w: parseFloat(w), h: parseFloat(h) };
+        svgSizeRef.current = { w: Number.parseFloat(w), h: Number.parseFloat(h) };
       } else {
         const vb = svgEl.getAttribute("viewBox");
         if (vb) {
           const parts = vb.trim().split(/\s+/);
-          if (parts.length >= 4) svgSizeRef.current = { w: parseFloat(parts[2]), h: parseFloat(parts[3]) };
+          if (parts.length >= 4) svgSizeRef.current = { w: Number.parseFloat(parts[2]), h: Number.parseFloat(parts[3]) };
         }
       }
     }
@@ -294,34 +299,32 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
     <div
       ref={backdropRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
       <div
         className="bg-card rounded-xl border border-border shadow-xl flex flex-col"
         style={{ width: "min(96vw, 1400px)", height: "min(92vh, 1200px)" }}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
       >
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border shrink-0">
           <span className="text-sm font-medium truncate flex-1">{title}</span>
-          <button className={btnCls} onClick={() => handleZoomChange(Math.max(0.05, +(zoomRef.current - 0.25).toFixed(2)))} title="Zoom out">
-            <AppIcons.zoomOut className="h-4 w-4" />
+          <button type="button" className={btnCls} onClick={() => handleZoomChange(Math.max(0.05, +(zoomRef.current - 0.25).toFixed(2)))} title="Zoom out">
+            <AppIcons.ZoomOut className="h-4 w-4" />
           </button>
           <ZoomInput zoom={zoom} onCommit={handleZoomChange} />
-          <button className={btnCls} onClick={() => handleZoomChange(Math.min(8, +(zoomRef.current + 0.25).toFixed(2)))} title="Zoom in">
-            <AppIcons.zoomIn className="h-4 w-4" />
+          <button type="button" className={btnCls} onClick={() => handleZoomChange(Math.min(8, +(zoomRef.current + 0.25).toFixed(2)))} title="Zoom in">
+            <AppIcons.ZoomIn className="h-4 w-4" />
           </button>
-          <button className={btnCls} onClick={handleReset} title="Zoom to fit (0)">
-            <AppIcons.zoomFit className="h-4 w-4" />
+          <button type="button" className={btnCls} onClick={handleReset} title="Zoom to fit (0)">
+            <AppIcons.ZoomFit className="h-4 w-4" />
           </button>
-          <button
+          <button type="button"
             className="rounded p-1 text-muted-foreground hover:text-foreground transition-colors ml-1"
             onClick={onClose}
             title="Close"
           >
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
 
@@ -361,39 +364,34 @@ function DrawdownModal({ svgUrl, title = "Design preview", onClose }: {
 // ---------------------------------------------------------------------------
 
 function TieUpModal({ projectId, draftName, onClose }: {
-  projectId: string;
-  draftName: string;
-  onClose: () => void;
+  readonly projectId: string;
+  readonly draftName: string;
+  readonly onClose: () => void;
 }) {
   const { t } = useTranslation();
+  useEscapeKey(onClose);
   const { data: plan, isLoading } = useQuery({
     queryKey: ["warping-plan", projectId],
     queryFn: () => getWarpingPlan(projectId),
   });
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
       <div className="bg-card rounded-xl border border-border shadow-2xl flex flex-col max-w-lg w-full max-h-[80vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="font-semibold text-sm">{t("projectLandingPage.tieUpTitle", { name: draftName })}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
-            <AppIcons.close className="h-4 w-4" />
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
         <div className="flex-1 overflow-auto p-5">
           {isLoading && (
             <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
-              <AppIcons.spinner className="h-4 w-4 animate-spin mr-2" /> {t("common.loading")}
+              <AppIcons.Spinner className="h-4 w-4 animate-spin mr-2" /> {t("common.loading")}
             </div>
           )}
           {plan && !plan.has_tieup && (
@@ -430,7 +428,7 @@ function TieUpModal({ projectId, draftName, onClose }: {
               window.open(`/projects/${projectId}/warping-plan`, "_blank");
             }}
           >
-            <AppIcons.print className="h-4 w-4 mr-1.5" />
+            <AppIcons.Print className="h-4 w-4 mr-1.5" />
             {t("projectLandingPage.printSavePdf")}
           </Button>
         </div>
@@ -455,16 +453,16 @@ function ColorPaletteSection({
   locked,
   yarnColors,
 }: {
-  projectId: string;
-  wifColors: { index: number; hex: string }[];
-  warpStats: { hex: string; count: number; percentage: number }[] | null;
-  weftStats: { hex: string; count: number; percentage: number }[] | null;
-  colorReplacements: Record<string, string> | null;
-  warpLengthCm: number | null;
-  onSave: (replacements: Record<string, string>, yarnLinks: Record<string, string | null>) => void;
-  isSaving: boolean;
-  locked?: boolean;
-  yarnColors: ProjectYarnColor[];
+  readonly projectId: string;
+  readonly wifColors: { index: number; hex: string }[];
+  readonly warpStats: { hex: string; count: number; percentage: number }[] | null;
+  readonly weftStats: { hex: string; count: number; percentage: number }[] | null;
+  readonly colorReplacements: Record<string, string> | null;
+  readonly warpLengthCm: number | null;
+  readonly onSave: (replacements: Record<string, string>, yarnLinks: Record<string, string | null>) => void;
+  readonly isSaving: boolean;
+  readonly locked?: boolean;
+  readonly yarnColors: ProjectYarnColor[];
 }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
@@ -611,7 +609,7 @@ function ColorPaletteSection({
                             style={{ background: colorOffer.suggestedHex }}
                           />
                           <span className="font-mono text-muted-foreground">{colorOffer.suggestedHex}</span>
-                          <button
+                          <button type="button"
                             className="ml-1 rounded px-1.5 py-0.5 bg-accent text-primary-foreground text-[10px] font-medium hover:opacity-90"
                             onClick={() => {
                               setReplacement(c.hex, colorOffer.suggestedHex);
@@ -620,7 +618,7 @@ function ColorPaletteSection({
                           >
                             {t("projectLandingPage.updateColor")}
                           </button>
-                          <button
+                          <button type="button"
                             className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
                             onClick={() => setColorOffer(null)}
                           >
@@ -646,7 +644,7 @@ function ColorPaletteSection({
                       <div className="flex items-center gap-2">
                         <ColorPicker value={displayHex} onChange={(hex) => setReplacement(c.hex, hex)} size="sm" />
                         {pending[c.hex] && (
-                          <button
+                          <button type="button"
                             className="text-xs text-muted-foreground hover:text-foreground"
                             onClick={() => setReplacement(c.hex, c.hex)}
                             title="Reset to original"
@@ -665,25 +663,29 @@ function ColorPaletteSection({
                     const displayName = hasPending
                       ? (pendingEntry?.yarn.name ?? null)
                       : (serverLinked?.yarn_name ?? null);
+                    let linkLabel: ReactNode;
+                    if (isUnlinkPending && serverLinked) {
+                      linkLabel = <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>;
+                    } else if (displayName) {
+                      linkLabel = (
+                        <span className={`truncate max-w-[100px] ${hasPending ? "text-accent" : "text-card-foreground"}`}>
+                          {displayName}
+                        </span>
+                      );
+                    } else {
+                      linkLabel = <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>;
+                    }
                     return (
                       <td className="px-3 py-2">
-                        <button
+                        <button type="button"
                           className={`flex items-center gap-1.5 text-xs rounded px-2 py-1 border transition-colors ${
                             hasPending ? "border-accent/60 bg-accent/10 hover:bg-accent/20" : "border-border hover:bg-muted"
                           }`}
                           onClick={() => setYarnPickerHex(c.hex)}
                           title={displayName ?? t("projectLandingPage.linkYarn")}
                         >
-                          <AppIcons.yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          {isUnlinkPending && serverLinked ? (
-                            <span className="truncate max-w-[100px] text-muted-foreground line-through">{serverLinked.yarn_name}</span>
-                          ) : displayName ? (
-                            <span className={`truncate max-w-[100px] ${hasPending ? "text-accent" : "text-card-foreground"}`}>
-                              {displayName}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">{t("projectLandingPage.linkYarn")}</span>
-                          )}
+                          <AppIcons.Yarn className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          {linkLabel}
                           {hasPending && <span className="text-[10px] text-accent">•</span>}
                         </button>
                       </td>
@@ -701,11 +703,11 @@ function ColorPaletteSection({
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/20">
             <span className="text-sm font-medium">Preview with color replacements</span>
-            <button
+            <button type="button"
               className="rounded p-0.5 text-muted-foreground hover:text-foreground"
               onClick={() => setPreviewOpen(false)}
             >
-              <AppIcons.close className="h-4 w-4" />
+              <AppIcons.Close className="h-4 w-4" />
             </button>
           </div>
           <div className="p-3">
@@ -786,9 +788,9 @@ function WarpSetupSection({
   displayUnit,
   onUpdated,
 }: {
-  project: ProjectDetail;
-  displayUnit: LengthUnit;
-  onUpdated: (p: ProjectDetail) => void;
+  readonly project: ProjectDetail;
+  readonly displayUnit: LengthUnit;
+  readonly onUpdated: (p: ProjectDetail) => void;
 }) {
   // Per-field unit defaults: prefer the original source unit over the user's global preference.
   // Length / item + waste-between: use the draft WIF warp_length_unit if available.
@@ -805,12 +807,12 @@ function WarpSetupSection({
   // Ground-truth loom waste in cm; changes only when backend data refreshes.
   const loomWasteDefaultCm = useMemo((): number | null => {
     if (project.warp_waste_allowance) {
-      const n = parseFloat(project.warp_waste_allowance);
-      if (!isNaN(n)) return convertLength(n, (project.length_unit as LengthUnit) ?? "cm", "cm");
+      const n = Number.parseFloat(project.warp_waste_allowance);
+      if (!Number.isNaN(n)) return convertLength(n, (project.length_unit as LengthUnit) ?? "cm", "cm");
     }
     if (project.loom_warp_waste_allowance) {
-      const n = parseFloat(project.loom_warp_waste_allowance);
-      if (!isNaN(n)) return convertLength(n, (project.loom_warp_waste_unit as LengthUnit) ?? "cm", "cm");
+      const n = Number.parseFloat(project.loom_warp_waste_allowance);
+      if (!Number.isNaN(n)) return convertLength(n, (project.loom_warp_waste_unit as LengthUnit) ?? "cm", "cm");
     }
     return null;
   }, [project.warp_waste_allowance, project.loom_warp_waste_allowance, project.loom_warp_waste_unit, project.length_unit]);
@@ -818,8 +820,8 @@ function WarpSetupSection({
   // Helpers to convert a stored project value (in project.length_unit) to a target unit via cm.
   function fromStored(raw: string | null, target: LengthUnit): string {
     if (!raw) return "";
-    const n = parseFloat(raw);
-    if (isNaN(n)) return "";
+    const n = Number.parseFloat(raw);
+    if (Number.isNaN(n)) return "";
     const cm = convertLength(n, (project.length_unit as LengthUnit) ?? "cm", "cm");
     return convertLength(cm, "cm", target).toFixed(1);
   }
@@ -859,17 +861,17 @@ function WarpSetupSection({
 
   // Unit-change handlers auto-convert current field values to the new unit.
   function handleItemUnitChange(newUnit: LengthUnit) {
-    const conv = (v: string) => { const n = parseFloat(v); return isNaN(n) ? v : convertLength(n, itemUnit, newUnit).toFixed(1); };
+    const conv = (v: string) => { const n = Number.parseFloat(v); return Number.isNaN(n) ? v : convertLength(n, itemUnit, newUnit).toFixed(1); };
     if (lengthPerItem) setLengthPerItem(conv(lengthPerItem));
     if (wasteBetween) setWasteBetween(conv(wasteBetween));
     setItemUnit(newUnit);
   }
   function handleWasteUnitChange(newUnit: LengthUnit) {
-    if (loomWaste) { const n = parseFloat(loomWaste); if (!isNaN(n)) setLoomWaste(convertLength(n, wasteUnit, newUnit).toFixed(1)); }
+    if (loomWaste) { const n = Number.parseFloat(loomWaste); if (!Number.isNaN(n)) setLoomWaste(convertLength(n, wasteUnit, newUnit).toFixed(1)); }
     setWasteUnit(newUnit);
   }
 
-  const numItems = Math.max(1, parseInt(items, 10) || 1);
+  const numItems = Math.max(1, Number.parseInt(items, 10) || 1);
 
   // "Origin" values for dirty detection — computed in current field units so a unit change alone isn't dirty.
   const origLength = (() => {
@@ -888,7 +890,7 @@ function WarpSetupSection({
 
   const mutation = useMutation({
     mutationFn: () => {
-      const toCm = (v: string, u: LengthUnit) => convertLength(parseFloat(v), u, "cm");
+      const toCm = (v: string, u: LengthUnit) => convertLength(Number.parseFloat(v), u, "cm");
       return updateProjectWarpSetup(project.id, {
         num_items: numItems,
         finished_length_per_item: lengthPerItem ? toCm(lengthPerItem, itemUnit) : null,
@@ -984,17 +986,7 @@ function formatDentPattern(pattern: number[]): string {
   return pattern.length > MAX ? `${preview}, … (${pattern.length} dents)` : preview;
 }
 
-function ReedSelector({
-  project,
-  onUpdated,
-}: {
-  project: ProjectDetail;
-  onUpdated: (p: ProjectDetail) => void;
-}) {
-  const { t } = useTranslation();
-  const locked = project.status !== "created";
-
-  // Resolve EPI from draft data (same logic as DraftDetailPage)
+function resolveEpi(project: ProjectDetail): number | null {
   const epiFromSpacing =
     project.draft_wif_measurements?.warp_spacing != null && project.draft_wif_measurements.warp_spacing > 0
       ? Math.round((2.54 / project.draft_wif_measurements.warp_spacing) * 10) / 10
@@ -1005,23 +997,178 @@ function ReedSelector({
       ? Math.round((project.draft_warp_threads / (weavingWidthCm / 2.54)) * 10) / 10
       : null;
   const resolvedEpi = project.draft_epi_override ?? epiFromSpacing ?? epiFromWidthAndCount;
-  const epiInt = resolvedEpi != null ? Math.round(resolvedEpi) : null;
+  return resolvedEpi != null ? Math.round(resolvedEpi) : null;
+}
 
-  // Build dropdown options: loom reeds first (sorted), then common dents not already covered
+function buildDentsList(project: ProjectDetail): { loomDents: number[]; extraDents: number[]; allDents: number[] } {
   const loomDents = project.loom_reeds.map((r) => r.dents_per_inch).sort((a, b) => a - b);
   const extraDents = COMMON_DENTS.filter((d) => !loomDents.includes(d));
-  const allDents = [...loomDents, ...extraDents];
+  return { loomDents, extraDents, allDents: [...loomDents, ...extraDents] };
+}
+
+interface ReedFit {
+  isCleanMultiple: boolean;
+  threadsPerDent: number | null;
+  dentPattern: number[] | null;
+  idealDent: number | null;
+}
+
+function computeReedFit(epiInt: number | null, dentsInt: number | null, allDents: number[]): ReedFit {
+  const isCleanMultiple = epiInt != null && dentsInt != null && dentsInt > 0 && epiInt % dentsInt === 0;
+  const threadsPerDent = isCleanMultiple ? epiInt! / dentsInt! : null;
+  const dentPattern =
+    !isCleanMultiple && epiInt != null && dentsInt != null && dentsInt > 0 ? buildDentPattern(epiInt, dentsInt) : null;
+  const idealDent = dentPattern != null && epiInt != null ? nearestCleanDent(epiInt, allDents) : null;
+  return { isCleanMultiple, threadsPerDent, dentPattern, idealDent };
+}
+
+function LockedReedDisplay({ epiInt, savedDents }: { readonly epiInt: number | null; readonly savedDents: number | null }) {
+  const { t } = useTranslation();
+  const savedDentsInt = savedDents != null ? Math.round(savedDents) : null;
+  const { threadsPerDent: savedTpd, dentPattern: savedPattern } = computeReedFit(epiInt, savedDentsInt, []);
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.reed")}</h3>
+        <span className="text-xs text-muted-foreground">{t("projectLandingPage.locked")}</span>
+      </div>
+      {savedDents != null ? (
+        <div className="space-y-1">
+          <p className="text-sm font-medium">{t("projectLandingPage.reedDent", { dents: savedDents })}</p>
+          {savedTpd != null && (
+            <p className="text-sm font-semibold">
+              {t("projectLandingPage.threadsPerDent", { count: savedTpd })}{savedTpd === 1 ? ` ${t("projectLandingPage.ideal")}` : ""}
+            </p>
+          )}
+          {savedPattern != null && (
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold">
+                {t("projectLandingPage.threadsPerDentRange", { min: Math.min(...savedPattern), max: Math.max(...savedPattern) })}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("projectLandingPage.threadingPattern")} {formatDentPattern(savedPattern)}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground italic">{t("projectLandingPage.noReedSelected")}</p>
+      )}
+    </section>
+  );
+}
+
+function DentMismatchWarning({
+  dentPattern,
+  epiInt,
+  effectiveDentsInt,
+  idealDent,
+  onSwitchReed,
+}: {
+  readonly dentPattern: number[] | null;
+  readonly epiInt: number | null;
+  readonly effectiveDentsInt: number | null;
+  readonly idealDent: number | null;
+  readonly onSwitchReed: (dent: number) => void;
+}) {
+  const { t } = useTranslation();
+  if (dentPattern == null || epiInt == null || effectiveDentsInt == null) return null;
+  return (
+    <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 px-3 py-2 space-y-1">
+      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+        {t("projectLandingPage.approxDistribution", { epi: epiInt, dents: effectiveDentsInt })}
+      </p>
+      <p className="font-mono text-xs text-amber-700 dark:text-amber-400">
+        {formatDentPattern(dentPattern)}
+      </p>
+      {idealDent != null && idealDent !== effectiveDentsInt && (
+        <p className="text-xs text-amber-700 dark:text-amber-400 pt-0.5">
+          {t("projectLandingPage.useCleanSett", { dent: idealDent })}{" "}
+          <button type="button"
+            className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200"
+            onClick={() => onSwitchReed(idealDent)}
+          >
+            {t("projectLandingPage.switchReed")}
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RecommendedReedNudge({
+  epiInt,
+  bestMatch,
+  effectiveDentsInt,
+  dentPattern,
+  onUseThis,
+}: {
+  readonly epiInt: number | null;
+  readonly bestMatch: number | null;
+  readonly effectiveDentsInt: number | null;
+  readonly dentPattern: number[] | null;
+  readonly onUseThis: (dent: number) => void;
+}) {
+  const { t } = useTranslation();
+  if (epiInt == null || bestMatch == null || effectiveDentsInt === bestMatch || dentPattern) return null;
+  return (
+    <p className="text-xs text-muted-foreground">
+      {t("projectLandingPage.recommendedReed", { epi: epiInt, dents: bestMatch })}{" "}
+      <button type="button"
+        className="underline underline-offset-2 hover:text-foreground"
+        onClick={() => onUseThis(bestMatch)}
+      >
+        {t("projectLandingPage.useThis")}
+      </button>
+    </p>
+  );
+}
+
+function resolveInitialReedSelectValue(project: ProjectDetail, bestMatch: number | null): string {
+  if (project.reed_dents_per_inch != null) return String(project.reed_dents_per_inch);
+  if (bestMatch != null) return String(bestMatch);
+  return "";
+}
+
+function selectReedValue(val: string, setSelectValue: (v: string) => void, mutate: (dents: number | null) => void) {
+  setSelectValue(val);
+  if (val !== "custom" && val !== "") mutate(Number.parseFloat(val));
+  else if (val === "") mutate(null);
+}
+
+function saveCustomReed(customInput: string, mutate: (dents: number | null) => void) {
+  const n = Number.parseFloat(customInput);
+  if (!Number.isNaN(n) && n > 0) mutate(n);
+}
+
+function computeEffectiveDents(isCustom: boolean, customInput: string, selectValue: string): number | null {
+  if (isCustom) return Number.parseFloat(customInput);
+  if (selectValue !== "") return Number.parseFloat(selectValue);
+  return null;
+}
+
+function ReedSelector({
+  project,
+  onUpdated,
+}: {
+  readonly project: ProjectDetail;
+  readonly onUpdated: (p: ProjectDetail) => void;
+}) {
+  const { t } = useTranslation();
+  const locked = project.status !== "created";
+
+  const epiInt = resolveEpi(project);
+
+  // Build dropdown options: loom reeds first (sorted), then common dents not already covered
+  const { loomDents, extraDents, allDents } = buildDentsList(project);
 
   // Best recommendation for the resolved EPI
   const bestMatch = epiInt != null
     ? (getReedRecommendation(epiInt).matches[0]?.dents ?? null)
     : null;
 
-  const [selectValue, setSelectValue] = useState<string>(() => {
-    if (project.reed_dents_per_inch != null) return String(project.reed_dents_per_inch);
-    if (bestMatch != null) return String(bestMatch);
-    return "";
-  });
+  const [selectValue, setSelectValue] = useState<string>(() => resolveInitialReedSelectValue(project, bestMatch));
   const [customInput, setCustomInput] = useState<string>(
     project.reed_dents_per_inch != null && !allDents.includes(project.reed_dents_per_inch)
       ? String(project.reed_dents_per_inch)
@@ -1034,79 +1181,17 @@ function ReedSelector({
     onSuccess: onUpdated,
   });
 
-  function handleSelect(val: string) {
-    setSelectValue(val);
-    if (val !== "custom" && val !== "") mutation.mutate(parseFloat(val));
-    else if (val === "") mutation.mutate(null);
-  }
+  const handleSelect = (val: string) => selectReedValue(val, setSelectValue, mutation.mutate);
+  const handleCustomSave = () => saveCustomReed(customInput, mutation.mutate);
 
-  function handleCustomSave() {
-    const n = parseFloat(customInput);
-    if (!isNaN(n) && n > 0) mutation.mutate(n);
-  }
-
-  const effectiveDents = isCustom
-    ? parseFloat(customInput)
-    : selectValue !== "" ? parseFloat(selectValue) : null;
+  const effectiveDents = computeEffectiveDents(isCustom, customInput, selectValue);
   const effectiveDentsInt = effectiveDents != null ? Math.round(effectiveDents) : null;
 
-  const isCleanMultiple =
-    epiInt != null && effectiveDentsInt != null && effectiveDentsInt > 0 &&
-    epiInt % effectiveDentsInt === 0;
-
-  const threadsPerDent = isCleanMultiple ? epiInt! / effectiveDentsInt! : null;
-
-  const dentPattern =
-    !isCleanMultiple && epiInt != null && effectiveDentsInt != null && effectiveDentsInt > 0
-      ? buildDentPattern(epiInt, effectiveDentsInt)
-      : null;
-
-  const idealDent =
-    dentPattern != null && epiInt != null
-      ? nearestCleanDent(epiInt, allDents)
-      : null;
+  const { threadsPerDent, dentPattern, idealDent } = computeReedFit(epiInt, effectiveDentsInt, allDents);
 
   // Locked: read-only display
   if (locked) {
-    const savedDents = project.reed_dents_per_inch;
-    const savedDentsInt = savedDents != null ? Math.round(savedDents) : null;
-    const savedClean = epiInt != null && savedDentsInt != null && savedDentsInt > 0 && epiInt % savedDentsInt === 0;
-    const savedTpd = savedClean ? epiInt! / savedDentsInt! : null;
-    const savedPattern =
-      !savedClean && epiInt != null && savedDentsInt != null && savedDentsInt > 0
-        ? buildDentPattern(epiInt, savedDentsInt)
-        : null;
-
-    return (
-      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.reed")}</h3>
-          <span className="text-xs text-muted-foreground">{t("projectLandingPage.locked")}</span>
-        </div>
-        {savedDents != null ? (
-          <div className="space-y-1">
-            <p className="text-sm font-medium">{t("projectLandingPage.reedDent", { dents: savedDents })}</p>
-            {savedTpd != null && (
-              <p className="text-sm font-semibold">
-                {t("projectLandingPage.threadsPerDent", { count: savedTpd })}{savedTpd === 1 ? ` ${t("projectLandingPage.ideal")}` : ""}
-              </p>
-            )}
-            {savedPattern != null && (
-              <div className="space-y-0.5">
-                <p className="text-sm font-semibold">
-                  {t("projectLandingPage.threadsPerDentRange", { min: Math.min(...savedPattern), max: Math.max(...savedPattern) })}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("projectLandingPage.threadingPattern")} {formatDentPattern(savedPattern)}
-                </p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground italic">{t("projectLandingPage.noReedSelected")}</p>
-        )}
-      </section>
-    );
+    return <LockedReedDisplay epiInt={epiInt} savedDents={project.reed_dents_per_inch} />;
   }
 
   return (
@@ -1161,44 +1246,24 @@ function ReedSelector({
           </span>
         )}
 
-        {mutation.isPending && <AppIcons.spinner className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        {mutation.isPending && <AppIcons.Spinner className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
       </div>
 
-      {/* Non-clean multiple: amber warning + Bresenham pattern */}
-      {dentPattern != null && epiInt != null && effectiveDentsInt != null && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/40 px-3 py-2 space-y-1">
-          <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-            {t("projectLandingPage.approxDistribution", { epi: epiInt, dents: effectiveDentsInt })}
-          </p>
-          <p className="font-mono text-xs text-amber-700 dark:text-amber-400">
-            {formatDentPattern(dentPattern)}
-          </p>
-          {idealDent != null && idealDent !== effectiveDentsInt && (
-            <p className="text-xs text-amber-700 dark:text-amber-400 pt-0.5">
-              {t("projectLandingPage.useCleanSett", { dent: idealDent })}{" "}
-              <button
-                className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200"
-                onClick={() => handleSelect(String(idealDent))}
-              >
-                {t("projectLandingPage.switchReed")}
-              </button>
-            </p>
-          )}
-        </div>
-      )}
+      <DentMismatchWarning
+        dentPattern={dentPattern}
+        epiInt={epiInt}
+        effectiveDentsInt={effectiveDentsInt}
+        idealDent={idealDent}
+        onSwitchReed={(dent) => handleSelect(String(dent))}
+      />
 
-      {/* "Use this" nudge when a better clean-multiple reed exists */}
-      {epiInt != null && bestMatch != null && effectiveDentsInt !== bestMatch && !dentPattern && (
-        <p className="text-xs text-muted-foreground">
-          {t("projectLandingPage.recommendedReed", { epi: epiInt, dents: bestMatch })}{" "}
-          <button
-            className="underline underline-offset-2 hover:text-foreground"
-            onClick={() => handleSelect(String(bestMatch))}
-          >
-            {t("projectLandingPage.useThis")}
-          </button>
-        </p>
-      )}
+      <RecommendedReedNudge
+        epiInt={epiInt}
+        bestMatch={bestMatch}
+        effectiveDentsInt={effectiveDentsInt}
+        dentPattern={dentPattern}
+        onUseThis={(dent) => handleSelect(String(dent))}
+      />
 
       {project.loom_id && project.loom_reeds.length === 0 && (
         <p className="text-xs text-muted-foreground">
@@ -1223,9 +1288,9 @@ function NotesSection({
   initialNotes,
   onUpdated,
 }: {
-  projectId: string;
-  initialNotes: string | null;
-  onUpdated: (updated: ProjectDetail) => void;
+  readonly projectId: string;
+  readonly initialNotes: string | null;
+  readonly onUpdated: (updated: ProjectDetail) => void;
 }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
@@ -1244,7 +1309,7 @@ function NotesSection({
       <section className="space-y-1">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("projectLandingPage.notes")}</h3>
-          <button
+          <button type="button"
             className="text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setEditing(true)}
           >
@@ -1408,6 +1473,23 @@ export function ProjectLandingPage() {
   const m = project.draft_wif_measurements;
   const warpLengthCm = project.draft_warp_length_cm;
 
+  let settOrSpacing: ReactNode = null;
+  if (project.draft_epi_override != null) {
+    settOrSpacing = (
+      <>
+        <dt className="text-muted-foreground">{t("projectLandingPage.sett")}</dt>
+        <dd>{project.draft_epi_override} {t("projectLandingPage.epiUnit")}</dd>
+      </>
+    );
+  } else if (m?.warp_spacing != null) {
+    settOrSpacing = (
+      <>
+        <dt className="text-muted-foreground">{t("projectLandingPage.warpSpacing")}</dt>
+        <dd>{displayLength(m.warp_spacing, "cm", displayUnit)}</dd>
+      </>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto">
     <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
@@ -1419,7 +1501,7 @@ export function ProjectLandingPage() {
           className="mt-0.5 flex-shrink-0"
           onClick={() => navigate("/projects")}
         >
-          <AppIcons.chevronRight className="h-4 w-4 rotate-180" />
+          <AppIcons.ChevronRight className="h-4 w-4 rotate-180" />
         </Button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -1432,12 +1514,12 @@ export function ProjectLandingPage() {
               {PROJECT_TYPE_LABELS[project.project_type]}
             </span>
             {project.share_slug && project.share_visibility !== "private" && (
-              <button
+              <button type="button"
                 onClick={() => setShareModalOpen(true)}
                 className="rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 flex items-center gap-1 hover:opacity-80 transition-opacity"
                 title={t("projectLandingPage.projectSharedManage")}
               >
-                <AppIcons.share className="h-3 w-3" />
+                <AppIcons.Share className="h-3 w-3" />
                 {t("projectLandingPage.shared")}
               </button>
             )}
@@ -1488,7 +1570,7 @@ export function ProjectLandingPage() {
           onClick={() => setShowAddToCollection(true)}
           title={t("projectLandingPage.addToCollection")}
         >
-          <AppIcons.collections className="h-4 w-4" />
+          <AppIcons.Collections className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
@@ -1497,14 +1579,14 @@ export function ProjectLandingPage() {
           onClick={() => setShareModalOpen(true)}
           title={t("projectLandingPage.shareProject")}
         >
-          <AppIcons.share className="h-4 w-4" />
+          <AppIcons.Share className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Preview + specs */}
       <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
         <div className="flex flex-col gap-1.5 flex-shrink-0">
-          <button
+          <button type="button"
             className="rounded-lg overflow-hidden border border-border bg-muted/20 hover:border-ring transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             onClick={() => setDrawdownOpen(true)}
             title={t("projectLandingPage.clickForDrawdown")}
@@ -1516,7 +1598,7 @@ export function ProjectLandingPage() {
             />
           </button>
           {project.project_type === "treadle" && (
-            <button
+            <button type="button"
               className="text-xs text-center text-muted-foreground hover:text-foreground py-0.5 border border-border/50 rounded hover:border-border transition-colors"
               onClick={() => setTieupOpen(true)}
               title={t("projectLandingPage.viewTieUp")}
@@ -1556,17 +1638,7 @@ export function ProjectLandingPage() {
               <dd>{displayLength(project.draft_weaving_width_override_cm, "cm", displayUnit)}</dd>
             </>
           )}
-          {project.draft_epi_override != null ? (
-            <>
-              <dt className="text-muted-foreground">{t("projectLandingPage.sett")}</dt>
-              <dd>{project.draft_epi_override} {t("projectLandingPage.epiUnit")}</dd>
-            </>
-          ) : m?.warp_spacing != null ? (
-            <>
-              <dt className="text-muted-foreground">{t("projectLandingPage.warpSpacing")}</dt>
-              <dd>{displayLength(m.warp_spacing, "cm", displayUnit)}</dd>
-            </>
-          ) : null}
+          {settOrSpacing}
           {warpLengthCm != null && (
             <>
               <dt className="text-muted-foreground">{t("projectLandingPage.warpLength")}</dt>
@@ -1748,7 +1820,7 @@ export function ProjectLandingPage() {
               to={`/projects/${project.id}/track`}
               className={cn(buttonVariants({ variant: project.status === "created" ? "success" : "default" }))}
             >
-              <AppIcons.projectActive className="h-4 w-4 mr-1.5" />
+              <AppIcons.ProjectActive className="h-4 w-4 mr-1.5" />
               {project.status === "created" ? t("projectLandingPage.startWeaving") : t("projectLandingPage.track")}
             </Link>
           )}

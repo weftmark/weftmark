@@ -49,6 +49,122 @@ def _s3_head(key: str) -> tuple[bool, int | None]:
         return False, None
 
 
+def _file_entry(entity_type: str, entity_id: uuid.UUID, filename: str, s3_key: str, size_bytes: int | None) -> dict:
+    return {
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "filename": filename,
+        "s3_key": s3_key,
+        "size_bytes": size_bytes,
+        "s3_verified": False,
+        "exists_in_s3": None,
+    }
+
+
+async def _draft_file_entries(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
+    files: list[dict] = []
+    drafts = (await db.scalars(select(Draft).where(Draft.owner_id == user_id))).all()
+    for d in drafts:
+        files.append(_file_entry("draft_wif", d.id, d.wif_filename, d.wif_path, None))
+        if d.wif_modified_path:
+            files.append(
+                _file_entry("draft_wif_modified", d.id, Path(d.wif_modified_path).name, d.wif_modified_path, None)
+            )
+        if d.preview_path:
+            files.append(_file_entry("draft_preview", d.id, Path(d.preview_path).name, d.preview_path, None))
+        if d.drawdown_preview_path:
+            files.append(
+                _file_entry(
+                    "draft_drawdown_preview", d.id, Path(d.drawdown_preview_path).name, d.drawdown_preview_path, None
+                )
+            )
+    return files
+
+
+async def _project_file_entries(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
+    files: list[dict] = []
+    projects = (await db.scalars(select(Project).where(Project.owner_id == user_id))).all()
+    for p in projects:
+        if p.drawdown_preview_path:
+            files.append(
+                _file_entry(
+                    "project_drawdown_preview", p.id, Path(p.drawdown_preview_path).name, p.drawdown_preview_path, None
+                )
+            )
+        if p.drawdown_svg_path:
+            files.append(
+                _file_entry("project_drawdown_svg", p.id, Path(p.drawdown_svg_path).name, p.drawdown_svg_path, None)
+            )
+    return files
+
+
+async def _project_photo_file_entries(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
+    proj_photos = (
+        await db.scalars(
+            select(ProjectPhoto).join(Project, ProjectPhoto.project_id == Project.id).where(Project.owner_id == user_id)
+        )
+    ).all()
+    return [
+        _file_entry("project_photo", ph.project_id, ph.filename, ph.file_path, ph.file_size_bytes) for ph in proj_photos
+    ]
+
+
+async def _loom_photo_file_entries(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
+    files: list[dict] = []
+    looms = (await db.scalars(select(Loom).where(Loom.owner_id == user_id))).all()
+    for lm in looms:
+        if lm.photo_path:
+            files.append(_file_entry("loom_photo", lm.id, Path(lm.photo_path).name, lm.photo_path, None))
+    return files
+
+
+async def _loom_version_photo_file_entries(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
+    lv_photos = (
+        await db.scalars(
+            select(LoomVersionPhoto)
+            .join(LoomVersion, LoomVersionPhoto.loom_version_id == LoomVersion.id)
+            .join(Loom, LoomVersion.loom_id == Loom.id)
+            .where(Loom.owner_id == user_id)
+        )
+    ).all()
+    return [
+        _file_entry("loom_version_photo", lvp.loom_version_id, lvp.filename, lvp.path, lvp.file_size_bytes)
+        for lvp in lv_photos
+    ]
+
+
+async def _loom_version_receipt_file_entries(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
+    lv_receipts = (
+        await db.scalars(
+            select(LoomVersionReceipt)
+            .join(LoomVersion, LoomVersionReceipt.loom_version_id == LoomVersion.id)
+            .join(Loom, LoomVersion.loom_id == Loom.id)
+            .where(Loom.owner_id == user_id)
+        )
+    ).all()
+    return [
+        _file_entry("loom_version_receipt", lvr.loom_version_id, lvr.filename, lvr.path, None) for lvr in lv_receipts
+    ]
+
+
+async def _yarn_photo_file_entries(db: AsyncSession, user_id: uuid.UUID) -> list[dict]:
+    files: list[dict] = []
+    yarns = (await db.scalars(select(Yarn).where(Yarn.owner_id == user_id, Yarn.photo_path.is_not(None)))).all()
+    for yn in yarns:
+        if yn.photo_path:
+            files.append(_file_entry("yarn_photo", yn.id, Path(yn.photo_path).name, yn.photo_path, None))
+    return files
+
+
+async def _verify_files_in_s3(files: list[dict]) -> None:
+    results = await asyncio.gather(*[asyncio.to_thread(_s3_head, f["s3_key"]) for f in files])
+    for f, (exists, size) in zip(files, results):
+        f["s3_verified"] = True
+        f["exists_in_s3"] = exists
+        if exists and size is not None:
+            f["size_bytes"] = size
+
+
 async def get_user_files_report(
     db: AsyncSession,
     user_id: uuid.UUID,
@@ -60,92 +176,16 @@ async def get_user_files_report(
     size_bytes (int|None), s3_verified (bool), exists_in_s3 (bool|None).
     """
     files: list[dict] = []
+    files += await _draft_file_entries(db, user_id)
+    files += await _project_file_entries(db, user_id)
+    files += await _project_photo_file_entries(db, user_id)
+    files += await _loom_photo_file_entries(db, user_id)
+    files += await _loom_version_photo_file_entries(db, user_id)
+    files += await _loom_version_receipt_file_entries(db, user_id)
+    files += await _yarn_photo_file_entries(db, user_id)
 
-    def _add(entity_type: str, entity_id: uuid.UUID, filename: str, s3_key: str, size_bytes: int | None) -> None:
-        files.append(
-            {
-                "entity_type": entity_type,
-                "entity_id": entity_id,
-                "filename": filename,
-                "s3_key": s3_key,
-                "size_bytes": size_bytes,
-                "s3_verified": False,
-                "exists_in_s3": None,
-            }
-        )
-
-    # Drafts
-    drafts = (await db.scalars(select(Draft).where(Draft.owner_id == user_id))).all()
-    for d in drafts:
-        _add("draft_wif", d.id, d.wif_filename, d.wif_path, None)
-        if d.wif_modified_path:
-            _add("draft_wif_modified", d.id, Path(d.wif_modified_path).name, d.wif_modified_path, None)
-        if d.preview_path:
-            _add("draft_preview", d.id, Path(d.preview_path).name, d.preview_path, None)
-        if d.drawdown_preview_path:
-            _add("draft_drawdown_preview", d.id, Path(d.drawdown_preview_path).name, d.drawdown_preview_path, None)
-
-    # Projects
-    projects = (await db.scalars(select(Project).where(Project.owner_id == user_id))).all()
-    for p in projects:
-        if p.drawdown_preview_path:
-            _add("project_drawdown_preview", p.id, Path(p.drawdown_preview_path).name, p.drawdown_preview_path, None)
-        if p.drawdown_svg_path:
-            _add("project_drawdown_svg", p.id, Path(p.drawdown_svg_path).name, p.drawdown_svg_path, None)
-
-    # Project photos (have DB size)
-    proj_photos = (
-        await db.scalars(
-            select(ProjectPhoto).join(Project, ProjectPhoto.project_id == Project.id).where(Project.owner_id == user_id)
-        )
-    ).all()
-    for ph in proj_photos:
-        _add("project_photo", ph.project_id, ph.filename, ph.file_path, ph.file_size_bytes)
-
-    # Loom profile photos
-    looms = (await db.scalars(select(Loom).where(Loom.owner_id == user_id))).all()
-    for lm in looms:
-        if lm.photo_path:
-            _add("loom_photo", lm.id, Path(lm.photo_path).name, lm.photo_path, None)
-
-    # Loom version photos (have DB size)
-    lv_photos = (
-        await db.scalars(
-            select(LoomVersionPhoto)
-            .join(LoomVersion, LoomVersionPhoto.loom_version_id == LoomVersion.id)
-            .join(Loom, LoomVersion.loom_id == Loom.id)
-            .where(Loom.owner_id == user_id)
-        )
-    ).all()
-    for lvp in lv_photos:
-        _add("loom_version_photo", lvp.loom_version_id, lvp.filename, lvp.path, lvp.file_size_bytes)
-
-    # Loom version receipts (no DB size)
-    lv_receipts = (
-        await db.scalars(
-            select(LoomVersionReceipt)
-            .join(LoomVersion, LoomVersionReceipt.loom_version_id == LoomVersion.id)
-            .join(Loom, LoomVersion.loom_id == Loom.id)
-            .where(Loom.owner_id == user_id)
-        )
-    ).all()
-    for lvr in lv_receipts:
-        _add("loom_version_receipt", lvr.loom_version_id, lvr.filename, lvr.path, None)
-
-    # Yarn profile photos
-    yarns = (await db.scalars(select(Yarn).where(Yarn.owner_id == user_id, Yarn.photo_path.is_not(None)))).all()
-    for yn in yarns:
-        if yn.photo_path:
-            _add("yarn_photo", yn.id, Path(yn.photo_path).name, yn.photo_path, None)
-
-    # S3 verification (slow path)
     if verify_s3:
-        results = await asyncio.gather(*[asyncio.to_thread(_s3_head, f["s3_key"]) for f in files])
-        for f, (exists, size) in zip(files, results):
-            f["s3_verified"] = True
-            f["exists_in_s3"] = exists
-            if exists and size is not None:
-                f["size_bytes"] = size
+        await _verify_files_in_s3(files)
 
     return files
 

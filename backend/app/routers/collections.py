@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -14,6 +15,8 @@ from app.models.project import Project
 from app.models.user import User
 
 router = APIRouter(prefix="/api/collections", tags=["collections"])
+
+_COLLECTION_NOT_FOUND = "Collection not found"
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +105,7 @@ async def _get_owned_collection(collection_id: uuid.UUID, user: User, db: AsyncS
         )
     )
     if c is None:
-        raise HTTPException(status_code=404, detail="Collection not found")
+        raise HTTPException(status_code=404, detail=_COLLECTION_NOT_FOUND)
     return c
 
 
@@ -124,11 +127,11 @@ def _summary(c: Collection) -> CollectionSummary:
 # ---------------------------------------------------------------------------
 
 
-@router.post("", status_code=201, response_model=CollectionSummary)
+@router.post("", status_code=201)
 async def create_collection(
     body: CreateCollectionRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CollectionSummary:
     c = Collection(owner_id=current_user.id, name=body.name, description=body.description, tags=body.tags)
     db.add(c)
@@ -146,10 +149,10 @@ async def create_collection(
     )
 
 
-@router.get("", response_model=list[CollectionSummary])
+@router.get("")
 async def list_collections(
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[CollectionSummary]:
     result = await db.scalars(
         select(Collection)
@@ -160,11 +163,11 @@ async def list_collections(
     return [_summary(c) for c in result.all()]
 
 
-@router.get("/{collection_id}", response_model=CollectionDetail)
+@router.get("/{collection_id}", responses={404: {"description": "Collection not found"}})
 async def get_collection(
     collection_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CollectionDetail:
     c = await db.scalar(
         select(Collection)
@@ -179,7 +182,7 @@ async def get_collection(
         )
     )
     if c is None:
-        raise HTTPException(status_code=404, detail="Collection not found")
+        raise HTTPException(status_code=404, detail=_COLLECTION_NOT_FOUND)
 
     draft_ids = {link.draft_id: link.added_at for link in c.draft_links}
     project_ids = {link.project_id: link.added_at for link in c.project_links}
@@ -222,12 +225,12 @@ async def get_collection(
     )
 
 
-@router.patch("/{collection_id}", response_model=CollectionSummary)
+@router.patch("/{collection_id}", responses={404: {"description": "Collection not found"}})
 async def update_collection(
     collection_id: uuid.UUID,
     body: UpdateCollectionRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CollectionSummary:
     c = await db.scalar(
         select(Collection).where(
@@ -235,7 +238,7 @@ async def update_collection(
         )
     )
     if c is None:
-        raise HTTPException(status_code=404, detail="Collection not found")
+        raise HTTPException(status_code=404, detail=_COLLECTION_NOT_FOUND)
     if body.name is not None:
         c.name = body.name
     if body.description is not None:
@@ -252,11 +255,11 @@ async def update_collection(
     return _summary(c)  # type: ignore[arg-type]
 
 
-@router.delete("/{collection_id}", status_code=204)
+@router.delete("/{collection_id}", status_code=204, responses={404: {"description": "Collection not found"}})
 async def delete_collection(
     collection_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
     c.soft_delete()
@@ -268,12 +271,16 @@ async def delete_collection(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{collection_id}/drafts", status_code=204)
+@router.post(
+    "/{collection_id}/drafts",
+    status_code=204,
+    responses={404: {"description": "Draft not found"}, 409: {"description": "Draft already in collection"}},
+)
 async def add_draft(
     collection_id: uuid.UUID,
     body: AddDraftRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
 
@@ -293,12 +300,14 @@ async def add_draft(
     await db.commit()
 
 
-@router.delete("/{collection_id}/drafts/{draft_id}", status_code=204)
+@router.delete(
+    "/{collection_id}/drafts/{draft_id}", status_code=204, responses={404: {"description": "Draft not in collection"}}
+)
 async def remove_draft(
     collection_id: uuid.UUID,
     draft_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     await _get_owned_collection(collection_id, current_user, db)
 
@@ -319,12 +328,16 @@ async def remove_draft(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{collection_id}/projects", status_code=204)
+@router.post(
+    "/{collection_id}/projects",
+    status_code=204,
+    responses={404: {"description": "Project not found"}, 409: {"description": "Project already in collection"}},
+)
 async def add_project(
     collection_id: uuid.UUID,
     body: AddProjectRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     c = await _get_owned_collection(collection_id, current_user, db)
 
@@ -348,12 +361,16 @@ async def add_project(
     await db.commit()
 
 
-@router.delete("/{collection_id}/projects/{project_id}", status_code=204)
+@router.delete(
+    "/{collection_id}/projects/{project_id}",
+    status_code=204,
+    responses={404: {"description": "Project not in collection"}},
+)
 async def remove_project(
     collection_id: uuid.UUID,
     project_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     await _get_owned_collection(collection_id, current_user, db)
 

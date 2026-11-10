@@ -85,6 +85,29 @@ export interface NeonUsage {
   error: string | null;
 }
 
+export interface NeonProjectUsage {
+  project_id: string;
+  project_name: string | null;
+  total_compute_seconds: number;
+}
+
+export interface NeonAccountUsage {
+  configured: boolean;
+  org_name: string | null;
+  plan: string | null;
+  spending_limit_cents: number | null;
+  period_start: string | null;
+  total_compute_seconds: number;
+  daily: NeonUsageDay[];
+  by_project: NeonProjectUsage[];
+  error: string | null;
+}
+
+export interface NeonDashboard {
+  account: NeonAccountUsage;
+  project: NeonUsage;
+}
+
 export interface InviteRecord {
   id: string;
   email: string;
@@ -100,7 +123,7 @@ export const getAdminStats = () => api.get<AdminStats>("/api/admin/stats");
 export const getAdminHealth = () => api.get<AdminHealth>("/api/admin/health");
 export const getAdminVersions = () => api.get<AdminVersions>("/api/admin/versions");
 export const getAdminDbInfo = () => api.get<AdminDbInfo>("/api/admin/db-info");
-export const getNeonUsage = () => api.get<NeonUsage>("/api/admin/neon-usage");
+export const getNeonDashboard = () => api.get<NeonDashboard>("/api/admin/neon-dashboard");
 export const patchAdminUser = (userId: string, body: { is_active?: boolean; is_admin?: boolean; is_superuser?: boolean }) =>
   api.patch<AdminUser>(`/api/admin/users/${userId}`, body);
 export const banUser = (userId: string) => api.post<AdminUser>(`/api/admin/users/${userId}/ban`, {});
@@ -212,7 +235,7 @@ export const getAuditLog = (params: { page?: number; page_size?: number; event_t
   if (params.event_type) qs.set("event_type", params.event_type);
   if (params.q) qs.set("q", params.q);
   const query = qs.toString();
-  return api.get<AuditLogPage>(`/api/admin/audit-log${query ? `?${query}` : ""}`);
+  return api.get<AuditLogPage>(`/api/admin/audit-log${query ? "?" + query : ""}`);
 };
 
 export interface ReconcileClerkOnlyUser {
@@ -449,7 +472,7 @@ export const getServerEvents = (params: { page?: number; page_size?: number; eve
   if (params.page_size) qs.set("page_size", String(params.page_size));
   if (params.event_type) qs.set("event_type", params.event_type);
   const query = qs.toString();
-  return api.get<ServerEventPage>(`/api/admin/server-events${query ? `?${query}` : ""}`);
+  return api.get<ServerEventPage>(`/api/admin/server-events${query ? "?" + query : ""}`);
 };
 
 export type CredentialResource = "smtp" | "s3" | "clerk" | "postgres" | "app";

@@ -190,21 +190,16 @@ async def _preregister_user(
 async def _poll_for_clerk_attach(
     session_factory: async_sessionmaker,
     user_id: uuid.UUID,
-    timeout: int,
 ) -> User:
-    """Poll until the webhook attaches a clerk_user_id to the pre-created User."""
-    loop = asyncio.get_event_loop()
-    deadline = loop.time() + timeout
+    """Poll until the webhook attaches a clerk_user_id to the pre-created User.
+
+    Callers must bound this with an `asyncio.timeout(...)` context manager.
+    """
     while True:
         async with session_factory() as session:
             user = await session.get(User, user_id)
             if user and user.clerk_user_id is not None:
                 return user  # type: ignore[no-any-return]
-        if loop.time() >= deadline:
-            raise TimeoutError(
-                f"user_id={user_id} never received a clerk_user_id after {timeout}s — "
-                "is the webhook configured and reachable?"
-            )
         await asyncio.sleep(1)
 
 
@@ -213,10 +208,7 @@ async def _poll_for_clerk_attach(
 # ---------------------------------------------------------------------------
 
 
-async def cmd_seed(config_path: str, poll_timeout: int) -> None:
-    settings = get_settings()
-
-    # ── Prechecks ──────────────────────────────────────────────────────────
+async def _run_seed_prechecks(settings) -> None:
     _section("Prechecks")
 
     if settings.app_env != "dev":
@@ -253,31 +245,33 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
         _err(f"DB unreachable: {exc}")
         await engine.dispose()
         sys.exit(1)
+    await engine.dispose()
     _ok("DB reachable")
 
-    # ── Load config ────────────────────────────────────────────────────────
-    config_file = Path(config_path)
+
+def _load_seed_config(config_path: str) -> list[dict]:
+    config_file = Path(config_path).resolve()
+    if not config_file.is_relative_to(_BACKEND_DIR):
+        _err(f"--config must resolve to a path under {_BACKEND_DIR}, got: {config_file}")
+        sys.exit(1)
     if not config_file.exists():
-        _err(f"Seed config not found: {config_file.resolve()}")
-        await engine.dispose()
+        _err(f"Seed config not found: {config_file}")
         sys.exit(1)
     try:
         seed = json.loads(config_file.read_text())
     except Exception as exc:
         _err(f"Failed to parse seed config: {exc}")
-        await engine.dispose()
         sys.exit(1)
 
     users_cfg: list[dict] = seed.get("users", [])
     if not users_cfg:
         _err("No users defined in seed config")
-        await engine.dispose()
         sys.exit(1)
+    return users_cfg
 
-    # ── Reset ──────────────────────────────────────────────────────────────
+
+async def _run_seed_reset(settings) -> None:
     _section("Reset")
-
-    await engine.dispose()
 
     try:
         deleted_count = await _clerk_delete_all_users(settings.clerk_secret_key)
@@ -299,10 +293,14 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
         _err(f"Storage clear failed: {exc}")
         sys.exit(1)
 
-    engine = create_async_engine(settings.database_url, echo=False)
-    session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
-    # ── Seed users ─────────────────────────────────────────────────────────
+async def _seed_users(
+    users_cfg: list[dict],
+    settings,
+    session_factory: async_sessionmaker,
+    poll_timeout: int,
+    engine,
+) -> list[tuple[str, str]]:
     _section("Users")
 
     generated_passwords: list[tuple[str, str]] = []
@@ -338,15 +336,34 @@ async def cmd_seed(config_path: str, poll_timeout: int) -> None:
 
         # 3. Poll until the webhook attaches the Clerk ID to the pre-created User.
         try:
-            db_user = await _poll_for_clerk_attach(session_factory, pre_user.id, poll_timeout)
+            async with asyncio.timeout(poll_timeout):
+                db_user = await _poll_for_clerk_attach(session_factory, pre_user.id)
             _ok(f"{email} confirmed in DB (clerk_user_id={db_user.clerk_user_id})")
-        except TimeoutError as exc:
-            _err(str(exc))
+        except TimeoutError:
+            _err(
+                f"user_id={pre_user.id} never received a clerk_user_id after {poll_timeout}s — "
+                "is the webhook configured and reachable?"
+            )
             await engine.dispose()
             sys.exit(1)
 
         if auto_password:
             generated_passwords.append((email, password))  # type: ignore[arg-type]
+
+    return generated_passwords
+
+
+async def cmd_seed(config_path: str, poll_timeout: int) -> None:
+    settings = get_settings()
+
+    await _run_seed_prechecks(settings)
+    users_cfg = _load_seed_config(config_path)
+    await _run_seed_reset(settings)
+
+    engine = create_async_engine(settings.database_url, echo=False)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    generated_passwords = await _seed_users(users_cfg, settings, session_factory, poll_timeout, engine)
 
     # ── Record seed run ────────────────────────────────────────────────────
     async with session_factory() as session:

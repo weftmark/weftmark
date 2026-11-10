@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -15,6 +16,8 @@ from app.models.loom import LoomReference
 from app.models.user import User
 
 router = APIRouter(tags=["loom-catalog"])
+
+_LOOM_REFERENCE_NOT_FOUND = "Loom reference not found"
 
 
 # ---------------------------------------------------------------------------
@@ -205,14 +208,14 @@ class UpdateLoomReferenceRequest(BaseModel):
 public_router = APIRouter(prefix="/api/loom-catalog", tags=["loom-catalog"])
 
 
-@public_router.get("", response_model=list[LoomReferenceSummary])
+@public_router.get("")
 async def list_loom_catalog(
-    q: str | None = Query(None, description="Search brand, model, or series"),
-    category: str | None = Query(None),
-    min_shafts: int | None = Query(None),
-    foldable: bool | None = Query(None),
-    origin_country: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    q: Annotated[str | None, Query(description="Search brand, model, or series")] = None,
+    category: Annotated[str | None, Query()] = None,
+    min_shafts: Annotated[int | None, Query()] = None,
+    foldable: Annotated[bool | None, Query()] = None,
+    origin_country: Annotated[str | None, Query()] = None,
 ) -> list[LoomReferenceSummary]:
     stmt = select(LoomReference).order_by(LoomReference.brand, LoomReference.model_name)
 
@@ -241,11 +244,11 @@ async def list_loom_catalog(
     return [LoomReferenceSummary.model_validate(r) for r in results]
 
 
-@public_router.get("/search", response_model=list[LoomReferenceSummary])
+@public_router.get("/search")
 async def search_loom_catalog(
-    q: str = Query(..., min_length=1),
-    limit: int = Query(20, le=50),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    q: Annotated[str, Query(min_length=1)],
+    limit: Annotated[int, Query(le=50)] = 20,
 ) -> list[LoomReferenceSummary]:
     """Typeahead search — returns summaries matching brand or model name."""
     ql = q.lower()
@@ -265,14 +268,14 @@ async def search_loom_catalog(
     return [LoomReferenceSummary.model_validate(r) for r in rows.all()]
 
 
-@public_router.get("/{ref_id}", response_model=LoomReferenceSchema)
+@public_router.get("/{ref_id}", responses={404: {"description": "Loom reference not found"}})
 async def get_loom_reference(
     ref_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomReferenceSchema:
     ref = await db.get(LoomReference, ref_id)
     if ref is None:
-        raise HTTPException(status_code=404, detail="Loom reference not found")
+        raise HTTPException(status_code=404, detail=_LOOM_REFERENCE_NOT_FOUND)
     return LoomReferenceSchema.model_validate(ref)
 
 
@@ -283,11 +286,11 @@ async def get_loom_reference(
 admin_catalog_router = APIRouter(prefix="/api/admin/loom-catalog", tags=["admin"])
 
 
-@admin_catalog_router.get("", response_model=list[LoomReferenceSchema])
+@admin_catalog_router.get("")
 async def admin_list_loom_catalog(
-    q: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
+    q: Annotated[str | None, Query()] = None,
 ) -> list[LoomReferenceSchema]:
     stmt = select(LoomReference).order_by(LoomReference.brand, LoomReference.model_name)
     if q:
@@ -302,11 +305,15 @@ async def admin_list_loom_catalog(
     return [LoomReferenceSchema.model_validate(r) for r in rows.all()]
 
 
-@admin_catalog_router.post("", response_model=LoomReferenceSchema, status_code=201)
+@admin_catalog_router.post(
+    "",
+    status_code=201,
+    responses={409: {"description": "A loom reference with this brand and model already exists"}},
+)
 async def admin_create_loom_reference(
     body: CreateLoomReferenceRequest,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> LoomReferenceSchema:
     existing = await db.scalar(
         select(LoomReference).where(
@@ -323,16 +330,16 @@ async def admin_create_loom_reference(
     return LoomReferenceSchema.model_validate(ref)
 
 
-@admin_catalog_router.patch("/{ref_id}", response_model=LoomReferenceSchema)
+@admin_catalog_router.patch("/{ref_id}", responses={404: {"description": "Loom reference not found"}})
 async def admin_update_loom_reference(
     ref_id: uuid.UUID,
     body: UpdateLoomReferenceRequest,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> LoomReferenceSchema:
     ref = await db.get(LoomReference, ref_id)
     if ref is None:
-        raise HTTPException(status_code=404, detail="Loom reference not found")
+        raise HTTPException(status_code=404, detail=_LOOM_REFERENCE_NOT_FOUND)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(ref, field, value)
     await db.commit()
@@ -340,15 +347,15 @@ async def admin_update_loom_reference(
     return LoomReferenceSchema.model_validate(ref)
 
 
-@admin_catalog_router.delete("/{ref_id}", status_code=204)
+@admin_catalog_router.delete("/{ref_id}", status_code=204, responses={404: {"description": "Loom reference not found"}})
 async def admin_delete_loom_reference(
     ref_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> None:
     ref = await db.get(LoomReference, ref_id)
     if ref is None:
-        raise HTTPException(status_code=404, detail="Loom reference not found")
+        raise HTTPException(status_code=404, detail=_LOOM_REFERENCE_NOT_FOUND)
     # Nullify FK on any linked user looms (cascade SET NULL handles DB side,
     # but explicit check lets us warn callers if needed)
     await db.delete(ref)

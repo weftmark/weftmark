@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AppIcons } from "@/lib/icons";
@@ -18,6 +18,7 @@ import {
   LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { type DeleteConflict } from "@/api/drafts";
+import { DeleteConflictPanel } from "@/components/DeleteConflictPanel";
 import { AddVersionModal } from "@/components/looms/AddVersionModal";
 import { EditLoomModal } from "@/components/looms/EditLoomModal";
 import { CloneVersionModal } from "@/components/looms/CloneVersionModal";
@@ -33,6 +34,89 @@ const PHOTO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB — must match backend MAX_FILE
 const MAX_VERSION_PHOTOS = 5;            // must match backend MAX_VERSION_PHOTOS
 
 // ---------------------------------------------------------------------------
+// Shared photo-upload-with-resize workflow
+// ---------------------------------------------------------------------------
+
+function useResizableUpload(upload: (file: File) => Promise<void>, maxBytes: number = PHOTO_MAX_BYTES) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const clearInput = () => { if (fileRef.current) fileRef.current.value = ""; };
+
+  const doUpload = async (file: File) => {
+    setError(null);
+    setUploading(true);
+    try {
+      await upload(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      setPendingFile(null);
+      clearInput();
+    }
+  };
+
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > maxBytes) {
+      setPendingFile(file);
+    } else {
+      doUpload(file);
+    }
+  };
+
+  const handleResize = async () => {
+    if (!pendingFile) return;
+    setUploading(true);
+    try {
+      const resized = await resizeImageToFile(pendingFile, maxBytes);
+      await doUpload(resized);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Resize failed");
+      setPendingFile(null);
+      clearInput();
+      setUploading(false);
+    }
+  };
+
+  const cancelPending = () => { setPendingFile(null); clearInput(); };
+
+  return { fileRef, uploading, error, pendingFile, handleFileSelected, handleResize, cancelPending };
+}
+
+function OversizedFilePrompt({
+  pendingFile,
+  onResize,
+  onCancel,
+}: {
+  readonly pendingFile: File;
+  readonly onResize: () => void;
+  readonly onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
+      <p className="font-medium text-copper-on-subtle">
+        {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
+      </p>
+      <div className="mt-1.5 flex gap-2">
+        <button type="button" onClick={onResize} className="font-medium text-copper-on-subtle hover:underline">
+          {t("loomDetailPage.resizeUpload")}
+        </button>
+        <span className="text-muted-foreground">·</span>
+        <button type="button" onClick={onCancel} className="text-copper-on-subtle hover:underline">
+          {t("common.cancel")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Reusable inline confirm
 // ---------------------------------------------------------------------------
 
@@ -41,21 +125,23 @@ function ConfirmInline({
   onConfirm,
   onCancel,
 }: {
-  label: string;
-  onConfirm: () => void;
-  onCancel: () => void;
+  readonly label: string;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
 }) {
   const { t } = useTranslation();
   return (
     <span className="flex items-center gap-2 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <button
+        type="button"
         onClick={onConfirm}
         className="text-destructive hover:underline text-xs font-medium"
       >
         {t("loomDetailPage.confirm")}
       </button>
       <button
+        type="button"
         onClick={onCancel}
         className="text-muted-foreground hover:underline text-xs"
       >
@@ -69,67 +155,32 @@ function ConfirmInline({
 // Profile photo
 // ---------------------------------------------------------------------------
 
-function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+function ProfilePhoto({ loom, onChanged }: { readonly loom: LoomDetail; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
   const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-
-  const clearInput = () => { if (fileRef.current) fileRef.current.value = ""; };
-
-  const doUpload = async (file: File) => {
-    setError(null);
-    setUploading(true);
-    try {
+  const [deleting, setDeleting] = useState(false);
+  const { fileRef, uploading, error, pendingFile, handleFileSelected, handleResize, cancelPending } =
+    useResizableUpload(async (file) => {
       await uploadLoomPhoto(loom.id, file);
       onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-      setPendingFile(null);
-      clearInput();
-    }
-  };
-
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > PHOTO_MAX_BYTES) {
-      setPendingFile(file);
-    } else {
-      doUpload(file);
-    }
-  };
-
-  const handleResize = async () => {
-    if (!pendingFile) return;
-    setUploading(true);
-    try {
-      const resized = await resizeImageToFile(pendingFile, PHOTO_MAX_BYTES);
-      await doUpload(resized);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Resize failed");
-      setPendingFile(null);
-      clearInput();
-      setUploading(false);
-    }
-  };
+    });
 
   const handleDelete = async () => {
-    setUploading(true);
+    setDeleting(true);
     try {
       await deleteLoomPhoto(loom.id);
       onChanged();
     } finally {
-      setUploading(false);
+      setDeleting(false);
       setConfirmRemove(false);
     }
   };
+
+  const busy = uploading || deleting;
+  let uploadLabel = loom.has_photo ? t("loomDetailPage.replacePhoto") : t("loomDetailPage.uploadPhoto");
+  if (uploading) uploadLabel = t("loomDetailPage.uploading");
 
   return (
     <div className="flex items-start gap-4">
@@ -148,11 +199,11 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
         {!isReadOnly && (
           <>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
-            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading || !!pendingFile}>
-              {uploading ? t("loomDetailPage.uploading") : loom.has_photo ? t("loomDetailPage.replacePhoto") : t("loomDetailPage.uploadPhoto")}
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy || !!pendingFile}>
+              {uploadLabel}
             </Button>
             {loom.has_photo && !confirmRemove && (
-              <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={uploading || !!pendingFile}>
+              <Button size="sm" variant="outline" onClick={() => setConfirmRemove(true)} disabled={busy || !!pendingFile}>
                 {t("loomDetailPage.removePhoto")}
               </Button>
             )}
@@ -165,22 +216,7 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
             )}
           </>
         )}
-        {pendingFile && (
-          <div className="rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
-            <p className="font-medium text-copper-on-subtle">
-              {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
-            </p>
-            <div className="mt-1.5 flex gap-2">
-              <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
-                {t("loomDetailPage.resizeUpload")}
-              </button>
-              <span className="text-muted-foreground">·</span>
-              <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
-                {t("common.cancel")}
-              </button>
-            </div>
-          </div>
-        )}
+        {pendingFile && <OversizedFilePrompt pendingFile={pendingFile} onResize={handleResize} onCancel={cancelPending} />}
         {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
     </div>
@@ -191,55 +227,16 @@ function ProfilePhoto({ loom, onChanged }: { loom: LoomDetail; onChanged: () => 
 // Version photos
 // ---------------------------------------------------------------------------
 
-function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+function VersionPhotos({ loom, version, onChanged }: { readonly loom: LoomDetail; readonly version: LoomVersion; readonly onChanged: () => void }) {
   const { t } = useTranslation();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
-
-  const atLimit = version.photos.length >= MAX_VERSION_PHOTOS;
-  const clearInput = () => { if (fileRef.current) fileRef.current.value = ""; };
-
-  const doUpload = async (file: File) => {
-    setError(null);
-    setUploading(true);
-    try {
+  const { fileRef, uploading, error, pendingFile, handleFileSelected, handleResize, cancelPending } =
+    useResizableUpload(async (file) => {
       await uploadVersionPhoto(loom.id, version.id, file);
       onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-      setPendingFile(null);
-      clearInput();
-    }
-  };
+    });
 
-  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > PHOTO_MAX_BYTES) {
-      setPendingFile(file);
-    } else {
-      doUpload(file);
-    }
-  };
-
-  const handleResize = async () => {
-    if (!pendingFile) return;
-    setUploading(true);
-    try {
-      const resized = await resizeImageToFile(pendingFile, PHOTO_MAX_BYTES);
-      await doUpload(resized);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Resize failed");
-      setPendingFile(null);
-      clearInput();
-      setUploading(false);
-    }
-  };
+  const atLimit = version.photos.length >= MAX_VERSION_PHOTOS;
 
   const handleDelete = async (photo: LoomVersionPhoto) => {
     try {
@@ -266,6 +263,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
             <AuthedImage src={versionPhotoUrl(loom.id, version.id, p.id)} alt={p.filename} className="h-20 w-20 rounded object-cover border" />
             {confirmId !== p.id ? (
               <button
+                type="button"
                 onClick={() => setConfirmId(p.id)}
                 className="text-xs text-destructive hover:underline"
               >
@@ -273,9 +271,9 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
               </button>
             ) : (
               <span className="flex gap-1 text-xs">
-                <button onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">{t("loomDetailPage.confirm")}</button>
+                <button type="button" onClick={() => handleDelete(p)} className="text-destructive hover:underline font-medium">{t("loomDetailPage.confirm")}</button>
                 <span className="text-muted-foreground">·</span>
-                <button onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">{t("common.cancel")}</button>
+                <button type="button" onClick={() => setConfirmId(null)} className="text-muted-foreground hover:underline">{t("common.cancel")}</button>
               </span>
             )}
           </div>
@@ -284,6 +282,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
           <div>
             <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleFileSelected} />
             <button
+              type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading || !!pendingFile}
               className="h-20 w-20 rounded border border-dashed flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors disabled:opacity-50"
@@ -292,19 +291,8 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
         )}
       </div>
       {pendingFile && (
-        <div className="mt-2 rounded-md border border-copper-subtle bg-copper-subtle px-3 py-2 text-xs">
-          <p className="font-medium text-copper-on-subtle">
-            {t("loomDetailPage.photoOverLimit", { size: formatBytes(pendingFile.size) })}
-          </p>
-          <div className="mt-1.5 flex gap-2">
-            <button onClick={handleResize} className="font-medium text-copper-on-subtle hover:underline">
-              {t("loomDetailPage.resizeUpload")}
-            </button>
-            <span className="text-muted-foreground">·</span>
-            <button onClick={() => { setPendingFile(null); clearInput(); }} className="text-copper-on-subtle hover:underline">
-              {t("common.cancel")}
-            </button>
-          </div>
+        <div className="mt-2">
+          <OversizedFilePrompt pendingFile={pendingFile} onResize={handleResize} onCancel={cancelPending} />
         </div>
       )}
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
@@ -316,7 +304,7 @@ function VersionPhotos({ loom, version, onChanged }: { loom: LoomDetail; version
 // Version receipts
 // ---------------------------------------------------------------------------
 
-function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+function VersionReceipts({ loom, version, onChanged }: { readonly loom: LoomDetail; readonly version: LoomVersion; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState("");
@@ -366,7 +354,7 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
               >{r.description || r.filename}</button>
               <span className="ml-auto shrink-0">
                 {confirmId !== r.id ? (
-                  <button onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">
+                  <button type="button" onClick={() => setConfirmId(r.id)} className="text-xs text-destructive hover:underline">
                     {t("loomDetailPage.remove")}
                   </button>
                 ) : (
@@ -402,7 +390,7 @@ function VersionReceipts({ loom, version, onChanged }: { loom: LoomDetail; versi
 // Accessories
 // ---------------------------------------------------------------------------
 
-function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; version: LoomVersion; onChanged: () => void }) {
+function VersionAccessories({ loom, version, onChanged }: { readonly loom: LoomDetail; readonly version: LoomVersion; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -447,7 +435,7 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
               <span className="flex-1">{acc.name}</span>
               <span className="shrink-0">
                 {confirmId !== acc.id ? (
-                  <button onClick={() => setConfirmId(acc.id)} className="text-xs text-destructive hover:underline">
+                  <button type="button" onClick={() => setConfirmId(acc.id)} className="text-xs text-destructive hover:underline">
                     {t("loomDetailPage.remove")}
                   </button>
                 ) : (
@@ -483,7 +471,7 @@ function VersionAccessories({ loom, version, onChanged }: { loom: LoomDetail; ve
 // Reed inventory
 // ---------------------------------------------------------------------------
 
-function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => void }) {
+function ReedsPanel({ loom, onChanged }: { readonly loom: LoomDetail; readonly onChanged: () => void }) {
   const { t } = useTranslation();
   const [dentsInput, setDentsInput] = useState("");
   const [widthInput, setWidthInput] = useState("");
@@ -494,8 +482,8 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const dents = parseFloat(dentsInput);
-    if (!dentsInput || isNaN(dents) || dents <= 0) {
+    const dents = Number.parseFloat(dentsInput);
+    if (!dentsInput || Number.isNaN(dents) || dents <= 0) {
       setError(t("loomDetailPage.dentsRequired"));
       return;
     }
@@ -504,7 +492,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
     try {
       await addReed(loom.id, {
         dents_per_inch: dents,
-        ...(widthInput ? { width_cm: parseFloat(widthInput) } : {}),
+        ...(widthInput ? { width_cm: Number.parseFloat(widthInput) } : {}),
         ...(labelInput.trim() ? { label: labelInput.trim() } : {}),
       });
       setDentsInput("");
@@ -530,7 +518,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
   };
 
   const duplicate = dentsInput
-    ? loom.reeds.some((r) => r.dents_per_inch === parseFloat(dentsInput))
+    ? loom.reeds.some((r) => r.dents_per_inch === Number.parseFloat(dentsInput))
     : false;
 
   return (
@@ -550,6 +538,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
               <span className="ml-auto shrink-0">
                 {confirmId !== reed.id ? (
                   <button
+                    type="button"
                     onClick={() => setConfirmId(reed.id)}
                     className="text-xs text-destructive hover:underline"
                   >
@@ -610,7 +599,7 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
       </form>
       {duplicate && (
         <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-          {t("loomDetailPage.duplicateReed", { dpi: parseFloat(dentsInput) })}
+          {t("loomDetailPage.duplicateReed", { dpi: Number.parseFloat(dentsInput) })}
         </p>
       )}
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
@@ -623,14 +612,247 @@ function ReedsPanel({ loom, onChanged }: { loom: LoomDetail; onChanged: () => vo
 // Version card
 // ---------------------------------------------------------------------------
 
+function WarpWasteDisplay({ version, displayUnit }: { readonly version: LoomVersion; readonly displayUnit: LengthUnit }) {
+  const { t } = useTranslation();
+  if (!version.warp_waste_allowance) {
+    return <span className="italic text-muted-foreground">{t("loomDetailPage.notSet")}</span>;
+  }
+  const storedUnit = (version.warp_waste_unit ?? displayUnit) as LengthUnit;
+  const primary = displayLength(version.warp_waste_allowance, storedUnit, storedUnit);
+  if (storedUnit === displayUnit) return <>{primary}</>;
+  const secondary = displayLength(version.warp_waste_allowance, storedUnit, displayUnit);
+  return (
+    <>
+      <span className="font-medium">{primary}</span> <span className="text-xs text-muted-foreground">({secondary})</span>
+    </>
+  );
+}
+
+function VersionSpecsDisplay({
+  version,
+  displayUnit,
+  isReadOnly,
+  onEdit,
+}: {
+  readonly version: LoomVersion;
+  readonly displayUnit: LengthUnit;
+  readonly isReadOnly: boolean;
+  readonly onEdit: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+        {version.num_shafts != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.shafts")}</dt><dd>{version.num_shafts}</dd></>)}
+        {version.num_treadles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.treadles")}</dt><dd>{version.num_treadles}</dd></>)}
+        {version.num_heddles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.heddles")}</dt><dd>{version.num_heddles}</dd></>)}
+        {version.weaving_width && (<><dt className="text-muted-foreground">{t("loomDetailPage.weavingWidth")}</dt><dd>{displayLength(version.weaving_width, version.weaving_width_unit, displayUnit)}</dd></>)}
+        <dt className="text-muted-foreground">{t("loomDetailPage.warpWaste")}</dt>
+        <dd>
+          <WarpWasteDisplay version={version} displayUnit={displayUnit} />
+        </dd>
+      </dl>
+      {!isReadOnly && (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          title={t("loomDetailPage.editConfig")}
+        >
+          <AppIcons.Edit className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function VersionEditForm({
+  version,
+  editName,
+  setEditName,
+  editDesc,
+  setEditDesc,
+  editWaste,
+  setEditWaste,
+  editWasteUnit,
+  onWasteUnitChange,
+  editError,
+  saving,
+  onSubmit,
+  onCancel,
+}: {
+  readonly version: LoomVersion;
+  readonly editName: string;
+  readonly setEditName: (v: string) => void;
+  readonly editDesc: string;
+  readonly setEditDesc: (v: string) => void;
+  readonly editWaste: string;
+  readonly setEditWaste: (v: string) => void;
+  readonly editWasteUnit: LengthUnit;
+  readonly onWasteUnitChange: (v: LengthUnit) => void;
+  readonly editError: string | null;
+  readonly saving: boolean;
+  readonly onSubmit: (e: React.FormEvent) => void;
+  readonly onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.configName")}</label>
+        <input
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          placeholder={`v${version.version_number}`}
+          autoFocus
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.versionDescription")}</label>
+        <input
+          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          value={editDesc}
+          onChange={(e) => setEditDesc(e.target.value)}
+          placeholder={t("loomDetailPage.descriptionPlaceholder")}
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.warpWasteDefault")}</label>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min="0"
+            step="0.1"
+            className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={editWaste}
+            onChange={(e) => setEditWaste(e.target.value)}
+            placeholder={t("loomDetailPage.wastePlaceholder")}
+          />
+          <select
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            value={editWasteUnit}
+            onChange={(e) => onWasteUnitChange(e.target.value as LengthUnit)}
+          >
+            <option value="cm">cm</option>
+            <option value="in">in</option>
+          </select>
+        </div>
+      </div>
+      {editError && <p className="text-xs text-destructive">{editError}</p>}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={saving}>{saving ? t("loomDetailPage.saving") : t("loomDetailPage.save")}</Button>
+        <Button type="button" size="sm" variant="outline" onClick={onCancel} disabled={saving}>{t("common.cancel")}</Button>
+      </div>
+    </form>
+  );
+}
+
+function VersionLinkedBadge({
+  version,
+  unlinking,
+  onChangeLink,
+  onUnlink,
+}: {
+  readonly version: LoomVersion;
+  readonly unlinking: boolean;
+  readonly onChangeLink: () => void;
+  readonly onUnlink: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = version.loom_reference_brand && version.loom_reference_model_name
+    ? `${version.loom_reference_brand} ${version.loom_reference_model_name}`
+    : t("loomDetailPage.linkedToCatalog");
+  return (
+    <>
+      <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={onChangeLink}
+        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {t("loomDetailPage.change")}
+      </button>
+      <button
+        type="button"
+        onClick={onUnlink}
+        disabled={unlinking}
+        className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+      >
+        {unlinking ? t("loomDetailPage.unlinking") : t("loomDetailPage.unlink")}
+      </button>
+    </>
+  );
+}
+
+function VersionUnlinkedBadge({ loom, onLink }: { readonly loom: LoomDetail; readonly onLink: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
+        {t("loomDetailPage.notInCatalog")}
+      </span>
+      <button
+        type="button"
+        onClick={onLink}
+        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {t("loomDetailPage.linkToCatalog")}
+      </button>
+      <CatalogRequestButton loom={loom} />
+    </>
+  );
+}
+
+function VersionCatalogLinkSection({
+  loom,
+  version,
+  displayName,
+  unlinking,
+  onUnlink,
+  onShowLinkCatalog,
+  onClone,
+}: {
+  readonly loom: LoomDetail;
+  readonly version: LoomVersion;
+  readonly displayName: string;
+  readonly unlinking: boolean;
+  readonly onUnlink: () => void;
+  readonly onShowLinkCatalog: () => void;
+  readonly onClone: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="border-t pt-3 space-y-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        {version.loom_reference_id ? (
+          <VersionLinkedBadge version={version} unlinking={unlinking} onChangeLink={onShowLinkCatalog} onUnlink={onUnlink} />
+        ) : (
+          <VersionUnlinkedBadge loom={loom} onLink={onShowLinkCatalog} />
+        )}
+      </div>
+      <div>
+        <Button size="sm" variant="outline" onClick={onClone}>
+          {t("loomDetailPage.cloneConfig")}
+        </Button>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("loomDetailPage.cloneNote", { name: displayName })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function VersionCard({
   loom, version, isCurrent, onChanged, onClone,
 }: {
-  loom: LoomDetail;
-  version: LoomVersion;
-  isCurrent: boolean;
-  onChanged: () => void;
-  onClone: (v: LoomVersion) => void;
+  readonly loom: LoomDetail;
+  readonly version: LoomVersion;
+  readonly isCurrent: boolean;
+  readonly onChanged: () => void;
+  readonly onClone: (v: LoomVersion) => void;
 }) {
   const { t } = useTranslation();
   const { user } = useAuthContext();
@@ -656,7 +878,7 @@ function VersionCard({
     (version.warp_waste_allowance ? version.warp_waste_unit : displayUnit) as LengthUnit
   );
   const [editWaste, setEditWaste] = useState(
-    version.warp_waste_allowance ? parseFloat(version.warp_waste_allowance).toFixed(1) : ""
+    version.warp_waste_allowance ? Number.parseFloat(version.warp_waste_allowance).toFixed(1) : ""
   );
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -667,7 +889,7 @@ function VersionCard({
     setSaving(true);
     setEditError(null);
     try {
-      const waste = editWaste.trim() ? parseFloat(editWaste) : undefined;
+      const waste = editWaste.trim() ? Number.parseFloat(editWaste) : undefined;
       await updateVersion(loom.id, version.id, {
         name: editName.trim() || undefined,
         description: editDesc.trim() || undefined,
@@ -685,7 +907,7 @@ function VersionCard({
   const handleEditCancel = () => {
     setEditName(version.name ?? "");
     setEditDesc(version.description ?? "");
-    setEditWaste(version.warp_waste_allowance ? parseFloat(version.warp_waste_allowance).toFixed(1) : "");
+    setEditWaste(version.warp_waste_allowance ? Number.parseFloat(version.warp_waste_allowance).toFixed(1) : "");
     setEditWasteUnit((version.warp_waste_allowance ? version.warp_waste_unit : displayUnit) as LengthUnit);
     setEditError(null);
     setEditing(false);
@@ -693,8 +915,8 @@ function VersionCard({
 
   function handleWasteUnitChange(newUnit: LengthUnit) {
     if (editWaste) {
-      const val = parseFloat(editWaste);
-      if (!isNaN(val)) setEditWaste(convertLength(val, editWasteUnit, newUnit).toFixed(1));
+      const val = Number.parseFloat(editWaste);
+      if (!Number.isNaN(val)) setEditWaste(convertLength(val, editWasteUnit, newUnit).toFixed(1));
     }
     setEditWasteUnit(newUnit);
   }
@@ -723,83 +945,28 @@ function VersionCard({
           {/* Specs / edit form */}
           <div className="rounded-md border border-border p-3">
             {editing ? (
-              <form onSubmit={handleEditSave} className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.configName")}</label>
-                  <input
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder={`v${version.version_number}`}
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.versionDescription")}</label>
-                  <input
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                    placeholder={t("loomDetailPage.descriptionPlaceholder")}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("loomDetailPage.warpWasteDefault")}</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      value={editWaste}
-                      onChange={(e) => setEditWaste(e.target.value)}
-                      placeholder={t("loomDetailPage.wastePlaceholder")}
-                    />
-                    <select
-                      className="rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      value={editWasteUnit}
-                      onChange={(e) => handleWasteUnitChange(e.target.value as LengthUnit)}
-                    >
-                      <option value="cm">cm</option>
-                      <option value="in">in</option>
-                    </select>
-                  </div>
-                </div>
-                {editError && <p className="text-xs text-destructive">{editError}</p>}
-                <div className="flex gap-2">
-                  <Button type="submit" size="sm" disabled={saving}>{saving ? t("loomDetailPage.saving") : t("loomDetailPage.save")}</Button>
-                  <Button type="button" size="sm" variant="outline" onClick={handleEditCancel} disabled={saving}>{t("common.cancel")}</Button>
-                </div>
-              </form>
+              <VersionEditForm
+                version={version}
+                editName={editName}
+                setEditName={setEditName}
+                editDesc={editDesc}
+                setEditDesc={setEditDesc}
+                editWaste={editWaste}
+                setEditWaste={setEditWaste}
+                editWasteUnit={editWasteUnit}
+                onWasteUnitChange={handleWasteUnitChange}
+                editError={editError}
+                saving={saving}
+                onSubmit={handleEditSave}
+                onCancel={handleEditCancel}
+              />
             ) : (
-              <div className="flex items-start justify-between gap-2">
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
-                  {version.num_shafts != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.shafts")}</dt><dd>{version.num_shafts}</dd></>)}
-                  {version.num_treadles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.treadles")}</dt><dd>{version.num_treadles}</dd></>)}
-                  {version.num_heddles != null && (<><dt className="text-muted-foreground">{t("loomDetailPage.heddles")}</dt><dd>{version.num_heddles}</dd></>)}
-                  {version.weaving_width && (<><dt className="text-muted-foreground">{t("loomDetailPage.weavingWidth")}</dt><dd>{displayLength(version.weaving_width, version.weaving_width_unit, displayUnit)}</dd></>)}
-                  <dt className="text-muted-foreground">{t("loomDetailPage.warpWaste")}</dt>
-                  <dd>
-                    {version.warp_waste_allowance ? (() => {
-                      const storedUnit = (version.warp_waste_unit ?? displayUnit) as LengthUnit;
-                      const primary = displayLength(version.warp_waste_allowance, storedUnit, storedUnit);
-                      if (storedUnit === displayUnit) return primary;
-                      const secondary = displayLength(version.warp_waste_allowance, storedUnit, displayUnit);
-                      return <><span className="font-medium">{primary}</span>{" "}<span className="text-xs text-muted-foreground">({secondary})</span></>;
-                    })() : <span className="italic text-muted-foreground">{t("loomDetailPage.notSet")}</span>}
-                  </dd>
-                </dl>
-                {!isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => setEditing(true)}
-                    className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    title={t("loomDetailPage.editConfig")}
-                  >
-                    <AppIcons.edit className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              <VersionSpecsDisplay
+                version={version}
+                displayUnit={displayUnit}
+                isReadOnly={isReadOnly}
+                onEdit={() => setEditing(true)}
+              />
             )}
           </div>
 
@@ -814,53 +981,15 @@ function VersionCard({
           </div>
 
           {!isReadOnly && (
-            <div className="border-t pt-3 space-y-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                {version.loom_reference_id ? (
-                  <>
-                    <span className="text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-0.5 font-medium">
-                      {version.loom_reference_brand && version.loom_reference_model_name
-                        ? `${version.loom_reference_brand} ${version.loom_reference_model_name}`
-                        : t("loomDetailPage.linkedToCatalog")}
-                    </span>
-                    <button
-                      onClick={() => setShowLinkCatalog(true)}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {t("loomDetailPage.change")}
-                    </button>
-                    <button
-                      onClick={handleUnlink}
-                      disabled={unlinking}
-                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      {unlinking ? t("loomDetailPage.unlinking") : t("loomDetailPage.unlink")}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-xs rounded-full bg-muted text-muted-foreground px-2 py-0.5 font-medium">
-                      {t("loomDetailPage.notInCatalog")}
-                    </span>
-                    <button
-                      onClick={() => setShowLinkCatalog(true)}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {t("loomDetailPage.linkToCatalog")}
-                    </button>
-                    <CatalogRequestButton loom={loom} />
-                  </>
-                )}
-              </div>
-              <div>
-                <Button size="sm" variant="outline" onClick={() => onClone(version)}>
-                  {t("loomDetailPage.cloneConfig")}
-                </Button>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("loomDetailPage.cloneNote", { name: displayName })}
-                </p>
-              </div>
-            </div>
+            <VersionCatalogLinkSection
+              loom={loom}
+              version={version}
+              displayName={displayName}
+              unlinking={unlinking}
+              onUnlink={handleUnlink}
+              onShowLinkCatalog={() => setShowLinkCatalog(true)}
+              onClone={() => onClone(version)}
+            />
           )}
         </div>
       )}
@@ -964,6 +1093,24 @@ export function LoomDetailPage() {
   const currentVersionId = loom.current_version?.id;
   const isReadOnly = !!user?.is_superuser && loom.owner_id !== user.id;
 
+  let deleteLoomControls: ReactNode = null;
+  if (!confirmDelete && !deleteConflict) {
+    deleteLoomControls = (
+      <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
+        {t("loomDetailPage.deleteLoomButton")}
+      </Button>
+    );
+  } else if (confirmDelete) {
+    deleteLoomControls = (
+      <div className="flex shrink-0 items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t("common.cancel")}</Button>
+        <Button size="sm" onClick={() => handleDelete(false)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          {deleting ? t("loomDetailPage.deleting") : t("loomDetailPage.confirmDelete")}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto w-full">
       {isReadOnly && <SuperuserInspectionBanner />}
@@ -971,7 +1118,7 @@ export function LoomDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <Link to="/looms" className="text-muted-foreground hover:text-foreground">{t("loomDetailPage.breadcrumb")}</Link>
-          <AppIcons.chevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <AppIcons.ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="font-medium text-foreground">{loom.manufacturer} {loom.model_name}</span>
           <span className="text-xs text-muted-foreground">{LOOM_TYPE_LABELS[loom.loom_type]}</span>
         </div>
@@ -1089,50 +1236,25 @@ export function LoomDetailPage() {
                       <p className="text-sm font-medium">{t("loomDetailPage.deleteLoom")}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">{t("loomDetailPage.deleteNote")}</p>
                     </div>
-                    {!confirmDelete && !deleteConflict ? (
-                      <Button variant="outline" size="sm" className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10" onClick={() => setConfirmDelete(true)}>
-                        {t("loomDetailPage.deleteLoomButton")}
-                      </Button>
-                    ) : confirmDelete ? (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setConfirmDelete(false)} disabled={deleting}>{t("common.cancel")}</Button>
-                        <Button size="sm" onClick={() => handleDelete(false)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          {deleting ? t("loomDetailPage.deleting") : t("loomDetailPage.confirmDelete")}
-                        </Button>
-                      </div>
-                    ) : null}
+                    {deleteLoomControls}
                   </div>
 
                   {/* 409 conflict */}
                   {deleteConflict && (
-                    <div className="space-y-2">
-                      <p className="text-sm text-destructive font-medium">
-                        {t("loomDetailPage.usedByConflict", { count: deleteConflict.projects.length })}
-                      </p>
-                      <ul className="text-xs text-muted-foreground space-y-0.5 pl-3">
-                        {deleteConflict.projects.map((p) => <li key={p.id}>· {p.name}</li>)}
-                      </ul>
-                      <p className="text-xs text-muted-foreground">
-                        {t("loomDetailPage.conflictUnlinkNote")}
-                      </p>
-                      {!confirmForceDelete ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-destructive/50 text-destructive hover:bg-destructive/10"
-                          onClick={() => setConfirmForceDelete(true)}
-                        >
-                          {t("loomDetailPage.forceDelete", { count: deleteConflict.projects.length })}
-                        </Button>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={() => handleDelete(true)} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            {deleting ? t("loomDetailPage.deleting") : t("loomDetailPage.confirmForceDelete")}
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}>{t("common.cancel")}</Button>
-                        </div>
-                      )}
-                    </div>
+                    <DeleteConflictPanel
+                      conflict={deleteConflict}
+                      usedByMessage={t("loomDetailPage.usedByConflict", { count: deleteConflict.projects.length })}
+                      conflictNote={t("loomDetailPage.conflictUnlinkNote")}
+                      confirmForceDelete={confirmForceDelete}
+                      onRequestForceDelete={() => setConfirmForceDelete(true)}
+                      forceDeleteLabel={t("loomDetailPage.forceDelete", { count: deleteConflict.projects.length })}
+                      triggerButtonClassName="border-destructive/50 text-destructive hover:bg-destructive/10"
+                      onConfirmForceDelete={() => handleDelete(true)}
+                      confirmForceDeleteLabel={t("loomDetailPage.confirmForceDelete")}
+                      busy={deleting}
+                      busyLabel={t("loomDetailPage.deleting")}
+                      onCancel={() => { setDeleteConflict(null); setConfirmForceDelete(false); }}
+                    />
                   )}
                 </div>
               </div>

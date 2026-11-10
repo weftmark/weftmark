@@ -77,8 +77,8 @@ export function AboutPage() {
                 className="text-amber-800 underline hover:text-amber-900 transition-colors"
               >
                 GitHub
-              </a>
-              .
+              </a>{/*
+              */}.
             </p>
           </div>
         </div>

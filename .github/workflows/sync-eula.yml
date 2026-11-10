@@ -3,6 +3,9 @@ name: Sync EULA to migration
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   sync-eula:
     runs-on: ubuntu-latest
@@ -16,14 +19,14 @@ jobs:
           private-key: ${{ secrets.WEFTMARK_BOT_PRIVATE_KEY }}
 
       - name: Checkout dev
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: dev
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -32,8 +35,10 @@ jobs:
 
       - name: Run export script
         id: export
+        env:
+          DB_URL: ${{ secrets.POSTGRES_DSN_DIRECT }}
         run: |
-          output=$(python tools/export_eula_migration.py --db-url "${{ secrets.POSTGRES_DSN_DIRECT }}" 2>&1)
+          output=$(python tools/export_eula_migration.py --db-url "$DB_URL" 2>&1)
           echo "$output"
           written=$(echo "$output" | grep '^Written:' | awk '{print $2}')
           if [ -z "$written" ]; then

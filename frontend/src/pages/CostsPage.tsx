@@ -181,7 +181,7 @@ export function CostsPage() {
           {/* Support CTA */}
           <div className="rounded-xl border border-stone-200 bg-white p-6 space-y-4">
             <div className="flex items-center gap-2">
-              <AppIcons.support className="h-5 w-5 text-amber-600" />
+              <AppIcons.Support className="h-5 w-5 text-amber-600" />
               <h2 className="text-lg font-semibold">Support this project</h2>
             </div>
             <p className="text-stone-600 leading-relaxed">
@@ -196,7 +196,7 @@ export function CostsPage() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-amber-700 transition-colors"
               >
-                <AppIcons.support className="h-4 w-4" />
+                <AppIcons.Support className="h-4 w-4" />
                 Sponsor on GitHub
               </a>
             ) : (

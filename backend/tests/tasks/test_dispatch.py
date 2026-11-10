@@ -195,8 +195,9 @@ class TestDispatchFailure:
                 new=AsyncMock(side_effect=RuntimeError("API error")),
             ),
         ):
+            feedback_id = str(row.id)
             with pytest.raises(RuntimeError):
-                await _dispatch(task, str(row.id))
+                await _dispatch(task, feedback_id)
 
         await db_session.refresh(row)
         assert row.dispatch_status == "failed"
@@ -215,8 +216,9 @@ class TestDispatchFailure:
                 new=AsyncMock(side_effect=RuntimeError("API error")),
             ),
         ):
+            feedback_id = str(row.id)
             with pytest.raises(RuntimeError):
-                await _dispatch(task, str(row.id))
+                await _dispatch(task, feedback_id)
 
         await db_session.refresh(row)
         assert row.dispatch_error is not None
@@ -235,8 +237,9 @@ class TestDispatchFailure:
                 new=AsyncMock(side_effect=RuntimeError("API error")),
             ),
         ):
+            feedback_id = str(row.id)
             with pytest.raises(RuntimeError):
-                await _dispatch(task, str(row.id))
+                await _dispatch(task, feedback_id)
 
         task.retry.assert_called_once()
 
@@ -269,7 +272,7 @@ class TestSendEmails:
             patch("app.services.email.send_feedback_admin_alert", new=AsyncMock()) as mock_alert,
             patch("app.services.email.send_feedback_user_confirmation", new=AsyncMock()),
         ):
-            await _send_emails(str(row.id), "https://github.com/d/1", _settings_mock())
+            await _send_emails(str(row.id), "https://github.com/d/1")
 
         mock_alert.assert_called_once()
 
@@ -281,7 +284,7 @@ class TestSendEmails:
             patch("app.services.email.send_feedback_admin_alert", new=AsyncMock()) as mock_alert,
             patch("app.services.email.send_feedback_user_confirmation", new=AsyncMock()),
         ):
-            await _send_emails(str(row.id), "https://github.com/d/1", _settings_mock())
+            await _send_emails(str(row.id), "https://github.com/d/1")
 
         mock_alert.assert_not_called()
 
@@ -293,7 +296,7 @@ class TestSendEmails:
             patch("app.services.email.send_feedback_admin_alert", new=AsyncMock()),
             patch("app.services.email.send_feedback_user_confirmation", new=AsyncMock()) as mock_confirm,
         ):
-            await _send_emails(str(row.id), "https://github.com/d/1", _settings_mock())
+            await _send_emails(str(row.id), "https://github.com/d/1")
 
         mock_confirm.assert_called_once()
 
@@ -305,7 +308,7 @@ class TestSendEmails:
             patch("app.services.email.send_feedback_admin_alert", new=AsyncMock()),
             patch("app.services.email.send_feedback_user_confirmation", new=AsyncMock()) as mock_confirm,
         ):
-            await _send_emails(str(row.id), "https://github.com/d/1", _settings_mock())
+            await _send_emails(str(row.id), "https://github.com/d/1")
 
         mock_confirm.assert_not_called()
 
@@ -317,7 +320,7 @@ class TestSendEmails:
             patch("app.services.email.send_feedback_admin_alert", new=AsyncMock()),
             patch("app.services.email.send_feedback_user_confirmation", new=AsyncMock()) as mock_confirm,
         ):
-            await _send_emails(str(row.id), "https://github.com/d/1", _settings_mock())
+            await _send_emails(str(row.id), "https://github.com/d/1")
 
         mock_confirm.assert_not_called()
 
@@ -327,4 +330,4 @@ class TestSendEmails:
             patch("app.services.email.send_feedback_admin_alert", new=AsyncMock()),
             patch("app.services.email.send_feedback_user_confirmation", new=AsyncMock()),
         ):
-            await _send_emails(str(uuid.uuid4()), "https://github.com/d/1", _settings_mock())
+            await _send_emails(str(uuid.uuid4()), "https://github.com/d/1")

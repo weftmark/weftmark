@@ -23,10 +23,11 @@
 | `app/models/draft.py` | 100% | |
 | `app/models/user.py` | 100% | Defaults, soft delete, all fields covered |
 | `app/models/yarn.py` | 100% | |
-| `app/routers/projects.py` | 97% | 9 missing: error branches (treadle/lift validation, loom version), picks endpoint edge case |
+| `app/routers/projects.py` | 97% | 9 missing: error branches (treadle/lift validation, loom version), picks endpoint edge case. `claim_tracking`/`release_tracking`/`_check_tracker_lock` (#1029) fully covered by `TestTrackerLock` (11 tests: claim/idempotent/blocked/force-steal, step/advance-item/jump-item gating, expiry self-heal, release + non-holder no-op) |
 | `app/routers/auth.py` | 81% | `/me`, logout, token validation, invite flow, webhook handlers covered; OIDC callback not tested |
 | `app/routers/health.py` | 78% | `/health` covered; DB-down error branches not tested |
 | `app/routers/admin.py` | 72% | Most admin CRUD covered; Clerk API integration paths missing |
+| `app/services/neon.py` | ~85% | Extracted from `admin.py` (#1041): `fetch_project_usage`/`fetch_account_usage`/`fetch_dashboard`/`test_connection` covered (not-configured, success, timeout, HTTP error, project filter, org-info failure fallback); exact % not yet measured |
 | `app/routers/looms.py` | 97% | 9 missing: photo replace + file-size error branches |
 | `app/routers/drafts.py` | 93% | 14 missing: `file_too_large`, preview happy path, liftplan edge case |
 | `app/routers/yarn.py` | 99% | 3 missing: file-size error branches |
@@ -42,7 +43,8 @@
 | `app/version.py` | 86% | `__main__` block not tested |
 | `app/cli.py` | 63% | Seeding CLI paths not tested |
 | `app/services/clerk.py` | 23% | Clerk API calls not tested (no Clerk mock) |
-| `app/routers/ravelry.py` | ~50% | Stash push-back well covered; status/disconnect/sync/authorize/callback/search/import untested — see #963 |
+| `app/routers/ravelry.py` | 86% | Status, disconnect, sync, authorize, and OAuth callback success/failure now covered (#963); popular/search endpoints and one `import-yarn` 404 branch remain untested — explicitly deferred by #963's own work order |
+| `app/services/fingerprints.py` | 100% | Threading/tie-up/drawdown structural fingerprinting (#983) — all guard branches (absent section, degenerate-empty, zero warp/weft threads) covered |
 | `app/routers/collections.py` | ~90% | Comprehensive CRUD tests; exact % not yet measured |
 | `app/routers/feedback.py` | ~90% | Full CRUD + admin paths tested; exact % not yet measured |
 | `app/routers/webhooks.py` | ~85% | Webhook handler paths covered; exact % not yet measured |

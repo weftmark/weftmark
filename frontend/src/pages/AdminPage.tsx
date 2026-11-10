@@ -5,6 +5,7 @@ import { UserDetailModal, type UserDetailTarget } from "@/components/admin/UserD
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { formatUptime } from "@/lib/utils";
 import {
   listAdminUsers,
   getAdminStats,
@@ -19,7 +20,6 @@ import {
   banPendingSignup,
   getAdminServices,
   getAdminDbInfo,
-  getNeonUsage,
   sendTestEmail,
   testWebhook,
   getAuditLog,
@@ -32,7 +32,6 @@ import {
   type AdminUser,
   type AdminHealth,
   type AdminDbInfo,
-  type NeonUsage,
   type AuditLogEntry,
   type InviteRecord,
   type PendingSignup,
@@ -60,19 +59,9 @@ import {
   adminDeleteLoomReference,
   type LoomReferenceDetail,
 } from "@/api/looms";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 type Tab = "users" | "invites" | "stats" | "health" | "services" | "deps" | "audit" | "slugs" | "feedback" | "looms";
-
-function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d} day${d !== 1 ? "s" : ""}`);
-  if (h > 0) parts.push(`${h} hour${h !== 1 ? "s" : ""}`);
-  parts.push(`${m} minute${m !== 1 ? "s" : ""}`);
-  return parts.join(", ");
-}
 
 function formatLastActive(iso: string | null): string {
   if (!iso) return "Never";
@@ -171,7 +160,7 @@ const STATUS_PILL: Record<UserRow["status"], string> = {
   deleting: "bg-copper-subtle text-copper-on-subtle",
 };
 
-function StatusPill({ status }: { status: UserRow["status"] }) {
+function StatusPill({ status }: { readonly status: UserRow["status"] }) {
   return (
     <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_PILL[status]}`}>
       {status}
@@ -182,15 +171,17 @@ function StatusPill({ status }: { status: UserRow["status"] }) {
 function SortTh({
   label, k, sort, dir, onSort,
 }: {
-  label: string; k: SortKey; sort: SortKey; dir: "asc" | "desc"; onSort: (k: SortKey) => void;
+  readonly label: string; readonly k: SortKey; readonly sort: SortKey; readonly dir: "asc" | "desc"; readonly onSort: (k: SortKey) => void;
 }) {
   const active = sort === k;
+  let arrow = "";
+  if (active) arrow = dir === "asc" ? " ↑" : " ↓";
   return (
     <th
       className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none hover:text-foreground whitespace-nowrap"
       onClick={() => onSort(k)}
     >
-      {label}{active ? (dir === "asc" ? " ↑" : " ↓") : ""}
+      {label}{arrow}
     </th>
   );
 }
@@ -292,6 +283,8 @@ function UsersTab() {
   if (usersLoading || pendingLoading)
     return <p className="text-sm text-muted-foreground">Loading…</p>;
 
+  const userWord = `user${rows.length !== 1 ? "s" : ""}`;
+
   return (
     <div className="space-y-6">
       <div className="space-y-1 pb-2 border-b">
@@ -334,7 +327,7 @@ function UsersTab() {
 
       <p className="text-xs text-muted-foreground">
         {sorted.length === rows.length
-          ? `${rows.length} user${rows.length !== 1 ? "s" : ""}`
+          ? `${rows.length} ${userWord}`
           : `${sorted.length} of ${rows.length} users`}
       </p>
 
@@ -579,6 +572,7 @@ function InvitesTab() {
               {past.length > INVITE_HISTORY_PAGE_SIZE && (
                 <div className="flex items-center justify-between pt-1">
                   <button
+                    type="button"
                     className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
                     disabled={historyPage === 0}
                     onClick={() => setHistoryPage((p) => p - 1)}
@@ -589,6 +583,7 @@ function InvitesTab() {
                     {historyPage + 1} / {Math.ceil(past.length / INVITE_HISTORY_PAGE_SIZE)}
                   </span>
                   <button
+                    type="button"
                     className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
                     disabled={(historyPage + 1) * INVITE_HISTORY_PAGE_SIZE >= past.length}
                     onClick={() => setHistoryPage((p) => p + 1)}
@@ -613,13 +608,50 @@ function PendingSignupRow({
   onBan,
   isWorking,
 }: {
-  signup: PendingSignup;
-  onApprove: () => void;
-  onDismiss: () => void;
-  onBan: () => void;
-  isWorking: boolean;
+  readonly signup: PendingSignup;
+  readonly onApprove: () => void;
+  readonly onDismiss: () => void;
+  readonly onBan: () => void;
+  readonly isWorking: boolean;
 }) {
   const [confirming, setConfirming] = useState<"dismiss" | "ban" | null>(null);
+
+  let actions: React.ReactNode;
+  if (confirming === "dismiss") {
+    actions = (
+      <>
+        <span className="text-xs text-muted-foreground font-medium">Dismiss?</span>
+        <Button size="sm" variant="outline" disabled={isWorking} onClick={() => { setConfirming(null); onDismiss(); }}>
+          Confirm
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
+      </>
+    );
+  } else if (confirming === "ban") {
+    actions = (
+      <>
+        <span className="text-xs text-destructive font-medium">Ban?</span>
+        <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => { setConfirming(null); onBan(); }}>
+          Confirm
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
+      </>
+    );
+  } else {
+    actions = (
+      <>
+        <Button size="sm" disabled={isWorking} onClick={onApprove} className="bg-green-600 hover:bg-green-700 text-white">
+          Approve
+        </Button>
+        <Button size="sm" variant="outline" disabled={isWorking} onClick={() => setConfirming("dismiss")}>
+          Dismiss
+        </Button>
+        <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => setConfirming("ban")}>
+          Ban
+        </Button>
+      </>
+    );
+  }
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
@@ -631,49 +663,19 @@ function PendingSignupRow({
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {confirming === "dismiss" ? (
-          <>
-            <span className="text-xs text-muted-foreground font-medium">Dismiss?</span>
-            <Button size="sm" variant="outline" disabled={isWorking} onClick={() => { setConfirming(null); onDismiss(); }}>
-              Confirm
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
-          </>
-        ) : confirming === "ban" ? (
-          <>
-            <span className="text-xs text-destructive font-medium">Ban?</span>
-            <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => { setConfirming(null); onBan(); }}>
-              Confirm
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>Cancel</Button>
-          </>
-        ) : (
-          <>
-            <Button size="sm" disabled={isWorking} onClick={onApprove} className="bg-green-600 hover:bg-green-700 text-white">
-              Approve
-            </Button>
-            <Button size="sm" variant="outline" disabled={isWorking} onClick={() => setConfirming("dismiss")}>
-              Dismiss
-            </Button>
-            <Button size="sm" variant="destructive" disabled={isWorking} onClick={() => setConfirming("ban")}>
-              Ban
-            </Button>
-          </>
-        )}
+        {actions}
       </div>
     </div>
   );
 }
 
-function InviteRow({ invite, onRevoke }: { invite: InviteRecord; onRevoke?: () => void }) {
+function InviteRow({ invite, onRevoke }: { readonly invite: InviteRecord; readonly onRevoke?: () => void }) {
   const isPending = !invite.accepted_at && !invite.revoked_at && new Date(invite.expires_at) > new Date();
-  const status = invite.accepted_at
-    ? "accepted"
-    : invite.revoked_at
-    ? "revoked"
-    : new Date(invite.expires_at) <= new Date()
-    ? "expired"
-    : "pending";
+  let status: "accepted" | "revoked" | "expired" | "pending";
+  if (invite.accepted_at) status = "accepted";
+  else if (invite.revoked_at) status = "revoked";
+  else if (new Date(invite.expires_at) <= new Date()) status = "expired";
+  else status = "pending";
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-background gap-4">
@@ -734,7 +736,7 @@ function StatsTab() {
   );
 }
 
-function StatTable({ title, rows }: { title: string; rows: { label: string; value: number | string }[] }) {
+function StatTable({ title, rows }: { readonly title: string; readonly rows: { label: string; value: number | string }[] }) {
   return (
     <div>
       <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{title}</h2>
@@ -755,9 +757,19 @@ function StatTable({ title, rows }: { title: string; rows: { label: string; valu
 // ---------------------------------------------------------------------------
 
 const MAX_HEALTH_POINTS = 60;
+
+function appendHealthPoint(prev: AdminHealth[], d: AdminHealth): AdminHealth[] {
+  return [...prev.slice(-(MAX_HEALTH_POINTS - 1)), d];
+}
+
+function pollHealthOnce(setHistory: React.Dispatch<React.SetStateAction<AdminHealth[]>>) {
+  getAdminHealth()
+    .then((d) => setHistory((prev) => appendHealthPoint(prev, d)))
+    .catch(() => {});
+}
 const POLL_INTERVAL_MS = 3000;
 
-function Sparkline({ values, max, color }: { values: number[]; max: number; color: string }) {
+function Sparkline({ values, max, color }: { readonly values: number[]; readonly max: number; readonly color: string }) {
   const W = 300;
   const H = 48;
   if (values.length < 2) {
@@ -792,11 +804,7 @@ function HealthTab() {
   const latest = history[history.length - 1] ?? null;
 
   useEffect(() => {
-    const fetch = () => {
-      getAdminHealth()
-        .then((d) => setHistory((prev) => [...prev.slice(-(MAX_HEALTH_POINTS - 1)), d]))
-        .catch(() => {});
-    };
+    const fetch = () => pollHealthOnce(setHistory);
     fetch();
     pollingRef.current = setInterval(fetch, POLL_INTERVAL_MS);
     return () => {
@@ -865,7 +873,7 @@ function HealthTab() {
 
 declare const __APP_VERSION__: string;
 
-function InfoTable({ rows }: { rows: { label: string; value: string }[] }) {
+function InfoTable({ rows }: { readonly rows: { label: string; value: string }[] }) {
   return (
     <div className="border rounded-lg divide-y overflow-hidden">
       {rows.map(({ label, value }) => (
@@ -975,11 +983,11 @@ function HealthChart({
   max,
   color,
 }: {
-  label: string;
-  current: string;
-  values: number[];
-  max: number;
-  color: string;
+  readonly label: string;
+  readonly current: string;
+  readonly values: number[];
+  readonly max: number;
+  readonly color: string;
 }) {
   return (
     <div className="border rounded-lg p-4 space-y-2">
@@ -998,7 +1006,7 @@ function HealthChart({
 // Services tab
 // ---------------------------------------------------------------------------
 
-function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean }) {
+function StatusDot({ status, small }: { readonly status: "ok" | "error"; readonly small?: boolean }) {
   return (
     <span
       className={`inline-block rounded-full shrink-0 ${small ? "w-2 h-2" : "w-2.5 h-2.5"} ${
@@ -1008,7 +1016,157 @@ function StatusDot({ status, small }: { status: "ok" | "error"; small?: boolean 
   );
 }
 
-function CombinedServiceRow({ service, detail }: { service: ReadinessService; detail?: ServiceCheck }) {
+async function runWebhookTest(
+  e: React.MouseEvent,
+  setTesting: (v: boolean) => void,
+  setResult: (v: WebhookProbeResult | null) => void,
+) {
+  e.stopPropagation();
+  setTesting(true);
+  setResult(null);
+  try {
+    const result = await testWebhook();
+    setResult(result);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Request failed";
+    setResult({ status: "error", latency_ms: null, message: msg });
+  } finally {
+    setTesting(false);
+  }
+}
+
+async function runEmailTest(
+  e: React.MouseEvent,
+  setSending: (v: boolean) => void,
+  setResult: (v: { ok: boolean; msg: string } | null) => void,
+) {
+  e.stopPropagation();
+  setSending(true);
+  setResult(null);
+  try {
+    const result = await sendTestEmail();
+    setResult({ ok: true, msg: `Sent to ${result.to}` });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Request failed";
+    setResult({ ok: false, msg });
+  } finally {
+    setSending(false);
+  }
+}
+
+function TestResultBar({ ok, text, mono }: { readonly ok: boolean; readonly text: string; readonly mono?: boolean }) {
+  return (
+    <div className={`px-4 py-2 border-t text-xs ${mono ? "font-mono" : ""} ${ok ? "text-green-600" : "text-destructive"}`}>
+      {text}
+    </div>
+  );
+}
+
+function ServiceRowHeader({
+  service,
+  hasDetail,
+  open,
+  onToggle,
+  isWebhook,
+  isSmtp,
+  webhookTesting,
+  emailSending,
+  onTestWebhook,
+  onTestEmail,
+}: {
+  readonly service: ReadinessService;
+  readonly hasDetail: boolean;
+  readonly open: boolean;
+  readonly onToggle: () => void;
+  readonly isWebhook: boolean;
+  readonly isSmtp: boolean;
+  readonly webhookTesting: boolean;
+  readonly emailSending: boolean;
+  readonly onTestWebhook: (e: React.MouseEvent) => void;
+  readonly onTestEmail: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`w-full flex items-center gap-3 px-4 py-3 text-left ${hasDetail ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
+      onClick={hasDetail ? onToggle : undefined}
+    >
+      <StatusDot status={service.ok ? "ok" : "error"} />
+      <span className="text-sm font-medium w-32 shrink-0">{service.name}</span>
+      <span className={`text-sm flex-1 ${!service.ok ? "text-destructive" : "text-muted-foreground"}`}>
+        {service.message || (service.ok ? "ok" : "failed")}
+      </span>
+      {isWebhook && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-xs"
+          disabled={webhookTesting}
+          onClick={onTestWebhook}
+        >
+          {webhookTesting ? "Testing…" : "Test"}
+        </Button>
+      )}
+      {isSmtp && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-xs"
+          disabled={emailSending}
+          onClick={onTestEmail}
+        >
+          {emailSending ? "Sending…" : "Send Test"}
+        </Button>
+      )}
+      {!service.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
+      {hasDetail && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
+    </button>
+  );
+}
+
+function ServiceDetailPanel({
+  open,
+  hasDetail,
+  detail,
+}: {
+  readonly open: boolean;
+  readonly hasDetail: boolean;
+  readonly detail?: ServiceCheck;
+}) {
+  if (!open || !hasDetail || !detail) return null;
+
+  const metaEntries = Object.entries(detail.meta ?? {});
+
+  return (
+    <div className="border-t">
+      {metaEntries.length > 0 && (
+        <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 pl-10 pr-4 py-2.5 bg-muted/10 border-b">
+          {metaEntries.map(([k, v]) => (
+            <React.Fragment key={k}>
+              <span className="text-xs text-muted-foreground">{k}</span>
+              <span className="text-xs font-mono break-all">{v}</span>
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+      {detail.checks.length > 0 && (
+        <div className="divide-y">
+          {detail.checks.map((c: ServicePermCheck) => (
+            <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
+              <StatusDot status={c.status} small />
+              <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
+              <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                {c.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CombinedServiceRow({ service, detail }: { readonly service: ReadinessService; readonly detail?: ServiceCheck }) {
   const [open, setOpen] = useState(false);
   const [webhookResult, setWebhookResult] = useState<WebhookProbeResult | null>(null);
   const [webhookTesting, setWebhookTesting] = useState(false);
@@ -1017,113 +1175,37 @@ function CombinedServiceRow({ service, detail }: { service: ReadinessService; de
   const isWebhook = service.name === "Clerk Webhook";
   const isSmtp = service.name === "SMTP";
   const metaEntries = Object.entries(detail?.meta ?? {});
-  const hasDetail = detail && (metaEntries.length > 0 || detail.checks.length > 0);
-
-  async function handleTestWebhook(e: React.MouseEvent) {
-    e.stopPropagation();
-    setWebhookTesting(true);
-    setWebhookResult(null);
-    try {
-      const result = await testWebhook();
-      setWebhookResult(result);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Request failed";
-      setWebhookResult({ status: "error", latency_ms: null, message: msg });
-    } finally {
-      setWebhookTesting(false);
-    }
-  }
-
-  async function handleTestEmail(e: React.MouseEvent) {
-    e.stopPropagation();
-    setEmailSending(true);
-    setEmailResult(null);
-    try {
-      const result = await sendTestEmail();
-      setEmailResult({ ok: true, msg: `Sent to ${result.to}` });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Request failed";
-      setEmailResult({ ok: false, msg });
-    } finally {
-      setEmailSending(false);
-    }
-  }
+  const hasDetail = !!(detail && (metaEntries.length > 0 || detail.checks.length > 0));
 
   return (
     <div className="bg-background">
-      <button
-        className={`w-full flex items-center gap-3 px-4 py-3 text-left ${hasDetail ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
-        onClick={hasDetail ? () => setOpen((o) => !o) : undefined}
-      >
-        <StatusDot status={service.ok ? "ok" : "error"} />
-        <span className="text-sm font-medium w-32 shrink-0">{service.name}</span>
-        <span className={`text-sm flex-1 ${!service.ok ? "text-destructive" : "text-muted-foreground"}`}>
-          {service.message || (service.ok ? "ok" : "failed")}
-        </span>
-        {isWebhook && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-xs"
-            disabled={webhookTesting}
-            onClick={handleTestWebhook}
-          >
-            {webhookTesting ? "Testing…" : "Test"}
-          </Button>
-        )}
-        {isSmtp && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-xs"
-            disabled={emailSending}
-            onClick={handleTestEmail}
-          >
-            {emailSending ? "Sending…" : "Send Test"}
-          </Button>
-        )}
-        {!service.critical && <span className="text-xs text-muted-foreground">non-critical</span>}
-        {hasDetail && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
-      </button>
+      <ServiceRowHeader
+        service={service}
+        hasDetail={hasDetail}
+        open={open}
+        onToggle={() => setOpen((o) => !o)}
+        isWebhook={isWebhook}
+        isSmtp={isSmtp}
+        webhookTesting={webhookTesting}
+        emailSending={emailSending}
+        onTestWebhook={(e) => void runWebhookTest(e, setWebhookTesting, setWebhookResult)}
+        onTestEmail={(e) => void runEmailTest(e, setEmailSending, setEmailResult)}
+      />
       {webhookResult && (
-        <div className={`px-4 py-2 border-t text-xs font-mono ${webhookResult.status === "ok" ? "text-green-600" : "text-destructive"}`}>
-          {webhookResult.status === "ok"
-            ? `✓ Round-trip: ${webhookResult.latency_ms}ms`
-            : `✗ ${webhookResult.message}`}
-        </div>
+        <TestResultBar
+          ok={webhookResult.status === "ok"}
+          mono
+          text={
+            webhookResult.status === "ok"
+              ? `✓ Round-trip: ${webhookResult.latency_ms}ms`
+              : `✗ ${webhookResult.message}`
+          }
+        />
       )}
       {emailResult && (
-        <div className={`px-4 py-2 border-t text-xs ${emailResult.ok ? "text-green-600" : "text-destructive"}`}>
-          {emailResult.ok ? `✓ ${emailResult.msg}` : `✗ ${emailResult.msg}`}
-        </div>
+        <TestResultBar ok={emailResult.ok} text={emailResult.ok ? `✓ ${emailResult.msg}` : `✗ ${emailResult.msg}`} />
       )}
-      {open && hasDetail && (
-        <div className="border-t">
-          {metaEntries.length > 0 && (
-            <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 pl-10 pr-4 py-2.5 bg-muted/10 border-b">
-              {metaEntries.map(([k, v]) => (
-                <React.Fragment key={k}>
-                  <span className="text-xs text-muted-foreground">{k}</span>
-                  <span className="text-xs font-mono break-all">{v}</span>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-          {detail!.checks.length > 0 && (
-            <div className="divide-y">
-              {detail!.checks.map((c: ServicePermCheck) => (
-                <div key={c.name} className="flex items-center gap-3 pl-10 pr-4 py-2 bg-muted/20">
-                  <StatusDot status={c.status} small />
-                  <span className="text-xs text-muted-foreground w-32 shrink-0">{c.name}</span>
-                  <span className={`text-xs ${c.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
-                    {c.message}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <ServiceDetailPanel open={open} hasDetail={hasDetail} detail={detail} />
     </div>
   );
 }
@@ -1160,59 +1242,6 @@ function DbInfoPanel() {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-function NeonUsagePanel() {
-  const { data } = useQuery<NeonUsage>({
-    queryKey: ["admin", "neon-usage"],
-    queryFn: getNeonUsage,
-    staleTime: 60_000,
-  });
-
-  // Purely optional/observational — hidden entirely unless neon_api_key/neon_org_id
-  // are configured. Independent of which Postgres the app actually connects to.
-  if (!data || !data.configured) return null;
-
-  const totalHours = data.total_compute_seconds / 3600;
-  const maxDaily = Math.max(1, ...data.daily.map((d) => d.compute_seconds));
-
-  return (
-    <div>
-      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-        Neon Compute Usage (last 30 days)
-      </h2>
-      {data.error ? (
-        <div className="border rounded-lg px-4 py-2 bg-background text-sm text-destructive">{data.error}</div>
-      ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2 bg-background border-b">
-            <span className="text-sm">Total compute time</span>
-            <span className="text-xs font-mono text-muted-foreground">{totalHours.toFixed(1)} hours</span>
-          </div>
-          {data.daily.length > 0 && (
-            <div className="px-4 py-2 bg-background space-y-1">
-              {data.daily.map((d) => (
-                <div key={d.date} className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-muted-foreground w-20 shrink-0">
-                    {new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                  </span>
-                  <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
-                    <div
-                      className="h-full bg-accent"
-                      style={{ width: `${Math.max(2, (d.compute_seconds / maxDaily) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-mono text-muted-foreground w-16 text-right">
-                    {(d.compute_seconds / 3600).toFixed(2)}h
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -1259,7 +1288,7 @@ function ServicesTab() {
           </span>
         </div>
         <Button size="sm" variant="outline" disabled={diagFetching} onClick={() => runDiag()}>
-          {diagFetching ? "Running…" : diagTime ? `Re-run · ${diagTime}` : "Running…"}
+          {diagFetching || !diagTime ? "Running…" : `Re-run · ${diagTime}`}
         </Button>
       </div>
 
@@ -1274,7 +1303,6 @@ function ServicesTab() {
       )}
 
       <DbInfoPanel />
-      <NeonUsagePanel />
       <ServerEventsPanel />
     </div>
   );
@@ -1306,6 +1334,37 @@ function formatElapsed(ms: number | null) {
   const m = Math.floor(s / 60);
   const rem = Math.round(s % 60);
   return `${m}m ${rem}s`;
+}
+
+function Pager({ page, dataPage, pages, onPrev, onNext, size = "text-xs" }: {
+  readonly page: number;
+  readonly dataPage: number;
+  readonly pages: number;
+  readonly onPrev: () => void;
+  readonly onNext: () => void;
+  readonly size?: "text-xs" | "text-sm";
+}) {
+  return (
+    <div className={`flex items-center gap-2 justify-center ${size}`}>
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={onPrev}
+        className="px-2 py-1 border rounded disabled:opacity-40"
+      >
+        ←
+      </button>
+      <span className="text-muted-foreground">Page {dataPage} of {pages}</span>
+      <button
+        type="button"
+        disabled={page >= pages}
+        onClick={onNext}
+        className="px-2 py-1 border rounded disabled:opacity-40"
+      >
+        →
+      </button>
+    </div>
+  );
 }
 
 function ServerEventsPanel() {
@@ -1344,7 +1403,7 @@ function ServerEventsPanel() {
       {isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
       {isError && <p className="text-xs text-destructive">Failed to load server events.</p>}
 
-      {data && data.items.length === 0 && (
+      {data?.items.length === 0 && (
         <p className="text-xs text-muted-foreground">No events recorded yet.</p>
       )}
 
@@ -1382,23 +1441,7 @@ function ServerEventsPanel() {
       )}
 
       {data && data.pages > 1 && (
-        <div className="flex items-center gap-2 justify-center text-xs">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-2 py-1 border rounded disabled:opacity-40"
-          >
-            ←
-          </button>
-          <span className="text-muted-foreground">Page {data.page} of {data.pages}</span>
-          <button
-            disabled={page >= data.pages}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-2 py-1 border rounded disabled:opacity-40"
-          >
-            →
-          </button>
-        </div>
+        <Pager page={page} dataPage={data.page} pages={data.pages} onPrev={() => setPage((p) => p - 1)} onNext={() => setPage((p) => p + 1)} size="text-xs" />
       )}
     </div>
   );
@@ -1446,6 +1489,7 @@ function SlugsTab() {
           <tbody>
             {slugs.map((row: AdminSlugRecord) => {
               const expired = row.share_expires_at ? new Date(row.share_expires_at) <= new Date() : false;
+              const expiryClass = expired ? "text-destructive" : "";
               return (
                 <tr key={row.slug} className="border-b border-border last:border-0 hover:bg-muted/20">
                   <td className="px-3 py-2.5 font-mono text-xs text-muted-foreground">
@@ -1464,7 +1508,7 @@ function SlugsTab() {
                   <td className="px-3 py-2.5 text-xs capitalize">{row.project_status}</td>
                   <td className="px-3 py-2.5 text-xs">
                     {row.share_expires_at ? (
-                      <span className={expired ? "text-destructive" : ""}>
+                      <span className={expiryClass}>
                         {new Date(row.share_expires_at).toLocaleDateString()}
                         {expired && " (expired)"}
                       </span>
@@ -1499,6 +1543,12 @@ function SlugsTab() {
   );
 }
 
+function formatDwell(ms: number | null) {
+  if (ms == null) return "—";
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
 function StepLogSection() {
   const [projectId, setProjectId] = useState("");
   const [submittedId, setSubmittedId] = useState<string | null>(null);
@@ -1515,12 +1565,6 @@ function StepLogSection() {
     if (trimmed) setSubmittedId(trimmed);
   }
 
-  function formatDwell(ms: number | null) {
-    if (ms == null) return "—";
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  }
-
   return (
     <div className="space-y-3 mt-8">
       <h2 className="text-base font-semibold">Project step log</h2>
@@ -1535,7 +1579,7 @@ function StepLogSection() {
       </form>
       {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
       {isError && <div className="text-sm text-destructive">Failed to load steps.</div>}
-      {steps && steps.length === 0 && (
+      {steps?.length === 0 && (
         <div className="text-sm text-muted-foreground">No steps recorded for this project.</div>
       )}
       {steps && steps.length > 0 && (
@@ -1584,6 +1628,7 @@ function FeedbackTab() {
   const [typeFilter, setTypeFilter] = useState<SubmissionType | "">("");
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [detail, setDetail] = useState<FeedbackRecord | null>(null);
+  useEscapeKey(() => setDetail(null), detail !== null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "feedback", page, typeFilter, includeDeleted],
@@ -1620,6 +1665,9 @@ function FeedbackTab() {
     },
   });
 
+  const recoverLabel = recoverMutation.isPending ? "Recovering…" : "Recover";
+  const deleteLabel = deleteMutation.isPending ? "Deleting…" : "Delete";
+
   const STATUS_COLORS: Record<string, string> = {
     sent: "text-green-600 dark:text-green-400",
     failed: "text-destructive",
@@ -1646,14 +1694,14 @@ function FeedbackTab() {
             ))}
           </select>
           <label className="flex items-center gap-1.5 cursor-pointer text-muted-foreground">
-            <input type="checkbox" checked={includeDeleted} onChange={(e) => setIncludeDeleted(e.target.checked)} />
-            Show deleted
+            <input type="checkbox" checked={includeDeleted} onChange={(e) => setIncludeDeleted(e.target.checked)} />{/*
+            */}Show deleted
           </label>
         </div>
       </div>
 
       {isLoading && <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>}
-      {data && data.items.length === 0 && (
+      {data?.items.length === 0 && (
         <div className="text-sm text-muted-foreground py-8 text-center">No submissions found.</div>
       )}
       {data && data.items.length > 0 && (
@@ -1715,19 +1763,15 @@ function FeedbackTab() {
       {detail && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setDetail(null)}
-          onKeyDown={(e) => e.key === "Escape" && setDetail(null)}
+          onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}
+          onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
         >
-          <div
-            className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") setDetail(null); }}
-          >
+          <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">
                 {SUBMISSION_TYPE_LABELS[detail.submission_type as SubmissionType] ?? detail.submission_type}
               </h3>
-              <button onClick={() => setDetail(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+              <button type="button" onClick={() => setDetail(null)} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
                 <span className="text-xs">✕</span>
               </button>
             </div>
@@ -1738,9 +1782,14 @@ function FeedbackTab() {
             {detail.diagnostics && Object.keys(detail.diagnostics).length > 0 && (
               <div className="text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground">Diagnostics</p>
-                {Object.entries(detail.diagnostics).map(([k, v]) =>
-                  v ? <p key={k}><span className="font-mono">{k}:</span> {String(v)}</p> : null
-                )}
+                {Object.entries(detail.diagnostics).map(([k, v]) => {
+                  if (!v) return null;
+                  const display =
+                    typeof v === "string" || typeof v === "number" || typeof v === "boolean"
+                      ? String(v)
+                      : JSON.stringify(v);
+                  return <p key={k}><span className="font-mono">{k}:</span> {display}</p>;
+                })}
               </div>
             )}
 
@@ -1776,7 +1825,7 @@ function FeedbackTab() {
                   disabled={recoverMutation.isPending}
                   onClick={() => recoverMutation.mutate(detail.id)}
                 >
-                  {recoverMutation.isPending ? "Recovering…" : "Recover"}
+                  {recoverLabel}
                 </Button>
               ) : (
                 <Button
@@ -1788,7 +1837,7 @@ function FeedbackTab() {
                     if (confirm("Soft-delete this submission?")) deleteMutation.mutate(detail.id);
                   }}
                 >
-                  {deleteMutation.isPending ? "Deleting…" : "Delete"}
+                  {deleteLabel}
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={() => setDetail(null)}>Close</Button>
@@ -1885,7 +1934,7 @@ function AuditLogTab() {
       {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {isError && <p className="text-sm text-destructive">Failed to load audit log.</p>}
 
-      {data && data.items.length === 0 && (
+      {data?.items.length === 0 && (
         <p className="text-sm text-muted-foreground">No events found.</p>
       )}
 
@@ -1911,31 +1960,17 @@ function AuditLogTab() {
       )}
 
       {data && data.pages > 1 && (
-        <div className="flex items-center gap-2 justify-center text-sm">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-2 py-1 border rounded disabled:opacity-40"
-          >
-            ←
-          </button>
-          <span className="text-muted-foreground">Page {data.page} of {data.pages}</span>
-          <button
-            disabled={page >= data.pages}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-2 py-1 border rounded disabled:opacity-40"
-          >
-            →
-          </button>
-        </div>
+        <Pager page={page} dataPage={data.page} pages={data.pages} onPrev={() => setPage((p) => p - 1)} onNext={() => setPage((p) => p + 1)} size="text-sm" />
       )}
     </div>
   );
 }
 
-function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
+function AuditLogRow({ entry }: { readonly entry: AuditLogEntry }) {
   const [expanded, setExpanded] = useState(false);
   const hasDetails = entry.details && Object.keys(entry.details).length > 0;
+  let toggleLabel = "—";
+  if (hasDetails) toggleLabel = expanded ? "▲ hide" : "▼ show";
 
   return (
     <>
@@ -1954,7 +1989,7 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
         <td className="px-3 py-2 text-muted-foreground">{entry.actor_email ? <CopyEmail email={entry.actor_email} /> : <span className="italic">system</span>}</td>
         <td className="px-3 py-2 text-muted-foreground">{entry.target_email ? <CopyEmail email={entry.target_email} /> : "—"}</td>
         <td className="px-3 py-2 text-muted-foreground text-xs">
-          {hasDetails ? (expanded ? "▲ hide" : "▼ show") : "—"}
+          {toggleLabel}
         </td>
       </tr>
       {expanded && hasDetails && (
@@ -1991,17 +2026,22 @@ const SHEDDING_OPTIONS = [
 ];
 
 function parseIntArray(s: string): number[] | undefined {
-  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !isNaN(n));
+  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !Number.isNaN(n));
   return parts.length > 0 ? parts : undefined;
 }
 
 function parseFloatArray(s: string): number[] | undefined {
-  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !isNaN(n));
+  const parts = s.split(",").map((p) => p.trim()).filter(Boolean).map(Number).filter((n) => !Number.isNaN(n));
   return parts.length > 0 ? parts : undefined;
 }
 
 function formatArray(arr: number[] | null | undefined): string {
   return arr ? arr.join(", ") : "";
+}
+
+function formatFoldable(foldable: boolean | null): string {
+  if (foldable === null) return "—";
+  return foldable ? "Yes" : "No";
 }
 
 interface LoomRefForm {
@@ -2028,6 +2068,9 @@ function emptyForm(): LoomRefForm {
 }
 
 function formFromRef(ref: LoomReferenceDetail): LoomRefForm {
+  let foldable: "" | "true" | "false" = "";
+  if (ref.foldable !== null) foldable = ref.foldable ? "true" : "false";
+
   return {
     brand: ref.brand,
     model_name: ref.model_name,
@@ -2038,7 +2081,7 @@ function formFromRef(ref: LoomReferenceDetail): LoomRefForm {
     treadle_count: formatArray(ref.treadle_count),
     weaving_width_options_inches: formatArray(ref.weaving_width_options_inches),
     weaving_width_options_cm: formatArray(ref.weaving_width_options_cm),
-    foldable: ref.foldable === null ? "" : ref.foldable ? "true" : "false",
+    foldable,
     origin_country: ref.origin_country ?? "",
   };
 }
@@ -2068,13 +2111,13 @@ function LoomRefFormModal({
   saving,
   error,
 }: {
-  title: string;
-  form: LoomRefForm;
-  onChange: (f: LoomRefForm) => void;
-  onSave: () => void;
-  onCancel: () => void;
-  saving: boolean;
-  error: string | null;
+  readonly title: string;
+  readonly form: LoomRefForm;
+  readonly onChange: (f: LoomRefForm) => void;
+  readonly onSave: () => void;
+  readonly onCancel: () => void;
+  readonly saving: boolean;
+  readonly error: string | null;
 }) {
   const inputCls = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
   const labelCls = "mb-1 block text-sm font-medium";
@@ -2086,23 +2129,23 @@ function LoomRefFormModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Brand <span className="text-destructive">*</span></label>
-            <input className={inputCls} value={form.brand} onChange={(e) => onChange({ ...form, brand: e.target.value })} placeholder="Schacht" />
+            <label htmlFor="loomref-brand" className={labelCls}>Brand <span className="text-destructive">*</span></label>
+            <input id="loomref-brand" className={inputCls} value={form.brand} onChange={(e) => onChange({ ...form, brand: e.target.value })} placeholder="Schacht" />
           </div>
           <div>
-            <label className={labelCls}>Model name <span className="text-destructive">*</span></label>
-            <input className={inputCls} value={form.model_name} onChange={(e) => onChange({ ...form, model_name: e.target.value })} placeholder="Baby Wolf" />
+            <label htmlFor="loomref-model-name" className={labelCls}>Model name <span className="text-destructive">*</span></label>
+            <input id="loomref-model-name" className={inputCls} value={form.model_name} onChange={(e) => onChange({ ...form, model_name: e.target.value })} placeholder="Baby Wolf" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Series <span className="text-muted-foreground font-normal text-xs">(optional)</span></label>
-            <input className={inputCls} value={form.model_series} onChange={(e) => onChange({ ...form, model_series: e.target.value })} placeholder="Wolf Family" />
+            <label htmlFor="loomref-series" className={labelCls}>Series <span className="text-muted-foreground font-normal text-xs">(optional)</span></label>
+            <input id="loomref-series" className={inputCls} value={form.model_series} onChange={(e) => onChange({ ...form, model_series: e.target.value })} placeholder="Wolf Family" />
           </div>
           <div>
-            <label className={labelCls}>Category</label>
-            <select className={inputCls} value={form.loom_category} onChange={(e) => onChange({ ...form, loom_category: e.target.value })}>
+            <label htmlFor="loomref-category" className={labelCls}>Category</label>
+            <select id="loomref-category" className={inputCls} value={form.loom_category} onChange={(e) => onChange({ ...form, loom_category: e.target.value })}>
               {LOOM_CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
@@ -2110,43 +2153,43 @@ function LoomRefFormModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Shedding mechanism</label>
-            <select className={inputCls} value={form.shedding_mechanism} onChange={(e) => onChange({ ...form, shedding_mechanism: e.target.value })}>
+            <label htmlFor="loomref-shedding" className={labelCls}>Shedding mechanism</label>
+            <select id="loomref-shedding" className={inputCls} value={form.shedding_mechanism} onChange={(e) => onChange({ ...form, shedding_mechanism: e.target.value })}>
               <option value="">—</option>
-              {SHEDDING_OPTIONS.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}
+              {SHEDDING_OPTIONS.map((o) => <option key={o} value={o}>{o.replaceAll("_", " ")}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelCls}>Origin country</label>
-            <input className={inputCls} value={form.origin_country} onChange={(e) => onChange({ ...form, origin_country: e.target.value })} placeholder="USA" />
+            <label htmlFor="loomref-origin" className={labelCls}>Origin country</label>
+            <input id="loomref-origin" className={inputCls} value={form.origin_country} onChange={(e) => onChange({ ...form, origin_country: e.target.value })} placeholder="USA" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Shaft count options <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
-            <input className={inputCls} value={form.shaft_count_options} onChange={(e) => onChange({ ...form, shaft_count_options: e.target.value })} placeholder="4, 8" />
+            <label htmlFor="loomref-shaft-counts" className={labelCls}>Shaft count options <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input id="loomref-shaft-counts" className={inputCls} value={form.shaft_count_options} onChange={(e) => onChange({ ...form, shaft_count_options: e.target.value })} placeholder="4, 8" />
           </div>
           <div>
-            <label className={labelCls}>Treadle count options <span className="text-muted-foreground font-normal text-xs">parallel to shafts</span></label>
-            <input className={inputCls} value={form.treadle_count} onChange={(e) => onChange({ ...form, treadle_count: e.target.value })} placeholder="6, 10" />
+            <label htmlFor="loomref-treadle-counts" className={labelCls}>Treadle count options <span className="text-muted-foreground font-normal text-xs">parallel to shafts</span></label>
+            <input id="loomref-treadle-counts" className={inputCls} value={form.treadle_count} onChange={(e) => onChange({ ...form, treadle_count: e.target.value })} placeholder="6, 10" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Weaving width (inches) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
-            <input className={inputCls} value={form.weaving_width_options_inches} onChange={(e) => onChange({ ...form, weaving_width_options_inches: e.target.value })} placeholder="26" />
+            <label htmlFor="loomref-width-in" className={labelCls}>Weaving width (inches) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input id="loomref-width-in" className={inputCls} value={form.weaving_width_options_inches} onChange={(e) => onChange({ ...form, weaving_width_options_inches: e.target.value })} placeholder="26" />
           </div>
           <div>
-            <label className={labelCls}>Weaving width (cm) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
-            <input className={inputCls} value={form.weaving_width_options_cm} onChange={(e) => onChange({ ...form, weaving_width_options_cm: e.target.value })} placeholder="66" />
+            <label htmlFor="loomref-width-cm" className={labelCls}>Weaving width (cm) <span className="text-muted-foreground font-normal text-xs">comma-separated</span></label>
+            <input id="loomref-width-cm" className={inputCls} value={form.weaving_width_options_cm} onChange={(e) => onChange({ ...form, weaving_width_options_cm: e.target.value })} placeholder="66" />
           </div>
         </div>
 
         <div>
-          <label className={labelCls}>Foldable</label>
-          <select className={inputCls} value={form.foldable} onChange={(e) => onChange({ ...form, foldable: e.target.value as LoomRefForm["foldable"] })}>
+          <label htmlFor="loomref-foldable" className={labelCls}>Foldable</label>
+          <select id="loomref-foldable" className={inputCls} value={form.foldable} onChange={(e) => onChange({ ...form, foldable: e.target.value as LoomRefForm["foldable"] })}>
             <option value="">Unknown</option>
             <option value="true">Yes</option>
             <option value="false">No</option>
@@ -2237,32 +2280,18 @@ function LoomDatabaseTab() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1 pb-2 border-b flex-1 mr-4">
-          <h1 className="text-lg font-semibold">Loom Database</h1>
-          <p className="text-sm text-muted-foreground">Admin-maintained catalog of commercially available looms, used for typeahead in loom creation.</p>
-        </div>
-        <Button size="sm" onClick={openAdd}>Add loom</Button>
-      </div>
-
-      <input
-        type="search"
-        placeholder="Search brand or model…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-      />
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : refs.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4 text-center">
-          {debouncedSearch ? "No looms match that search." : "No looms in the catalog yet."}
-        </p>
-      ) : (
-        <div className="rounded-md border border-border overflow-x-auto">
+  let tableSection: React.ReactNode;
+  if (isLoading) {
+    tableSection = <p className="text-sm text-muted-foreground">Loading…</p>;
+  } else if (refs.length === 0) {
+    tableSection = (
+      <p className="text-sm text-muted-foreground py-4 text-center">
+        {debouncedSearch ? "No looms match that search." : "No looms in the catalog yet."}
+      </p>
+    );
+  } else {
+    tableSection = (
+      <div className="rounded-md border border-border overflow-x-auto">
           <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-muted/50">
               <tr>
@@ -2293,14 +2322,14 @@ function LoomDatabaseTab() {
                     {ref.weaving_width_options_inches ? ref.weaving_width_options_inches.join(", ") : "—"}
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                    {ref.foldable === null ? "—" : ref.foldable ? "Yes" : "No"}
+                    {formatFoldable(ref.foldable)}
                   </td>
                   <td className="px-3 py-2.5 text-xs text-muted-foreground">{ref.origin_country ?? "—"}</td>
                   <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                    <button className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(ref)}>
+                    <button type="button" className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(ref)}>
                       Edit
                     </button>
-                    <button className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(ref)}>
+                    <button type="button" className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(ref)}>
                       Delete
                     </button>
                   </td>
@@ -2309,7 +2338,28 @@ function LoomDatabaseTab() {
             </tbody>
           </table>
         </div>
-      )}
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1 pb-2 border-b flex-1 mr-4">
+          <h1 className="text-lg font-semibold">Loom Database</h1>
+          <p className="text-sm text-muted-foreground">Admin-maintained catalog of commercially available looms, used for typeahead in loom creation.</p>
+        </div>
+        <Button size="sm" onClick={openAdd}>Add loom</Button>
+      </div>
+
+      <input
+        type="search"
+        placeholder="Search brand or model…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+
+      {tableSection}
 
       {refs.length > 0 && (
         <p className="text-xs text-muted-foreground">{refs.length} {refs.length === 1 ? "entry" : "entries"}</p>

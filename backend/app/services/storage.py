@@ -219,31 +219,36 @@ def project_drawdown_svg_exists(path: str | None) -> bool:
     return _exists(path)
 
 
+def _delete_project_tiles_s3(prefix: str) -> int:
+    paginator = _s3().get_paginator("list_objects_v2")
+    keys = []
+    for page in paginator.paginate(Bucket=settings.s3_bucket_name, Prefix=prefix, **settings.s3_owner_kwargs):
+        for obj in page.get("Contents", []):
+            keys.append(obj["Key"])
+    if keys:
+        for i in range(0, len(keys), 1000):
+            batch = [{"Key": k} for k in keys[i : i + 1000]]
+            _s3().delete_objects(Bucket=settings.s3_bucket_name, Delete={"Objects": batch}, **settings.s3_owner_kwargs)
+    return len(keys)
+
+
+def _delete_project_tiles_local(prefix: str) -> int:
+    prefix_path = Path(settings.upload_dir) / prefix
+    if not prefix_path.exists():
+        return 0
+    count = 0
+    for f in prefix_path.rglob("*.png"):
+        f.unlink()
+        count += 1
+    return count
+
+
 def delete_project_tiles(project_id: uuid.UUID) -> int:
     """Delete all pre-rendered tiles for a project. Returns the count of deleted objects."""
     prefix = f"projects/{project_id}/tiles/"
     if settings.storage_backend == "s3":
-        paginator = _s3().get_paginator("list_objects_v2")
-        keys = []
-        for page in paginator.paginate(Bucket=settings.s3_bucket_name, Prefix=prefix, **settings.s3_owner_kwargs):
-            for obj in page.get("Contents", []):
-                keys.append(obj["Key"])
-        if keys:
-            for i in range(0, len(keys), 1000):
-                batch = [{"Key": k} for k in keys[i : i + 1000]]
-                _s3().delete_objects(
-                    Bucket=settings.s3_bucket_name, Delete={"Objects": batch}, **settings.s3_owner_kwargs
-                )
-        return len(keys)
-    else:
-        prefix_path = Path(settings.upload_dir) / prefix
-        if not prefix_path.exists():
-            return 0
-        count = 0
-        for f in prefix_path.rglob("*.png"):
-            f.unlink()
-            count += 1
-        return count
+        return _delete_project_tiles_s3(prefix)
+    return _delete_project_tiles_local(prefix)
 
 
 # ---------------------------------------------------------------------------

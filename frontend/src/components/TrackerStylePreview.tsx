@@ -2,13 +2,13 @@ export type TrackerStyle = "default" | "compact" | "high_contrast";
 
 // ── Static style-picker preview (small, used in the card selector) ──────────
 
-const DEMO_ACTIVE = [1, 3];
+const DEMO_ACTIVE = new Set([1, 3]);
 const DEMO_SHAFTS = 4;
 const DEMO_WEFT = "#b45309";
 const DEMO_PICK = 7;
 const DEMO_TOTAL = 18;
 
-function DemoBox({ n, active, style }: { n: number; active: boolean; style: TrackerStyle }) {
+function DemoBox({ n, active, style }: { readonly n: number; readonly active: boolean; readonly style: TrackerStyle }) {
   const base = "rounded flex items-center justify-center font-bold text-[11px] border-2";
   if (style === "high_contrast") {
     return (
@@ -24,18 +24,21 @@ function DemoBox({ n, active, style }: { n: number; active: boolean; style: Trac
   );
 }
 
-function DemoPickCard({ compact, style }: { compact?: boolean; style: TrackerStyle }) {
+function demoCardBorder(style: TrackerStyle, compact: boolean | undefined): string {
+  if (style === "high_contrast") return compact ? "border border-foreground/30" : "border-2 border-foreground/50";
+  return compact ? "border border-primary/20" : "border-2 border-primary/30";
+}
+
+function DemoPickCard({ compact, style }: { readonly compact?: boolean; readonly style: TrackerStyle }) {
   const height = compact ? "h-10" : "h-16";
-  const border = style === "high_contrast"
-    ? compact ? "border border-foreground/30" : "border-2 border-foreground/50"
-    : compact ? "border border-primary/20" : "border-2 border-primary/30";
+  const border = demoCardBorder(style, compact);
   const bg = style === "high_contrast" ? "bg-muted/60" : "bg-primary/5 dark:bg-primary/10";
 
   return (
     <div className={`rounded-lg ${bg} ${border} ${height} px-2 py-1.5 flex items-stretch gap-2`}>
       <div className="flex-1 grid gap-0.5" style={{ gridTemplateColumns: `repeat(${DEMO_SHAFTS}, 1fr)` }}>
         {Array.from({ length: DEMO_SHAFTS }, (_, i) => i + 1).map((n) => (
-          <DemoBox key={n} n={n} active={DEMO_ACTIVE.includes(n)} style={style} />
+          <DemoBox key={n} n={n} active={DEMO_ACTIVE.has(n)} style={style} />
         ))}
       </div>
       {!compact && <div className="w-4 shrink-0 rounded" style={{ backgroundColor: DEMO_WEFT }} />}
@@ -43,7 +46,7 @@ function DemoPickCard({ compact, style }: { compact?: boolean; style: TrackerSty
   );
 }
 
-export function TrackerStylePreview({ style }: { style: TrackerStyle }) {
+export function TrackerStylePreview({ style }: { readonly style: TrackerStyle }) {
   const isCompact = style === "compact";
   const isHighContrast = style === "high_contrast";
 
@@ -70,10 +73,12 @@ export function TrackerStylePreview({ style }: { style: TrackerStyle }) {
             {Array.from({ length: 4 }, (_, row) =>
               Array.from({ length: 4 }, (__, col) => {
                 const lit = (row + col) % 2 === 0;
+                let dotColor = "bg-muted-foreground/15";
+                if (lit) dotColor = isHighContrast ? "bg-foreground/70" : "bg-primary/60";
                 return (
                   <div
                     key={`${row}-${col}`}
-                    className={`h-2 rounded-sm ${lit ? (isHighContrast ? "bg-foreground/70" : "bg-primary/60") : "bg-muted-foreground/15"}`}
+                    className={`h-2 rounded-sm ${dotColor}`}
                   />
                 );
               })
@@ -89,7 +94,7 @@ export function TrackerStylePreview({ style }: { style: TrackerStyle }) {
 
 const LIVE_SHAFTS_ALL = 8;   // total shafts on the loom
 const LIVE_SHAFTS_USED = 4;  // shafts actually used by the design (trailing 4 are "unused")
-const LIVE_ACTIVE = [1, 3];
+const LIVE_ACTIVE = new Set([1, 3]);
 const LIVE_WEFT = "#b45309";
 const LIVE_PICK = 12;
 const LIVE_TOTAL = 32;
@@ -104,11 +109,11 @@ function LiveBox({
   colorMode,
   style,
 }: {
-  n: number;
-  active: boolean;
-  unused: boolean;
-  colorMode: ColorMode;
-  style: TrackerStyle;
+  readonly n: number;
+  readonly active: boolean;
+  readonly unused: boolean;
+  readonly colorMode: ColorMode;
+  readonly style: TrackerStyle;
 }) {
   const base = "rounded-md border-2 flex flex-col items-center justify-center font-bold overflow-hidden";
   const fontSize = "text-sm";
@@ -154,6 +159,11 @@ function LiveBox({
   );
 }
 
+function liveCardBorder(style: TrackerStyle, compact: boolean | undefined): string {
+  if (style === "high_contrast") return compact ? "border border-foreground/30" : "border-2 border-foreground/40";
+  return compact ? "border border-primary/20" : "border-2 border-primary/30";
+}
+
 function LivePickCard({
   compact,
   style,
@@ -161,16 +171,14 @@ function LivePickCard({
   showWeftColor,
   shaftCount,
 }: {
-  compact?: boolean;
-  style: TrackerStyle;
-  colorMode: ColorMode;
-  showWeftColor: boolean;
-  shaftCount: number;
+  readonly compact?: boolean;
+  readonly style: TrackerStyle;
+  readonly colorMode: ColorMode;
+  readonly showWeftColor: boolean;
+  readonly shaftCount: number;
 }) {
   const height = compact ? "h-14" : "h-24";
-  const border = style === "high_contrast"
-    ? compact ? "border border-foreground/30" : "border-2 border-foreground/40"
-    : compact ? "border border-primary/20" : "border-2 border-primary/30";
+  const border = liveCardBorder(style, compact);
   const bg = style === "high_contrast" ? "bg-muted/60" : "bg-primary/5 dark:bg-primary/10";
 
   return (
@@ -180,7 +188,7 @@ function LivePickCard({
           <LiveBox
             key={n}
             n={n}
-            active={!compact && LIVE_ACTIVE.includes(n)}
+            active={!compact && LIVE_ACTIVE.has(n)}
             unused={n > LIVE_SHAFTS_USED}
             colorMode={compact ? "theme" : colorMode}
             style={style}
@@ -208,13 +216,13 @@ export function TrackerLivePreview({
   showPickCards,
   hideUnusedShafts,
 }: {
-  style: TrackerStyle;
-  colorMode: string;
-  showProgress: boolean;
-  showDrawdown: boolean;
-  showWeftColor: boolean;
-  showPickCards: boolean;
-  hideUnusedShafts: boolean;
+  readonly style: TrackerStyle;
+  readonly colorMode: string;
+  readonly showProgress: boolean;
+  readonly showDrawdown: boolean;
+  readonly showWeftColor: boolean;
+  readonly showPickCards: boolean;
+  readonly hideUnusedShafts: boolean;
 }) {
   const isHighContrast = style === "high_contrast";
   const cm = (colorMode as ColorMode) ?? "strip";
@@ -283,16 +291,13 @@ export function TrackerLivePreview({
                   const shaftNum = col + 1;
                   const isUnused = shaftNum > LIVE_SHAFTS_USED;
                   const lit = !isUnused && (row + col) % 2 === 0;
+                  let cellColor = "bg-muted-foreground/15";
+                  if (isUnused) cellColor = "bg-muted-foreground/8 border border-dashed border-border/30";
+                  else if (lit) cellColor = isHighContrast ? "bg-foreground/80" : "bg-primary/70";
                   return (
                     <div
                       key={`${row}-${col}`}
-                      className={`h-3 rounded-sm ${
-                        isUnused
-                          ? "bg-muted-foreground/8 border border-dashed border-border/30"
-                          : lit
-                            ? (isHighContrast ? "bg-foreground/80" : "bg-primary/70")
-                            : "bg-muted-foreground/15"
-                      }`}
+                      className={`h-3 rounded-sm ${cellColor}`}
                     />
                   );
                 })

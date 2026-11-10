@@ -9,6 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 PROJECT_TYPES = ("treadle", "lift")
+
+_FK_PROJECTS_ID = "projects.id"
 PROJECT_STATUSES = ("created", "active", "completed", "abandoned")
 
 
@@ -17,7 +19,7 @@ class ProjectPhoto(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey(_FK_PROJECTS_ID), nullable=False, index=True
     )
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -71,6 +73,12 @@ class Project(Base, TimestampMixin, SoftDeleteMixin):
     drawdown_preview_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     drawdown_svg_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
+    # Tracker lock — which device/tab currently owns pick-position writes (see #1029).
+    # NULL means unclaimed. A claim older than the owner's idle_timeout_minutes is stale
+    # and self-heals on the next write/claim attempt.
+    active_tracker_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    active_tracker_claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     steps: Mapped[list["ProjectStep"]] = relationship(
         "ProjectStep", back_populates="project", order_by="ProjectStep.created_at"
     )
@@ -90,7 +98,7 @@ class ProjectStep(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey(_FK_PROJECTS_ID), nullable=False, index=True
     )
     event_type: Mapped[str] = mapped_column(String(10), nullable=False)  # "advance" | "reverse"
     from_pick: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -105,7 +113,7 @@ class WeaveSession(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey(_FK_PROJECTS_ID, ondelete="CASCADE"), nullable=False, index=True
     )
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -119,7 +127,7 @@ class ProjectYarnColor(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True), ForeignKey(_FK_PROJECTS_ID, ondelete="CASCADE"), nullable=False, index=True
     )
     yarn_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("yarns.id", ondelete="SET NULL"), nullable=True

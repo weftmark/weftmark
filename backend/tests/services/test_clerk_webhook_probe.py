@@ -25,13 +25,13 @@ def _mock_settings(
 
 
 @pytest.fixture(autouse=True)
-def reset_probe_state():
+def reset_probe_state(monkeypatch):
     """Ensure module-level asyncio state is clean between tests."""
-    probe_module._pending_event = None
-    probe_module._probe_lock = None
+    monkeypatch.setattr(probe_module, "_pending_event", None)
+    monkeypatch.setattr(probe_module, "_probe_lock", None)
     yield
-    probe_module._pending_event = None
-    probe_module._probe_lock = None
+    monkeypatch.setattr(probe_module, "_pending_event", None)
+    monkeypatch.setattr(probe_module, "_probe_lock", None)
 
 
 # ---------------------------------------------------------------------------
@@ -40,13 +40,13 @@ def reset_probe_state():
 
 
 class TestSignalProbe:
-    def test_noop_when_no_pending_event(self):
-        probe_module._pending_event = None
+    def test_noop_when_no_pending_event(self, monkeypatch):
+        monkeypatch.setattr(probe_module, "_pending_event", None)
         signal_probe()  # must not raise
 
-    def test_sets_event_when_pending(self):
+    def test_sets_event_when_pending(self, monkeypatch):
         event = asyncio.Event()
-        probe_module._pending_event = event
+        monkeypatch.setattr(probe_module, "_pending_event", event)
         signal_probe()
         assert event.is_set()
 
@@ -158,7 +158,8 @@ class TestRunWebhookProbeNetwork:
         with patch("httpx.AsyncClient", return_value=_patched_client(post_side_effect=capture_url)):
             await run_webhook_probe()
 
-        assert calls and calls[0] == "https://api.example.com/webhooks/clerk"
+        assert calls
+        assert calls[0] == "https://api.example.com/webhooks/clerk"
 
     async def test_webhook_url_falls_back_to_api_url(self, monkeypatch):
         monkeypatch.setattr(
@@ -175,7 +176,8 @@ class TestRunWebhookProbeNetwork:
         with patch("httpx.AsyncClient", return_value=_patched_client(post_side_effect=capture_url)):
             await run_webhook_probe()
 
-        assert calls and calls[0] == "https://fallback.example.com/webhooks/clerk"
+        assert calls
+        assert calls[0] == "https://fallback.example.com/webhooks/clerk"
 
 
 # ---------------------------------------------------------------------------

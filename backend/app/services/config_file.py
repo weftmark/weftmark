@@ -71,6 +71,10 @@ MANAGED_FIELDS: list[str] = [
     "neon_api_key",
     "neon_org_id",
     "neon_project_id",
+    # System polling / health-check intervals (#1124) — none of these are secret
+    "detailed_refresh_interval_s",
+    "postgres_probe_interval_s",
+    "scheduled_tasks_dispatch_interval_s",
 ]
 
 

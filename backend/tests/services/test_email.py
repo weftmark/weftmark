@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.services.email import (
+    AdminDigestData,
     _digest_cve_html,
     _digest_cve_txt,
     _digest_s3_html,
@@ -1336,23 +1337,23 @@ class TestSendAdminDigestEmail:
         if admin_emails is None:
             admin_emails = ["admin@example.com"]
         mock_delay = MagicMock()
+        data = AdminDigestData(
+            week_start=week_start,
+            week_end=week_end,
+            new_users=new_users,
+            pending_signups=pending_signups,
+            new_drafts=new_drafts,
+            new_projects=new_projects,
+            new_looms=new_looms,
+            storage_str=storage_str,
+            storage_delta_str=storage_delta_str,
+            cve_finding_count=cve_finding_count,
+            cve_scanned_at=cve_scanned_at,
+            s3_orphaned_count=s3_orphaned_count,
+            s3_scanned_at=s3_scanned_at,
+        )
         with patch("app.tasks.email_task.send_email.delay", mock_delay):
-            await send_admin_digest_email(
-                admin_emails=admin_emails,
-                week_start=week_start,
-                week_end=week_end,
-                new_users=new_users,
-                pending_signups=pending_signups,
-                new_drafts=new_drafts,
-                new_projects=new_projects,
-                new_looms=new_looms,
-                storage_str=storage_str,
-                storage_delta_str=storage_delta_str,
-                cve_finding_count=cve_finding_count,
-                cve_scanned_at=cve_scanned_at,
-                s3_orphaned_count=s3_orphaned_count,
-                s3_scanned_at=s3_scanned_at,
-            )
+            await send_admin_digest_email(admin_emails=admin_emails, data=data)
         return mock_delay
 
     async def test_delay_called_once(self):
@@ -1363,46 +1364,12 @@ class TestSendAdminDigestEmail:
         from app.config import get_settings
 
         monkeypatch.setattr(get_settings(), "smtp_user", "")
-        mock_delay = MagicMock()
-        with patch("app.tasks.email_task.send_email.delay", mock_delay):
-            await send_admin_digest_email(
-                admin_emails=["a@example.com"],
-                week_start="2026-05-11",
-                week_end="2026-05-17",
-                new_users=0,
-                pending_signups=0,
-                new_drafts=0,
-                new_projects=0,
-                new_looms=0,
-                storage_str="0 B",
-                storage_delta_str=None,
-                cve_finding_count=None,
-                cve_scanned_at=None,
-                s3_orphaned_count=None,
-                s3_scanned_at=None,
-            )
-        mock_delay.assert_not_called()
+        mock = await self._call()
+        mock.assert_not_called()
 
     async def test_no_delay_when_no_recipients(self):
-        mock_delay = MagicMock()
-        with patch("app.tasks.email_task.send_email.delay", mock_delay):
-            await send_admin_digest_email(
-                admin_emails=[],
-                week_start="2026-05-11",
-                week_end="2026-05-17",
-                new_users=0,
-                pending_signups=0,
-                new_drafts=0,
-                new_projects=0,
-                new_looms=0,
-                storage_str="0 B",
-                storage_delta_str=None,
-                cve_finding_count=None,
-                cve_scanned_at=None,
-                s3_orphaned_count=None,
-                s3_scanned_at=None,
-            )
-        mock_delay.assert_not_called()
+        mock = await self._call(admin_emails=[])
+        mock.assert_not_called()
 
     async def test_subject_contains_week_range(self):
         mock = await self._call(week_start="2026-05-11", week_end="2026-05-17")

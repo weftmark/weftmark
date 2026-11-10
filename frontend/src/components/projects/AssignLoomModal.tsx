@@ -3,22 +3,24 @@ import { useQuery } from "@tanstack/react-query";
 import { assignLoom, completeProject, abandonProject, ApiError, type ProjectSummary } from "@/api/projects";
 import { listLooms, getLoom, SUPPORTED_LOOM_TYPES } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
-  projectId: string;
-  activeProjects: ProjectSummary[];
-  projectType?: string;
-  draftNumTreadles?: number | null;
-  draftNumShafts?: number | null;
-  draftEffectiveNumTreadles?: number | null;
-  draftEffectiveNumShafts?: number | null;
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly projectId: string;
+  readonly activeProjects: ProjectSummary[];
+  readonly projectType?: string;
+  readonly draftNumTreadles?: number | null;
+  readonly draftNumShafts?: number | null;
+  readonly draftEffectiveNumTreadles?: number | null;
+  readonly draftEffectiveNumShafts?: number | null;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 const f = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
 export function AssignLoomModal({ projectId, activeProjects, projectType, draftNumTreadles, draftNumShafts, draftEffectiveNumTreadles, draftEffectiveNumShafts, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [loomId, setLoomId] = useState("");
   const [loomVersionId, setLoomVersionId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -124,8 +126,8 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
 
         <div className="px-6 py-4 space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Loom <span className="text-destructive">*</span></label>
-            <select className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
+            <label htmlFor="assign-loom" className="mb-1 block text-sm font-medium">Loom <span className="text-destructive">*</span></label>
+            <select id="assign-loom" className={f} value={loomId} onChange={(e) => handleLoomChange(e.target.value)}>
               <option value="">Select a loom…</option>
               {looms.filter((l) => SUPPORTED_LOOM_TYPES.has(l.loom_type)).map((l) => (
                 <option key={l.id} value={l.id}>{l.manufacturer} {l.model_name}</option>
@@ -138,8 +140,8 @@ export function AssignLoomModal({ projectId, activeProjects, projectType, draftN
 
           {loomVersions.length > 1 && (
             <div>
-              <label className="mb-1 block text-sm font-medium">Loom configuration</label>
-              <select className={f} value={loomVersionId} onChange={(e) => setLoomVersionId(e.target.value)}>
+              <label htmlFor="assign-loom-version" className="mb-1 block text-sm font-medium">Loom configuration</label>
+              <select id="assign-loom-version" className={f} value={loomVersionId} onChange={(e) => setLoomVersionId(e.target.value)}>
                 <option value="">Latest ({loomVersions.at(-1)?.name ?? `v${loomVersions.at(-1)?.version_number}`})</option>
                 {loomVersions.map((v) => (
                   <option key={v.id} value={v.id}>{v.name ?? `Version ${v.version_number}`}</option>

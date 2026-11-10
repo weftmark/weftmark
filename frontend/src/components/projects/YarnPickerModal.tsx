@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { listYarn, yarnPhotoUrl, type YarnSummary } from "@/api/yarn";
@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { AuthedImage } from "@/components/ui/AuthedImage";
 
 interface Props {
-  colorHex: string;
-  currentYarnId: string | null;
-  onSelect: (yarnId: string, yarn: YarnSummary) => void;
-  onUnlink: () => void;
-  onClose: () => void;
-  isSaving: boolean;
+  readonly colorHex: string;
+  readonly currentYarnId: string | null;
+  readonly onSelect: (yarnId: string, yarn: YarnSummary) => void;
+  readonly onUnlink: () => void;
+  readonly onClose: () => void;
+  readonly isSaving: boolean;
 }
 
 export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, onClose, isSaving }: Props) {
@@ -55,8 +55,8 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
             />
             <h2 className="text-base font-semibold">{t("yarnPicker.title")}</h2>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <AppIcons.close className="h-4 w-4" />
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
 
@@ -82,8 +82,35 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
           )}
           {filtered.map((yarn) => {
             const isCurrent = yarn.id === currentYarnId;
+
+            let swatch: ReactNode;
+            if (yarn.has_photo) {
+              swatch = (
+                <AuthedImage
+                  src={yarnPhotoUrl(yarn.id)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              );
+            } else if (yarn.ravelry_colorway_thumbnail_url) {
+              swatch = (
+                <img
+                  src={yarn.ravelry_colorway_thumbnail_url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              );
+            } else {
+              swatch = (
+                <span
+                  className="block h-full w-full"
+                  style={{ background: yarn.color_hex ?? "#e5e7eb" }}
+                />
+              );
+            }
+
             return (
-              <button
+              <button type="button"
                 key={yarn.id}
                 className={`w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-left transition-colors ${
                   isCurrent
@@ -95,24 +122,7 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
               >
                 {/* Yarn photo / color swatch */}
                 <div className="h-8 w-8 rounded border border-border flex-shrink-0 overflow-hidden">
-                  {yarn.has_photo ? (
-                    <AuthedImage
-                      src={yarnPhotoUrl(yarn.id)}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : yarn.ravelry_colorway_thumbnail_url ? (
-                    <img
-                      src={yarn.ravelry_colorway_thumbnail_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span
-                      className="block h-full w-full"
-                      style={{ background: yarn.color_hex ?? "#e5e7eb" }}
-                    />
-                  )}
+                  {swatch}
                 </div>
 
                 {/* Name + color */}
@@ -127,7 +137,7 @@ export function YarnPickerModal({ colorHex, currentYarnId, onSelect, onUnlink, o
 
                 {/* Current badge */}
                 {isCurrent && (
-                  <AppIcons.check className="h-4 w-4 flex-shrink-0 text-accent" />
+                  <AppIcons.Check className="h-4 w-4 flex-shrink-0 text-accent" />
                 )}
               </button>
             );

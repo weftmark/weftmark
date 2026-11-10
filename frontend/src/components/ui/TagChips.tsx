@@ -1,12 +1,12 @@
 interface Props {
-  tags: string[];
-  max?: number;
-  className?: string;
+  readonly tags: string[];
+  readonly max?: number;
+  readonly className?: string;
 }
 
 function tagColor(tag: string): { background: string; color: string } {
   let h = 0;
-  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < tag.length; i++) h = (h * 31 + (tag.codePointAt(i) ?? 0)) >>> 0;
   const hue = h % 360;
   return {
     background: `hsl(${hue}, 60%, 88%)`,

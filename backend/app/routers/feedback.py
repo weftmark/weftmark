@@ -1,6 +1,7 @@
 """In-app feedback submission and admin review endpoints."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
@@ -14,6 +15,8 @@ from app.services.rate_limiter import rate_limit
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 admin_router = APIRouter(prefix="/api/admin/feedback", tags=["feedback"])
+
+_FEEDBACK_NOT_FOUND = "Feedback not found"
 
 _submit_limit = rate_limit("feedback_submit", max_requests=5, window_seconds=3600)
 
@@ -107,9 +110,9 @@ def _serialize(row: UserFeedback, include_user_email: bool = False) -> FeedbackR
 @router.post("", status_code=201)
 async def submit_feedback(
     body: SubmitFeedbackRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _rl: None = Depends(_submit_limit),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    _rl: Annotated[None, Depends(_submit_limit)],
 ) -> FeedbackResponse:
     from app.config import get_settings
 
@@ -154,8 +157,8 @@ def _enqueue_dispatch(feedback_id: str) -> None:
 
 @router.get("/mine")
 async def list_my_feedback(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> list[FeedbackResponse]:
     q = (
         select(UserFeedback)
@@ -178,15 +181,15 @@ class FeedbackStatusResponse(BaseModel):
     github_discussion_state: str | None
 
 
-@router.get("/{feedback_id}/status")
+@router.get("/{feedback_id}/status", responses={404: {"description": "Feedback not found"}})
 async def get_feedback_status(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> FeedbackStatusResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row or row.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     return FeedbackStatusResponse(
         dispatch_status=row.dispatch_status,
         github_discussion_url=row.github_discussion_url,
@@ -201,13 +204,13 @@ async def get_feedback_status(
 
 @admin_router.get("")
 async def list_feedback(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(25, ge=1, le=100),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     submission_type: str | None = None,
     dispatch_status: str | None = None,
     include_deleted: bool = False,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
 ) -> FeedbackPage:
     from sqlalchemy.orm import selectinload
 
@@ -236,11 +239,11 @@ async def list_feedback(
     )
 
 
-@admin_router.get("/{feedback_id}")
+@admin_router.get("/{feedback_id}", responses={404: {"description": "Feedback not found"}})
 async def get_feedback_detail(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> FeedbackResponse:
     from sqlalchemy.orm import selectinload
 
@@ -250,34 +253,37 @@ async def get_feedback_detail(
         )
     ).scalar_one_or_none()
     if not row:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     return _serialize(row, include_user_email=True)
 
 
-@admin_router.delete("/{feedback_id}")
+@admin_router.delete("/{feedback_id}", responses={404: {"description": "Feedback not found"}})
 async def soft_delete_feedback(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     row.soft_delete()
     await db.commit()
     await db.refresh(row)
     return _serialize(row)
 
 
-@admin_router.post("/{feedback_id}/retry-dispatch")
+@admin_router.post(
+    "/{feedback_id}/retry-dispatch",
+    responses={400: {"description": "Cannot retry dispatch with status"}, 404: {"description": "Feedback not found"}},
+)
 async def retry_feedback_dispatch(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     if row.dispatch_status not in ("pending", "failed"):
         raise HTTPException(status_code=400, detail=f"Cannot retry dispatch with status '{row.dispatch_status}'")
     row.dispatch_status = "pending"
@@ -288,15 +294,18 @@ async def retry_feedback_dispatch(
     return _serialize(row, include_user_email=True)
 
 
-@admin_router.post("/{feedback_id}/recover")
+@admin_router.post(
+    "/{feedback_id}/recover",
+    responses={400: {"description": "Feedback is not deleted"}, 404: {"description": "Feedback not found"}},
+)
 async def recover_feedback(
     feedback_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _admin: Annotated[User, Depends(require_admin)],
 ) -> FeedbackResponse:
     row = await db.get(UserFeedback, feedback_id)
     if not row:
-        raise HTTPException(status_code=404, detail="Feedback not found")
+        raise HTTPException(status_code=404, detail=_FEEDBACK_NOT_FOUND)
     if not row.is_deleted:
         raise HTTPException(status_code=400, detail="Feedback is not deleted")
     row.deleted_at = None

@@ -37,7 +37,7 @@ export function DevBanner() {
     <div
       className={`w-full text-center text-xs font-semibold py-1.5 px-4 select-none overflow-hidden${colorStyle ? "" : " bg-amber-400 text-amber-950"}`}
       style={{
-        ...(colorStyle ?? {}),
+        ...colorStyle,
         maxHeight: visible ? "3rem" : "0",
         opacity: visible ? 1 : 0,
         transition: "max-height 0.5s ease, opacity 0.5s ease",

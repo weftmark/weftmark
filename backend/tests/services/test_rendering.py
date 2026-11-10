@@ -11,6 +11,7 @@ A full PyWeaving-compatible WIF requires: [WIF] with Date, [CONTENTS],
 """
 
 import sys
+from configparser import MissingSectionHeaderError
 from pathlib import Path
 
 import pytest
@@ -206,7 +207,7 @@ class TestLoadDraft:
         assert draft.rising_shed is True
 
     def test_invalid_wif_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(MissingSectionHeaderError):
             load_draft(b"this is not a wif file at all")
 
     @pytest.mark.skipif(
@@ -217,7 +218,7 @@ class TestLoadDraft:
         bytes raise UnicodeDecodeError.  Callers must normalise encoding first
         (wif_parser handles this; rendering does not)."""
         latin1_wif = MINIMAL_WIF.decode().replace("TestSuite", "Caf\xe9Loom").encode("latin-1")
-        with pytest.raises(Exception):
+        with pytest.raises(UnicodeDecodeError):
             load_draft(latin1_wif)
 
 
@@ -421,7 +422,8 @@ class TestRenderDrawdownOnly:
     def test_returns_tuple(self):
         draft = load_draft(MINIMAL_WIF)
         result = render_drawdown_only(draft)
-        assert isinstance(result, tuple) and len(result) == 3
+        assert isinstance(result, tuple)
+        assert len(result) == 3
 
     def test_first_element_is_png(self):
         draft = load_draft(MINIMAL_WIF)
@@ -436,7 +438,8 @@ class TestRenderDrawdownOnly:
     def test_third_element_is_scale_used(self):
         draft = load_draft(MINIMAL_WIF)
         _, _, scale_used = render_drawdown_only(draft, scale=10)
-        assert isinstance(scale_used, int) and scale_used == 10
+        assert isinstance(scale_used, int)
+        assert scale_used == 10
 
     def test_drawdown_scale_constant_is_20(self):
         assert DRAWDOWN_SCALE == 20
@@ -496,7 +499,8 @@ class TestRenderDrawdownTile:
     def test_returns_tuple_of_five(self):
         draft = load_draft(MINIMAL_WIF)
         result = render_drawdown_tile(draft, start_row=0, row_count=2)
-        assert isinstance(result, tuple) and len(result) == 5
+        assert isinstance(result, tuple)
+        assert len(result) == 5
 
     def test_first_element_is_png(self):
         draft = load_draft(MINIMAL_WIF)
@@ -589,7 +593,8 @@ class TestRenderDrawdownTile:
     def test_returns_seven_elements_when_col_params_given(self):
         draft = load_draft(MINIMAL_WIF)
         result = render_drawdown_tile(draft, start_row=0, row_count=2, start_col=0, col_count=2)
-        assert isinstance(result, tuple) and len(result) == 7
+        assert isinstance(result, tuple)
+        assert len(result) == 7
 
     def test_col_slice_width_equals_col_count_times_scale(self):
         import io as _io
@@ -730,7 +735,8 @@ class TestRenderDrawdownPreview:
     def test_returns_tuple(self):
         draft = load_draft(MINIMAL_WIF)
         result = render_drawdown_preview(draft)
-        assert isinstance(result, tuple) and len(result) == 2
+        assert isinstance(result, tuple)
+        assert len(result) == 2
 
     def test_first_element_is_png(self):
         draft = load_draft(MINIMAL_WIF)
@@ -740,7 +746,8 @@ class TestRenderDrawdownPreview:
     def test_second_element_is_scale(self):
         draft = load_draft(MINIMAL_WIF)
         _, scale = render_drawdown_preview(draft)
-        assert isinstance(scale, int) and scale >= 1
+        assert isinstance(scale, int)
+        assert scale >= 1
 
     def test_wide_draft_scale_1_does_not_raise(self):
         """Regression: >200 warp threads forces scale<4; fill-marker patch must prevent crash."""

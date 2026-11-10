@@ -1,11 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { listProjects, PROJECT_TYPE_LABELS } from "@/api/projects";
 import { listDrafts } from "@/api/drafts";
-import { listLooms } from "@/api/looms";
+import { listLooms, type Loom } from "@/api/looms";
 import { listCollections } from "@/api/collections";
 import { getActivityHeatmap, type ActivityDay } from "@/api/users";
 import { AppIcons } from "@/lib/icons";
@@ -67,12 +67,12 @@ function HeatmapGrid({
   onCellEnter,
   onCellLeave,
 }: {
-  weeks: Date[][];
-  rangeEnd: Date;
-  dayByDate: Map<string, ActivityDay>;
-  dowLabels: string[];
-  onCellEnter: (e: React.MouseEvent, dateStr: string) => void;
-  onCellLeave: () => void;
+  readonly weeks: Date[][];
+  readonly rangeEnd: Date;
+  readonly dayByDate: Map<string, ActivityDay>;
+  readonly dowLabels: string[];
+  readonly onCellEnter: (e: React.MouseEvent, dateStr: string) => void;
+  readonly onCellLeave: () => void;
 }) {
   const monthLabels: { label: string; col: number }[] = [];
   weeks.forEach((week, wi) => {
@@ -85,10 +85,10 @@ function HeatmapGrid({
     <div className="overflow-x-auto pb-1">
       <div className="inline-flex flex-col gap-[3px]" style={{ minWidth: "max-content" }}>
         <div className="flex gap-[3px]" style={{ paddingLeft: "22px" }}>
-          {weeks.map((_, wi) => {
+          {weeks.map((week, wi) => {
             const label = monthLabels.find((m) => m.col === wi);
             return (
-              <div key={wi} className="w-[10px] text-[9px] text-muted-foreground leading-none overflow-visible whitespace-nowrap">
+              <div key={toDateStr(week[0])} className="w-[10px] text-[9px] text-muted-foreground leading-none overflow-visible whitespace-nowrap">
                 {label ? label.label : ""}
               </div>
             );
@@ -99,14 +99,15 @@ function HeatmapGrid({
             <span className="w-[18px] text-[9px] text-muted-foreground text-right shrink-0 leading-none">
               {dow % 2 === 1 ? dowLabels[dow] : ""}
             </span>
-            {weeks.map((week, wi) => {
+            {weeks.map((week) => {
+              const weekKey = toDateStr(week[0]);
               const day = week[dow];
-              if (!day || day > rangeEnd) return <div key={wi} className="w-[10px] h-[10px] rounded-[2px] opacity-0" />;
+              if (!day || day > rangeEnd) return <div key={weekKey} className="w-[10px] h-[10px] rounded-[2px] opacity-0" />;
               const dateStr = toDateStr(day);
               const count = dayByDate.get(dateStr)?.count ?? 0;
               return (
                 <div
-                  key={wi}
+                  key={weekKey}
                   className={`w-[10px] h-[10px] rounded-[2px] ${intensityClass(count)} ${count > 0 ? "cursor-pointer" : "cursor-default"}`}
                   onMouseEnter={(e) => onCellEnter(e, dateStr)}
                   onMouseLeave={onCellLeave}
@@ -230,7 +231,7 @@ function ActivityHeatmap() {
         ) : (
           <div className="flex gap-1">
             {RANGE_OPTIONS.map(({ label, days }) => (
-              <button
+              <button type="button"
                 key={label}
                 onClick={() => { setMode("range"); setSelectedDays(days); setTooltip(null); }}
                 className={`px-2 py-0.5 text-xs rounded border transition-colors ${
@@ -297,6 +298,12 @@ function ActivityHeatmap() {
   );
 }
 
+function LoomTrackingIcon({ loom }: { readonly loom: Pick<Loom, "supports_lift_tracking" | "supports_treadle_tracking"> }) {
+  if (loom.supports_lift_tracking) return <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+  if (loom.supports_treadle_tracking) return <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+  return <AppIcons.Equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+}
+
 export function DashboardPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -324,6 +331,128 @@ export function DashboardPage() {
   const activeProjects = projects.filter((a) => (a.status === "active" || a.status === "created") && !!a.loom_id);
   const planningProjects = projects.filter((a) => (a.status === "active" || a.status === "created") && !a.loom_id);
   const completedCount = projects.filter((a) => a.status === "completed").length;
+
+  let draftsSection: ReactNode;
+  if (draftsLoading) {
+    draftsSection = <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />;
+  } else if (drafts.length === 0) {
+    draftsSection = (
+      <div className="rounded-lg border border-dashed p-6 text-center">
+        <p className="text-sm text-muted-foreground">{t("dashboard.drafts.empty")}</p>
+        <Link to="/drafts" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
+          {t("dashboard.drafts.uploadFirst")}
+        </Link>
+      </div>
+    );
+  } else {
+    draftsSection = (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {drafts.slice(0, 3).map((draft) => (
+          <Link
+            key={draft.id}
+            to="/drafts"
+            className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
+          >
+            <div className="shrink-0 mt-0.5">
+              <AppIcons.Draft className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{draft.name}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground truncate">{draft.wif_filename}</p>
+            </div>
+          </Link>
+        ))}
+        {drafts.length > 3 && (
+          <Link
+            to="/drafts"
+            className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
+          >
+            <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: drafts.length - 3 })}</span>
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  let collectionsSection: ReactNode;
+  if (collectionsLoading) {
+    collectionsSection = <SkeletonCardGrid count={3} cardClassName="h-[80px]" gridClassName="grid gap-3 sm:grid-cols-3" />;
+  } else if (collections.length === 0) {
+    collectionsSection = (
+      <div className="rounded-lg border border-dashed p-6 text-center">
+        <p className="text-sm text-muted-foreground">{t("dashboard.collectionSection.empty")}</p>
+        <Link to="/collections" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">{t("dashboard.collectionSection.createFirst")}</Link>
+      </div>
+    );
+  } else {
+    collectionsSection = (
+      <div className="grid gap-3 sm:grid-cols-3">
+        {collections.slice(0, 3).map((c) => (
+          <Link key={c.id} to={`/collections/${c.id}`} className="rounded-lg border p-4 hover:border-ring transition-colors">
+            <div className="flex items-start gap-2">
+              <AppIcons.Collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{c.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("dashboard.collectionSection.itemSummary", {
+                    drafts: t("dashboard.collectionSection.draftCount", { count: c.draft_count }),
+                    projects: t("dashboard.collectionSection.projectCount", { count: c.project_count }),
+                  })}
+                </p>
+              </div>
+            </div>
+          </Link>
+        ))}
+        {collections.length > 3 && (
+          <Link to="/collections" className="rounded-lg border border-dashed p-4 flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors">
+            {t("dashboard.moreItems", { count: collections.length - 3 })}
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  let equipmentSection: ReactNode;
+  if (loomsLoading) {
+    equipmentSection = <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />;
+  } else if (looms.length === 0) {
+    equipmentSection = (
+      <div className="rounded-lg border border-dashed p-6 text-center">
+        <p className="text-sm text-muted-foreground">{t("dashboard.equipment.empty")}</p>
+        <Link to="/looms" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
+          {t("dashboard.equipment.addFirst")}
+        </Link>
+      </div>
+    );
+  } else {
+    equipmentSection = (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {looms.slice(0, 3).map((loom) => (
+          <Link
+            key={loom.id}
+            to="/looms"
+            className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
+          >
+            <div className="shrink-0 mt-0.5">
+              <LoomTrackingIcon loom={loom} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{loom.model_name}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground truncate">{loom.manufacturer}</p>
+            </div>
+          </Link>
+        ))}
+        {looms.length > 3 && (
+          <Link
+            to="/looms"
+            className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
+          >
+            <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: looms.length - 3 })}</span>
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-3xl mx-auto w-full space-y-8">
@@ -362,8 +491,8 @@ export function DashboardPage() {
                   >
                     <div className="shrink-0">
                       {a.project_type === "treadle"
-                        ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                        : <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+                        ? <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
+                        : <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{a.name}</p>
@@ -389,7 +518,7 @@ export function DashboardPage() {
                         to={`/projects/${a.id}/track`}
                         className="flex w-full items-center justify-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
                       >
-                        <AppIcons.projectActive className="h-3.5 w-3.5" />
+                        <AppIcons.ProjectActive className="h-3.5 w-3.5" />
                         {t("dashboard.projects.continueWeaving")}
                       </Link>
                     </div>
@@ -408,7 +537,7 @@ export function DashboardPage() {
                 to={`/projects/${a.id}`}
                 className="flex items-center gap-4 rounded-lg border px-4 py-3 hover:border-ring transition-colors"
               >
-                <AppIcons.planning className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+                <AppIcons.Planning className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{a.name}</p>
                   <p className="text-xs text-muted-foreground">{t("dashboard.projects.picksPlanned", { count: a.total_picks })}</p>
@@ -435,14 +564,14 @@ export function DashboardPage() {
 
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-lg border p-4 flex items-center gap-3">
-            <AppIcons.projectActive className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+            <AppIcons.ProjectActive className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div>
               <p className="text-2xl font-bold tabular-nums">{activeProjects.length + planningProjects.length}</p>
               <p className="text-xs text-muted-foreground">{t("dashboard.projects.activeStat")}</p>
             </div>
           </div>
           <div className="rounded-lg border p-4 flex items-center gap-3">
-            <AppIcons.projectCompleted className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
+            <AppIcons.ProjectCompleted className="h-6 w-6 text-muted-foreground shrink-0" strokeWidth={1.75} />
             <div>
               <p className="text-2xl font-bold tabular-nums">{completedCount}</p>
               <p className="text-xs text-muted-foreground">{t("dashboard.projects.completedStat")}</p>
@@ -459,42 +588,7 @@ export function DashboardPage() {
             {t("dashboard.viewAll")}
           </Link>
         </div>
-        {draftsLoading ? (
-          <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />
-        ) : drafts.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">{t("dashboard.drafts.empty")}</p>
-            <Link to="/drafts" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
-              {t("dashboard.drafts.uploadFirst")}
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {drafts.slice(0, 3).map((draft) => (
-              <Link
-                key={draft.id}
-                to="/drafts"
-                className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
-              >
-                <div className="shrink-0 mt-0.5">
-                  <AppIcons.draft className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{draft.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{draft.wif_filename}</p>
-                </div>
-              </Link>
-            ))}
-            {drafts.length > 3 && (
-              <Link
-                to="/drafts"
-                className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
-              >
-                <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: drafts.length - 3 })}</span>
-              </Link>
-            )}
-          </div>
-        )}
+        {draftsSection}
       </section>
 
       {/* Collections */}
@@ -503,38 +597,7 @@ export function DashboardPage() {
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">{t("dashboard.collectionSection.heading")}</h2>
           <Link to="/collections" className="text-xs text-muted-foreground hover:text-foreground">{t("dashboard.viewAll")}</Link>
         </div>
-        {collectionsLoading ? (
-          <SkeletonCardGrid count={3} cardClassName="h-[80px]" gridClassName="grid gap-3 sm:grid-cols-3" />
-        ) : collections.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">{t("dashboard.collectionSection.empty")}</p>
-            <Link to="/collections" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">{t("dashboard.collectionSection.createFirst")}</Link>
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-3">
-            {collections.slice(0, 3).map((c) => (
-              <Link key={c.id} to={`/collections/${c.id}`} className="rounded-lg border p-4 hover:border-ring transition-colors">
-                <div className="flex items-start gap-2">
-                  <AppIcons.collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("dashboard.collectionSection.itemSummary", {
-                        drafts: t("dashboard.collectionSection.draftCount", { count: c.draft_count }),
-                        projects: t("dashboard.collectionSection.projectCount", { count: c.project_count }),
-                      })}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-            {collections.length > 3 && (
-              <Link to="/collections" className="rounded-lg border border-dashed p-4 flex items-center justify-center text-xs text-muted-foreground hover:border-ring transition-colors">
-                {t("dashboard.moreItems", { count: collections.length - 3 })}
-              </Link>
-            )}
-          </div>
-        )}
+        {collectionsSection}
       </section>
 
       {/* Equipment */}
@@ -545,46 +608,7 @@ export function DashboardPage() {
             {t("dashboard.viewAll")}
           </Link>
         </div>
-        {loomsLoading ? (
-          <SkeletonCardGrid count={3} cardClassName="h-[72px]" gridClassName="grid grid-cols-2 sm:grid-cols-3 gap-3" />
-        ) : looms.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <p className="text-sm text-muted-foreground">{t("dashboard.equipment.empty")}</p>
-            <Link to="/looms" className="mt-2 inline-block text-sm text-foreground underline underline-offset-2">
-              {t("dashboard.equipment.addFirst")}
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {looms.slice(0, 3).map((loom) => (
-              <Link
-                key={loom.id}
-                to="/looms"
-                className="rounded-lg border p-4 hover:border-ring transition-colors flex items-start gap-3"
-              >
-                <div className="shrink-0 mt-0.5">
-                  {loom.supports_lift_tracking
-                    ? <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                    : loom.supports_treadle_tracking
-                      ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                      : <AppIcons.equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{loom.model_name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground truncate">{loom.manufacturer}</p>
-                </div>
-              </Link>
-            ))}
-            {looms.length > 3 && (
-              <Link
-                to="/looms"
-                className="rounded-lg border border-dashed p-4 flex items-center justify-center hover:border-ring transition-colors"
-              >
-                <span className="text-xs text-muted-foreground">{t("dashboard.moreItems", { count: looms.length - 3 })}</span>
-              </Link>
-            )}
-          </div>
-        )}
+        {equipmentSection}
       </section>
 
       {/* Activity heatmap */}
@@ -604,7 +628,9 @@ export function DashboardPage() {
               const usedMB = user.storage_used_bytes / (1024 * 1024);
               const quotaMB = user.storage_quota_bytes / (1024 * 1024);
               const pct = Math.min(Math.round((user.storage_used_bytes / user.storage_quota_bytes) * 100), 100);
-              const barColor = pct >= 90 ? "bg-red-500" : pct >= 75 ? "bg-amber-500" : "bg-primary";
+              let barColor = "bg-primary";
+              if (pct >= 90) barColor = "bg-red-500";
+              else if (pct >= 75) barColor = "bg-amber-500";
               const usedLabel = usedMB < 1 ? `${Math.round(usedMB * 1024)} KB` : `${usedMB.toFixed(1)} MB`;
               return (
                 <>

@@ -54,7 +54,7 @@ def _session_factory(db: AsyncSession):
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_db(db_session: AsyncSession):
     """Patch engine/session creation so _delete_user runs against db_session."""
     fake_engine = MagicMock()
@@ -66,13 +66,13 @@ def mock_db(db_session: AsyncSession):
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_storage():
     with patch("app.tasks.deletion._purge_storage", new_callable=AsyncMock):
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_emails():
     with (
         patch("app.services.email.send_deletion_completed_admin", new_callable=AsyncMock),
@@ -240,8 +240,9 @@ class TestDeleteUserErrorPaths:
             new_callable=AsyncMock,
             side_effect=SoftTimeLimitExceeded(),
         ):
+            task = _task_mock()
             with pytest.raises(SoftTimeLimitExceeded):
-                await _delete_user(_task_mock(), user.id)
+                await _delete_user(task, user.id)
 
         await db_session.refresh(user)
         assert user.deletion_state == "stalled"
@@ -305,8 +306,9 @@ class TestDeleteUserErrorPaths:
             patch("app.services.email.send_deletion_completed_admin", new_callable=AsyncMock),
             patch("app.services.email.send_deletion_stalled_superuser", new_callable=AsyncMock) as mock_stall_email,
         ):
+            task = _task_mock()
             with pytest.raises(SoftTimeLimitExceeded):
-                await _delete_user(_task_mock(), user.id)
+                await _delete_user(task, user.id)
 
         mock_stall_email.assert_called_once()
         assert superuser.email in mock_stall_email.call_args[0][0]

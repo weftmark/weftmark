@@ -3,7 +3,7 @@ import urllib.parse
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
@@ -30,6 +30,13 @@ from app.services.storage_quota import check_storage_quota
 
 router = APIRouter(prefix="/api/looms", tags=["looms"])
 
+_FILE_TOO_LARGE = "File too large (max 5 MB)"
+_DEFAULT_CONTENT_TYPE = "application/octet-stream"
+_MIME_JPEG = "image/jpeg"
+_MIME_PNG = "image/png"
+_MIME_WEBP = "image/webp"
+_MIME_PDF = "application/pdf"
+
 
 def _content_disposition(disposition: str, filename: str) -> str:
     """Build a Content-Disposition header with RFC 5987 encoded filename."""
@@ -50,10 +57,34 @@ LoomType = Literal[
     "other",
 ]
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-ALLOWED_RECEIPT_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+ALLOWED_IMAGE_TYPES = {_MIME_JPEG, _MIME_PNG, _MIME_WEBP, "image/gif"}
+ALLOWED_RECEIPT_TYPES = {_MIME_JPEG, _MIME_PNG, _MIME_WEBP, _MIME_PDF}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 MAX_VERSION_PHOTOS = 5
+
+
+_EXTENSION_CONTENT_TYPES = {
+    ".jpg": _MIME_JPEG,
+    ".jpeg": _MIME_JPEG,
+    ".png": _MIME_PNG,
+    ".webp": _MIME_WEBP,
+    ".gif": "image/gif",
+    ".pdf": _MIME_PDF,
+}
+
+
+def _safe_content_type(path: str, allowed: set[str]) -> str:
+    """Resolve the content type for a stored file from a fixed extension table.
+
+    Looks up the file extension in a hardcoded literal rather than calling
+    mimetypes.guess_type() — the returned value is always one of the fixed strings
+    above, never derived from the path itself, so SonarCloud's taint analysis
+    (pythonsecurity:S5131) has nothing to flag. Also constrained to the same
+    allowlist already enforced at upload time.
+    """
+    ext = path[path.rfind(".") :].lower() if "." in path else ""
+    content_type = _EXTENSION_CONTENT_TYPES.get(ext, _DEFAULT_CONTENT_TYPE)
+    return content_type if content_type in allowed else _DEFAULT_CONTENT_TYPE
 
 
 # ---------------------------------------------------------------------------
@@ -403,11 +434,11 @@ def _ext(content_type: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-@router.post("", response_model=LoomDetail, status_code=201)
+@router.post("", status_code=201, responses={404: {"description": "Loom not found"}})
 async def create_loom(
     body: CreateLoomRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomDetail:
     lift, treadle = loom_tracking_flags(body.loom_type)
     loom = Loom(
@@ -447,11 +478,11 @@ async def create_loom(
     return LoomDetail.from_loom(loom)
 
 
-@router.get("", response_model=list[LoomSummary])
+@router.get("")
 async def list_looms(
-    include_retired: bool = Query(False),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    include_retired: Annotated[bool, Query()] = False,
 ) -> list[LoomSummary]:
     q = (
         select(Loom)
@@ -471,22 +502,22 @@ async def list_looms(
     return [LoomSummary.from_loom(loom) for loom in result.all()]
 
 
-@router.get("/{loom_id}", response_model=LoomDetail)
+@router.get("/{loom_id}", responses={404: {"description": "Loom not found"}})
 async def get_loom(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomDetail:
     loom = await _get_owned_loom(loom_id, current_user, db, allow_superuser=True)
     return LoomDetail.from_loom(loom)
 
 
-@router.patch("/{loom_id}", response_model=LoomDetail)
+@router.patch("/{loom_id}", responses={404: {"description": "Loom not found"}})
 async def update_loom(
     loom_id: uuid.UUID,
     body: UpdateLoomRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomDetail:
     loom = await _get_owned_loom(loom_id, current_user, db)
     for field, value in body.model_dump(exclude_none=True).items():
@@ -500,12 +531,19 @@ async def update_loom(
     return LoomDetail.from_loom(loom)
 
 
-@router.delete("/{loom_id}", status_code=204)
+@router.delete(
+    "/{loom_id}",
+    status_code=204,
+    responses={
+        404: {"description": "Loom not found"},
+        409: {"description": "Loom is used by one or more active projects; pass force=true to delete anyway"},
+    },
+)
 async def delete_loom(
     loom_id: uuid.UUID,
-    force: bool = Query(False),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    force: Annotated[bool, Query()] = False,
 ) -> None:
     from app.models.project import Project
 
@@ -536,22 +574,22 @@ async def delete_loom(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/retire", status_code=204)
+@router.post("/{loom_id}/retire", status_code=204, responses={404: {"description": "Loom not found"}})
 async def retire_loom(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
     loom.retire()
     await db.commit()
 
 
-@router.post("/{loom_id}/unretire", status_code=204)
+@router.post("/{loom_id}/unretire", status_code=204, responses={404: {"description": "Loom not found"}})
 async def unretire_loom(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
     loom.unretire()
@@ -563,18 +601,22 @@ async def unretire_loom(
 # ---------------------------------------------------------------------------
 
 
-@router.put("/{loom_id}/photo", status_code=204)
+@router.put(
+    "/{loom_id}/photo",
+    status_code=204,
+    responses={400: {"description": "Invalid or corrupt image file"}, 404: {"description": "Loom not found"}},
+)
 async def upload_loom_photo(
     loom_id: uuid.UUID,
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: Annotated[UploadFile, File()],
 ) -> None:
     _validate_image(file)
     loom = await _get_owned_loom(loom_id, current_user, db)
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+        raise HTTPException(status_code=400, detail=_FILE_TOO_LARGE)
     _validate_image_bytes(data)
     try:
         data = resize_to_jpeg(data)
@@ -586,11 +628,11 @@ async def upload_loom_photo(
     await db.commit()
 
 
-@router.delete("/{loom_id}/photo", status_code=204)
+@router.delete("/{loom_id}/photo", status_code=204, responses={404: {"description": "Loom not found"}})
 async def delete_loom_photo(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
     if loom.photo_path:
@@ -599,17 +641,17 @@ async def delete_loom_photo(
         await db.commit()
 
 
-@router.get("/{loom_id}/photo")
+@router.get("/{loom_id}/photo", responses={404: {"description": "No photo"}})
 async def get_loom_photo(
     loom_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
     loom = await _get_owned_loom(loom_id, current_user, db, allow_superuser=True)
     if not loom.photo_path or not storage.file_exists(loom.photo_path):
         raise HTTPException(status_code=404, detail="No photo")
     data = storage.read_file(loom.photo_path)
-    ct = mimetypes.guess_type(loom.photo_path)[0] or "application/octet-stream"
+    ct = _safe_content_type(loom.photo_path, ALLOWED_IMAGE_TYPES)
     return Response(content=data, media_type=ct)
 
 
@@ -618,12 +660,16 @@ async def get_loom_photo(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions", response_model=LoomVersionSchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions",
+    status_code=201,
+    responses={404: {"description": "Loom not found"}},
+)
 async def add_version(
     loom_id: uuid.UUID,
     body: AddVersionRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomVersionSchema:
     loom = await _get_owned_loom(loom_id, current_user, db)
     next_number = max((v.version_number for v in loom.versions), default=0) + 1
@@ -652,21 +698,25 @@ async def add_version(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions/{version_id}/photos", response_model=LoomVersionPhotoSchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions/{version_id}/photos",
+    status_code=201,
+    responses={400: {"description": "Invalid or corrupt image file"}, 404: {"description": "Version not found"}},
+)
 async def upload_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: Annotated[UploadFile, File()],
 ) -> LoomVersionPhotoSchema:
     _validate_image(file)
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     if len(version.photos) >= MAX_VERSION_PHOTOS:
         raise HTTPException(status_code=400, detail=f"Maximum {MAX_VERSION_PHOTOS} photos per configuration")
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+        raise HTTPException(status_code=400, detail=_FILE_TOO_LARGE)
     _validate_image_bytes(data)
     try:
         data = resize_to_jpeg(data)
@@ -690,32 +740,36 @@ async def upload_version_photo(
     return LoomVersionPhotoSchema.model_validate(photo)
 
 
-@router.get("/{loom_id}/versions/{version_id}/photos/{photo_id}")
+@router.get("/{loom_id}/versions/{version_id}/photos/{photo_id}", responses={404: {"description": "Photo not found"}})
 async def get_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     photo_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
     photo = next((p for p in version.photos if p.id == photo_id), None)
     if photo is None or not storage.file_exists(photo.path):
         raise HTTPException(status_code=404, detail="Photo not found")
     data = storage.read_file(photo.path)
-    ct = mimetypes.guess_type(photo.path)[0] or "application/octet-stream"
+    ct = _safe_content_type(photo.path, ALLOWED_IMAGE_TYPES)
     return Response(content=data, media_type=ct)
 
 
-@router.delete("/{loom_id}/versions/{version_id}/photos/{photo_id}", status_code=204)
+@router.delete(
+    "/{loom_id}/versions/{version_id}/photos/{photo_id}",
+    status_code=204,
+    responses={404: {"description": "Photo not found"}},
+)
 async def delete_version_photo(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     photo_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     photo = next((p for p in version.photos if p.id == photo_id), None)
     if photo is None:
         raise HTTPException(status_code=404, detail="Photo not found")
@@ -729,20 +783,24 @@ async def delete_version_photo(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions/{version_id}/receipts", response_model=LoomVersionReceiptSchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions/{version_id}/receipts",
+    status_code=201,
+    responses={400: {"description": "File too large (max 5 MB)"}, 404: {"description": "Version not found"}},
+)
 async def upload_version_receipt(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
-    file: UploadFile = File(...),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: Annotated[UploadFile, File()],
     description: str | None = None,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
 ) -> LoomVersionReceiptSchema:
     _validate_receipt(file)
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, _ = await _get_owned_version(loom_id, version_id, current_user, db)
     data = await file.read()
     if len(data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+        raise HTTPException(status_code=400, detail=_FILE_TOO_LARGE)
     receipt_id = uuid.uuid4()
     ext = _ext(file.content_type or "")
     path = storage.save_version_receipt(loom_id, version_id, receipt_id, ext, data)
@@ -759,22 +817,24 @@ async def upload_version_receipt(
     return LoomVersionReceiptSchema.model_validate(receipt)
 
 
-@router.get("/{loom_id}/versions/{version_id}/receipts/{receipt_id}")
+@router.get(
+    "/{loom_id}/versions/{version_id}/receipts/{receipt_id}", responses={404: {"description": "Receipt not found"}}
+)
 async def get_version_receipt(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     receipt_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Response:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db, allow_superuser=True)
     receipt = next((r for r in version.receipts if r.id == receipt_id), None)
     if receipt is None or not storage.file_exists(receipt.path):
         raise HTTPException(status_code=404, detail="Receipt not found")
     data = storage.read_file(receipt.path)
-    ct = mimetypes.guess_type(receipt.path)[0] or "application/octet-stream"
+    ct = _safe_content_type(receipt.path, ALLOWED_RECEIPT_TYPES)
     # PDFs open inline in browser; images too
-    disposition = "inline" if ct in ("application/pdf", *ALLOWED_IMAGE_TYPES) else "attachment"
+    disposition = "inline" if ct in (_MIME_PDF, *ALLOWED_IMAGE_TYPES) else "attachment"
     return Response(
         content=data,
         media_type=ct,
@@ -782,15 +842,19 @@ async def get_version_receipt(
     )
 
 
-@router.delete("/{loom_id}/versions/{version_id}/receipts/{receipt_id}", status_code=204)
+@router.delete(
+    "/{loom_id}/versions/{version_id}/receipts/{receipt_id}",
+    status_code=204,
+    responses={404: {"description": "Receipt not found"}},
+)
 async def delete_version_receipt(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     receipt_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     receipt = next((r for r in version.receipts if r.id == receipt_id), None)
     if receipt is None:
         raise HTTPException(status_code=404, detail="Receipt not found")
@@ -804,15 +868,18 @@ async def delete_version_receipt(
 # ---------------------------------------------------------------------------
 
 
-@router.patch("/{loom_id}/versions/{version_id}", response_model=LoomVersionSchema)
+@router.patch(
+    "/{loom_id}/versions/{version_id}",
+    responses={404: {"description": "Version not found"}},
+)
 async def update_version(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     body: UpdateVersionRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomVersionSchema:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(version, field, value)
     await db.commit()
@@ -825,13 +892,17 @@ async def update_version(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions/{version_id}/clone", response_model=LoomVersionSchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions/{version_id}/clone",
+    status_code=201,
+    responses={404: {"description": "Version not found"}},
+)
 async def clone_version(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     body: CloneVersionRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomVersionSchema:
     loom, source = await _get_owned_version(loom_id, version_id, current_user, db)
     next_number = max((v.version_number for v in loom.versions), default=0) + 1
@@ -871,15 +942,19 @@ async def clone_version(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/versions/{version_id}/accessories", response_model=LoomVersionAccessorySchema, status_code=201)
+@router.post(
+    "/{loom_id}/versions/{version_id}/accessories",
+    status_code=201,
+    responses={404: {"description": "Version not found"}},
+)
 async def add_accessory(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     body: AddAccessoryRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomVersionAccessorySchema:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, _ = await _get_owned_version(loom_id, version_id, current_user, db)
     acc = LoomVersionAccessory(loom_version_id=version_id, name=body.name.strip())
     db.add(acc)
     await db.commit()
@@ -887,15 +962,19 @@ async def add_accessory(
     return LoomVersionAccessorySchema.model_validate(acc)
 
 
-@router.delete("/{loom_id}/versions/{version_id}/accessories/{accessory_id}", status_code=204)
+@router.delete(
+    "/{loom_id}/versions/{version_id}/accessories/{accessory_id}",
+    status_code=204,
+    responses={404: {"description": "Accessory not found"}},
+)
 async def delete_accessory(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     accessory_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
-    loom, version = await _get_owned_version(loom_id, version_id, current_user, db)
+    _, version = await _get_owned_version(loom_id, version_id, current_user, db)
     acc = next((a for a in version.accessories if a.id == accessory_id), None)
     if acc is None:
         raise HTTPException(status_code=404, detail="Accessory not found")
@@ -908,12 +987,16 @@ async def delete_accessory(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{loom_id}/reeds", response_model=LoomReedSchema, status_code=201)
+@router.post(
+    "/{loom_id}/reeds",
+    status_code=201,
+    responses={400: {"description": "dents_per_inch must be positive"}, 404: {"description": "Loom not found"}},
+)
 async def add_reed(
     loom_id: uuid.UUID,
     body: AddReedRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomReedSchema:
     if body.dents_per_inch <= 0:
         raise HTTPException(status_code=400, detail="dents_per_inch must be positive")
@@ -931,12 +1014,12 @@ async def add_reed(
     return LoomReedSchema.model_validate(reed)
 
 
-@router.delete("/{loom_id}/reeds/{reed_id}", status_code=204)
+@router.delete("/{loom_id}/reeds/{reed_id}", status_code=204, responses={404: {"description": "Reed not found"}})
 async def delete_reed(
     loom_id: uuid.UUID,
     reed_id: uuid.UUID,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     loom = await _get_owned_loom(loom_id, current_user, db)
     reed = next((r for r in loom.reeds if r.id == reed_id), None)
@@ -955,13 +1038,16 @@ class LinkReferenceRequest(BaseModel):
     loom_reference_id: uuid.UUID | None
 
 
-@router.post("/{loom_id}/versions/{version_id}/link-reference", response_model=LoomDetail)
+@router.post(
+    "/{loom_id}/versions/{version_id}/link-reference",
+    responses={404: {"description": "Loom reference not found"}},
+)
 async def link_version_reference(
     loom_id: uuid.UUID,
     version_id: uuid.UUID,
     body: LinkReferenceRequest,
-    current_user: User = Depends(get_effective_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_effective_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> LoomDetail:
     """Link (or unlink) a specific loom version to a catalog entry."""
     loom, version = await _get_owned_version(loom_id, version_id, current_user, db)

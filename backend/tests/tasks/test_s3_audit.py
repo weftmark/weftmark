@@ -30,7 +30,7 @@ def _session_factory(db: AsyncSession):
     return _Factory()
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_engine_and_session(db_session: AsyncSession):
     fake_engine = MagicMock()
     fake_engine.dispose = AsyncMock()

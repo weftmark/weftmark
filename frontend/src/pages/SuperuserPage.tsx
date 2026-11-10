@@ -35,6 +35,7 @@ import {
   saveConfig,
   testConfigService,
   sendBackendSentryTest,
+  getNeonDashboard,
   type ScheduledTask,
   type TaskHistoryItem,
   type ReconcileReport,
@@ -50,28 +51,18 @@ import {
   type ConfigTestResult,
   type ConfigTestOption,
   type ConfigFieldState,
+  listAdminUsers,
+  type AdminUser,
 } from "@/api/admin";
 import { EulaContent } from "@/components/EulaContent";
 import { CveBanner } from "@/components/admin/CveBanner";
 import { CopyEmail } from "@/components/admin/CopyEmail";
 import { formatBytes } from "@/lib/image-utils";
-import { listAdminUsers } from "@/api/admin";
-import type { AdminUser } from "@/api/admin";
+import { formatUptime } from "@/lib/utils";
 
 declare const __FRONTEND_DEPS__: Record<string, string>;
 
-function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const parts: string[] = [];
-  if (d > 0) parts.push(`${d} day${d !== 1 ? "s" : ""}`);
-  if (h > 0) parts.push(`${h} hour${h !== 1 ? "s" : ""}`);
-  parts.push(`${m} minute${m !== 1 ? "s" : ""}`);
-  return parts.join(", ");
-}
-
-type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials" | "sandbox" | "users";
+type SuperuserSection = "eula" | "storage" | "cve" | "workers" | "deletion" | "reconcile" | "maintenance" | "schedule" | "exports" | "credentials" | "neon" | "sandbox" | "users";
 
 // ---------------------------------------------------------------------------
 // EULA tab
@@ -108,10 +99,16 @@ function lintHtml(html: string): LintResult {
     }
   }
 
-  // javascript: hrefs
+  // Dangerous URL schemes in hrefs — strip whitespace/control characters first,
+  // since browsers ignore them when determining a URL's scheme (e.g. a tab or
+  // leading space inside "javascript:" still executes), which a bare
+  // .startsWith() check misses. Char code 32 is space; anything below it is a
+  // C0 control character (tab, newline, etc).
   for (const a of doc.body.querySelectorAll("a[href]")) {
-    if ((a.getAttribute("href") ?? "").toLowerCase().startsWith("javascript:")) {
-      issues.push({ level: "error", message: "javascript: URL in <a> href" });
+    const raw = a.getAttribute("href") ?? "";
+    const normalized = raw.split("").filter((c) => (c.codePointAt(0) ?? 0) > 32).join("").toLowerCase();
+    if (/^(javascript|vbscript|data):/.test(normalized)) {
+      issues.push({ level: "error", message: "Dangerous URL scheme in <a> href" });
     }
   }
 
@@ -225,8 +222,9 @@ function EulaTab() {
         </p>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">Version string</label>
+          <label htmlFor="eula-version" className="text-xs font-medium">Version string</label>
           <input
+            id="eula-version"
             className={`w-full rounded border bg-background px-3 py-1.5 text-sm ${version && !versionValid ? "border-destructive" : ""}`}
             placeholder="e.g. 0.4"
             value={version}
@@ -238,8 +236,9 @@ function EulaTab() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium">Effective date</label>
+          <label htmlFor="eula-effective-date" className="text-xs font-medium">Effective date</label>
           <input
+            id="eula-effective-date"
             type="datetime-local"
             className="w-full rounded border bg-background px-3 py-1.5 text-sm"
             value={effectiveDate}
@@ -249,7 +248,7 @@ function EulaTab() {
 
         <div className="space-y-1">
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-medium">Body HTML</label>
+            <label htmlFor="eula-body-html" className="text-xs font-medium">Body HTML</label>
             {current && (
               <Button variant="outline" size="sm" type="button" onClick={() => {
                 const html = current.body_html.replace(/Version \d+\.\d+/, `Version ${version}`);
@@ -261,6 +260,7 @@ function EulaTab() {
             )}
           </div>
           <textarea
+            id="eula-body-html"
             className="w-full rounded border bg-background px-3 py-1.5 text-sm font-mono min-h-[240px]"
             placeholder="<p>Paste full EULA HTML here…</p>"
             value={bodyHtml}
@@ -284,8 +284,8 @@ function EulaTab() {
             {lintResult.issues.length === 0 ? (
               <p className="text-xs text-green-600 font-medium">✓ No issues found</p>
             ) : (
-              lintResult.issues.map((issue, i) => (
-                <p key={i} className={`text-xs ${issue.level === "error" ? "text-destructive" : "text-yellow-600"}`}>
+              lintResult.issues.map((issue) => (
+                <p key={`${issue.level}-${issue.message}`} className={`text-xs ${issue.level === "error" ? "text-destructive" : "text-yellow-600"}`}>
                   {issue.level === "error" ? "✗" : "⚠"} {issue.message}
                 </p>
               ))
@@ -412,6 +412,52 @@ function StorageAuditTab() {
 
   const allSelected = !!result && selected.size === result.orphaned_files.length && result.orphaned_files.length > 0;
 
+  let orphanedSection: React.ReactNode = null;
+  if (result) {
+    orphanedSection = result.orphaned_files.length === 0 ? (
+      <p className="text-sm text-muted-foreground">No orphaned files found.</p>
+    ) : (
+      <div className="rounded-md border overflow-auto max-h-96">
+        <table className="w-full text-xs">
+          <thead className="bg-muted sticky top-0">
+            <tr>
+              <th className="p-2 text-left w-8">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="cursor-pointer"
+                />
+              </th>
+              <th className="p-2 text-left font-medium">Key</th>
+              <th className="p-2 text-right font-medium">Size</th>
+              <th className="p-2 text-right font-medium">Last Modified</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.orphaned_files.map((f) => (
+              <tr key={f.key} className="border-t hover:bg-muted/50">
+                <td className="p-2">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(f.key)}
+                    onChange={() => toggleSelect(f.key)}
+                    className="cursor-pointer"
+                  />
+                </td>
+                <td className="p-2 font-mono break-all">{f.key}</td>
+                <td className="p-2 text-right whitespace-nowrap">{formatBytes(f.size)}</td>
+                <td className="p-2 text-right whitespace-nowrap text-muted-foreground">
+                  {new Date(f.last_modified).toLocaleDateString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-1 pb-2 border-b">
@@ -457,48 +503,7 @@ function StorageAuditTab() {
                 <span><span className="font-medium text-amber-600 dark:text-amber-400">{result.orphaned_count}</span> orphaned</span>
               </div>
 
-              {result.orphaned_files.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No orphaned files found.</p>
-              ) : (
-                <div className="rounded-md border overflow-auto max-h-96">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted sticky top-0">
-                      <tr>
-                        <th className="p-2 text-left w-8">
-                          <input
-                            type="checkbox"
-                            checked={allSelected}
-                            onChange={toggleAll}
-                            className="cursor-pointer"
-                          />
-                        </th>
-                        <th className="p-2 text-left font-medium">Key</th>
-                        <th className="p-2 text-right font-medium">Size</th>
-                        <th className="p-2 text-right font-medium">Last Modified</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.orphaned_files.map((f) => (
-                        <tr key={f.key} className="border-t hover:bg-muted/50">
-                          <td className="p-2">
-                            <input
-                              type="checkbox"
-                              checked={selected.has(f.key)}
-                              onChange={() => toggleSelect(f.key)}
-                              className="cursor-pointer"
-                            />
-                          </td>
-                          <td className="p-2 font-mono break-all">{f.key}</td>
-                          <td className="p-2 text-right whitespace-nowrap">{formatBytes(f.size)}</td>
-                          <td className="p-2 text-right whitespace-nowrap text-muted-foreground">
-                            {new Date(f.last_modified).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {orphanedSection}
             </>
           )}
         </div>
@@ -507,7 +512,7 @@ function StorageAuditTab() {
   );
 }
 
-function CveFindingsTable({ title, findings }: { title: string; findings: CveFinding[] }) {
+function CveFindingsTable({ title, findings }: { readonly title: string; readonly findings: CveFinding[] }) {
   if (findings.length === 0) return null;
   return (
     <div className="space-y-2">
@@ -635,11 +640,16 @@ function CveScanTab() {
   );
 }
 
-function WorkerCard({ worker, apiVersion }: { worker: WorkerInfo; apiVersion: string }) {
+function WorkerCard({ worker, apiVersion }: { readonly worker: WorkerInfo; readonly apiVersion: string }) {
   const isOnline = worker.status === "online";
   const hasActive = worker.active_tasks.length > 0;
   const hasReserved = worker.reserved_tasks.length > 0;
   const versionMismatch = isOnline && worker.version != null && worker.version !== apiVersion;
+  let concurrencyClass = "border-border text-muted-foreground";
+  if (worker.concurrency !== null) {
+    if (worker.active_tasks.length >= worker.concurrency) concurrencyClass = "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300";
+    else if (worker.active_tasks.length > 0) concurrencyClass = "border-blue-500/30 text-blue-600 dark:text-blue-400";
+  }
 
   return (
     <div className={`border rounded-lg overflow-hidden ${versionMismatch ? "border-amber-500/50" : ""}`}>
@@ -656,13 +666,7 @@ function WorkerCard({ worker, apiVersion }: { worker: WorkerInfo; apiVersion: st
           </span>
         )}
         {isOnline && worker.concurrency !== null && (
-          <span className={`text-xs px-2 py-0.5 rounded border tabular-nums ${
-            worker.active_tasks.length >= worker.concurrency
-              ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-              : worker.active_tasks.length > 0
-              ? "border-blue-500/30 text-blue-600 dark:text-blue-400"
-              : "border-border text-muted-foreground"
-          }`}>
+          <span className={`text-xs px-2 py-0.5 rounded border tabular-nums ${concurrencyClass}`}>
             {worker.active_tasks.length}/{worker.concurrency} slots
           </span>
         )}
@@ -835,9 +839,11 @@ function shortName(name: string): string {
   return parts.length >= 2 ? parts.slice(-2).join(".") : name;
 }
 
-function TaskHistoryRow({ item, onRevoke }: { item: TaskHistoryItem; onRevoke: (id: string) => void }) {
+function TaskHistoryRow({ item, onRevoke }: { readonly item: TaskHistoryItem; readonly onRevoke: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const cancellable = item.state === "queued" || item.state === "running";
+  let errorToggle = "—";
+  if (item.error) errorToggle = expanded ? "▲" : "▼ error";
   return (
     <>
       <tr
@@ -853,10 +859,10 @@ function TaskHistoryRow({ item, onRevoke }: { item: TaskHistoryItem; onRevoke: (
         <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.wait_seconds)}</td>
         <td className="px-3 py-2 tabular-nums text-right">{fmtSec(item.run_seconds)}</td>
         <td className="px-3 py-2 tabular-nums text-right whitespace-nowrap">{fmtTime(item.completed_at)}</td>
-        <td className="px-3 py-2 text-muted-foreground">{item.error ? (expanded ? "▲" : "▼ error") : "—"}</td>
+        <td className="px-3 py-2 text-muted-foreground">{errorToggle}</td>
         <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
           {cancellable && (
-            <button
+            <button type="button"
               className="text-xs text-destructive hover:underline"
               onClick={() => onRevoke(item.task_id)}
             >
@@ -898,7 +904,7 @@ function TaskHistoryTable() {
         <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Task History {data ? `(${data.total})` : ""}
         </h3>
-        <button
+        <button type="button"
           className="text-xs text-muted-foreground hover:text-foreground"
           onClick={() => refetch()}
         >
@@ -908,7 +914,7 @@ function TaskHistoryTable() {
 
       {isLoading && <p className="text-xs text-muted-foreground">Loading…</p>}
 
-      {data && data.items.length === 0 && (
+      {data?.items.length === 0 && (
         <p className="text-xs text-muted-foreground">No task history yet. Dispatch a task to see it here.</p>
       )}
 
@@ -939,7 +945,7 @@ function TaskHistoryTable() {
 
           {data.pages > 1 && (
             <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-              <button
+              <button type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
                 className="px-2 py-1 border rounded disabled:opacity-40 hover:bg-muted/40"
@@ -947,7 +953,7 @@ function TaskHistoryTable() {
                 ← Prev
               </button>
               <span>Page {data.page} of {data.pages}</span>
-              <button
+              <button type="button"
                 disabled={page >= data.pages}
                 onClick={() => setPage((p) => p + 1)}
                 className="px-2 py-1 border rounded disabled:opacity-40 hover:bg-muted/40"
@@ -969,7 +975,7 @@ const DELETION_STATE_STYLE: Record<string, string> = {
   complete: "border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-300",
 };
 
-function DeletionStateBadge({ state }: { state: string }) {
+function DeletionStateBadge({ state }: { readonly state: string }) {
   return (
     <span className={`text-xs px-2 py-0.5 rounded border font-medium ${DELETION_STATE_STYLE[state] ?? "border-border text-muted-foreground"}`}>
       {state}
@@ -1044,7 +1050,7 @@ function MaintenanceTab() {
     queryFn: getSoftDeleteQueue,
   });
 
-  const nothingEligible = queue != null && queue.ready_to_purge.total === 0;
+  const nothingEligible = queue?.ready_to_purge.total === 0;
 
   function triggerPurge() {
     setPurging(true);
@@ -1192,6 +1198,10 @@ function ReconcileTab() {
     }
   }
 
+  let reconcileLabel = "Run reconciliation";
+  if (loading) reconcileLabel = "Running…";
+  else if (ran) reconcileLabel = "Re-run reconciliation";
+
   return (
     <div className="space-y-6">
       <div className="space-y-1 pb-2 border-b">
@@ -1200,7 +1210,7 @@ function ReconcileTab() {
       </div>
 
       <Button onClick={runReconcile} disabled={loading} size="sm">
-        {loading ? "Running…" : ran ? "Re-run reconciliation" : "Run reconciliation"}
+        {reconcileLabel}
       </Button>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -1210,8 +1220,8 @@ function ReconcileTab() {
           {/* In Clerk, not in DB */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium">
-              In Clerk, not in DB
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              In Clerk, not in DB{/*
+              */}<span className="ml-2 text-xs font-normal text-muted-foreground">
                 ({report.clerk_only.length} {report.clerk_only.length === 1 ? "user" : "users"})
               </span>
             </h3>
@@ -1261,8 +1271,8 @@ function ReconcileTab() {
           {/* In DB, not in Clerk */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium">
-              In DB, not in Clerk
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
+              In DB, not in Clerk{/*
+              */}<span className="ml-2 text-xs font-normal text-muted-foreground">
                 ({report.db_only.length} {report.db_only.length === 1 ? "user" : "users"})
               </span>
             </h3>
@@ -1305,7 +1315,7 @@ const CRON_PRESETS = [
   { label: "Custom", value: "custom" },
 ];
 
-function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: () => void }) {
+function ScheduledTaskCard({ task, onSaved }: { readonly task: ScheduledTask; readonly onSaved: () => void }) {
   const [enabled, setEnabled] = useState(task.enabled);
   const [preset, setPreset] = useState<string>(() => {
     const match = CRON_PRESETS.find((p) => p.value === task.cron && p.value !== "custom");
@@ -1342,7 +1352,7 @@ function ScheduledTaskCard({ task, onSaved }: { task: ScheduledTask; onSaved: ()
         <div className="flex items-center gap-2 shrink-0">
           <label className="flex items-center gap-2 cursor-pointer">
             <span className="text-xs text-muted-foreground">{enabled ? "Enabled" : "Disabled"}</span>
-            <button
+            <button type="button"
               role="switch"
               aria-checked={enabled}
               onClick={() => setEnabled((v) => !v)}
@@ -1425,7 +1435,7 @@ function ScheduledTasksTab() {
         <h1 className="text-lg font-semibold">Scheduled Tasks</h1>
         <p className="text-sm text-muted-foreground">Configure recurring background tasks. Schedules are stored in Postgres and survive restarts; the scheduler tick runs every 60 seconds via Celery Beat.</p>
       </div>
-      {data && data.length === 0 && (
+      {data?.length === 0 && (
         <p className="text-sm text-muted-foreground">No scheduled tasks configured.</p>
       )}
       {data?.map((task) => (
@@ -1444,19 +1454,20 @@ function ScheduledTasksTab() {
 // Data Exports tab
 // ---------------------------------------------------------------------------
 
-function ExportStatusBadge({ status }: { status: AdminExportRecord["status"] }) {
-  const cls =
-    status === "complete"
-      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-      : status === "failed"
-        ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+const EXPORT_STATUS_CLASS: Record<string, string> = {
+  complete: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  failed: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+};
+const EXPORT_STATUS_DEFAULT_CLASS = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+
+function ExportStatusBadge({ status }: { readonly status: AdminExportRecord["status"] }) {
+  const cls = EXPORT_STATUS_CLASS[status] ?? EXPORT_STATUS_DEFAULT_CLASS;
   return (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{status}</span>
   );
 }
 
-function ExportRow({ record, onDeleted }: { record: AdminExportRecord; onDeleted: () => void }) {
+function ExportRow({ record, onDeleted }: { readonly record: AdminExportRecord; readonly onDeleted: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const mutation = useMutation({
     mutationFn: () => deleteExport(record.id),
@@ -1546,7 +1557,7 @@ function ExportsTab() {
       {isLoading && <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>}
       {error && <p className="text-sm text-destructive">Failed to load exports.</p>}
 
-      {!isLoading && data && data.length === 0 && (
+      {!isLoading && data?.length === 0 && (
         <p className="text-sm text-muted-foreground py-8 text-center">No export requests found.</p>
       )}
 
@@ -1585,6 +1596,20 @@ function credentialStatus(daysRemaining: number | null): { label: string; cls: s
   if (daysRemaining <= 7) return { label: "Critical", cls: "bg-destructive/10 text-destructive" };
   if (daysRemaining <= 30) return { label: "Warning", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" };
   return { label: "OK", cls: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" };
+}
+
+function ExpiresCell({ expiresOn, daysRemaining }: { readonly expiresOn: string | null; readonly daysRemaining: number | null }) {
+  if (!expiresOn) return <span className="text-muted-foreground">Never</span>;
+  let daysLabel = "";
+  if (daysRemaining !== null) daysLabel = daysRemaining < 0 ? `${Math.abs(daysRemaining)}d ago` : `${daysRemaining}d`;
+  return (
+    <>
+      {new Date(expiresOn).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+      {daysRemaining !== null && (
+        <span className="ml-1.5 text-xs text-muted-foreground">({daysLabel})</span>
+      )}
+    </>
+  );
 }
 
 const GROUP_CONFIG: Record<string, { label: string; fields: string[]; testService: string | null }> = {
@@ -1638,6 +1663,11 @@ const GROUP_CONFIG: Record<string, { label: string; fields: string[]; testServic
     fields: ["neon_api_key", "neon_org_id", "neon_project_id"],
     testService: "neon",
   },
+  system_intervals: {
+    label: "System Intervals (seconds)",
+    fields: ["detailed_refresh_interval_s", "postgres_probe_interval_s", "scheduled_tasks_dispatch_interval_s"],
+    testService: null,
+  },
 };
 
 const CONFIG_SECRET_FIELDS = new Set([
@@ -1687,6 +1717,9 @@ const CONFIG_FIELD_LABELS: Record<string, string> = {
   neon_api_key: "API Key",
   neon_org_id: "Organization ID",
   neon_project_id: "Project ID (optional filter)",
+  detailed_refresh_interval_s: "Detailed Health Poll Interval",
+  postgres_probe_interval_s: "Postgres Probe Interval",
+  scheduled_tasks_dispatch_interval_s: "Scheduled Tasks Dispatch Interval",
 };
 
 interface ConfigFieldRowProps {
@@ -1702,6 +1735,155 @@ interface ConfigFieldRowProps {
   readonly selectOptions?: ConfigTestOption[];
 }
 
+function isConfigFieldFullWidth(field: string, groupFieldCount: number): boolean {
+  return groupFieldCount === 1
+    || field === "smtp_from_email"
+    || field === "ravelry_oauth_redirect_uri"
+    || field === "webhook_base_url"
+    || field === "otel_exporter_otlp_endpoint";
+}
+
+function configFieldPlaceholder(field: string, isSecret: boolean, isSet: boolean, apiUrl: string): string {
+  if (isSecret && isSet) return "Enter new value to replace";
+  if (field === "webhook_base_url" && !isSet) return apiUrl || "http://localhost:8000";
+  return "";
+}
+
+function configBooleanFieldIsOn(field: string, hasDraft: boolean, drafts: Record<string, string>, state: ConfigFieldState | undefined): boolean {
+  if (hasDraft) return drafts[field] === "true";
+  return state?.value === "True" || state?.value === "true";
+}
+
+function configFieldInputType(isPrefixMasked: boolean, isSecret: boolean): string {
+  if (isPrefixMasked) return "text";
+  return isSecret ? "password" : "text";
+}
+
+function configFieldInputValue(field: string, isSecret: boolean, hasDraft: boolean, drafts: Record<string, string>, state: ConfigFieldState | undefined): string {
+  if (isSecret) return hasDraft ? drafts[field] : "";
+  return hasDraft ? drafts[field] : (state?.value ?? "");
+}
+
+interface ConfigBooleanFieldProps {
+  readonly field: string;
+  readonly isOn: boolean;
+  readonly fromEnv: boolean;
+  readonly isFullWidth: boolean;
+  readonly onToggle: () => void;
+}
+
+function ConfigBooleanField({ field, isOn, fromEnv, isFullWidth, onToggle }: ConfigBooleanFieldProps) {
+  return (
+    <div className={`flex items-center justify-between gap-3 py-1 ${isFullWidth ? "sm:col-span-2" : ""}`}>
+      <div className="flex items-center gap-1.5">
+        <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
+        {fromEnv && (
+          <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">ENV</span>
+        )}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isOn}
+        onClick={onToggle}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isOn ? "bg-accent" : "bg-input"}`}
+      >
+        <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
+      </button>
+    </div>
+  );
+}
+
+const CONFIG_INPUT_CLS = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono";
+
+interface ConfigFieldControlProps {
+  readonly field: string;
+  readonly state: ConfigFieldState | undefined;
+  readonly showMasked: boolean;
+  readonly selectOptions?: ConfigTestOption[];
+  readonly inputType: string;
+  readonly inputValue: string;
+  readonly placeholder: string;
+  readonly autoFocus: boolean;
+  readonly setDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  readonly setEditingFields: React.Dispatch<React.SetStateAction<Set<string>>>;
+}
+
+function ConfigFieldControl({
+  field, state, showMasked, selectOptions, inputType, inputValue, placeholder, autoFocus, setDrafts, setEditingFields,
+}: ConfigFieldControlProps) {
+  if (showMasked) {
+    return (
+      <button
+        type="button"
+        className={`${CONFIG_INPUT_CLS} text-left text-muted-foreground cursor-text select-none`}
+        onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
+        title="Click to change"
+      >
+        {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
+      </button>
+    );
+  }
+  if (selectOptions?.length) {
+    return (
+      <select className={CONFIG_INPUT_CLS} value={inputValue} onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}>
+        <option value="">— none (no filter) —</option>
+        {selectOptions.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    );
+  }
+  return (
+    <input
+      type={inputType}
+      className={CONFIG_INPUT_CLS}
+      value={inputValue}
+      placeholder={placeholder}
+      onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
+      autoComplete="off"
+      autoFocus={autoFocus}
+    />
+  );
+}
+
+interface ConfigFieldBadgesProps {
+  readonly field: string;
+  readonly state: ConfigFieldState | undefined;
+  readonly fromEnv: boolean;
+  readonly isSet: boolean;
+  readonly hasDraft: boolean;
+}
+
+function ConfigFieldBadges({ field, state, fromEnv, isSet, hasDraft }: ConfigFieldBadgesProps) {
+  return (
+    <div className="flex items-center gap-1.5 mb-1">
+      <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
+      {fromEnv && (
+        <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">
+          ENV
+        </span>
+      )}
+      {isSet && !fromEnv && !hasDraft && (
+        <span
+          className={`text-[10px] border rounded px-1 leading-4 ${
+            state?.pending_restart
+              ? "text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+              : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+          }`}
+        >
+          {state?.pending_restart ? "Set — pending restart" : "Set"}
+        </span>
+      )}
+      {field === "webhook_base_url" && !isSet && !hasDraft && (
+        <span className="text-[10px] border rounded px-1 text-muted-foreground border-border leading-4">
+          Default
+        </span>
+      )}
+    </div>
+  );
+}
+
 function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, drafts, setDrafts, editingFields, setEditingFields, apiUrl, selectOptions }: ConfigFieldRowProps) {
   if ((field === "cf_access_client_id" || field === "cf_access_client_secret") && !isZeroTrustEnabled) return null;
 
@@ -1710,108 +1892,43 @@ function ConfigFieldRow({ field, groupFieldCount, state, isZeroTrustEnabled, dra
   const fromEnv = state?.source === "env";
   const hasDraft = field in drafts;
   const isSet = isSecret ? (state?.secret_set ?? false) : !!(state?.value);
-  const isFullWidth = groupFieldCount === 1
-    || field === "smtp_from_email"
-    || field === "ravelry_oauth_redirect_uri"
-    || field === "webhook_base_url"
-    || field === "otel_exporter_otlp_endpoint";
+  const isFullWidth = isConfigFieldFullWidth(field, groupFieldCount);
 
   if (isBoolean) {
-    const isOn = hasDraft
-      ? drafts[field] === "true"
-      : (state?.value === "True" || state?.value === "true");
+    const isOn = configBooleanFieldIsOn(field, hasDraft, drafts, state);
     return (
-      <div className={`flex items-center justify-between gap-3 py-1 ${isFullWidth ? "sm:col-span-2" : ""}`}>
-        <div className="flex items-center gap-1.5">
-          <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
-          {fromEnv && (
-            <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">ENV</span>
-          )}
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={isOn}
-          onClick={() => setDrafts((prev) => ({ ...prev, [field]: isOn ? "false" : "true" }))}
-          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isOn ? "bg-accent" : "bg-input"}`}
-        >
-          <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${isOn ? "translate-x-4" : "translate-x-0.5"}`} />
-        </button>
-      </div>
+      <ConfigBooleanField
+        field={field}
+        isOn={isOn}
+        fromEnv={fromEnv}
+        isFullWidth={isFullWidth}
+        onToggle={() => setDrafts((prev) => ({ ...prev, [field]: isOn ? "false" : "true" }))}
+      />
     );
   }
 
   const isPrefixMasked = PREFIX_MASKED_FIELDS.has(field);
   const isEditing = editingFields.has(field);
   const showMasked = isPrefixMasked && isSet && !hasDraft && !isEditing;
-  const inputType = isPrefixMasked ? "text" : isSecret ? "password" : "text";
-  const inputValue = isSecret ? (hasDraft ? drafts[field] : "") : (hasDraft ? drafts[field] : (state?.value ?? ""));
-  let placeholder = "";
-  if (isSecret && isSet) placeholder = "Enter new value to replace";
-  else if (field === "webhook_base_url" && !isSet) placeholder = apiUrl || "http://localhost:8000";
-
-  const inputCls = "w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring font-mono";
-  let fieldControl: React.ReactNode;
-  if (showMasked) {
-    fieldControl = (
-      <div
-        className={`${inputCls} text-muted-foreground cursor-text select-none`}
-        onClick={() => setEditingFields((prev) => new Set([...prev, field]))}
-        title="Click to change"
-      >
-        {state?.secret_prefix ? state.secret_prefix + "••••••••" : "••••••••"}
-      </div>
-    );
-  } else if (selectOptions?.length) {
-    fieldControl = (
-      <select className={inputCls} value={inputValue} onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}>
-        <option value="">— none (no filter) —</option>
-        {selectOptions.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-    );
-  } else {
-    fieldControl = (
-      <input
-        type={inputType}
-        className={inputCls}
-        value={inputValue}
-        placeholder={placeholder}
-        onChange={(e) => setDrafts((prev) => ({ ...prev, [field]: e.target.value }))}
-        autoComplete="off"
-        autoFocus={isPrefixMasked && isEditing && !hasDraft}
-      />
-    );
-  }
+  const inputType = configFieldInputType(isPrefixMasked, isSecret);
+  const inputValue = configFieldInputValue(field, isSecret, hasDraft, drafts, state);
+  const placeholder = configFieldPlaceholder(field, isSecret, isSet, apiUrl);
 
   return (
     <div className={isFullWidth ? "sm:col-span-2" : ""}>
-      <div className="flex items-center gap-1.5 mb-1">
-        <label className="text-xs font-medium">{CONFIG_FIELD_LABELS[field] ?? field}</label>
-        {fromEnv && (
-          <span className="text-[10px] border rounded px-1 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 leading-4">
-            ENV
-          </span>
-        )}
-        {isSet && !fromEnv && !hasDraft && (
-          <span
-            className={`text-[10px] border rounded px-1 leading-4 ${
-              state?.pending_restart
-                ? "text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700"
-                : "text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
-            }`}
-          >
-            {state?.pending_restart ? "Set — pending restart" : "Set"}
-          </span>
-        )}
-        {field === "webhook_base_url" && !isSet && !hasDraft && (
-          <span className="text-[10px] border rounded px-1 text-muted-foreground border-border leading-4">
-            Default
-          </span>
-        )}
-      </div>
-      {fieldControl}
+      <ConfigFieldBadges field={field} state={state} fromEnv={fromEnv} isSet={isSet} hasDraft={hasDraft} />
+      <ConfigFieldControl
+        field={field}
+        state={state}
+        showMasked={showMasked}
+        selectOptions={selectOptions}
+        inputType={inputType}
+        inputValue={inputValue}
+        placeholder={placeholder}
+        autoFocus={isPrefixMasked && isEditing && !hasDraft}
+        setDrafts={setDrafts}
+        setEditingFields={setEditingFields}
+      />
       {fromEnv && hasDraft && (
         <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
           ENV var active — file value won't take effect until removed from .env
@@ -1833,6 +1950,7 @@ function ConfigSection() {
   const [testResults, setTestResults] = useState<Record<string, ConfigTestResult | null>>({});
   const [testingGroup, setTestingGroup] = useState<string | null>(null);
   const [savingGroup, setSavingGroup] = useState<string | null>(null);
+  const [clearingGroup, setClearingGroup] = useState<string | null>(null);
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
   const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
 
@@ -1871,6 +1989,24 @@ function ConfigSection() {
       setSaveErrors((prev) => ({ ...prev, [groupKey]: e instanceof Error ? e.message : "Save failed" }));
     } finally {
       setSavingGroup(null);
+    }
+  }
+
+  async function handleClear(groupKey: string) {
+    const { label, fields } = GROUP_CONFIG[groupKey];
+    if (!window.confirm(`Clear all stored ${label} credentials? This cannot be undone.`)) return;
+    const values: Record<string, string | null> = {};
+    fields.forEach((f) => { values[f] = null; });
+    setClearingGroup(groupKey);
+    setSaveErrors((prev) => ({ ...prev, [groupKey]: "" }));
+    try {
+      const result = await saveConfig(values);
+      qc.setQueryData(["admin", "config"], result);
+      clearGroupDrafts(groupKey);
+    } catch (e) {
+      setSaveErrors((prev) => ({ ...prev, [groupKey]: e instanceof Error ? e.message : "Clear failed" }));
+    } finally {
+      setClearingGroup(null);
     }
   }
 
@@ -1950,6 +2086,11 @@ function ConfigSection() {
         const isDirty = fields.some((f) => f in drafts);
         const saveError = saveErrors[groupKey];
         const testResult = testResults[groupKey];
+        const groupHasStoredValue = fields.some((f) => {
+          const s = fieldMap[f];
+          if (!s) return false;
+          return CONFIG_SECRET_FIELDS.has(f) ? s.secret_set : !!s.value;
+        });
 
         return (
           <div key={groupKey} className="border rounded-lg overflow-hidden">
@@ -1994,9 +2135,20 @@ function ConfigSection() {
                     {testingGroup === groupKey ? "Testing…" : "Test"}
                   </Button>
                 )}
+                {groupKey === "neon" && groupHasStoredValue && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                    disabled={clearingGroup === groupKey}
+                    onClick={() => handleClear(groupKey)}
+                  >
+                    {clearingGroup === groupKey ? "Clearing…" : "Clear stored credentials"}
+                  </Button>
+                )}
                 <div className="flex-1" />
                 {isDirty && (
-                  <button
+                  <button type="button"
                     className="text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => clearGroupDrafts(groupKey)}
                   >
@@ -2016,6 +2168,158 @@ function ConfigSection() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function NeonUsageBars({ daily }: { readonly daily: { date: string; compute_seconds: number }[] }) {
+  if (daily.length === 0) return null;
+  const maxDaily = Math.max(1, ...daily.map((d) => d.compute_seconds));
+  return (
+    <div className="px-4 py-2 bg-background space-y-1">
+      {daily.map((d) => (
+        <div key={d.date} className="flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground w-20 shrink-0">
+            {new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          </span>
+          <div className="flex-1 h-2 bg-muted rounded overflow-hidden">
+            <div
+              className="h-full bg-accent"
+              style={{ width: `${Math.max(2, (d.compute_seconds / maxDaily) * 100)}%` }}
+            />
+          </div>
+          <span className="text-xs font-mono text-muted-foreground w-16 text-right">
+            {(d.compute_seconds / 3600).toFixed(2)}h
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProjectUsageSection({ project }: {
+  readonly project: { configured: boolean; error: string | null; total_compute_seconds: number; daily: { date: string; compute_seconds: number }[] };
+}) {
+  if (!project.configured) {
+    return (
+      <div className="border rounded-lg px-4 py-2 bg-background text-sm text-muted-foreground">
+        neon_project_id isn't set — showing account-wide usage above only.
+      </div>
+    );
+  }
+  if (project.error) {
+    return (
+      <div className="border rounded-lg px-4 py-2 bg-background text-sm text-destructive">
+        {project.error}
+      </div>
+    );
+  }
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 bg-background border-b">
+        <span className="text-sm">Total compute time</span>
+        <span className="text-xs font-mono text-muted-foreground">
+          {(project.total_compute_seconds / 3600).toFixed(1)} hours
+        </span>
+      </div>
+      <NeonUsageBars daily={project.daily} />
+    </div>
+  );
+}
+
+function NeonDashboardTab() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin", "neon-dashboard"],
+    queryFn: getNeonDashboard,
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1 pb-2 border-b">
+        <h1 className="text-lg font-semibold">Neon Dashboard</h1>
+        <p className="text-sm text-muted-foreground">
+          Compute usage and plan info from Neon's Console API. Configure neon_api_key / neon_org_id / neon_project_id
+          under Credentials to enable this.
+        </p>
+      </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+
+      {data && !data.account.configured && (
+        <p className="text-sm text-muted-foreground">
+          Not configured — add neon_api_key and neon_org_id in the Credentials tab.
+        </p>
+      )}
+
+      {data?.account.configured && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Account (last 30 days)
+            </h3>
+            {data.account.error ? (
+              <div className="border rounded-lg px-4 py-2 bg-background text-sm text-destructive">
+                {data.account.error}
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-hidden divide-y">
+                {data.account.org_name && (
+                  <div className="flex items-center justify-between px-4 py-2 bg-background">
+                    <span className="text-sm">Organization</span>
+                    <span className="text-xs font-mono text-muted-foreground">{data.account.org_name}</span>
+                  </div>
+                )}
+                {data.account.plan && (
+                  <div className="flex items-center justify-between px-4 py-2 bg-background">
+                    <span className="text-sm">Plan</span>
+                    <span className="text-xs font-mono text-muted-foreground">{data.account.plan}</span>
+                  </div>
+                )}
+                {data.account.spending_limit_cents != null && (
+                  <div className="flex items-center justify-between px-4 py-2 bg-background">
+                    <span className="text-sm">Monthly spending limit</span>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      ${(data.account.spending_limit_cents / 100).toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between px-4 py-2 bg-background">
+                  <span className="text-sm">Total compute time (all projects)</span>
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {(data.account.total_compute_seconds / 3600).toFixed(1)} hours
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {data.account.by_project.length > 0 && (
+            <div>
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                By project
+              </h3>
+              <div className="border rounded-lg divide-y overflow-hidden">
+                {data.account.by_project.map((p) => (
+                  <div key={p.project_id} className="flex items-center justify-between px-4 py-2 bg-background">
+                    <span className="text-sm font-mono">{p.project_name ?? p.project_id}</span>
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {(p.total_compute_seconds / 3600).toFixed(2)}h
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Configured project (last 30 days)
+            </h3>
+            <ProjectUsageSection project={data.project} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2100,6 +2404,50 @@ function CredentialsTab() {
     return a.days_remaining - b.days_remaining;
   });
 
+  let tableSection: React.ReactNode;
+  if (isLoading) {
+    tableSection = <p className="text-sm text-muted-foreground">Loading…</p>;
+  } else if (sorted.length === 0) {
+    tableSection = <p className="text-sm text-muted-foreground">No credentials tracked yet.</p>;
+  } else {
+    tableSection = (
+      <div className="rounded-md border border-border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted">
+            <tr>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Service</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Expires</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {sorted.map((c) => {
+              const { label, cls } = credentialStatus(c.days_remaining);
+              return (
+                <tr key={c.id} className="hover:bg-muted/50">
+                  <td className="px-3 py-2.5 font-medium">{c.name}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{RESOURCE_LABELS[c.resource]}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground">
+                    <ExpiresCell expiresOn={c.expires_on} daysRemaining={c.days_remaining} />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <button type="button" className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(c)}>Edit</button>
+                    <button type="button" className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(c)}>Delete</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -2110,55 +2458,7 @@ function CredentialsTab() {
         <Button size="sm" onClick={openAdd}>Add credential</Button>
       </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No credentials tracked yet.</p>
-      ) : (
-        <div className="rounded-md border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Service</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Expires</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {sorted.map((c) => {
-                const { label, cls } = credentialStatus(c.days_remaining);
-                return (
-                  <tr key={c.id} className="hover:bg-muted/50">
-                    <td className="px-3 py-2.5 font-medium">{c.name}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{RESOURCE_LABELS[c.resource]}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {c.expires_on
-                        ? <>
-                            {new Date(c.expires_on).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
-                            {c.days_remaining !== null && (
-                              <span className="ml-1.5 text-xs text-muted-foreground">
-                                ({c.days_remaining < 0 ? `${Math.abs(c.days_remaining)}d ago` : `${c.days_remaining}d`})
-                              </span>
-                            )}
-                          </>
-                        : <span className="text-muted-foreground">Never</span>}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>{label}</span>
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      <button className="text-xs text-muted-foreground hover:text-foreground mr-3" onClick={() => openEdit(c)}>Edit</button>
-                      <button className="text-xs text-destructive hover:text-destructive/80" onClick={() => setDeleteTarget(c)}>Delete</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {tableSection}
 
       <ConfigSection />
 
@@ -2440,6 +2740,7 @@ export function SuperuserPage() {
       {activeSection === "schedule" && <ScheduledTasksTab />}
       {activeSection === "exports" && <ExportsTab />}
       {activeSection === "credentials" && <CredentialsTab />}
+      {activeSection === "neon" && <NeonDashboardTab />}
       {activeSection === "sandbox" && <SandboxTab />}
       {activeSection === "users" && <UsersTab />}
     </div>

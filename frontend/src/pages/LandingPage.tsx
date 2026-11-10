@@ -12,17 +12,17 @@ export function LandingPage() {
     {
       title: t("landing.features.trackWeaves.title"),
       body: t("landing.features.trackWeaves.body"),
-      Icon: AppIcons.designLibrary,
+      Icon: AppIcons.DesignLibrary,
     },
     {
       title: t("landing.features.recordPicks.title"),
       body: t("landing.features.recordPicks.body"),
-      Icon: AppIcons.pickTracking,
+      Icon: AppIcons.PickTracking,
     },
     {
       title: t("landing.features.manageTools.title"),
       body: t("landing.features.manageTools.body"),
-      Icon: AppIcons.toolManagement,
+      Icon: AppIcons.ToolManagement,
     },
   ];
 

@@ -52,17 +52,17 @@ const NAMED: [string, string][] = [
 ];
 
 const TABLE: [number, number, number, string][] = NAMED.map(([h, n]) => [
-  parseInt(h.slice(0, 2), 16),
-  parseInt(h.slice(2, 4), 16),
-  parseInt(h.slice(4, 6), 16),
+  Number.parseInt(h.slice(0, 2), 16),
+  Number.parseInt(h.slice(2, 4), 16),
+  Number.parseInt(h.slice(4, 6), 16),
   n,
 ]);
 
 export function nearestColorName(hex: string): string {
   const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
+  const r = Number.parseInt(h.slice(0, 2), 16);
+  const g = Number.parseInt(h.slice(2, 4), 16);
+  const b = Number.parseInt(h.slice(4, 6), 16);
   let best = TABLE[0][3];
   let bestD = Infinity;
   for (const [tr, tg, tb, name] of TABLE) {

@@ -7,7 +7,7 @@ import { EulaContent } from "@/components/EulaContent";
 import type { ReactNode } from "react";
 
 interface Props {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 export function EulaGate({ children }: Props) {

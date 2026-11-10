@@ -338,11 +338,31 @@ export function startProject(id: string): Promise<ProjectDetail> {
   return req(`/api/projects/${id}/start`, { method: "POST" });
 }
 
-export function stepProject(id: string, direction: "advance" | "reverse"): Promise<StepResponse> {
+export function claimTracking(id: string, trackerSessionId: string, force = false): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/claim-tracking`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tracker_session_id: trackerSessionId, force }),
+  });
+}
+
+export function releaseTracking(id: string, trackerSessionId: string): Promise<ProjectDetail> {
+  return req(`/api/projects/${id}/release-tracking`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tracker_session_id: trackerSessionId }),
+  });
+}
+
+export function stepProject(
+  id: string,
+  direction: "advance" | "reverse",
+  trackerSessionId: string
+): Promise<StepResponse> {
   return req(`/api/projects/${id}/step`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ direction }),
+    body: JSON.stringify({ direction, tracker_session_id: trackerSessionId }),
   });
 }
 
@@ -415,23 +435,27 @@ export function cloneProject(id: string): Promise<ProjectDetail> {
   return req(`/api/projects/${id}/clone`, { method: "POST" });
 }
 
-export function jumpProject(id: string, pick: number): Promise<ProjectDetail> {
+export function jumpProject(id: string, pick: number, trackerSessionId: string): Promise<ProjectDetail> {
   return req(`/api/projects/${id}/jump`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pick }),
+    body: JSON.stringify({ pick, tracker_session_id: trackerSessionId }),
   });
 }
 
-export function advanceItem(id: string): Promise<StepResponse> {
-  return req(`/api/projects/${id}/advance-item`, { method: "POST" });
+export function advanceItem(id: string, trackerSessionId: string): Promise<StepResponse> {
+  return req(`/api/projects/${id}/advance-item`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tracker_session_id: trackerSessionId }),
+  });
 }
 
-export function jumpItem(id: string, item: number): Promise<ProjectDetail> {
+export function jumpItem(id: string, item: number, trackerSessionId: string): Promise<ProjectDetail> {
   return req(`/api/projects/${id}/jump-item`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ item }),
+    body: JSON.stringify({ item, tracker_session_id: trackerSessionId }),
   });
 }
 

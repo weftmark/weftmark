@@ -42,7 +42,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: path.join(__dirname, ".auth/user.json"),
       },
-      testIgnore: [/admin\.spec\.ts/, /auth\.spec\.ts/],
+      testIgnore: [/admin.*\.spec\.ts/, /auth\.spec\.ts/],
       dependencies: ["setup"],
     },
     {
@@ -51,7 +51,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: path.join(__dirname, ".auth/admin.json"),
       },
-      testMatch: /admin\.spec\.ts/,
+      testMatch: /admin.*\.spec\.ts/,
       dependencies: ["setup"],
     },
     {

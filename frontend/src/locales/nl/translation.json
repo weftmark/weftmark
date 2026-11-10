@@ -47,6 +47,7 @@
     "schedule": "Geplande taken",
     "exports": "Gegevensexports",
     "credentials": "Inloggegevens",
+    "neon": "Neon-dashboard",
     "sandbox": "Sandbox"
   },
   "loomTypes": {
@@ -732,6 +733,8 @@
     "resumeFromPick": "Hervatten vanaf inslag {{pick}}?",
     "loomHasActive": "Dit weefgetouw heeft een actief project:",
     "resolveToRestart": "Los het op om dit opnieuw te starten.",
+    "trackerLockedElsewhere": "Dit project wordt momenteel vanaf een ander apparaat bijgehouden.",
+    "takeOverTracking": "Overnemen",
     "working": "Bezig…",
     "markCompletedAndRestart": "Voltooien & herstarten",
     "abandonAndRestart": "Opgeven & herstarten",
@@ -877,7 +880,14 @@
     "usedByConflict_other": "Deze binding wordt gebruikt door {{count}} actieve projecten:",
     "conflictNote": "Verwijder deze binding eerst uit die projecten of forceer verwijdering — wat ook alle genoemde projecten verwijdert.",
     "forceDelete_one": "Geforceerd verwijderen ({{count}} project wordt verwijderd)",
-    "forceDelete_other": "Geforceerd verwijderen ({{count}} projecten worden verwijderd)"
+    "forceDelete_other": "Geforceerd verwijderen ({{count}} projecten worden verwijderd)",
+    "relatedDraftsHeading": "Related drafts",
+    "relatedDraftsThreading_one": "{{count}} other draft shares this threading",
+    "relatedDraftsThreading_other": "{{count}} other drafts share this threading",
+    "relatedDraftsTieup_one": "{{count}} other draft shares this tie-up",
+    "relatedDraftsTieup_other": "{{count}} other drafts share this tie-up",
+    "relatedDraftsDrawdown_one": "{{count}} other draft has the same drawdown",
+    "relatedDraftsDrawdown_other": "{{count}} other drafts have the same drawdown"
   },
   "yarnDetailPage": {
     "loading": "Laden…",

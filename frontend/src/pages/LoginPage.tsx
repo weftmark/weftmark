@@ -66,7 +66,7 @@ export function LoginPage() {
           <p className="mt-2 text-sm text-stone-600">
             {isDenied ? t("loginPage.deniedMessage") : t("loginPage.pendingMessage")}
           </p>
-          <button
+          <button type="button"
             onClick={() => signOut()}
             className="mt-6 text-sm text-stone-500 underline underline-offset-2 hover:text-stone-700"
           >

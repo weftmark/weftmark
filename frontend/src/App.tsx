@@ -46,7 +46,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
-function AuthRoute({ children, requireAdmin = false, requireSuperuser = false }: { children: ReactNode; requireAdmin?: boolean; requireSuperuser?: boolean }) {
+function AuthRoute({ children, requireAdmin = false, requireSuperuser = false }: { readonly children: ReactNode; readonly requireAdmin?: boolean; readonly requireSuperuser?: boolean }) {
   return (
     <ProtectedRoute requireAdmin={requireAdmin} requireSuperuser={requireSuperuser}>
       <AppLayout>{children}</AppLayout>

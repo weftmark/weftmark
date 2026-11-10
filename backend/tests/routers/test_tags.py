@@ -17,6 +17,7 @@ from app.models.user import User
 def _mock_draft_tasks(monkeypatch):
     monkeypatch.setattr("app.routers.drafts.generate_drawdown_preview", MagicMock())
     monkeypatch.setattr("app.routers.drafts.prerender_drawdown_tiles", MagicMock())
+    monkeypatch.setattr("app.routers.drafts.compute_draft_drawdown_fingerprint", MagicMock())
 
 
 @pytest.fixture(autouse=True)

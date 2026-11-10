@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { cloneVersion, type LoomVersion, type CloneVersionPayload } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
-  loomId: string;
-  source: LoomVersion;
-  onSuccess: (v: LoomVersion) => void;
-  onClose: () => void;
+  readonly loomId: string;
+  readonly source: LoomVersion;
+  readonly onSuccess: (v: LoomVersion) => void;
+  readonly onClose: () => void;
 }
 
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export function CloneVersionModal({ loomId, source, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [name, setName] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(today());
   const [description, setDescription] = useState("");
@@ -52,8 +54,9 @@ export function CloneVersionModal({ loomId, source, onSuccess, onClose }: Props)
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Configuration name (optional)</label>
+            <label htmlFor="clone-version-name" className="mb-1 block text-sm font-medium">Configuration name (optional)</label>
             <input
+              id="clone-version-name"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -62,8 +65,9 @@ export function CloneVersionModal({ loomId, source, onSuccess, onClose }: Props)
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Effective date</label>
+            <label htmlFor="clone-version-effective-date" className="mb-1 block text-sm font-medium">Effective date</label>
             <input
+              id="clone-version-effective-date"
               type="date"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={effectiveDate}
@@ -73,8 +77,9 @@ export function CloneVersionModal({ loomId, source, onSuccess, onClose }: Props)
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Description (optional)</label>
+            <label htmlFor="clone-version-description" className="mb-1 block text-sm font-medium">Description (optional)</label>
             <input
+              id="clone-version-description"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={description}
               onChange={(e) => setDescription(e.target.value)}

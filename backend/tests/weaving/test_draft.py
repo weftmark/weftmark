@@ -17,7 +17,9 @@ class TestColor:
         assert c.rgb == (255, 0, 128)
 
     def test_equality(self):
-        assert Color((1, 2, 3)) == Color((1, 2, 3))
+        c1 = Color((1, 2, 3))
+        c2 = Color((1, 2, 3))
+        assert c1 == c2
         assert Color((1, 2, 3)) != Color((1, 2, 4))
 
     def test_css(self):

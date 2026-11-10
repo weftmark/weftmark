@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -16,11 +16,13 @@ import {
 } from "@/api/ravelry";
 import { listYarn } from "@/api/yarn";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { ColorwayGrid } from "@/components/yarn/ColorwayGrid";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 type Step = "company" | "yarn" | "colorway";
@@ -37,6 +39,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  useEscapeKey(onClose);
 
   const [step, setStep] = useState<Step>("company");
 
@@ -280,17 +283,93 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
   const inputCls = "w-full rounded-md border border-input bg-background px-3 py-2 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring";
   const clearBtnCls = "absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground leading-none p-0.5";
 
+  let companyPrefillContent: ReactNode = null;
+  if (inventoryBrands.length > 0 || popularFill.length > 0) {
+    companyPrefillContent = (
+      <>
+        {inventoryBrands.length > 0 && (
+          <p className="text-xs text-muted-foreground">{t("addFromRavelryModal.fromInventoryLabel")}</p>
+        )}
+        <ul className="space-y-1">
+          {inventoryBrands.map((brand) => (
+            <li key={`inv-${brand}`}>
+              <button
+                type="button"
+                className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-card-foreground"
+                onClick={() => pickInventoryBrand(brand)}
+              >
+                {brand}
+              </button>
+            </li>
+          ))}
+          {popularFill.map((c) => (
+            <li key={`pop-${c.id}`}>
+              <button
+                type="button"
+                className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-muted-foreground"
+                onClick={() => pickCompany(c)}
+              >
+                {c.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  } else if (popularFetching) {
+    companyPrefillContent = <p className="text-xs text-muted-foreground">{t("common.loading")}</p>;
+  }
+
+  let yarnPrefillContent: ReactNode = null;
+  if (inventoryYarnLines.length > 0 || popularYarnsFill.length > 0) {
+    yarnPrefillContent = (
+      <>
+        {inventoryYarnLines.length > 0 && (
+          <p className="text-xs text-muted-foreground">{t("addFromRavelryModal.fromInventoryLabel")}</p>
+        )}
+        <ul className="space-y-1">
+          {inventoryYarnLines.map((name) => (
+            <li key={`inv-${name}`}>
+              <button
+                type="button"
+                className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-card-foreground"
+                onClick={() => pickInventoryYarnLine(name)}
+              >
+                {name}
+              </button>
+            </li>
+          ))}
+          {popularYarnsFill.map((y) => (
+            <li key={`pop-${y.id}`}>
+              <button
+                type="button"
+                className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent/10 transition-colors"
+                onClick={() => pickYarn(y)}
+              >
+                {y.photo_url && (
+                  <img src={y.photo_url} alt={y.name} className="h-10 w-10 rounded object-cover shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground truncate">{y.name}</p>
+                  <p className="text-xs text-muted-foreground">{y.weight_name ?? ""}</p>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>
+    );
+  } else if (popularYarnsFetching) {
+    yarnPrefillContent = <p className="text-xs text-muted-foreground">{t("common.loading")}</p>;
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-16 px-4"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
-      <div
-        className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
-      >
+      <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
@@ -301,7 +380,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
               {step === "colorway" && t("addFromRavelryModal.stepColorway", { yarn: selectedYarn?.name })}
             </p>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">✕</button>
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none">✕</button>
         </div>
 
         <div className={`px-5 py-4 space-y-3 ${step !== "colorway" ? "max-h-[60vh] overflow-y-auto" : ""}`}>
@@ -321,39 +400,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                   <button type="button" className={clearBtnCls} aria-label={t("common.clear")} onClick={() => setCompanyQuery("")}>✕</button>
                 )}
               </div>
-              {!companyQuery.trim() ? (
-                inventoryBrands.length > 0 || popularFill.length > 0 ? (
-                  <>
-                    {inventoryBrands.length > 0 && (
-                      <p className="text-xs text-muted-foreground">{t("addFromRavelryModal.fromInventoryLabel")}</p>
-                    )}
-                    <ul className="space-y-1">
-                      {inventoryBrands.map((brand) => (
-                        <li key={`inv-${brand}`}>
-                          <button
-                            className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-card-foreground"
-                            onClick={() => pickInventoryBrand(brand)}
-                          >
-                            {brand}
-                          </button>
-                        </li>
-                      ))}
-                      {popularFill.map((c) => (
-                        <li key={`pop-${c.id}`}>
-                          <button
-                            className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-muted-foreground"
-                            onClick={() => pickCompany(c)}
-                          >
-                            {c.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : popularFetching ? (
-                  <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
-                ) : null
-              ) : (
+              {!companyQuery.trim() ? companyPrefillContent : (
                 <>
                   {companyLoading && <p className="text-xs text-muted-foreground">{t("common.loading")}</p>}
                   {!companyLoading && companies.length === 0 && (
@@ -363,6 +410,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                     {companies.map((c) => (
                       <li key={c.id}>
                         <button
+                          type="button"
                           className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-card-foreground"
                           onClick={() => pickCompany(c)}
                         >
@@ -391,45 +439,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                   <button type="button" className={clearBtnCls} aria-label={t("common.clear")} onClick={() => setYarnQuery("")}>✕</button>
                 )}
               </div>
-              {!yarnQuery.trim() ? (
-                inventoryYarnLines.length > 0 || popularYarnsFill.length > 0 ? (
-                  <>
-                    {inventoryYarnLines.length > 0 && (
-                      <p className="text-xs text-muted-foreground">{t("addFromRavelryModal.fromInventoryLabel")}</p>
-                    )}
-                    <ul className="space-y-1">
-                      {inventoryYarnLines.map((name) => (
-                        <li key={`inv-${name}`}>
-                          <button
-                            className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-accent/10 transition-colors text-card-foreground"
-                            onClick={() => pickInventoryYarnLine(name)}
-                          >
-                            {name}
-                          </button>
-                        </li>
-                      ))}
-                      {popularYarnsFill.map((y) => (
-                        <li key={`pop-${y.id}`}>
-                          <button
-                            className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent/10 transition-colors"
-                            onClick={() => pickYarn(y)}
-                          >
-                            {y.photo_url && (
-                              <img src={y.photo_url} alt={y.name} className="h-10 w-10 rounded object-cover shrink-0" />
-                            )}
-                            <div className="min-w-0">
-                              <p className="text-sm text-muted-foreground truncate">{y.name}</p>
-                              <p className="text-xs text-muted-foreground">{y.weight_name ?? ""}</p>
-                            </div>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                ) : popularYarnsFetching ? (
-                  <p className="text-xs text-muted-foreground">{t("common.loading")}</p>
-                ) : null
-              ) : (
+              {!yarnQuery.trim() ? yarnPrefillContent : (
                 <>
                   {yarnLoading && <p className="text-xs text-muted-foreground">{t("common.loading")}</p>}
                   {!yarnLoading && yarns.length === 0 && (
@@ -439,6 +449,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                     {sortedYarns.map((y) => (
                       <li key={y.id}>
                         <button
+                          type="button"
                           className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent/10 transition-colors"
                           onClick={() => pickYarn(y)}
                         >
@@ -487,6 +498,7 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                     {inventoryColorways.map((name) => (
                       <button
                         key={name}
+                        type="button"
                         className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
                           colorName === name
                             ? "border-ring bg-accent/10 text-accent"
@@ -516,29 +528,17 @@ export function AddFromRavelryModal({ onSuccess, onClose }: Props) {
                     onChange={(e) => setColorwayFilter(e.target.value)}
                   />
                   {colorwayFilter && (
-                    <button className={clearBtnCls} onClick={() => setColorwayFilter("")}>✕</button>
+                    <button type="button" className={clearBtnCls} onClick={() => setColorwayFilter("")}>✕</button>
                   )}
                 </div>
               )}
               {!colorwaysLoading && filteredColorways.length > 0 && (
-                <div className="grid grid-cols-3 gap-1.5 max-h-44 overflow-y-auto">
-                  {filteredColorways.map((cw) => (
-                    <button
-                      key={cw.id}
-                      className={`text-left rounded-md border p-1.5 text-xs transition-colors ${
-                        selectedColorway?.id === cw.id
-                          ? "border-ring bg-accent/10 text-accent"
-                          : "border-border hover:border-ring text-card-foreground"
-                      }`}
-                      onClick={() => pickColorway(cw)}
-                    >
-                      {cw.photos?.[0]?.square_url && (
-                        <img src={cw.photos[0].square_url} alt={cw.name} className="h-10 w-full rounded object-cover mb-1" />
-                      )}
-                      <span className="truncate block leading-tight">{formatColorwayLabel(cw)}</span>
-                    </button>
-                  ))}
-                </div>
+                <ColorwayGrid
+                  colorways={filteredColorways}
+                  selectedColorway={selectedColorway}
+                  onPick={pickColorway}
+                  className="grid grid-cols-3 gap-1.5 max-h-44 overflow-y-auto"
+                />
               )}
 
               {/* Color hex */}

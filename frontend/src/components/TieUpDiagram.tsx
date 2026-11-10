@@ -1,8 +1,8 @@
 interface TieUpDiagramProps {
-  tieup: number[][];
-  numShafts: number;
-  numTreadles: number;
-  cellSize?: number;
+  readonly tieup: number[][];
+  readonly numShafts: number;
+  readonly numTreadles: number;
+  readonly cellSize?: number;
 }
 
 export function TieUpDiagram({ tieup, numShafts, numTreadles, cellSize = 18 }: TieUpDiagramProps) {

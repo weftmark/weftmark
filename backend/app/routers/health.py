@@ -20,8 +20,13 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/api", tags=["health"])
 log = logging.getLogger(__name__)
 
-DETAILED_REFRESH_INTERVAL_S = 300  # 5 minutes steady-state poll (S3, Clerk, SMTP, config, webhook)
-POSTGRES_PROBE_INTERVAL_S = 3600  # 1 hour — Postgres runs on Neon; frequent probes defeat autosuspend
+# Admin-configurable via the Credentials tab (#1124) — defaults match the
+# values these used to be hardcoded to. Read once at import time, same as
+# every other config_file.py-managed setting: takes effect on next restart.
+# Steady-state poll: S3, Clerk, SMTP, config, webhook.
+DETAILED_REFRESH_INTERVAL_S = get_settings().detailed_refresh_interval_s
+# Postgres leg — kept sparser to avoid waking Neon's autosuspend.
+POSTGRES_PROBE_INTERVAL_S = get_settings().postgres_probe_interval_s
 
 
 class ReadinessService(BaseModel):
@@ -79,7 +84,10 @@ async def _get_worker_version() -> str | None:
         client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
         value = await client.get(WORKER_VERSION_KEY)
         await client.aclose()
-        return value.decode() if value else None
+        # redis-py 8 types get() as bytes | str (str when decode_responses=True).
+        if isinstance(value, bytes):
+            return value.decode() or None
+        return value or None
     except Exception:
         return None
 
@@ -125,39 +133,29 @@ async def health_detailed() -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 
+def _readiness_service_from_probe_result(result, critical_names: set[str]) -> ReadinessService:
+    if isinstance(result, BaseException):
+        return ReadinessService(name="unknown", ok=False, critical=True, message=str(result)[:120])
+
+    critical = result.service in critical_names
+    ok = result.status == "ok"
+
+    detail = ""
+    if not ok:
+        failed_check = next((c for c in result.checks if c.status == "error"), None)
+        if failed_check:
+            detail = failed_check.message[:120]
+
+    return ReadinessService(name=result.service, ok=ok, critical=critical, message=result.message, detail=detail)
+
+
 def _build_readiness_from_results(
     results: list,
     webhook_result,
     checked_at: str,
 ) -> ReadinessResponse:
     critical_names = {"PostgreSQL", "Clerk"}
-    services: list[ReadinessService] = []
-    has_hard_failure = False
-    has_soft_failure = False
-
-    for result in results:
-        if isinstance(result, BaseException):
-            services.append(ReadinessService(name="unknown", ok=False, critical=True, message=str(result)[:120]))
-            has_hard_failure = True
-            continue
-
-        critical = result.service in critical_names
-        ok = result.status == "ok"
-
-        detail = ""
-        if not ok:
-            failed_check = next((c for c in result.checks if c.status == "error"), None)
-            if failed_check:
-                detail = failed_check.message[:120]
-
-        services.append(
-            ReadinessService(name=result.service, ok=ok, critical=critical, message=result.message, detail=detail)
-        )
-        if not ok:
-            if critical:
-                has_hard_failure = True
-            else:
-                has_soft_failure = True
+    services: list[ReadinessService] = [_readiness_service_from_probe_result(r, critical_names) for r in results]
 
     if webhook_result is not None:
         webhook_ok = webhook_result.status in ("ok", "skipped")
@@ -169,8 +167,9 @@ def _build_readiness_from_results(
                 message=webhook_result.message,
             )
         )
-        if not webhook_ok:
-            has_soft_failure = True
+
+    has_hard_failure = any(not s.ok and s.critical for s in services)
+    has_soft_failure = any(not s.ok and not s.critical for s in services)
 
     if has_hard_failure:
         status: Literal["ok", "degraded", "error"] = "error"
@@ -198,14 +197,16 @@ async def run_startup_probes() -> ReadinessResponse:
 
     try:
         async with AsyncSessionLocal() as db:
-            results = await asyncio.gather(
-                _probe_postgres(db),
-                _probe_s3(),
-                _probe_clerk(),
-                _probe_smtp(),
+            results = [
+                *await asyncio.gather(
+                    _probe_postgres(db),
+                    _probe_s3(),
+                    _probe_clerk(),
+                    _probe_smtp(),
+                    return_exceptions=True,
+                ),
                 _probe_config(),
-                return_exceptions=True,
-            )
+            ]
     except Exception as exc:
         return ReadinessResponse(
             status="error",
@@ -244,13 +245,14 @@ async def _run_detailed_probes() -> ReadinessResponse:
 
     try:
         async with AsyncSessionLocal() as db:
-            probes = [_probe_s3(), _probe_clerk(), _probe_smtp(), _probe_config()]
+            probes = [_probe_s3(), _probe_clerk(), _probe_smtp()]
             if due_for_postgres:
                 probes.append(_probe_postgres(db))
             probe_results, webhook_result = await asyncio.gather(
                 asyncio.gather(*probes, return_exceptions=True),
                 run_webhook_probe(),
             )
+            config_result = _probe_config()
     except Exception as exc:
         return ReadinessResponse(
             status="error",
@@ -268,7 +270,7 @@ async def _run_detailed_probes() -> ReadinessResponse:
         other_results = probe_results
         postgres_result = _last_postgres_result
 
-    combined_results = [postgres_result, *other_results]
+    combined_results = [postgres_result, config_result, *other_results]
     return _build_readiness_from_results(combined_results, webhook_result, checked_at=now.isoformat())  # type: ignore[arg-type]
 
 
@@ -377,6 +379,35 @@ async def _record_health_transition(prev_status: str | None, result: ReadinessRe
         log.debug("Could not record health transition event", exc_info=True)
 
 
+def _next_alert_state(
+    prev_status: str | None,
+    new_status: str,
+    last_alert_at: datetime | None,
+    now: datetime,
+) -> tuple[bool, bool, datetime | None]:
+    """Decide whether to fire a health alert for this status transition.
+
+    Returns (should_alert, is_recovery, next_last_alert_at).
+    """
+    if prev_status is None:
+        # First detailed cycle — startup alert already covered initial state
+        return False, False, (now if new_status != "ok" else None)
+
+    if new_status in ("degraded", "error"):
+        if prev_status != new_status:
+            # ok → bad, or a degraded ↔ error transition
+            return True, False, now
+        if last_alert_at and (now - last_alert_at).total_seconds() >= _HEALTH_ALERT_COOLDOWN_S:
+            # Same bad state for >1 h — re-alert
+            return True, False, now
+        return False, False, last_alert_at
+
+    if new_status == "ok" and prev_status in ("degraded", "error"):
+        return True, True, None
+
+    return False, False, last_alert_at
+
+
 async def _detailed_refresh_loop() -> None:
     global _detailed_cache, _last_alert_status, _last_alert_at, _consecutive_failures
     await asyncio.sleep(DETAILED_REFRESH_INTERVAL_S)  # skip transient startup failures
@@ -412,34 +443,10 @@ async def _detailed_refresh_loop() -> None:
             now = datetime.now(timezone.utc)
             prev_status = _last_alert_status
 
-            if prev_status is None:
-                # First detailed cycle — startup alert already covered initial state
-                _last_alert_status = new_status
-                if new_status != "ok":
-                    _last_alert_at = now
-            else:
-                should_alert = False
-                is_recovery = False
-
-                if new_status in ("degraded", "error"):
-                    if prev_status == "ok":
-                        should_alert = True
-                    elif prev_status != new_status:
-                        # degraded ↔ error transition
-                        should_alert = True
-                    elif _last_alert_at and (now - _last_alert_at).total_seconds() >= _HEALTH_ALERT_COOLDOWN_S:
-                        # Same bad state for >1 h — re-alert
-                        should_alert = True
-                elif new_status == "ok" and prev_status in ("degraded", "error"):
-                    should_alert = True
-                    is_recovery = True
-
-                if should_alert:
-                    fire_and_forget(_dispatch_health_alert(confirmed_result, is_recovery))
-                    _last_alert_status = new_status
-                    _last_alert_at = now if new_status != "ok" else None
-                else:
-                    _last_alert_status = new_status
+            should_alert, is_recovery, _last_alert_at = _next_alert_state(prev_status, new_status, _last_alert_at, now)
+            _last_alert_status = new_status
+            if should_alert:
+                fire_and_forget(_dispatch_health_alert(confirmed_result, is_recovery))
 
             _detailed_cache = confirmed_result
         except Exception:

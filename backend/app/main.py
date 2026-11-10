@@ -77,7 +77,10 @@ async def _get_worker_version_for_alert() -> str | None:
         client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
         val = await client.get(WORKER_VERSION_KEY)
         await client.aclose()
-        return val.decode() if val else None
+        # redis-py 8 types get() as bytes | str (str when decode_responses=True).
+        if isinstance(val, bytes):
+            return val.decode() or None
+        return val or None
     except Exception:
         return None
 
@@ -144,7 +147,7 @@ async def _write_startup_server_event(readiness, boot_started_at: datetime) -> N
             await close_open_events(db, event_types=[ET_STARTUP])
             now = datetime.now(timezone.utc)
             elapsed_ms = int((now - boot_started_at).total_seconds() * 1000)
-            sev = SEV_INFO if readiness.status == "ok" else (SEV_ERROR if readiness.status == "error" else SEV_WARN)
+            sev = {"ok": SEV_INFO, "error": SEV_ERROR}.get(readiness.status, SEV_WARN)
             failed = [s.name for s in readiness.services if not s.ok]
             evt = ServerEvent(
                 event_type=ET_STARTUP,

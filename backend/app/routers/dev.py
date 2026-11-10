@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +10,8 @@ router = APIRouter(prefix="/dev", tags=["dev"])
 
 
 @router.get("/status")
-async def dev_status(db: AsyncSession = Depends(get_db)) -> dict:
+async def dev_status(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
     seed_run = await db.get(SeedRun, 1)
     return {"last_seed": seed_run.ran_at.isoformat() if seed_run else None}

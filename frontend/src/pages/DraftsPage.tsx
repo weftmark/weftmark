@@ -8,6 +8,7 @@ import { UploadWifModal } from "@/components/drafts/UploadWifModal";
 import { Button } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { SkeletonCardGrid } from "@/components/ui/skeleton";
+import { TagFilterBar } from "@/components/TagFilterBar";
 
 export function DraftsPage() {
   const { t } = useTranslation();
@@ -64,31 +65,15 @@ export function DraftsPage() {
         <Button onClick={() => setShowUpload(true)}>{t("draftsPage.newButton")}</Button>
       </div>
 
-      {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-5">
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
-              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
-                activeTagFilter === tag
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-accent/20"
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-          {activeTagFilter && (
-            <button
-              onClick={() => setActiveTagFilter(null)}
-              className="rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-            >
-              <AppIcons.close className="h-3 w-3" /> {t("draftsPage.clearFilter")}
-            </button>
-          )}
-        </div>
-      )}
+      <TagFilterBar
+        tags={allTags}
+        activeTag={activeTagFilter}
+        onToggle={(tag) => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+        onClear={() => setActiveTagFilter(null)}
+        clearLabel={t("draftsPage.clearFilter")}
+        clearIcon={<AppIcons.Close className="h-3 w-3" />}
+        className="mb-5"
+      />
 
       {isLoading && <SkeletonCardGrid count={4} cardClassName="h-[130px]" />}
       {error && <p className="text-sm text-destructive">{t("draftsPage.loadError")}</p>}
@@ -121,7 +106,7 @@ export function DraftsPage() {
             onClick={() => setArchivedOpen((v) => !v)}
             className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
           >
-            <AppIcons.chevronDown
+            <AppIcons.ChevronDown
               className={`h-4 w-4 transition-transform duration-200 ${archivedOpen ? "rotate-180" : ""}`}
             />
             {t("draftsPage.archived", { count: archivedDrafts.length })}

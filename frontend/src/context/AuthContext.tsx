@@ -1,7 +1,12 @@
-import { createContext, startTransition, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 import { api, configureApiClient } from "@/api/client";
-import { getHealthReady } from "@/api/health";
+import { getHealthReady, type ReadinessResponse } from "@/api/health";
+
+function isClerkWebhookDegraded(h: ReadinessResponse): boolean {
+  const wh = h.services.find((s) => s.name === "Clerk Webhook");
+  return !!wh && !wh.ok;
+}
 
 export interface User {
   id: string;
@@ -38,7 +43,7 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { readonly children: ReactNode }) {
   const { isLoaded, isSignedIn, getToken } = useClerkAuth();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,10 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // so we can show an informative banner rather than a generic error.
         if (isSignedIn) {
           getHealthReady()
-            .then((h) => {
-              const wh = h.services.find((s) => s.name === "Clerk Webhook");
-              setWebhookDegraded(!!wh && !wh.ok);
-            })
+            .then((h) => setWebhookDegraded(isClerkWebhookDegraded(h)))
             .catch(() => {});
         }
       })
@@ -96,10 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [user?.theme]);
 
+  const value = useMemo<AuthState>(
+    () => ({ user, isLoading, isAuthenticated: user !== null, webhookDegraded, refetch: fetchUser }),
+    [user, isLoading, webhookDegraded, fetchUser],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{ user, isLoading, isAuthenticated: user !== null, webhookDegraded, refetch: fetchUser }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createYarn, getYarnProperties, listYarn, weightBothUnits, type CreateYarnPayload } from "@/api/yarn";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 const WEIGHT_CATEGORIES = [
   "thread", "lace", "fingering", "sport", "dk",
@@ -17,11 +18,12 @@ const WEIGHT_LABELS: Record<string, string> = {
 };
 
 interface Props {
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 export function AddYarnModal({ onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -96,14 +98,14 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
         fiber_content: fiberContent.trim() || undefined,
         color_name: colorName.trim() || undefined,
         color_hex: hasColor ? colorHex : undefined,
-        unit_yardage: unitYardage ? parseFloat(unitYardage) : undefined,
+        unit_yardage: unitYardage ? Number.parseFloat(unitYardage) : undefined,
         unit_weight_oz: oz,
         unit_weight_g: g,
-        yards_per_pound: yardsPerPound ? parseFloat(yardsPerPound) : undefined,
-        sett_min: settMin ? parseInt(settMin, 10) : undefined,
-        sett_max: settMax ? parseInt(settMax, 10) : undefined,
+        yards_per_pound: yardsPerPound ? Number.parseFloat(yardsPerPound) : undefined,
+        sett_min: settMin ? Number.parseInt(settMin, 10) : undefined,
+        sett_max: settMax ? Number.parseInt(settMax, 10) : undefined,
         purchase_source: purchaseSource.trim() || undefined,
-        purchase_price: purchasePrice ? parseFloat(purchasePrice) : undefined,
+        purchase_price: purchasePrice ? Number.parseFloat(purchasePrice) : undefined,
         purchase_date: purchaseDate || undefined,
         notes: notes.trim() || undefined,
         machine_washable: machineWashable,
@@ -155,12 +157,14 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
               {brandOpen && brandSuggestions.length > 0 && (
                 <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover shadow-md text-sm">
                   {brandSuggestions.map((b) => (
-                    <li
-                      key={b}
-                      className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
-                      onMouseDown={() => { setBrand(b); setBrandOpen(false); }}
-                    >
-                      {b}
+                    <li key={b}>
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => { setBrand(b); setBrandOpen(false); }}
+                      >
+                        {b}
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -183,12 +187,14 @@ export function AddYarnModal({ onSuccess, onClose }: Props) {
               {nameOpen && nameSuggestions.length > 0 && (
                 <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-popover shadow-md text-sm">
                   {nameSuggestions.map((n) => (
-                    <li
-                      key={n}
-                      className="cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
-                      onMouseDown={() => { setName(n); setNameOpen(false); }}
-                    >
-                      {n}
+                    <li key={n}>
+                      <button
+                        type="button"
+                        className="w-full text-left cursor-pointer px-3 py-1.5 hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => { setName(n); setNameOpen(false); }}
+                      >
+                        {n}
+                      </button>
                     </li>
                   ))}
                 </ul>

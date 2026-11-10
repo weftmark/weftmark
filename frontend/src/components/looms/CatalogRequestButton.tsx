@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { type LoomDetail, LOOM_TYPE_LABELS } from "@/api/looms";
 import { submitFeedback } from "@/api/feedback";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 // ---------- localStorage dedup ----------
 
@@ -34,7 +35,7 @@ function markSubmitted(loomId: string): void {
 // ---------- component ----------
 
 interface Props {
-  loom: LoomDetail;
+  readonly loom: LoomDetail;
 }
 
 export function CatalogRequestButton({ loom }: Props) {
@@ -49,6 +50,8 @@ export function CatalogRequestButton({ loom }: Props) {
       setShowModal(false);
     },
   });
+
+  useEscapeKey(() => { if (!mutation.isPending) setShowModal(false); }, showModal);
 
   function handleSubmit() {
     const typeLabel = LOOM_TYPE_LABELS[loom.loom_type] ?? loom.loom_type;
@@ -99,14 +102,10 @@ export function CatalogRequestButton({ loom }: Props) {
       {showModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => { if (!mutation.isPending) setShowModal(false); }}
-          onKeyDown={(e) => { if (e.key === "Escape" && !mutation.isPending) setShowModal(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget && !mutation.isPending) setShowModal(false); }}
+          onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
         >
-          <div
-            className="w-full max-w-md rounded-lg border border-border bg-background shadow-xl p-6 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape" && !mutation.isPending) setShowModal(false); }}
-          >
+          <div className="w-full max-w-md rounded-lg border border-border bg-background shadow-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">Request catalog addition</h2>
               <button
@@ -116,7 +115,7 @@ export function CatalogRequestButton({ loom }: Props) {
                 className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                 aria-label="Close"
               >
-                <AppIcons.close className="h-4 w-4" />
+                <AppIcons.Close className="h-4 w-4" />
               </button>
             </div>
 

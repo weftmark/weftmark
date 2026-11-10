@@ -3,19 +3,20 @@ import { AppIcons } from "@/lib/icons";
 
 function tagColor(tag: string): { background: string; color: string } {
   let h = 0;
-  for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < tag.length; i++) h = (h * 31 + (tag.codePointAt(i) ?? 0)) >>> 0;
   const hue = h % 360;
   return { background: `hsl(${hue}, 60%, 88%)`, color: `hsl(${hue}, 55%, 30%)` };
 }
 
 interface Props {
-  tags: string[];
-  onChange: (tags: string[]) => void;
-  placeholder?: string;
-  disabled?: boolean;
+  readonly tags: string[];
+  readonly onChange: (tags: string[]) => void;
+  readonly placeholder?: string;
+  readonly disabled?: boolean;
+  readonly id?: string;
 }
 
-export function TagInput({ tags, onChange, placeholder = "Add a tag…", disabled = false }: Props) {
+export function TagInput({ tags, onChange, placeholder = "Add a tag…", disabled = false, id }: Props) {
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -41,11 +42,7 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag…", disable
   }
 
   return (
-    <div
-      className="flex flex-wrap gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 cursor-text min-h-[36px]"
-      onClick={() => inputRef.current?.focus()}
-      onKeyDown={(e) => e.key === "Enter" && inputRef.current?.focus()}
-    >
+    <div className="flex flex-wrap gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 cursor-text min-h-[36px]">
       {tags.map((tag) => (
         <span
           key={tag}
@@ -60,13 +57,14 @@ export function TagInput({ tags, onChange, placeholder = "Add a tag…", disable
               className="hover:text-foreground leading-none"
               aria-label={`Remove tag ${tag}`}
             >
-              <AppIcons.close className="h-2.5 w-2.5" />
+              <AppIcons.Close className="h-2.5 w-2.5" />
             </button>
           )}
         </span>
       ))}
       {!disabled && (
         <input
+          id={id}
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value.replace(",", ""))}

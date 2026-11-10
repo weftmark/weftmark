@@ -6,8 +6,10 @@ import { listCollections, createCollection, type CollectionSummary } from "@/api
 import { AppIcons } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { SkeletonCardGrid } from "@/components/ui/skeleton";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
-function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function NewCollectionModal({ onClose, onSuccess }: { readonly onClose: () => void; readonly onSuccess: () => void }) {
+  useEscapeKey(onClose);
   const { t } = useTranslation();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -20,6 +22,10 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
     const trimmed = raw.trim();
     if (trimmed && !tags.includes(trimmed)) setTags((t) => [...t, trimmed]);
     setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    setTags((prev) => prev.filter((x) => x !== tag));
   }
 
   function handleTagKey(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -49,8 +55,8 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
       <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold">{t("collections.modal.title")}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <AppIcons.close className="h-4 w-4" />
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -85,7 +91,7 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
               {tags.map((tag) => (
                 <span key={tag} className="flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs">
                   {tag}
-                  <button type="button" onClick={() => setTags((prev) => prev.filter((x) => x !== tag))} className="text-muted-foreground hover:text-foreground">×</button>
+                  <button type="button" onClick={() => removeTag(tag)} className="text-muted-foreground hover:text-foreground">×</button>
                 </span>
               ))}
             </div>
@@ -111,7 +117,7 @@ function NewCollectionModal({ onClose, onSuccess }: { onClose: () => void; onSuc
   );
 }
 
-function CollectionCard({ collection }: { collection: CollectionSummary }) {
+function CollectionCard({ collection }: { readonly collection: CollectionSummary }) {
   const { t } = useTranslation();
   return (
     <Link
@@ -125,7 +131,7 @@ function CollectionCard({ collection }: { collection: CollectionSummary }) {
             <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">{collection.description}</p>
           )}
         </div>
-        <AppIcons.collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
+        <AppIcons.Collections className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" strokeWidth={1.75} />
       </div>
       {collection.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">

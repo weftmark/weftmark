@@ -1,6 +1,7 @@
 # WeftMark
 
 [![codecov](https://codecov.io/gh/weftmark/weftmark/graph/badge.svg?token=GRAPH_TOKEN)](https://codecov.io/gh/weftmark/weftmark)
+[![AI-DECLARATION: copilot](https://img.shields.io/badge/䷼%20AI--DECLARATION-copilot-fee2e2?labelColor=fee2e2)](AI-DECLARATION.md)
 
 **Weaving project management — from design file to finished cloth.**
 
@@ -11,6 +12,9 @@ WeftMark is a web platform for handweavers. Upload your WIF drafts, track picks 
 > **Built with Claude AI**
 >
 > The requirements, architecture, and implementation of WeftMark were developed collaboratively with [Claude](https://claude.ai) by Anthropic. Claude wrote the majority of the code in this repository through an iterative conversation-driven process. This is disclosed prominently because we believe AI development transparency matters.
+>
+> The level of AI involvement is declared in [`AI-DECLARATION.md`](AI-DECLARATION.md) using the
+> [AI-DECLARATION.md](https://ai-declaration.md) standard (level: `copilot`).
 >
 > If you are continuing development with Claude, start by reading [`CLAUDE.md`](CLAUDE.md) and [`.claude/memory/MEMORY.md`](.claude/memory/MEMORY.md).
 

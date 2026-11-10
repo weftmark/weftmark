@@ -112,7 +112,7 @@ function applyFilters(yarns: YarnSummary[], f: YarnFilters): YarnSummary[] {
 
 // ─── shared photo cell ────────────────────────────────────────────────────────
 
-function YarnPhoto({ yarn, className }: { yarn: YarnSummary; className: string }) {
+function YarnPhoto({ yarn, className }: { readonly yarn: YarnSummary; readonly className: string }) {
   const ravelryUrl =
     yarn.ravelry_colorway_thumbnail_url ??
     yarn.ravelry_colorway_photo_url ??
@@ -140,14 +140,12 @@ function isStashPushEligible(yarn: YarnSummary) {
   return yarn.ravelry_yarn_id !== null && yarn.ravelry_stash_id === null && !yarn.out_of_stash && !yarn.archived;
 }
 
-function YarnCard({ yarn, connected }: { yarn: YarnSummary; connected: boolean }) {
+function YarnCard({ yarn, connected }: { readonly yarn: YarnSummary; readonly connected: boolean }) {
   const { t } = useTranslation();
-  const skeinLabel =
-    yarn.skein_count === 0
-      ? t("yarnPage.noSkeins")
-      : yarn.available_count === yarn.skein_count
-        ? t("yarnPage.allAvailable", { count: yarn.skein_count })
-        : t("yarnPage.someAvailable", { available: yarn.available_count, total: yarn.skein_count });
+  let skeinLabel: string;
+  if (yarn.skein_count === 0) skeinLabel = t("yarnPage.noSkeins");
+  else if (yarn.available_count === yarn.skein_count) skeinLabel = t("yarnPage.allAvailable", { count: yarn.skein_count });
+  else skeinLabel = t("yarnPage.someAvailable", { available: yarn.available_count, total: yarn.skein_count });
 
   return (
     <Link
@@ -214,7 +212,7 @@ function YarnCard({ yarn, connected }: { yarn: YarnSummary; connected: boolean }
 
 // ─── grid view ────────────────────────────────────────────────────────────────
 
-function YarnGridTile({ yarn, connected }: { yarn: YarnSummary; connected: boolean }) {
+function YarnGridTile({ yarn, connected }: { readonly yarn: YarnSummary; readonly connected: boolean }) {
   const { t } = useTranslation();
   const skeinLabel =
     yarn.skein_count === 0
@@ -260,23 +258,23 @@ function YarnGridTile({ yarn, connected }: { yarn: YarnSummary; connected: boole
 function SortHeader({
   label, currentSort, ascKey, descKey, onSort,
 }: {
-  label: string;
-  currentSort: SortKey;
-  ascKey: SortKey;
-  descKey?: SortKey;
-  onSort: (key: SortKey) => void;
+  readonly label: string;
+  readonly currentSort: SortKey;
+  readonly ascKey: SortKey;
+  readonly descKey?: SortKey;
+  readonly onSort: (key: SortKey) => void;
 }) {
   const isActive = currentSort === ascKey || currentSort === descKey;
   const isAsc = currentSort === ascKey;
+  let sortIcon = <ArrowUpDown className="h-3 w-3 opacity-40" />;
+  if (isActive) sortIcon = isAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />;
   return (
-    <button
+    <button type="button"
       onClick={() => onSort(isActive && descKey && isAsc ? descKey : ascKey)}
       className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
     >
       {label}
-      {isActive
-        ? (isAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)
-        : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+      {sortIcon}
     </button>
   );
 }
@@ -284,9 +282,9 @@ function SortHeader({
 function YarnTable({
   yarns, sort, onSort,
 }: {
-  yarns: YarnSummary[];
-  sort: SortKey;
-  onSort: (key: SortKey) => void;
+  readonly yarns: YarnSummary[];
+  readonly sort: SortKey;
+  readonly onSort: (key: SortKey) => void;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -384,9 +382,9 @@ function YarnTable({
 function FilterPopover({
   allYarns, filters, onChange,
 }: {
-  allYarns: YarnSummary[];
-  filters: YarnFilters;
-  onChange: (f: YarnFilters) => void;
+  readonly allYarns: YarnSummary[];
+  readonly filters: YarnFilters;
+  readonly onChange: (f: YarnFilters) => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -448,7 +446,7 @@ function FilterPopover({
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold">{t("yarnPage.filterLabel")}</span>
             {activeCount > 0 && (
-              <button
+              <button type="button"
                 className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => onChange(DEFAULT_FILTERS)}
               >
@@ -550,8 +548,8 @@ export function YarnPage() {
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem(BANNER_KEY) === "1"
   );
-  const [prefs, setPrefsState] = useState<YarnPrefs>(loadPrefs);
-  const { view, sort, filters } = prefs;
+  const [prefsState, setPrefsState] = useState<YarnPrefs>(loadPrefs);
+  const { view, sort, filters } = prefsState;
 
   function setPrefs(update: Partial<YarnPrefs>) {
     setPrefsState((prev) => {
@@ -678,7 +676,7 @@ export function YarnPage() {
               { key: "table" as ViewMode, Icon: Table2, label: "viewTable" },
             ]
           ).map(({ key, Icon, label }) => (
-            <button
+            <button type="button"
               key={key}
               onClick={() => setPrefs({ view: key })}
               title={t(`yarnPage.${label}`)}
@@ -743,7 +741,7 @@ export function YarnPage() {
             <Button size="sm" onClick={() => navigate("/settings/connections")}>
               {t("yarnPage.stashBannerConnect")}
             </Button>
-            <button
+            <button type="button"
               className="text-muted-foreground hover:text-foreground text-lg leading-none"
               onClick={dismissBanner}
               aria-label={t("common.dismiss")}
@@ -784,7 +782,7 @@ export function YarnPage() {
       {!isLoading && rawYarns.length > 0 && displayYarns.length === 0 && (
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-sm text-muted-foreground">{t("yarnPage.filterEmptyState")}</p>
-          <button
+          <button type="button"
             className="mt-2 text-xs text-muted-foreground hover:text-foreground underline"
             onClick={() => setPrefs({ filters: DEFAULT_FILTERS })}
           >

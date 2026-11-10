@@ -59,8 +59,6 @@ async def _dispatch(task, feedback_id: str) -> dict:
 
         title = build_discussion_title(row.submission_type, row.subject)
         body = build_discussion_body(
-            submission_type=row.submission_type,
-            subject=row.subject,
             body=row.body,
             diagnostics=row.diagnostics,
             is_anonymous=row.is_anonymous,
@@ -91,14 +89,14 @@ async def _dispatch(task, feedback_id: str) -> dict:
 
     # Send emails after successful dispatch (fire and forget; don't retry on email failure)
     try:
-        await _send_emails(feedback_id, url, settings)
+        await _send_emails(feedback_id, url)
     except Exception:
         log.exception("feedback_dispatch email failed feedback_id=%s — ignoring", feedback_id)
 
     return {"status": "sent", "url": url}
 
 
-async def _send_emails(feedback_id: str, discussion_url: str, settings) -> None:
+async def _send_emails(feedback_id: str, discussion_url: str) -> None:
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 

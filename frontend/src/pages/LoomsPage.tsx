@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -16,9 +16,15 @@ interface LoomProjectCounts {
   abandoned: number;
 }
 
-function LoomCard({ loom, projectCounts, retired }: { loom: Loom; projectCounts?: LoomProjectCounts; retired?: boolean }) {
+function LoomCard({ loom, projectCounts, retired }: { readonly loom: Loom; readonly projectCounts?: LoomProjectCounts; readonly retired?: boolean }) {
   const { t } = useTranslation();
   const v = loom.current_version;
+
+  let typeIcon: ReactNode;
+  if (loom.supports_lift_tracking) typeIcon = <AppIcons.Lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+  else if (loom.supports_treadle_tracking) typeIcon = <AppIcons.Treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+  else typeIcon = <AppIcons.Equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />;
+
   return (
     <Link
       to={`/looms/${loom.id}`}
@@ -37,11 +43,7 @@ function LoomCard({ loom, projectCounts, retired }: { loom: Loom; projectCounts?
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-3">
           <div className="shrink-0 mt-0.5">
-            {loom.supports_lift_tracking
-              ? <AppIcons.lift className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-              : loom.supports_treadle_tracking
-                ? <AppIcons.treadle className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />
-                : <AppIcons.equipment className="h-6 w-6 text-muted-foreground" strokeWidth={1.75} />}
+            {typeIcon}
           </div>
           <div>
             <p className="font-medium">{loom.manufacturer} {loom.model_name}</p>
@@ -179,7 +181,7 @@ export function LoomsPage() {
             onClick={() => setRetiredOpen((v) => !v)}
             className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left"
           >
-            <AppIcons.chevronDown
+            <AppIcons.ChevronDown
               className={`h-4 w-4 transition-transform duration-200 ${retiredOpen ? "rotate-180" : ""}`}
             />
             {t("loomsPage.retired", { count: retiredLooms.length })}

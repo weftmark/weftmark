@@ -234,7 +234,7 @@ async def _build_export(user_id: uuid.UUID, request_id: uuid.UUID) -> None:
             raise
 
         except Exception as exc:
-            log.error("export_failed user_id=%s request_id=%s error=%s", user_id, request_id, exc, exc_info=True)
+            log.exception("export_failed user_id=%s request_id=%s error=%s", user_id, request_id, exc)
             req.status = "failed"
             req.error = str(exc)[:500]
             await db.commit()

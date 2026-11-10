@@ -6,7 +6,7 @@ import platform
 import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 import psutil
@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings, get_settings
 from app.deps import get_db, require_admin, require_superuser
 from app.metrics import role_changes_total, signups_approved_total
+from app.models.alembic_meta import AlembicMeta
 from app.models.audit_log import AuditLog
 from app.models.credential_expiry import RESOURCE_CHOICES, CredentialExpiry
 from app.models.draft import Draft
@@ -30,6 +31,7 @@ from app.models.server_event import ServerEvent
 from app.models.user import User
 from app.models.user_export import UserExportRequest
 from app.models.yarn import Yarn
+from app.services import neon
 from app.services.audit import write_audit_log
 from app.services.clerk import ban_clerk_user, get_clerk_user, list_clerk_users, set_user_metadata, unban_clerk_user
 from app.services.config_file import MANAGED_FIELDS, SECRET_FIELDS, env_source_fields
@@ -46,6 +48,11 @@ from app.version import VERSION
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+_USER_NOT_FOUND = "User not found"
+_NOT_SET = "(not set)"
+_MISSING_OR_UNEXPECTED_FORMAT = "Missing or unexpected format"
+_PENDING_SIGNUP_NOT_FOUND = "Pending signup not found"
 
 
 def _safe_log(value: str, maxlen: int = 200) -> str:
@@ -135,20 +142,6 @@ class AdminDbInfoResponse(BaseModel):
     is_at_head: bool
     last_squash_at: str | None
     last_migrated_at: str | None
-
-
-class NeonUsageDay(BaseModel):
-    date: str
-    compute_seconds: float
-
-
-class NeonUsageResponse(BaseModel):
-    configured: bool
-    project_id: str | None = None
-    period_start: str | None = None
-    total_compute_seconds: float = 0.0
-    daily: list[NeonUsageDay] = []
-    error: str | None = None
 
 
 class StorageReportFile(BaseModel):
@@ -285,10 +278,10 @@ def _s3_conn_meta(settings: "Settings") -> dict[str, str]:
         return {"backend": "local"}
     meta: dict[str, str] = {
         "backend": "s3",
-        "bucket": settings.s3_bucket_name or "(not set)",
+        "bucket": settings.s3_bucket_name or _NOT_SET,
         "endpoint": settings.s3_endpoint_url or "AWS default",
         "region": settings.s3_region or "auto",
-        "access_key_id": settings.s3_access_key_id or "(not set)",
+        "access_key_id": settings.s3_access_key_id or _NOT_SET,
     }
     if settings.s3_bucket_owner_account_id:
         meta["bucket_owner_account_id"] = settings.s3_bucket_owner_account_id
@@ -379,52 +372,42 @@ async def _probe_s3() -> ServiceCheckResult:
 def _clerk_conn_meta(settings: "Settings") -> dict[str, str]:
     pk = settings.clerk_publishable_key
     return {
-        "publishable_key": pk or "(not set)",
+        "publishable_key": pk or _NOT_SET,
         "environment": "live" if pk and pk.startswith("pk_live_") else "test",
     }
 
 
-async def _probe_clerk() -> ServiceCheckResult:
-    settings = get_settings()
-    checks: list[ServicePermCheck] = []
-    meta = _clerk_conn_meta(settings)
-
-    # Config: secret key
-    sk = settings.clerk_secret_key
+def _check_clerk_secret_key(sk: str | None) -> ServicePermCheck:
     sk_ok = bool(sk and sk.startswith("sk_"))
     if sk_ok:
+        assert sk is not None
         sk_pfx = "sk_live_" if sk.startswith("sk_live_") else "sk_test_"
         sk_peek = sk[len(sk_pfx) : len(sk_pfx) + 6]
         sk_msg = f"Set ({sk_pfx}{sk_peek}…)"
     else:
-        sk_msg = "Missing or unexpected format"
-    checks.append(ServicePermCheck(name="secret_key", status="ok" if sk_ok else "error", message=sk_msg))
+        sk_msg = _MISSING_OR_UNEXPECTED_FORMAT
+    return ServicePermCheck(name="secret_key", status="ok" if sk_ok else "error", message=sk_msg)
 
-    # Config: publishable key
+
+def _check_clerk_publishable_key(settings: Settings) -> ServicePermCheck:
     pk_ok = bool(settings.clerk_publishable_key and settings.clerk_publishable_key.startswith("pk_"))
-    checks.append(
-        ServicePermCheck(
-            name="publishable_key",
-            status="ok" if pk_ok else "error",
-            message="Set (pk_…)" if pk_ok else "Missing or unexpected format",
-        )
+    return ServicePermCheck(
+        name="publishable_key",
+        status="ok" if pk_ok else "error",
+        message="Set (pk_…)" if pk_ok else _MISSING_OR_UNEXPECTED_FORMAT,
     )
 
-    # Config: webhook secret
+
+def _check_clerk_webhook_secret(settings: Settings) -> ServicePermCheck:
     wh_ok = bool(settings.clerk_webhook_secret and settings.clerk_webhook_secret.startswith("whsec_"))
-    checks.append(
-        ServicePermCheck(
-            name="webhook_secret",
-            status="ok" if wh_ok else "error",
-            message="Set (whsec_…)" if wh_ok else "Missing or unexpected format",
-        )
+    return ServicePermCheck(
+        name="webhook_secret",
+        status="ok" if wh_ok else "error",
+        message="Set (whsec_…)" if wh_ok else _MISSING_OR_UNEXPECTED_FORMAT,
     )
 
-    # API connectivity + auth
-    if not settings.clerk_secret_key:
-        checks.append(ServicePermCheck(name="api_auth", status="error", message="Skipped — secret key missing"))
-        return _make_result("Clerk", checks, meta=meta)
 
+async def _check_clerk_api_auth(settings: Settings) -> ServicePermCheck:
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             r = await client.get(
@@ -432,14 +415,29 @@ async def _probe_clerk() -> ServiceCheckResult:
                 headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
             )
         if r.status_code == 200:
-            checks.append(ServicePermCheck(name="api_auth", status="ok", message="GET /v1/users → 200"))
-        else:
-            checks.append(ServicePermCheck(name="api_auth", status="error", message=f"HTTP {r.status_code}"))
+            return ServicePermCheck(name="api_auth", status="ok", message="GET /v1/users → 200")
+        return ServicePermCheck(name="api_auth", status="error", message=f"HTTP {r.status_code}")
     except httpx.TimeoutException:
-        checks.append(ServicePermCheck(name="api_auth", status="error", message="Timed out after 3 s"))
+        return ServicePermCheck(name="api_auth", status="error", message="Timed out after 3 s")
     except Exception as exc:
-        checks.append(ServicePermCheck(name="api_auth", status="error", message=str(exc)[:120]))
+        return ServicePermCheck(name="api_auth", status="error", message=str(exc)[:120])
 
+
+async def _probe_clerk() -> ServiceCheckResult:
+    settings = get_settings()
+    meta = _clerk_conn_meta(settings)
+
+    checks: list[ServicePermCheck] = [
+        _check_clerk_secret_key(settings.clerk_secret_key),
+        _check_clerk_publishable_key(settings),
+        _check_clerk_webhook_secret(settings),
+    ]
+
+    if not settings.clerk_secret_key:
+        checks.append(ServicePermCheck(name="api_auth", status="error", message="Skipped — secret key missing"))
+        return _make_result("Clerk", checks, meta=meta)
+
+    checks.append(await _check_clerk_api_auth(settings))
     return _make_result("Clerk", checks, meta=meta)
 
 
@@ -448,10 +446,10 @@ async def _probe_clerk() -> ServiceCheckResult:
 # ---------------------------------------------------------------------------
 
 
-@router.get("/users", response_model=list[AdminUserResponse])
+@router.get("/users")
 async def list_users(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[AdminUserResponse]:
     from sqlalchemy import or_
 
@@ -560,28 +558,15 @@ async def list_users(
     ]
 
 
-@router.patch("/users/{user_id}", response_model=AdminUserResponse)
-async def patch_user(
-    user_id: uuid.UUID,
-    body: AdminUserPatch,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-) -> AdminUserResponse:
-    user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user.id == admin.id:
-        raise HTTPException(status_code=400, detail="Cannot modify your own account")
-
+def _validate_user_role_change(body: AdminUserPatch, admin: User, user: User) -> None:
     if body.is_admin is not None or body.is_superuser is not None:
         if not admin.is_superuser:
             raise HTTPException(status_code=403, detail="Superuser required to change admin or superuser roles")
         if body.is_admin is False and user.is_superuser:
             raise HTTPException(status_code=400, detail="Cannot remove admin from a superuser")
 
-    if body.is_active is False and user.is_admin:
-        raise HTTPException(status_code=422, detail="Remove admin rights before deactivating this user")
 
+def _apply_user_role_patch(user: User, body: AdminUserPatch) -> None:
     if body.is_active is not None:
         user.is_active = body.is_active
     if body.is_admin is not None:
@@ -589,16 +574,8 @@ async def patch_user(
     if body.is_superuser is not None:
         user.is_superuser = body.is_superuser
 
-    changed = {k: v for k, v in body.model_dump(exclude_none=True).items()}
-    await write_audit_log(db, event_type="user.role_changed", actor=admin, target=user, details=changed)
-    await db.commit()
-    role_changes_total.add(1, {"new_role": "admin" if user.is_admin else "user"})
-    await db.refresh(user)
 
-    if (body.is_admin is not None or body.is_superuser is not None) and user.clerk_user_id:
-        await set_user_metadata(user.clerk_user_id, {"is_admin": user.is_admin, "is_superuser": user.is_superuser})
-
-    # Re-fetch counts for the patched user
+async def _fetch_admin_user_counts(db: AsyncSession, user: User) -> AdminUserCounts:
     drafts = (
         await db.scalar(
             select(func.count()).select_from(Draft).where(Draft.owner_id == user.id, Draft.deleted_at.is_(None))
@@ -644,6 +621,54 @@ async def patch_user(
         )
         or 0
     )
+    return AdminUserCounts(
+        drafts=drafts,
+        projects_active=proj_active,
+        projects_completed=proj_completed,
+        looms=looms,
+        storage_bytes=int(project_storage) + int(loom_storage),
+        storage_quota_bytes=MAX_USER_STORAGE_BYTES,
+    )
+
+
+@router.patch(
+    "/users/{user_id}",
+    responses={
+        400: {"description": "Cannot modify your own account"},
+        403: {"description": "Superuser required to change admin or superuser roles"},
+        404: {"description": "User not found"},
+        422: {"description": "Remove admin rights before deactivating this user"},
+    },
+)
+async def patch_user(
+    user_id: uuid.UUID,
+    body: AdminUserPatch,
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AdminUserResponse:
+    user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
+    if user is None:
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot modify your own account")
+
+    _validate_user_role_change(body, admin, user)
+
+    if body.is_active is False and user.is_admin:
+        raise HTTPException(status_code=422, detail="Remove admin rights before deactivating this user")
+
+    _apply_user_role_patch(user, body)
+
+    changed = body.model_dump(exclude_none=True)
+    await write_audit_log(db, event_type="user.role_changed", actor=admin, target=user, details=changed)
+    await db.commit()
+    role_changes_total.add(1, {"new_role": "admin" if user.is_admin else "user"})
+    await db.refresh(user)
+
+    if (body.is_admin is not None or body.is_superuser is not None) and user.clerk_user_id:
+        await set_user_metadata(user.clerk_user_id, {"is_admin": user.is_admin, "is_superuser": user.is_superuser})
+
+    counts = await _fetch_admin_user_counts(db, user)
 
     return AdminUserResponse(
         id=user.id,
@@ -662,14 +687,7 @@ async def patch_user(
         clerk_errored=user.clerk_errored,
         eula_accepted_version=user.eula_accepted_version,
         eula_accepted_at=user.eula_accepted_at,
-        counts=AdminUserCounts(
-            drafts=drafts,
-            projects_active=proj_active,
-            projects_completed=proj_completed,
-            looms=looms,
-            storage_bytes=int(project_storage) + int(loom_storage),
-            storage_quota_bytes=MAX_USER_STORAGE_BYTES,
-        ),
+        counts=counts,
     )
 
 
@@ -678,15 +696,23 @@ async def patch_user(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/users/{user_id}/ban", status_code=200)
+@router.post(
+    "/users/{user_id}/ban",
+    status_code=200,
+    responses={
+        400: {"description": "Cannot ban your own account"},
+        404: {"description": "User not found"},
+        422: {"description": "Remove admin rights before banning this user"},
+    },
+)
 async def ban_user(
     user_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="Cannot ban your own account")
     if not user.clerk_user_id:
@@ -730,15 +756,19 @@ async def ban_user(
     )
 
 
-@router.post("/users/{user_id}/unban", status_code=200)
+@router.post(
+    "/users/{user_id}/unban",
+    status_code=200,
+    responses={400: {"description": "User has no Clerk account"}, 404: {"description": "User not found"}},
+)
 async def unban_user(
     user_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminUserResponse:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if not user.clerk_user_id:
         raise HTTPException(status_code=400, detail="User has no Clerk account")
 
@@ -787,19 +817,28 @@ class DeleteUserRequest(BaseModel):
     confirm: str
 
 
-@router.post("/users/{user_id}/delete", status_code=202)
+@router.post(
+    "/users/{user_id}/delete",
+    status_code=202,
+    responses={
+        400: {"description": "Cannot delete your own account via admin panel"},
+        404: {"description": "User not found"},
+        409: {"description": "Deletion already in state"},
+        422: {"description": 'confirm must be exactly "DELETE USER"'},
+    },
+)
 async def delete_user(
     user_id: uuid.UUID,
     body: DeleteUserRequest,
-    requesting_user: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    requesting_user: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     if body.confirm != "DELETE USER":
         raise HTTPException(status_code=422, detail='confirm must be exactly "DELETE USER"')
 
     user = await db.scalar(select(User).where(User.id == user_id))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if user.id == requesting_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account via admin panel")
     if user.deletion_state is not None:
@@ -820,18 +859,21 @@ async def delete_user(
     return {"status": "pending", "user_id": str(user_id)}
 
 
-@router.get("/users/{user_id}/storage-report", response_model=UserStorageReportResponse)
+@router.get(
+    "/users/{user_id}/storage-report",
+    responses={404: {"description": "User not found"}},
+)
 async def get_user_storage_report(
     user_id: uuid.UUID,
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     verify_s3: bool = False,
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
 ) -> UserStorageReportResponse:
     from app.services.storage_quota import get_user_files_report
 
     user = await db.scalar(select(User).where(User.id == user_id))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
 
     raw_files = await get_user_files_report(db, user_id, verify_s3=verify_s3)
     files = [StorageReportFile(**f) for f in raw_files]
@@ -854,10 +896,10 @@ async def get_user_storage_report(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/stats", response_model=AdminStatsResponse)
+@router.get("/stats")
 async def get_stats(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminStatsResponse:
     now = datetime.now(timezone.utc)
 
@@ -915,10 +957,10 @@ async def get_stats(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/health", response_model=AdminHealthResponse)
+@router.get("/health")
 async def get_health(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminHealthResponse:
     from app.main import start_time
 
@@ -944,11 +986,11 @@ async def get_health(
 
 def _smtp_conn_meta(settings: "Settings") -> dict[str, str]:
     return {
-        "host": settings.smtp_host or "(not set)",
+        "host": settings.smtp_host or _NOT_SET,
         "port": str(settings.smtp_port),
-        "user": settings.smtp_user or "(not set)",
-        "from": settings.smtp_from_email or "(not set)",
-        "from_name": settings.smtp_from_name or "(not set)",
+        "user": settings.smtp_user or _NOT_SET,
+        "from": settings.smtp_from_email or _NOT_SET,
+        "from_name": settings.smtp_from_name or _NOT_SET,
     }
 
 
@@ -1032,7 +1074,7 @@ def _probe_webhook_info() -> ServiceCheckResult:
     return _make_result("Clerk Webhook", checks, meta=meta)
 
 
-async def _probe_config() -> ServiceCheckResult:
+def _probe_config() -> ServiceCheckResult:
     """Check for non-fatal configuration issues surfaced via /health/ready."""
     settings = get_settings()
     checks: list[ServicePermCheck] = []
@@ -1043,19 +1085,18 @@ async def _probe_config() -> ServiceCheckResult:
     return _make_result("Configuration", checks)
 
 
-@router.get("/services", response_model=list[ServiceCheckResult])
+@router.get("/services")
 async def check_services(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[ServiceCheckResult]:
-    db_result, s3_result, clerk_result, smtp_result, config_result = await asyncio.gather(
+    db_result, s3_result, clerk_result, smtp_result = await asyncio.gather(
         _probe_postgres(db),
         _probe_s3(),
         _probe_clerk(),
         _probe_smtp(),
-        _probe_config(),
     )
-    return [db_result, s3_result, clerk_result, smtp_result, _probe_webhook_info(), config_result]
+    return [db_result, s3_result, clerk_result, smtp_result, _probe_webhook_info(), _probe_config()]
 
 
 # ---------------------------------------------------------------------------
@@ -1088,9 +1129,9 @@ class WebhookProbeResponse(BaseModel):
     message: str = ""
 
 
-@router.post("/test-webhook", response_model=WebhookProbeResponse, status_code=200)
+@router.post("/test-webhook", status_code=200)
 async def test_webhook(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> WebhookProbeResponse:
     from app.services.clerk_webhook_probe import run_webhook_probe
 
@@ -1103,10 +1144,10 @@ async def test_webhook(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/audit-log", response_model=AuditLogPage)
+@router.get("/audit-log")
 async def list_audit_log(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     page: int = 1,
     page_size: int = 50,
     event_type: str | None = None,
@@ -1173,10 +1214,10 @@ class ServerEventPage(BaseModel):
     pages: int
 
 
-@router.get("/server-events", response_model=ServerEventPage)
+@router.get("/server-events")
 async def list_server_events(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     page: int = 1,
     page_size: int = 50,
     event_type: str | None = None,
@@ -1204,7 +1245,7 @@ async def list_server_events(
 
 @router.post("/test-email", status_code=200)
 async def send_test_email_endpoint(
-    admin: User = Depends(require_admin),
+    admin: Annotated[User, Depends(require_admin)],
 ) -> dict:
     await send_test_email(admin.email)
     return {"status": "sent", "to": admin.email}
@@ -1231,16 +1272,24 @@ class ElevateRequest(BaseModel):
     confirm_delete_content: bool = False
 
 
-@router.post("/users/{user_id}/elevate-to-superuser", status_code=200)
+@router.post(
+    "/users/{user_id}/elevate-to-superuser",
+    status_code=200,
+    responses={
+        400: {"description": "User must be an admin before being elevated to superuser"},
+        404: {"description": "User not found"},
+        409: {"description": "User owns projects, looms, drafts, or yarn; confirm_delete_content required"},
+    },
+)
 async def elevate_to_superuser(
     user_id: uuid.UUID,
     body: ElevateRequest,
-    admin: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     user = await db.scalar(select(User).where(User.id == user_id, User.deleted_at.is_(None)))
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail=_USER_NOT_FOUND)
     if not user.is_admin:
         raise HTTPException(status_code=400, detail="User must be an admin before being elevated to superuser")
     if user.is_superuser:
@@ -1322,22 +1371,27 @@ class PendingSignupResponse(BaseModel):
 
 @router.get("/pending-signups", response_model=list[PendingSignupResponse])
 async def list_pending_signups(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[PendingSignup]:
     result = await db.scalars(select(PendingSignup).order_by(PendingSignup.created_at.desc()))
     return list(result.all())
 
 
-@router.post("/pending-signups/{signup_id}/approve", response_model=None, status_code=201)
+@router.post(
+    "/pending-signups/{signup_id}/approve",
+    response_model=None,
+    status_code=201,
+    responses={404: {"description": "Pending signup not found"}},
+)
 async def approve_pending_signup(
     signup_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
-        raise HTTPException(status_code=404, detail="Pending signup not found")
+        raise HTTPException(status_code=404, detail=_PENDING_SIGNUP_NOT_FOUND)
 
     existing = await db.scalar(
         select(User).where(User.clerk_user_id == signup.clerk_user_id, User.deleted_at.is_(None))
@@ -1411,15 +1465,17 @@ async def approve_pending_signup(
     return {"status": "created"}
 
 
-@router.post("/pending-signups/{signup_id}/ban", status_code=204)
+@router.post(
+    "/pending-signups/{signup_id}/ban", status_code=204, responses={404: {"description": "Pending signup not found"}}
+)
 async def ban_pending_signup(
     signup_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
-        raise HTTPException(status_code=404, detail="Pending signup not found")
+        raise HTTPException(status_code=404, detail=_PENDING_SIGNUP_NOT_FOUND)
     email, display_name, clerk_user_id = signup.email, signup.display_name, signup.clerk_user_id
     await write_audit_log(db, event_type="signup.banned", actor=admin, target_email=email)
     await db.delete(signup)
@@ -1432,15 +1488,17 @@ async def ban_pending_signup(
         log.exception("Failed to send account denied email to %s", email)
 
 
-@router.delete("/pending-signups/{signup_id}", status_code=204)
+@router.delete(
+    "/pending-signups/{signup_id}", status_code=204, responses={404: {"description": "Pending signup not found"}}
+)
 async def dismiss_pending_signup(
     signup_id: uuid.UUID,
-    admin: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     signup = await db.scalar(select(PendingSignup).where(PendingSignup.id == signup_id))
     if signup is None:
-        raise HTTPException(status_code=404, detail="Pending signup not found")
+        raise HTTPException(status_code=404, detail=_PENDING_SIGNUP_NOT_FOUND)
     email, display_name, clerk_user_id = signup.email, signup.display_name, signup.clerk_user_id
     await write_audit_log(db, event_type="signup.dismissed", actor=admin, target_email=email)
     await db.delete(signup)
@@ -1478,10 +1536,10 @@ class EulaCurrentAdminResponse(BaseModel):
     created_at: datetime
 
 
-@router.get("/eula", response_model=EulaCurrentAdminResponse)
+@router.get("/eula", responses={404: {"description": "No EULA version found"}})
 async def get_eula_admin(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> EulaCurrentAdminResponse:
     row = await db.scalar(select(EulaVersion).order_by(EulaVersion.id.desc()).limit(1))
     if not row:
@@ -1495,11 +1553,15 @@ async def get_eula_admin(
     )
 
 
-@router.post("/eula", response_model=EulaVersionResponse, status_code=201)
+@router.post(
+    "/eula",
+    status_code=201,
+    responses={409: {"description": "EULA version already exists"}},
+)
 async def create_eula_version(
     body: EulaCreateRequest,
-    admin: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> EulaVersionResponse:
     existing = await db.scalar(select(EulaVersion).where(EulaVersion.version == body.version))
     if existing:
@@ -1572,15 +1634,18 @@ async def _worker_version() -> str | None:
         client = aioredis.from_url(settings.redis_url, socket_connect_timeout=2)
         value = await client.get(WORKER_VERSION_KEY)
         await client.aclose()
-        return value.decode() if value else None
+        # redis-py 8 types get() as bytes | str (str when decode_responses=True).
+        if isinstance(value, bytes):
+            return value.decode() or None
+        return value or None
     except Exception:
         return None
 
 
-@router.get("/versions", response_model=AdminVersionsResponse)
+@router.get("/versions")
 async def get_versions(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminVersionsResponse:
     settings = get_settings()
 
@@ -1601,10 +1666,10 @@ async def get_versions(
     )
 
 
-@router.get("/db-info", response_model=AdminDbInfoResponse)
+@router.get("/db-info")
 async def get_db_info(
-    _: User = Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> AdminDbInfoResponse:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
@@ -1622,7 +1687,8 @@ async def get_db_info(
     last_squash_at: str | None = None
     last_migrated_at: str | None = None
     try:
-        meta_rows = (await db.execute(text("SELECT key, value FROM alembic_meta"))).fetchall()
+        # Typed ORM select: SQLAlchemy 2.1 types untyped text() row values as object.
+        meta_rows = (await db.execute(select(AlembicMeta.key, AlembicMeta.value))).all()
         for key, value in meta_rows:
             if key == "last_squash_at":
                 last_squash_at = value
@@ -1639,76 +1705,11 @@ async def get_db_info(
     )
 
 
-NEON_CONSUMPTION_URL = "https://console.neon.tech/api/v2/consumption_history/v2/projects"
-NEON_PROJECTS_URL = "https://console.neon.tech/api/v2/projects"
-
-
-async def _fetch_neon_usage(settings: Settings) -> NeonUsageResponse:
-    """Query Neon's Consumption Metrics API for the trailing 30 days of compute usage.
-
-    Entirely independent of POSTGRES_DSN — reads only the neon_api_key/neon_org_id
-    settings, which are unrelated to which Postgres the app actually connects to.
-    """
-    if not settings.neon_api_key or not settings.neon_org_id:
-        return NeonUsageResponse(configured=False)
-
-    now = datetime.now(timezone.utc)
-    from_dt = now - timedelta(days=30)
-    params: dict[str, str] = {
-        "from": from_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "to": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "granularity": "daily",
-        "org_id": settings.neon_org_id,
-        "metrics": "compute_unit_seconds",
-    }
-    if settings.neon_project_id:
-        params["project_ids"] = settings.neon_project_id
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get(
-                NEON_CONSUMPTION_URL,
-                params=params,
-                headers={"Authorization": f"Bearer {settings.neon_api_key}", "Accept": "application/json"},
-            )
-        if r.status_code != 200:
-            return NeonUsageResponse(configured=True, error=f"Neon API returned HTTP {r.status_code}")
-        data = r.json()
-    except httpx.TimeoutException:
-        return NeonUsageResponse(configured=True, error="Timed out after 10 s")
-    except Exception as exc:
-        return NeonUsageResponse(configured=True, error=str(exc)[:200])
-
-    daily: list[NeonUsageDay] = []
-    total = 0.0
-    project_id_out: str | None = None
-    period_start_out: str | None = None
-    for project in data.get("projects", []):
-        if settings.neon_project_id and project.get("project_id") != settings.neon_project_id:
-            continue
-        project_id_out = project.get("project_id")
-        for period in project.get("periods", []):
-            period_start_out = period.get("period_start")
-            for point in period.get("consumption", []):
-                value = 0.0
-                for m in point.get("metrics", []):
-                    if m.get("metric_name") == "compute_unit_seconds":
-                        value = float(m.get("value", 0))
-                daily.append(NeonUsageDay(date=point.get("timeframe_start", ""), compute_seconds=value))
-                total += value
-
-    return NeonUsageResponse(
-        configured=True,
-        project_id=project_id_out,
-        period_start=period_start_out,
-        total_compute_seconds=total,
-        daily=daily,
-    )
-
-
-@router.get("/neon-usage", response_model=NeonUsageResponse)
-async def get_neon_usage(_: User = Depends(require_admin)) -> NeonUsageResponse:
-    return await _fetch_neon_usage(get_settings())
+@router.get("/neon-dashboard")
+async def get_neon_dashboard(
+    _: Annotated[User, Depends(require_superuser)],
+) -> neon.NeonDashboardResponse:
+    return await neon.fetch_dashboard(get_settings())
 
 
 # ---------------------------------------------------------------------------
@@ -1744,10 +1745,10 @@ class BackfillResponse(BaseModel):
     email: str
 
 
-@router.get("/reconcile", response_model=ReconcileReport)
+@router.get("/reconcile")
 async def get_reconcile_report(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ReconcileReport:
     clerk_users = await list_clerk_users()
     clerk_ids = {u["id"] for u in clerk_users}
@@ -1789,12 +1790,16 @@ async def get_reconcile_report(
     return ReconcileReport(clerk_only=clerk_only, db_only=db_only)
 
 
-@router.post("/reconcile/backfill/{clerk_user_id}", response_model=BackfillResponse, status_code=201)
+@router.post(
+    "/reconcile/backfill/{clerk_user_id}",
+    status_code=201,
+    responses={404: {"description": "Clerk user not found"}, 409: {"description": "User already exists in DB"}},
+)
 async def backfill_clerk_user(
     clerk_user_id: str,
-    body: BackfillRequest = Body(default_factory=BackfillRequest),
-    admin: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    body: Annotated[BackfillRequest, Body(default_factory=BackfillRequest)],
 ) -> BackfillResponse:
     existing = await db.scalar(select(User).where(User.clerk_user_id == clerk_user_id, User.deleted_at.is_(None)))
     if existing:
@@ -1884,9 +1889,9 @@ class S3CleanupResponse(BaseModel):
     deleted: int
 
 
-@router.post("/s3-audit/scan", response_model=S3ScanResponse, status_code=202)
+@router.post("/s3-audit/scan", status_code=202)
 async def start_s3_audit_scan(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> S3ScanResponse:
     from app.services.task_history import record_queued
     from app.tasks.s3_audit import run_s3_orphan_scan
@@ -1897,10 +1902,10 @@ async def start_s3_audit_scan(
     return S3ScanResponse(task_id=task.id)
 
 
-@router.get("/s3-audit/task/{task_id}", response_model=S3AuditTaskStatus)
+@router.get("/s3-audit/task/{task_id}")
 async def get_s3_audit_task(
     task_id: str,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> S3AuditTaskStatus:
     from celery.result import AsyncResult
 
@@ -1917,10 +1922,10 @@ async def get_s3_audit_task(
     return S3AuditTaskStatus(status="pending")
 
 
-@router.post("/s3-audit/cleanup", response_model=S3CleanupResponse)
+@router.post("/s3-audit/cleanup")
 async def cleanup_s3_orphans(
     body: S3CleanupRequest,
-    admin: User = Depends(require_superuser),
+    admin: Annotated[User, Depends(require_superuser)],
 ) -> S3CleanupResponse:
     from app.services import storage
 
@@ -1983,10 +1988,10 @@ class CveScanSummary(BaseModel):
     scanned_at: str | None = None
 
 
-@router.post("/cve-scan/start", response_model=CveScanStartResponse, status_code=202)
+@router.post("/cve-scan/start", status_code=202)
 async def start_cve_scan(
     body: CveScanStartRequest,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> CveScanStartResponse:
     from app.services.task_history import record_queued
     from app.tasks.cve_scan import run_cve_scan
@@ -1997,10 +2002,10 @@ async def start_cve_scan(
     return CveScanStartResponse(task_id=task.id)
 
 
-@router.get("/cve-scan/task/{task_id}", response_model=CveScanTaskStatus)
+@router.get("/cve-scan/task/{task_id}")
 async def get_cve_scan_task(
     task_id: str,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> CveScanTaskStatus:
     from celery.result import AsyncResult
 
@@ -2017,9 +2022,9 @@ async def get_cve_scan_task(
     return CveScanTaskStatus(status="pending")
 
 
-@router.get("/cve-scan/summary", response_model=CveScanSummary)
+@router.get("/cve-scan/summary")
 async def get_cve_scan_summary(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> CveScanSummary:
     import json as _json
 
@@ -2051,9 +2056,9 @@ class S3AuditSummary(BaseModel):
     not_applicable: bool = False
 
 
-@router.get("/s3-audit/summary", response_model=S3AuditSummary)
+@router.get("/s3-audit/summary")
 async def get_s3_audit_summary(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> S3AuditSummary:
     import json as _json
 
@@ -2114,26 +2119,24 @@ class WorkerStatus(BaseModel):
     checked_at: str
 
 
-@router.get("/worker-status", response_model=WorkerStatus)
-async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatus:
+def _inspect_workers() -> tuple[dict, dict, dict]:
     from app.celery_app import celery_app
 
-    checked_at = datetime.now(timezone.utc).isoformat()
+    try:
+        inspector = celery_app.control.inspect(timeout=1.5)
+        return (
+            inspector.active() or {},
+            inspector.reserved() or {},
+            inspector.stats() or {},
+        )
+    except Exception as exc:
+        log.warning("worker_inspect_error: %s", exc)
+        return {}, {}, {}
 
-    def _inspect() -> tuple[dict, dict, dict]:
-        try:
-            inspector = celery_app.control.inspect(timeout=1.5)
-            return (
-                inspector.active() or {},
-                inspector.reserved() or {},
-                inspector.stats() or {},
-            )
-        except Exception as exc:
-            log.warning("worker_inspect_error: %s", exc)
-            return {}, {}, {}
 
-    active, reserved, stats = await asyncio.get_event_loop().run_in_executor(None, _inspect)
-
+def _fetch_worker_versions_and_queues(
+    active: dict, reserved: dict, stats: dict
+) -> tuple[list[QueueInfo], dict[str, str]]:
     queues: list[QueueInfo] = []
     node_versions: dict[str, str] = {}
     try:
@@ -2152,41 +2155,53 @@ async def get_worker_status(_: User = Depends(require_superuser)) -> WorkerStatu
         client.close()
     except Exception as exc:
         log.warning("worker_status_redis_error: %s", exc)
+    return queues, node_versions
+
+
+def _worker_task_summary(t: dict, include_time: bool = True) -> WorkerActiveTask:
+    return WorkerActiveTask(
+        id=t.get("id", ""),
+        name=t.get("name", ""),
+        args_repr=str(t.get("args", []))[:120],
+        time_start=t.get("time_start") if include_time else None,
+    )
+
+
+def _build_worker_info(
+    name: str, stats: dict, active: dict, reserved: dict, node_versions: dict[str, str]
+) -> WorkerInfo:
+    ws = stats.get(name, {})
+    pool = ws.get("pool", {})
+    total_dict = ws.get("total") or {}
+    rusage = ws.get("rusage") or {}
+    maxrss_kb = rusage.get("maxrss")
+    return WorkerInfo(
+        name=name,
+        status="online",
+        version=node_versions.get(name),
+        concurrency=pool.get("max-concurrency"),
+        completed_tasks=sum(total_dict.values()) if total_dict else None,
+        uptime=ws.get("uptime"),
+        memory_mb=round(maxrss_kb / 1024, 1) if maxrss_kb else None,
+        active_tasks=[_worker_task_summary(t) for t in (active.get(name) or [])],
+        reserved_tasks=[_worker_task_summary(t, include_time=False) for t in (reserved.get(name) or [])],
+    )
+
+
+@router.get("/worker-status")
+async def get_worker_status(
+    _: Annotated[User, Depends(require_superuser)],
+) -> WorkerStatus:
+    checked_at = datetime.now(timezone.utc).isoformat()
+
+    active, reserved, stats = await asyncio.get_event_loop().run_in_executor(None, _inspect_workers)
+    queues, node_versions = _fetch_worker_versions_and_queues(active, reserved, stats)
 
     all_names = set(active) | set(reserved) | set(stats)
-    workers: list[WorkerInfo] = []
-
     if not all_names:
-        workers.append(WorkerInfo(name="(no workers responding)", status="offline"))
+        workers = [WorkerInfo(name="(no workers responding)", status="offline")]
     else:
-        for name in sorted(all_names):
-            ws = stats.get(name, {})
-            pool = ws.get("pool", {})
-            total_dict = ws.get("total") or {}
-
-            def _task(t: dict, include_time: bool = True) -> WorkerActiveTask:
-                return WorkerActiveTask(
-                    id=t.get("id", ""),
-                    name=t.get("name", ""),
-                    args_repr=str(t.get("args", []))[:120],
-                    time_start=t.get("time_start") if include_time else None,
-                )
-
-            rusage = ws.get("rusage") or {}
-            maxrss_kb = rusage.get("maxrss")
-            workers.append(
-                WorkerInfo(
-                    name=name,
-                    status="online",
-                    version=node_versions.get(name),
-                    concurrency=pool.get("max-concurrency"),
-                    completed_tasks=sum(total_dict.values()) if total_dict else None,
-                    uptime=ws.get("uptime"),
-                    memory_mb=round(maxrss_kb / 1024, 1) if maxrss_kb else None,
-                    active_tasks=[_task(t) for t in (active.get(name) or [])],
-                    reserved_tasks=[_task(t, include_time=False) for t in (reserved.get(name) or [])],
-                )
-            )
+        workers = [_build_worker_info(name, stats, active, reserved, node_versions) for name in sorted(all_names)]
 
     return WorkerStatus(workers=workers, queues=queues, api_version=VERSION, checked_at=checked_at)
 
@@ -2198,7 +2213,7 @@ class DebugSleepRequest(BaseModel):
 @router.post("/debug-sleep", status_code=202)
 async def start_debug_sleep(
     body: DebugSleepRequest,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> dict:
     from app.services.task_history import record_queued
     from app.tasks.debug import debug_sleep
@@ -2234,11 +2249,11 @@ class TaskHistoryResponse(BaseModel):
     pages: int
 
 
-@router.get("/task-history", response_model=TaskHistoryResponse)
+@router.get("/task-history")
 async def get_task_history(
+    _: Annotated[User, Depends(require_superuser)],
     page: int = 1,
     page_size: int = 25,
-    _: User = Depends(require_superuser),
 ) -> TaskHistoryResponse:
     from app.services.task_history import _iso, get_history
 
@@ -2278,7 +2293,7 @@ async def get_task_history(
 @router.post("/tasks/{task_id}/revoke")
 async def revoke_task(
     task_id: str,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> dict:
     from app.celery_app import celery_app
     from app.services.task_history import record_completed
@@ -2290,7 +2305,7 @@ async def revoke_task(
 
 @router.post("/purge-soft-deleted")
 async def run_purge_soft_deleted(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> dict:
     from app.services.task_history import record_queued
     from app.tasks.purge import purge_soft_deleted_records
@@ -2315,10 +2330,10 @@ class SoftDeleteQueueResponse(BaseModel):
     in_retention_window: SoftDeleteBucket
 
 
-@router.get("/soft-delete-queue", response_model=SoftDeleteQueueResponse)
+@router.get("/soft-delete-queue")
 async def get_soft_delete_queue(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SoftDeleteQueueResponse:
     settings = get_settings()
     retention_days = settings.soft_delete_retention_days
@@ -2370,10 +2385,10 @@ class DeletionQueueUser(BaseModel):
     deletion_initiated_at: datetime | None
 
 
-@router.get("/deletion-queue", response_model=list[DeletionQueueUser])
+@router.get("/deletion-queue")
 async def get_deletion_queue(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[DeletionQueueUser]:
     rows = await db.scalars(
         select(User).where(User.deletion_state.is_not(None)).order_by(User.deletion_initiated_at.desc())
@@ -2467,8 +2482,8 @@ def _task_to_response(task) -> ScheduledTaskResponse:
 
 @router.get("/scheduled-tasks")
 async def list_scheduled_tasks(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_superuser)],
 ) -> list[ScheduledTaskResponse]:
     from app.models.scheduled_task import ScheduledTask
     from app.tasks.scheduler import REGISTRY
@@ -2496,12 +2511,15 @@ async def list_scheduled_tasks(
     return result
 
 
-@router.patch("/scheduled-tasks/{name}")
+@router.patch(
+    "/scheduled-tasks/{name}",
+    responses={404: {"description": "Scheduled task not found"}, 422: {"description": "Invalid cron expression"}},
+)
 async def patch_scheduled_task(
     name: str,
     body: PatchScheduledTaskBody,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_superuser)],
 ) -> ScheduledTaskResponse:
     from app.models.scheduled_task import ScheduledTask
     from app.tasks.scheduler import REGISTRY
@@ -2589,20 +2607,24 @@ def _credential_to_response(cred: CredentialExpiry) -> CredentialExpiryResponse:
     )
 
 
-@router.get("/credentials", response_model=list[CredentialExpiryResponse])
+@router.get("/credentials")
 async def list_credentials(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
 ) -> list[CredentialExpiryResponse]:
     rows = await db.scalars(select(CredentialExpiry).order_by(CredentialExpiry.expires_on.asc().nulls_last()))
     return [_credential_to_response(r) for r in rows.all()]
 
 
-@router.post("/credentials", response_model=CredentialExpiryResponse, status_code=201)
+@router.post(
+    "/credentials",
+    status_code=201,
+    responses={422: {"description": "Invalid resource. Must be one of"}},
+)
 async def create_credential(
     body: CreateCredentialBody,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_superuser)],
 ) -> CredentialExpiryResponse:
     if body.resource not in RESOURCE_CHOICES:
         raise HTTPException(status_code=422, detail=f"Invalid resource. Must be one of: {sorted(RESOURCE_CHOICES)}")
@@ -2619,12 +2641,15 @@ async def create_credential(
     return _credential_to_response(cred)
 
 
-@router.patch("/credentials/{credential_id}", response_model=CredentialExpiryResponse)
+@router.patch(
+    "/credentials/{credential_id}",
+    responses={404: {"description": "Credential not found"}, 422: {"description": "Invalid resource. Must be one of"}},
+)
 async def patch_credential(
     credential_id: uuid.UUID,
     body: PatchCredentialBody,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_superuser)],
 ) -> CredentialExpiryResponse:
     cred = await db.scalar(select(CredentialExpiry).where(CredentialExpiry.id == credential_id))
     if cred is None:
@@ -2645,11 +2670,13 @@ async def patch_credential(
     return _credential_to_response(cred)
 
 
-@router.delete("/credentials/{credential_id}", status_code=204)
+@router.delete(
+    "/credentials/{credential_id}", status_code=204, responses={404: {"description": "Credential not found"}}
+)
 async def delete_credential(
     credential_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_superuser),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_superuser)],
 ) -> None:
     cred = await db.scalar(select(CredentialExpiry).where(CredentialExpiry.id == credential_id))
     if cred is None:
@@ -2674,10 +2701,10 @@ class AdminSlugRecord(BaseModel):
     created_at: datetime
 
 
-@router.get("/project-slugs", response_model=list[AdminSlugRecord])
+@router.get("/project-slugs")
 async def list_project_slugs(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
 ) -> list[AdminSlugRecord]:
     rows = await db.scalars(
         select(Project).where(
@@ -2709,11 +2736,11 @@ async def list_project_slugs(
     ]
 
 
-@router.delete("/project-slugs/{slug}", status_code=204)
+@router.delete("/project-slugs/{slug}", status_code=204, responses={404: {"description": "Slug not found"}})
 async def admin_revoke_project_slug(
     slug: str,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
 ) -> None:
     project = await db.scalar(select(Project).where(Project.share_slug == slug, Project.deleted_at.is_(None)))
     if project is None:
@@ -2733,12 +2760,12 @@ class AdminProjectStepRecord(BaseModel):
     created_at: datetime
 
 
-@router.get("/project-steps", response_model=list[AdminProjectStepRecord])
+@router.get("/project-steps")
 async def admin_list_project_steps(
     project_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[User, Depends(require_admin)],
     limit: int = 200,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
 ) -> list[AdminProjectStepRecord]:
     rows = await db.scalars(
         select(ProjectStep)
@@ -2777,10 +2804,10 @@ class AdminExportRecord(BaseModel):
     error: str | None
 
 
-@router.get("/exports", response_model=list[AdminExportRecord])
+@router.get("/exports")
 async def list_exports(
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[AdminExportRecord]:
     rows = await db.execute(
         select(UserExportRequest, User)
@@ -2805,11 +2832,11 @@ async def list_exports(
     ]
 
 
-@router.delete("/exports/{export_id}", status_code=204)
+@router.delete("/exports/{export_id}", status_code=204, responses={404: {"description": "Export not found"}})
 async def delete_export(
     export_id: uuid.UUID,
-    _: User = Depends(require_superuser),
-    db: AsyncSession = Depends(get_db),
+    _: Annotated[User, Depends(require_superuser)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     req = await db.get(UserExportRequest, export_id)
     if req is None:
@@ -2940,7 +2967,7 @@ def _get_config_state(settings: Settings) -> list[ConfigFieldState]:
 
 @router.get("/config")
 async def get_config_state(
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> ConfigStateResponse:
     settings = get_settings()
     return ConfigStateResponse(
@@ -2950,10 +2977,10 @@ async def get_config_state(
     )
 
 
-@router.put("/config")
+@router.put("/config", responses={503: {"description": "CONFIG_ENCRYPTION_KEY is not set — cannot write config file"}})
 def save_config(
     body: ConfigSaveRequest,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> ConfigStateResponse:
     """Save integration config values to the encrypted config file.
 
@@ -3056,39 +3083,11 @@ async def _test_github(v: dict) -> ConfigTestResult:
 
 async def _test_neon(v: dict) -> ConfigTestResult:
     try:
-        api_key = v.get("neon_api_key") or ""
-        org_id = v.get("neon_org_id") or ""
-        if not api_key or not org_id:
-            return ConfigTestResult(ok=False, message="neon_api_key and neon_org_id are both required")
-        now = datetime.now(timezone.utc)
-        params = {
-            "from": (now - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "to": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "granularity": "daily",
-            "org_id": org_id,
-            "metrics": "compute_unit_seconds",
-        }
-        headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(NEON_CONSUMPTION_URL, params=params, headers=headers, timeout=10)
-        if resp.status_code != 200:
-            return ConfigTestResult(ok=False, message=f"Neon API returned {resp.status_code}: {resp.text[:120]}")
-        project_count = len(resp.json().get("projects", []))
-
-        options: list[ConfigTestOption] | None = None
-        try:
-            async with httpx.AsyncClient() as client:
-                proj_resp = await client.get(NEON_PROJECTS_URL, params={"org_id": org_id}, headers=headers, timeout=10)
-            if proj_resp.status_code == 200:
-                options = [
-                    ConfigTestOption(value=p["id"], label=p.get("name") or p["id"])
-                    for p in proj_resp.json().get("projects", [])
-                ]
-        except Exception:
-            pass  # project listing is a nice-to-have — the connection test above already succeeded
-
+        ok, message, options = await neon.test_connection(v)
         return ConfigTestResult(
-            ok=True, message=f"Connected — {project_count} project(s) visible to this org", options=options
+            ok=ok,
+            message=message,
+            options=[ConfigTestOption(value=o["value"], label=o["label"]) for o in options] if options else None,
         )
     except Exception as exc:
         return ConfigTestResult(ok=False, message=str(exc))
@@ -3103,11 +3102,11 @@ _SERVICE_TESTS = {
 }
 
 
-@router.post("/config/test/{service}")
+@router.post("/config/test/{service}", responses={400: {"description": "Unknown service"}})
 async def test_config_service(
     service: str,
     body: ConfigSaveRequest,
-    _: User = Depends(require_superuser),
+    _: Annotated[User, Depends(require_superuser)],
 ) -> ConfigTestResult:
     """Test a service connection using the provided (unsaved) values."""
     handler = _SERVICE_TESTS.get(service)

@@ -2,10 +2,10 @@ import type { ReactNode } from "react";
 import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 
 interface Props {
-  children: ReactNode;
-  footer?: ReactNode;
+  readonly children: ReactNode;
+  readonly footer?: ReactNode;
   /** Skip the white card wrapper — Clerk pages use this so Clerk renders its own card naturally. */
-  naked?: boolean;
+  readonly naked?: boolean;
 }
 
 export function AuthCard({ children, footer, naked = false }: Props) {

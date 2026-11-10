@@ -616,7 +616,8 @@ class TestProjectDrawdownAndSvg:
 
     def test_save_project_drawdown_preview_returns_path(self):
         rel = storage.save_project_drawdown_preview(b"\x89PNG")
-        assert rel.startswith("projects/") and rel.endswith(".png")
+        assert rel.startswith("projects/")
+        assert rel.endswith(".png")
 
     def test_project_drawdown_preview_round_trip(self):
         data = b"\x89PNG\r\n\x1a\n"
@@ -635,7 +636,8 @@ class TestProjectDrawdownAndSvg:
 
     def test_save_project_drawdown_svg_returns_path(self):
         rel = storage.save_project_drawdown_svg("<svg/>")
-        assert rel.startswith("projects/") and rel.endswith(".svg")
+        assert rel.startswith("projects/")
+        assert rel.endswith(".svg")
 
     def test_project_drawdown_svg_round_trip(self):
         data = "<svg><rect/></svg>"

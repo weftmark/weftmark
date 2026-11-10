@@ -17,62 +17,81 @@ const TABS: { id: ReportTab; key: string }[] = [
   { id: "threading", key: "warpingPlanPage.tabThreading" },
 ];
 
+const GREYSCALE_LADDER: readonly { readonly max: number; readonly label: string }[] = [
+  { max: 0.08, label: "Black" },
+  { max: 0.22, label: "Very Dark Grey" },
+  { max: 0.42, label: "Dark Grey" },
+  { max: 0.62, label: "Grey" },
+  { max: 0.82, label: "Light Grey" },
+  { max: 0.93, label: "Off White" },
+];
+
+function greyscaleName(l: number): string {
+  return GREYSCALE_LADDER.find((g) => l < g.max)?.label ?? "White";
+}
+
+const BROWN_LADDER: readonly { readonly max: number; readonly label: string }[] = [
+  { max: 0.12, label: "Very Dark Brown" },
+  { max: 0.24, label: "Dark Brown" },
+  { max: 0.36, label: "Brown" },
+];
+
+function brownName(l: number): string {
+  return BROWN_LADDER.find((b) => l < b.max)?.label ?? "Tan";
+}
+
+const LIGHTNESS_PREFIX_RULES: readonly { readonly test: (l: number) => boolean; readonly label: string }[] = [
+  { test: (l) => l < 0.18, label: "Very Dark " },
+  { test: (l) => l < 0.32, label: "Dark " },
+  { test: (l) => l > 0.78, label: "Pale " },
+  { test: (l) => l > 0.63, label: "Light " },
+];
+
+function lightnessPrefix(l: number): string {
+  return LIGHTNESS_PREFIX_RULES.find((r) => r.test(l))?.label ?? "";
+}
+
+const HUE_NAME_RULES: readonly { readonly test: (h: number) => boolean; readonly label: string }[] = [
+  { test: (h) => h < 12 || h >= 348, label: "Red" },
+  { test: (h) => h < 26, label: "Red Orange" },
+  { test: (h) => h < 46, label: "Orange" },
+  { test: (h) => h < 65, label: "Yellow" },
+  { test: (h) => h < 80, label: "Yellow Green" },
+  { test: (h) => h < 155, label: "Green" },
+  { test: (h) => h < 178, label: "Teal" },
+  { test: (h) => h < 200, label: "Cyan" },
+  { test: (h) => h < 255, label: "Blue" },
+  { test: (h) => h < 290, label: "Purple" },
+  { test: (h) => h < 325, label: "Violet" },
+];
+
+function hueName(h: number): string {
+  return HUE_NAME_RULES.find((r) => r.test(h))?.label ?? "Pink";
+}
+
 function approximateColorName(hex: string): string {
   if (!hex || hex.length < 7) return "";
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
+  const g = Number.parseInt(hex.slice(3, 5), 16) / 255;
+  const b = Number.parseInt(hex.slice(5, 7), 16) / 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const delta = max - min;
   const l = (max + min) / 2;
 
-  if (delta < 0.06) {
-    if (l < 0.08) return "Black";
-    if (l < 0.22) return "Very Dark Grey";
-    if (l < 0.42) return "Dark Grey";
-    if (l < 0.62) return "Grey";
-    if (l < 0.82) return "Light Grey";
-    if (l < 0.93) return "Off White";
-    return "White";
-  }
+  if (delta < 0.06) return greyscaleName(l);
 
   let h: number;
-  if (max === r) h = ((g - b) / delta + 6) % 6 * 60;
+  if (max === r) h = (((g - b) / delta + 6) % 6) * 60;
   else if (max === g) h = ((b - r) / delta + 2) * 60;
   else h = ((r - g) / delta + 4) * 60;
 
   const s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
 
   // Browns: orange-ish hue, low-medium saturation, darker lightness
-  if (h >= 10 && h <= 52 && s < 0.55 && l < 0.48) {
-    if (l < 0.12) return "Very Dark Brown";
-    if (l < 0.24) return "Dark Brown";
-    if (l < 0.36) return "Brown";
-    return "Tan";
-  }
+  if (h >= 10 && h <= 52 && s < 0.55 && l < 0.48) return brownName(l);
 
-  const prefix =
-    l < 0.18 ? "Very Dark " :
-    l < 0.32 ? "Dark " :
-    l > 0.78 ? "Pale " :
-    l > 0.63 ? "Light " : "";
-
-  let name: string;
-  if (h < 12 || h >= 348) name = "Red";
-  else if (h < 26) name = "Red Orange";
-  else if (h < 46) name = "Orange";
-  else if (h < 65) name = "Yellow";
-  else if (h < 80) name = "Yellow Green";
-  else if (h < 155) name = "Green";
-  else if (h < 178) name = "Teal";
-  else if (h < 200) name = "Cyan";
-  else if (h < 255) name = "Blue";
-  else if (h < 290) name = "Purple";
-  else if (h < 325) name = "Violet";
-  else name = "Pink";
-
-  return `${prefix}${name}`.trim();
+  return `${lightnessPrefix(l)}${hueName(h)}`.trim();
 }
 
 interface WarpSetup {
@@ -89,16 +108,16 @@ interface WarpSetup {
 
 function computeWarpSetup(project: ProjectDetail): WarpSetup {
   const displayUnit = (project.length_unit as LengthUnit) || "cm";
-  const itemLengthCm = project.finished_length_per_item != null ? parseFloat(project.finished_length_per_item) : null;
-  const wasteBetweenCm = project.waste_between_items != null ? parseFloat(project.waste_between_items) : null;
+  const itemLengthCm = project.finished_length_per_item != null ? Number.parseFloat(project.finished_length_per_item) : null;
+  const wasteBetweenCm = project.waste_between_items != null ? Number.parseFloat(project.waste_between_items) : null;
   const numItems = project.num_items || 1;
 
   let warpWasteCm: number | null = null;
   if (project.warp_waste_allowance != null) {
-    warpWasteCm = parseFloat(project.warp_waste_allowance);
+    warpWasteCm = Number.parseFloat(project.warp_waste_allowance);
   } else if (project.loom_warp_waste_allowance != null && project.loom_warp_waste_unit) {
     warpWasteCm = convertLength(
-      parseFloat(project.loom_warp_waste_allowance),
+      Number.parseFloat(project.loom_warp_waste_allowance),
       project.loom_warp_waste_unit as LengthUnit,
       "cm",
     );
@@ -130,9 +149,9 @@ function MissingParamsBanner({
   projectId,
   loomId,
 }: {
-  setup: WarpSetup;
-  projectId: string;
-  loomId: string | null;
+  readonly setup: WarpSetup;
+  readonly projectId: string;
+  readonly loomId: string | null;
 }) {
   const { t } = useTranslation();
   const items: React.ReactNode[] = [];
@@ -230,7 +249,7 @@ function MissingParamsBanner({
   );
 }
 
-function Swatch({ hex }: { hex: string | null }) {
+function Swatch({ hex }: { readonly hex: string | null }) {
   if (!hex) return <span className="inline-block h-4 w-4 rounded border border-border bg-muted" />;
   return (
     <span
@@ -241,7 +260,7 @@ function Swatch({ hex }: { hex: string | null }) {
   );
 }
 
-function SummarySection({ plan }: { plan: WarpingPlan }) {
+function SummarySection({ plan }: { readonly plan: WarpingPlan }) {
   const { t } = useTranslation();
   const warpLengthM = plan.warp_length_cm != null ? (plan.warp_length_cm / 100).toFixed(2) : null;
   return (
@@ -288,7 +307,7 @@ function SummarySection({ plan }: { plan: WarpingPlan }) {
   );
 }
 
-function WarpColorSummary({ rows }: { rows: ColorStat[] }) {
+function WarpColorSummary({ rows }: { readonly rows: ColorStat[] }) {
   const { t } = useTranslation();
   if (rows.length === 0) return null;
   return (
@@ -324,8 +343,8 @@ function WindingSection({
   plan,
   project,
 }: {
-  plan: WarpingPlan;
-  project?: ProjectDetail;
+  readonly plan: WarpingPlan;
+  readonly project?: ProjectDetail;
 }) {
   const { t } = useTranslation();
   const setup = project ? computeWarpSetup(project) : null;
@@ -459,7 +478,7 @@ function WindingSection({
   );
 }
 
-function TieUpSection({ plan }: { plan: WarpingPlan }) {
+function TieUpSection({ plan }: { readonly plan: WarpingPlan }) {
   const { t } = useTranslation();
   if (!plan.has_tieup || !plan.tieup || !plan.tieup_num_shafts || !plan.tieup_num_treadles) {
     return (
@@ -487,7 +506,7 @@ function TieUpSection({ plan }: { plan: WarpingPlan }) {
   );
 }
 
-function ThreadingSection({ plan }: { plan: WarpingPlan }) {
+function ThreadingSection({ plan }: { readonly plan: WarpingPlan }) {
   const { t } = useTranslation();
   if (!plan.has_threading || !plan.threading || plan.threading.length === 0) {
     return (
@@ -555,7 +574,7 @@ export function WarpingPlanPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <AppIcons.spinner className="h-6 w-6 animate-spin text-muted-foreground" />
+        <AppIcons.Spinner className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -584,7 +603,7 @@ export function WarpingPlanPage() {
             to={`/projects/${id}/track`}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
           >
-            <AppIcons.chevronRight className="h-4 w-4 rotate-180" />
+            <AppIcons.ChevronRight className="h-4 w-4 rotate-180" />
             {t("warpingPlanPage.backToTracker")}
           </Link>
           <span className="text-border">|</span>
@@ -602,11 +621,11 @@ export function WarpingPlanPage() {
                 document.title = prev;
               }}
             >
-              <AppIcons.saveAsPdf className="h-4 w-4 mr-1.5" />
+              <AppIcons.SaveAsPdf className="h-4 w-4 mr-1.5" />
               {t("warpingPlanPage.saveAsPdf")}
             </Button>
             <Button size="sm" onClick={() => window.print()}>
-              <AppIcons.print className="h-4 w-4 mr-1.5" />
+              <AppIcons.Print className="h-4 w-4 mr-1.5" />
               {t("warpingPlanPage.print")}
             </Button>
           </div>
@@ -614,7 +633,7 @@ export function WarpingPlanPage() {
         {/* Tab row */}
         <div className="flex px-4 gap-0">
           {TABS.map((tab_) => (
-            <button
+            <button type="button"
               key={tab_.id}
               onClick={() => setTab(tab_.id)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${

@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { AppIcons } from "@/lib/icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 import {
   submitFeedback,
   getFeedbackStatus,
@@ -13,7 +14,7 @@ import {
 } from "@/api/feedback";
 
 interface Props {
-  onClose: () => void;
+  readonly onClose: () => void;
 }
 
 const TYPE_PLACEHOLDERS: Record<SubmissionType, string> = {
@@ -41,12 +42,12 @@ async function getAppVersion(): Promise<string | null> {
 }
 
 function extractProjectId(pathname: string): string | null {
-  const m = pathname.match(/^\/projects\/([0-9a-f-]{36})/i);
+  const m = /^\/projects\/([0-9a-f-]{36})/i.exec(pathname);
   return m ? m[1] : null;
 }
 
 function extractDraftId(pathname: string): string | null {
-  const m = pathname.match(/^\/drafts\/([0-9a-f-]{36})/i);
+  const m = /^\/drafts\/([0-9a-f-]{36})/i.exec(pathname);
   return m ? m[1] : null;
 }
 
@@ -69,12 +70,7 @@ export function FeedbackModal({ onClose }: Props) {
     getAppVersion().then(setAppVersion);
   }, []);
 
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const mutation = useMutation({
     mutationFn: submitFeedback,
@@ -106,43 +102,39 @@ export function FeedbackModal({ onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={() => {}} // no-op — useEscapeKey above already handles Escape via a document listener (S1082)
     >
-      <div
-        className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Escape") onClose(); }}
-      >
+      <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl p-6 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold flex items-center gap-2">
-            <AppIcons.feedback className="h-4 w-4 text-muted-foreground" />
+            <AppIcons.Feedback className="h-4 w-4 text-muted-foreground" />
             Send Feedback
           </h2>
-          <button
+          <button type="button"
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Close"
           >
-            <AppIcons.close className="h-4 w-4" />
+            <AppIcons.Close className="h-4 w-4" />
           </button>
         </div>
 
-        {submitted ? (
-          <SuccessView record={submitted} onClose={onClose} />
-        ) : !user ? (
+        {submitted && <SuccessView record={submitted} onClose={onClose} />}
+        {!submitted && !user && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Please sign in to submit feedback.</p>
             <div className="flex justify-end">
               <Button type="button" variant="outline" onClick={onClose}>Close</Button>
             </div>
           </div>
-        ) : (
+        )}
+        {!submitted && user && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Type selector */}
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">Type</label>
+            <fieldset>
+              <legend className="mb-1.5 block text-sm font-medium">Type</legend>
               <div className="flex gap-2 flex-wrap">
                 {(Object.keys(SUBMISSION_TYPE_LABELS) as SubmissionType[]).map((t) => (
                   <button
@@ -159,14 +151,15 @@ export function FeedbackModal({ onClose }: Props) {
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Subject */}
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label htmlFor="feedback-subject" className="mb-1 block text-sm font-medium">
                 Subject <span className="text-muted-foreground font-normal">(optional)</span>
               </label>
               <input
+                id="feedback-subject"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 placeholder="Brief summary"
                 value={subject}
@@ -177,10 +170,11 @@ export function FeedbackModal({ onClose }: Props) {
 
             {/* Body */}
             <div>
-              <label className="mb-1 block text-sm font-medium">
+              <label htmlFor="feedback-body" className="mb-1 block text-sm font-medium">
                 Details <span className="text-destructive">*</span>
               </label>
               <textarea
+                id="feedback-body"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                 rows={5}
                 placeholder={TYPE_PLACEHOLDERS[type]}
@@ -258,7 +252,7 @@ export function FeedbackModal({ onClose }: Props) {
   );
 }
 
-function SuccessView({ record, onClose }: { record: FeedbackRecord; onClose: () => void }) {
+function SuccessView({ record, onClose }: { readonly record: FeedbackRecord; readonly onClose: () => void }) {
   const { user } = useAuth();
 
   const [pollDispatchStatus, setPollDispatchStatus] = useState<string>(record.dispatch_status);
@@ -303,12 +297,13 @@ function SuccessView({ record, onClose }: { record: FeedbackRecord; onClose: () 
         Thank you — your {typeLabel} was received.
       </p>
 
-      {pollDispatchStatus === "pending" && !timedOut ? (
+      {pollDispatchStatus === "pending" && !timedOut && (
         <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-          <AppIcons.spinner className="h-4 w-4 animate-spin shrink-0" />
+          <AppIcons.Spinner className="h-4 w-4 animate-spin shrink-0" />
           <span>Creating your GitHub Discussion thread…</span>
         </div>
-      ) : pollDispatchStatus === "sent" && pollDiscussionUrl ? (
+      )}
+      {!(pollDispatchStatus === "pending" && !timedOut) && pollDispatchStatus === "sent" && pollDiscussionUrl && (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
             A discussion thread has been created. You can follow progress and attach screenshots there:
@@ -319,11 +314,12 @@ function SuccessView({ record, onClose }: { record: FeedbackRecord; onClose: () 
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
           >
-            <AppIcons.externalLink className="h-3.5 w-3.5" />
+            <AppIcons.ExternalLink className="h-3.5 w-3.5" />
             View on GitHub
           </a>
         </div>
-      ) : (
+      )}
+      {!(pollDispatchStatus === "pending" && !timedOut) && !(pollDispatchStatus === "sent" && pollDiscussionUrl) && (
         <p className="text-sm text-muted-foreground">
           Your submission is stored and will be reviewed by the team.
           {(pollDispatchStatus === "skipped" || timedOut) &&

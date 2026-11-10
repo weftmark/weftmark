@@ -1,5 +1,5 @@
 interface Props {
-  className?: string;
+  readonly className?: string;
 }
 
 export function WeftmarkLogo({ className = "" }: Props) {

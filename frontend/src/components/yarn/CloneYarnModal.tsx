@@ -2,14 +2,16 @@ import { useState } from "react";
 import { cloneYarn, type YarnDetail } from "@/api/yarn";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
-  yarn: YarnDetail;
-  onSuccess: (newId: string) => void;
-  onClose: () => void;
+  readonly yarn: YarnDetail;
+  readonly onSuccess: (newId: string) => void;
+  readonly onClose: () => void;
 }
 
 export function CloneYarnModal({ yarn, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [colorName, setColorName] = useState(yarn.color_name ?? "");
   const [colorHex, setColorHex] = useState(yarn.color_hex ?? "#ffffff");
   const [hasColor, setHasColor] = useState(!!yarn.color_hex);
@@ -45,8 +47,9 @@ export function CloneYarnModal({ yarn, onSuccess, onClose }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Color name</label>
+            <label htmlFor="clone-color-name" className="mb-1 block text-sm font-medium">Color name</label>
             <input
+              id="clone-color-name"
               className={f}
               value={colorName}
               onChange={(e) => setColorName(e.target.value)}
@@ -55,8 +58,8 @@ export function CloneYarnModal({ yarn, onSuccess, onClose }: Props) {
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Color swatch</label>
+          <fieldset>
+            <legend className="mb-1 block text-sm font-medium">Color swatch</legend>
             <div className="flex items-center gap-2 pt-1">
               <input
                 type="checkbox"
@@ -69,7 +72,7 @@ export function CloneYarnModal({ yarn, onSuccess, onClose }: Props) {
                 <ColorPicker value={colorHex} onChange={setColorHex} />
               )}
             </div>
-          </div>
+          </fieldset>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 

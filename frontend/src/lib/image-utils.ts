@@ -1,5 +1,20 @@
 const MAX_DIM = 2048;
 
+function canvasToJpegBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+}
+
+// Recompresses at progressively lower quality until under maxBytes, or quality bottoms out.
+async function shrinkToJpeg(canvas: HTMLCanvasElement, maxBytes: number): Promise<Blob> {
+  let quality = 0.85;
+  for (;;) {
+    const blob = await canvasToJpegBlob(canvas, quality);
+    if (!blob) throw new Error("Resize failed");
+    if (blob.size <= maxBytes || quality <= 0.3) return blob;
+    quality = Math.round((quality - 0.1) * 10) / 10;
+  }
+}
+
 export async function resizeImageToFile(
   file: File,
   maxBytes: number,
@@ -30,22 +45,9 @@ export async function resizeImageToFile(
 
       const baseName = file.name.replace(/\.[^.]+$/, "");
 
-      const tryQuality = (quality: number) => {
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) { reject(new Error("Resize failed")); return; }
-            if (blob.size <= maxBytes || quality <= 0.3) {
-              resolve(new File([blob], `${baseName}.jpg`, { type: "image/jpeg" }));
-            } else {
-              tryQuality(Math.round((quality - 0.1) * 10) / 10);
-            }
-          },
-          "image/jpeg",
-          quality,
-        );
-      };
-
-      tryQuality(0.85);
+      shrinkToJpeg(canvas, maxBytes)
+        .then((blob) => resolve(new File([blob], `${baseName}.jpg`, { type: "image/jpeg" })))
+        .catch(reject);
     };
 
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not load image")); };

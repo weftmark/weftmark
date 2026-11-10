@@ -148,8 +148,8 @@ def _render_and_store_tiles(
     wif_bytes: bytes,
     settings,
     rendering,
-    ImageRenderer,
-    PILImage,
+    image_renderer_cls,
+    pil_image,
     save_fn,
     entity_id: uuid.UUID,
     entity_label: str,
@@ -188,7 +188,7 @@ def _render_and_store_tiles(
         effective_scale = max_scale_by_pixels
 
     margin = 20
-    renderer = ImageRenderer(wif_draft, scale=effective_scale, margin_pixels=margin)
+    renderer = image_renderer_cls(wif_draft, scale=effective_scale, margin_pixels=margin)
     full_im = renderer.make_pil_image()
 
     offsetx = margin
@@ -196,7 +196,7 @@ def _render_and_store_tiles(
     drawdown_w = warp_count * effective_scale
     drawdown_h = weft_count * effective_scale
     full_drawdown = full_im.crop((offsetx, offsety, offsetx + drawdown_w, offsety + drawdown_h))
-    full_drawdown = full_drawdown.transpose(PILImage.Transpose.FLIP_TOP_BOTTOM)
+    full_drawdown = full_drawdown.transpose(pil_image.Transpose.FLIP_TOP_BOTTOM)
 
     tile_row_count = settings.tile_row_count
     tile_count = 0

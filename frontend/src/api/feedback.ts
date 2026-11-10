@@ -70,7 +70,7 @@ export const listAdminFeedback = (params: {
   if (params.dispatch_status) qs.set("dispatch_status", params.dispatch_status);
   if (params.include_deleted) qs.set("include_deleted", "true");
   const query = qs.toString();
-  return api.get<FeedbackPage>(`/api/admin/feedback${query ? `?${query}` : ""}`);
+  return api.get<FeedbackPage>(`/api/admin/feedback${query ? "?" + query : ""}`);
 };
 
 export const getAdminFeedbackDetail = (id: string) =>

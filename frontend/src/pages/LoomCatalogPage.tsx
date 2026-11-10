@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -6,12 +6,12 @@ import { WeftmarkLogo } from "@/components/WeftmarkLogo";
 import { PublicFooter } from "@/components/PublicFooter";
 import { listLoomCatalog, type LoomReferenceSummary } from "@/api/looms";
 
-function ShaftBadge({ options }: { options: number[] | null }) {
+function ShaftBadge({ options }: { readonly options: number[] | null }) {
   if (!options || options.length === 0) return <span className="text-stone-400">—</span>;
   return <span>{options.map((n) => Math.round(n)).join(" / ")}</span>;
 }
 
-function WidthBadge({ loom }: { loom: LoomReferenceSummary }) {
+function WidthBadge({ loom }: { readonly loom: LoomReferenceSummary }) {
   const cm = loom.weaving_width_options_cm ?? [];
   const inches = loom.weaving_width_options_inches ?? [];
   if (inches.length === 0 && cm.length === 0) {
@@ -27,7 +27,7 @@ function WidthBadge({ loom }: { loom: LoomReferenceSummary }) {
   return <span>{parts.join(" / ")}</span>;
 }
 
-function LoomCard({ loom }: { loom: LoomReferenceSummary }) {
+function LoomCard({ loom }: { readonly loom: LoomReferenceSummary }) {
   const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-stone-200 bg-white p-5 space-y-3 hover:border-amber-300 transition-colors">
@@ -60,7 +60,7 @@ function LoomCard({ loom }: { loom: LoomReferenceSummary }) {
         {loom.shedding_mechanism && (
           <>
             <span className="text-stone-500">{t("loomCatalogPage.shedding")}</span>
-            <span>{loom.shedding_mechanism.replace(/_/g, " ")}</span>
+            <span>{loom.shedding_mechanism.replaceAll("_", " ")}</span>
           </>
         )}
         {loom.foldable !== null && (
@@ -144,6 +144,32 @@ export function LoomCatalogPage() {
   const selectClass =
     "rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
 
+  let listContent: ReactNode;
+  if (isLoading) {
+    listContent = <div className="text-center py-16 text-stone-400">{t("loomCatalogPage.loading")}</div>;
+  } else if (looms.length === 0) {
+    listContent = (
+      <div className="text-center py-16 text-stone-400">
+        {hasFilters ? t("loomCatalogPage.noFilters") : t("loomCatalogPage.empty")}
+      </div>
+    );
+  } else {
+    listContent = (
+      <div className="space-y-8">
+        {Object.entries(grouped).map(([brand, entries]) => (
+          <section key={brand}>
+            <h2 className="text-lg font-semibold text-stone-700 mb-3">{brand}</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {entries.map((loom) => (
+                <LoomCard key={loom.id} loom={loom} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-stone-50 text-stone-900">
       <header className="border-b border-stone-200 bg-stone-50 px-6 py-4">
@@ -225,7 +251,7 @@ export function LoomCatalogPage() {
             </select>
 
             {hasFilters && (
-              <button
+              <button type="button"
                 onClick={() => {
                   setSearch("");
                   setLoomType("");
@@ -239,26 +265,7 @@ export function LoomCatalogPage() {
             )}
           </div>
 
-          {isLoading ? (
-            <div className="text-center py-16 text-stone-400">{t("loomCatalogPage.loading")}</div>
-          ) : looms.length === 0 ? (
-            <div className="text-center py-16 text-stone-400">
-              {hasFilters ? t("loomCatalogPage.noFilters") : t("loomCatalogPage.empty")}
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {Object.entries(grouped).map(([brand, entries]) => (
-                <section key={brand}>
-                  <h2 className="text-lg font-semibold text-stone-700 mb-3">{brand}</h2>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {entries.map((loom) => (
-                      <LoomCard key={loom.id} loom={loom} />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )}
+          {listContent}
         </div>
       </main>
 

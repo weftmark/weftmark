@@ -84,6 +84,15 @@ class TestUpdateSettings:
         resp = await auth_client.patch("/api/users/me", json={"measurement_system": "furlongs"})
         assert resp.status_code == 422
 
+    async def test_update_tracker_color_mode(self, auth_client: AsyncClient):
+        resp = await auth_client.patch("/api/users/me", json={"tracker_color_mode": "strip"})
+        assert resp.status_code == 200
+        assert resp.json()["tracker_color_mode"] == "strip"
+
+    async def test_invalid_tracker_color_mode_returns_422(self, auth_client: AsyncClient):
+        resp = await auth_client.patch("/api/users/me", json={"tracker_color_mode": "rainbow"})
+        assert resp.status_code == 422
+
     async def test_update_idle_timeout(self, auth_client: AsyncClient):
         resp = await auth_client.patch("/api/users/me", json={"idle_timeout_minutes": 60})
         assert resp.status_code == 200

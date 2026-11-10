@@ -39,7 +39,7 @@ def _use_test_db(monkeypatch, db_available):
     monkeypatch.setattr(settings, "postgres_port", int(os.getenv("POSTGRES_PORT", "5433")))
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_redis():
     client = MagicMock()
     client.set.return_value = True
@@ -47,7 +47,7 @@ def mock_redis():
     return client
 
 
-@pytest.fixture()
+@pytest.fixture
 def minimal_json_path(tmp_path) -> Path:
     import json
 

@@ -11,10 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuthContext } from "@/context/AuthContext";
 import { measurementSystemToUnit } from "@/lib/units";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
-  onSuccess: () => void;
-  onClose: () => void;
+  readonly onSuccess: () => void;
+  readonly onClose: () => void;
 }
 
 const today = () =>
@@ -90,6 +91,7 @@ function buildWidthOptions(ref: LoomReferenceSummary): WidthOption[] {
 }
 
 export function NewLoomModal({ onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const { user } = useAuthContext();
   const defaultUnit = measurementSystemToUnit(user?.measurement_system ?? "metric");
 
@@ -127,7 +129,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
   const treadleOptions = selectedRef?.treadle_count ?? null;
   const widthOptions = selectedRef ? buildWidthOptions(selectedRef) : [];
 
-  const mode = selectedRef ? "catalog" : manualMode ? "manual" : "searching";
+  let mode: "catalog" | "manual" | "searching" = "searching";
+  if (selectedRef) mode = "catalog";
+  else if (manualMode) mode = "manual";
   const showForm = mode === "catalog" || mode === "manual";
   const isUnsupported = !SUPPORTED_LOOM_TYPES.has(loomType);
 
@@ -179,7 +183,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
       if (ref.treadle_count?.length) {
         setNumTreadles(String(ref.treadle_count[0]));
       } else if (showsTreadles(lt)) {
-        const s = parseInt(first, 10);
+        const s = Number.parseInt(first, 10);
         setNumTreadles(String(s + 2));
       }
     }
@@ -211,23 +215,23 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
   const handleShaftOptionChange = (val: string) => {
     setNumShafts(val);
     if (!treadlesManuallySet && treadleOptions && shaftOptions) {
-      const idx = shaftOptions.indexOf(parseInt(val, 10));
+      const idx = shaftOptions.indexOf(Number.parseInt(val, 10));
       if (idx !== -1 && treadleOptions[idx] != null) {
         setNumTreadles(String(treadleOptions[idx]));
         return;
       }
     }
     if (!treadlesManuallySet && showsTreadles(loomType)) {
-      const s = parseInt(val, 10);
-      if (!isNaN(s)) setNumTreadles(String(s + 2));
+      const s = Number.parseInt(val, 10);
+      if (!Number.isNaN(s)) setNumTreadles(String(s + 2));
     }
   };
 
   const handleShaftsManual = (val: string) => {
     setNumShafts(val);
     if (loomType === "floor_loom" && !treadlesManuallySet) {
-      const s = parseInt(val, 10);
-      if (!isNaN(s)) setNumTreadles(String(s + 2));
+      const s = Number.parseInt(val, 10);
+      if (!Number.isNaN(s)) setNumTreadles(String(s + 2));
     }
   };
 
@@ -236,8 +240,8 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
     setAcknowledged(false);
     setTreadlesManuallySet(false);
     if (newType === "floor_loom") {
-      const s = parseInt(numShafts, 10);
-      if (!isNaN(s)) setNumTreadles(String(s + 2));
+      const s = Number.parseInt(numShafts, 10);
+      if (!Number.isNaN(s)) setNumTreadles(String(s + 2));
     }
   };
 
@@ -255,16 +259,16 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
         notes: notes || undefined,
         effective_date: effectiveDate,
         num_shafts:
-          showsShafts(loomType) && numShafts ? parseInt(numShafts, 10) : undefined,
+          showsShafts(loomType) && numShafts ? Number.parseInt(numShafts, 10) : undefined,
         num_treadles:
           showsTreadles(loomType) && numTreadles !== ""
-            ? parseInt(numTreadles, 10)
+            ? Number.parseInt(numTreadles, 10)
             : undefined,
         num_heddles:
-          showsHeddles(loomType) && numHeddles ? parseInt(numHeddles, 10) : undefined,
-        weaving_width: weavingWidth ? parseFloat(weavingWidth) : undefined,
+          showsHeddles(loomType) && numHeddles ? Number.parseInt(numHeddles, 10) : undefined,
+        weaving_width: weavingWidth ? Number.parseFloat(weavingWidth) : undefined,
         weaving_width_unit: weavingWidthUnit,
-        warp_waste_allowance: warpWaste ? parseFloat(warpWaste) : undefined,
+        warp_waste_allowance: warpWaste ? Number.parseFloat(warpWaste) : undefined,
         warp_waste_unit: warpWasteUnit,
       };
       await createLoom(payload);
@@ -286,8 +290,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
           {/* ── Search (visible in search and catalog modes) ── */}
           {mode !== "manual" && (
             <div ref={searchRef} className="relative">
-              <label className="mb-1 block text-sm font-medium">Find your loom</label>
+              <label htmlFor="loom-search" className="mb-1 block text-sm font-medium">Find your loom</label>
               <input
+                id="loom-search"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 value={searchQuery}
                 onChange={(e) => {
@@ -406,8 +411,8 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                       type="checkbox"
                       checked={acknowledged}
                       onChange={(e) => setAcknowledged(e.target.checked)}
-                    />
-                    I understand this loom cannot be used for project tracking
+                    />{/*
+                    */}I understand this loom cannot be used for project tracking
                   </label>
                 </div>
               )}
@@ -417,9 +422,10 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   {showsShafts(loomType) && (
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Shafts</label>
+                      <label htmlFor="loom-shafts-catalog" className="mb-1 block text-sm font-medium">Shafts</label>
                       {shaftOptions && shaftOptions.length > 1 ? (
                         <select
+                          id="loom-shafts-catalog"
                           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                           value={numShafts}
                           onChange={(e) => handleShaftOptionChange(e.target.value)}
@@ -439,7 +445,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   )}
                   {showsTreadles(loomType) && (
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Treadles</label>
+                      <span className="mb-1 block text-sm font-medium">Treadles</span>
                       <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-foreground">
                         {numTreadles}
                       </p>
@@ -451,10 +457,11 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
               {/* Heddles (rigid heddle / other) */}
               {showsHeddles(loomType) && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label htmlFor="loom-heddles-catalog" className="mb-1 block text-sm font-medium">
                     Heddles (optional)
                   </label>
                   <input
+                    id="loom-heddles-catalog"
                     type="number"
                     min={1}
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -467,11 +474,12 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
               {/* Weaving width — paired cm/in dropdown */}
               {loomType !== "inkle" && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label htmlFor="loom-width-catalog" className="mb-1 block text-sm font-medium">
                     Weaving width
                   </label>
                   {widthOptions.length > 0 ? (
                     <select
+                      id="loom-width-catalog"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                       value={weavingWidth}
                       onChange={(e) => {
@@ -492,6 +500,7 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   ) : (
                     <div className="flex gap-2">
                       <input
+                        id="loom-width-catalog"
                         type="number"
                         min={0}
                         step="0.1"
@@ -519,8 +528,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
           {mode === "manual" && (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium">Loom type</label>
+                <label htmlFor="loom-type" className="mb-1 block text-sm font-medium">Loom type</label>
                 <select
+                  id="loom-type"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   value={loomType}
                   onChange={(e) => handleTypeChange(e.target.value as LoomType)}
@@ -548,16 +558,17 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                       type="checkbox"
                       checked={acknowledged}
                       onChange={(e) => setAcknowledged(e.target.checked)}
-                    />
-                    I understand this loom cannot be used for project tracking
+                    />{/*
+                    */}I understand this loom cannot be used for project tracking
                   </label>
                 </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Manufacturer</label>
+                  <label htmlFor="loom-manufacturer" className="mb-1 block text-sm font-medium">Manufacturer</label>
                   <input
+                    id="loom-manufacturer"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={manufacturer}
                     onChange={(e) => setManufacturer(e.target.value)}
@@ -566,8 +577,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Model</label>
+                  <label htmlFor="loom-model" className="mb-1 block text-sm font-medium">Model</label>
                   <input
+                    id="loom-model"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     value={modelName}
                     onChange={(e) => setModelName(e.target.value)}
@@ -581,8 +593,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                 <div className="grid grid-cols-2 gap-3">
                   {showsShafts(loomType) && (
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Shafts</label>
+                      <label htmlFor="loom-shafts-manual" className="mb-1 block text-sm font-medium">Shafts</label>
                       <input
+                        id="loom-shafts-manual"
                         type="number"
                         min={1}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -594,8 +607,9 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   )}
                   {showsTreadles(loomType) && (
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Treadles</label>
+                      <label htmlFor="loom-treadles-manual" className="mb-1 block text-sm font-medium">Treadles</label>
                       <input
+                        id="loom-treadles-manual"
                         type="number"
                         min={0}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -610,10 +624,11 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
                   )}
                   {showsHeddles(loomType) && (
                     <div>
-                      <label className="mb-1 block text-sm font-medium">
+                      <label htmlFor="loom-heddles-manual" className="mb-1 block text-sm font-medium">
                         Heddles (optional)
                       </label>
                       <input
+                        id="loom-heddles-manual"
                         type="number"
                         min={1}
                         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -627,11 +642,12 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
 
               {loomType !== "inkle" && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label htmlFor="loom-width-manual" className="mb-1 block text-sm font-medium">
                     Weaving width (optional)
                   </label>
                   <div className="flex gap-2">
                     <input
+                      id="loom-width-manual"
                       type="number"
                       min={0}
                       step="0.1"
@@ -658,10 +674,11 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
           {showForm && (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor="loom-serial" className="mb-1 block text-sm font-medium">
                   Serial number (optional)
                 </label>
                 <input
+                  id="loom-serial"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
@@ -670,10 +687,11 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor="loom-effective-date" className="mb-1 block text-sm font-medium">
                   Configuration as of
                 </label>
                 <input
+                  id="loom-effective-date"
                   type="date"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   value={effectiveDate}
@@ -683,11 +701,12 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor="loom-warp-waste" className="mb-1 block text-sm font-medium">
                   Warp waste (optional)
                 </label>
                 <div className="flex gap-2">
                   <input
+                    id="loom-warp-waste"
                     type="number"
                     min={0}
                     step="0.1"
@@ -708,10 +727,11 @@ export function NewLoomModal({ onSuccess, onClose }: Props) {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label htmlFor="loom-notes" className="mb-1 block text-sm font-medium">
                   Notes (optional)
                 </label>
                 <textarea
+                  id="loom-notes"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}

@@ -15,6 +15,7 @@ import logging
 import uuid
 from datetime import date as date_cls
 from datetime import datetime, timezone
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
@@ -149,8 +150,10 @@ class EulaCurrentResponse(BaseModel):
     effective_date: datetime
 
 
-@eula_router.get("/current", response_model=EulaCurrentResponse)
-async def get_current_eula(db: AsyncSession = Depends(get_db)) -> EulaCurrentResponse:
+@eula_router.get("/current", responses={404: {"description": "No EULA version found"}})
+async def get_current_eula(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> EulaCurrentResponse:
     row = await db.scalar(select(EulaVersion).order_by(EulaVersion.id.desc()).limit(1))
     if not row:
         raise HTTPException(status_code=404, detail="No EULA version found")
@@ -178,69 +181,62 @@ class ActivityHeatmapResponse(BaseModel):
     years_with_activity: list[int]
 
 
-@router.get("/me", response_model=UserSettingsResponse)
+@router.get("/me")
 async def get_settings(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserSettingsResponse:
     version = await get_current_eula_version(db)
     return _to_response(current_user, version)
 
 
-@router.patch("/me", response_model=UserSettingsResponse)
-async def update_settings(
-    body: UserSettingsUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> UserSettingsResponse:
-    if body.display_name is not None:
-        name = body.display_name.strip()
-        if not name:
-            raise HTTPException(status_code=422, detail="display_name cannot be empty")
-        current_user.display_name = name
+def _validate_choice(value: object, valid: set, field_name: str) -> None:
+    if value not in valid:
+        raise HTTPException(status_code=422, detail=f"{field_name} must be one of {sorted(valid)}")
 
+
+async def _apply_ai_training_consent(current_user: User, db: AsyncSession, consent: bool) -> None:
+    current_user.ai_training_consent = consent
+    if consent:
+        return
+    shared = await db.scalars(
+        select(Draft).where(
+            Draft.owner_id == current_user.id,
+            Draft.is_shared.is_(True),
+        )
+    )
+    for draft in shared.all():
+        draft.is_shared = False
+
+
+def _apply_validated_choice_settings(body: UserSettingsUpdate, current_user: User) -> None:
     if body.theme is not None:
-        if body.theme not in _VALID_THEMES:
-            raise HTTPException(status_code=422, detail=f"theme must be one of {sorted(_VALID_THEMES)}")
+        _validate_choice(body.theme, _VALID_THEMES, "theme")
         current_user.theme = body.theme
 
     if body.activity_theme is not None:
-        if body.activity_theme not in _VALID_ACTIVITY_THEMES:
-            raise HTTPException(
-                status_code=422,
-                detail=f"activity_theme must be one of {sorted(_VALID_ACTIVITY_THEMES)}",
-            )
+        _validate_choice(body.activity_theme, _VALID_ACTIVITY_THEMES, "activity_theme")
         current_user.activity_theme = body.activity_theme
 
     if body.idle_timeout_minutes is not None:
-        if body.idle_timeout_minutes not in _VALID_IDLE_TIMEOUTS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"idle_timeout_minutes must be one of {sorted(_VALID_IDLE_TIMEOUTS)}",
-            )
+        _validate_choice(body.idle_timeout_minutes, _VALID_IDLE_TIMEOUTS, "idle_timeout_minutes")
         current_user.idle_timeout_minutes = body.idle_timeout_minutes
 
     if body.measurement_system is not None:
-        if body.measurement_system not in _VALID_MEASUREMENT_SYSTEMS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"measurement_system must be one of {sorted(_VALID_MEASUREMENT_SYSTEMS)}",
-            )
+        _validate_choice(body.measurement_system, _VALID_MEASUREMENT_SYSTEMS, "measurement_system")
         current_user.measurement_system = body.measurement_system
 
+    if body.tracker_color_mode is not None:
+        _validate_choice(body.tracker_color_mode, _VALID_COLOR_MODES, "tracker_color_mode")
+        current_user.tracker_color_mode = body.tracker_color_mode
+
+
+def _apply_passthrough_settings(body: UserSettingsUpdate, current_user: User) -> None:
     if body.show_version_numbers is not None:
         current_user.show_version_numbers = body.show_version_numbers
 
     if body.hide_unused_shafts_treadles is not None:
         current_user.hide_unused_shafts_treadles = body.hide_unused_shafts_treadles
-
-    if body.tracker_color_mode is not None:
-        if body.tracker_color_mode not in _VALID_COLOR_MODES:
-            raise HTTPException(
-                status_code=422,
-                detail=f"tracker_color_mode must be one of {sorted(_VALID_COLOR_MODES)}",
-            )
-        current_user.tracker_color_mode = body.tracker_color_mode
 
     if body.tracker_show_weft_color is not None:
         current_user.tracker_show_weft_color = body.tracker_show_weft_color
@@ -257,17 +253,24 @@ async def update_settings(
     if body.onboarding_dismissed is not None:
         current_user.onboarding_dismissed = body.onboarding_dismissed
 
+
+@router.patch("/me", responses={422: {"description": "display_name cannot be empty"}})
+async def update_settings(
+    body: UserSettingsUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> UserSettingsResponse:
+    if body.display_name is not None:
+        name = body.display_name.strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="display_name cannot be empty")
+        current_user.display_name = name
+
+    _apply_validated_choice_settings(body, current_user)
+    _apply_passthrough_settings(body, current_user)
+
     if body.ai_training_consent is not None:
-        current_user.ai_training_consent = body.ai_training_consent
-        if not body.ai_training_consent:
-            shared = await db.scalars(
-                select(Draft).where(
-                    Draft.owner_id == current_user.id,
-                    Draft.is_shared.is_(True),
-                )
-            )
-            for draft in shared.all():
-                draft.is_shared = False
+        await _apply_ai_training_consent(current_user, db, body.ai_training_consent)
 
     await db.commit()
     await db.refresh(current_user)
@@ -275,11 +278,14 @@ async def update_settings(
     return _to_response(current_user, version)
 
 
-@router.post("/me/eula", response_model=UserSettingsResponse)
+@router.post(
+    "/me/eula",
+    responses={422: {"description": "Version mismatch — current EULA is"}},
+)
 async def accept_eula(
     body: EulaAcceptRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> UserSettingsResponse:
     current_version = await get_current_eula_version(db)
     if body.version != current_version:
@@ -296,12 +302,12 @@ async def accept_eula(
     return _to_response(current_user, current_version)
 
 
-@router.delete("/me", status_code=204)
+@router.delete("/me", status_code=204, responses={422: {"description": 'confirm must be exactly "DELETE MY ACCOUNT"'}})
 async def delete_account(
     body: DeleteAccountRequest,
     response: Response,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
     if body.confirm != "DELETE MY ACCOUNT":
         raise HTTPException(
@@ -336,8 +342,8 @@ _EXPORT_COOLDOWN_HOURS = 24
 
 @router.post("/me/data-export", status_code=202)
 async def request_data_export(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ExportStatusResponse:
     """Queue a data export task. De-duplicated: one request per 24 h."""
     from datetime import timedelta
@@ -382,10 +388,10 @@ async def request_data_export(
     )
 
 
-@router.get("/me/data-export/status", response_model=ExportStatusResponse)
+@router.get("/me/data-export/status")
 async def get_export_status(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ExportStatusResponse:
     """Return the most recent export request for the current user."""
     req = await db.scalar(
@@ -405,11 +411,14 @@ async def get_export_status(
     )
 
 
-@router.get("/me/data-export/download/{request_id}")
+@router.get(
+    "/me/data-export/download/{request_id}",
+    responses={404: {"description": "Export not found"}, 410: {"description": "Export has expired"}},
+)
 async def download_data_export(
     request_id: uuid.UUID,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> StreamingResponse:
     """Stream the export archive. Auth-gated; returns 404 after expiry."""
     req = await db.get(UserExportRequest, request_id)
@@ -438,10 +447,10 @@ class OnboardingStatusResponse(BaseModel):
     has_project: bool
 
 
-@router.get("/me/onboarding-status", response_model=OnboardingStatusResponse)
+@router.get("/me/onboarding-status")
 async def get_onboarding_status(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> OnboardingStatusResponse:
     current_version = await get_current_eula_version(db)
     has_loom = await db.scalar(select(func.count()).select_from(Loom).where(Loom.owner_id == current_user.id)) or 0
@@ -457,11 +466,11 @@ async def get_onboarding_status(
     )
 
 
-@router.get("/me/activity-heatmap", response_model=ActivityHeatmapResponse)
+@router.get("/me/activity-heatmap")
 async def get_activity_heatmap(
-    year: int | None = Query(default=None),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    year: Annotated[int | None, Query()] = None,
 ) -> ActivityHeatmapResponse:
     from collections import defaultdict
 

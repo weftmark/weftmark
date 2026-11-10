@@ -4,9 +4,9 @@ import { useImpersonation } from "@/context/ImpersonationContext";
 import type { ReactNode } from "react";
 
 interface Props {
-  children: ReactNode;
-  requireAdmin?: boolean;
-  requireSuperuser?: boolean;
+  readonly children: ReactNode;
+  readonly requireAdmin?: boolean;
+  readonly requireSuperuser?: boolean;
 }
 
 export function ProtectedRoute({ children, requireAdmin = false, requireSuperuser = false }: Props) {

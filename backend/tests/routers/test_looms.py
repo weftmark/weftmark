@@ -2,6 +2,7 @@ import io
 import uuid
 from datetime import date
 
+import pytest
 from httpx import AsyncClient
 from PIL import Image
 from sqlalchemy import select
@@ -742,7 +743,7 @@ class TestReedInventory:
         resp = await auth_client.post(f"/api/looms/{loom['id']}/reeds", json={"dents_per_inch": 10})
         assert resp.status_code == 201
         data = resp.json()
-        assert data["dents_per_inch"] == 10.0
+        assert data["dents_per_inch"] == pytest.approx(10.0)
         assert data["width_cm"] is None
         assert data["label"] is None
 
@@ -754,7 +755,7 @@ class TestReedInventory:
         )
         assert resp.status_code == 201
         data = resp.json()
-        assert data["width_cm"] == 60.0
+        assert data["width_cm"] == pytest.approx(60.0)
         assert data["label"] == "Macomber 12-dent"
 
     async def test_add_reed_zero_dents_returns_400(self, auth_client: AsyncClient):
@@ -776,7 +777,7 @@ class TestReedInventory:
         looms = (await auth_client.get("/api/looms")).json()
         match = next(entry for entry in looms if entry["id"] == loom["id"])
         assert len(match["reeds"]) == 1
-        assert match["reeds"][0]["dents_per_inch"] == 10.0
+        assert match["reeds"][0]["dents_per_inch"] == pytest.approx(10.0)
 
     async def test_delete_reed_returns_204(self, auth_client: AsyncClient):
         loom = await _create_loom(auth_client)

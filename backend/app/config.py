@@ -30,6 +30,21 @@ class _ConfigFileSource(PydanticBaseSettingsSource):
             return {}
 
 
+_SCHEME_POSTGRES = "postgres://"
+_SCHEME_POSTGRESQL = "postgresql://"
+_SCHEME_POSTGRESQL_ASYNCPG = "postgresql+asyncpg://"
+# Sync engines name the driver explicitly: SQLAlchemy 2.1 maps a bare
+# postgresql:// URL to psycopg (v3), which is not installed — we ship psycopg2.
+_SCHEME_POSTGRESQL_PSYCOPG2 = "postgresql+psycopg2://"
+
+
+def _to_psycopg2_url(dsn: str) -> str:
+    """Normalise a Postgres DSN (postgres://, postgresql://, +asyncpg) to postgresql+psycopg2://."""
+    url = dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)
+    url = url.replace(_SCHEME_POSTGRESQL_ASYNCPG, _SCHEME_POSTGRESQL, 1)
+    return url.replace(_SCHEME_POSTGRESQL, _SCHEME_POSTGRESQL_PSYCOPG2, 1)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -77,8 +92,8 @@ class Settings(BaseSettings):
         if self.postgres_dsn:
             from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-            url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
-            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            url = self.postgres_dsn.replace(_SCHEME_POSTGRES, _SCHEME_POSTGRESQL, 1)
+            url = url.replace(_SCHEME_POSTGRESQL, _SCHEME_POSTGRESQL_ASYNCPG, 1)
             # asyncpg uses ssl=true/require, not libpq's sslmode=; drop channel_binding entirely
             parsed = urlparse(url)
             params: dict[str, str] = {}
@@ -89,17 +104,16 @@ class Settings(BaseSettings):
                     params[k] = v[0]
             return urlunparse(parsed._replace(query=urlencode(params)))
         return (
-            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
+            f"{_SCHEME_POSTGRESQL_ASYNCPG}{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
     @property
     def database_url_sync(self) -> str:
         if self.postgres_dsn:
-            url = self.postgres_dsn.replace("postgres://", "postgresql://", 1)
-            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+            return _to_psycopg2_url(self.postgres_dsn)
         return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"{_SCHEME_POSTGRESQL_PSYCOPG2}{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
@@ -108,10 +122,9 @@ class Settings(BaseSettings):
         """Direct (non-pooled) connection for Alembic DDL migrations."""
         dsn = self.postgres_dsn_direct or self.postgres_dsn
         if dsn:
-            url = dsn.replace("postgres://", "postgresql://", 1)
-            return url.replace("postgresql+asyncpg://", "postgresql://", 1)
+            return _to_psycopg2_url(dsn)
         return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"{_SCHEME_POSTGRESQL_PSYCOPG2}{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
@@ -207,6 +220,14 @@ class Settings(BaseSettings):
     # Generate key: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
     config_encryption_key: str = ""
     config_file_path: str = "/data/weftmark_config.json"
+
+    # System polling / health-check intervals (#1124) — admin-configurable via the
+    # Credentials tab (same encrypted-file mechanism as SMTP/S3/Neon above, just
+    # not secret), takes effect on next restart like every other field there.
+    # Defaults match the values that used to be hardcoded constants.
+    detailed_refresh_interval_s: int = 300  # /health/detailed background loop (S3/Clerk/SMTP/config/webhook)
+    postgres_probe_interval_s: int = 3600  # Postgres leg of the above — kept sparser to avoid waking Neon's autosuspend
+    scheduled_tasks_dispatch_interval_s: int = 1800  # Celery beat cadence for run_scheduled_tasks
 
     # Rendering
     render_max_width: int = 4000

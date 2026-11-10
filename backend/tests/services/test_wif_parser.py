@@ -673,7 +673,7 @@ class TestExtractMeasurements:
     def test_warp_length_inches_normalized_to_cm(self):
         result = extract_measurements(_mwif(warp="Units=Inches\nLength=100"))
         assert pytest.approx(result["warp_length"], rel=1e-4) == 254.0
-        assert result["warp_length_original"] == 100.0
+        assert pytest.approx(result["warp_length_original"]) == 100.0
         assert result["warp_length_unit"] == "in"
 
     def test_warp_length_centimeters_unchanged(self):
@@ -695,7 +695,7 @@ class TestExtractMeasurements:
     def test_warp_spacing_extracted(self):
         result = extract_measurements(_mwif(warp="Units=Inches\nSpacing=0.2"))
         assert pytest.approx(result["warp_spacing"], rel=1e-4) == 0.508
-        assert result["warp_spacing_original"] == 0.2
+        assert pytest.approx(result["warp_spacing_original"]) == 0.2
         assert result["warp_spacing_unit"] == "in"
 
     def test_weft_spacing_extracted(self):
@@ -711,7 +711,7 @@ class TestExtractMeasurements:
     def test_weft_length_inches_normalized(self):
         result = extract_measurements(_mwif(weft="Units=Inches\nLength=50"))
         assert pytest.approx(result["weft_length"], rel=1e-4) == 127.0
-        assert result["weft_length_original"] == 50.0
+        assert pytest.approx(result["weft_length_original"]) == 50.0
         assert result["weft_length_unit"] == "in"
 
     def test_weft_length_centimeters_unchanged(self):
@@ -913,7 +913,7 @@ class TestExtractWeftColorStats:
         assert len(result) == 1
         assert result[0]["hex"] == "#ff0000"
         assert result[0]["count"] == 4
-        assert result[0]["percentage"] == 100.0
+        assert pytest.approx(result[0]["percentage"]) == 100.0
 
     def test_two_colors_counts_and_percentages(self):
         result = extract_weft_color_stats(
@@ -926,7 +926,7 @@ class TestExtractWeftColorStats:
         by_hex = {r["hex"]: r for r in result}
         assert by_hex["#ff0000"]["count"] == 2
         assert by_hex["#0000ff"]["count"] == 2
-        assert by_hex["#ff0000"]["percentage"] == 50.0
+        assert pytest.approx(by_hex["#ff0000"]["percentage"]) == 50.0
 
     def test_sorted_by_count_descending(self):
         result = extract_weft_color_stats(
@@ -995,7 +995,7 @@ class TestExtractWarpColorStats:
         assert len(result) == 1
         assert result[0]["hex"] == "#ff0000"
         assert result[0]["count"] == 4
-        assert result[0]["percentage"] == 100.0
+        assert pytest.approx(result[0]["percentage"]) == 100.0
 
     def test_per_thread_colors_override_default(self):
         result = extract_warp_color_stats(

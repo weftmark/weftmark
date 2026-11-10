@@ -1165,22 +1165,63 @@ class TestAdminServices:
 
 
 # ---------------------------------------------------------------------------
-# GET /api/admin/neon-usage
+# GET /api/admin/config
 # ---------------------------------------------------------------------------
 
 
-class TestNeonUsageEndpoint:
-    async def test_returns_not_configured_by_default(self, admin_client: AsyncClient):
-        resp = await admin_client.get("/api/admin/neon-usage")
-        assert resp.status_code == 200
-        assert resp.json()["configured"] is False
+class TestConfigStateEndpoint:
+    """#1124 — the three system-interval fields, defaulting to the values that
+    used to be hardcoded constants, in the same managed-field list as SMTP/S3/Neon."""
 
-    async def test_non_admin_returns_403(self, auth_client: AsyncClient):
-        resp = await auth_client.get("/api/admin/neon-usage")
+    async def test_system_interval_fields_present_with_defaults(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/config")
+        assert resp.status_code == 200
+        fields = {f["field"]: f for f in resp.json()["fields"]}
+
+        assert fields["detailed_refresh_interval_s"]["value"] == "300"
+        assert fields["postgres_probe_interval_s"]["value"] == "3600"
+        assert fields["scheduled_tasks_dispatch_interval_s"]["value"] == "1800"
+        interval_fields = (
+            "detailed_refresh_interval_s",
+            "postgres_probe_interval_s",
+            "scheduled_tasks_dispatch_interval_s",
+        )
+        for field in interval_fields:
+            assert fields[field]["source"] == "default"
+            assert fields[field]["secret_set"] is False
+
+    async def test_admin_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/config")
         assert resp.status_code == 403
 
     async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
-        resp = await raw_client.get("/api/admin/neon-usage")
+        resp = await raw_client.get("/api/admin/config")
+        assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# GET /api/admin/neon-dashboard
+# ---------------------------------------------------------------------------
+
+
+class TestNeonDashboardEndpoint:
+    async def test_returns_not_configured_by_default(self, superuser_client: AsyncClient):
+        resp = await superuser_client.get("/api/admin/neon-dashboard")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["account"]["configured"] is False
+        assert body["project"]["configured"] is False
+
+    async def test_admin_non_superuser_returns_403(self, admin_client: AsyncClient):
+        resp = await admin_client.get("/api/admin/neon-dashboard")
+        assert resp.status_code == 403
+
+    async def test_non_admin_returns_403(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/neon-dashboard")
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_401(self, raw_client: AsyncClient):
+        resp = await raw_client.get("/api/admin/neon-dashboard")
         assert resp.status_code == 401
 
 
@@ -2182,3 +2223,73 @@ class TestSandbox:
     async def test_sentry_test_requires_auth(self, client: AsyncClient):
         resp = await client.post("/api/admin/sandbox/sentry-test")
         assert resp.status_code in (401, 403)
+
+
+class TestDbInfo:
+    """GET /api/admin/db-info — migration revision + alembic_meta tracking values."""
+
+    @pytest.fixture
+    async def alembic_version(self, db_session: AsyncSession):
+        """The test schema is built with create_all, so alembic_version doesn't exist — create it."""
+        from sqlalchemy import text
+
+        await db_session.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL)"))
+        await db_session.execute(text("DELETE FROM alembic_version"))
+        await db_session.execute(text("INSERT INTO alembic_version (version_num) VALUES ('abc123')"))
+        await db_session.commit()
+        yield "abc123"
+        await db_session.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        await db_session.commit()
+
+    async def test_returns_revision_and_meta(
+        self, admin_client: AsyncClient, db_session: AsyncSession, alembic_version
+    ):
+        from app.models.alembic_meta import AlembicMeta
+
+        db_session.add_all(
+            [
+                AlembicMeta(key="last_squash_at", value="2026-05-27"),
+                AlembicMeta(key="last_migrated_at", value="2026-11-08T12:00:00Z"),
+                AlembicMeta(key="unrelated_key", value="ignored"),
+            ]
+        )
+        await db_session.commit()
+
+        resp = await admin_client.get("/api/admin/db-info")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["revision"] == "abc123"
+        assert body["last_squash_at"] == "2026-05-27"
+        assert body["last_migrated_at"] == "2026-11-08T12:00:00Z"
+        assert isinstance(body["is_at_head"], bool)
+
+    async def test_missing_meta_rows_are_null(self, admin_client: AsyncClient, alembic_version):
+        resp = await admin_client.get("/api/admin/db-info")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["last_squash_at"] is None
+        assert body["last_migrated_at"] is None
+
+    async def test_non_admin_forbidden(self, auth_client: AsyncClient):
+        resp = await auth_client.get("/api/admin/db-info")
+        assert resp.status_code == 403
+
+
+class TestAdminWorkerVersionHelper:
+    """app.routers.admin._worker_version — reads the Celery worker version key from Redis."""
+
+    @pytest.mark.parametrize("stored, expected", [(b"0.216.10", "0.216.10"), ("0.216.11", "0.216.11"), (None, None)])
+    async def test_decodes_bytes_and_passes_str(self, stored, expected):
+        from app.routers.admin import _worker_version
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=stored)
+        mock_client.aclose = AsyncMock()
+        with patch("redis.asyncio.from_url", return_value=mock_client):
+            assert await _worker_version() == expected
+
+    async def test_returns_none_when_redis_unavailable(self):
+        from app.routers.admin import _worker_version
+
+        with patch("redis.asyncio.from_url", side_effect=Exception("connection refused")):
+            assert await _worker_version() is None

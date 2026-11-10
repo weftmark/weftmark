@@ -3,16 +3,18 @@ import {
   updateLoom, type LoomDetail, type UpdateLoomPayload, type LoomType, LOOM_TYPE_LABELS, SUPPORTED_LOOM_TYPES,
 } from "@/api/looms";
 import { Button } from "@/components/ui/button";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
-  loom: LoomDetail;
-  onSuccess: (updated: LoomDetail) => void;
-  onClose: () => void;
+  readonly loom: LoomDetail;
+  readonly onSuccess: (updated: LoomDetail) => void;
+  readonly onClose: () => void;
 }
 
 const LOOM_TYPES: LoomType[] = ["floor_loom", "table_loom", "rigid_heddle", "inkle", "dobby_floor_loom", "tapestry_loom", "rug_loom", "frame_loom", "other"];
 
 export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
+  useEscapeKey(onClose);
   const [loomType, setLoomType] = useState<LoomType>(loom.loom_type);
   const [manufacturer, setManufacturer] = useState(loom.manufacturer);
   const [modelName, setModelName] = useState(loom.model_name);
@@ -37,7 +39,7 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
         model_name: modelName,
         serial_number: serialNumber || undefined,
         purchase_date: purchaseDate || undefined,
-        purchase_price: purchasePrice ? parseFloat(String(purchasePrice)) : undefined,
+        purchase_price: purchasePrice ? Number.parseFloat(String(purchasePrice)) : undefined,
         vendor: vendor || undefined,
         notes: notes || undefined,
       };
@@ -57,8 +59,9 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Loom type</label>
+            <label htmlFor="edit-loom-type" className="mb-1 block text-sm font-medium">Loom type</label>
             <select
+              id="edit-loom-type"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={loomType}
               onChange={(e) => setLoomType(e.target.value as LoomType)}
@@ -78,8 +81,9 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium">Manufacturer</label>
+              <label htmlFor="edit-loom-manufacturer" className="mb-1 block text-sm font-medium">Manufacturer</label>
               <input
+                id="edit-loom-manufacturer"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 value={manufacturer}
                 onChange={(e) => setManufacturer(e.target.value)}
@@ -87,8 +91,9 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Model</label>
+              <label htmlFor="edit-loom-model" className="mb-1 block text-sm font-medium">Model</label>
               <input
+                id="edit-loom-model"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
@@ -98,8 +103,9 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Serial number</label>
+            <label htmlFor="edit-loom-serial" className="mb-1 block text-sm font-medium">Serial number</label>
             <input
+              id="edit-loom-serial"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value)}
@@ -111,8 +117,9 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
             <legend className="text-sm font-medium text-muted-foreground">Purchase info</legend>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-sm font-medium">Purchase date</label>
+                <label htmlFor="edit-loom-purchase-date" className="mb-1 block text-sm font-medium">Purchase date</label>
                 <input
+                  id="edit-loom-purchase-date"
                   type="date"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   value={purchaseDate}
@@ -120,8 +127,9 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Purchase price</label>
+                <label htmlFor="edit-loom-purchase-price" className="mb-1 block text-sm font-medium">Purchase price</label>
                 <input
+                  id="edit-loom-purchase-price"
                   type="number"
                   min={0}
                   step="0.01"
@@ -133,8 +141,9 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium">Purchased from</label>
+              <label htmlFor="edit-loom-vendor" className="mb-1 block text-sm font-medium">Purchased from</label>
               <input
+                id="edit-loom-vendor"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                 value={vendor}
                 onChange={(e) => setVendor(e.target.value)}
@@ -144,8 +153,9 @@ export function EditLoomModal({ loom, onSuccess, onClose }: Props) {
           </fieldset>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Notes</label>
+            <label htmlFor="edit-loom-notes" className="mb-1 block text-sm font-medium">Notes</label>
             <textarea
+              id="edit-loom-notes"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
