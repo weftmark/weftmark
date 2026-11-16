@@ -3,9 +3,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.7",
   "version": 1,
-  "serialNumber": "urn:uuid:50a3205a-1011-4189-8913-cfe667d9748f",
+  "serialNumber": "urn:uuid:58a002ac-d31c-4d2d-a123-b4211248406c",
   "metadata": {
-    "timestamp": "2026-11-10T13:10:15.446Z",
+    "timestamp": "2026-11-16T10:48:07.482Z",
     "tools": {
       "components": [
         {
@@ -17,7 +17,7 @@
           "type": "application",
           "name": "cyclonedx-npm",
           "group": "@cyclonedx",
-          "version": "7.0.0",
+          "version": "7.0.1",
           "author": "Jan Kowalleck",
           "description": "Create CycloneDX Software Bill of Materials (SBOM) from NPM projects.",
           "licenses": [
@@ -59,7 +59,7 @@
           "type": "library",
           "name": "cyclonedx-library",
           "group": "@cyclonedx",
-          "version": "10.5.0",
+          "version": "10.5.1",
           "author": "Jan Kowalleck",
           "description": "Core functionality of CycloneDX for JavaScript (Node.js or WebBrowser).",
           "licenses": [
