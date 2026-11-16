@@ -72,7 +72,7 @@
   {
     "License": "MIT",
     "Name": "annotated-doc",
-    "Version": "0.0.5"
+    "Version": "0.0.6"
   },
   {
     "License": "MIT",
@@ -280,9 +280,9 @@
     "Version": "1.1.0"
   },
   {
-    "License": "BSD License",
+    "License": "BSD-3-Clause",
     "Name": "jsonpointer",
-    "Version": "3.10"
+    "Version": "3.12"
   },
   {
     "License": "MIT",
@@ -317,7 +317,7 @@
   {
     "License": "MIT License",
     "Name": "markdown-it-py",
-    "Version": "4.2.0"
+    "Version": "4.3.0"
   },
   {
     "License": "Apache-2.0",
