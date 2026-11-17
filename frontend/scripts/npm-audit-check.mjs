@@ -10,9 +10,17 @@
  * failing again automatically, even with the ID still listed — so an
  * allowlist entry can't accidentally suppress a fixable vulnerability
  * forever. See #1089.
+ *
+ * Exception: npm sometimes reports `fixAvailable: true` when no fix can
+ * actually be applied (e.g. a parent pins an old major and `npm audit fix`
+ * changes nothing). An entry may set `ignoreFixAvailable: true` to keep it
+ * suppressed in that case, but then MUST set `recheckBy: "YYYY-MM-DD"`.
+ * After that date the entry expires regardless, so it still can't silence
+ * an advisory forever — someone has to re-verify and move the date.
  */
 
 import { execSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 const ALLOWLIST = {
   "GHSA-qwww-vcr4-c8h2": {
@@ -27,6 +35,11 @@ const ALLOWLIST = {
       "without regressing those.",
   },
   "GHSA-mrhx-c7xc-m3w5": {
+    // npm reports fixAvailable: true here, but @codecov/bundler-plugin-core
+    // 2.0.1 still requires zod ^3, no patched 3.x exists, and `npm audit fix`
+    // leaves zod unchanged — the "fix" is not real. See #896.
+    ignoreFixAvailable: true,
+    recheckBy: "2027-02-15",
     reason:
       "Zod memory exhaustion on oversized constrained collections (fixed in " +
       "zod 4.6.6). zod is a dev-only transitive dependency here: it is " +
@@ -37,6 +50,15 @@ const ALLOWLIST = {
       "forcing zod 4 would break the codecov plugin. Revisit once " +
       "@codecov/bundler-plugin-core supports zod >=4.6.6.",
   },
+  "GHSA-fc5q-39xc-vjpf": {
+    reason:
+      "picomatch ReDoS via repeated extglobs. No patched release exists " +
+      "(affects <=4.0.7, the latest). picomatch is dev-only here, pulled in " +
+      "by vite and tinyglobby to match build-config glob patterns that we " +
+      "author — no user input reaches it, and it is not in the shipped " +
+      "bundle. npm's suggested fix (vite@6.2.7) is a two-major downgrade. " +
+      "Expires automatically once a fixed picomatch is published.",
+  },
 };
 
 const SEVERITY_GATE = ["high", "critical"];
@@ -46,7 +68,7 @@ function extractGhsaId(url) {
   return m ? m[1] : null;
 }
 
-function fixIsSafe(fixAvailable) {
+export function fixIsSafe(fixAvailable) {
   // true (boolean) => a fix exists with no major-bump flag => safe.
   // object with isSemVerMajor === false => safe, non-breaking fix exists.
   // false, or object with isSemVerMajor === true => no safe fix yet.
@@ -57,6 +79,29 @@ function fixIsSafe(fixAvailable) {
   return false;
 }
 
+/**
+ * Decide whether an allowlisted advisory stays suppressed.
+ * Returns { suppressed: boolean, reason: string }.
+ */
+export function evaluateAllowlistEntry(entry, fixAvailable, today = new Date()) {
+  if (!entry) return { suppressed: false, reason: "not in allowlist" };
+  if (entry.ignoreFixAvailable) {
+    if (!entry.recheckBy || !/^\d{4}-\d{2}-\d{2}$/.test(entry.recheckBy)) {
+      return { suppressed: false, reason: "ignoreFixAvailable requires a recheckBy date (YYYY-MM-DD)" };
+    }
+    const todayStr = today.toISOString().slice(0, 10);
+    if (todayStr > entry.recheckBy) {
+      return { suppressed: false, reason: `recheckBy ${entry.recheckBy} has passed — re-verify and update the entry` };
+    }
+    return { suppressed: true, reason: "allowlisted (npm fixAvailable ignored until recheckBy)" };
+  }
+  if (fixIsSafe(fixAvailable)) {
+    return { suppressed: false, reason: "a safe fix is now available — allowlist entry expired" };
+  }
+  return { suppressed: true, reason: "allowlisted, no safe fix yet" };
+}
+
+function main() {
 let raw;
 try {
   raw = execSync("npm audit --json", { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 });
@@ -83,11 +128,9 @@ for (const vuln of Object.values(vulnerabilities)) {
     if (!SEVERITY_GATE.includes(advisory.severity)) continue;
 
     const ghsaId = extractGhsaId(advisory.url);
-    const allowed = ghsaId && ALLOWLIST[ghsaId];
+    const verdict = evaluateAllowlistEntry(ghsaId ? ALLOWLIST[ghsaId] : undefined, vuln.fixAvailable);
 
-    if (allowed && !fixIsSafe(vuln.fixAvailable)) {
-      continue; // covered by the allowlist, and no safe fix exists yet
-    }
+    if (verdict.suppressed) continue;
 
     unresolved.push({
       package: vuln.name,
@@ -95,7 +138,7 @@ for (const vuln of Object.values(vulnerabilities)) {
       title: advisory.title,
       url: advisory.url,
       ghsaId,
-      reasonSkippedAllowlist: allowed ? "a safe fix is now available — allowlist entry expired" : "not in allowlist",
+      reasonSkippedAllowlist: verdict.reason,
     });
   }
 }
@@ -112,3 +155,8 @@ if (unresolved.length > 0) {
 
 const allowedCount = Object.keys(ALLOWLIST).length;
 console.log(`npm-audit-check: no unresolved high/critical findings (${allowedCount} allowlisted advisory tracked, still unfixable).`);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main();
+}
