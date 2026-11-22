@@ -8,10 +8,10 @@
     "report": "playwright show-report"
   },
   "devDependencies": {
-    "@playwright/test": "^1.65.0",
+    "@playwright/test": "^1.65.1",
     "dotenv": "^18.0.10"
   },
   "dependencies": {
-    "@clerk/testing": "^2.2.56"
+    "@clerk/testing": "^2.3.4"
   }
 }
