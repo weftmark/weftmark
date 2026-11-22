@@ -28,7 +28,9 @@ ENV VITE_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=$VITE_CLERK_SIGN_UP_FALLBACK_REDIRE
 
 RUN npm run build
 
-FROM nginx:alpine
+# Pinned by version + digest (reproducible). Dependabot (docker, /frontend) refreshes the digest
+# on same-version rebuilds and bumps stable releases; mainline (odd) minors are ignored.
+FROM nginx:1.30.7-alpine@sha256:caf4e1e032a20f9c3c5e28fc7f25ffd768ad8677b4975c54193075997b3a97e3
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY docker-entrypoint.sh /docker-entrypoint.sh
