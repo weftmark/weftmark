@@ -25,7 +25,11 @@ RUN node -e " \
   } \
 "
 
-FROM nginx:alpine
+# Pinned by version + digest so the shipped image is reproducible. Dependabot (docker, /errors)
+# bumps the digest when the same version is rebuilt (Alpine/nginx CVE fixes) and the tag when
+# a new stable release ships; odd (mainline) minors are ignored in .github/dependabot.yml.
+# A merge to dev that touches errors/ publishes :dev-latest (publish-error-container.yml).
+FROM nginx:1.30.7-alpine@sha256:caf4e1e032a20f9c3c5e28fc7f25ffd768ad8677b4975c54193075997b3a97e3
 COPY --from=build /build/errors/404.html /usr/share/nginx/html/
 COPY --from=build /build/errors/500.html /usr/share/nginx/html/
 COPY errors/nginx.conf /etc/nginx/conf.d/default.conf

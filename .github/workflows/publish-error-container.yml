@@ -1,10 +1,21 @@
 name: Publish Error Container
 
-# Manual trigger only — builds and publishes the nginx error/maintenance
-# container to ghcr.io. Gated by branch, confirmation, syntax check,
-# and Trivy CVE scan before any image is pushed.
+# Builds and publishes the nginx error/maintenance container to ghcr.io.
+# Gated by branch, confirmation (manual runs), syntax check, and Trivy CVE
+# scan before any image is pushed.
+#
+# Triggers:
+#   workflow_dispatch  manual, dev or prod (prod only from main).
+#   push to dev        automatic dev publish when errors/ changes, e.g. a
+#                      Dependabot nginx digest bump. Pushes :dev-auto-<run>
+#                      and :dev-latest; Komodo auto-update on vm03 then
+#                      redeploys weftmark-errors by the next morning.
 
 on:
+  push:
+    branches: [dev]
+    paths:
+      - "errors/**"
   workflow_dispatch:
     inputs:
       tag:
@@ -24,6 +35,10 @@ on:
         required: true
         default: false
 
+env:
+  PUBLISH_ENV: ${{ inputs.environment || 'dev' }}
+  PUBLISH_TAG: ${{ inputs.tag || format('auto-{0}', github.run_number) }}
+
 jobs:
 
   gate-check:
@@ -32,7 +47,7 @@ jobs:
     permissions: {}
     steps:
       - name: Check confirmation
-        if: ${{ !inputs.confirm }}
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.confirm }}
         run: |
           echo "::error::Publish cancelled — confirm checkbox was not checked."
           exit 1
@@ -40,7 +55,7 @@ jobs:
       - name: Check branch gate
         run: |
           REF="${{ github.ref_name }}"
-          ENV="${{ inputs.environment }}"
+          ENV="${PUBLISH_ENV}"
           if [[ "$ENV" == "prod" && "$REF" != "main" ]]; then
             echo "::error::Production publish must be run from main (got: $REF)"
             exit 1
@@ -96,9 +111,9 @@ jobs:
       - name: Compute image tags
         id: tags
         run: |
-          TAGS="ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-${{ inputs.tag }}"
-          TAGS="${TAGS},ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-latest"
-          if [[ "${{ inputs.environment }}" == "prod" ]]; then
+          TAGS="ghcr.io/weftmark/weftmark-errors:${PUBLISH_ENV}-${PUBLISH_TAG}"
+          TAGS="${TAGS},ghcr.io/weftmark/weftmark-errors:${PUBLISH_ENV}-latest"
+          if [[ "${PUBLISH_ENV}" == "prod" ]]; then
             TAGS="${TAGS},ghcr.io/weftmark/weftmark-errors:latest"
           fi
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
@@ -126,11 +141,11 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| **Environment** | \`${{ inputs.environment }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| **Tag** | \`${{ inputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| **Images pushed** | \`ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-${{ inputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| | \`ghcr.io/weftmark/weftmark-errors:${{ inputs.environment }}-latest\` |" >> "$GITHUB_STEP_SUMMARY"
-          if [[ "${{ inputs.environment }}" == "prod" ]]; then
+          echo "| **Environment** | \`${{ env.PUBLISH_ENV }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Tag** | \`${{ env.PUBLISH_TAG }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Images pushed** | \`ghcr.io/weftmark/weftmark-errors:${{ env.PUBLISH_ENV }}-${{ env.PUBLISH_TAG }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | \`ghcr.io/weftmark/weftmark-errors:${{ env.PUBLISH_ENV }}-latest\` |" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${PUBLISH_ENV}" == "prod" ]]; then
             echo "| | \`ghcr.io/weftmark/weftmark-errors:latest\` |" >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "| **Digest** | \`${{ needs.build-scan-push.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
