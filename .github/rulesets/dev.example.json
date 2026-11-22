@@ -4,7 +4,9 @@
   "enforcement": "active",
   "conditions": {
     "ref_name": {
-      "include": ["refs/heads/dev"],
+      "include": [
+        "refs/heads/dev"
+      ],
       "exclude": []
     }
   },
@@ -20,26 +22,76 @@
       "parameters": {
         "required_approving_review_count": 0,
         "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
         "require_code_owner_review": false,
+        "dismissal_restriction": {
+          "enabled": false,
+          "allowed_actors": []
+        },
         "require_last_push_approval": false,
-        "required_review_thread_resolution": false
+        "required_review_thread_resolution": false,
+        "require_extra_approval_for_unattributed_changes": true,
+        "allowed_merge_methods": [
+          "merge",
+          "squash",
+          "rebase"
+        ]
       }
     },
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": false,
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "Runner smoke test",                          "integration_id": null },
-          { "context": "Backend lint (ruff)",                        "integration_id": null },
-          { "context": "Frontend lint (eslint)",                     "integration_id": null },
-          { "context": "Frontend type check (tsc)",                  "integration_id": null },
-          { "context": "Backend tests (pytest)",                     "integration_id": null },
-          { "context": "Alembic migration smoke test",               "integration_id": null },
-          { "context": "Dependency audit — backend (pip-audit)",     "integration_id": null },
-          { "context": "Dependency audit — frontend (npm audit)",    "integration_id": null },
-          { "context": "Docker build — backend",                     "integration_id": null },
-          { "context": "Docker build — frontend",                    "integration_id": null }
+          {
+            "context": "Backend lint (ruff)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Backend type check (mypy)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Semgrep semantic analysis",
+            "integration_id": 15368
+          },
+          {
+            "context": "Backend security scan (bandit)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Frontend lint (eslint)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Frontend type check (tsc)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Backend tests (pytest)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Alembic migration smoke test",
+            "integration_id": 15368
+          },
+          {
+            "context": "Dependency audit — backend (pip-audit)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Dependency audit — frontend (npm audit)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Docker build — backend",
+            "integration_id": 15368
+          },
+          {
+            "context": "Docker build — frontend",
+            "integration_id": 15368
+          }
         ]
       }
     }
@@ -47,8 +99,12 @@
   "_notes": [
     "TODO: add 'required_deployments' rule once deployment environments are configured in GitHub Settings → Environments"
   ],
-
   "bypass_actors": [
+    {
+      "actor_id": null,
+      "actor_type": "OrganizationAdmin",
+      "bypass_mode": "pull_request"
+    },
     {
       "actor_id": YOUR_WEFTMARK_BOT_INSTALLATION_ID,
       "actor_type": "Integration",
