@@ -3,9 +3,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.7",
   "version": 1,
-  "serialNumber": "urn:uuid:2eb725f8-02ae-4697-b67f-c16e7d71b667",
+  "serialNumber": "urn:uuid:2380edac-6973-4495-af0e-9aae081139bc",
   "metadata": {
-    "timestamp": "2026-11-16T13:08:39.199Z",
+    "timestamp": "2026-11-22T23:17:04.321Z",
     "tools": {
       "components": [
         {
@@ -219,8 +219,8 @@
       "type": "library",
       "name": "react",
       "group": "@sentry",
-      "version": "11.12.0",
-      "bom-ref": "weaving-site@0.216.12|@sentry/react@11.12.0",
+      "version": "11.15.0",
+      "bom-ref": "weaving-site@0.216.12|@sentry/react@11.15.0",
       "author": "Sentry",
       "description": "Official Sentry SDK for React.js",
       "licenses": [
@@ -231,7 +231,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/react@11.12.0",
+      "purl": "pkg:npm/%40sentry/react@11.15.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -249,12 +249,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/react/-/react-11.12.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/react/-/react-11.15.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "b4daf6cb27e3fffed6ae7d2c7286ae47c0fd146f773d64913d06a45aebe55571885c4031fe9c1590e8d660a503d57872a3c1dbbeee5fe9d750d3e4adb0bdf3cb"
+              "content": "3d1a3bd6466ec4666dbadab93927369007e91ee27e7003fd71fd0185cda3af7c27463327c3df265473e9a659af9b0b5bbad99d7e18d9ec91bad2c8197383e096"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -330,8 +330,8 @@
       "type": "library",
       "name": "react-query",
       "group": "@tanstack",
-      "version": "5.107.1",
-      "bom-ref": "weaving-site@0.216.12|@tanstack/react-query@5.107.1",
+      "version": "5.108.1",
+      "bom-ref": "weaving-site@0.216.12|@tanstack/react-query@5.108.1",
       "author": "tannerlinsley",
       "description": "Hooks for managing, caching and syncing asynchronous and remote data in React",
       "licenses": [
@@ -342,7 +342,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40tanstack/react-query@5.107.1",
+      "purl": "pkg:npm/%40tanstack/react-query@5.108.1",
       "externalReferences": [
         {
           "url": "git+https://github.com/TanStack/query.git#packages/react-query",
@@ -360,12 +360,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.107.1.tgz",
+          "url": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.108.1.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "b9d08e38ba7764085e52b2072c27be65981eea7af6654ac631259c0ae5ec8d8d417f625e784d3da31b2df7b3c82e2098e8df31a3fedb228dc7bf3d77ce1d3a14"
+              "content": "f3fa7b7e921d99488a22e910e5d740314512282ed9f0272050e051dabdd6a91bcc83d2f37380977a815c8637c04cabea8b6dd2c9816f7ac0dd3942ebbf2ba736"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -640,8 +640,8 @@
       "type": "library",
       "name": "eslint-plugin",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/eslint-plugin@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/eslint-plugin@8.73.0",
       "description": "TypeScript plugin for ESLint",
       "licenses": [
         {
@@ -651,7 +651,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/eslint-plugin@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/eslint-plugin@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/eslint-plugin",
@@ -669,12 +669,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "db6d8f2855ca8a1985a62fe94b99e3a0181d02ab0f863dbf1819856eb370f13abc8041bd4affa44a5285cb8bb6abe989bfd6732603361a4bff6d4cd1670670e6"
+              "content": "524ca03057abe776339f6f4c0981531dfdf88465dfe4a26188359f226d6d5ed5d1af29b5092ea5e47f58df20ad3d60a1a42d3f7fddc7f3c81d8fcb4dd1d77893"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -699,8 +699,8 @@
       "type": "library",
       "name": "parser",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/parser@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/parser@8.73.0",
       "description": "An ESLint custom parser which leverages TypeScript ESTree",
       "licenses": [
         {
@@ -710,7 +710,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/parser@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/parser@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/parser",
@@ -728,12 +728,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "9653fe4f562e24e2e5c447223fa3b2406b73e52331ca7fbd2c0d81bd9c394664e81956b5cb86de1035502fa1a37bb4f9585621d7d5911230c237d12fe209b900"
+              "content": "02e2f8e5b55c9acb077d9dc38b772cf50d25e20066e19155ac9390104ed5a6a5be3d5810684c12c1acf3e1354888569b5e493a539d44a6b603c2ac3e1d1f1e3f"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -923,8 +923,8 @@
     {
       "type": "library",
       "name": "dompurify",
-      "version": "3.4.17",
-      "bom-ref": "weaving-site@0.216.12|dompurify@3.4.17",
+      "version": "3.4.18",
+      "bom-ref": "weaving-site@0.216.12|dompurify@3.4.18",
       "author": "Dr.-Ing. Mario Heiderich, Cure53",
       "description": "DOMPurify is a DOM-only, super-fast, uber-tolerant XSS sanitizer for HTML, MathML and SVG. It runs as JavaScript and works in all modern browsers, as well as in Node.js (via jsdom). DOMPurify is written by security people who have vast background in web attacks and XSS. Fear not.",
       "licenses": [
@@ -933,7 +933,7 @@
           "acknowledgement": "declared"
         }
       ],
-      "purl": "pkg:npm/dompurify@3.4.17",
+      "purl": "pkg:npm/dompurify@3.4.18",
       "externalReferences": [
         {
           "url": "git://github.com/cure53/DOMPurify.git",
@@ -951,12 +951,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.17.tgz",
+          "url": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.18.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "07fa52958547439f24a88483ff20e3b89d727f3237e26d60178940a1dd9bc1246188de0ae429771fc01fee1a81d8f9932fdd75b5d12e7679d79f9167851a33d3"
+              "content": "a1f7b7c08fee366ebc1c89c005814962a431470d4468a02335dac554aaa3518f9466eaef35dd8bfc7b907b4f7bb3fe118af5a26723fab53edaa13f1ab637e1c2"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1030,8 +1030,8 @@
     {
       "type": "library",
       "name": "eslint",
-      "version": "10.14.0",
-      "bom-ref": "weaving-site@0.216.12|eslint@10.14.0",
+      "version": "10.15.0",
+      "bom-ref": "weaving-site@0.216.12|eslint@10.15.0",
       "author": "Nicholas C. Zakas",
       "description": "An AST-based pattern checker for JavaScript.",
       "licenses": [
@@ -1042,7 +1042,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/eslint@10.14.0",
+      "purl": "pkg:npm/eslint@10.15.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/eslint/eslint.git",
@@ -1060,12 +1060,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/eslint/-/eslint-10.14.0.tgz",
+          "url": "https://registry.npmjs.org/eslint/-/eslint-10.15.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "4f4a4db3191bf482a6b508e1a4adddee758ea45bfe607b8c6d326749532841b945d289ef5df12baeda785758c7b6c40f6a7edd29a1950f4ab55825e7ccc177d4"
+              "content": "fb95a0e29fb37b7b06d5612b62050eff71f521021f141ca6554034168fd74de04e2d2e9440851e929489f2c751927eceef08e1f386f9e70feba2a6af1f669272"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1090,7 +1090,7 @@
           "type": "library",
           "name": "eslint-visitor-keys",
           "version": "5.0.1",
-          "bom-ref": "weaving-site@0.216.12|eslint@10.14.0|eslint-visitor-keys@5.0.1",
+          "bom-ref": "weaving-site@0.216.12|eslint@10.15.0|eslint-visitor-keys@5.0.1",
           "author": "Toru Nagashima",
           "description": "Constants and utilities about visitor keys to traverse AST.",
           "licenses": [
@@ -1149,7 +1149,7 @@
           "type": "library",
           "name": "ignore",
           "version": "5.3.2",
-          "bom-ref": "weaving-site@0.216.12|eslint@10.14.0|ignore@5.3.2",
+          "bom-ref": "weaving-site@0.216.12|eslint@10.15.0|ignore@5.3.2",
           "author": "kael",
           "description": "Ignore is a manager and filter for .gitignore rules, the one used by eslint, gitbook and many others.",
           "licenses": [
@@ -1209,8 +1209,8 @@
     {
       "type": "library",
       "name": "i18next",
-      "version": "27.1.1",
-      "bom-ref": "weaving-site@0.216.12|i18next@27.1.1",
+      "version": "27.2.2",
+      "bom-ref": "weaving-site@0.216.12|i18next@27.2.2",
       "author": "Jan Mühlemann",
       "description": "i18next internationalization framework",
       "licenses": [
@@ -1221,7 +1221,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/i18next@27.1.1",
+      "purl": "pkg:npm/i18next@27.2.2",
       "externalReferences": [
         {
           "url": "git+https://github.com/i18next/i18next.git",
@@ -1239,12 +1239,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/i18next/-/i18next-27.1.1.tgz",
+          "url": "https://registry.npmjs.org/i18next/-/i18next-27.2.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "42adda262cd2dd15d0df472b871f412902eb1e86ba18aa60ace263559f6f823dc407101d76b9957c3354ac03314948a6c3925cfa57784926540337f5ab89c6c9"
+              "content": "d7f009833fdba44fd82fab6a7a4425640cc38649ab5016e053cf97a27fcbc2fe9ce56758bb2159f666fce8e55f4760b65ee8d40d3ed1cf6dd875aab897df3594"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1264,8 +1264,8 @@
     {
       "type": "library",
       "name": "lucide-react",
-      "version": "1.72.0",
-      "bom-ref": "weaving-site@0.216.12|lucide-react@1.72.0",
+      "version": "1.76.0",
+      "bom-ref": "weaving-site@0.216.12|lucide-react@1.76.0",
       "author": "Eric Fennis",
       "description": "A Lucide icon library package for React applications.",
       "licenses": [
@@ -1276,7 +1276,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/lucide-react@1.72.0",
+      "purl": "pkg:npm/lucide-react@1.76.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/lucide-icons/lucide.git#packages/lucide-react",
@@ -1294,12 +1294,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.72.0.tgz",
+          "url": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.76.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "7db1798b5194f063831136b743bad7aab26b731de23d8ad0b71b61a26d74df31b1f99d011b0298016f6cfbde37e6885827b8509b46afd0fa1972a235091c0dae"
+              "content": "c11547b765dfeb81979dd078ad0398f7edd6cbda09e7d1c3318bfabf0853d21a52c14c50846fd133d6228e73a6be6210f9523f9fed55fc529dea03f85cbd9a05"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1416,8 +1416,8 @@
     {
       "type": "library",
       "name": "react-i18next",
-      "version": "18.0.1",
-      "bom-ref": "weaving-site@0.216.12|react-i18next@18.0.1",
+      "version": "18.0.3",
+      "bom-ref": "weaving-site@0.216.12|react-i18next@18.0.3",
       "author": "Jan Mühlemann",
       "description": "Internationalization for react done right. Using the i18next i18n ecosystem.",
       "licenses": [
@@ -1428,7 +1428,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/react-i18next@18.0.1",
+      "purl": "pkg:npm/react-i18next@18.0.3",
       "externalReferences": [
         {
           "url": "git+https://github.com/i18next/react-i18next.git",
@@ -1446,12 +1446,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/react-i18next/-/react-i18next-18.0.1.tgz",
+          "url": "https://registry.npmjs.org/react-i18next/-/react-i18next-18.0.3.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "90f59723413f96b3e3dfefee99c28dcd86559d698479d2e26a63330c81df6ecfb900d7facb3be566c8caa2ef1fee468691f30c0cb21905e8d5fb86923750b207"
+              "content": "4bce2bb55b9a2ae891b6808eb296c611a0e516391af8abcafc0e5808eaf82d0e355c5de224eac9e6ba904c3fe324715551fe97d62e1930de4f186829cfc34dea"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -1471,8 +1471,8 @@
     {
       "type": "library",
       "name": "react-router-dom",
-      "version": "7.18.5",
-      "bom-ref": "weaving-site@0.216.12|react-router-dom@7.18.5",
+      "version": "7.18.6",
+      "bom-ref": "weaving-site@0.216.12|react-router-dom@7.18.6",
       "author": "Remix Software",
       "description": "Declarative routing for React web applications",
       "licenses": [
@@ -1483,7 +1483,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/react-router-dom@7.18.5",
+      "purl": "pkg:npm/react-router-dom@7.18.6",
       "externalReferences": [
         {
           "url": "git+https://github.com/remix-run/react-router.git#packages/react-router-dom",
@@ -1501,12 +1501,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/react-router-dom/-/react-router-dom-7.18.5.tgz",
+          "url": "https://registry.npmjs.org/react-router-dom/-/react-router-dom-7.18.6.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "f4771f0cc53a249fdfa7a8096581b0344e919275464b89018c7d4790dc3de7d982262ef44d5c1d8a9416bf6144a25f6e1a98be4994c5b55a493ed1107dac9e3b"
+              "content": "6bc27316c284637118f502fbb784f56f53a1b98d278047f03335d036004eff672e216f74dbc25b56adee936aca9e32eb79dcdc2280ca2f352482e22ae9f9e414"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2014,8 +2014,8 @@
       "type": "library",
       "name": "browser",
       "group": "@sentry",
-      "version": "11.12.0",
-      "bom-ref": "weaving-site@0.216.12|@sentry/browser@11.12.0",
+      "version": "11.15.0",
+      "bom-ref": "weaving-site@0.216.12|@sentry/browser@11.15.0",
       "author": "Sentry",
       "description": "Official Sentry SDK for browsers",
       "licenses": [
@@ -2026,7 +2026,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/browser@11.12.0",
+      "purl": "pkg:npm/%40sentry/browser@11.15.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -2044,12 +2044,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/browser/-/browser-11.12.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/browser/-/browser-11.15.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "a224acd196501952d52c04b14e4fd9f8c5b8706387842eb920a73707ffcce7879a6446b8a7a26a3f60ccfbeb5ae08a83431f3e9520faf93825008b0705d4b255"
+              "content": "a28d97de8a4402027923776842331a8102f1bcade6b4ac3e991d2dd91d265411c1171c4456c562b63fa6207d376756992ea3b27e17b470ef0329b2d37d337c25"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2070,8 +2070,8 @@
       "type": "library",
       "name": "conventions",
       "group": "@sentry",
-      "version": "0.32.0",
-      "bom-ref": "weaving-site@0.216.12|@sentry/conventions@0.32.0",
+      "version": "0.33.0",
+      "bom-ref": "weaving-site@0.216.12|@sentry/conventions@0.33.0",
       "licenses": [
         {
           "license": {
@@ -2080,7 +2080,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/conventions@0.32.0",
+      "purl": "pkg:npm/%40sentry/conventions@0.33.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/getsentry/sentry-conventions.git",
@@ -2098,12 +2098,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/conventions/-/conventions-0.32.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/conventions/-/conventions-0.33.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "5a449070385452ccf54b0c51db72e99b23ca6daf9d831c621f40d657855233dc9a02f86197cee9a56d93b37838a6220a0957e5737d5a25e5b2f9b8946d87ec31"
+              "content": "e5a6b783f54e9cca0bf321db7e4608581602dc12e032e76044d05328d32b70c123d6613d68a22dfc26021bbb1ab228e18925389d3712133c8cdafa085732c29e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2124,8 +2124,8 @@
       "type": "library",
       "name": "core",
       "group": "@sentry",
-      "version": "11.12.0",
-      "bom-ref": "weaving-site@0.216.12|@sentry/core@11.12.0",
+      "version": "11.15.0",
+      "bom-ref": "weaving-site@0.216.12|@sentry/core@11.15.0",
       "author": "Sentry",
       "description": "Base implementation for all Sentry JavaScript SDKs",
       "licenses": [
@@ -2136,7 +2136,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/core@11.12.0",
+      "purl": "pkg:npm/%40sentry/core@11.15.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -2154,12 +2154,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/core/-/core-11.12.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/core/-/core-11.15.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "1ca111ec4711a4f3e00bc98b45ee41ccfea78df458159e770452d9c55a75c2159b63a969fdbda6bd3064e2aebeacab141612e1443b1dea32fccbff1d7445afe8"
+              "content": "ceca6b10ebbfbe88aca232459c32213ddf86872700962fdaaa357be767901e234eac0c00be280269db12876343e5ed4013272f4a6653c4e3a108d8d6cd267836"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2179,8 +2179,8 @@
     {
       "type": "library",
       "name": "react-router",
-      "version": "7.18.5",
-      "bom-ref": "weaving-site@0.216.12|react-router@7.18.5",
+      "version": "7.18.6",
+      "bom-ref": "weaving-site@0.216.12|react-router@7.18.6",
       "author": "Remix Software",
       "description": "Declarative routing for React",
       "licenses": [
@@ -2191,7 +2191,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/react-router@7.18.5",
+      "purl": "pkg:npm/react-router@7.18.6",
       "externalReferences": [
         {
           "url": "git+https://github.com/remix-run/react-router.git#packages/react-router",
@@ -2209,12 +2209,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/react-router/-/react-router-7.18.5.tgz",
+          "url": "https://registry.npmjs.org/react-router/-/react-router-7.18.6.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "75382f7170ceacb3eb94b1eb71902a5af7a22b584c4aa37eac6009cde80ff07b663647d1c4ea2c846581357dd92747198ce1e445d95426d68885930b2f21b23f"
+              "content": "48ff0aa8a7d12e5273ab33ec782fabeb2605b2a3c46afb50082e01295f35d2d0468a38c448bb7054f6a6fa03ce3bec18797ad837f4cdcb6080ca441570d83889"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2348,8 +2348,8 @@
       "type": "library",
       "name": "query-core",
       "group": "@tanstack",
-      "version": "5.107.1",
-      "bom-ref": "weaving-site@0.216.12|@tanstack/query-core@5.107.1",
+      "version": "5.108.1",
+      "bom-ref": "weaving-site@0.216.12|@tanstack/query-core@5.108.1",
       "author": "tannerlinsley",
       "description": "The framework agnostic core that powers TanStack Query",
       "licenses": [
@@ -2360,7 +2360,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40tanstack/query-core@5.107.1",
+      "purl": "pkg:npm/%40tanstack/query-core@5.108.1",
       "externalReferences": [
         {
           "url": "git+https://github.com/TanStack/query.git#packages/query-core",
@@ -2378,12 +2378,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.107.1.tgz",
+          "url": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.108.1.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "3d2c808a4d75a1004454e895cb98636561e6a14a8e5ea2b5598cb8bf9e66731a3311f29a420a5432c8275e15a3b844b34a1b7c25fcea312d66e8cffd0a9360be"
+              "content": "1815fa5ec73d13ef5e54b2f1b8cee8ad035bb2c423a6bb8e09ba1c058c13efc323c4e593e48f8259dbc4a3437e50cebea026442b1b92b9dd6814bbc4dce12622"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2514,8 +2514,8 @@
       "type": "library",
       "name": "scope-manager",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.73.0",
       "description": "TypeScript scope analyser for ESLint",
       "licenses": [
         {
@@ -2525,7 +2525,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/scope-manager@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/scope-manager@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/scope-manager",
@@ -2543,12 +2543,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "888a0c27affc735fd0a453721635347756333dca3832c663430d24dd5faf7f33560059949af865c8ca181286180d065773e27a1a2d57e577319735b6b5a20819"
+              "content": "fd38c3ef7f08ab6af38f9cf48b154e8be4ecbe08c0cd93cb3da1f5c96743072b51fc74d1e60329c985997827b95934192f0937868f0057b5379aea10091b5705"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2573,8 +2573,8 @@
       "type": "library",
       "name": "type-utils",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/type-utils@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/type-utils@8.73.0",
       "description": "Type utilities for working with TypeScript + ESLint together",
       "licenses": [
         {
@@ -2584,7 +2584,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/type-utils@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/type-utils@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/type-utils",
@@ -2602,12 +2602,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "4937e4477f2a21d85f90ba60b579d48c0cec372e31a2eaa204ed25ad573f5a993d29e9b9fda1d7531d49f1d182d7ace9758375fb273620b436f1eaf59175fb6a"
+              "content": "30e0bd8b8c72d45eca70375eec8a7c8dfd52ad18802dbd8a9b8516c46363504d989618c8128d5ac84dbb187230210c9f5ae1d3984a27413d78bb2bab9720ba68"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2632,8 +2632,8 @@
       "type": "library",
       "name": "utils",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/utils@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/utils@8.73.0",
       "description": "Utilities for working with TypeScript + ESLint together",
       "licenses": [
         {
@@ -2643,7 +2643,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/utils@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/utils@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/utils",
@@ -2661,12 +2661,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "86fdde4586e93db6e97b3b9ac7511f1abce96b70b8c9280d6643d490b3963808d4f07b0e2a8c040c0afc0bb9ec365d42f92052283a6f9e8e952879e586fa7d88"
+              "content": "8f6495249bd59177542f459c133a38bc41f598ed6f222f0a955ba4718036320319bd83762e5651e0f9ac5be1934b1496db88fa43f10fefe30e89f2ed839866b0"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2691,8 +2691,8 @@
       "type": "library",
       "name": "visitor-keys",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0",
       "description": "Visitor keys used to help traverse the TypeScript-ESTree AST",
       "licenses": [
         {
@@ -2702,7 +2702,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/visitor-keys@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/visitor-keys@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/visitor-keys",
@@ -2720,12 +2720,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "3401ab8e7d0f8ad8eaceafc6920302e240589b6df73d0f067dfc90f7e913037025350604cce7f6e4420cd360401d9bf9151252a47a4993e386531564381f7719"
+              "content": "93896c155a5164809b96d9081041f8859464c1792a0c5d461c1a4294a40e1d063e464a19000bb2735722dc8ea9f8207abf75388da1c852c85ce11cf34176562e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -2750,7 +2750,7 @@
           "type": "library",
           "name": "eslint-visitor-keys",
           "version": "5.0.1",
-          "bom-ref": "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2|eslint-visitor-keys@5.0.1",
+          "bom-ref": "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0|eslint-visitor-keys@5.0.1",
           "author": "Toru Nagashima",
           "description": "Constants and utilities about visitor keys to traverse AST.",
           "licenses": [
@@ -2984,8 +2984,8 @@
       "type": "library",
       "name": "types",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/types@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/types@8.73.0",
       "description": "Types for the TypeScript-ESTree AST spec",
       "licenses": [
         {
@@ -2995,7 +2995,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/types@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/types@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/types",
@@ -3013,12 +3013,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "5df9f7ece2d9c74dfe3c253ba96c7d0d3bf6142461d44e9f936fb038d78d635e475c8c2d730baf79a4b0569180529b643663d07a04715b927245e97d4fbc2ba2"
+              "content": "3bfd72b58cdf945d7a403297c78fea39783522e669fa7ee1afdb7e4b49efecdff64e5f2b262342b21ced57581c494bc76cfb685f7fb398d6ed480c956f3c557f"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -3043,8 +3043,8 @@
       "type": "library",
       "name": "typescript-estree",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.73.0",
       "description": "A parser that converts TypeScript source code into an ESTree compatible form",
       "licenses": [
         {
@@ -3054,7 +3054,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/typescript-estree@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/typescript-estree@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/typescript-estree",
@@ -3072,12 +3072,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "a50106a882bf72a12f2a2bd559a14b6297bb5d87a31717ee00e8b89aed6801616f228dfa6911c8f5eb11153531708cbfcfc378f36449c87f8ba5907464853b3b"
+              "content": "2278e506449d59c788c080564b04b710d529fa2d0ed363c65f766fdb09e2856242d560d51af1bb9931ee7fc6f9eee01a2138fde1dead44f0c7fac504b5775141"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -3673,8 +3673,8 @@
       "type": "library",
       "name": "config-array",
       "group": "@eslint",
-      "version": "0.23.5",
-      "bom-ref": "weaving-site@0.216.12|@eslint/config-array@0.23.5",
+      "version": "0.23.6",
+      "bom-ref": "weaving-site@0.216.12|@eslint/config-array@0.23.6",
       "author": "Nicholas C. Zakas",
       "description": "General purpose glob-based configuration matching.",
       "licenses": [
@@ -3685,7 +3685,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40eslint/config-array@0.23.5",
+      "purl": "pkg:npm/%40eslint/config-array@0.23.6",
       "externalReferences": [
         {
           "url": "git+https://github.com/eslint/rewrite.git#packages/config-array",
@@ -3703,12 +3703,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@eslint/config-array/-/config-array-0.23.5.tgz",
+          "url": "https://registry.npmjs.org/@eslint/config-array/-/config-array-0.23.6.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "63790a2ef0b576f4ce4fea0696a350d572ea2ba0f51d4d985cf739d8d98094965b30c583cc66173223d127c4d80f7f66b83fce4e395998d27889beddbd2acc04"
+              "content": "5ab4c7ee78a823d40f6383591a7b32c2679cb3025d81eab804233beaaa24f558234cedbd66053352f72e24b54f61540ce2e0db68f054d0cdf747d0c8c48f17df"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5069,8 +5069,8 @@
     {
       "type": "library",
       "name": "minimatch",
-      "version": "10.2.6",
-      "bom-ref": "weaving-site@0.216.12|minimatch@10.2.6",
+      "version": "11.0.9",
+      "bom-ref": "weaving-site@0.216.12|minimatch@11.0.9",
       "author": "Isaac Z. Schlueter",
       "description": "a glob matcher in javascript",
       "licenses": [
@@ -5081,7 +5081,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/minimatch@10.2.6",
+      "purl": "pkg:npm/minimatch@11.0.9",
       "externalReferences": [
         {
           "url": "git+ssh://git@github.com/isaacs/minimatch.git",
@@ -5099,12 +5099,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/minimatch/-/minimatch-10.2.6.tgz",
+          "url": "https://registry.npmjs.org/minimatch/-/minimatch-11.0.9.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "be92d012cf952c2af59d4d015d2d3b99a628170943007d209e042ebadb71230bad0c510c1ead9b957fbcbe98310dd2b72753f08c22627a9efb3a2b536782e5d4"
+              "content": "2821647f28ea7ab3654acb6396120635720a64603fe8ee15e1196167e0ecafadb548f3f0d26ce5ca913d0fd64ea0f89579f1c80fe8fbfd7b8c325a9f0ff17ad1"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5113,7 +5113,7 @@
       "properties": [
         {
           "name": "cdx:npm:package:constraint:engine:node",
-          "value": "18 || 20 || >=22"
+          "value": "20 || >=22"
         },
         {
           "name": "cdx:npm:package:development",
@@ -6291,8 +6291,8 @@
       "type": "library",
       "name": "browser-utils",
       "group": "@sentry",
-      "version": "11.12.0",
-      "bom-ref": "weaving-site@0.216.12|@sentry/browser-utils@11.12.0",
+      "version": "11.15.0",
+      "bom-ref": "weaving-site@0.216.12|@sentry/browser-utils@11.15.0",
       "author": "Sentry",
       "description": "Browser Utilities for all Sentry JavaScript SDKs",
       "licenses": [
@@ -6303,7 +6303,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/browser-utils@11.12.0",
+      "purl": "pkg:npm/%40sentry/browser-utils@11.15.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -6321,12 +6321,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/browser-utils/-/browser-utils-11.12.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/browser-utils/-/browser-utils-11.15.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "3adb401ea7f9e7b47581f2d046a6ff7691942b5510776d6a91e78dd0a03f4e1bb29985d3358faa4e92483aa9b382993a7ce984f76da64d3eb19a730488661905"
+              "content": "3f80d5b35d4fa8ba659791837d176a87ab364518b7fcb3fbbfb0821a34df79b8f228bfe5b9dfd079b67852c673807175be1c23cbf402336c3815a0a8aabdb4a7"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -6347,8 +6347,8 @@
       "type": "library",
       "name": "feedback",
       "group": "@sentry",
-      "version": "11.12.0",
-      "bom-ref": "weaving-site@0.216.12|@sentry/feedback@11.12.0",
+      "version": "11.15.0",
+      "bom-ref": "weaving-site@0.216.12|@sentry/feedback@11.15.0",
       "author": "Sentry",
       "description": "Sentry SDK integration for user feedback",
       "licenses": [
@@ -6359,7 +6359,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/feedback@11.12.0",
+      "purl": "pkg:npm/%40sentry/feedback@11.15.0",
       "externalReferences": [
         {
           "url": "git://github.com/getsentry/sentry-javascript.git",
@@ -6377,12 +6377,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/feedback/-/feedback-11.12.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/feedback/-/feedback-11.15.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "bd838879bcb7b55a0a67fabbd03d4d278f03e003cc55ca23caf0a395a66414e411e83204b0e8c5fee0bd32486708fddca5ae2800374c6adb08a648653ccfaa9e"
+              "content": "e1661f9b5a6861bd80f086cc5c68e43a8f8b14f4e3dbb15425878254d4912842aebb24aa74c7237e4f14f528b670a11c263169be12134448b2366efbabdd64ca"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -6403,8 +6403,8 @@
       "type": "library",
       "name": "replay-canvas",
       "group": "@sentry",
-      "version": "11.12.0",
-      "bom-ref": "weaving-site@0.216.12|@sentry/replay-canvas@11.12.0",
+      "version": "11.15.0",
+      "bom-ref": "weaving-site@0.216.12|@sentry/replay-canvas@11.15.0",
       "author": "Sentry",
       "description": "Replay canvas integration",
       "licenses": [
@@ -6415,7 +6415,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/replay-canvas@11.12.0",
+      "purl": "pkg:npm/%40sentry/replay-canvas@11.15.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/getsentry/sentry-javascript.git",
@@ -6433,12 +6433,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/replay-canvas/-/replay-canvas-11.12.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/replay-canvas/-/replay-canvas-11.15.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "931f50dd363ca4ca746f5d9fa5c474b73886a045bb67c3e914a9dc9b30fd5d8584dd8cccb7ffc1f9c8e447ebe69994945713ae4004d80c5a7d7358d14e76ebba"
+              "content": "bd95d526b1ed9f34e8db5cc70bfb8d5091f92f6c8fe0bdff3369be72d6604329266b9be037d963a1fdf3a74628f0918ede101967d7d5f047452ad1eb7cfb4949"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -6459,8 +6459,8 @@
       "type": "library",
       "name": "replay",
       "group": "@sentry",
-      "version": "11.12.0",
-      "bom-ref": "weaving-site@0.216.12|@sentry/replay@11.12.0",
+      "version": "11.15.0",
+      "bom-ref": "weaving-site@0.216.12|@sentry/replay@11.15.0",
       "author": "Sentry",
       "description": "User replays for Sentry",
       "licenses": [
@@ -6471,7 +6471,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40sentry/replay@11.12.0",
+      "purl": "pkg:npm/%40sentry/replay@11.15.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/getsentry/sentry-javascript.git",
@@ -6489,12 +6489,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@sentry/replay/-/replay-11.12.0.tgz",
+          "url": "https://registry.npmjs.org/@sentry/replay/-/replay-11.15.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "485d74eb84ca98ebc84132a8f167a5541df82195ad62dadf9489ecc9d3de07d8cc4e9cb6884dcba8a462cc326bdd88af8cc50f0e02069faedbfb491ac62c10e2"
+              "content": "1e07c7e01d32f3c3b37580032f8e7f8f2fc20b107df97b56396c591bf96e6978927003bbab9ab807716882a9cff64ffcd6bff4b9fe9c1973835a2b4507da3d77"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -7273,8 +7273,8 @@
       "type": "library",
       "name": "project-service",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/project-service@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/project-service@8.73.0",
       "description": "Standalone TypeScript project service wrapper for linting.",
       "licenses": [
         {
@@ -7284,7 +7284,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/project-service@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/project-service@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/project-service",
@@ -7302,12 +7302,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "eb2e5d2d365d1e123c121df2210fdb7d08512b09f97be4e9263eb8a35f029e0734896fc10ab56faebeb3198a973e7607df5bba617018885874faac57e66c9b27"
+              "content": "fe911ff1173832393ea899d8d2e3b5f8669d79a97cbafe74c69ba273eb2b1b6bc855ab40d17c6f58c51e32d16fb3a3821ea7ed890efffaa1f869e846e6cb7320"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -7332,8 +7332,8 @@
       "type": "library",
       "name": "tsconfig-utils",
       "group": "@typescript-eslint",
-      "version": "8.72.2",
-      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/tsconfig-utils@8.72.2",
+      "version": "8.73.0",
+      "bom-ref": "weaving-site@0.216.12|@typescript-eslint/tsconfig-utils@8.73.0",
       "description": "Utilities for collecting TSConfigs for linting scenarios.",
       "licenses": [
         {
@@ -7343,7 +7343,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/tsconfig-utils@8.72.2",
+      "purl": "pkg:npm/%40typescript-eslint/tsconfig-utils@8.73.0",
       "externalReferences": [
         {
           "url": "git+https://github.com/typescript-eslint/typescript-eslint.git#packages/tsconfig-utils",
@@ -7361,12 +7361,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.72.2.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.73.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "fa1de20a0657b9336da0b5dc9e78cfd766541cb32aa147081cf7d0ac51174d4aaf6fd745f102bd6f99efe55b52a397cb91d1ee92cf1e85b4f3663deb226026f7"
+              "content": "966b4214e7d86897e9a99cb01ae5e2e05a4db44f8d43e60b7b74f42bdaed103716f19b865af7c8fbea63f2bd39b18308f2f593d8260ae2b5b279d983e91a78a2"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -9359,9 +9359,49 @@
     },
     {
       "type": "library",
+      "name": "nonrecursive-glob-match",
+      "group": "@isaacs",
+      "version": "1.1.0",
+      "bom-ref": "weaving-site@0.216.12|@isaacs/nonrecursive-glob-match@1.1.0",
+      "description": "a single-path-portion glob matcher not subject to recursive backtracking ReDoS",
+      "licenses": [
+        {
+          "license": {
+            "id": "BlueOak-1.0.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40isaacs/nonrecursive-glob-match@1.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@isaacs/nonrecursive-glob-match/-/nonrecursive-glob-match-1.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "18f9bf0dbbe4e512e68519f15c86bb9d3a4ad31b65e04d308f432c96cb8d889d45211394fb6fbd960502fdd805ec4cb84025a17c4b20c6294c44c09d1cf7c37f"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@isaacs/nonrecursive-glob-match"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "brace-expansion",
-      "version": "5.0.12",
-      "bom-ref": "weaving-site@0.216.12|brace-expansion@5.0.12",
+      "version": "5.0.13",
+      "bom-ref": "weaving-site@0.216.12|brace-expansion@5.0.13",
       "description": "Brace expansion as known from sh/bash",
       "licenses": [
         {
@@ -9371,7 +9411,7 @@
           }
         }
       ],
-      "purl": "pkg:npm/brace-expansion@5.0.12",
+      "purl": "pkg:npm/brace-expansion@5.0.13",
       "externalReferences": [
         {
           "url": "git+https://github.com/juliangruber/brace-expansion.git",
@@ -9389,12 +9429,12 @@
           "comment": "as detected from PackageJson property \"bugs.url\""
         },
         {
-          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz",
+          "url": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.13.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "628bd0debce168b308ac38cd0cc90d4b4d6d79af77aa11211b9c72f1febe47497e770dca8bee6c0a822823de368ae2d94c75a881692d830543854d3d88d12299"
+              "content": "561ddd9856dce3065ea31eccf48ff42fd19f15df374aee3ec82724fce17d1a2fcffdd0079f4453ed7e0af51ee030d3210dc9370ef851e905ec9d07638e0c0dbd"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -13961,27 +14001,27 @@
       "dependsOn": [
         "weaving-site@0.216.12|@clerk/clerk-react@5.61.9",
         "weaving-site@0.216.12|@codecov/vite-plugin@2.0.1",
-        "weaving-site@0.216.12|@sentry/react@11.12.0",
+        "weaving-site@0.216.12|@sentry/react@11.15.0",
         "weaving-site@0.216.12|@tailwindcss/vite@4.3.5",
-        "weaving-site@0.216.12|@tanstack/react-query@5.107.1",
+        "weaving-site@0.216.12|@tanstack/react-query@5.108.1",
         "weaving-site@0.216.12|@types/dompurify@3.2.0",
         "weaving-site@0.216.12|@types/node@26.6.6",
         "weaving-site@0.216.12|@types/react-dom@19.3.0",
         "weaving-site@0.216.12|@types/react@19.3.0",
-        "weaving-site@0.216.12|@typescript-eslint/eslint-plugin@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/parser@8.72.2",
+        "weaving-site@0.216.12|@typescript-eslint/eslint-plugin@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/parser@8.73.0",
         "weaving-site@0.216.12|@vitejs/plugin-react@6.3.0",
         "weaving-site@0.216.12|class-variance-authority@0.7.1",
         "weaving-site@0.216.12|clsx@2.1.1",
-        "weaving-site@0.216.12|dompurify@3.4.17",
+        "weaving-site@0.216.12|dompurify@3.4.18",
         "weaving-site@0.216.12|eslint-plugin-react-hooks@7.1.1",
-        "weaving-site@0.216.12|eslint@10.14.0",
-        "weaving-site@0.216.12|i18next@27.1.1",
-        "weaving-site@0.216.12|lucide-react@1.72.0",
+        "weaving-site@0.216.12|eslint@10.15.0",
+        "weaving-site@0.216.12|i18next@27.2.2",
+        "weaving-site@0.216.12|lucide-react@1.76.0",
         "weaving-site@0.216.12|react-colorful@5.8.1",
         "weaving-site@0.216.12|react-dom@19.3.1",
-        "weaving-site@0.216.12|react-i18next@18.0.1",
-        "weaving-site@0.216.12|react-router-dom@7.18.5",
+        "weaving-site@0.216.12|react-i18next@18.0.3",
+        "weaving-site@0.216.12|react-router-dom@7.18.6",
         "weaving-site@0.216.12|react@19.3.1",
         "weaving-site@0.216.12|tailwind-merge@3.7.0",
         "weaving-site@0.216.12|tailwindcss@4.3.5",
@@ -14007,12 +14047,12 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@sentry/react@11.12.0",
+      "ref": "weaving-site@0.216.12|@sentry/react@11.15.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@sentry/browser@11.12.0",
-        "weaving-site@0.216.12|@sentry/conventions@0.32.0",
-        "weaving-site@0.216.12|@sentry/core@11.12.0",
-        "weaving-site@0.216.12|react-router@7.18.5",
+        "weaving-site@0.216.12|@sentry/browser@11.15.0",
+        "weaving-site@0.216.12|@sentry/conventions@0.33.0",
+        "weaving-site@0.216.12|@sentry/core@11.15.0",
+        "weaving-site@0.216.12|react-router@7.18.6",
         "weaving-site@0.216.12|react@19.3.1"
       ]
     },
@@ -14026,9 +14066,9 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@tanstack/react-query@5.107.1",
+      "ref": "weaving-site@0.216.12|@tanstack/react-query@5.108.1",
       "dependsOn": [
-        "weaving-site@0.216.12|@tanstack/query-core@5.107.1",
+        "weaving-site@0.216.12|@tanstack/query-core@5.108.1",
         "weaving-site@0.216.12|@types/react@19.3.0",
         "weaving-site@0.216.12|react@19.3.1"
       ]
@@ -14036,7 +14076,7 @@
     {
       "ref": "weaving-site@0.216.12|@types/dompurify@3.2.0",
       "dependsOn": [
-        "weaving-site@0.216.12|dompurify@3.4.17"
+        "weaving-site@0.216.12|dompurify@3.4.18"
       ]
     },
     {
@@ -14061,15 +14101,15 @@
       "ref": "weaving-site@0.216.12|@types/react@19.3.0|csstype@3.2.3"
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/eslint-plugin@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/eslint-plugin@8.73.0",
       "dependsOn": [
         "weaving-site@0.216.12|@eslint-community/regexpp@4.12.2",
-        "weaving-site@0.216.12|@typescript-eslint/parser@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/type-utils@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/utils@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2",
-        "weaving-site@0.216.12|eslint@10.14.0",
+        "weaving-site@0.216.12|@typescript-eslint/parser@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/type-utils@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/utils@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0",
+        "weaving-site@0.216.12|eslint@10.15.0",
         "weaving-site@0.216.12|ignore@7.0.6",
         "weaving-site@0.216.12|natural-compare@1.4.0",
         "weaving-site@0.216.12|ts-api-utils@2.5.0",
@@ -14077,14 +14117,14 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/parser@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/parser@8.73.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/types@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2",
+        "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/types@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0",
         "weaving-site@0.216.12|debug@4.4.3",
-        "weaving-site@0.216.12|eslint@10.14.0",
+        "weaving-site@0.216.12|eslint@10.15.0",
         "weaving-site@0.216.12|typescript@6.0.3"
       ]
     },
@@ -14105,7 +14145,7 @@
       "ref": "weaving-site@0.216.12|clsx@2.1.1"
     },
     {
-      "ref": "weaving-site@0.216.12|dompurify@3.4.17",
+      "ref": "weaving-site@0.216.12|dompurify@3.4.18",
       "dependsOn": [
         "weaving-site@0.216.12|@types/trusted-types@2.0.7"
       ]
@@ -14115,18 +14155,18 @@
       "dependsOn": [
         "weaving-site@0.216.12|@babel/core@7.29.7",
         "weaving-site@0.216.12|@babel/parser@7.29.7",
-        "weaving-site@0.216.12|eslint@10.14.0",
+        "weaving-site@0.216.12|eslint@10.15.0",
         "weaving-site@0.216.12|hermes-parser@0.25.1",
         "weaving-site@0.216.12|zod-validation-error@4.0.2",
         "weaving-site@0.216.12|zod@3.25.76"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|eslint@10.14.0",
+      "ref": "weaving-site@0.216.12|eslint@10.15.0",
       "dependsOn": [
         "weaving-site@0.216.12|@eslint-community/eslint-utils@4.10.1",
         "weaving-site@0.216.12|@eslint-community/regexpp@4.12.2",
-        "weaving-site@0.216.12|@eslint/config-array@0.23.5",
+        "weaving-site@0.216.12|@eslint/config-array@0.23.6",
         "weaving-site@0.216.12|@eslint/config-helpers@0.7.0",
         "weaving-site@0.216.12|@eslint/core@1.2.1",
         "weaving-site@0.216.12|@eslint/plugin-kit@0.7.3",
@@ -14139,7 +14179,7 @@
         "weaving-site@0.216.12|debug@4.4.3",
         "weaving-site@0.216.12|escape-string-regexp@4.0.0",
         "weaving-site@0.216.12|eslint-scope@9.1.2",
-        "weaving-site@0.216.12|eslint@10.14.0|eslint-visitor-keys@5.0.1",
+        "weaving-site@0.216.12|eslint@10.15.0|eslint-visitor-keys@5.0.1",
         "weaving-site@0.216.12|espree@11.2.0",
         "weaving-site@0.216.12|esquery@1.7.0",
         "weaving-site@0.216.12|esutils@2.0.3",
@@ -14147,30 +14187,30 @@
         "weaving-site@0.216.12|file-entry-cache@11.1.5",
         "weaving-site@0.216.12|find-up@5.0.0",
         "weaving-site@0.216.12|glob-parent@6.0.2",
-        "weaving-site@0.216.12|eslint@10.14.0|ignore@5.3.2",
+        "weaving-site@0.216.12|eslint@10.15.0|ignore@5.3.2",
         "weaving-site@0.216.12|imurmurhash@0.1.4",
         "weaving-site@0.216.12|is-glob@4.0.3",
         "weaving-site@0.216.12|jiti@2.7.0",
         "weaving-site@0.216.12|json-stable-stringify-without-jsonify@1.0.1",
-        "weaving-site@0.216.12|minimatch@10.2.6",
+        "weaving-site@0.216.12|minimatch@11.0.9",
         "weaving-site@0.216.12|natural-compare@1.4.0",
         "weaving-site@0.216.12|optionator@0.9.4"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|eslint@10.14.0|eslint-visitor-keys@5.0.1"
+      "ref": "weaving-site@0.216.12|eslint@10.15.0|eslint-visitor-keys@5.0.1"
     },
     {
-      "ref": "weaving-site@0.216.12|eslint@10.14.0|ignore@5.3.2"
+      "ref": "weaving-site@0.216.12|eslint@10.15.0|ignore@5.3.2"
     },
     {
-      "ref": "weaving-site@0.216.12|i18next@27.1.1",
+      "ref": "weaving-site@0.216.12|i18next@27.2.2",
       "dependsOn": [
         "weaving-site@0.216.12|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|lucide-react@1.72.0",
+      "ref": "weaving-site@0.216.12|lucide-react@1.76.0",
       "dependsOn": [
         "weaving-site@0.216.12|@types/react@19.3.0",
         "weaving-site@0.216.12|react@19.3.1"
@@ -14191,20 +14231,20 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|react-i18next@18.0.1",
+      "ref": "weaving-site@0.216.12|react-i18next@18.0.3",
       "dependsOn": [
         "weaving-site@0.216.12|@types/react@19.3.0",
         "weaving-site@0.216.12|html-parse-stringify@4.0.1",
-        "weaving-site@0.216.12|i18next@27.1.1",
+        "weaving-site@0.216.12|i18next@27.2.2",
         "weaving-site@0.216.12|react@19.3.1",
         "weaving-site@0.216.12|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|react-router-dom@7.18.5",
+      "ref": "weaving-site@0.216.12|react-router-dom@7.18.6",
       "dependsOn": [
         "weaving-site@0.216.12|react-dom@19.3.1",
-        "weaving-site@0.216.12|react-router@7.18.5",
+        "weaving-site@0.216.12|react-router@7.18.6",
         "weaving-site@0.216.12|react@19.3.1"
       ]
     },
@@ -14267,27 +14307,27 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@sentry/browser@11.12.0",
+      "ref": "weaving-site@0.216.12|@sentry/browser@11.15.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@sentry/browser-utils@11.12.0",
-        "weaving-site@0.216.12|@sentry/conventions@0.32.0",
-        "weaving-site@0.216.12|@sentry/core@11.12.0",
-        "weaving-site@0.216.12|@sentry/feedback@11.12.0",
-        "weaving-site@0.216.12|@sentry/replay-canvas@11.12.0",
-        "weaving-site@0.216.12|@sentry/replay@11.12.0"
+        "weaving-site@0.216.12|@sentry/browser-utils@11.15.0",
+        "weaving-site@0.216.12|@sentry/conventions@0.33.0",
+        "weaving-site@0.216.12|@sentry/core@11.15.0",
+        "weaving-site@0.216.12|@sentry/feedback@11.15.0",
+        "weaving-site@0.216.12|@sentry/replay-canvas@11.15.0",
+        "weaving-site@0.216.12|@sentry/replay@11.15.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@sentry/conventions@0.32.0"
+      "ref": "weaving-site@0.216.12|@sentry/conventions@0.33.0"
     },
     {
-      "ref": "weaving-site@0.216.12|@sentry/core@11.12.0",
+      "ref": "weaving-site@0.216.12|@sentry/core@11.15.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@sentry/conventions@0.32.0"
+        "weaving-site@0.216.12|@sentry/conventions@0.33.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|react-router@7.18.5",
+      "ref": "weaving-site@0.216.12|react-router@7.18.6",
       "dependsOn": [
         "weaving-site@0.216.12|cookie@1.1.1",
         "weaving-site@0.216.12|react-dom@19.3.1",
@@ -14315,7 +14355,7 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@tanstack/query-core@5.107.1"
+      "ref": "weaving-site@0.216.12|@tanstack/query-core@5.108.1"
     },
     {
       "ref": "weaving-site@0.216.12|undici-types@8.9.0"
@@ -14324,44 +14364,44 @@
       "ref": "weaving-site@0.216.12|@eslint-community/regexpp@4.12.2"
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.73.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@typescript-eslint/types@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2"
+        "weaving-site@0.216.12|@typescript-eslint/types@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/type-utils@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/type-utils@8.73.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@typescript-eslint/types@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/utils@8.72.2",
+        "weaving-site@0.216.12|@typescript-eslint/types@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/utils@8.73.0",
         "weaving-site@0.216.12|debug@4.4.3",
-        "weaving-site@0.216.12|eslint@10.14.0",
+        "weaving-site@0.216.12|eslint@10.15.0",
         "weaving-site@0.216.12|ts-api-utils@2.5.0",
         "weaving-site@0.216.12|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/utils@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/utils@8.73.0",
       "dependsOn": [
         "weaving-site@0.216.12|@eslint-community/eslint-utils@4.10.1",
-        "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/types@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.72.2",
-        "weaving-site@0.216.12|eslint@10.14.0",
+        "weaving-site@0.216.12|@typescript-eslint/scope-manager@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/types@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.73.0",
+        "weaving-site@0.216.12|eslint@10.15.0",
         "weaving-site@0.216.12|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@typescript-eslint/types@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2|eslint-visitor-keys@5.0.1"
+        "weaving-site@0.216.12|@typescript-eslint/types@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0|eslint-visitor-keys@5.0.1"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2|eslint-visitor-keys@5.0.1"
+      "ref": "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0|eslint-visitor-keys@5.0.1"
     },
     {
       "ref": "weaving-site@0.216.12|ignore@7.0.6"
@@ -14376,17 +14416,17 @@
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/types@8.72.2"
+      "ref": "weaving-site@0.216.12|@typescript-eslint/types@8.73.0"
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/typescript-estree@8.73.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@typescript-eslint/project-service@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/tsconfig-utils@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/types@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.72.2",
+        "weaving-site@0.216.12|@typescript-eslint/project-service@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/tsconfig-utils@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/types@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/visitor-keys@8.73.0",
         "weaving-site@0.216.12|debug@4.4.3",
-        "weaving-site@0.216.12|minimatch@10.2.6",
+        "weaving-site@0.216.12|minimatch@11.0.9",
         "weaving-site@0.216.12|semver@7.8.5",
         "weaving-site@0.216.12|tinyglobby@0.2.17",
         "weaving-site@0.216.12|ts-api-utils@2.5.0",
@@ -14453,15 +14493,15 @@
       "ref": "weaving-site@0.216.12|@eslint-community/eslint-utils@4.10.1",
       "dependsOn": [
         "weaving-site@0.216.12|eslint-visitor-keys@3.4.3",
-        "weaving-site@0.216.12|eslint@10.14.0"
+        "weaving-site@0.216.12|eslint@10.15.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@eslint/config-array@0.23.5",
+      "ref": "weaving-site@0.216.12|@eslint/config-array@0.23.6",
       "dependsOn": [
         "weaving-site@0.216.12|@eslint/object-schema@3.0.5",
         "weaving-site@0.216.12|debug@4.4.3",
-        "weaving-site@0.216.12|minimatch@10.2.6"
+        "weaving-site@0.216.12|minimatch@11.0.9"
       ]
     },
     {
@@ -14587,9 +14627,10 @@
       "ref": "weaving-site@0.216.12|json-stable-stringify-without-jsonify@1.0.1"
     },
     {
-      "ref": "weaving-site@0.216.12|minimatch@10.2.6",
+      "ref": "weaving-site@0.216.12|minimatch@11.0.9",
       "dependsOn": [
-        "weaving-site@0.216.12|brace-expansion@5.0.12"
+        "weaving-site@0.216.12|@isaacs/nonrecursive-glob-match@1.1.0",
+        "weaving-site@0.216.12|brace-expansion@5.0.13"
       ]
     },
     {
@@ -14708,31 +14749,31 @@
       "ref": "weaving-site@0.216.12|webpack-virtual-modules@0.6.2"
     },
     {
-      "ref": "weaving-site@0.216.12|@sentry/browser-utils@11.12.0",
+      "ref": "weaving-site@0.216.12|@sentry/browser-utils@11.15.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@sentry/conventions@0.32.0",
-        "weaving-site@0.216.12|@sentry/core@11.12.0",
+        "weaving-site@0.216.12|@sentry/conventions@0.33.0",
+        "weaving-site@0.216.12|@sentry/core@11.15.0",
         "weaving-site@0.216.12|web-vitals@6.2.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@sentry/feedback@11.12.0",
+      "ref": "weaving-site@0.216.12|@sentry/feedback@11.15.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@sentry/core@11.12.0"
+        "weaving-site@0.216.12|@sentry/core@11.15.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@sentry/replay-canvas@11.12.0",
+      "ref": "weaving-site@0.216.12|@sentry/replay-canvas@11.15.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@sentry/core@11.12.0",
-        "weaving-site@0.216.12|@sentry/replay@11.12.0"
+        "weaving-site@0.216.12|@sentry/core@11.15.0",
+        "weaving-site@0.216.12|@sentry/replay@11.15.0"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@sentry/replay@11.12.0",
+      "ref": "weaving-site@0.216.12|@sentry/replay@11.15.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@sentry/browser-utils@11.12.0",
-        "weaving-site@0.216.12|@sentry/core@11.12.0"
+        "weaving-site@0.216.12|@sentry/browser-utils@11.15.0",
+        "weaving-site@0.216.12|@sentry/core@11.15.0"
       ]
     },
     {
@@ -14815,16 +14856,16 @@
       "ref": "weaving-site@0.216.12|@tailwindcss/oxide-wasm32-wasi@4.3.5|tslib@2.8.1"
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/project-service@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/project-service@8.73.0",
       "dependsOn": [
-        "weaving-site@0.216.12|@typescript-eslint/tsconfig-utils@8.72.2",
-        "weaving-site@0.216.12|@typescript-eslint/types@8.72.2",
+        "weaving-site@0.216.12|@typescript-eslint/tsconfig-utils@8.73.0",
+        "weaving-site@0.216.12|@typescript-eslint/types@8.73.0",
         "weaving-site@0.216.12|debug@4.4.3",
         "weaving-site@0.216.12|typescript@6.0.3"
       ]
     },
     {
-      "ref": "weaving-site@0.216.12|@typescript-eslint/tsconfig-utils@8.72.2",
+      "ref": "weaving-site@0.216.12|@typescript-eslint/tsconfig-utils@8.73.0",
       "dependsOn": [
         "weaving-site@0.216.12|typescript@6.0.3"
       ]
@@ -15009,7 +15050,10 @@
       "ref": "weaving-site@0.216.12|is-extglob@2.1.1"
     },
     {
-      "ref": "weaving-site@0.216.12|brace-expansion@5.0.12",
+      "ref": "weaving-site@0.216.12|@isaacs/nonrecursive-glob-match@1.1.0"
+    },
+    {
+      "ref": "weaving-site@0.216.12|brace-expansion@5.0.13",
       "dependsOn": [
         "weaving-site@0.216.12|balanced-match@4.0.4"
       ]
