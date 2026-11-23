@@ -20,11 +20,13 @@ jobs:
           SOURCE: ${{ github.head_ref }}
           AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          # release-please--branches--main is the release PR opened by
-          # ci-main-push.yml (release-please). Only accept it from the bot.
+          # release-please--branches--main[--components--<package>] is the
+          # release PR opened by ci-main-push.yml (release-please); the
+          # --components-- suffix appears because release-please-config.json
+          # sets package-name. Only accept it from the bot.
           if [[ "$SOURCE" == "dev" || "$SOURCE" == hotfix/* ]]; then
             echo "ok  Source branch '$SOURCE' is allowed to merge into main."
-          elif [[ "$SOURCE" == "release-please--branches--main" && "$AUTHOR" == "weftmark-bot[bot]" ]]; then
+          elif [[ ( "$SOURCE" == "release-please--branches--main" || "$SOURCE" == release-please--branches--main--components--* ) && "$AUTHOR" == "weftmark-bot[bot]" ]]; then
             echo "ok  release-please release PR from $AUTHOR is allowed to merge into main."
           else
             echo "ERR Source branch '$SOURCE' is not allowed to merge into main."
