@@ -119,13 +119,20 @@ async def health_detailed() -> JSONResponse:
     status "starting" and a next_check_at estimate so clients can show a neutral
     info banner instead of a failure alert.
     """
+    app_env = get_settings().app_env  # lets the worker's daily check confirm it reached its own stack
     if _detailed_cache is None:
         next_check_at = (_startup_time + timedelta(seconds=DETAILED_REFRESH_INTERVAL_S)).isoformat()
         return JSONResponse(
-            {"status": "starting", "services": [], "checked_at": None, "next_check_at": next_check_at},
+            {
+                "status": "starting",
+                "services": [],
+                "checked_at": None,
+                "next_check_at": next_check_at,
+                "app_env": app_env,
+            },
             status_code=200,
         )
-    return JSONResponse(_detailed_cache.model_dump())
+    return JSONResponse({**_detailed_cache.model_dump(), "app_env": app_env})
 
 
 # ---------------------------------------------------------------------------

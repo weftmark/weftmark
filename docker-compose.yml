@@ -29,6 +29,8 @@ x-worker-env: &worker-env
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=${APP_ENV},service.version=${IMAGE_TAG:-dev}"
   OTEL_SERVICE_NAME: weftmark-worker
   GITHUB_FEEDBACK_TOKEN: ${GITHUB_FEEDBACK_TOKEN:-}
+  # Container name, not the "backend" alias, which other stacks on a shared network may also carry
+  BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://${STACK_NAME:-weftmark}_backend:8000}
 
 x-worker: &worker-base
   image: ghcr.io/weftmark/weftmark-backend:${IMAGE_TAG:-latest}

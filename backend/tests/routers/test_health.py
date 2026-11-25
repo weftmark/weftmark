@@ -150,6 +150,24 @@ class TestHealthDetailed:
         assert "PostgreSQL" in names
         assert "Clerk Webhook" in names
 
+    async def test_detailed_includes_app_env(self, client: AsyncClient, monkeypatch):
+        # The worker's daily_health_check uses app_env to confirm it reached its own stack's backend.
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "app_env", "production")
+        monkeypatch.setattr(health_module, "_detailed_cache", ReadinessResponse(status="ok", services=[]))
+        body = (await client.get("/api/health/detailed")).json()
+        assert body["app_env"] == "production"
+
+    async def test_detailed_starting_includes_app_env(self, client: AsyncClient, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "app_env", "dev")
+        monkeypatch.setattr(health_module, "_detailed_cache", None)
+        body = (await client.get("/api/health/detailed")).json()
+        assert body["status"] == "starting"
+        assert body["app_env"] == "dev"
+
     async def test_detailed_returns_200_even_when_degraded(self, client: AsyncClient, monkeypatch):
         monkeypatch.setattr(health_module, "_detailed_cache", ReadinessResponse(status="degraded", services=[]))
         resp = await client.get("/api/health/detailed")

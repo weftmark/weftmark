@@ -1529,137 +1529,186 @@ class TestPruneInactiveProjectTilesExceptionHandler:
 # ---------------------------------------------------------------------------
 
 
-def _ok_service(name: str = "postgres"):
-    from app.routers.health import ReadinessService
+def _detailed_body(status="ok", services=None, checked_at=None, app_env=None):
+    """A /api/health/detailed JSON body as served by the backend."""
+    from app.config import get_settings
 
-    return ReadinessService(name=name, ok=True, critical=True)
+    if services is None:
+        services = [
+            {"name": "PostgreSQL", "ok": True, "critical": True, "message": "", "detail": ""},
+            {"name": "Clerk", "ok": True, "critical": True, "message": "", "detail": ""},
+            {"name": "Clerk Webhook", "ok": True, "critical": False, "message": "", "detail": ""},
+        ]
+    return {
+        "status": status,
+        "services": services,
+        "checked_at": checked_at if checked_at is not None else datetime.now(timezone.utc).isoformat(),
+        "app_env": app_env if app_env is not None else get_settings().app_env,
+    }
 
 
-def _ok_response():
-    from app.routers.health import ReadinessResponse
+def _http_response(body, status_code=200):
+    import httpx
 
-    return ReadinessResponse(
-        status="ok",
-        services=[_ok_service("postgres"), _ok_service("s3"), _ok_service("clerk"), _ok_service("smtp")],
-        checked_at="2026-01-01T00:00:00+00:00",
-    )
-
-
-class _MockAsyncSession:
-    async def __aenter__(self):
-        return MagicMock()
-
-    async def __aexit__(self, *_):
-        pass  # no cleanup needed
+    return httpx.Response(status_code, json=body, request=httpx.Request("GET", "http://backend:8000"))
 
 
 class TestDailyHealthCheck:
-    def _run(self, mock_response):
+    """daily_health_check reports the backend's live /api/health/detailed result.
+
+    It must not run the probes itself: the worker container lacks the Clerk
+    publishable key / webhook secret, the webhook round-trip can only complete
+    inside the backend process, and asyncio.run() on the shared async engine
+    breaks pooled Postgres connections (#daily-health-check false alerts).
+    """
+
+    def _run(self, *, body=None, side_effect=None, status_code=200, send=None):
         from app.tasks.maintenance import daily_health_check
 
+        mock_get = MagicMock(
+            return_value=None if side_effect else _http_response(body, status_code),
+            side_effect=side_effect,
+        )
         with (
-            patch("app.database.AsyncSessionLocal", return_value=_MockAsyncSession()),
-            patch("app.routers.admin._probe_postgres", new=AsyncMock(return_value=_ok_service("postgres"))),
-            patch("app.routers.admin._probe_s3", new=AsyncMock(return_value=_ok_service("s3"))),
-            patch("app.routers.admin._probe_clerk", new=AsyncMock(return_value=_ok_service("clerk"))),
-            patch("app.routers.admin._probe_smtp", new=AsyncMock(return_value=_ok_service("smtp"))),
-            patch(
-                "app.services.clerk_webhook_probe.run_webhook_probe", new=AsyncMock(return_value=_ok_service("webhook"))
-            ),
-            patch("app.routers.health._build_readiness_from_results", return_value=mock_response),
+            patch("httpx.get", mock_get),
+            patch("app.services.email.send_health_degraded_alert", send or AsyncMock()),
         ):
-            return daily_health_check.run.__func__(_make_task())
-
-    def test_ok_status_returns_dict(self, db_session):
-        result = self._run(_ok_response())
-        assert result["status"] == "ok"
-        assert result["failed_services"] == []
-
-    def test_returns_failed_services_list(self, db_session):
-        from app.routers.health import ReadinessResponse, ReadinessService
-
-        degraded_svc = ReadinessService(name="smtp", ok=False, critical=False)
-        degraded_response = ReadinessResponse(
-            status="degraded",
-            services=[_ok_service("postgres"), degraded_svc],
-            checked_at="2026-01-01T00:00:00+00:00",
-        )
-
-        with patch("app.services.email.send_health_degraded_alert", new=AsyncMock()):
-            result = self._run(degraded_response)
-
-        assert result["status"] == "degraded"
-        assert "smtp" in result["failed_services"]
-
-    def test_degraded_no_superusers_no_email_sent(self, db_session):
-        from app.routers.health import ReadinessResponse, ReadinessService
-
-        degraded_response = ReadinessResponse(
-            status="degraded",
-            services=[ReadinessService(name="s3", ok=False, critical=False)],
-            checked_at="2026-01-01T00:00:00+00:00",
-        )
-
-        mock_send = MagicMock()
-        with patch("app.services.email.send_health_degraded_alert", mock_send):
-            result = self._run(degraded_response)
-
-        mock_send.assert_not_called()
-        assert result["status"] == "degraded"
-
-    def test_run_exception_returns_error_status(self):
-        # Covers lines 216-217: exception inside _run() → error ReadinessResponse returned
-        from app.tasks.maintenance import daily_health_check
-
-        class _RaisingSession:
-            async def __aenter__(self):
-                raise RuntimeError("db unavailable")
-
-            async def __aexit__(self, *_):
-                pass  # no cleanup needed
-
-        with patch("app.database.AsyncSessionLocal", return_value=_RaisingSession()):
             result = daily_health_check.run.__func__(_make_task())
+        return result, mock_get
 
-        assert result["status"] == "error"
+    def _latest_event(self):
+        from sqlalchemy import create_engine, select
+        from sqlalchemy.orm import Session
 
-    def test_degraded_with_superuser_sends_email(self):
-        # Covers lines 267-283: superuser in DB + degraded → email send attempted
+        from app.config import get_settings
+        from app.models.server_event import ServerEvent
+
+        engine = create_engine(get_settings().database_url_sync)
+        try:
+            with Session(engine) as db:
+                return db.scalars(
+                    select(ServerEvent).where(ServerEvent.event_type == "health.check").order_by(ServerEvent.id.desc())
+                ).first()
+        finally:
+            engine.dispose()
+
+    def test_does_not_run_probes_in_worker(self, db_session):
+        probe = AsyncMock(side_effect=AssertionError("probe must not run in the worker"))
+        with (
+            patch("app.routers.admin._probe_postgres", probe),
+            patch("app.routers.admin._probe_clerk", probe),
+            patch("app.routers.admin._probe_s3", probe),
+            patch("app.routers.admin._probe_smtp", probe),
+            patch("app.services.clerk_webhook_probe.run_webhook_probe", probe),
+        ):
+            result, _ = self._run(body=_detailed_body())
+        probe.assert_not_called()
+        assert result == {"status": "ok", "failed_services": []}
+
+    def test_fetches_detailed_endpoint_from_backend_internal_url(self, db_session, monkeypatch):
+        from app.config import get_settings
+
+        monkeypatch.setattr(get_settings(), "backend_internal_url", "http://weftmark-prod_backend:8000/")
+        _, mock_get = self._run(body=_detailed_body())
+        assert mock_get.call_args.args[0] == "http://weftmark-prod_backend:8000/api/health/detailed"
+
+    def test_default_backend_internal_url(self):
+        from app.config import Settings
+
+        assert Settings.model_fields["backend_internal_url"].default == "http://backend:8000"
+
+    def test_ok_records_info_event_and_sends_no_email(self, db_session):
+        send = AsyncMock()
+        result, _ = self._run(body=_detailed_body(), send=send)
+        assert result["status"] == "ok"
+        send.assert_not_called()
+        evt = self._latest_event()
+        assert evt.severity == "info"
+        assert evt.message == "Daily health check — ok"
+
+    def test_degraded_reports_backend_failures(self, db_session):
+        services = [
+            {"name": "PostgreSQL", "ok": True, "critical": True, "message": "", "detail": ""},
+            {"name": "SMTP", "ok": False, "critical": False, "message": "down", "detail": "connect refused"},
+        ]
+        result, _ = self._run(body=_detailed_body(status="degraded", services=services))
+        assert result == {"status": "degraded", "failed_services": ["SMTP"]}
+        evt = self._latest_event()
+        assert evt.severity == "warn"
+        assert evt.details == {"probe_status": "degraded", "failed_services": ["SMTP"]}
+
+    def test_backend_unreachable_is_error(self, db_session):
+        import httpx
+
+        result, _ = self._run(side_effect=httpx.ConnectError("Name or service not known"))
+        assert result == {"status": "error", "failed_services": ["Backend API"]}
+
+    def test_backend_http_error_is_error(self, db_session):
+        result, _ = self._run(body={"detail": "boom"}, status_code=500)
+        assert result == {"status": "error", "failed_services": ["Backend API"]}
+
+    def test_malformed_body_is_error(self, db_session):
+        result, _ = self._run(body={"status": "ok", "app_env": _detailed_body()["app_env"], "services": "nope"})
+        assert result == {"status": "error", "failed_services": ["Backend API"]}
+
+    def test_wrong_environment_is_error(self, db_session):
+        # On a host running several stacks, a shared Docker network can resolve
+        # "backend" to another stack's container. Never report its health as ours.
+        result, _ = self._run(body=_detailed_body(app_env="some-other-env"))
+        assert result == {"status": "error", "failed_services": ["Backend API"]}
+
+    def test_stale_result_is_error(self, db_session):
+        old = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
+        result, _ = self._run(body=_detailed_body(checked_at=old))
+        assert result == {"status": "error", "failed_services": ["Backend API"]}
+
+    def test_naive_checked_at_is_treated_as_utc(self, db_session):
+        fresh_naive = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+        result, _ = self._run(body=_detailed_body(checked_at=fresh_naive))
+        assert result["status"] == "ok"
+
+    def test_missing_checked_at_is_error(self, db_session):
+        body = _detailed_body()
+        body["checked_at"] = None
+        result, _ = self._run(body=body)
+        assert result == {"status": "error", "failed_services": ["Backend API"]}
+
+    def test_backend_starting_records_info_and_no_email(self, db_session):
+        body = {"status": "starting", "services": [], "checked_at": None, "app_env": _detailed_body()["app_env"]}
+        send = AsyncMock()
+        result, _ = self._run(body=body, send=send)
+        assert result == {"status": "starting", "failed_services": []}
+        send.assert_not_called()
+        assert self._latest_event().severity == "info"
+
+    def test_email_exception_is_swallowed(self):
         from sqlalchemy import create_engine
         from sqlalchemy.orm import Session
 
         from app.config import get_settings
         from app.models.user import User
-        from app.routers.health import ReadinessResponse, ReadinessService
 
-        settings = get_settings()
-        engine = create_engine(settings.database_url_sync)
+        engine = create_engine(get_settings().database_url_sync)
         superuser_id = uuid.uuid4()
         try:
             with Session(engine) as sync_db:
-                su = User(
-                    id=superuser_id,
-                    clerk_user_id=f"user_su_{superuser_id.hex[:8]}",
-                    email="su@example.com",
-                    display_name="Test Superuser",
-                    is_admin=True,
-                    is_superuser=True,
-                    is_active=True,
+                sync_db.add(
+                    User(
+                        id=superuser_id,
+                        clerk_user_id=f"user_su_{superuser_id.hex[:8]}",
+                        email="su2@example.com",
+                        display_name="Test Superuser 2",
+                        is_admin=True,
+                        is_superuser=True,
+                        is_active=True,
+                    )
                 )
-                sync_db.add(su)
                 sync_db.commit()
 
-            degraded_response = ReadinessResponse(
-                status="degraded",
-                services=[ReadinessService(name="s3", ok=False, critical=False)],
-                checked_at="2026-01-01T00:00:00+00:00",
-            )
+            send = AsyncMock(side_effect=RuntimeError("SMTP down"))
+            result, _ = self._run(body=_detailed_body(status="degraded", services=[]), send=send)
 
-            mock_send = AsyncMock()
-            with patch("app.services.email.send_health_degraded_alert", mock_send):
-                result = self._run(degraded_response)
-
-            mock_send.assert_called_once()
+            send.assert_called_once()
             assert result["status"] == "degraded"
         finally:
             from sqlalchemy import delete as _del
@@ -1669,42 +1718,38 @@ class TestDailyHealthCheck:
                 sync_db.commit()
             engine.dispose()
 
-    def test_degraded_with_superuser_email_exception_is_swallowed(self):
-        # Covers lines 282-283: email send raises → exception swallowed, status still returned
+    def test_degraded_with_superuser_sends_email(self):
         from sqlalchemy import create_engine
         from sqlalchemy.orm import Session
 
         from app.config import get_settings
         from app.models.user import User
-        from app.routers.health import ReadinessResponse, ReadinessService
 
         settings = get_settings()
         engine = create_engine(settings.database_url_sync)
         superuser_id = uuid.uuid4()
         try:
             with Session(engine) as sync_db:
-                su = User(
-                    id=superuser_id,
-                    clerk_user_id=f"user_su_{superuser_id.hex[:8]}",
-                    email="su2@example.com",
-                    display_name="Test Superuser 2",
-                    is_admin=True,
-                    is_superuser=True,
-                    is_active=True,
+                sync_db.add(
+                    User(
+                        id=superuser_id,
+                        clerk_user_id=f"user_su_{superuser_id.hex[:8]}",
+                        email="su@example.com",
+                        display_name="Test Superuser",
+                        is_admin=True,
+                        is_superuser=True,
+                        is_active=True,
+                    )
                 )
-                sync_db.add(su)
                 sync_db.commit()
 
-            degraded_response = ReadinessResponse(
-                status="degraded",
-                services=[ReadinessService(name="s3", ok=False, critical=False)],
-                checked_at="2026-01-01T00:00:00+00:00",
-            )
+            services = [{"name": "S3", "ok": False, "critical": False, "message": "", "detail": "403"}]
+            send = AsyncMock()
+            result, _ = self._run(body=_detailed_body(status="degraded", services=services), send=send)
 
-            mock_send = AsyncMock(side_effect=RuntimeError("SMTP down"))
-            with patch("app.services.email.send_health_degraded_alert", mock_send):
-                result = self._run(degraded_response)
-
+            send.assert_called_once()
+            assert send.call_args.kwargs["probe_rows"] == [("S3", False, "403")]
+            assert send.call_args.kwargs["status"] == "degraded"
             assert result["status"] == "degraded"
         finally:
             from sqlalchemy import delete as _del
