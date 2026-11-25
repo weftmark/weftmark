@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     frontend_url: str = "http://localhost:3000"
     api_url: str = "http://localhost:8000"
+    # In-network URL Celery workers use to read the backend's live /api/health/detailed.
+    # Use the backend's unique container name when several stacks share a Docker network
+    # (a bare "backend" alias can then resolve to another stack's backend).
+    backend_internal_url: str = "http://backend:8000"
     app_base_url: str = ""  # public-facing URL for alert email links; falls back to frontend_url when empty
     stack_alert_emails_enabled: bool = True  # set false in dev to suppress startup/shutdown alert emails
     email_ttl_hours: int = 6  # discard queued emails older than this

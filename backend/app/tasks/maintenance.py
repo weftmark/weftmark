@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from app.celery_app import celery_app
 
 if TYPE_CHECKING:
+    from app.routers.health import ReadinessResponse
     from app.services.email import AdminDigestData
 
 log = logging.getLogger(__name__)
@@ -265,43 +266,97 @@ def _record_health_event_and_alert(
         log.exception("%s: failed to send degraded alert email", event_type)
 
 
+_BACKEND_HEALTH_TIMEOUT_S = 10.0
+_BACKEND_SERVICE_NAME = "Backend API"
+
+
+def _fetch_backend_health(ts: datetime) -> "ReadinessResponse | None":
+    """Read the backend's live /api/health/detailed result.
+
+    Returns a ReadinessResponse, or None while the backend is still starting
+    (no probe result yet). The probes themselves only work inside the backend:
+    the worker lacks the Clerk publishable key / webhook secret, the webhook
+    round-trip is signalled in the backend process, and asyncio.run() on the
+    shared async engine breaks pooled Postgres connections.
+    """
+    import httpx
+    from pydantic import ValidationError
+
+    from app.config import get_settings
+    from app.routers.health import ReadinessResponse, ReadinessService
+
+    settings = get_settings()
+    url = settings.backend_internal_url.rstrip("/") + "/api/health/detailed"
+
+    def _error(message: str) -> ReadinessResponse:
+        return ReadinessResponse(
+            status="error",
+            services=[
+                ReadinessService(
+                    name=_BACKEND_SERVICE_NAME, ok=False, critical=True, message=message[:120], detail=message[:120]
+                )
+            ],
+            checked_at=ts.isoformat(),
+        )
+
+    try:
+        r = httpx.get(url, timeout=_BACKEND_HEALTH_TIMEOUT_S)
+        r.raise_for_status()
+        body = r.json()
+    except Exception as exc:
+        return _error(f"GET {url} failed: {exc!s}")
+
+    backend_env = body.get("app_env") if isinstance(body, dict) else None
+    if backend_env != settings.app_env:
+        return _error(
+            f"{url} is the {backend_env!r} backend, expected {settings.app_env!r}; check BACKEND_INTERNAL_URL"
+        )
+
+    if body.get("status") == "starting":
+        return None
+
+    try:
+        result = ReadinessResponse.model_validate(body)
+    except ValidationError as exc:
+        return _error(f"Unexpected /api/health/detailed response: {exc.error_count()} validation error(s)")
+
+    max_age_s = 3 * settings.detailed_refresh_interval_s
+    try:
+        checked_at = datetime.fromisoformat(result.checked_at or "")
+    except ValueError:
+        return _error("Backend health result has no checked_at timestamp")
+    if checked_at.tzinfo is None:
+        checked_at = checked_at.replace(tzinfo=timezone.utc)
+    age_s = (ts - checked_at).total_seconds()
+    if age_s > max_age_s:
+        return _error(f"Backend health result is stale: last probe {int(age_s)}s ago (limit {max_age_s}s)")
+
+    return result
+
+
 @celery_app.task(
     bind=True,
     max_retries=0,
     name="app.tasks.maintenance.daily_health_check",
 )
 def daily_health_check(self) -> dict:
-    import asyncio
-
     ts = datetime.now(timezone.utc)
+    result = _fetch_backend_health(ts)
 
-    async def _run():
-        from app.database import AsyncSessionLocal
-        from app.routers.admin import _probe_clerk, _probe_postgres, _probe_s3, _probe_smtp
-        from app.routers.health import ReadinessResponse, ReadinessService, _build_readiness_from_results
-        from app.services.clerk_webhook_probe import run_webhook_probe
+    if result is None:
+        _record_health_event_and_alert(
+            event_type="health.check",
+            severity="info",
+            message="Daily health check — backend starting, no probe result yet",
+            details={"probe_status": "starting", "failed_services": []},
+            ts=ts,
+            should_alert=False,
+            probe_rows=[],
+            alert_status="starting",
+        )
+        log.info("daily_health_check status=starting")
+        return {"status": "starting", "failed_services": []}
 
-        try:
-            async with AsyncSessionLocal() as db:
-                results, webhook_result = await asyncio.gather(
-                    asyncio.gather(
-                        _probe_postgres(db),
-                        _probe_s3(),
-                        _probe_clerk(),
-                        _probe_smtp(),
-                        return_exceptions=True,
-                    ),
-                    run_webhook_probe(),
-                )
-        except Exception as exc:
-            return ReadinessResponse(
-                status="error",
-                services=[ReadinessService(name="postgres", ok=False, critical=True, message=str(exc)[:120])],
-                checked_at=ts.isoformat(),
-            )
-        return _build_readiness_from_results(results, webhook_result, checked_at=ts.isoformat())
-
-    result = asyncio.run(_run())
     probe_rows = [(s.name, s.ok, s.detail) for s in result.services]
     failed = [s.name for s in result.services if not s.ok]
     sev = {"error": "error", "degraded": "warn"}.get(result.status, "info")
