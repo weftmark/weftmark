@@ -29,7 +29,7 @@ RUN node -e " \
 # bumps the digest when the same version is rebuilt (Alpine/nginx CVE fixes) and the tag when
 # a new stable release ships; odd (mainline) minors are ignored in .github/dependabot.yml.
 # A merge to dev that touches errors/ publishes :dev-latest (publish-error-container.yml).
-FROM nginx:1.31.8-alpine@sha256:fed7e14be83cbd2661a75cdc5b872d936cf155d46c327084d30b8df19ae88d72
+FROM nginx:1.31.9-alpine@sha256:fb4658584bd9a916ffb6f6e365f97c25cfdb2923801f551ea08356e695f14ff7
 COPY --from=build /build/errors/404.html /usr/share/nginx/html/
 COPY --from=build /build/errors/500.html /usr/share/nginx/html/
 COPY errors/nginx.conf /etc/nginx/conf.d/default.conf

@@ -203,6 +203,7 @@ Controls image generation for design previews and drawdowns.
 | Variable | Default | Notes |
 |---|---|---|
 | `CELERY_CONCURRENCY` | `2` | Concurrent worker processes per container. I/O-bound tasks tolerate higher values; CPU-bound rendering tasks should stay at or below the host core count. |
+| `BACKEND_INTERNAL_URL` | `http://backend:8000` | In-network URL the workers use to read the backend's live `/api/health/detailed` for the daily health check. When several stacks share a Docker network (e.g. a shared observability network), set it to the backend's unique container name, such as `http://weftmark-prod_backend:8000`: the bare `backend` alias can resolve to another stack's backend. The check refuses a backend whose `APP_ENV` differs from the worker's. |
 
 Enable a second worker container by adding `worker02` to `COMPOSE_PROFILES`.
 

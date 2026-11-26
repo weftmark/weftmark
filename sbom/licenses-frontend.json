@@ -1319,7 +1319,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lru-cache",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/lru-cache/LICENSE"
   },
-  "lucide-react@1.76.0": {
+  "lucide-react@1.77.0": {
     "licenses": "ISC",
     "repository": "https://github.com/lucide-icons/lucide",
     "publisher": "Eric Fennis",
@@ -1589,7 +1589,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/swr",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/swr/LICENSE"
   },
-  "tailwind-merge@3.7.0": {
+  "tailwind-merge@3.7.1": {
     "licenses": "MIT",
     "repository": "https://github.com/dcastil/tailwind-merge",
     "publisher": "Dany Castillo",
@@ -1709,7 +1709,7 @@
     "path": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite",
     "licenseFile": "/home/runner/work/weftmark/weftmark/frontend/node_modules/vite/LICENSE.md"
   },
-  "weaving-site@0.216.12": {
+  "weaving-site@0.216.13": {
     "licenses": "UNLICENSED",
     "private": true,
     "path": "/home/runner/work/weftmark/weftmark/frontend",
