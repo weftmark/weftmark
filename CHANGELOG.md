@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.216.14](https://github.com/weftmark/weftmark/compare/v0.216.13...v0.216.14) (2026-11-26)
+
+
+### Bug Fixes
+
+* **deps:** bump the docker-base-images group across 2 directories with 1 update ([c57dd0a](https://github.com/weftmark/weftmark/commit/c57dd0a54eeed3047af36bfdc65fc639059e262b))
+* **deps:** bump the docker-base-images group across 2 directories with 1 update ([#1234](https://github.com/weftmark/weftmark/issues/1234)) ([32e38db](https://github.com/weftmark/weftmark/commit/32e38db90a58dd530621f3a6ce285f2e18fda01b))
+* **deps:** bump the frontend-deps group in /frontend with 2 updates ([fef3f43](https://github.com/weftmark/weftmark/commit/fef3f43e7b27bfb50394477683b32a2732f2651f))
+* **health:** daily health check reports the backend's live result ([47b1203](https://github.com/weftmark/weftmark/commit/47b12030191ce9bacc452fe80c834d7892179520))
+* **health:** daily health check reports the backend's live result ([#1235](https://github.com/weftmark/weftmark/issues/1235)) ([035bf77](https://github.com/weftmark/weftmark/commit/035bf77e762742c9653eb932e9042c5edb713baf))
+
 ## [0.216.13](https://github.com/weftmark/weftmark/compare/v0.216.12...v0.216.13) (2026-11-23)
 
 
